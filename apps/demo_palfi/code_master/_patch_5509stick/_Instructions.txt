@@ -1,0 +1,37 @@
+Patching the PaLFi Master Application to use the USB stick
+==========================================================
+
+Introduction
+------------
+TI produces and sells a USB stick (a very cool one) that includes an MCU and a
+433 MHz RF frontend.  The MCU is the MSP430F5509, and the RF is a CC1101.  This
+is a supported platform for OpenTag -- it is currently called the RF430 USB, or
+something like that, but when TI names it officially, the name used by OpenTag
+will change as well.
+
+Board Support Header for USB Stick
+/board/MSP430F5/board_RF430USB_5509.h
+
+Wiki Page for USB Stick
+[To do]
+
+
+Patching
+--------
+Eventually, I will learn how to use multi-target configuration in CCS, and when
+that time comes you will just pick the right target in CCS.  Until then, you
+need to patch it manually.
+
+1. Setup platform_config.h
+In the file /apps/Demo_PaLFi/Code_Master/platform_config.h, make sure that the 
+constant "BOARD_RF430USB_5509" is defined.  Make sure also that all other
+constants with "BOARD" are commented-out.  These definitions are at the top of
+this file.
+
+2. Verify that you have the ~patch_USBstick folder in /Code_Master, and that it
+contains the files: extf_code.c, app_config.h
+
+3. Rename .../Code_Master/app_config.h to app_config.orig.h, or something like
+that.  Then move the file .../Code_Master/~patch_USBstick/app_config.h into the
+.../Code_Master folder.  This app_config.h is set-up for the special needs of 
+the USB stick board.

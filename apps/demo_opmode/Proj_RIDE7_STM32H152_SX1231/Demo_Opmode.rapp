@@ -1,0 +1,122 @@
+
+<ApplicationBuild Header="Demo_Opmode" Extern=".\Demo_Opmode.rapp" Path=".\Demo_Opmode.rapp" OutputFile=".\Demo_Opmode.elf" sate="96" >
+	<Group Header="App" Marker="-1" OutputFile="" sate="98" >
+		<NodeC Path="..\..\..\OTplatform\STM32H152\radio_chain_test.c" Header="radio_chain_test.c" Marker="-1" OutputFile=".\radio_chain_test.o" sate="0" />
+			
+	</Group>
+	<Group Header="OTplatform" Marker="-1" OutputFile="" sate="0" >
+		<Group Header="~MCU_STM32L1xx" Marker="-1" OutputFile="" sate="96" >
+			<Group Header="startup" Marker="-1" OutputFile="" sate="96" >
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\CMSIS\Device\ST\STM32L1xx\Source\Templates\system_stm32l1xx.c" Header="system_stm32l1xx.c" Marker="-1" OutputFile=".\system_stm32l1xx.o" sate="0" />
+				<NodeASM Path="..\..\..\OTplatform\~MCU_STM32L1xx\CMSIS\Device\ST\STM32L1xx\Source\Templates\gcc_ride7\startup_stm32l1xx_md.s" Header="startup_stm32l1xx_md.s" Marker="-1" OutputFile=".\startup_stm32l1xx_md.o" sate="0" />
+							
+			</Group>
+			<Group Header="STM32L1xx_StdPeriph_Driver" Marker="-1" OutputFile="" sate="96" >
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_tim.c" Header="stm32l1xx_tim.c" Marker="-1" OutputFile=".\stm32l1xx_tim.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_spi.c" Header="stm32l1xx_spi.c" Marker="-1" OutputFile=".\stm32l1xx_spi.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_exti.c" Header="stm32l1xx_exti.c" Marker="-1" OutputFile=".\stm32l1xx_exti.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_gpio.c" Header="stm32l1xx_gpio.c" Marker="-1" OutputFile=".\stm32l1xx_gpio.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_usart.c" Header="stm32l1xx_usart.c" Marker="-1" OutputFile=".\stm32l1xx_usart.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_dma.c" Header="stm32l1xx_dma.c" Marker="-1" OutputFile=".\stm32l1xx_dma.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_flash.c" Header="stm32l1xx_flash.c" Marker="-1" OutputFile=".\stm32l1xx_flash.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_adc.c" Header="stm32l1xx_adc.c" Marker="-1" OutputFile=".\stm32l1xx_adc.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_rcc.c" Header="stm32l1xx_rcc.c" Marker="-1" OutputFile=".\stm32l1xx_rcc.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_pwr.c" Header="stm32l1xx_pwr.c" Marker="-1" OutputFile=".\stm32l1xx_pwr.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\misc.c" Header="misc.c" Marker="-1" OutputFile=".\misc.o" sate="0" />
+				<NodeC Path="..\..\..\OTplatform\~MCU_STM32L1xx\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_syscfg.c" Header="stm32l1xx_syscfg.c" Marker="-1" OutputFile=".\stm32l1xx_syscfg.o" sate="0" />
+							
+			</Group>
+					
+		</Group>
+		<Group Header="STM32L1xx" Marker="-1" OutputFile="" sate="96" >
+			<NodeC Path="..\..\..\OTplatform\STM32H152\platform_STM32L1xx.c" Header="platform_STM32L1xx.c" Marker="-1" OutputFile=".\platform_STM32L1xx.o" sate="0" />
+			<NodeC Path="..\..\..\OTplatform\STM32H152\veelite_core.c" Header="veelite_core.c" Marker="-1" OutputFile=".\veelite_core.o" sate="0" />
+			<NodeC Path="..\..\..\OTplatform\STM32H152\mpipe.c" Header="mpipe.c" Marker="-1" OutputFile=".\mpipe.o" sate="0" />
+			<NodeC Path="..\..\..\OTplatform\STM32H152\debug_uart.c" Header="debug_uart.c" Marker="-1" OutputFile=".\debug_uart.o" sate="0" />
+			<NodeC Path="..\..\..\OTplatform\STM32H152\stm32l1xx_it.c" Header="stm32l1xx_it.c" Marker="-1" OutputFile=".\stm32l1xx_it.o" sate="0" />
+					
+		</Group>
+			
+	</Group>
+	<Group Header="OTkernel" Marker="-1" OutputFile="" sate="0" >
+		<Group Header="~Native" Marker="-1" OutputFile="" sate="96" >
+			<NodeC Path="..\..\..\OTkernel\~Native\system.c" Header="system.c" Marker="-1" OutputFile=".\system.o" sate="0" />
+					
+		</Group>
+			
+	</Group>
+	<Group Header="OTlib" Marker="-1" OutputFile="" sate="0" >
+		<NodeC Path="..\..\..\OTlib\OTAPI_logger.c" Header="OTAPI_logger.c" Marker="-1" OutputFile=".\OTAPI_logger.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\buffers.c" Header="buffers.c" Marker="-1" OutputFile=".\buffers.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\M2_network.c" Header="M2_network.c" Marker="-1" OutputFile=".\M2_network.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\M2QP.c" Header="M2QP.c" Marker="-1" OutputFile=".\M2QP.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\queue.c" Header="queue.c" Marker="-1" OutputFile=".\queue.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\veelite.c" Header="veelite.c" Marker="-1" OutputFile=".\veelite.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\session.c" Header="session.c" Marker="-1" OutputFile=".\session.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\auth.c" Header="auth.c" Marker="-1" OutputFile=".\auth.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\alp_main.c" Header="alp_main.c" Marker="-1" OutputFile=".\alp_main.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\OT_utils.c" Header="OT_utils.c" Marker="-1" OutputFile=".\OT_utils.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\alp_filedata.c" Header="alp_filedata.c" Marker="-1" OutputFile=".\alp_filedata.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\alp_api_server.c" Header="alp_api_server.c" Marker="-1" OutputFile=".\alp_api_server.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\alp_logger.c" Header="alp_logger.c" Marker="-1" OutputFile=".\alp_logger.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\external.c" Header="external.c" Marker="-1" OutputFile=".\external.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\encode_M2.c" Header="encode_M2.c" Marker="-1" OutputFile=".\encode_M2.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\crc16.c" Header="crc16.c" Marker="-1" OutputFile=".\crc16.o" sate="0" />
+			
+	</Group>
+	<Group Header="OTradio" Marker="-1" OutputFile="" sate="96" >
+		<NodeC Path="..\..\..\OTradio\sx1231\radio_SX1231.c" Header="radio_SX1231.c" Marker="-1" OutputFile=".\radio_SX1231.o" sate="0" />
+		<NodeC Path="..\..\..\OTradio\sx1231\spi_sx1231.c" Header="spi_sx1231.c" Marker="-1" OutputFile=".\spi_sx1231.o" sate="0" />
+			
+	</Group>
+	<Options>
+		<Config Header="Standard" >
+			<Set Header="ApplicationBuild" >
+				<Section Header="General" >
+					<Property Header="TargetFamily" Value="ARM" />
+																									
+				</Section>
+				<Section Header="Directories" >
+					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;../../../OTlib;../Code;../../../Board;../../../OTplatform/STM32H152;../../../OTplatform/~MCU_STM32L1xx/CMSIS/Device/ST/STM32L1xx/Include;../../../OTplatform/~MCU_STM32L1xx/CMSIS/Include;../../../OTplatform/~MCU_STM32L1xx/STM32L1xx_StdPeriph_Driver/inc;../../../OTradio/sx1231;../../../OTkernel/~Native" Removable="1" />
+																
+				</Section>
+												
+			</Set>
+			<Set Header="Target" >
+				<Section Header="ProcessorARM" >
+					<Property Header="Processor" Value="STM32L152VBT6" />
+																									
+				</Section>
+				<Section Header="ToolSetARM" >
+					<Property Header="BuildToolSetARM" Value="ARM\GNU.config" />
+																									
+				</Section>
+																			
+			</Set>
+			<Set Header="LD" >
+				<Section Header="Startup" >
+					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
+					<Property Header="File" Value="" Removable="1" />
+																
+				</Section>
+				<Section Header="Scripts" >
+					<Property Header="File" Value="stm32L_flash_vl.ld" Removable="1" />
+					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
+																
+				</Section>
+												
+			</Set>
+			<Set Header="GCC" >
+				<Section Header="Defines" >
+					<Property Header="Defines" Value="STM32H152;USE_STDPERIPH_DRIVER;RADIO_DEBUG;BLOCKING_UART_TX" Removable="1" />
+							
+				</Section>
+				<Section Header="WARNINGS" >
+					<Property Header="CONSWARNINGS" Value="-Wall" Removable="1" />
+																
+				</Section>
+					
+			</Set>
+		</Config>
+	</Options>
+</ApplicationBuild>

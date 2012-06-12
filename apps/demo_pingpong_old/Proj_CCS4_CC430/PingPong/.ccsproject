@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?ccsproject version="1.0"?>
+
+<projectOptions>
+<deviceVariant value="CC430F6137"/>
+<deviceEndianness value="little"/>
+<codegenToolVersion value="3.2.2"/>
+<isElfFormat value="false"/>
+<linkerCommandFile value="lnk_cc430f6137.cmd"/>
+<rts value="libc.a"/>
+<defaultAssemblyOnly value="false"/>
+</projectOptions>

@@ -1,0 +1,109 @@
+/* Copyright 2010-2011 JP Norair
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
+  */
+/**
+  * @file       /Apps/.../platform_config.h
+  * @author     JP Norair (jpnorair@indigresso.com)
+  * @version    V1.0
+  * @date       16 November 2011
+  * @brief      Board & Platform Selection
+  *
+  * Don't actually include this.  Include OT_platform.h instead.
+  ******************************************************************************
+  */
+
+#ifndef __PLATFORM_CONFIG_H
+#define __PLATFORM_CONFIG_H
+
+#include "build_config.h"
+
+<<<<<<< HEAD
+
+//#define BOARD_MLX73Proto_E
+#define BOARD_AG430DK_GW1
+//#define BOARD_AG430DK_EP1
+//#define BOARD_EM430RF
+//#define BOARD_eZ430Chronos
+=======
+#ifdef AG430DK_GW1
+#   define BOARD   AG430DK_GW1
+#elif defined(MLX73Proto_E)
+#   define BOARD   MLX73Proto_E
+#elif defined(STM32H152)
+#   define BOARD    STM32H152
+#endif
+//#define BOARD   AG430DK_EP1
+//#define BOARD   EM430RF
+//#define BOARD   eZ430Chronos
+>>>>>>> origin/dev
+
+
+#if defined(BOARD_MLX73Proto_E)
+#include "STM32F10x/board_MLX73Proto_E.h"
+
+#elif defined(BOARD_AG430DK_GW1)
+#   include "CC430/board_AG430DK_GW1.h"
+
+#elif defined(BOARD_AG430DK_EP1)
+#   include "CC430/board_AG430DK_EP1.h"
+
+#elif defined(BOARD_EM430RF)
+#   include "CC430/board_EM430RF.h"
+
+#elif defined(BOARD_eZ430Chronos)
+#   include "CC430/board_eZ430Chronos.h"
+
+#elif (BOARD == STM32H152)
+#   include "STM32H152/board.h"
+
+#else
+#   error "BOARD is set to an unknown value in platform_config.h"
+
+#endif
+
+
+
+
+
+/// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
+#ifdef ENABLED
+#   undef ENABLED
+#endif
+#define ENABLED  1
+
+#ifdef DISABLED
+#   undef DISABLED
+#endif
+#define DISABLED  0
+
+#ifdef NOT_AVAILABLE
+#   undef NOT_AVAILABLE
+#endif
+#define NOT_AVAILABLE   DISABLED
+
+
+
+
+
+
+
+
+#define OS_FEATURE(VAL)                 DISABLED                // NO OS Featuresetting just yet
+#define OS_FEATURE_MEMCPY               DISABLED                //  
+#define OS_FEATURE_MALLOC               DISABLED
+
+
+
+#endif 

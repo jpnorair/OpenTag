@@ -1,0 +1,4 @@
+
+<Project Header="Project 'MLXGateway'" Path=".\MLXGateway.rprj" Project="Yes" OutputFile="" sate="96" ActiveApp="MLXGateway" >
+	<ApplicationBuild Header="MLXGateway" Extern=".\MLXGateway.rapp" Path=".\MLXGateway.rapp" OutputFile=".\MLXGateway.elf" sate="96" Config="STM3210E_EVAL" />
+</Project>

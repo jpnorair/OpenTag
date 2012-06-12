@@ -1,0 +1,90 @@
+OpenTag License
+Version 1.0, April 2012
+
+1. DEFINITIONS
+"License" shall mean the terms and conditions for use, reproduction, and 
+distribution as defined by Sections 1 through 5 of this document.
+
+"Source" form shall mean the preferred form for making modifications, including 
+but not limited to software source code, documentation source, and 
+configuration files.
+
+"Object" form shall mean any form resulting from mechanical transformation or 
+translation of a Source form, including but not limited to compiled object 
+code, generated documentation, and conversions to other media types.
+
+"Work" shall mean the work of authorship, whether in Source or Object form, 
+made available under the License, as indicated by a copyright notice that is 
+included in or attached to the work (an example is provided in the Appendix 
+below), as well as any modifications or additions to the work of authorship, 
+and any Derivative Works of the work of authorization.
+
+"Derivative Works" shall mean any work, whether in Source or Object form, that 
+is based on (or derived from) the Work and for which the editorial revisions, 
+annotations, elaborations, or other modifications represent, as a whole, an 
+original work of authorship. For the purposes of this License, Derivative Works 
+shall not include works that remain separable from, or merely link (or bind by 
+name) to the interfaces of, the Work and Derivative Works thereof.
+
+2. GRANT OF COPYRIGHT LICENSE
+Creation, redistribution and use of the Work are permitted provided that the 
+following conditions are met:
+  * Redistributions of the Work in Source form must retain this License in its 
+    entirety.
+  * Redistributions of the Work in Object form must reproduce this License in 
+    its entirety in the documentation and/or other materials provided with the 
+    distribution.
+  * The names of contributors may not be used to endorse or promote products 
+    derived from the Work without specific prior written permission.
+ 
+3. RESERVATION OF RIGHTS
+Neither this Copyright License, nor the fact that any party creates, 
+redistributes and/or uses the Work or develops product(s) based on the Work, 
+shall in any way be construed as a grant, either express or implied, to any 
+rights in any trademarks, copyrights, patents, trade secrets, or any other 
+intellectual property (except as expressly stated herein).
+ 
+4. RAND LICENSING
+Any party who creates, redistributes and/or uses the Work or develops 
+product(s) based on the Work (Using Party), must grant to any other party upon 
+request, a nonexclusive, worldwide patent license on reasonable and non-
+discriminatory terms to any patent claims owned and/or licensed by the Using 
+Party that are infringed by the Work or any standard based on the Work.  Such 
+Patent License may be royalty bearing.
+ 
+5. DISCLAIMER
+THIS WORK IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE 
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
+
+
+
+6. APPENDIX
+To apply the OpenTag License to your work, attach the following boilerplate 
+notice, with the fields enclosed by brackets "[]" replaced with your own 
+identifying information. (Don't include the brackets!)  The text should be 
+enclosed in the appropriate comment syntax for the file format. We also 
+recommend that a file or class name and description of purpose be included on 
+the same "printed page" as the copyright notice for easier identification 
+within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the OpenTag License, Version 1.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.indigresso.com/wiki/doku.php?id=opentag:license_1_0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.

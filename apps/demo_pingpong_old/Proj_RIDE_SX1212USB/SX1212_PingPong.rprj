@@ -1,0 +1,4 @@
+
+<Project Header="Project 'SX1212_PingPong'" Path=".\SX1212_PingPong.rprj" Project="Yes" OutputFile="" sate="96" ActiveApp="SX1212_PingPong" >
+	<ApplicationBuild Header="SX1212_PingPong" Extern=".\SX1212_PingPong.rapp" Path=".\SX1212_PingPong.rapp" OutputFile=".\SX1212_PingPong.elf" sate="96" />
+</Project>

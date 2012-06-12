@@ -1,0 +1,46 @@
+#############################
+# Eclipse Metadata Bullshit #
+#############################
+*.metadata*
+
+###################################
+# Compiler/Linker Generated Files #
+###################################
+*.o
+*.so
+*.hex
+*.pp
+*.map
+*.depend
+*.lst
+*.elf
+
+######################
+# OS Generated Files #
+######################
+.DS_Store*
+ehthumbs.db
+Icon?
+Thumbs.db
+
+#########################
+# Ride7 Generated Files #
+#########################
+*.ctx
+*.dbi
+*.xdb
+
+#########################
+# CCS Generated Files #
+#########################
+*.map
+*.mk
+*.obj
+*.opt
+*.out
+*.pp
+
+#################
+# vim swap file #
+#################
+*.swp

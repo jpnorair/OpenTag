@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>OT_PingPong</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.cdt.managedbuilder.core.genmakebuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.cdt.core.cnature</nature>
+		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
+		<nature>org.eclipse.cdt.core.ccnature</nature>
+		<nature>com.ti.ccstudio.managedbuild.core.ccsNature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>CC430</name>
+			<type>2</type>
+			<location>B:/Platforms/CC430</location>
+		</link>
+		<link>
+			<name>OTlib</name>
+			<type>2</type>
+			<location>B:/OTlib</location>
+		</link>
+		<link>
+			<name>App</name>
+			<type>2</type>
+			<location>B:/Apps/Demo_PingPong/Code</location>
+		</link>
+	</linkedResources>
+</projectDescription>
