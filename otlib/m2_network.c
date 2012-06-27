@@ -153,21 +153,18 @@ ot_int network_route_ff(m2session* session) {
     
     /// Address Control Header (Present in M2NP)
     /// Session Connection and Dialog Filtering:
-    /// - if unassociated or synced, connect now
+    /// - if unassociated, connect now
     /// - if already connected, make sure the dialog IDs are equal
     if (m2np.header.fr_info & M2FI_ENADDR) {
-        switch (session->netstate & 0x03) {
-            case M2_NETSTATE_UNASSOC: // same handling as synced
-            case M2_NETSTATE_SYNCED:
-                session->netstate  |= M2_NETSTATE_CONNECTED;
-                session->subnet     = rxq.front[2];
-                session->dialog_id  = q_readbyte(&rxq);
-                break;
-                                        
-            default:
-                if (session->dialog_id != q_readbyte(&rxq)) 
-                    return -1;
-                break;
+        if (session->netstate & M2_NETSTATE_CONNECTED) {
+            if (session->dialog_id != q_readbyte(&rxq)) {
+                return -1;
+            }
+        }
+        else {
+            session->netstate  |= M2_NETSTATE_CONNECTED;
+            session->subnet     = rxq.front[2];
+            session->dialog_id  = q_readbyte(&rxq);
         }
         
         /// Grab global flags from Address Control
@@ -192,6 +189,7 @@ ot_int network_route_ff(m2session* session) {
         /// the same length as the source address, and it needs to match this
         /// device's device ID (VID or UID)
         if ((m2np.header.addr_ctl & 0xC0) == 0) {
+            session->netstate |= M2_NETFLAG_FIRSTRX;
             if ( !m2np_idcmp(m2np.rt.dlog.length, q_markbyte(&rxq, m2np.rt.dlog.length)) ) {
                 return -1;
             }
@@ -279,6 +277,7 @@ void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack) {
     //q_writebyte(&txq, 0);                           // Dummy TX EIRP setting (placeholder only)
     q_writeshort(&txq, 0x0000);
     q_writebyte(&txq, session->subnet);
+    session->netstate      |= (addressing) ? 0 : M2_NETFLAG_FIRSTRX;    //Set FIRSTRX mode on Unicast
     addressing             |= (session->flags & 0x3F);
     m2np.header.fr_info     = session->flags & 0xC0;
     m2np.header.fr_info    += nack;
@@ -320,20 +319,23 @@ void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack) {
         
         // Anycast or unicast: Multi-Hopping
         if ((m2np.header.addr_ctl & 0x40) == 0) {
-            q_writebyte(&txq, m2np.rt.hop_code);
+            ot_u8   hopmask = M2HC_ORIG;
+            ot_u8   id_num  = 1;
+            id_tmpl* id     = &m2np.rt.orig;
             
+            q_writebyte(&txq, m2np.rt.hop_code);
             if ((m2np.rt.hop_code & M2HC_EXT) != 0) {
                 q_writebyte(&txq, m2np.rt.hop_ext);
             }
-            if ((m2np.rt.hop_code & M2HC_ORIG) != 0) {
-                ot_u8* temp = txq.putcursor;
-                q_writestring(&txq, m2np.rt.orig.value, m2np.rt.orig.length);
-                m2np.rt.orig.value = temp;
-            }
-            if ((m2np.rt.hop_code & M2HC_DEST) != 0) {
-                ot_u8* temp = txq.putcursor;
-                q_writestring(&txq, m2np.rt.dest.value, m2np.rt.dest.length);
-                m2np.rt.dest.value = temp;
+            while (id_num != 0) {
+                if (m2np.rt.hop_code & hopmask) {
+                    ot_u8* loc = txq.putcursor;
+                    q_writestring(&txq, id->value, id->length);
+                    id->value = loc;
+                }
+                hopmask = M2HC_DEST;
+                id++;		//moves to next id_tmpl (dest)
+                id_num--;
             }
         }
     }
@@ -456,7 +458,7 @@ ot_int m2advp_init_flood(m2session* session, ot_u16 schedule) {
 
     /// Set Netstate to match advertising type
     session->netstate = (   M2_NETFLAG_FLOOD | M2_NETSTATE_REQTX | \
-                            M2_NETSTATE_INIT | M2_NETSTATE_SYNCED   );
+                            M2_NETSTATE_INIT /* | M2_NETSTATE_SYNCED */   );
 
     /// Store existing TXQ (bit of a hack)
     q_copy(&advq, &txq);

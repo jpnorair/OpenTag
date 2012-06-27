@@ -14,21 +14,22 @@
   *
   */
 /**
-  * @file       /OTradio/CC1101/CC1101_defaults.h
+  * @file       /otradio/cc430/cc430_defaults.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       29 Aug 2011
-  * @brief      CC1101 Radio register default definitions & macros.
-  * @ingroup    CC1101
+  * @date       15 June 2012
+  * @brief      CC430 Radio register default definitions & macros.
+  * @ingroup    CC430
   *
   ******************************************************************************
   */
 
-#ifndef __CC1101_defaults_H
-#define __CC1101_defaults_H
+#ifndef __NULL_defaults_H
+#define __NULL_defaults_H
 
 #include "OT_types.h"
 #include "OT_config.h"
+#include "null_registers.h"
 
 
 // Some radio register settings constants
@@ -42,17 +43,13 @@
 #   error "RF_PARAM_BAND is not set to an implemented value"
 #endif
 
+/// Don't change these GDO values unless you really know what you are doing.
+/// Some of the basic PHY/MAC features depend on these.
+#define DRF_IOCFG2              GDO_CHIP_RDYn
+#define DRF_IOCFG1              GDO_RSSI_VALID
+#define DRF_IOCFG0              GDO_PLL_LOCK
 
-#ifndef BOARD_RF430USB_5509
-#   define DRF_IOCFG2           GDO_CHIP_RDYn 	//Power-on setting
-#else
-#   define DRF_IOCFG2           GDO_CLK_XOSC_D_1
-#endif
-
-#define DRF_IOCFG1              GDO_HIZ         	//Normal Power-on setting
-#define DRF_IOCFG0              GDO_XOSC_STABLE   	//Power-on setting
-
-#define DRF_FIFOTHR             (_ADC_RETENTION | _CLOSE_IN_RX_0dB)
+#define DRF_FIFOTHR             (_CLOSE_IN_RX_0dB)
 
 #define DRF_SYNC1               0x0B
 #define DRF_SYNC0               0x67
@@ -61,7 +58,7 @@
 
 #define DRF_PKTCTRL1            (_PQT(3) | _ADR_CHK_NONE)
 
-#define DRF_PKTCTRL0            (_WHITE_DATA | _PKT_FORMAT_NORMAL)
+#define DRF_PKTCTRL0            (_WHITE_DATA | _PKT_FORMAT_NORMAL | _PKT_LENCFG_VARIABLE)
 
 #define DRF_ADDR                0x00
 #define DRF_CHANNR              0x07
@@ -94,10 +91,10 @@
 
 #define DRF_MCSM2               0
 #define DRF_MCSM1               (_CCA_MODE_ALWAYS | _RXOFF_MODE_IDLE | _TXOFF_MODE_IDLE)
-#define DRF_MCSM0               (_FS_AUTOCAL_4THIDLE | _PO_TIMEOUT_155us)
+#define DRF_MCSM0               (_FS_AUTOCAL_4THIDLE)
 
 #define DRF_FOCCFG              0x16    //From SRFS
-#define DRF_BSCFG               0x6D    //From SRFS
+#define DRF_BSCFG               0x6D /* 0x6C */    //From SRFS
 
 #define DRF_AGCCTRL2            0x03    //From SRFS
 #define DRF_AGCCTRL1            0x40    //From SRFS
@@ -116,14 +113,11 @@
 #define DRF_FSCAL1              0x00    //From SRFS
 #define DRF_FSCAL0              0x1F    //From SRFS
 
-#define DRF_RCCTRL1             0x41    //From SRFS
-#define DRF_RCCTRL0             0x00    //From SRFS
-
 #define DRF_FSTEST              0x59    //From SRFS
 #define DRF_PTEST               0x7F    //From SRFS
 #define DRF_AGCTEST             0x3F    //From SRFS
-#define DRF_TEST2               0x81    //From SRFS
-#define DRF_TEST1               0x35    //From SRFS
+#define DRF_TEST2               0x88    //From SRFS
+#define DRF_TEST1               0x31    //From SRFS
 #define DRF_TEST0               0x09    //From SRFS
 
 

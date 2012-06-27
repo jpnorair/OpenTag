@@ -212,6 +212,11 @@ m2session* session_top() {
 #endif
 
 
+#ifndef EXTF_session_netstate
+ot_u8 session_netstate() {
+    return session.heap[session.top].netstate;
+}
+#endif
 
 
 

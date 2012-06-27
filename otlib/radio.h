@@ -464,6 +464,21 @@ ot_int rm2_scale_codec(ot_int buf_bytes);
 
 
 
+/** @brief  Instructs radio to re-enter RX mode immediately
+  * @param  force_entry     (ot_bool) resets RF state prior to re-entry
+  * @retval None
+  * @ingroup Radio
+  *
+  * This function is used in certain places in the Data Link Layer, and also
+  * [typically] internally, to restart RX.  The RX core is not altered, so 
+  * whatever settings are in the core get used for this re-entered RX.  Mode 2
+  * relies on this function to re-enter RX in the response window or after an
+  * erroneous request is detected.
+  */
+void rm2_reenter_rx(ot_bool force_entry);
+
+
+
 /** @brief  Prepares the radio chain to resend a packet
   * @param  None
   * @retval None
@@ -478,8 +493,7 @@ void rm2_prep_resend();
 
 /** @brief  Initializes RX engine for "foreground" packet reception
   * @param  channel     (ot_u8) Mode 2 channel ID to look for packet
-  * @param  netstate    (ot_u8) Mode 2 network session state (association)
-  * @param  est_frames  (ot_int) Estimated number of frames in the next packet
+  * @param  psettings   (ot_u8) Proprietary settings bits
   * @param  callback    (ot_sig2) callback for when RX is done, on error or complete
   * @retval None
   * @ingroup Radio
@@ -502,7 +516,7 @@ void rm2_prep_resend();
   * arg1: negative on RX error, 0 on RX complete, positive on frame complete
   * arg2: 0 on frame received successfully, negative on error.
   */
-void rm2_rxinit_ff(ot_u8 channel, ot_u8 netstate, ot_int est_frames, ot_sig2 callback);
+void rm2_rxinit_ff(ot_u8 channel, ot_u8 psettings, ot_sig2 callback);
 
 
 
@@ -526,7 +540,7 @@ void rm2_rxinit_bf(ot_u8 channel, ot_sig2 callback);
 
 
 /** @brief  Initializes TX engine for "foreground" packet transmission
-  * @param  est_frames  (ot_int) Number of frames in packet to transmit
+  * @param  psettings   (ot_u8) Proprietary settings bits
   * @param  callback    (ot_sig2) callback for when TX is done, on error or complete
   * @retval None
   * @ingroup Radio
@@ -541,7 +555,7 @@ void rm2_rxinit_bf(ot_u8 channel, ot_sig2 callback);
   * - arg 1 is negative on error, 0 on complete, positive if more frames to TX
   * - arg 2 is ignored
   */
-void rm2_txinit_ff(ot_int est_frames, ot_sig2 callback);
+void rm2_txinit_ff(ot_u8 psettings, ot_sig2 callback);
 
 
 

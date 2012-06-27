@@ -22,49 +22,46 @@
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
   *
-  * As far as I know, the CC430 has the ability to use the following peripherals
-  * for the MPIPE.  This list may change over time as new models of the CC430
-  * are released.  This is the I2C implementation.  Speed is 400kbps.
-  *     I/F     HW      Impl.   Baudrate Notes
-  * 1.  UART    USCI    yes     Keep baudrate <= 115.2 kbps
-  * 2.  SPI     USCI    no      Potentially up to 5 Mbps, using SMCLK
-  * 3.  I2C     USCI    no      100 or 400 kbps
-  * 4.  IrDA    USCI    no      Need more information
+  * This is an implementation of an MPipe using I2C.  It implements an I2C 
+  * Master device, and it works best with a multi-master network.  In a Master+
+  * Slave environment, it cannot easily wait for data, because I2C requires 
+  * that all communication is a request-response originating from a Master. So,
+  * in a Master+Slave environment, this I2C MPipe is useful primarily for 
+  * logging, but not receiving commands.
   *
-  * Design Assumptions:
-  * - Using SMCLK at 2.49625 MHz Clock (19.97 MHz / 8)
-  * - Using UART0
-  * - If changing the input frequency, changes need to be made to implementation
-  *   of setspeed function.
-  * - If changing to another UART, changes to platform_config_CC430.h and to
-  *   some macros in this file will be needed
+  * Other Features                                  <BR>
+  * Data rate:          357 kbps (20 MHz / 8 / 7)   <BR>
+  * Clock Stretching:   Enabled                     <BR>
+  * Device Address:     1 (default)                 
   *
-  * Implemented Mpipe Protocol:
-  * The Mpipe protocol is a simple wrapper to NDEF.
-  * Legend: [ NDEF Header ] [ NDEF Payload ] [ Seq. Number ] [ CRC16 ]
-  * Bytes:        6             <= 255             2             2
-  *
-  * The protocol includes an ACK/NACK feature.  After receiving a message, the
-  * Mpipe send an ACK/NACK.  The "YY" byte is 0 for ACK and non-zero for ACK.
-  * Presently, 0x7F is used as the YY NACK value.
-  * [ Seq ID ] 0xDD 0x00 0x00 0x02 0x00 0xYY  [ CRC16 ]
+  * @note Porting into "SPipe" (Sensor Pipe):
+  * This module could be used without much modification to implement an I2C
+  * sensor bus driver.  I2C is frequently used for sensor devices, and also 
+  * sometimes things like EEPROMs.  If using for EEPROMs, you may want to 
+  * increase the data rate.  You can go up to ~2.5 Mbps without changing 
+  * anything outside this module.  You can achieve 3.3Mbps (close to the upper
+  * limit of I2C spec) by changing the SMCLK divider to 2 (by default it is 8)
+  * and setting the I2C Baud Rate divider to 3.
   ******************************************************************************
   */
 
 
 #include "OT_config.h"
 
-#if ((OT_FEATURE(MPIPE) == ENABLED) && defined(MPIPE_I2C))
+// under development
+#if 0  /* ((OT_FEATURE(MPIPE) == ENABLED) && defined(MPIPE_I2C)) */
 
 #include "mpipe.h"
 #include "OT_platform.h"
 
-#define UART_CLOSE()        (MPIPE_I2C->CTL1   |= UCSWRST)
-#define UART_OPEN()         (MPIPE_I2C->CTL1   &= ~UCSWRST)
-#define UART_SET_TXIFG()    (MPIPE_I2C->IFG    |= UCTXIFG)
-#define UART_CLEAR_TXIFG()  (MPIPE_I2C->IFG    &= ~UCTXIFG)
-#define UART_SET_RXIFG()    (MPIPE_I2C->IFG    |= UCRXIFG)
-#define UART_CLEAR_RXIFG()  (MPIPE_I2C->IFG    &= ~UCRXIFG)
+#define I2C_CLOSE()         (MPIPE_I2C->CTL1   |= UCSWRST)
+#define I2C_OPEN_TX()       (MPIPE_I2C->CTL1    = UCSSEL_2 | UCTR | UCTXSTT);
+#define I2C_OPEN_RX()       (MPIPE_I2C->CTL1    = UCSSEL_2 | UCTXSTT);
+
+#define I2C_SET_TXIFG()    (MPIPE_I2C->IFG    |= UCTXIFG)
+#define I2C_CLEAR_TXIFG()  (MPIPE_I2C->IFG    &= ~UCTXIFG)
+#define I2C_SET_RXIFG()    (MPIPE_I2C->IFG    |= UCRXIFG)
+#define I2C_CLEAR_RXIFG()  (MPIPE_I2C->IFG    &= ~UCRXIFG)
 
 
 
@@ -128,9 +125,12 @@
 #define MPIPE_DMAIE_ON      (MPIPE_DMA->CTL |= 0x0004)
 #define MPIPE_DMAIE_OFF     (MPIPE_DMA->CTL &= ~0x0004)
 
-#define MPIPE_DMA_TXTRIGGER()   do { \
-                                    UART_CLEAR_TXIFG(); \
-                                    UART_SET_TXIFG(); \
+
+#define MPIPE_DMA_TXTRIGGER() while(0)
+
+//#define MPIPE_DMA_TXTRIGGER()   do { \
+                                    I2C_CLEAR_TXIFG(); \
+                                    I2C_SET_TXIFG(); \
                                 } while(0)
 //#define MPIPE_DMA_TXTRIGGER()   (MPIPE_DMA->CTL |= 1)
 
@@ -147,7 +147,7 @@
   * removing the callbacks, which rarely (if ever) need to be dynamic.
   */
 typedef struct {
-#   if (PLATFORM_FEATURE_USBCONVERTER != ENABLED)
+#   if 0
         ot_u8           ackbuf[10];
         mpipe_priority  priority;
 #   endif
@@ -202,6 +202,7 @@ OT_INTERRUPT void mpipe_dma_isr(void) {
 }
 
 
+
 #if (CC_SUPPORT == CL430)
 #   pragma vector=MPIPE_I2C_VECTOR
 #elif (CC_SUPPORT == GCC)
@@ -210,17 +211,38 @@ OT_INTERRUPT void mpipe_dma_isr(void) {
 #else
 #   error "A known compiler has not been defined"
 #endif
-OT_INTERRUPT void mpipe_uart_isr(void) {
-    //MPIPE_I2C->IFG = 0;
-    if ((mpipe.state == MPIPE_Tx_Wait) || (mpipe.state == MPIPE_TxAck_Wait)) {
-        mpipe.state++;
+OT_INTERRUPT void mpipe_i2c_isr(void) {
+    switch (__even_in_range(MPIPE_I2C->IV, 12)) {
+        //no interrupt
+        case 0: break;    
+        
+        //arbitration lost
+        case 2: MPIPE_I2C->IFG  &= UCALIFG;     
+                break;      
+        
+        // NACK received
+        case 4: MPIPE_I2C->IFG  &= UCNACKIFG;
+                MPIPE_I2C->CTL1 |= UCTXSTP;
+         
+        // Start Condition received       
+        case 6:
+        
+        // Stop Condition received
+        case 8:
+        
+        // Data received (unused, done via DMA)
+        case 10: break;
+        
+        // Transmit Buffer empty
+        case 12: mpipe_isr();
+                 break;
     }
-    else {
-        mpipe_isr();
-    }
+
     LPM4_EXIT;
 }
 #endif
+
+
 
 
 
@@ -283,7 +305,7 @@ ot_u8 mpipe_footerbytes() {
 ot_int mpipe_init(void* port_id) {
 /// 0. "port_id" is unused in this impl, and it may be NULL
 /// 1. Set all signal callbacks to NULL, and initialize other variables.
-/// 2. Prepare the HW, which in this case is a UART
+/// 2. Prepare the HW, which in this case is a I2C
 /// 3. Set default speed, which in this case is 115200 bps
 
 #   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
@@ -300,6 +322,13 @@ ot_int mpipe_init(void* port_id) {
 
     sub_uart_portsetup();
     
+#   ifndef MPIPE_I2C_SELF
+#       define MPIPE_I2C_SELF   1
+#   endif
+#   ifndef MPIPE_I2C_TARGET
+#       define MPIPE_I2C_TARGET 0
+#   endif
+    
     MPIPE_I2C->CTL0 = (UCMST | UCMODE_3 | UCSYNC);
     MPIPE_I2C->CTL1 = (UCSSEL_2 | UCSWRST);
     MPIPE_I2C->BRW  = 7;
@@ -312,9 +341,7 @@ ot_int mpipe_init(void* port_id) {
 
 
 void mpipe_wait() {
-    while (mpipe.state != MPIPE_Idle) {
-        SLEEP_MCU();
-    }
+    while (MPIPE_I2C->STAT & UCBBUSY);
 }
 
 
@@ -343,7 +370,7 @@ ot_int mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority)
     Twobytes crcval;
     ot_int data_length = data[2] + 6;
 
-#   if (PLATFORM_FEATURE_USBCONVERTER != ENABLED)
+#   if 0
         if (data_priority != MPIPE_Ack) {
             if (mpipe.state != MPIPE_Idle) {
                 return -1;
@@ -384,7 +411,7 @@ ot_int mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority)
     data[data_length++] = crcval.ubyte[LOWER];
 
     MPIPE_DMA_TXCONFIG(data, data_length, ON);
-    UART_OPEN();
+    I2C_OPEN();
     MPIPE_DMA_TXTRIGGER();
 
     if (blocking == True) {
@@ -403,7 +430,7 @@ ot_int mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority)
 ot_int mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
     ot_int data_length = 10;
 
-#   if (PLATFORM_FEATURE_USBCONVERTER != ENABLED)
+#   if 0
         if (data_priority != MPIPE_Ack) {
             if (mpipe.state != MPIPE_Idle) {
                 return -1;
@@ -450,7 +477,9 @@ ot_int mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority)
 
 
 void sub_rxdone() {
-    UART_CLOSE();
+    MPIPE_I2C->CTL1    |= UCTXSTP;
+    
+    I2C_CLOSE();
     mpipe.state = MPIPE_Idle;
 #   if (PLATFORM_FEATURE_USBCONVERTER != ENABLED)
         mpipe.priority = MPIPE_Low;
@@ -460,25 +489,30 @@ void sub_rxdone() {
 #   endif
 }
 
+
+
 void sub_txdone() {
-    UART_CLOSE();
-    mpipe.sequence.ushort++;    //increment sequence on TX Done
-    mpipe.state = MPIPE_Idle;
-#   if (PLATFORM_FEATURE_USBCONVERTER != ENABLED)
-        mpipe.priority = MPIPE_Low;
-#   endif
+    MPIPE_I2C->CTL1    |= UCTXSTP;
+    MPIPE_I2C->IFG      = 0;
+    MPIPE_I2C->IE       = 0;
+    mpipe.state         = MPIPE_Idle;
+    mpipe.sequence.ushort++;            //increment sequence on TX Done
+  //mpipe.priority      = MPIPE_Low;    //ACK'ing is automated in I2C
+  
 #   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
         mpipe.sig_txdone(0);
 #   endif
 }
 
+
+
 void mpipe_isr() {
 /// MPipe is state-based.  Depending on the MPipe implementation and the HW
-/// implementation of the DMA+UART, state transitions may happen differently.
+/// implementation of the DMA+I2C, state transitions may happen differently.
 /// <LI> In typical RX, there is a header detection event that sets-up a second
 ///      RX process for downloading the rest of the packet.  When the DMA is
 ///      done, the process completes.  </LI>
-/// <LI> For TX, there is a wait-state needed while the HW UART finishes
+/// <LI> For TX, there is a wait-state needed while the HW I2C finishes
 ///      sending the DMA buffered data (two bytes). </LI>
 /// <LI> If MPipe does not have HW acks, then software can be used to manage
 ///      Acks.  In this case, a complete TX process also requires RX'ing an
@@ -499,7 +533,7 @@ void mpipe_isr() {
         }
 
         case MPIPE_RxPayload:
-#           if (PLATFORM_FEATURE_USBCONVERTER != ENABLED)
+#           if 0
             if (mpipe.priority != MPIPE_Broadcast) {
                 // Copy RX'ed seq into ACK
                 ot_u8*  seq_val             = &mpipe.pktbuf[mpipe.pktlen-MPIPE_FOOTERBYTES];
@@ -518,8 +552,7 @@ void mpipe_isr() {
                 break;
             }
 #           endif
-            // Broadcast, so no ACK
-            sub_rxdone();
+            sub_rxdone(); // Broadcast, so no ACK
             break;
 
         case MPIPE_TxAck_Wait:
@@ -528,7 +561,7 @@ void mpipe_isr() {
 
         case MPIPE_TxAck_Done:  // TX'ed an ACK
             MPIPE_I2C->IE = 0;
-#           if (PLATFORM_FEATURE_USBCONVERTER != ENABLED)
+#           if 0
             if (mpipe.ackbuf[5] != 0) { // TX'ed a NACK
                 mpipe_rxndef(mpipe.pktbuf, False, mpipe.priority);
                 mpipe.state = MPIPE_RxHeader;
@@ -538,20 +571,14 @@ void mpipe_isr() {
             sub_rxdone();
             break;
 
-        case MPIPE_Tx_Wait:
-            MPIPE_I2C->IE = UCTXIE;
+        // Wait until buffer is clear before sending STOP
+        case MPIPE_Tx_Wait: 
+            mpipe.state = 
+            MPIPE_I2C->IE |= UCTXIE;
             break;
 
         case MPIPE_Tx_Done:
-            MPIPE_I2C->IE = 0;
-#           if (PLATFORM_FEATURE_USBCONVERTER != ENABLED)
-            if (mpipe.priority != MPIPE_Broadcast) {
-                mpipe_rxndef(mpipe.ackbuf, False, MPIPE_Ack);
-                mpipe.state = MPIPE_RxAck;
-                break;
-            }
-#           endif
-            sub_txdone();  // Broadcast, so no ACK
+            sub_txdone();
             break;
 
         case MPIPE_RxAck:

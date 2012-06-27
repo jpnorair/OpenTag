@@ -42,6 +42,7 @@
 
 #include "OTAPI.h"
 #include "OT_platform.h"
+#include "radio.h"
 
 
 // These should probably get integrated into OTAPI at some point
@@ -66,10 +67,10 @@
 
 #if defined(__USE_ID0)
 #   define __UID    0x1D, 0xAA, 0xA0, 0x1D, 0xB0, 0xB0, 0xB0, 0xB0
-#   define __VID    0x1D, 0xC0
+#   define __VID    0x1D, 0xB0
 #elif defined(__USE_ID1)
 #   define __UID    0x1D, 0xAA, 0xA1, 0x1D, 0xB1, 0xB1, 0xB1, 0xB1
-#   define __VID    0x1D, 0xC1
+#   define __VID    0x1D, 0xB1
 #else
 #   error "Device ID index is not selected"
 #endif
@@ -517,7 +518,7 @@ void sys_sig_rfaterminate(ot_int code1, ot_int code2) {
 /// of these features.
 /// Hint: RFxRX_e1 label means the received frame has bad CRC.
 
-    ot_u8   loglabel[8] = {'R', 'F', 'F', 0, 'X', '_', 'o', 'k'};
+    ot_u8   loglabel[8] = {'R', 'F', 'F', 0, 'X', '_', 0, 0};
     ot_u8*  logdata;
     ot_int  logdata_len;
 
@@ -525,6 +526,9 @@ void sys_sig_rfaterminate(ot_int code1, ot_int code2) {
     if (code2 < 0) {
         loglabel[6] = 'e';
         loglabel[7] = (ot_int)('0') - code2;
+    }
+    else {
+    	otutils_bin2hex(&(phymac[0].channel), &loglabel[6], 1);
     }
 
     /// Look at the control code an form the label to reflect the type
@@ -554,16 +558,16 @@ void sys_sig_rfaterminate(ot_int code1, ot_int code2) {
                 logdata     = txq.front;
                 break;
 
-        default: goto app_radio_term_end;
+        /// Process is not complete: RF was re-activated
+        /// You could use this area to count bad RX packets, or whatever
+        default: return;
     }
+
+    otapi_led2_off();   //Orange LED off
+    otapi_led1_off();   //Green LED off
 
     /// Log in ASCII hex the prepared driver message
     otapi_log_msg(MSG_raw, 8, logdata_len, loglabel, logdata);
-
-    /// In all cases, turn-off the LEDs
-    app_radio_term_end:
-    otapi_led2_off();   //Orange LED off
-    otapi_led1_off();   //Green LED off
 }
 
 
@@ -622,7 +626,7 @@ ot_bool app_udp_request(id_tmpl* id, ot_int payload_length, ot_u8* payload) {
     ot_u8* payload_end;
 
     // Check Source Port (our application uses 0x71)
-    if (payload[0] != 0x71) {
+    if (payload[0] != 0xFF) {
         return False;
     }
 

@@ -58,9 +58,9 @@
 									<listOptionValue builtIn="false" value="&quot;B:/board&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;B:/otkernel&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;B:/otlib&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;B:/otradio/cc430&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;B:/otplatform/cc430&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;B:/otplatform/msp430_mculib/cc430&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;B:/otradio/cc430&quot;"/>
 								</option>
 								<option id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.DIAG_WARNING.454171057" name="Treat diagnostic &lt;id&gt; as warning (--diag_warning, -pdsw)" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.DIAG_WARNING" valueType="stringList">
 									<listOptionValue builtIn="false" value="225"/>

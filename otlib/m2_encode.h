@@ -39,10 +39,9 @@
 #ifndef __ENCODE_H
 #define __ENCODE_H
 
+#include "OT_platform.h"
 #include "OT_types.h"
 #include "OT_config.h"
-
-
 
 typedef struct {
     ot_u8*  fr_info;
@@ -54,7 +53,7 @@ typedef struct {
         Twobytes PN9_lfsr;
 #   endif
 
-#   if ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) != ENABLED))
+#   if ((M2_FEATURE(FECRX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED))
         ot_int  databytes;
         ot_int  path_bits;
         ot_u8   last_buffer;
@@ -66,6 +65,35 @@ typedef struct {
 
 extern em2_struct   em2;
 
+
+
+typedef void (*fn_codec)(void);
+
+/** @par Mode 2 Encode Data function pointer
+  * The function @c em2_encode_newframe() sets this function pointer to the
+  * appropriate encode function, based on the queue options field and compiled
+  * in feature settings.
+  *
+  * @fn     em2_encode_data
+  * @brief  None
+  * @param  q           (Queue*) queue to load data for encoding
+  * @retval None
+  * @ingroup Encode
+  */
+extern fn_codec em2_encode_data;
+
+
+/** @par Decode function pointer
+  * The function @c decode_newpacket sets this function pointer to the
+  * appropriate decode function, based on input to @c decode_newpacket
+  *
+  * @fn     decode_data
+  * @brief  Decodes comm data into byte-wise data
+  * @param  None
+  * @retval None
+  * @ingroup Encode
+  */
+extern fn_codec em2_decode_data;
 
 
 
@@ -149,32 +177,6 @@ ot_bool em2_complete();
 
 
 
-
-/** @par Mode 2 Encode Data function pointer
-  * The function @c em2_encode_newframe() sets this function pointer to the 
-  * appropriate encode function, based on the queue options field and compiled
-  * in feature settings.
-  * 
-  * @fn     em2_encode_data
-  * @brief  None
-  * @param  q           (Queue*) queue to load data for encoding
-  * @retval None
-  * @ingroup Encode
-  */
-extern void (*em2_encode_data)();
-
-
-/** @par Decode function pointer
-  * The function @c decode_newpacket sets this function pointer to the 
-  * appropriate decode function, based on input to @c decode_newpacket
-  *
-  * @fn     decode_data
-  * @brief  Decodes comm data into byte-wise data
-  * @param  None
-  * @retval None
-  * @ingroup Encode
-  */
-extern void (*em2_decode_data)();
 
 
 

@@ -350,7 +350,7 @@ const ot_u8 isf_stock_files[] = {
     0x11,                                               /* Beacon Subnet */
     SPLIT_SHORT(OT_ACTIVE_SETTINGS),                    /* Active Setting */
     0x00,                                               /* Default Device Flags */
-    3,                                                  /* Beacon Attempts */
+    2,                                                  /* Beacon Attempts */
     SPLIT_SHORT(2),                                     /* Hold Scan Sequence Cycles */
 
     /* device features: id=0x01, len=46, alloc=46 */
@@ -428,8 +428,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* hold scan periods: id=0x05, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x10, 0x41, 0x02, 0x40,                             /* Channel X scan, Scan Code, Next Scan ms */
-    0x2D, 0x41, 0x02, 0x40,
+    0x07, 0x41, 0x02, 0x40,                             /* Channel X scan, Scan Code, Next Scan ms */
+    0x2A, 0x41, 0x02, 0x40,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
@@ -440,7 +440,7 @@ const ot_u8 isf_stock_files[] = {
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240
     0x10, 0x06, 0x20, 0x00, 0x00, 0x08, 0x00, 0x01,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
-    0x10, 0x06, 0x20, 0x00, 0x00, 0x08, 0x10, 0x00,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* App Protocol List: id=0x07, len=7, alloc=16 */

@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /OTradio/CC430/radio_CC430.h
+  * @file       /otradio/cc430/radio_CC430.h
   * @author     JP Norair
   * @version    V1.0
   * @date       2 Feb 2012
@@ -75,9 +75,116 @@
 #define RF_FEATURE_ECC                   DISABLED                // ECC engine               Rare/None yet
 #define RF_FEATURE_ALGE                  DISABLED                // Algebraic Eraser engine  Rare/None yet
 
+#define RF_PARAM_PKT_OVERHEAD           (2+4+2)
 
 
 
+
+/** Radio Buffer Allocation constants
+  * CC430 has internal buffer
+  */
+#define BUFFER_ALLOC         0
+
+
+// Change these settings depending on your radio buffer
+#define RADIO_BUFFER_TXMIN      RADIO_BUFFER_TXMAX
+#define RADIO_BUFFER_RXMIN      RADIO_BUFFER_RXMAX
+
+
+
+
+/** Internal Radio States
+  *
+  * b5:3        b2:0
+  * TX States   RX States
+  */
+#define RADIO_STATE_RXSHIFT     0
+#define RADIO_STATE_RXMASK      (3 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXINIT      (4 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXMFP       (0 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXPAGE      (1 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXAUTO      (2 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXDONE      (3 << RADIO_STATE_RXSHIFT)
+
+#define RADIO_STATE_TXSHIFT     3
+#define RADIO_STATE_TXMASK      (7 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXINIT      (1 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXCCA1      (2 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXCCA2      (3 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXSTART     (4 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXDATA      (5 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXDONE      (6 << RADIO_STATE_TXSHIFT)
+
+/** Internal Radio Flags (lots of room remaining)
+*/
+#define RADIO_FLAG_FRCONT       (1 << 0)
+#define RADIO_FLAG_FLOOD        (1 << 1)
+#define RADIO_FLAG_AUTO         (1 << 2)
+#define RADIO_FLAG_RESIZE       (1 << 3)
+#define RADIO_FLAG_AUTOCAL		(1 << 4)
+#define RADIO_FLAG_SETPWR		(1 << 5)
+#define RADIO_FLAG_RXING        (1 << 6)
+#define RADIO_FLAG_ASLEEP		(1 << 7)
+
+
+/** Internal Radio Interrupt Flags
+  * For performance reasons, sometimes interrupt flags will be stored locally
+  * and used in later conditionals.  The usage is implementation dependent.
+  */
+#define RADIO_INT_CCA           (1 << 3)
+#define RADIO_INT_CS            (1 << 4)
+
+
+
+/** Radio HW Timing Parameters
+  * Measurements for Radio HW performance, usually corresponding to timings
+  * as the radio goes from one state to the next
+  *
+  * Reminder: sti is "short tick"
+  * 1 sti = 32 ti = 1/32768 sec = ~30.52 us
+  */
+#define RADIO_COLDSTART_STI_MAX     27
+#define RADIO_COLDSTART_STI_TYP     9
+#define RADIO_WARMSTART_STI         3
+#define RADIO_CALIBRATE_STI         24
+#define RADIO_FASTHOP_STI           5
+#define RADIO_KILLRX_STI            0
+#define RADIO_KILLTX_STI            0
+#define RADIO_TURNAROUND_STI        1
+
+
+
+/** Radio Module Data
+  * Data that is useful for the internal use of this module.  The list below is
+  * comprehensive, and it may not be needed in entirety for all implementations.
+  * For implementations that don't use the values, comment out.
+  *
+  * state       Radio State, used with multi-call functions (RX/TX)
+  * flags       A local store for usage flags
+  * txlimit     An interrupt/event comes when tx buffer gets below this number of bytes
+  * rxlimit     An interrupt/event comes when rx buffer gets above this number of bytes
+  * last_rssi   Experimental, used to buffer the last-read RSSI value
+  * evtdone     A callback that is used when RX or TX is completed (i.e. done)
+  * txcursor    holds some data about tx buffer position (MCU-based buffer only)
+  * rxcursor    holds some data about rx buffer position (MCU-based buffer only)
+  * buffer[]    buffer data.  (MCU-based buffer only)
+  * last_rssi   The most recent value of the rss (not always needed)
+  */
+typedef struct {
+    ot_u8   state;
+    ot_u8   flags;
+    ot_int  txlimit;
+    ot_int  rxlimit;
+    ot_int  last_rssi;
+    ot_sig2 evtdone;
+#   if (BUFFER_ALLOC > 0)
+        ot_int  txcursor;
+        ot_int  rxcursor;
+        ot_u8   buffer[BUFFER_ALLOC];
+#   endif
+} radio_struct;
+
+extern radio_struct radio;
 
 
 

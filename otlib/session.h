@@ -82,8 +82,9 @@
 
 #define M2_NETSTATE_TMASK           0x70
 #define M2_NETSTATE_REQTX           0x00
-#define M2_NETSTATE_RESPTX          0x10
 #define M2_NETSTATE_REQRX           0x20            // set after valid request received
+#define M2_NETSTATE_RESP            0x10
+#define M2_NETSTATE_RESPTX          0x10
 #define M2_NETSTATE_RESPRX          0x30
 #define M2_NETFLAG_FLOOD            0x40
 #define M2_NETFLAG_SCRAP            0x80
@@ -92,9 +93,10 @@
 #define M2_NETSTATE_INIT            0x08
 #define M2_NETSTATE_DSDIALOG        0x04
 #define M2_NETSTATE_UNASSOC         0x00
-#define M2_NETSTATE_SYNCED          0x01            // set after valid synchronizer received
-#define M2_NETSTATE_CONNECTED       0x02            // set after connecting to session
-#define M2_NETSTATE_ASSOCIATED      0x03            // (Synced + connected)
+//#define M2_NETSTATE_SYNCED          0x01            // set after valid synchronizer received
+#define M2_NETSTATE_CONNECTED       0x01            // set after connecting to session
+#define M2_NETSTATE_ASSOCIATED      0x03            // Connected, plus uses First-RX mode
+#define M2_NETFLAG_FIRSTRX          0x02            // Stops receiving after first RX found.
 
 
 /** Session power configuration
@@ -248,6 +250,15 @@ ot_int session_count();
   * The stack is sorted, so the session that is pending the soonest is on top.
   */
 m2session* session_top();
+
+
+
+/** @brief  Fast session netstate function, but not safe
+  * @param  none
+  * @retval ot_u8    Netstate of session at the top of the stack
+  * @ingroup Session
+  */
+ot_u8 session_netstate();
 
 #endif
 

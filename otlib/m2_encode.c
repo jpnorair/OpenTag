@@ -33,18 +33,15 @@
 #include "radio.h"
 
 
-em2_struct   em2;
-
-void (*em2_encode_data)();
-void (*em2_decode_data)();
-
+em2_struct  em2;
+fn_codec    em2_encode_data;
+fn_codec    em2_decode_data;
 
 
 
-
-#if ( (RF_FEATURE(CRC) == ENABLED) && \
-      (RF_FEATURE(PN9) == ENABLED) && \
-      ((RF_FEATURE(FEC) == ENABLED) || (M2_FEATURE(FEC) != ENABLED)) )
+#if ( (RF_FEATURE_CRC == ENABLED) && \
+      (RF_FEATURE_PN9 == ENABLED) && \
+      ((RF_FEATURE_FEC == ENABLED) || (M2_FEATURE(FEC) != ENABLED)) )
     
 #   ifndef EXTF_em2_encode_data_HW
     void em2_encode_data_HW() {
@@ -60,7 +57,7 @@ void (*em2_decode_data)();
         if (em2.state == 0) {
             em2.state--;
             q_writebyte(&rxq, radio_getbyte() );
-            em2.bytes = (ot_int)rxq.front[0] - 1;
+            em2.bytes = (ot_int)rxq.front[0]/* - 1*/;
         }
         while ( (em2.bytes > 0) && (radio_rxopen() == True) ) {
             q_writebyte(&rxq, radio_getbyte() );
@@ -75,8 +72,8 @@ void (*em2_decode_data)();
 
 #if ((RF_FEATURE(PN9) == ENABLED) && (RF_FEATURE(CRC) != ENABLED))
 
-#   ifndef EXTF_em2_encode_data_HW_CRC
-    void em2_encode_data_HW_CRC() {
+#   ifndef EXTF_em2_encode_data_HWCRC
+    void em2_encode_data_HWCRC() {
         while ( (em2.bytes > 0) && (radio_txopen() == True) ) {
             crc_calc_stream();
             radio_putbyte( q_readbyte(&txq) );
@@ -85,14 +82,14 @@ void (*em2_decode_data)();
     }
 #   endif
     
-#   ifndef EXTF_em2_decode_data_HW_CRC
-    void em2_decode_data_HW_CRC() {  
+#   ifndef EXTF_em2_decode_data_HWCRC
+    void em2_decode_data_HWCRC() {
         if (em2.state == 0) {
             em2.state--;
-            *rxq.putcursor  = radio_getbyte();
-            em2.bytes       = (ot_int)*rxq.putcursor - 1;
             rxq.length++;
-            crc_init_stream(rxq.front[0], rxq.putcursor++);
+            *rxq.putcursor  = radio_getbyte();
+            em2.bytes       = (ot_int)*rxq.putcursor /* - 1 */;		//new spec is non-inclusive length byte
+            crc_init_stream(1+em2.bytes, rxq.putcursor++);		//new spec adds +1, as it is non-inclusive
             crc_calc_stream();
         }
         while ( (em2.bytes > 0) && (radio_rxopen() == True) ) {
@@ -107,7 +104,7 @@ void (*em2_decode_data)();
 
 
 #if ( (RF_FEATURE(PN9) != ENABLED) || \
-         ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) != ENABLED)) )
+         ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE_FEC != ENABLED)) )
 /// Only compile these functions if the RF core does not have a built-in PN9
 /// encoder/decoder.  Some radios have PN9, although it is not to the spec of
 /// Mode 2.  The CC430/CC11xx have suitable HW.  There is one other chip I know
@@ -145,8 +142,7 @@ void (*em2_decode_data)();
     }
 #endif
     
-#if ( (RF_FEATURE(PN9) != ENABLED) || \
-         ((M2_FEATURE(FECTX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED)) )
+#if (RF_FEATURE(PN9) != ENABLED)
 #   ifndef EXTF_em2_encode_data_PN9
     void em2_encode_data_PN9() {
         while ( (em2.bytes > 0) && (radio_txopen() == True) ) {
@@ -159,18 +155,17 @@ void (*em2_decode_data)();
 #   endif
 #endif
     
-#if ( (RF_FEATURE(PN9) != ENABLED) || \
-         ((M2_FEATURE(FECRX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED)) )
+#if (RF_FEATURE(PN9) != ENABLED)
 #   ifndef EXTF_em2_decode_data_PN9
     void em2_decode_data_PN9() {
         if (em2.state == 0) {
             em2.state--;
-            *rxq.putcursor  = (radio_getbyte() ^ get_PN9());
-            em2.bytes       = (ot_int)*rxq.putcursor - 1;
             rxq.length++;
-            rotate_PN9();
-            crc_init_stream(rxq.front[0], rxq.putcursor++);
+            *rxq.putcursor  = (radio_getbyte() ^ get_PN9());
+            em2.bytes       = (ot_int)*rxq.putcursor/* - 1*/;
+            crc_init_stream(em2.bytes+1 /*rxq.front[0]*/, rxq.putcursor++);
             crc_calc_stream();
+            rotate_PN9();
         }
         while ( (em2.bytes > 0) && (radio_rxopen() == True) ) {
             q_writebyte(&rxq, (radio_getbyte() ^ get_PN9()) );
@@ -436,12 +431,12 @@ static const ot_u8 FECtable[16] = { 0, 3, 1, 2, 3, 0, 2, 1, 3, 0, 2, 1, 0, 3, 1,
                     q_writebyte(&rxq, new_byte);
                     
                     if (em2.state == 0) {
-                        crc_init_stream(new_byte, rxq.front);                 
-                        //em2.databytes   = rxq.front[0];     //frame length is the first byte... always.
-                        em2.databytes   = new_byte;
+                    	new_byte++;            			// added to meet new spec
+                        em2.databytes   = new_byte;		// frame length is the first byte... always.
                         em2.bytes       = ((em2.databytes >> 1) + 1) << 2;
                         em2.bytes      -= 4;
                         em2.state--;
+                        crc_init_stream(new_byte, rxq.front);
                     }
                     em2.databytes--;
                     crc_calc_stream();                  
@@ -499,57 +494,90 @@ static const ot_u8 FECtable[16] = { 0, 3, 1, 2, 3, 0, 2, 1, 3, 0, 2, 1, 0, 3, 1,
 //	#echo pn9_not_enabled
 #endif
 
+
+#define ENC_HW_ON		(RF_FEATURE(CRC) && RF_FEATURE(PN9))
+#define ENC_HWCRC_ON	(RF_FEATURE(PN9))
+#define ENC_FEC_ON     	((RF_FEATURE(FEC) != ENABLED) && M2_FEATURE(FECTX))
+#define ENC_PN9_ON		(RF_FEATURE(PN9) != ENABLED)
+#define ENCODERS		(ENC_HW_ON + ENC_HWCRC_ON + ENC_FEC_ON + ENC_PN9_ON)
+
+#define DEC_HW_ON		ENC_HW_ON
+#define DEC_HWCRC_ON	ENC_HWCRC_ON
+#define DEC_FEC_ON     	((RF_FEATURE(FEC) != ENABLED) && M2_FEATURE(FECRX))
+#define DEC_PN9_ON		(RF_FEATURE(PN9) != ENABLED)
+#define DECODERS		(DEC_HW_ON + DEC_HWCRC_ON + DEC_FEC_ON + DEC_PN9_ON)
+
+#define ENC_HW			(ENC_HW_ON-1)
+#define ENC_HWCRC		(ENC_HW + ENC_HWCRC_ON)
+#define ENC_FEC			(ENC_HWCRC + ENC_FEC_ON)
+#define ENC_PN9			(ENC_FEC + ENC_PN9_ON)
+
+#define DEC_HW			(DEC_HW_ON-1)
+#define DEC_HWCRC		(DEC_HW + DEC_HWCRC_ON)
+#define DEC_FEC			(DEC_HWCRC + DEC_FEC_ON)
+#define DEC_PN9			(DEC_FEC + DEC_PN9_ON)
+
+
+static const fn_codec m2_encoder[ENCODERS] = {
+#if (ENC_HW_ON)
+	&em2_encode_data_HW,
+#endif
+#if (ENC_HWCRC_ON)
+	&em2_encode_data_HWCRC,
+#endif
+#if (ENC_PN9_ON)
+	&em2_encode_data_PN9,
+#endif
+#if (ENC_FEC_ON)
+	&em2_encode_data_FEC,
+#endif
+};
+
+static const fn_codec m2_decoder[DECODERS] = {
+#if (DEC_HW_ON)
+	&em2_decode_data_HW,
+#endif
+#if (DEC_HWCRC_ON)
+	&em2_decode_data_HWCRC,
+#endif
+#if (DEC_PN9_ON)
+	&em2_decode_data_PN9,
+#endif
+#if (DEC_FEC_ON)
+	&em2_decode_data_FEC,
+#endif
+};
+
+
+
 #ifndef EXTF_em2_encode_newpacket
 void em2_encode_newpacket() {
-    ///Option 1: basic Radio HW Encoding
-#   if ((RF_FEATURE(PN9) == ENABLED) || (RF_FEATURE(FEC) == ENABLED))
-#       if (RF_FEATURE(CRC) == ENABLED)
-            SET_ENCODER_HW();
-#       else
-            SET_ENCODER_HW_CRC();
-#       endif
-#   endif
+#if (ENCODERS == 1)
+	em2_encode_data = m2_encoder[0];
 
-    ///Option 3/4/5: SW Encoding (with or without MCU-based CRC)
-#   if ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) == ENABLED) && (RF_FEATURE(PN9) != ENABLED))    
-        em2_encode_data = &em2_encode_data_PN9;
-        
-#   elif ((M2_FEATURE(FECTX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED))
-        em2_encode_data = txq.options.ubyte[LOWER] ? \
-                            &em2_encode_data_FEC : &em2_encode_data_PN9;
-        
-#   elif (RF_FEATURE(PN9) != ENABLED)
-        em2_encode_data = &em2_encode_data_PN9;
-        
-#   endif
+#elif ((ENC_HW_ON && ENC_FEC_ON) || (ENC_HWCRC_ON && ENC_FEC_ON))
+	em2_encode_data = m2_encoder[(txq.options.ubyte[LOWER] != 0)];
+
+#elif (ENC_FEC_ON && ENC_PN9_ON)
+	em2_encode_data = m2_encoder[(txq.options.ubyte[LOWER] != 0)];
+
+#endif
 }
 #endif
 
 
 #ifndef EXTF_em2_decode_newpacket
 void em2_decode_newpacket() {
-    ///Option 1: basic Radio HW Decoding
-#   if ((RF_FEATURE(PN9) == ENABLED) || (RF_FEATURE(FEC) == ENABLED))
-#       if (RF_FEATURE(CRC) == ENABLED)
-            SET_DECODER_HW();
-#       else
-            SET_DECODER_HW_CRC();
-#       endif
-#   endif
+#if (DECODERS == 1)
+	em2_decode_data = m2_decoder[0];
 
-    ///Option 3/4/5: SW Encoding (with or without MCU-based CRC)
-    ///@todo needs more conditionals
-#   if ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) == ENABLED) && (RF_FEATURE(PN9) != ENABLED))    
-        em2_decode_data = &em2_decode_data_PN9;
-        
-#   elif ((M2_FEATURE(FECRX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED))
-        em2_decode_data = rxq.options.ubyte[LOWER] ? \
-                            &em2_decode_data_FEC : &em2_decode_data_PN9;
-        
-#   elif (RF_FEATURE(PN9) != ENABLED)
-        em2_decode_data = &em2_decode_data_PN9;
+#elif ((DEC_HW_ON && DEC_FEC_ON) || (DEC_HWCRC_ON && DEC_FEC_ON))
+	em2_decode_data = m2_decoder[(txq.options.ubyte[LOWER] != 0)];
 
-#   endif
+#elif (DEC_FEC_ON && DEC_PN9_ON)
+	em2_decode_data = m2_decoder[(txq.options.ubyte[LOWER] != 0)];
+
+#endif
 }
 #endif
 
@@ -574,23 +602,25 @@ void em2_encode_newframe() {
     ///    (0) HW Encoder: do nothing. 
     ///    (1) SW PN9 Encoder: init PN9 LFSR -- also used in FEC. 
     ///    (2) SW FEC Encoder: init FEC state machine and data. 
-#   if ((RF_FEATURE(PN9) != ENABLED) || \
-        ((M2_FEATURE(FECTX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED)) )
-        init_PN9();
-#   endif
 #   if ((M2_FEATURE(FECTX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED))
-        if (txq.options.ubyte[LOWER] == 1) {
+        if (txq.options.ubyte[LOWER]) {
             // state is 1 if odd amount of data, 2 if even
-            em2.state   = ((em2.bytes & 1) == 0);
-            em2.state  += 1;
-                
-            /// Amount of FEC bytes over the air is always a multiple of 4:
+        	/// Amount of FEC bytes over the air is always a multiple of 4:
             ///  (   (Bytewise Data)       )
             ///  ( ------------------- + 1 ) * 4
             ///  (          2              )
             ///  = ((em2.bytes >> 1) + 1) << 2;
+
+            em2.state   = ((em2.bytes & 1) == 0);
+            em2.state  += 1;
+#			if (RF_FEATURE(PN9) == ENABLED)
+            	init_PN9();
+#			endif
         }
 #   endif
+#   if ((RF_FEATURE(PN9) != ENABLED))
+    	init_PN9();
+#	endif
 }
 #endif
 
@@ -601,17 +631,8 @@ void em2_decode_newframe() {
     em2.fr_info = &rxq.front[3];
     em2.state   = 0;
     em2.bytes   = 8;      // dummy length until actual length is received
-
-#   if (RF_FEATURE(CRC) != ENABLED)
-#   endif
     
-    /// 2. Prepare SW PN9 Decoder
-#   if ( (RF_FEATURE(PN9) != ENABLED) || \
-         ((M2_FEATURE(FECRX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED)) )
-        init_PN9();
-#   endif
-
-    /// 3. Prepare SW FEC Decoders
+    /// Prepare SW FEC Decoders, and if necessary PN9 decoder
 #   if ((M2_FEATURE(FECRX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED))
         if (rxq.options.ubyte[LOWER] == 1) {
 #           ifdef __BIG_ENDIAN__
@@ -627,7 +648,13 @@ void em2_decode_newframe() {
             em2.path_bits       = 0;
             em2.last_buffer     = 0;
             em2.current_buffer  = 1;
+#			if (RF_FEATURE(PN9) == ENABLED)
+            	init_PN9();
+#			endif
         }
+#   endif
+#   if (RF_FEATURE(PN9) != ENABLED)
+        init_PN9();
 #   endif
 }
 #endif

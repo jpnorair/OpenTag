@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /board/CC430/board_FOB_RF430F5978.h
+  * @file       /board/cc430/board_FOB_RF430F5978.h
   * @author     JP Norair
   * @version    V1.0
   * @date       5 May 2012
@@ -35,8 +35,12 @@
 
 #include "build_config.h"
 #include "platform_CC430.h"
-#include "radio_CC430.h"
 
+#ifdef __NULL_RADIO__
+#   include "radio_null.h"
+#else
+#   include "radio_CC430.h"
+#endif
 
 
 /// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE

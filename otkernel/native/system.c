@@ -56,26 +56,32 @@
 
 #define SWDP    OT_FEATURE(WATCHDOG_PERIOD)
 
-#if ((OT_FEATURE(HW_WATCHDOG) == ENABLED) && (OT_FEATURE(SW_WATCHDOG) == ENABLED))
-#   define SYS_WATCHDOG_RUN()   do { sys.watchdog--; platform_run_watchdog();           } while(0)
-#   define SYS_WATCHDOG_RESET() do { sys.watchdog=SWDP; platorm_reset_watchdog(SWDP);   } while(0)
-#   define SYS_WATCHDOG_CHECK() do { if (sys.watchdog>=0) sys_idle()                    } while(0)
-
-#elif ((OT_FEATURE(HW_WATCHDOG) == ENABLED) && (OT_FEATURE(SW_WATCHDOG) == DISABLED))
-#   define SYS_WATCHDOG_RUN()   do { platform_run_watchdog();       } while(0)
-#   define SYS_WATCHDOG_RESET() do { platorm_reset_watchdog(SWDP);  } while(0)
-#   define SYS_WATCHDOG_CHECK() while(0)
-
-#elif ((OT_FEATURE(HW_WATCHDOG) == DISABLED) && (OT_FEATURE(SW_WATCHDOG) == ENABLED))
-#   define SYS_WATCHDOG_RUN()   do { sys.watchdog--;                    } while(0)
-#   define SYS_WATCHDOG_RESET() do { sys.watchdog=SWDP;                 } while(0)
-#   define SYS_WATCHDOG_CHECK() do { if (sys.watchdog>=0) sys_idle()    } while(0)
-
-#else
-#   define SYS_WATCHDOG_RUN()   while(0)
-#   define SYS_WATCHDOG_RESET() while(0)
-#   define SYS_WATCHDOG_CHECK() while(0)
+OT_INLINE void SYS_WATCHDOG_RUN() {
+#if (OT_FEATURE(HW_WATCHDOG) == ENABLED)
+    platform_run_watchdog();
+#endif    
+#if (OT_FEATURE(SW_WATCHDOG) == ENABLED)
+    sys.watchdog--;
 #endif
+}
+
+OT_INLINE void SYS_WATCHDOG_RESET() {
+#if (OT_FEATURE(HW_WATCHDOG) == ENABLED)
+    platorm_reset_watchdog(SWDP);
+#endif    
+#if (OT_FEATURE(SW_WATCHDOG) == ENABLED)
+    sys.watchdog = SWDP;
+#endif
+}
+
+OT_INLINE void SYS_WATCHDOG_CHECK() {
+#if (OT_FEATURE(HW_WATCHDOG) == ENABLED)
+#endif
+#if (OT_FEATURE(SW_WATCHDOG) == ENABLED)
+    if (sys.watchdog<=0) rm2_kill();
+#endif
+}
+
 
 
 /** Persistent Data Structures 
@@ -697,7 +703,7 @@ OT_INLINE void sys_quit_rf() {
 
 #ifndef EXTF_sys_set_mutex
 OT_INLINE void sys_set_mutex(ot_uint set_mask) {
-    sys.mutex = (ot_u8)set_mask;
+    sys.mutex |= (ot_u8)set_mask;
 }
 #endif
 
@@ -706,7 +712,7 @@ OT_INLINE void sys_set_mutex(ot_uint set_mask) {
 
 #ifndef EXTF_sys_clear_mutex
 OT_INLINE void sys_clear_mutex(ot_uint clear_mask) {
-    sys.mutex &= clear_mask;
+    sys.mutex &= ~clear_mask;
 }
 #endif
 
@@ -812,7 +818,6 @@ ot_uint sys_event_manager(ot_uint elapsed) {
             case TASK_processing: {
                 m2session* session;
                 ot_int proc_score;
-                
                 session             = session_top();
                 session->counter    = 0;
                 proc_score          = network_route_ff(session);
@@ -839,7 +844,7 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                     
                         s_clone = session_new( \
                                 (dll.comm.tc), 
-                                (M2_NETSTATE_REQRX | M2_NETSTATE_CONNECTED), 
+                                (M2_NETSTATE_REQRX | M2_NETSTATE_ASSOCIATED),
                                 (dll.comm.rx_chanlist[0])   );
                     
                         s_clone->dialog_id      = session->dialog_id;
@@ -852,7 +857,7 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                         dll.comm.tc            -= rm2_pkt_duration(txq.length);
                     }
                 }
-                sys.mutex = 0;
+                sys.mutex &= ~SYS_MUTEX_PROCESSING;
             } break;
             
         
@@ -863,13 +868,16 @@ ot_uint sys_event_manager(ot_uint elapsed) {
             // subthread 4: Radio is known to be doing something: return event_eta
             case TASK_radio: { 
                 if (sys.evt.RFA.nextevent <= 0) {
-                    if (sys.mutex > SYS_MUTEX_RADIO_LISTEN) {
-                        SYS_WATCHDOG_RUN();
-                        return 1;           // come back in 1 tick
-                    }
-                    
-                    if (sys.evt.RFA.event_no == 3)  sysevt_txcsma();
-                    else                            sysevt_receive();
+                	if (sys.evt.RFA.event_no < 3) {	// RX tasks
+                		sysevt_receive();           // Manage RX timeouts in SW
+                	}
+                	else if (sys.evt.RFA.event_no < 5) {
+                		sysevt_txcsma();            // Manage CSMA process in SW
+                	}
+                	else {
+                		SYS_WATCHDOG_RUN();         // Wait for TX to complete
+                        return 1;                   // come back in 1 tick
+                	}
                     break;
                 }
                 return sys.evt.RFA.nextevent;
@@ -878,7 +886,6 @@ ot_uint sys_event_manager(ot_uint elapsed) {
         
             // Session Creation Task (not actually sub-threads)
             case TASK_session: {
-                //EXPERIMENTAL
                 static const ot_sub call_table[4] = {
                         &sysevt_initftx,
                         &sysevt_fscan,
@@ -887,24 +894,9 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                     };
                 ot_u8 call_code;
 
-                m2session*  session;
-                dll.idle_state  = sub_default_idle();
-                session         = session_top();
                 session_drop();
-                
-//                switch (session->netstate >> 5) {
-//                    case 0: sysevt_initftx();   break;
-//                    case 1: sysevt_fscan();     break;
-//                    case 2: sysevt_initbtx();   break;
-//                    case 3: sysevt_bscan();     break;
-//
-//                    //Scrap Session
-//                   default: session_pop();
-//                            sys_idle();
-//                            break;
-//                }
-                
-                call_code = (session->netstate >> 5);
+                dll.idle_state  = sub_default_idle();
+                call_code       = (session_netstate() >> 5);
                 if (call_code & 4) {    //scrap session
                     session_pop();
                     sys_idle();
@@ -912,7 +904,6 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                 else {
                     call_table[call_code]();
                 }
-
             } break;
         
         
@@ -1010,7 +1001,7 @@ OT_INLINE Task_Index sub_clock_tasks(ot_uint elapsed) {
     }
 
     // Do Immediate Packet Processing (Priority 1)
-    if (sys.mutex == SYS_MUTEX_PROCESSING) 
+    if (sys.mutex & SYS_MUTEX_PROCESSING)
         output = TASK_processing;
 
     return output;
@@ -1151,7 +1142,9 @@ void sysevt_beacon() {
     //   (ad hoc sessions never return NULL)
     // - Assure cmd code is always Broadcast & Announcement
     scratch.ushort          = vl_read(fp, sys.evt.BTS.cursor);
-    session                 = session_new(0, M2_NETSTATE_INIT, scratch.ubyte[0]);
+    session                 = session_new(  0,
+    		                                (M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX),
+    		                                scratch.ubyte[0]  );
     session->subnet         = dll.netconf.b_subnet;
     beacon_params           = scratch.ubyte[1];
     session->flags          = (dll.netconf.dd_flags & ~0x30);
@@ -1245,9 +1238,9 @@ void sysevt_beacon() {
 
 
 void sysevt_receive() {
-/// Radio receive is handled by radio core interrupts after it is initialized, 
-/// but the system layer is used as a watchdog for the radio core in case no
-/// RX is detected or there is some error in the RX process.
+/// This function just operates the timing-out of the RX.  RX is forced into
+/// timeout when there is no data being received OR if the MAC is operating
+/// under the A2P regime, which uses strict time-slots.
 
 /// @note if you want to use a built-in RX termination or polling timer inside
 /// the radio core (some devices have these), be very careful.  If the radio
@@ -1257,13 +1250,16 @@ void sysevt_receive() {
 /// synchronized.  Usage of HW RX timer is mostly useful for very specific
 /// applications using very custom builds of OpenTag.
 
-#   if (RF_FEATURE(RXTIMER) == DISABLED)
+#if (RF_FEATURE(RXTIMER) == DISABLED)
+	if (((sys.mutex & SYS_MUTEX_RADIO_DATA) == 0) || \
+		(dll.comm.csmaca_params & M2_CSMACA_A2P)  ) {
         rm2_rxtimeout_isr();
-#   else
+	}
+#else
         // Add a little bit of time in case the radio timer is a bit slow.
         sys.evt.RFA.nextevent = 10;
         sys.evt.RFA.event_no  = 0;
-#   endif
+#endif
 }
 
 
@@ -1341,8 +1337,7 @@ void sysevt_fscan() {
 #if (SYS_RECEIVE == ENABLED)
     m2session*  session;
 
-#   if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
-        !defined(EXTF_sys_sig_rfainit)  )
+#   if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) && !defined(EXTF_sys_sig_rfainit))
         sys.evt.RFA.init(2);
 #   elif defined(EXTF_sys_sig_rfainit)
         sys_sig_rfainit(2);
@@ -1355,11 +1350,7 @@ void sysevt_fscan() {
     sys.evt.RFA.event_no    = 2;
     session                 = session_top();
     
-    ///@todo find a way to get multiframe indicator in third argument
-    rm2_rxinit_ff(  (session->channel), 
-                    (session->netstate & M2_NETSTATE_SMASK), 
-                    0,
-                    &rfevt_frx  );
+    rm2_rxinit_ff(  session->channel, 0, &rfevt_frx  );
 #endif
 }
 
@@ -1369,62 +1360,83 @@ void sysevt_fscan() {
 void rfevt_frx(ot_int pcode, ot_int fcode) {
 /// Radio Core event callback, called by the radio driver when a frame is rx'ed
 /// or if there is some type of error.
-    ot_int frx_code = 0;
+    ot_int 		frx_code;
+    m2session* 	session  = session_top();
     
-    // pcode: When negative, a listening timeout.
-    // dll.comm.redundants is decremented after TX.  It must be 0 for scanning.
+    /// If pcode is less than zero, it is because of a listening timeout.
+    /// Listening timeouts happen after unfulfilled request scanning, or after
+    /// Response scanning window expires.  In certain cases, after a timeout,
+    /// the session persists.  These cases are implemented below.
     if (pcode < 0) {
-    	m2session* session  = session_top();
 #   if (RF_FEATURE(RXTIMER) == ENABLED)
+    	// For RF Core-based RX timer, set pcode = 0 to pre-empt kernel
+    	// For MCU-based RX timer, kernel already manages timeout event
         pcode = 0;
 #   endif
-        session->netstate		= (dll.comm.redundants) ? \
-        							(M2_NETSTATE_REQTX | M2_NETSTATE_INIT) : \
-        							(M2_NETFLAG_SCRAP);
-        sys.evt.RFA.event_no 	= 0;	//quit RF (RX) process
-      //frx_code                = -5;   //this doesn't get reported anyway
+        sys.evt.RFA.event_no = 0;
+        if (dll.comm.redundants) {
+        	session->netstate = (M2_NETSTATE_REQTX | M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX);
+        }
+        else if (dll.comm.csmaca_params & M2_CSMACA_A2P) {
+        	session->netstate ^= 0x30;	// Converts RESPRX->REQTX, REQRX->RESPTX
+        }
+        else {
+        	session->netstate = M2_NETFLAG_SCRAP;
+        }
     }
     
     // pcode: When non-negative, the number of frames remaining.
     else {
-        /// Handle damaged frames (CRC)                                     <BR>
-        /// - Multiframe datastreams: mark the packet as bad, and continue  <BR>
-        /// - Normal data packets (single frame): ignore the packet         <BR>
+    	frx_code = 0;
+
+        /// Handle damaged frames (bad CRC)
+        /// <LI> Multiframe datastreams: mark the packet as bad, and continue </LI>
+        /// <LI> Normal data packets (single frame): ignore the packet </LI>
         if (fcode != 0) {
 #           if (M2_FEATURE(DATASTREAM) == ENABLED)
-        	m2session*  session;
-        	session     = session_top();
             if ((session->netstate & M2_NETSTATE_DSDIALOG)) 
                 m2dp_mark_dsframe(session);
-            else
 #           endif
-                frx_code = -1;
+            frx_code = -1;
         }
         
-        /// Run subnet filtering on clean frames
+        /// Run subnet filtering on frames with good CRC
         else if (sub_mac_filter() == False) {
             frx_code = -4;
         }
         
-        /// Handle cases where the packet is finished.  If an error, attempt
-        /// to resume listening by implicitly restarting the session.  
-        /// If no error, move the session along to packet processing.
+        /// A complete packet has been received (errors or not).
+        /// <LI> When packet is good (frx_code == 0), always process it. </LI>
+        /// <LI> When request is bad or when response is any form, retry
+        ///      listening until window times-out </LI>
+        /// <LI> Don't return to kernel for bad frames </LI>
+        /// <LI> Finish RF task after receiving a good request </LI>
         if (pcode == 0) {
-            sys.evt.RFA.event_no = 0;
-            if (frx_code == 0) {
-                sys.mutex = SYS_MUTEX_PROCESSING;
-                radio_sleep();
-            }
+        	fcode = (session->netstate & M2_NETSTATE_RESP);  // repurpose fcode
+        	if (frx_code == 0) {
+        		sys.mutex |= SYS_MUTEX_PROCESSING;
+        	}
+        	if (frx_code | fcode) {
+        		pcode = frx_code;		//don't return to kernel for bad frames
+        		rm2_reenter_rx(0);
+        	}
+        	else if (fcode == 0) {
+        		sys.evt.RFA.event_no = 0;
+        		radio_sleep();
+        	}
         }
     }
 
-
-#   if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
-        !defined(EXTF_sys_sig_rfaterminate)  )
-        sys.evt.RFA.terminate(sys.evt.RFA.event_no, frx_code);
-#   elif defined(EXTF_sys_sig_rfaterminate)
-        sys_sig_rfaterminate(sys.evt.RFA.event_no, frx_code);
-#   endif
+    /// If the RF event is set to 0, it is finished and the termination
+    /// callback should be used.
+    if (sys.evt.RFA.event_no == 0) {
+#   	if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
+        	!defined(EXTF_sys_sig_rfaterminate)  )
+        	sys.evt.RFA.terminate(2, frx_code);
+#   	elif defined(EXTF_sys_sig_rfaterminate)
+        	sys_sig_rfaterminate(2, frx_code);
+#   	endif
+    }
 
     /// When session restart or continuation is needed, pre-empt the kernel.
     /// The kernel clocks-down listening and contention periods, so if 
@@ -1438,11 +1450,40 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
 
 
 
+void sysevt_initbtx() {
+#if ((M2_FEATURE(GATEWAY) == ENABLED) || \
+     (M2_FEATURE(SUBCONTROLLER) == ENABLED))
+    sys.evt.RFA.event_no    = 3;
+
+#   if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
+        !defined(EXTF_sys_sig_rfainit)  )
+        sys.evt.RFA.init(3);
+#   elif defined(EXTF_sys_sig_rfainit)
+        sys_sig_rfainit(3);
+#   endif
+
+    rm2_txinit_bf(&rfevt_btx);
+    sys.mutex               = SYS_MUTEX_RADIO_LISTEN;
+#   if (RF_FEATURE(TXTIMER) == DISABLED)
+    sys.evt.RFA.nextevent   = 0;    // Normal TX CSMA process
+    dll.comm.tca            = dll.comm.tc;
+#   else
+    sys.evt.RFA.nextevent   = dll.comm.tc + sys.evt.adv_time;   // TX timeout
+#   endif
+
+#endif
+}
+
+
+
+
+
 void sysevt_initftx() {
 /// Initialize the TX Engine for foreground packet transmission.  This requires
 /// a CSMA-CA routine that runs prior to the data transmission.  The system 
 /// layer manages TX CSMA when it is not part of the Radio Core featureset.
-   
+	sys.evt.RFA.event_no = 4;
+
 #   if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
         !defined(EXTF_sys_sig_rfainit)  )
         sys.evt.RFA.init(4);
@@ -1452,9 +1493,8 @@ void sysevt_initftx() {
     
     ///@todo 1st argument of rm2_txinit_ff() is estimated number of frames in
     /// the packet.  for now it is hard coded to 1.
-    rm2_txinit_ff(1, &rfevt_ftx);
+    rm2_txinit_ff(0, &rfevt_ftx);
     sys.mutex               = SYS_MUTEX_RADIO_LISTEN;
-    sys.evt.RFA.event_no    = 3;
 #   if (RF_FEATURE(TXTIMER) == DISABLED)
     sys.evt.RFA.nextevent   = sub_fcinit();     // Normal TX CSMA process
     dll.comm.tca            = dll.comm.tc;
@@ -1466,29 +1506,7 @@ void sysevt_initftx() {
 
 
 
-void sysevt_initbtx() {
-#if ((M2_FEATURE(GATEWAY) == ENABLED) || \
-     (M2_FEATURE(SUBCONTROLLER) == ENABLED))
-    
-#   if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
-        !defined(EXTF_sys_sig_rfainit)  )
-        sys.evt.RFA.init(5);
-#   elif defined(EXTF_sys_sig_rfainit)
-        sys_sig_rfainit(5);
-#   endif
-    
-    rm2_txinit_bf(&rfevt_btx);
-    sys.mutex               = SYS_MUTEX_RADIO_LISTEN;
-    sys.evt.RFA.event_no    = 0x13;              
-#   if (RF_FEATURE(TXTIMER) == DISABLED)
-    sys.evt.RFA.nextevent   = 0;    // Normal TX CSMA process
-    dll.comm.tca            = dll.comm.tc;
-#   else
-    sys.evt.RFA.nextevent   = dll.comm.tc + sys.evt.adv_time;   // TX timeout
-#   endif
 
-#endif
-}
 
 
 
@@ -1517,13 +1535,14 @@ void sysevt_txcsma() {
             /// - A2P must get the full packet TX'ed before the end of contention       <BR>
             /// - NA2P (normal) must start TX before end of contention
             case -1: 
+            	sys.mutex               = SYS_MUTEX_RADIO_DATA;
+            	sys.evt.RFA.event_no   += 2;
 #               if (SYS_FLOOD == ENABLED)
-                sys.evt.RFA.nextevent   = (sys.evt.RFA.event_no & 0x10) ? \
+                sys.evt.RFA.nextevent   = (sys.evt.RFA.event_no == 5) ? \
                                             sys.evt.adv_time : rm2_pkt_duration(txq.length);
 #               else
                 sys.evt.RFA.nextevent   = rm2_pkt_duration(txq.length);
 #               endif
-                sys.mutex               = SYS_MUTEX_RADIO_DATA;
                 break;
             
             default:
@@ -1568,8 +1587,10 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
         sys.mutex               = 0;
         sys.evt.RFA.event_no    = 0;
         session                 = session_top();
-        scrap_bit               = (dll.comm.rx_timeout == 0) | \
-                                  ((session->netstate & M2_NETSTATE_TMASK) == M2_NETSTATE_RESPTX);
+        //scrap_bit               = (dll.comm.rx_timeout == 0) | \
+        //                          ((session->netstate & M2_NETSTATE_TMASK) == M2_NETSTATE_RESPTX);
+        scrap_bit               = (dll.comm.rx_timeout == 0);
+        scrap_bit              |= ((session->netstate & M2_NETSTATE_RESPTX) != 0);
         dll.comm.redundants    -= 1;
         
         // Send redundant TX immediately, but only if no response window or if

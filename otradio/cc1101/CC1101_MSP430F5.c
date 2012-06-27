@@ -421,11 +421,11 @@ void cc1101_set_txpwr(ot_u8 pwr_code) {
 /// Sets the tx output power.
 /// "pwr_code" is a value, 0-127, that is: eirp_code/2 - 40 = TX dBm
 /// i.e. eirp_code=0 => -40 dBm, eirp_code=80 => 0 dBm, etc
-
+///
 /// CC1101 has an 8-value amplifier table.  TX power gets ramped-up, step by
 /// step of the table.  Each value in the amp table is a power code specific
 /// to the CC (from the lut).
-
+///
 /// CC1101-specific power selector table
 /// The index value is pwr_code.  As you may notice, pwr_code does not map
 /// linearly to TX dBm on CC, which is why there has to be a table.
@@ -445,6 +445,13 @@ void cc1101_set_txpwr(ot_u8 pwr_code) {
     ot_u8   pa_table[9];
     ot_int  i;
     ot_int  eirp_val;
+
+// Should be defined in board config file 
+// Depends on matching circuit, antenna, and board physics
+// Described in 0.5 dB units (12 = 6dB system loss)
+#   ifndef RF_HDB_ATTEN
+#       define RF_HDB_ATTEN 12
+#   endif
 
     eirp_val    = pwr_code + RF_HDB_ATTEN;
     eirp_val    = (eirp_val < 99) ? eirp_val : 99;

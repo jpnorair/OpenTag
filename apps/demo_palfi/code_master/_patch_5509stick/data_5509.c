@@ -25,6 +25,7 @@
 #ifndef _DATA_C
 #define _DATA_C
 
+
 /** Default File data allocations
   * ============================================================================
   * - Veelite also uses an additional 1536 bytes for wear leveling
@@ -309,14 +310,14 @@ __attribute__((section(".vl_isfs")))
 #pragma DATA_SECTION(isfs_stock_codes, ".vl_isfs")
 #endif
 const ot_u8 isfs_stock_codes[] = {
-    0x10, 0x11, 0x18, 0xFF,
+    0x10, 0x11, 0xFF, 0xFF,
     0x12, 0x13, 0x14, 0xFF,
     0x15, 0xFF,
     0x16, 0xFF,
     0x00, 0x01,
     0x01, 0x06, 0x07, 0xFF,
     0x02, 0x03, 0x04, 0x05,
-    0x11, 0xFF,
+    0x11, 0xFF
 };
 
 
@@ -394,7 +395,7 @@ const ot_u8 isf_stock_files[] = {
     0x00,                                               /* Regulatory Code */
     0x01,                                               /* Duty Cycle (100%) */
 
-    0x10,                                               /* Channel Spectrum ID */
+    0x1E,                                               /* Channel Spectrum ID */
     0x00,                                               /* Channel Parameters */
     (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
     (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
@@ -403,7 +404,7 @@ const ot_u8 isf_stock_files[] = {
     0x00,                                               /* Regulatory Code */
     0x01,                                               /* Duty Cycle (100%) */
 
-    0x12,                                               /* Channel Spectrum ID */
+    0x19,                                               /* Channel Spectrum ID */
     0x00,                                               /* Channel Parameters */
     (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
     (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
@@ -412,7 +413,7 @@ const ot_u8 isf_stock_files[] = {
     0x00,                                               /* Regulatory Code */
     0x01,                                               /* Duty Cycle (100%) */
 
-    0x2D,                                               /* Channel Spectrum ID */
+    0x2A,                                               /* Channel Spectrum ID */
     0x00,                                               /* Channel Parameters */
     (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
     (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
@@ -440,8 +441,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* hold scan periods: id=0x05, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x10, 0x51, 0x00, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
-    0x2D, 0x51, 0x08, 0x04,
+    0x07, 0x51, 0x00, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
+    0x2A, 0x51, 0x08, 0x04,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
@@ -451,8 +452,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240
-    0x10, 0x06, 0x20, 0x00, 0x00, 0x08, 0x00, 0x00,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
-    0x2D, 0x06, 0x20, 0x00, 0x00, 0x08, 0x00, 0x00,
+    0x07, 0x06, 0x20, 0x00, 0x00, 0x00, 0x28, 0x00,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
+    0x2A, 0x06, 0x20, 0x00, 0x00, 0x00, 0x28, 0x00,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* App Protocol List: id=0x07, len=7, alloc=16 */

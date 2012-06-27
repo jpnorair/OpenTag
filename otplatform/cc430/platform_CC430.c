@@ -28,20 +28,16 @@
   ******************************************************************************
   */
 
-#include "OT_utils.h"
-#include "OT_types.h"
-#include "OT_config.h"
+#include "OTAPI.h"
 #include "OT_platform.h"
 
-// OT modules that need initialization
-#include "veelite.h"
+// OT low-level modules that need initialization
 #include "veelite_core.h"
-#include "buffers.h"
-#include "auth.h"
 #include "mpipe.h"
 #include "radio.h"
-#include "system.h"
-#include "session.h"
+
+//#include "auth.h"         //should be initialized via system (sys_init())
+//#include "session.h"      //should be initialized via system (sys_init())
 
 
 //API wrappers

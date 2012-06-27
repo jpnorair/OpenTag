@@ -14,21 +14,27 @@
   *
   */
 /**
-  * @file       /otradio/cc1101/radio_CC1101.h
+  * @file       /otradio/null/radio_null.h
   * @author     JP Norair
   * @version    V1.0
   * @date       2 Feb 2012
-  * @brief      Radio configuration file for CC1101
-  * @ingroup    Platform
+  * @brief      Radio configuration file for Null radio
+  * @ingroup    Null_RF
   *
+  * "NULL Radio" is for testing purposes.  It does not actually map to hardware,
+  * but it does all the processes that a normal driver does.
+  *
+  * Any platform/board can use the NULL radio as long as it is configured
+  * properly.  Usually, this just means setting a compiler constant of:
+  * __RADIO_NULL__
+  * 
   ******************************************************************************
   */
   
 
-#ifndef __radio_CC1101_H
-#define __radio_CC1101_H
+#ifndef __radio_NULL_H
+#define __radio_NULL_H
 
-#include "OT_types.h"
 #include "OT_support.h"
 
 
@@ -43,19 +49,17 @@
 
 
 
-/** CC1101 RF Feature settings      <BR>
+/** Null Radio RF Feature settings      <BR>
   * ========================================================================<BR>
-  * These are the RF features that are available and currently implemented on
-  * the CC1101.  In addition, you can ENABLE the RXTIMER feature.  However, it
-  * is only useful for some specific applications.  For general purpose
-  * applications, it can cause timing glitches.
+  * Null Radio doesn't have any high level PHY/MAC features, but it does 
+  * pretend to support a basic PHY (i.e. a FIFO for RX/TX).
   */
 #define RF_FEATURE(VAL)                  RF_FEATURE_##VAL        // FEATURE                  AVAILABILITY
 #define RF_FEATURE_MSK                   ENABLED                 // MSK Modulation           Moderate
 #define RF_FEATURE_55K                   ENABLED                 // 55kHz baudrate           High
 #define RF_FEATURE_200K                  ENABLED                 // 200kHz baudrate          High
-#define RF_FEATURE_PN9                   ENABLED                 // Integrated PN9 codec     Moderate (DASH7 has particular sequence)
-#define RF_FEATURE_FEC                   ENABLED                 // Integrated FEC codec     Moderate (DASH7 has particular sequence)
+#define RF_FEATURE_PN9                   DISABLED                // Integrated PN9 codec     Moderate (DASH7 has particular sequence)
+#define RF_FEATURE_FEC                   DISABLED                // Integrated FEC codec     Moderate (DASH7 has particular sequence)
 #define RF_FEATURE_FIFO                  ENABLED                 // RF TX/RX FIFO            High
 #define RF_FEATURE_TXFIFO_BYTES          64
 #define RF_FEATURE_RXFIFO_BYTES          64
@@ -81,16 +85,9 @@
 
 
 
-
-
-
-
-
-
-/** Radio Buffer Allocation constants
-  * CC430 has internal buffer
+/** Radio Buffer Allocation constants: Null Radio implements SW Buffer
   */
-#define BUFFER_ALLOC         0
+#define BUFFER_ALLOC         64
 
 
 // Change these settings depending on your radio buffer
@@ -122,7 +119,7 @@
 #define RADIO_STATE_TXDATA      (5 << RADIO_STATE_TXSHIFT)
 #define RADIO_STATE_TXDONE      (6 << RADIO_STATE_TXSHIFT)
 
-/** Internal Radio Flags
+/** Internal Radio Flags (lots of room remaining)
 */
 #define RADIO_FLAG_FRCONT       (1 << 0)
 #define RADIO_FLAG_FLOOD        (1 << 1)
@@ -130,9 +127,15 @@
 #define RADIO_FLAG_RESIZE       (1 << 3)
 #define RADIO_FLAG_AUTOCAL		(1 << 4)
 #define RADIO_FLAG_SETPWR		(1 << 5)
-//#define RADIO_FLAG_CCAFAIL      (1 << 6)  //this flag presently unused
 #define RADIO_FLAG_ASLEEP		(1 << 7)
 
+
+/** Internal Radio Interrupt Flags
+  * For performance reasons, sometimes interrupt flags will be stored locally
+  * and used in later conditionals.  The usage is implementation dependent.
+  */
+#define RADIO_INT_CCA           (1 << 3)
+#define RADIO_INT_CS            (1 << 4)
 
 
 
@@ -151,10 +154,6 @@
 #define RADIO_KILLRX_STI            0
 #define RADIO_KILLTX_STI            0
 #define RADIO_TURNAROUND_STI        1
-
-
-
-
 
 
 
@@ -179,13 +178,8 @@ typedef struct {
     ot_u8   flags;
     ot_int  txlimit;
     ot_int  rxlimit;
-//  ot_int  last_rssi;
+    ot_int  last_rssi;
     ot_sig2 evtdone;
-#   if (BUFFER_ALLOC > 0)
-        ot_int  txcursor;
-        ot_int  rxcursor;
-        ot_u8   buffer[BUFFER_ALLOC];
-#   endif
 } radio_struct;
 
 extern radio_struct radio;
@@ -193,12 +187,7 @@ extern radio_struct radio;
 
 
 
-
-
-
-
-
-
+void null_radio_isr(void);
 
 
 #endif
