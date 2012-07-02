@@ -117,7 +117,6 @@ fn_codec    em2_decode_data;
     /// Nibble-wise PN9 implementation.  Runs pretty fast, no table.
 #       define PN9reg       em2.PN9_lfsr.ushort
 
-        // Method 1: looks longer, but probably 13 cycles
         ot_u16 x;
         x           = (PN9reg << 5) ^ PN9reg;
         x          &= 0x01E0;
@@ -127,18 +126,6 @@ fn_codec    em2_decode_data;
         x          &= 0x01E0;
         PN9reg    >>= 4;
         PN9reg     |= x;
-
-        /*
-        // Method 2: looks smaller, but probably 17 cycles
-        ot_u16 x1, x2, x3;
-        x1      = PN9reg & 0x01E0;              //abcd_____
-        x2      = (PN9reg << 5) & 0x01E0;       //fghi_____
-        x3      = (PN9reg << 1) & 0x01E0;       //bcde_____
-        x2     ^= x1;
-        PN9reg  = x2 ^ x3;
-        PN9reg |= x2 >> 4;
-        PN9reg |= x1 >> 8;
-        */
     }
 #endif
     
@@ -431,6 +418,7 @@ static const ot_u8 FECtable[16] = { 0, 3, 1, 2, 3, 0, 2, 1, 3, 0, 2, 1, 0, 3, 1,
                     q_writebyte(&rxq, new_byte);
                     
                     if (em2.state == 0) {
+                    	//otapi_led2_off();
                     	new_byte++;            			// added to meet new spec
                         em2.databytes   = new_byte;		// frame length is the first byte... always.
                         em2.bytes       = ((em2.databytes >> 1) + 1) << 2;
@@ -439,7 +427,7 @@ static const ot_u8 FECtable[16] = { 0, 3, 1, 2, 3, 0, 2, 1, 3, 0, 2, 1, 0, 3, 1,
                         crc_init_stream(new_byte, rxq.front);
                     }
                     em2.databytes--;
-                    crc_calc_stream();                  
+                    crc_calc_stream();
                 }
                 
                 // After having processed 3-symbol trellis terminator, 
@@ -634,7 +622,7 @@ void em2_decode_newframe() {
     
     /// Prepare SW FEC Decoders, and if necessary PN9 decoder
 #   if ((M2_FEATURE(FECRX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED))
-        if (rxq.options.ubyte[LOWER] == 1) {
+        if (rxq.options.ubyte[LOWER]) {
 #           ifdef __BIG_ENDIAN__
                 ///@todo: make endian agnostic
 #           else
