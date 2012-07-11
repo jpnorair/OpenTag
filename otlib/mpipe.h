@@ -83,6 +83,7 @@ typedef enum {
 
 ///@note States might be altered in future implementations.
 typedef enum {
+    MPIPE_Null          = -1,
     MPIPE_Idle          = 0,
     MPIPE_RxHeader      = 1,
     MPIPE_RxPayload     = 2,
@@ -254,7 +255,7 @@ void mpipe_sig_rxdetect(ot_int code);
   * @param  data        (ot_u8*) Pointer to start of NDEF stream
   * @param  blocking    (ot_bool) True/False for blocking/non-blocking call
   * @param  data_priority (mpipe_priority) Priority of the TX
-  * @retval ot_int      Negative on error, or number of bytes remaining for TX
+  * @retval None
   * @ingroup Mpipe
   * @sa mpipe_rxndef, mpipe_status
   *
@@ -268,15 +269,8 @@ void mpipe_sig_rxdetect(ot_int code);
   * is invoked while another transfer is underway, it will cancel the transfer
   * underway if its own priority is higher.
   *
-  * The return value is the number of bytes remaining for TX.  If blocking is
-  * used, therefore, it will always return 0 on success.  If blocking is not 
-  * used, then the return value will be the total number of bytes to transmit,
-  * which can vary depending on the MPIPE protocol.  If a negative value is
-  * returned, it means that the priority of the planned transmission is not
-  * higher than a tx/rx transfer currently underway, so the transmission has not
-  * been invoked
   */
-ot_int mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority);
+void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority);
 
 
 
@@ -286,15 +280,14 @@ ot_int mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority)
   * @param  data        (ot_u8*) Byte array to place received data
   * @param  blocking    (ot_bool) True/False for blocking/non-blocking call
   * @param  data_priority (mpipe_priority) Priority of the TX
-  * @retval ot_int      error when negative
+  * @retval None
   * @ingroup Mpipe
   * @sa mpipe_txndef, mpipe_status
   *
   * The blocking parameter and data_priority parameters are dealt-with in the 
-  * same way as they are with mpipe_txndef(), therefore the return value also
-  * behaves in the same way (typically returning 0).
+  * same way as they are with mpipe_txndef()
   */
-ot_int mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority);
+void mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority);
 
 
 

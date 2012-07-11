@@ -257,6 +257,16 @@ void cc1101_init_bus() {
 #   	define RADIO_IRQ2_PIN 0
 #	endif
 
+#   if (RADIO_SPI_CLKSRC > 19500000)
+#       define _SPI_CLKDIV   4
+#   elif (RADIO_SPI_CLKSRC > 13000000)
+#       define _SPI_CLKDIV   3
+#   elif (RADIO_SPI_CLKSRC > 6500000)
+#       define _SPI_CLKDIV   2
+#   else
+#       define _SPI_CLKDIV   1
+#   endif
+
     RADIO_IRQ_PORT->DDIR   &= ~(RADIO_IRQ0_PIN | RADIO_IRQ2_PIN);	//input
     RADIO_IRQ_PORT->DOUT   &= ~(RADIO_IRQ0_PIN | RADIO_IRQ2_PIN);	//pull-down (rising edge)
     RADIO_IRQ_PORT->IFG    &= ~(RADIO_IRQ0_PIN | RADIO_IRQ2_PIN);
@@ -273,7 +283,7 @@ void cc1101_init_bus() {
     ///3. Set-up SPI peripheral for Master Mode, Full Duplex
 	RADIO_SPI->CTL1 = UCSSEL_2 | UCSWRST;
     RADIO_SPI->CTL0 = (UCCKPH | UCMSB | UCMST | UCMODE_0 | UCSYNC);
-    RADIO_SPI->BRW  = 1;
+    RADIO_SPI->BRW  = (_SPI_CLKDIV);
     RADIO_SPI->MCTL = 0;
 
     ///3. Power-up reset via CS pin & MISO pin

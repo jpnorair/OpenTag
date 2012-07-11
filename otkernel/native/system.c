@@ -458,7 +458,7 @@ void sys_init() {
 
 #ifndef EXTF_sys_refresh
 void sys_refresh() {
-    Twobytes scratch;
+    ot_uni16 scratch;
     vlFILE* fp;
     
     /// Open Device Features ISF and read the settings bytes
@@ -1054,7 +1054,7 @@ void sub_scan_channel(idletime_event* idlevt, ot_u8 SS_ISF) {
     ot_u8       s_flags;
     
     {
-        Twobytes    scratch;
+        ot_uni16    scratch;
         vlFILE*     fp;
     
 #       if (OT_FEATURE(SYSIDLE_CALLBACKS) == ENABLED)
@@ -1094,6 +1094,7 @@ void sub_scan_channel(idletime_event* idlevt, ot_u8 SS_ISF) {
     ///  - b6 of the scan flags enables 1024x multiplier on scan timeout    <BR>
     ///  - b7 of the scan flags is foreground (0), background (1)
     dll.comm.rx_timeout     = otutils_calc_timeout(s_flags);
+    dll.comm.csmaca_params  = 0;
     dll.comm.redundants     = 0;
     dll.comm.rx_channels    = 1;
     dll.comm.rx_chanlist    = &dll.comm.scratch[1];
@@ -1122,8 +1123,8 @@ void sysevt_beacon() {
     m2session*  session;
     ot_u8       beacon_params;
     Queue       beacon_queue;
-    Fourbytes   bq_data;
-    Twobytes    scratch;
+    ot_uni32    bq_data;
+    ot_uni16    scratch;
 
     /// Open BTS ISF Element and read the beacon sequence.  Make sure there
     /// is a beacon file of non-zero length and that beacons are presently
@@ -1203,7 +1204,7 @@ void sysevt_beacon() {
     dll.comm.rx_chanlist    = &dll.comm.scratch[1];
     dll.comm.scratch[0]     = session->channel;
     dll.comm.scratch[1]     = session->channel;
-        
+
     /// Finish building the beacon packet.  If the 
     if (m2qp_isf_call((beacon_params & 1), &beacon_queue, AUTH_GUEST) >= 0) {
         m2np_footer(session);
@@ -1360,7 +1361,7 @@ void sysevt_fscan() {
 void rfevt_frx(ot_int pcode, ot_int fcode) {
 /// Radio Core event callback, called by the radio driver when a frame is rx'ed
 /// or if there is some type of error.
-    ot_int 		frx_code;
+    ot_int 		frx_code = 0;
     m2session* 	session  = session_top();
     
     /// If pcode is less than zero, it is because of a listening timeout.
@@ -1373,7 +1374,8 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
     	// For MCU-based RX timer, kernel already manages timeout event
         pcode = 0;
 #   endif
-        sys.evt.RFA.event_no = 0;
+        sys.evt.RFA.event_no    = 0;
+        //frx_code                = -1;
         if (dll.comm.redundants) {
         	session->netstate = (M2_NETSTATE_REQTX | M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX);
         }
@@ -1387,7 +1389,7 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
     
     // pcode: When non-negative, the number of frames remaining.
     else {
-    	frx_code = 0;
+    	//frx_code = 0;
 
         /// Handle damaged frames (bad CRC)
         /// <LI> Multiframe datastreams: mark the packet as bad, and continue </LI>

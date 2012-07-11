@@ -119,7 +119,7 @@
 // Controls what the device reports to the host regarding how much power it will
 // consume from VBUS.  Expressed in 2mA units; that is, the number of mA
 // communicated is twice the value of this field.
-#define USB_MAX_POWER           MPIPE_USB_MAXPOWER
+#define USB_MAX_POWER           (MPIPE_USB_MAXPOWER/2)
 
 
 

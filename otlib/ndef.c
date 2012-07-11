@@ -171,8 +171,8 @@ ot_bool ndef_new_record(alp_record* record, ot_u8* record_data, Queue* output) {
 
 
 #ifndef EXTF_ndef_send_msg
-ot_int ndef_send_msg(Queue* output) {
-    return mpipe_txndef(output->front, False, lo_priority);
+void ndef_send_msg(Queue* output) {
+    mpipe_txndef(output->front, False, lo_priority);
 }
 #endif
 

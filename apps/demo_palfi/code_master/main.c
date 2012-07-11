@@ -46,7 +46,8 @@
 
 
 // These should probably get integrated into OTAPI at some point
-//#include "mpipe.h"
+#include "mpipe.h"
+//#include "ndef.h"
 //#include "m2_transport.h"
 //#include "m2_network.h"
 //#include "system_native.h"
@@ -522,10 +523,16 @@ void sys_sig_rfaterminate(ot_int code1, ot_int code2) {
     ot_u8*  logdata;
     ot_int  logdata_len;
 
+    otapi_led2_off();   //Orange LED off
+    otapi_led1_off();   //Green LED off
+
     /// Put the error code in the label, if there is an error code
     if (code2 < 0) {
         loglabel[6] = 'e';
         loglabel[7] = (ot_int)('0') - code2;
+    }
+    else if (code1 < 3) {
+    	return;   //don't log non-error RX PHY/MAC tasks
     }
     else {
     	otutils_bin2hex(&(phymac[0].channel), &loglabel[6], 1);
@@ -558,13 +565,9 @@ void sys_sig_rfaterminate(ot_int code1, ot_int code2) {
                 logdata     = txq.front;
                 break;
 
-        /// Process is not complete: RF was re-activated
-        /// You could use this area to count bad RX packets, or whatever
+        /// Unknown code, don't log any data
         default: return;
     }
-
-    otapi_led2_off();   //Orange LED off
-    otapi_led1_off();   //Green LED off
 
     /// Log in ASCII hex the prepared driver message
     otapi_log_msg(MSG_raw, 8, logdata_len, loglabel, logdata);
@@ -801,20 +804,10 @@ void main(void) {
     app_init();
 
     
-#   if ((MCU_FEATURE_MPIPEVCOM) && !defined(BOARD_RF430USB_5509))
-        ///4a. If USB is used for MPipe, we need to wait for the driver on
-        ///    the host to be ready.  Push the "Key" to exit sleep & resume.
-        ///    Also, the kernel is officially unattached during the process.
-        platform_flush_gptim();
-        while (app_usbhold == 0) {
-            SLEEP_MCU();
-        }
-
-#   elif defined(BOARD_RF430USB_5509)
-        ///4a. USB must be used for MPipe, and there is no easily accessible
-        ///    button, so just wait for a few seconds and expect the client to
-        ///    settle the USB driver loading by that time.
-        platform_swdelay_ms(5000);
+#   if (MCU_FEATURE_MPIPECDC)
+        ///4a. The device will wait (and block anything else) until you connect
+        ///    it to a valid console app.
+        mpipe_wait();
 #   endif
 
 
@@ -822,7 +815,7 @@ void main(void) {
     ///    transmission like this to start-up the Mpipe NDEF console, or you
     ///    can alternatively call otapi_ndef_idle(0)
     otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
-    platform_swdelay_ms(5);
+    mpipe_wait(); //blocks until msg complete (optional)
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> a. Pre-empt the kernel (first run)   </LI>

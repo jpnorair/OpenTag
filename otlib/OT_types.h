@@ -111,18 +111,18 @@ typedef unsigned long       ot_ulong;
 typedef unsigned long       ot_u32;
     
         
-/** @typedef Twobytes
-  * A union of one uintg and two ubyte.  Useful for datastream parsing.
+/** @typedef ot_uni16
+  * A union of 2 byte (16 bit) raw data types.  Useful for datastream parsing.
   */
 typedef union {
     ot_u16 ushort;
     ot_s16 sshort;
     ot_u8  ubyte[2];
     ot_s8  sbyte[2];
-} Twobytes;
+} ot_uni16;
 
-/** @typedef Fourbytes
-  * A union of one uword, two uintg, and four ubyte.  Useful for datastream parsing.
+/** @typedef ot_uni32
+  * A union of 4 byte (32 bit) raw data types.  Useful for datastream parsing.
   */
 typedef union {
     ot_u32 ulong;
@@ -131,7 +131,12 @@ typedef union {
     ot_s16 sshort;
     ot_u8  ubyte[4];
     ot_s8  sbyte[4];
-} Fourbytes;
+} ot_uni32;
+
+
+// Deprecated Union definitions
+#define Twobytes    ot_uni16
+#define Fourbytes   ot_uni32
 
 
 /** @typedef ot_sub

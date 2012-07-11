@@ -84,8 +84,9 @@
 #define MCU_FEATURE_MAPEEPROM           DISABLED
 #define MCU_FEATURE_MPIPEDMA            DISABLED //ENABLED    // Only for UART DMA
 #define MCU_FEATURE_MEMCPYDMA           ENABLED     // Must be disabled if MPIPEDMA is enabled
-#define MCU_FEATURE_MPIPEVCOM           ENABLED     // USB uses memcpy
-#define MCU_FEATURE_MPIPEUSB			MCU_FEATURE_MPIPEVCOM
+#define MCU_FEATURE_MPIPECDC            ENABLED     // USB uses memcpy
+#define MCU_FEATURE_MPIPEUSB			MCU_FEATURE_MPIPECDC
+#define MCU_FEATURE_MPIPEVCOM			MCU_FEATURE_MPIPECDC   //legacy
 
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
@@ -109,7 +110,7 @@
 #define BOARD_PARAM_HFtol               0.0001
 #define BOARD_PARAM_HFmult              1                       // DCO = HFHz * HFmult
 #define BOARD_PARAM_MCLKDIV             1                       // Master Clock = DCO / MCLKDIV
-#define BOARD_PARAM_SMCLKDIV            4                       // Submaster Clock = DCO / SMCLKDIV (Keep < 6.5 MHz)
+#define BOARD_PARAM_SMCLKDIV            1                       // Submaster Clock = DCO / SMCLKDIV
 
 #if (BOARD_FEATURE(LFXTAL) == ENABLED)
 #   define BOARD_LFXT_PINS      (GPIO_Pin_4 | GPIO_Pin_5)
@@ -153,10 +154,10 @@ OT_INLINE_H void BOARD_POWER_STARTUP(void) {
 /// (3) Change The SVSM_Voffon_ parameter to one that matches your requirements.
 ///     I recommend putting it as high as you can, to give the most time for
 ///     the power-down routine to work.
-	PMM_SetVCore(PMM_Vcore_24);
-	PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay | SVS_FullPerformance | SVS_ActiveDuringLPM),
-					SVS_Von_21,
-					SVSM_Voffon_265  );
+	PMM_SetVCore(PMM_Vcore_22);
+	//PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay | SVS_FullPerformance | SVS_ActiveDuringLPM),
+	//				SVS_Von_21,
+	//				SVSM_Voffon_235  );
 }
 
 // LFXT1 Preconfiguration, using values local to the board design
@@ -256,8 +257,8 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 //#define MCU_PARAM_XTALHz                BOARD_PARAM_HFHz
 //#define MCU_PARAM_XTALmult              BOARD_PARAM_HFmult
 //#define MCU_PARAM_XTALtol               BOARD_PARAM_HFtol
-#define MCU_PARAM_OSCHz                 (BOARD_PARAM_LFHz*750)
-#define MCU_PARAM_OSCmult               750
+#define MCU_PARAM_OSCHz                 (BOARD_PARAM_LFHz*594)
+#define MCU_PARAM_OSCmult               594
 #define MCU_PARAM_OSCtol                BOARD_PARAM_LFtol
 
 
@@ -274,9 +275,9 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define PLATFORM_HSCLOCK_CONF       BOARD_HFXT_CONF
 #define PLATFORM_LSCLOCK_HZ         BOARD_PARAM_LFHz
 #define PLATFORM_LSCLOCK_ERROR      BOARD_PARAM_LFtol
-#define PLATFORM_HSCLOCK_HZ         (BOARD_PARAM_LFHz*750)
+#define PLATFORM_HSCLOCK_HZ         (BOARD_PARAM_LFHz*594)
 #define PLATFORM_HSCLOCK_ERROR      BOARD_PARAM_LFtol
-#define PLATFORM_HSCLOCK_MULT       750
+#define PLATFORM_HSCLOCK_MULT       594
 
 
 
@@ -353,6 +354,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define RADIO_SPI               SPIB1
 #define RADIO_SPI_HWCS          DISABLED
 #define RADIO_SPI_VECTOR        USCI_B1_VECTOR
+#define RADIO_SPI_CLKSRC        (PLATFORM_HSCLOCK_HZ / PLATFORM_SMCLK_DIV)
 
 #define RADIO_SPICS_PORT        GPIO4                       // HW NSS not used, but we use same pin
 #define RADIO_SPICS_PIN         GPIO_Pin_0
@@ -394,7 +396,7 @@ OT_INLINE_H void BOARD_RADIO_SPI_ATTACH() {
 
 
     
-#define RADIO_SPI_CLKSRC    (PLATFORM_HSCLOCK_HZ / PLATFORM_SMCLK_DIV)
+
 #if (RADIO_SPI_CLKSRC > 6500000)
 #	warn "Radio clock might be too fast.  CC1101 can only do 6.5 MHz without special tricks"
 #endif
@@ -431,7 +433,7 @@ OT_INLINE_H void BOARD_RADIO_SPI_ATTACH() {
 
 // If using the USB for MPipe, it must be on the specialized PORT U.  There is
 // no other mapping option.
-#if (MCU_FEATURE_MPIPEVCOM == ENABLED)
+#if (MCU_FEATURE_MPIPECDC == ENABLED)
 #   define MPIPE_USBNUM         0
 #   define MPIPE_USBDP_PIN      GPIO_Pin_0
 #   define MPIPE_USBDM_PIN      GPIO_Pin_1
@@ -451,7 +453,7 @@ OT_INLINE_H void BOARD_RADIO_SPI_ATTACH() {
 // If using the normal UART, it is wired to {rx,tx} = {4.4,4.5}.  CTS/RTS could
 // hypothetically be implemented on 4.6/4.7, which are unused.  All other USCIs
 // on the EXP430F5529 board are utilized by other features.
-#if (MCU_FEATURE_MPIPEVCOM != ENABLED)
+#if (MCU_FEATURE_MPIPECDC != ENABLED)
 #   define MPIPE_UARTNUM        2
 #   define MPIPE_UART_PORTNUM   4
 #   define MPIPE_UART_PORT      GPIO4

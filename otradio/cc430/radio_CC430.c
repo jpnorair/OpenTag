@@ -78,30 +78,30 @@ typedef enum {
     SYNC_fg = 2
 } sync_enum;
 
+
+ot_bool subcc430_test_channel(ot_u8 channel);
+void    subcc430_launch_rx(ot_u8 channel, ot_u8 netstate);
+
 void    subcc430_finish(ot_int main_err, ot_int frame_err);
 ot_bool subcc430_lowrssi_reenter();
 void 	subcc430_reset_autocal();
 
-ot_u8   subcc430_rssithr_calc(ot_u8 input, ot_u8 offset); // Fiddling necessary
-ot_bool subcc430_cca_init();
-ot_bool subcc430_cca2();
 ot_bool subcc430_chan_scan( );
-ot_bool subcc430_noscan();
 ot_bool subcc430_cca_scan();
-ot_bool subcc430_csma_init();
-ot_bool subcc430_nocsma_init();
 
 ot_bool subcc430_channel_lookup(ot_u8 chan_id, vlFILE* fp);
 void    subcc430_syncword_config(ot_u8 sync_class);
 void    subcc430_buffer_config(ot_u8 mode, ot_u8 param);
 void    subcc430_chan_config(ot_u8 old_chan, ot_u8 old_eirp);
 
-void    subcc430_set_txpwr(ot_u8 eirp_code);
 void    subcc430_prep_q(Queue* q);
-ot_int  subcc430_eta(ot_int next_int);
-ot_int  subcc430_eta_rxi();
-ot_int  subcc430_eta_txi();
+//ot_int  subcc430_eta(ot_int next_int);
+//ot_int  subcc430_eta_rxi();
+//ot_int  subcc430_eta_txi();
 void    subcc430_offset_rxtimeout();
+
+ot_u8   subcc430_rssithr_calc(ot_u8 input, ot_u8 offset); // Fiddling necessary
+void    subcc430_set_txpwr(ot_u8 eirp_code);
 
 
 
@@ -394,7 +394,8 @@ ot_bool radio_check_cca() {
 /// CCA Method 2: Compare stored limit with actual, detected RSSI.  
 /// On CC430, this method is more reliable and faster than Method 1 is.
     ot_int thr  = (ot_int)phymac[0].cca_thr - 140;
-    return (ot_bool)(radio_rssi() < thr);
+    ot_int rssi = radio_rssi();
+    return (ot_bool)(rssi < thr);
 }
 #endif
 
@@ -966,7 +967,7 @@ void rm2_txinit_ff(ot_u8 psettings, ot_sig2 callback) {
 
 #ifndef EXTF_rm2_txinit_bf
 void rm2_txinit_bf(ot_sig2 callback) {
-    rm2_txinit_ff(RADIO_FLAG_FLOOD, ot_sig2 callback);
+    rm2_txinit_ff(RADIO_FLAG_FLOOD, callback);
 }
 #endif
 
@@ -1169,7 +1170,7 @@ void rm2_txdata_isr() {
   * - See integrated notes for areas sensitive to porting
   */
 
-void subcc430_null(ot_int arg1, ot_int arg2) { return; }
+void subcc430_null(ot_int arg1, ot_int arg2) { }
 
 
 
@@ -1182,6 +1183,7 @@ void subcc430_finish(ot_int main_err, ot_int frame_err) {
     /// 2. Run Callback, then reset radio & callback to null state
     radio.evtdone(main_err, frame_err);
     radio.evtdone   = &otutils_sig2_null;
+    radio.flags    &= RADIO_FLAG_SETPWR;    //clear all other flags
     radio.state     = 0;
 }
 
@@ -1203,58 +1205,6 @@ void subcc430_reset_autocal() {
         RF_WriteSingleReg(RFREG(MCSM0), DRF_MCSM0);
     }
 }
-
-
-
-ot_u8 subcc430_rssithr_calc(ot_u8 input, ot_u8 offset) {
-/// @note This function is CC430/CC1101-specific.  If you are not using auto CS
-/// features on the CC or another chip, you can just return input.
-
-/// This function must prepare any hardware registers needed for automated
-/// CS/CCA threshold value.
-/// - "input" is a value 0-127 that is: input - 140 = threshold in dBm
-/// - "offset" is a value subtracted from "input" that depends on chip impl
-/// - return value is chip-specific threshold value
-
-// cs_lut table specs:
-// Base dBm threshold of CCA/CS is ~-92 dBm at 200 kbps or ~-96 dBm at 55 kbps.
-// Each incremented byte in the array is roughly an additional 2 dB above the base dBm threshold.
-/// @todo !!!elements 8 and 11 in lut are the same, this can't be right!!!
-    static const ot_u8 cs_lut[18] = {
-        b00000011, b00001011, b00001011, b01000011, b01001011, b00100011, b10000011, b10001011,
-        b10100011, b11000011, b11001011, b10100011, b11010011, b11011011, b11100011, b11101011,
-        b11110011, b11111011
-    };
-
-    ot_int thr;
-    thr     = (ot_int)input - offset;               // subtract dBm encoding offset
-    thr   >>= 1;                                    // divide by two (array is 2dB increments)
-
-    if (phymac[0].channel & 0x60)   thr -= 4;       // (1) account for turbo vs normal rate
-    if (thr > 17)                   thr = 17;       // (2) make max if dBm threshold is above range
-    else if (thr < 0)               thr = 0;        // (3) make 0 if dBm threshold is lower than range
-
-    return cs_lut[thr];
-}
-
-
-
-
-ot_bool subcc430_cca2() {
-/// Do second part of CSMA double check.
-/// On different chips, CCA can be optimized via different implementations, and
-/// optimizng might also affect the rm2_txpkt() function
-    ot_bool cca_status;
-
-    //radio_idle();                   //Assure Radio is in Idle
-    cca_status = subcc430_cca_scan();
-    if ( cca_status == False ) {    //Optimizers may remove this if() for
-        radio_sleep();              //certain implementations
-    }
-
-    return cca_status;
-}
-
 
 
 
@@ -1327,42 +1277,6 @@ ot_bool subcc430_cca_scan() {
     return cca_status;
 }
 
-
-ot_bool subcc430_noscan() {
-    return True;
-}
-
-
-
-
-ot_bool subcc430_csma_init() {
-/// Called directly by TX radio function(s)
-/// Duty: Initialize csma process, and run the first scan (of two).
-    ot_bool cca1_status;
-
-    /// @note CC430 specific
-    /// Disable RX Timeout (MCSM2) and enable CS+CCA differential interrupts.
-    /// One of the two (CS vs. CCA) will always happen.
-    RF_WriteSingleReg(RFREG(MCSM2), 0x07);
-
-    /// Setup channel, scan it, and power down RF on scan fail
-    cca1_status = subcc430_chan_scan();
-    if (cca1_status == False) {         //Optimizers may remove this if() for
-        radio_sleep();                  //certain implementations
-    }
-
-    return cca1_status;
-}
-
-
-
-
-
-ot_bool subcc430_nocsma_init() {
-/// Called directly by TX radio function(s) when CSMA is disabled via System
-/// Duty: bypass CSMA scan
-    return subcc430_chan_scan( );
-}
 
 
 
@@ -1652,6 +1566,41 @@ void subcc430_offset_rxtimeout() {
 #       endif
     }
 }
+
+
+
+
+ot_u8 subcc430_rssithr_calc(ot_u8 input, ot_u8 offset) {
+/// @note This function is CC430/CC1101-specific.  If you are not using auto CS
+/// features on the CC or another chip, you can just return input.
+
+/// This function must prepare any hardware registers needed for automated
+/// CS/CCA threshold value.
+/// - "input" is a value 0-127 that is: input - 140 = threshold in dBm
+/// - "offset" is a value subtracted from "input" that depends on chip impl
+/// - return value is chip-specific threshold value
+
+// cs_lut table specs:
+// Base dBm threshold of CCA/CS is ~-92 dBm at 200 kbps or ~-96 dBm at 55 kbps.
+// Each incremented byte in the array is roughly an additional 2 dB above the base dBm threshold.
+/// @todo !!!elements 8 and 11 in lut are the same, this can't be right!!!
+    static const ot_u8 cs_lut[18] = {
+        b00000011, b00001011, b00001011, b01000011, b01001011, b00100011, b10000011, b10001011,
+        b10100011, b11000011, b11001011, b10100011, b11010011, b11011011, b11100011, b11101011,
+        b11110011, b11111011
+    };
+
+    ot_int thr;
+    thr     = (ot_int)input - offset;               // subtract dBm encoding offset
+    thr   >>= 1;                                    // divide by two (array is 2dB increments)
+
+    if (phymac[0].channel & 0x60)   thr -= 4;       // (1) account for turbo vs normal rate
+    if (thr > 17)                   thr = 17;       // (2) make max if dBm threshold is above range
+    else if (thr < 0)               thr = 0;        // (3) make 0 if dBm threshold is lower than range
+
+    return cs_lut[thr];
+}
+
 
 
 

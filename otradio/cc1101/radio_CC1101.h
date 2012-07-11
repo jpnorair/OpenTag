@@ -131,6 +131,7 @@
 #define RADIO_FLAG_AUTOCAL		(1 << 4)
 #define RADIO_FLAG_SETPWR		(1 << 5)
 //#define RADIO_FLAG_CCAFAIL      (1 << 6)  //this flag presently unused
+//#define RADIO_FLAG_RXING        (1 << 6)  //unused
 #define RADIO_FLAG_ASLEEP		(1 << 7)
 
 
@@ -167,12 +168,8 @@
   * flags       A local store for usage flags
   * txlimit     An interrupt/event comes when tx buffer gets below this number of bytes
   * rxlimit     An interrupt/event comes when rx buffer gets above this number of bytes
-  * last_rssi   Experimental, used to buffer the last-read RSSI value
+  * last_rssi   The most recent value of the rss (not always used)
   * evtdone     A callback that is used when RX or TX is completed (i.e. done)
-  * txcursor    holds some data about tx buffer position (MCU-based buffer only)
-  * rxcursor    holds some data about rx buffer position (MCU-based buffer only)
-  * buffer[]    buffer data.  (MCU-based buffer only)
-  * last_rssi   The most recent value of the rss (not always needed)
   */
 typedef struct {
     ot_u8   state;
@@ -181,20 +178,9 @@ typedef struct {
     ot_int  rxlimit;
 //  ot_int  last_rssi;
     ot_sig2 evtdone;
-#   if (BUFFER_ALLOC > 0)
-        ot_int  txcursor;
-        ot_int  rxcursor;
-        ot_u8   buffer[BUFFER_ALLOC];
-#   endif
 } radio_struct;
 
 extern radio_struct radio;
-
-
-
-
-
-
 
 
 

@@ -49,7 +49,7 @@ _CdcReadCtrl    CdcReadCtrl[CDC_NUM_INTERFACES];
 #   define USBCDC_HANDLE_RXCOMPLETE(INTFNUM)    0
 #endif
 
-#if (USBEVT_MASK & USBEVT_TXCOMPLETE)
+#if (USBEVT_MASK & USBEVT_RXBUFFERED)
 #   define USBCDC_HANDLE_RXBUFFERED(INTFNUM)    USBCDC_handleDataReceived(INTFNUM)
 #else
 #   define USBCDC_HANDLE_RXBUFFERED(INTFNUM)    0
@@ -812,10 +812,11 @@ ot_u8 usbSetLineCoding (void) {
 
 
 ot_u8 usbSetControlLineState (void) {
-    USBCDC_handleSetControlLineState((ot_u8)tSetupPacket.wIndex, (ot_u8)tSetupPacket.wValue);
+	ot_u8 output;
+    output = USBCDC_handleSetControlLineState((ot_u8)tSetupPacket.wIndex, (ot_u8)tSetupPacket.wValue);
     usbSendZeroLengthPacketOnIEP0();                                        //Send ZLP for status stage
 
-    return (FALSE);
+    return output;
 }
 
 

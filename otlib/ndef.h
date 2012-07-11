@@ -199,14 +199,14 @@ ot_bool ndef_new_record(alp_record* record, ot_u8* record_data, Queue* output);
 
 /** @brief  Sends over Mpipe the NDEF message stored in the suppiled queuep
   * @param  output      (Queue*) Queue containing output data from Queue.front
-  * @retval ot_int      error if negative, if non-negative it equals the amount of bytes in mpipe
+  * @retval void
   * @ingroup NDEF
   *
   * ndef_send_msg() will automatically align the data in the queue to match the
   * specifications of the NDEF message & record headers.  Then it will push this
   * data to the Mpipe.
   */
-ot_int ndef_send_msg(Queue* output);
+void ndef_send_msg(Queue* output);
 
 
 

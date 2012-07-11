@@ -450,6 +450,15 @@ ot_u16 platform_prand_u16();
 void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length);
 
 
+/** @brief platform-specific memset, in some cases wraps to OS-level memset
+  * @param  dest        (ot_u8*) destination memory address
+  * @param  value       (ot_u8) byte to put into memory (repeatedly)
+  * @param  length      (ot_int) number of bytes to set
+  * @retval None
+  * @ingroup Platform
+  */
+void platform_memset(ot_u8* dest, ot_u8 value, ot_int length);
+
 
 
 /** @brief Inserts a delay time via a SysTick mechanism

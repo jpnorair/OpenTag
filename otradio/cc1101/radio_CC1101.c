@@ -110,12 +110,12 @@ typedef enum {
 } sync_enum;
 
 
-ot_bool subcc1101_test_channel(ot_u8 channel, ot_u8 netstate);
-void    subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate, ot_u8 mcsm2_val);
+ot_bool subcc1101_test_channel(ot_u8 channel);
+void    subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate);
 void    subcc1101_launch_tx(ot_u8 flags, ot_sig2 callback);
 
-void    subcc1101_kill(ot_int main_err, ot_int frame_err);
-void    subcc1101_killonlowrssi();
+void    subcc1101_finish(ot_int main_err, ot_int frame_err);
+ot_bool subcc1101_lowrssi_reenter();
 void    subcc1101_reset_autocal();
 
 ot_bool subcc1101_chan_scan();
@@ -181,7 +181,7 @@ void radio_idle() {
     cc1101_strobe(STROBE(SIDLE));
 #   ifndef BOARD_RF430USB_5509
         if (radio.flags & RADIO_FLAG_ASLEEP) {
-            radio.flags ^ RADIO_FLAG_ASLEEP;
+            radio.flags ^= RADIO_FLAG_ASLEEP;
             cc1101_write(RFREG(TEST0), DRF_TEST0);
         }
 #   endif
@@ -354,11 +354,14 @@ ot_bool radio_txopen() {
 
 #ifndef EXTF_radio_txopen_4
 ot_bool radio_txopen_4() {
-// this function probably is not used on CC1101, which has HW FEC
-    ot_u8 fifo_limit = (radio.txlimit < (RADIO_BUFFER_TXMAX-4)) ? \
-                        (ot_u8)radio.txlimit : (RADIO_BUFFER_TXMAX-4);
-
-    return (ot_bool)(cc1101_read(RFREG(TXBYTES)) < fifo_limit);
+/// Transceiver implementation dependent, only needed with FEC
+/// Use commented-out version, or alternatively just never set txlimit above
+/// (RADIO_BUFFER_TXMAX-4)
+	//ot_u8 fifo_limit = (radio.txlimit < (RADIO_BUFFER_TXMAX-4)) ? \
+	//						(ot_u8)radio.txlimit : (RADIO_BUFFER_TXMAX-4);
+    //return (ot_bool)(RF_GetTXBYTES() < fifo_limit);
+    
+    return radio_txopen();
 }
 #endif
 
@@ -374,11 +377,11 @@ ot_bool radio_txopen_4() {
   * -
   */
 
-ot_bool subcc1101_test_channel(ot_u8 channel, ot_u8 netstate) {
+ot_bool subcc1101_test_channel(ot_u8 channel) {
 #if (SYS_RECEIVE == ENABLED)
     ot_bool test = True;
 
-    if ((channel != phymac[0].channel) || (netstate == M2_NETSTATE_UNASSOC)) {
+    if ((channel != phymac[0].channel)) {
         vlFILE* fp;
         /// Open the Mode 2 FS Config register that contains the channel list
         /// for this host, and make sure the channel we want to use is available
@@ -397,9 +400,10 @@ ot_bool subcc1101_test_channel(ot_u8 channel, ot_u8 netstate) {
 
 
 #if (SYS_RECEIVE == ENABLED)
-void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate, ot_u8 mcsm2_val) {
-    ot_u8       buffer_mode;
-    ot_u8       pktlen;
+void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate) {
+    ot_u8       buffer_mode = 0;
+    ot_u8       pktlen      = 7;
+    ot_u8       mcsm210[4];
     sync_enum   sync_type;
 
     /// 1.  Prepare RX queue by flushing it
@@ -411,18 +415,27 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate, ot_u8 mcsm2_val) {
     q_empty(&rxq);
     subcc1101_prep_q(&rxq);
 
-    /// 2. Go to IDLE.  CC1101 must be in IDLE before writing data.
+    /// 2. Prepare MCSM settings
+    /// -  Prepare modem state-machine to do RX-Idle or RX-RX
+    ///    RX-RX happens duing Response listening, unless FIRSTRX is high
+    netstate   &= (M2_NETFLAG_FIRSTRX | M2_NETSTATE_RESP);
+    mcsm210[0]  = (RFREG(MCSM2) | 0x40);
+    mcsm210[1]  = 7;
+    mcsm210[2]  = (netstate ^ M2_NETSTATE_RESP) ? DRF_MCSM1 : (DRF_MCSM1 | _RXOFF_MODE_RX);
+    mcsm210[3]  = (radio.flags & RADIO_FLAG_AUTOCAL) ? DRF_MCSM0 : (DRF_MCSM0&0xCF) | _FS_AUTOCAL_FROMIDLE;
+    
+    /// 3. Go to IDLE.  CC1101 must be in IDLE before writing data.
     radio_idle();
 
-    /// 3.  Fetch the RX channel, exit if the specified channel is not available
-    if (subcc1101_test_channel(channel, netstate) == False) {
-        subcc1101_kill(RM2_ERR_BADCHANNEL, 0);
+    /// 4.  Fetch the RX channel, exit if the specified channel is not available
+    if (subcc1101_test_channel(channel) == False) {
+        subcc1101_finish(RM2_ERR_BADCHANNEL, 0);
         return;
     }
 
-    /// 4a. Setup RX for Background detection (queue config & low-RSSI termination)
+    /// 5a. Setup RX for Background detection (queue config & low-RSSI termination)
     if (radio.flags & RADIO_FLAG_FLOOD) {
-        pktlen = 7;                                         //CC1101 has HW FEC
+        //pktlen = 7;                                       //CC1101 has HW FEC
         //pktlen = (phymac[0].channel & 0x80) ? 16 : 7;     //This is for SW FEC
 
         /// Queue manipulation to fit background frame into common model
@@ -431,11 +444,11 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate, ot_u8 mcsm2_val) {
         rxq.front[1]    = 0;
         rxq.getcursor   = &rxq.front[2];
         rxq.putcursor   = &rxq.front[2];
-        buffer_mode     = 0;
+        mcsm210[0]     |= b00010000;
         sync_type       = SYNC_bg;
     }
 
-    /// 4b. Setup RX for Foreground detection (normal sync & timeout)
+    /// 5b. Setup RX for Foreground detection (normal sync & timeout)
     else {
 #       if (M2_FEATURE(MULTIFRAME) == ENABLED)
             ot_u8 auto_flag;
@@ -455,7 +468,7 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate, ot_u8 mcsm2_val) {
             sync_type       = SYNC_fg;
     }
 
-    /// 5.  Configure CC1101 for FG or BG receiving.
+    /// 6.  Configure CC1101 for FG or BG receiving.
     ///     For single GDO device, setup buffer resizing after first RX page
     subcc1101_buffer_config(buffer_mode, pktlen);
     subcc1101_syncword_config(sync_type);
@@ -465,18 +478,16 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate, ot_u8 mcsm2_val) {
         radio.flags   |= RADIO_FLAG_RESIZE;
 #   endif
     
+    /// 7.  Configure CS threshold and MCSM settings
     cc1101_write(RFREG(AGCCTRL2), phymac[0].cs_thr);
-    if (radio.flags & RADIO_FLAG_AUTOCAL) {
-        cc1101_write( RFREG(MCSM0), (DRF_MCSM0&0xCF) | _FS_AUTOCAL_FROMIDLE );
-    }
-    cc1101_write(RFREG(MCSM2), mcsm2_val);
+    cc1101_spibus_io(4, 0, mcsm210, NULL);
 
-    /// 6.  Prepare Decoder to receive
+    /// 8.  Prepare Decoder to receive
     em2_decode_newpacket();
     em2_decode_newframe();
     subcc1101_offset_rxtimeout();     // if timeout is 0, set it to a minimal amount
 
-    /// 7.  Setup interrupts for Sync Detect and IDLE fallback, then Turn on RX
+    /// 9.  Setup interrupts for Sync Detect and IDLE fallback, then Turn on RX
     radio_flush_rx();
     cc1101_iocfg_listen();
     cc1101_strobe( STROBE(SRX) );
@@ -557,6 +568,30 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
 
 
 
+#ifndef rm2_reenter_rx
+void rm2_reenter_rx(ot_bool force_entry) {
+/// If radio is in an inactive state, restart RX using the same settings that
+/// are presently in the radio core.  Always do this when forced.
+    if (force_entry) {
+        radio_idle();
+        goto rm2_reenter_rx_PROC;
+    }
+        
+    if (cc1101_read(RFREG(MARCSTATE)) < 3) {
+    rm2_reenter_rx_PROC:
+        radio_flush_rx();
+        cc1101_iocfg_listen();
+        cc1101_strobe( STROBE(SRX) );
+        cc1101_int_turnon(RFI_SYNC | RFI_RXIDLE);
+        sys_clear_mutex(SYS_MUTEX_RADIO_DATA);
+        sys_set_mutex(SYS_MUTEX_RADIO_LISTEN);
+        radio.state = RADIO_STATE_RXINIT;
+    }
+}
+#endif
+
+
+
 #ifndef EXTF_rm2_prep_resend
 void rm2_prep_resend() {
     txq.options.ubyte[UPPER] = 255;
@@ -567,7 +602,7 @@ void rm2_prep_resend() {
 #ifndef EXTF_rm2_kill
 void rm2_kill() {
     radio_idle();
-    subcc1101_kill(RM2_ERR_KILL, 0);
+    subcc1101_finish(RM2_ERR_KILL, 0);
 }
 #endif
 
@@ -575,19 +610,22 @@ void rm2_kill() {
 
 
 #ifndef EXTF_rm2_rxinit_ff
-void rm2_rxinit_ff(ot_u8 channel, ot_u8 netstate, ot_int est_frames, ot_sig2 callback) {
+void rm2_rxinit_ff(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
 #if (SYS_RECEIVE == ENABLED)
+    ot_u8 netstate;
+    
     /// Setup the RX engine for Foreground Frame detection and RX.  Wipe-out
     /// the lower flags (non-persistent flags)
     radio.evtdone   = callback;
-    radio.state     = RADIO_STATE_RXINIT;
+    //radio.state     = RADIO_STATE_RXINIT;
+    netstate        = session_netstate();
     radio.flags    &= (RADIO_FLAG_ASLEEP | RADIO_FLAG_SETPWR | RADIO_FLAG_AUTOCAL);
 
 #   if (M2_FEATURE(MULTIFRAME) == ENABLED)
-        radio.flags |= (est_frames > 1); //sets RADIO_FLAG_FRCONT
+        radio.flags |= ((netstate & M2_NETSTATE_DSDIALOG) != 0); //sets RADIO_FLAG_FRCONT
 #   endif
 
-    subcc1101_launch_rx(channel, netstate, 7);
+    subcc1101_launch_rx(channel, netstate);
 
 #else
     // BLINKER only (no RX)
@@ -604,11 +642,11 @@ void rm2_rxinit_bf(ot_u8 channel, ot_sig2 callback) {
 #if (SYS_RECEIVE == ENABLED)
     /// 1. Open background method of RX (Burrow directly into Done state)
     radio.evtdone   = callback;
-    radio.state     = RADIO_STATE_RXDONE;
+    //radio.state     = RADIO_STATE_RXDONE;
     radio.flags    &= (RADIO_FLAG_ASLEEP | RADIO_FLAG_SETPWR | RADIO_FLAG_AUTOCAL);
     radio.flags    |= RADIO_FLAG_FLOOD;
 
-    subcc1101_launch_rx(channel, M2_NETSTATE_UNASSOC, (_RX_TIME_RSSI|7) );
+    subcc1101_launch_rx(channel, M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX);
 
 #else
     // BLINKER only (no RX)
@@ -625,12 +663,12 @@ void rm2_rxsync_isr() {
 /// Reset the radio interruptor to catch the next RX FIFO interrupt, having
 /// qualified the Sync Word.  rm2_rxdata_isr() will be called on that interrupt.
 /// Also, re-schedule a system event as a watchdog.
-    cc1101_int_turnoff(RFI_SOURCE0 | RFI_SOURCE2);
-    cc1101_iocfg_rxdata();
-    cc1101_int_turnon(RFI_SOURCE0 | RFI_SOURCE2);
-
-    sys_set_mutex((ot_uint)SYS_MUTEX_RADIO_DATA);
-    subcc1101_killonlowrssi();
+    if (subcc1101_lowrssi_reenter() == 0) {
+        cc1101_int_turnoff(RFI_SOURCE0 | RFI_SOURCE2);
+        cc1101_iocfg_rxdata();
+        cc1101_int_turnon(RFI_SOURCE0 | RFI_SOURCE2);
+        sys_set_mutex((ot_uint)SYS_MUTEX_RADIO_DATA);
+    }
 }
 #endif
 
@@ -640,7 +678,7 @@ void rm2_rxsync_isr() {
 #ifndef EXTF_rm2_rxtimeout_isr
 void rm2_rxtimeout_isr() {
     radio_idle();
-    subcc1101_kill(RM2_ERR_TIMEOUT, 0);
+    subcc1101_finish(RM2_ERR_TIMEOUT, 0);
 }
 #endif
 
@@ -650,7 +688,7 @@ void rm2_rxtimeout_isr() {
 #ifndef EXTF_rm2_rxdata_isr
 void rm2_rxdata_isr() {
 #if (SYS_RECEIVE == ENABLED)
-    subcc1101_killonlowrssi();
+    subcc1101_lowrssi_reenter();
 
     rm2_rxdata_isr_TOP:
     
@@ -691,6 +729,7 @@ void rm2_rxdata_isr() {
                 goto rm2_rxdata_isr_TOP;
             }
             else {
+            
                 break;
             }
         }
@@ -740,7 +779,7 @@ void rm2_rxdata_isr() {
 
         /// RX State 3: RXDONE
         case (RADIO_STATE_RXDONE >> RADIO_STATE_RXSHIFT): {
-            subcc1101_kill(0, (ot_int)crc_check() - 1);
+            subcc1101_finish(0, (ot_int)crc_check() - 1);
             return;
         }
 
@@ -784,10 +823,15 @@ void subcc1101_launch_tx(ot_u8 flags, ot_sig2 callback) {
 
 
 #ifndef EXTF_rm2_txinit_ff
-void rm2_txinit_ff(ot_int est_frames, ot_sig2 callback) {
-    radio.state     = RADIO_STATE_TXCCA1;
-    radio.flags    |= (ot_u8)(est_frames > 1);
+void rm2_txinit_ff(ot_u8 psettings, ot_sig2 callback) {
+#   if (SYS_FLOOD == ENABLED)
+    radio.flags    |= psettings;
+#   endif
+#   if (M2_FEATURE(MULTIFRAME) == ENABLED)
+    radio.flags    |= ((session_netstate() & M2_NETSTATE_DSDIALOG) != 0); //sets RADIO_FLAG_FRCONT
+#   endif
     radio.evtdone   = callback;
+    radio.state     = RADIO_STATE_TXCCA1;
 }
 #endif
 
@@ -796,12 +840,7 @@ void rm2_txinit_ff(ot_int est_frames, ot_sig2 callback) {
 
 #ifndef EXTF_rm2_txinit_bf
 void rm2_txinit_bf(ot_sig2 callback) {
-#if (SYS_FLOOD == ENABLED)
-    radio.state     = RADIO_STATE_TXCCA1;
-    radio.flags    |= RADIO_FLAG_FLOOD;
-    radio.evtdone   = callback;
-    //subcc1101_launch_tx(RADIO_FLAG_FLOOD, callback);
-#endif
+    rm2_txinit_ff(RADIO_FLAG_FLOOD, callback);
 }
 #endif
 
@@ -926,10 +965,10 @@ ot_int rm2_txcsma() {
 #ifndef EXTF_rm2_txdata_isr
 void rm2_txdata_isr() {
     /// Continues where rm2_txcsma() leaves off.
-    switch ( (radio.state >> RADIO_STATE_TXSHIFT) & (RADIO_STATE_TXMASK >> RADIO_STATE_TXSHIFT) ) {
+    switch ((radio.state >> RADIO_STATE_TXSHIFT) & 3 ) {
 
         /// 4. Continuous TX'ing of a single packet data
-        case (RADIO_STATE_TXDATA >> RADIO_STATE_TXSHIFT): {
+        case ((RADIO_STATE_TXDATA >> RADIO_STATE_TXSHIFT) & 3): {
         rm2_txpkt_TXDATA:
             /// Buffer needs filling, frame is not done
             em2_encode_data();
@@ -981,8 +1020,8 @@ void rm2_txdata_isr() {
 
         /// 5. Conclude the TX process, and wipe the radio state
         //     turn off any remaining TX interrupts
-        case (RADIO_STATE_TXDONE >> RADIO_STATE_TXSHIFT):
-            subcc1101_kill(0, 0);
+        case ((RADIO_STATE_TXDONE >> RADIO_STATE_TXSHIFT) & 3):
+            subcc1101_finish(0, 0);
             break;
 
         /// Bug trap
@@ -1009,7 +1048,7 @@ void subcc1101_null(ot_int arg1, ot_int arg2) { }
 
 
 
-void subcc1101_kill(ot_int main_err, ot_int frame_err) {
+void subcc1101_finish(ot_int main_err, ot_int frame_err) {
     /// 1.  Turn-off interrupts & put CC1101 into IDLE
     radio_gag();
     //radio_idle();         //should already be in idle, or going to idle
@@ -1025,8 +1064,14 @@ void subcc1101_kill(ot_int main_err, ot_int frame_err) {
 
 
 
-void subcc1101_killonlowrssi() {
-    /// need to inspect the CS bit
+ot_bool subcc1101_lowrssi_reenter() {
+    ot_int min_rssi = ((phymac[0].cs_thr >> 1) & 0x3F) - 40;
+    if (radio_rssi() < min_rssi) {
+        subcc1101_reset_autocal();  
+        rm2_reenter_rx(True);
+        return True;
+    }
+    return False;
 }
 
 

@@ -1071,15 +1071,13 @@ ot_u16 platform_prand_u16() {
 
 
 
-/** Platform memcpy Routine <BR>
+/** Platform memcpy, memset routines <BR>
   * ========================================================================<BR>
-  * Similar to standard implementation of "memcpy"
+  * Similar to standard implementation of "memcpy" and "memset"
+  * Behavior is always blocking
   */
 
-#ifndef EXTF_platform_memcpy
 void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
-/// Behavior is always blocking.
-
 #if (OS_FEATURE(MEMCPY) == ENABLED)
     memcpy(dest, src, length);
 
@@ -1127,8 +1125,57 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 
 #endif
 }
-#endif
 
+
+
+void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
+#if (OS_FEATURE(MEMCPY) == ENABLED)
+    memset(dest, value, length);
+
+#elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
+/// DMA driven method: CC430 DMA Block Transfer is blocking, and the CPU is
+/// stopped during the data movement.  Thus the while loop is not needed.
+/// DMA memcpy cannot be used reliably if OpenTag makes use of the DMA for some
+/// other non-blocking process (e.g. MPipe).
+    MEMCPY_DMA->SA_L    = (ot_u16)&value;
+    MEMCPY_DMA->DA_L    = (ot_u16)dest;
+    MEMCPY_DMA->SZ      = length;
+    //DMA->CTL4           = ( DMA_Options_RMWDisable | \
+                            DMA_Options_RoundRobinDisable | \
+                            DMA_Options_ENMIDisable      );
+    MEMCPY_DMA->CTL     = ( DMA_Mode_Block | \
+                            DMA_DestinationInc_Enable | \
+                            DMA_SourceInc_Disable | \
+                            DMA_DestinationDataSize_Byte | \
+                            DMA_SourceDataSize_Byte | \
+                            DMA_TriggerLevel_RisingEdge | \
+                            0x11);
+    //MEMCPY_DMA->CTL    |= 0x0001;
+
+    //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
+
+#else
+/// Uses the "Duff's Device" for loop unrolling.  If this is incredibly
+/// confusing to you, check the internet for "Duff's Device."
+    if (length > 0) {
+        ot_int loops = (length + 7) >> 3;
+
+        switch (length & 0x7) {
+            case 0: do {    *dest++ = value;
+            case 7:         *dest++ = value;
+            case 6:         *dest++ = value;
+            case 5:         *dest++ = value;
+            case 4:         *dest++ = value;
+            case 3:         *dest++ = value;
+            case 2:         *dest++ = value;
+            case 1:         *dest++ = value;
+                        }
+                        while (--loops > 0);
+        }
+    }
+
+#endif
+}
 
 
 

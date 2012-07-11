@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /OTplatform/MSP430F5/mpipe_usbvcom_MSP430F55xx.c
+  * @file       /otplatform/msp430f5/mpipe_usbcdc_MSP430F55xx.c
   * @author     JP Norair
   * @version    V1.0
   * @date       11 Mar 2012
@@ -74,7 +74,7 @@
 typedef struct {
     mpipe_state     state;
     mpipe_priority  priority;
-    Twobytes        sequence;
+    ot_uni16        sequence;
     ot_u8*          pktbuf;
     ot_int          pktlen;
     ot_u8           ackbuf[10];
@@ -157,6 +157,7 @@ ot_u8 USB_handleVbusOffEvent (){
 #ifndef DEBUG_ON
 	platform_poweroff();
 #endif
+	mpipe.state = MPIPE_Null;
 	return True;
 }
 
@@ -165,10 +166,7 @@ ot_u8 USB_handleVbusOffEvent (){
   * USB reset event to the device.  returns True to keep CPU awake
   */
 ot_u8 USB_handleResetEvent () {
-#ifndef DEBUG_ON
-	platform_poweroff();
-	///@todo Put a reset control here
-#endif
+//	mpipe.state = MPIPE_Idle;
     return True;
 }
 
@@ -220,7 +218,7 @@ ot_u8 USBCDC_handleDataReceived (ot_u8 intfNum) {
 ot_u8 USBCDC_handleSendCompleted (ot_u8 intfNum) {
     //TO DO: You can place your code here
     mpipe_isr();
-    return False;
+    return True;
 }
 
 
@@ -232,7 +230,7 @@ ot_u8 USBCDC_handleReceiveCompleted (ot_u8 intfNum){
     //TO DO: You can place your code here
     //sub_usb_loadrx();
     mpipe_isr();
-    return False;
+    return True;
 }
 
 
@@ -248,6 +246,10 @@ ot_u8 USBCDC_handleSetLineCoding (ot_u8 intfNum, ULONG lBaudrate) {
 
 //this event indicates that new line state has been received from the host
 ot_u8 USBCDC_handleSetControlLineState (ot_u8 intfNum, ot_u8 lineState) {
+	if (lineState) {
+		mpipe.state = MPIPE_Idle;
+		return True;
+	}
 	return False;
 }
 
@@ -451,7 +453,7 @@ ot_int mpipe_init(void* port_id) {
 #   endif
 
     mpipe.sequence.ushort   = 0;          //not actually necessary
-    mpipe.state             = MPIPE_Idle;
+    mpipe.state             = MPIPE_Null;
     
     USB_init();
     USB_disconnect();	//disconnect USB first
@@ -467,6 +469,7 @@ ot_int mpipe_init(void* port_id) {
 
 
 void mpipe_kill() {
+	mpipe.state = MPIPE_Null;
     USB_disconnect();
 }
 
@@ -491,47 +494,54 @@ mpipe_state mpipe_status() {
 
 
 
-ot_int mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
-    Twobytes crcval;
+void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
+/// @note Using blocking: OpenTag currently does not implement blocking TX,
+///       because it can interfere with time-critical radio processes.  You can
+///       achieve a similar affect by calling "mpipe_wait()" after a logging
+///       function call, if you need blocking on certain transmissions.
+
+    if (mpipe.state == MPIPE_Idle) {
+    	ot_uni16 crcval;
+
+        mpipe.pktbuf    = data;
+        mpipe.pktlen    = data[2] + 6;
+        mpipe.state     = MPIPE_Tx_Done;
     
-    if (mpipe.state != MPIPE_Idle) {
-        return -1;
+        // add sequence id & crc to end of the datastream
+        data[mpipe.pktlen++] = mpipe.sequence.ubyte[UPPER];
+        data[mpipe.pktlen++] = mpipe.sequence.ubyte[LOWER];
+        crcval.ushort        = platform_crc_block(data, mpipe.pktlen);
+        data[mpipe.pktlen++] = crcval.ubyte[UPPER];
+        data[mpipe.pktlen++] = crcval.ubyte[LOWER];
+    
+        mpipe_ext.i = 0;
+        //sub_usb_loadtx();
+        USBCDC_sendData(mpipe.pktbuf, mpipe.pktlen, CDC0_INTFNUM);
+
+        // Wait for the USB transmission to complete (optional).
+        if (blocking) {
+        	mpipe_wait();
+        }
     }
-    mpipe.pktbuf    = data;
-    mpipe.pktlen    = data[2] + 6;
-    mpipe.state     = MPIPE_Tx_Wait;
-    
-    // add sequence id & crc to end of the datastream
-    data[mpipe.pktlen++] = mpipe.sequence.ubyte[UPPER];
-    data[mpipe.pktlen++] = mpipe.sequence.ubyte[LOWER];
-    crcval.ushort        = platform_crc_block(data, mpipe.pktlen);
-    data[mpipe.pktlen++] = crcval.ubyte[UPPER];
-    data[mpipe.pktlen++] = crcval.ubyte[LOWER];
-    
-    mpipe_ext.i = 0;
-    //sub_usb_loadtx();
-    USBCDC_sendData(mpipe.pktbuf, mpipe.pktlen, CDC0_INTFNUM);
-    
-    if (blocking == True) {
-    	mpipe_wait();	
-    }
-    return mpipe.pktlen;
 }
 
 
 
-ot_int mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
-    if (mpipe.state != MPIPE_Idle) {
-        return -1;
+void mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
+/// @note Using blocking: OpenTag currently does not implement blocking for RX.
+///       However, RX typically is called automatically after TX, so the system
+///       goes into RX (listening) whenever it is not in TX.
+
+	if (blocking) {
+    	mpipe_wait();
     }
-    //mpipe_ext.i     = 0;
-    mpipe.state     = MPIPE_Idle;
-    mpipe.pktbuf    = data;
-    USBCDC_receiveData(data, 6, CDC0_INTFNUM);
-
-    return 0;
+    if (mpipe.state == MPIPE_Idle) {
+      //mpipe_ext.i     = 0;
+        mpipe.state     = MPIPE_Idle;
+        mpipe.pktbuf    = data;
+        USBCDC_receiveData(data, 6, CDC0_INTFNUM);
+    }
 }
-
 
 
 void mpipe_isr() {
@@ -562,7 +572,7 @@ void mpipe_isr() {
             //}
             break;
         
-        case MPIPE_Tx_Wait:
+//        case MPIPE_Tx_Wait:
         	/// @note Current TI USB lib implementation generates a "complete"
         	/// event when the last page has been loaded, not when the packet
         	/// is actually complete.  I prefer the latter function, and I will
