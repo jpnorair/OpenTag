@@ -375,9 +375,10 @@ void sys_change_settings(ot_u16 new_mask, ot_u16 new_settings);
   * @retval (none)  
   * @ingroup System
   *
-  * Puts device into idle, following the current parallelized task.  Generally,
-  * this is only used by the automated internal code.  The event_offset
-  * parameter can be used to
+  * Puts device into idle, immediately.  Generally, this is only used by the 
+  * automated internal code.  You can use it to kill system tasks, though.  One
+  * example is to use sys_idle() in a USB suspend callback, to make sure that
+  * radio operation is shut off.
   */
 void sys_idle();
 

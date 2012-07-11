@@ -173,20 +173,32 @@ ot_u8 USB_handleResetEvent () {
 
 /** If this function gets executed, it indicates that the USB host has chosen 
   * to suspend this device after a period of active operation.  returns True to 
-  * keep CPU awake
+  * to bring CPU out of sleep after USB interrupt.
+  *
+  * For OpenTag, this routine calls sys_kill(), and platform_ot_pause().  After
+  * calling these, the system & kernel are doing nothing and will not be active
+  * again until platform_ot_preempt() is called.  The device can go into USB
+  * Suspend mode (sleep, basically) which requires < 500 µA loading.
   */
 ot_u8 USB_handleSuspendEvent () {
-    //TO DO: You can place your code here
+    //sys_kill();
+    platform_ot_pause();
+    
     return True;
 }
 
 
 /** If this function gets executed, it indicates that the USB host has chosen 
   * to resume this device after a period of suspended operation.  returns True 
-  * to keep CPU awake
+  * to bring CPU out of sleep after USB interrupt.
+  *
+  * For OpenTag, this routine calls sys_refresh() and platform_ot_preempt(), 
+  * which gets everything back on-line, and in startup configuration.
   */
 ot_u8 USB_handleResumeEvent () {
-    //TO DO: You can place your code here
+    sys_refresh();
+    platform_ot_preempt();
+    
     return True;
 }
 

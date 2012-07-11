@@ -119,8 +119,6 @@ void rfevt_btx(ot_int flcode, ot_int scratch);
 
 
 
-
-
 /** Administrative Subroutines
   * ============================================================================
   * Just used to make the code nice-looking or for code-reuse

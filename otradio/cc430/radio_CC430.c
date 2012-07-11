@@ -104,7 +104,7 @@ ot_u8   subcc430_rssithr_calc(ot_u8 input, ot_u8 offset); // Fiddling necessary
 void    subcc430_set_txpwr(ot_u8 eirp_code);
 
 
-
+//void sub_txend_isr();
 
 
 
@@ -198,7 +198,7 @@ OT_INTERRUPT void radio_isr(void) {
         //case 0x0C:  __no_operation();       break;  //TXAboveThresh_ISR();
         //case 0x0E:  __no_operation();       break;  //TXFull_ISR();
         //case 0x10:  __no_operation();       break;  //RXOverflow_ISR();
-        case 0x12:  rm2_txdata_isr();       break;  //TXUnderflow_ISR();
+        //case 0x12:  rm2_txdata_isr();       break;  //TXUnderflow_ISR();
         case 0x14:  rm2_rxsync_isr();       break;  //SyncWord_ISR()
         //case 0x16:  __no_operation();       break;  //CRCValid_ISR();
         //case 0x18:  __no_operation();       break;  //PQTReached_ISR();
@@ -213,14 +213,14 @@ OT_INTERRUPT void radio_isr(void) {
         //case 0x26:  __no_operation();       break;  //IOCFG1_ISR();
         //case 0x28:  __no_operation();       break;  //IOCFG2_ISR();
         //case 0x2A:  __no_operation();       break;  //RXNotFull_ISR();
-        //case 0x2C:  __no_operation();       break;  //RXEmpty_ISR();
+        //case 0x2C:  __no_operation();       break;  //RXEmpty();
         case 0x2E:  rm2_txdata_isr();       break;  //TXBelowThresh_ISR();
-        //case 0x30:  __no_operation();       break;  //TXNotFull_ISR();
+        //case 0x30:  __no_operation();       break;  //TXBelowThresh2_ISR();
         //case 0x32:  __no_operation();       break;  //RXFlushed_ISR();
         //case 0x34:  __no_operation();       break;  //TXFlushed_ISR();
         
         case 0x36:                                  //EndState_ISR();
-            if (radio.state & RADIO_STATE_TXMASK)	rm2_txdata_isr();
+            if (radio.state & RADIO_STATE_TXMASK)	subcc430_finish(0, 0); //rm2_txdata_isr();
             else									rm2_rxend_isr();
             break;  
 
@@ -1145,10 +1145,10 @@ void rm2_txdata_isr() {
 
         /// 5. Conclude the TX process, and wipe the radio state
         //     turn off any remaining TX interrupts
-        case (RADIO_STATE_TXDONE >> (RADIO_STATE_TXSHIFT+1)):
+        //case (RADIO_STATE_TXDONE >> (RADIO_STATE_TXSHIFT+1)):
             //radio_idle();         //should be in idle already
-            subcc430_finish(0, 0);
-            break;
+        //    subcc430_finish(0, 0);
+        //    break;
 
         /// Bug trap
         default:
@@ -1159,7 +1159,10 @@ void rm2_txdata_isr() {
 #endif
 
 
-
+//void sub_txend_isr() {
+	//radio_idle();         //should be in idle already
+//	subcc430_finish(0, 0);
+//}
 
 
 

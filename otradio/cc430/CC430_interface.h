@@ -135,16 +135,21 @@ OT_INLINE_H void cc430_iocfg_txcsma() {
   * @param  None
   * @retval None
   * @ingroup CC430
+  *
+  * @note there is an apparent CC430 erratum (or at least an "undocumented
+  *       feature") where certain combinations of RFIFG interrupts do not work
+  *       properly when both enabled.  The EndState and TXBelowThresh are
+  *       examples of two IRQs that don't work reliably together.
   */ 
 OT_INLINE_H void cc430_iocfg_txdata() {
     RFWord->IFG = 0;
     RFWord->IE  = (ot_u16)((/*RF_CoreIT_TXUnderflow*/ 0 | \
                             RF_CoreIT_TXBelowThresh | \
-                            RF_CoreIT_EndState) >> 16);
+                            /*RF_CoreIT_EndState*/ 0) >> 16);
 
     RFWord->IES = (ot_u16)( /*RF_CoreIT_TXUnderflow*/ 0 | \
                             RF_CoreIT_TXBelowThresh | \
-                            RF_CoreIT_EndState      );
+                            /*RF_CoreIT_EndState*/ 0     );
 }
 
 

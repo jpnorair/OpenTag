@@ -186,7 +186,7 @@
 #define RF_CoreIT_RXOverflow        (u32)0x00800000
 #define RF_CoreIT_RXFlushed         (u32)0x00800080
 #define RF_CoreIT_TXFull            (u32)0x00400000
-#define RF_CoreIT_TXNotFull         (u32)0x00400040             
+#define RF_CoreIT_TXBelowThresh2    (u32)0x00400040
 #define RF_CoreIT_TXAboveThresh     (u32)0x00200000
 #define RF_CoreIT_TXBelowThresh     (u32)0x00200020
 #define RF_CoreIT_RXFullOrDone      (u32)0x00100000

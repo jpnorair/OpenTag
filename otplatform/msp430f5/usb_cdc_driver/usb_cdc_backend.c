@@ -363,10 +363,11 @@ ot_u8 USBCDC_receiveData (ot_u8* data, ot_u16 size, ot_u8 intfNum) {
         CopyUsbToBuff(CdcReadCtrl[INTFNUM_OFFSET(intfNum)].pCurrentEpPos, CdcReadCtrl[INTFNUM_OFFSET(intfNum)].pCT1, intfNum);
 
         if (CdcReadCtrl[INTFNUM_OFFSET(intfNum)].nBytesToReceiveLeft == 0){ //the Receive opereation is completed
-            CdcReadCtrl[INTFNUM_OFFSET(intfNum)].pUserBuffer = NULL;        //no more receiving pending
-            USBCDC_HANDLE_RXCOMPLETE(intfNum);                     //call event handler in interrupt context
-            __bis_SR_register(bGIE);                                        //restore interrupt status
-            return (kUSBCDC_receiveCompleted);                              //receive completed
+            goto USBCDC_receiveData_EXIT;
+            //CdcReadCtrl[INTFNUM_OFFSET(intfNum)].pUserBuffer = NULL;        //no more receiving pending
+            //USBCDC_HANDLE_RXCOMPLETE(intfNum);                     //call event handler in interrupt context
+            //__bis_SR_register(bGIE);                                        //restore interrupt status
+            //return (kUSBCDC_receiveCompleted);                              //receive completed
         }
 
         //check other EP buffer for data - exchange pCT1 with pCT2
@@ -388,10 +389,11 @@ ot_u8 USBCDC_receiveData (ot_u8* data, ot_u16 size, ot_u8 intfNum) {
         }
 
         if (CdcReadCtrl[INTFNUM_OFFSET(intfNum)].nBytesToReceiveLeft == 0){ //the Receive opereation is completed
-            CdcReadCtrl[INTFNUM_OFFSET(intfNum)].pUserBuffer = NULL;        //no more receiving pending
-            USBCDC_HANDLE_RXCOMPLETE(intfNum);                     //call event handler in interrupt context
-            __bis_SR_register(bGIE);                                        //restore interrupt status
-            return (kUSBCDC_receiveCompleted);                              //receive completed
+            goto USBCDC_receiveData_EXIT;
+            //CdcReadCtrl[INTFNUM_OFFSET(intfNum)].pUserBuffer = NULL;        //no more receiving pending
+            //USBCDC_HANDLE_RXCOMPLETE(intfNum);                     //call event handler in interrupt context
+            //__bis_SR_register(bGIE);                                        //restore interrupt status
+            //return (kUSBCDC_receiveCompleted);                              //receive completed
         }
     } //read rest of data from buffer, if any
 
@@ -453,15 +455,24 @@ ot_u8 USBCDC_receiveData (ot_u8* data, ot_u16 size, ot_u8 intfNum) {
     }
 
     if (CdcReadCtrl[INTFNUM_OFFSET(intfNum)].nBytesToReceiveLeft == 0){     //the Receive opereation is completed
-        CdcReadCtrl[INTFNUM_OFFSET(intfNum)].pUserBuffer = NULL;            //no more receiving pending
-        USBCDC_HANDLE_RXCOMPLETE(intfNum);                         //call event handler in interrupt context
-        __bis_SR_register(bGIE);                                            //restore interrupt status
-        return (kUSBCDC_receiveCompleted);
+        goto USBCDC_receiveData_EXIT;
+        //CdcReadCtrl[INTFNUM_OFFSET(intfNum)].pUserBuffer = NULL;            //no more receiving pending
+        //USBCDC_HANDLE_RXCOMPLETE(intfNum);                         //call event handler in interrupt context
+        //__bis_SR_register(bGIE);                                            //restore interrupt status
+        //return (kUSBCDC_receiveCompleted);
     }
 
     //interrupts enable
     __bis_SR_register(bGIE);                                                //restore interrupt status
     return (kUSBCDC_receiveStarted);
+    
+    
+    //Intermediate Output Stage
+    USBCDC_receiveData_EXIT:
+    CdcReadCtrl[INTFNUM_OFFSET(intfNum)].pUserBuffer = NULL;    //no more receiving pending
+    USBCDC_HANDLE_RXCOMPLETE(intfNum);                          //call event handler in interrupt context
+    __bis_SR_register(bGIE);                                    //restore interrupt status
+    return (kUSBCDC_receiveCompleted);
 }
 
 

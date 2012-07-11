@@ -46,8 +46,8 @@
 #define USBEVT_MASK      (   USBEVT_VBUSON        | \
                              USBEVT_VBUSOFF       | \
                              USBEVT_RESET         | \
-                            /* USBEVT_SUSPEND      | */\
-                            /* USBEVT_RESUME       | */\
+                             USBEVT_SUSPEND      | \
+                             USBEVT_RESUME       | \
                             /* USBEVT_RXBUFFERED   | */ \
                              USBEVT_TXCOMPLETE   | \
                              USBEVT_RXCOMPLETE   | \
