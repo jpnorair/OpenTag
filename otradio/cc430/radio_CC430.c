@@ -1137,7 +1137,7 @@ void rm2_txdata_isr() {
 #           endif
 
             radio.state = RADIO_STATE_TXDONE;
-            //RFWord->IFG = 0;
+            RFWord->IFG = 0;
             RFWord->IE  = (ot_u16)(RF_CoreIT_EndState >> 16);
             RFWord->IES = (ot_u16)(RF_CoreIT_EndState);
             break;

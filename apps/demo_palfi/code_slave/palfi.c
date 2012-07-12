@@ -233,7 +233,7 @@ void sys_sig_extprocess(void* data) {
                     palfi.wake_event = (palfi.status[0] & 3);
                     if (palfi.wake_event) {
                         palfi.wake_event    += ('A'-1);
-                        sys.evt.EXT.event_no+= 2;
+                        sys.evt.EXT.event_no+= 2; // next state = 3 (normal), 4 (trimming)
                         palfi_cmdrssi();
                     }
                     else {

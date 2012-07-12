@@ -114,6 +114,7 @@ OT_INLINE_H void cc430_iocfg_listen() {
   * @ingroup CC430
   */ 
 OT_INLINE_H void cc430_iocfg_rxdata() {
+	RFWord->IFG = 0;
     RFWord->IE  = (ot_u16)((RF_CoreIT_RXFull | RF_CoreIT_EndState) >> 16);
     RFWord->IES = (ot_u16)(RF_CoreIT_RXFull | RF_CoreIT_EndState);
 }
@@ -154,6 +155,7 @@ OT_INLINE_H void cc430_iocfg_txdata() {
 
 
 OT_INLINE_H void cc430_iocfg_rxend() {
+	RFWord->IFG = 0;
     RFWord->IE  = (ot_u16)(RF_CoreIT_EndState >> 16);
     RFWord->IES = (ot_u16)(RF_CoreIT_EndState);
 }
