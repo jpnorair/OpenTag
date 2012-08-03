@@ -23,24 +23,11 @@
   */
 
 
-/** Compile-Time Device ID configuration <BR>
-  * ===========================================================================
-  * If you are just using two devices for testing, they can probably use the
-  * same ID's without conflict (conflict is relative, it only matters because
-  * it is hard to tell which device is actually sending the response).  You can
-  * also select a ID from below at compile-time (or add more) .
-  */
-#define __USE_ID0
-//#define __USE_ID1
-
-#if defined(__USE_ID0)
-#   define __UID    0x1D, 0xAA, 0xA0, 0x1D, 0x05, 0x05, 0x05, 0x05
-#   define __VID    0x1D, 0x05
-#elif defined(__USE_ID1)
-#   define __UID    0x1D, 0xAA, 0xA1, 0x1D, 0x06, 0x06, 0x06, 0x06
-#   define __VID    0x1D, 0x06
-#else
-#   error "Device ID index is not selected"
+#ifdef DEBUG_ON
+/// The ID's are written as FFF... so that the OpenTag startup routine can write
+/// a derived ID to them without any kind of flash wear-leveling
+#   define __VID    0xFF, 0xFF
+#   define __UID    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 #endif
 
 
@@ -503,10 +490,9 @@ const ot_u8 isf_stock_files[] = {
     0x00, 0x01, 0x02, 0x04, 0x71, 0xFF, 0xFF, 0xFF,     /* List of Protocols supported (Tentative)*/
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
-    /* ISFS list: id=0x08, len=12, alloc=24 */
+    /* ISFS list: id=0x08, len=12, alloc=16 */
     0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x18,
     0x80, 0x81, 0x82, 0x83, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* GFB File List: id=0x09, len=0, alloc=8 */
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -579,9 +565,6 @@ const ot_u8 isf_stock_files[] = {
 
     /* HW Fault Status: id=0x16, len=3, alloc=4 */
     0x00, 0x00, 0x00, 0xFF,
-
-    /* Ext Services List:   id=0x17, not used in this build */
-    /* Ext Services Alarms: id=0x18, not used in this build */
 
     /* Application Extension: id=0xFF, len=0, alloc=16 */
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,

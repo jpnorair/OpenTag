@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,13 +14,15 @@
   *
   */
 /**
-  * @file       /OTplatform/MSP430F5/mpipe_uart_MSP430F5.c
+  * @file       /otplatform/msp430f5/mpipe_uart_MSP430F5.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       1 May 2012
+  * @date       31 July 2012
   * @brief      Message Pipe (MPIPE) implementation(s) for MSP430F5
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
+  *
+  * @note This driver should be virtually identical to the one for CC430
   *
   * As far as I know, the MSP430F5 has the ability to use the following periphs
   * for the MPIPE.  This list may change over time as new models are released:
@@ -31,14 +33,14 @@
   * 4.  IrDA    USCI    no      Need more information
   *
   * The UART implementation is the only one presently implemented.
-  * Baudrates supported:    9600, 115200
+  * Baudrates supported:    9600, 28800, 57600, 115200
   * Byte structure:         8N1
   * Duplex:                 Half
-  * Flow control:           HW (CTS/RTS for Null modem)
+  * Flow control:           None
   * Connection:             RS-232, DTE-DTE (use a null-modem connector)
   *
   * Design Assumptions:
-  * - Using SMCLK at 2.49625 MHz Clock (19.97 MHz / 8)
+  * - Using SMCLK at 6 MHz Clock
   * - Using UART0
   * - If changing the input frequency, changes need to be made to implementation
   *   of setspeed function.
@@ -125,7 +127,7 @@
     do { \
         MPIPE_DMA->SA_L = (ot_u16)SOURCE; \
         MPIPE_DMA->DA_L = (ot_u16)&(MPIPE_UART->TXBUF); \
-        MPIPE_DMA->SZ   = SIZE+2; \
+        MPIPE_DMA->SZ   = SIZE; \
         MPIPE_DMA->CTL  = MPIPE_DMA_TXCTL_##ONOFF; \
     } while(0)
 
@@ -150,110 +152,29 @@
 
 
 
-/** Mpipe Module Data
-  * At present this consumes 24 bytes of SRAM.  6 bytes could be freed by
-  * removing the callbacks, which might not be used.
+/** Mpipe Module Data (used by all Mpipe implementations)   <BR>
+  * ========================================================================<BR>
   */
+  
 typedef struct {
-#   if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
-		ot_u8           ackbuf[10];
+#   if (MPIPE_USE_ACKS)
+        ot_u8           ackbuf[10];
         mpipe_priority  priority;
 #   endif
     mpipe_state     state;
-    Twobytes        sequence;
+    ot_uni16        sequence;
     ot_u8*          pktbuf;
     ot_int          pktlen;
 
 #   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
-        void (*sig_rxdone)(ot_int);
-        void (*sig_txdone)(ot_int);
-        void (*sig_rxdetect)(ot_int);
+        ot_sigv sig_rxdone;
+        ot_sigv sig_txdone;
+        ot_sigv sig_rxdetect;
 #   endif
 } mpipe_struct;
 
-mpipe_struct mpipe;
-
-
-void sub_signull(ot_int sigval);
-void sub_uart_setup();
-
-
-
-
-
-/** Mpipe ISRs  <BR>
-  * =======================================================================
-  */
-
-#if (ISR_EMBED(MPIPE) == ENABLED)
-
-#if (CC_SUPPORT == CL430)
-#	pragma vector=DMA_VECTOR
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(DMA_VECTOR)
-#elif (CC_SUPPORT == IAR_V5)
-#else
-#   error "A known compiler has not been defined"
-#endif
-OT_INTERRUPT void mpipe_dma_isr(void) {
-    //MPIPE_DMAEN(OFF); //unnecessary on single transfer mode
-
-#   if (MPIPE_DMANUM == 0)
-		if (DMA->IV == 2) mpipe_isr();
-#   elif (MPIPE_DMANUM == 1)
-		if (DMA->IV == 4) mpipe_isr();
-#   elif (MPIPE_DMANUM == 2)
-		if (DMA->IV == 6) mpipe_isr();
-#   else
-#       error "This version of MPIPE requires DMA."
-#   endif
-	LPM4_EXIT;
-}
-
-
-/*
-#if (CC_SUPPORT == CL430)
-#	pragma vector=MPIPE_UART_VECTOR
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(MPIPE_UART_VECTOR)
-#elif (CC_SUPPORT == IAR_V5)
-#else
-#   error "A known compiler has not been defined"
-#endif
-OT_INTERRUPT void mpipe_uart_isr(void) {
-	//MPIPE_UART->IFG = 0;
-	mpipe_isr();
-	mpipe.state++;
-
-	LPM4_EXIT;
-}
-*/
-
-#endif
-
-
-
-
-#if (ISR_EMBED(MPIPE_RTS) == ENABLED)
-
-#if (CC_SUPPORT == CL430)
-#	pragma vector=MPIPE_RTS_VECTOR
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(MPIPE_RTS_VECTOR)
-#elif (CC_SUPPORT == IAR_V5)
-#else
-#   error "A known compiler has not been defined"
-#endif
-OT_INTERRUPT void _mpipe_rts_isr(void) {
-    if (MPIPE_RTS_PORT->IFG & MPIPE_RTS_PIN) {
-        mpipe_isr();
-    }
-    MPIPE_RTS_PORT->IFG = 0;
-    
-	LPM4_EXIT;
-}
-
-#endif
+mpipe_struct    mpipe;
+alp_tmp         mpipe_alp;
 
 
 
@@ -261,58 +182,10 @@ OT_INTERRUPT void _mpipe_rts_isr(void) {
 
 
 
-
-
-/** Mpipe Subroutines (private functions) <BR>
+/** Mpipe Subs (Board & Platform dependent)  <BR>
   * ========================================================================
   */
-
-#if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
-#define CALLBACK_txdone(CODE)  	mpipe.sig_txdone(CODE)
-#define CALLBACK_rxdone(CODE)   mpipe.sig_rxdone(CODE)
-#define CALLBACK_rxdetect(CODE)	mpipe.sig_rxdetect(CODE)
-
-void sub_signull(ot_int sigval) { }
-
-void mpipe_setsig_txdone(void (*signal)(ot_int)) {
-    mpipe.sig_txdone = signal;
-}
-void mpipe_setsig_rxdone(void (*signal)(ot_int)) {
-    mpipe.sig_rxdone = signal;
-}
-void mpipe_setsig_rxdetect(void (*signal)(ot_int)) {
-    mpipe.sig_rxdetect = signal;
-}
-
-
-
-#else
-#   ifdef EXTF_mpipe_sig_txdone
-#		define CALLBACK_txdone(CODE)    mpipe_sig_txdone(CODE)
-#	else
-#		define CALLBACK_txdone(CODE)	while(0)
-#	endif
-#   ifdef EXTF_mpipe_sig_rxdone
-#		define CALLBACK_rxdone(CODE)    mpipe_sig_rxdone(CODE)
-#	else
-#		define CALLBACK_rxdone(CODE)	while(0)
-#	endif
-#   ifdef EXTF_mpipe_sig_rxdetect
-#		define CALLBACK_rxdetect(CODE)  mpipe_sig_rxdetect(CODE)
-#	else
-#		define CALLBACK_rxdetect(CODE)	while(0)
-#	endif
-
-#endif
-
-
-
-
-
-
-
-
-
+  
 void sub_uart_portsetup() {
     // Get write-access to port mapping regs, update, re-lock
     //PM->PWD          = 0x2D52;
@@ -343,52 +216,161 @@ void sub_uart_portsetup() {
 
 
 
+/** Mpipe Low-Level ISRs (Platform-dependent)  <BR>
+  * ========================================================================
+  */
 
-/**************************
- * Public Mpipe Functions *
- **************************/
+#if (ISR_EMBED(MPIPE) == ENABLED)
 
-ot_u8 mpipe_footerbytes() {
-    return MPIPE_FOOTERBYTES;
+#if (CC_SUPPORT == CL430)
+#   pragma vector=DMA_VECTOR
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(DMA_VECTOR)
+#elif (CC_SUPPORT == IAR_V5)
+#else
+#   error "A known compiler has not been defined"
+#endif
+OT_INTERRUPT void mpipe_dma_isr(void) {
+    //MPIPE_DMAEN(OFF); //unnecessary on single transfer mode
+#   if (MPIPE_DMANUM == 0)
+        if (DMA->IV == 2) mpipe_isr();
+#   elif (MPIPE_DMANUM == 1)
+        if (DMA->IV == 4) mpipe_isr();
+#   elif (MPIPE_DMANUM == 2)
+        if (DMA->IV == 6) mpipe_isr();
+#   else
+#       error "This version of MPIPE requires DMA."
+#   endif
+    LPM4_EXIT;
 }
 
 
+#if (CC_SUPPORT == CL430)
+#   pragma vector=MPIPE_UART_VECTOR
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(MPIPE_UART_VECTOR)
+#elif (CC_SUPPORT == IAR_V5)
+#else
+#   error "A known compiler has not been defined"
+#endif
+OT_INTERRUPT void mpipe_uart_isr(void) {
+    //MPIPE_UART->IFG = 0;
+    if ((mpipe.state == MPIPE_Tx_Wait) || (mpipe.state == MPIPE_TxAck_Wait)) {
+        mpipe.state++;
+    }
+    else {
+        mpipe_isr();
+    }
+    LPM4_EXIT;
+}
+#endif
 
+
+
+
+
+
+
+/** Mpipe Callback Configurators   <BR>
+  * ========================================================================
+  */
+
+#if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
+void mpipe_setsig_txdone(ot_sigv signal) {
+    mpipe.sig_txdone = signal;
+}
+
+void mpipe_setsig_rxdone(ot_sigv signal) {
+    mpipe.sig_rxdone = signal;
+}
+
+void mpipe_setsig_rxdetect(ot_sigv signal) {
+    mpipe.sig_rxdetect = signal;
+}
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/** Mpipe Main Public Functions  <BR>
+  * ========================================================================
+  */
+
+#ifndef EXT_mpipe_footerbytes
+ot_u8 mpipe_footerbytes() {
+    return MPIPE_FOOTERBYTES;
+}
+#endif
+
+
+
+#ifndef EXTF_mpipe_init
 ot_int mpipe_init(void* port_id) {
 /// 0. "port_id" is unused in this impl, and it may be NULL
 /// 1. Set all signal callbacks to NULL, and initialize other variables.
 /// 2. Prepare the HW, which in this case is a UART
 /// 3. Set default speed, which in this case is 115200 bps
 
-#   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
-        mpipe.sig_rxdone    = &sub_signull;
-        mpipe.sig_txdone    = &sub_signull;
-        mpipe.sig_rxdetect  = &sub_signull;
-#   endif
+#if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
+    mpipe.sig_rxdone    = &otutils_sigv_null;
+    mpipe.sig_txdone    = &otutils_sigv_null;
+    mpipe.sig_rxdetect  = &otutils_sigv_null;
+#endif
+#if (MPIPE_USE_ACKS)
+    mpipe.ackbuf[0] = 0xDD;     //NDEF message flags
+    mpipe.ackbuf[1] = 0;        //Typelen = 0
+    mpipe.ackbuf[2] = 0;        //Paylod len = 0
+    mpipe.ackbuf[3] = 2;        //ID len = 2
+    mpipe.ackbuf[4] = 0;
+    mpipe.priority  = MPIPE_Low;
+#endif
+    mpipe.state     = MPIPE_Idle;
+    mpipe_alp.inq   = &dir_in;
+    mpipe_alp.outq  = &dir_out;
 
     //mpipe.sequence.ushort   = 0;          //not actually necessary
-#   if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
-    mpipe.priority          = MPIPE_Low;
-#   endif
-    mpipe.state             = MPIPE_Idle;
 
     sub_uart_portsetup();
     mpipe_setspeed(MPIPE_115200bps);     //default baud rate
 
     return 0;
 }
+#endif
 
 
 
+#ifndef EXTF_mpipe_kill
+void mpipe_kill() {
+/// Figure out what to put in here
+}
+#endif
+
+
+
+#ifndef EXTF_mpipe_wait
 void mpipe_wait() {
     while (mpipe.state != MPIPE_Idle) {
         SLEEP_MCU();
     }
 }
+#endif
 
 
 
-
+#ifndef EXTF_mpipe_setspeed
 void mpipe_setspeed(mpipe_speed speed) {
     ot_u8* baud_data;
 
@@ -397,9 +379,9 @@ void mpipe_setspeed(mpipe_speed speed) {
     /// Order is [ BR0, BR1, MCTL, ... ]
     /// BR1:0 = Floor(BitCLK/BaudRate)
     /// MCTL  = Round(((BitCLK/BaudRate) - Floor(BitCLK/BaudRate)) * 8) << 1
-    static const ot_u8 baud_matrix[] = { 0x71, 0x02, 0x00, 0, \
-                                         0xD0, 0x00, 0x92, 0, \
-                                         0x68, 0x00, 0x08, 0, \
+    static const ot_u8 baud_matrix[] = { 0x71, 0x02, 0x00, 0, 
+                                         0xD0, 0x00, 0x92, 0, 
+                                         0x68, 0x00, 0x08, 0, 
                                          0x34, 0x00, 0x40, 0  };
 
 #   if (MCU_FEATURE(MPIPEDMA) == ENABLED)
@@ -421,161 +403,115 @@ void mpipe_setspeed(mpipe_speed speed) {
     MPIPE_UART->BR1  = *baud_data++;
     MPIPE_UART->MCTL = *baud_data;
 }
+#endif
 
 
+
+#ifndef EXTF_mpipe_status
 mpipe_state mpipe_status() {
     return mpipe.state;
 }
+#endif
 
 
 
+#ifndef EXTF_mpipe_txndef
+void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
+/// Data TX will only occur if this function is called when the MPipe state is
+/// idle.  The exception is when the function is called with ACK priority, in
+/// which case the state doesn't need to be Idle.  Lastly, if you specify the 
+/// blocking parameter, the function will not return until the packet is 
+/// completely transmitted.
+    ot_uni16    crcval;
+    ot_int      data_length;
 
-ot_int mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
-/// Data TX occurs after a CTS detect event.  The DMA is setup beforehand, and
-/// it is activated in the CTS ISR or manually (in this function) in the cases
-/// where CTS might be locked high (i.e. receiver is always ready, maybe it is
-/// full duplex or whatever).
-    Twobytes crcval;
-    ot_int data_length = data[2] + 6;	//NDEF header is 6 bytes
-
-#   if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
-        if (data_priority != MPIPE_Ack) {
-            if (mpipe.state != MPIPE_Idle) {
-                return -1;
-            }
-            mpipe.priority  = data_priority;
-            mpipe.pktbuf    = data;
-            mpipe.pktlen    = data_length;
-        }
-#   else
-        if (mpipe.state != MPIPE_Idle) {
-            return -1;
-        }
-        mpipe.pktbuf    = data;
-#   endif
-
-    mpipe.state = MPIPE_Tx_Wait;
-
-    MPIPE_DMAEN(OFF);
-
-#if (MCU_FEATURE(MPIPEDMA) == ENABLED)
-#   if (MPIPE_DMANUM == 0)
-        DMA->CTL0  |= MPIPE_UART_TXTRIG;
-#   elif (MPIPE_DMANUM == 1)
-        DMA->CTL0  |= (MPIPE_UART_TXTRIG << 8);
-#   elif (MPIPE_DMANUM == 2)
-        DMA->CTL1   = MPIPE_UART_TXTRIG;
-#   else
-#       error MPIPE_DMANUM is set to a DMA that does not exist on this device
-#   endif
-
-    DMA->CTL4 = (DMA_Options_RMWDisable | DMA_Options_RoundRobinDisable | DMA_Options_ENMIEnable);
-
-    // add sequence id & crc to end of the datastream
-    data[data_length++] = mpipe.sequence.ubyte[UPPER];
-    data[data_length++] = mpipe.sequence.ubyte[LOWER];
-    crcval.ushort       = platform_crc_block(data, data_length);
-    data[data_length++] = crcval.ubyte[UPPER];
-    data[data_length++] = crcval.ubyte[LOWER];
-
-    MPIPE_DMA_TXCONFIG(data, data_length, ON);
-    UART_OPEN();
-    MPIPE_DMA_TXTRIGGER();
-
-    if (blocking == True) {
-    	mpipe_wait();
+#if (MPIPE_USE_ACKS)
+    if (data_priority == MPIPE_Ack)) {
+        mpipe.priority  = data_priority;
+        goto mpipe_txndef_SETUP;
     }
-
-    return data_length;
-#else
 #endif
+    if (mpipe.state == MPIPE_Idle) {
+        mpipe.state     = MPIPE_Tx_Wait
+        mpipe_txndef_SETUP:
+        mpipe.pktbuf    = data;
+        data_length     = data[2] + 6;
+        //mpipe.pktlen    = data[2] + 6;
+        MPIPE_DMAEN(OFF);
+
+#       if (MPIPE_DMANUM == 0)
+        DMA->CTL0  |= MPIPE_UART_TXTRIG;
+#       elif (MPIPE_DMANUM == 1)
+        DMA->CTL0  |= (MPIPE_UART_TXTRIG << 8);
+#       elif (MPIPE_DMANUM == 2)
+        DMA->CTL1   = MPIPE_UART_TXTRIG;
+#       endif
+
+        DMA->CTL4 = (   DMA_Options_RMWDisable | \
+                        DMA_Options_RoundRobinDisable | \
+                        DMA_Options_ENMIEnable  );
+
+        // add sequence id & crc to end of the datastream
+        data[data_length++] = mpipe.sequence.ubyte[UPPER];
+        data[data_length++] = mpipe.sequence.ubyte[LOWER];
+        crcval.ushort       = platform_crc_block(data, data_length);
+        data[data_length++] = crcval.ubyte[UPPER];
+        data[data_length++] = crcval.ubyte[LOWER];
+
+        MPIPE_DMA_TXCONFIG(data, data_length, ON);
+        UART_OPEN();
+        MPIPE_DMA_TXTRIGGER();
+
+        if (blocking) {
+           mpipe_wait();
+        }
+    }
 }
-
-
-
-
-
-void sub_activate_rx() {
-#ifdef MPIPE_RTS_PORT
-    mpipe.state = MPIPE_RxHeader;
 #endif
 
-#if (MCU_FEATURE(MPIPEDMA) == ENABLED)
-#   if (MPIPE_DMANUM == 0)
-        DMA->CTL0  |= MPIPE_UART_RXTRIG;
-#   elif (MPIPE_DMANUM == 1)
-        DMA->CTL0  |= (MPIPE_UART_RXTRIG << 8);
-#   elif (MPIPE_DMANUM == 2)
-        DMA->CTL1   = MPIPE_UART_RXTRIG;
-#   else
-#       error MPIPE_DMANUM is set to a DMA that does not exist on this device
-#   endif
-
-    DMA->CTL4 = (   DMA_Options_RMWDisable | \
-                    DMA_Options_RoundRobinDisable | \
-                    DMA_Options_ENMIEnable      );
-
-    MPIPE_DMA_RXCONFIG(mpipe.pktbuf, mpipe.pktlen, ON);
-    UART_OPEN();
-    UART_CLEAR_RXIFG();
-}
 
 
-ot_int mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
-
-#   if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
-        if (data_priority != MPIPE_Ack) {
-            if (mpipe.state != MPIPE_Idle) {
-                return -1;
-            }
-            mpipe.priority  = data_priority;
-            mpipe.pktbuf    = data;
-            mpipe.pktlen    = 6;
-        }
-#   else
-        if (mpipe.state != MPIPE_Idle) {
-            return -1;
-        }
+#ifndef EXTF_mpipe_rxndef
+void mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
+#if (MPIPE_USE_ACKS)
+    if (data_priority == MPIPE_Ack) {
+        mpipe.priority  = data_priority;
+        goto mpipe_rxndef_SETUP;
+    }
+#endif
+    if (blocking) {
+        mpipe_wait();
+    }
+    if (mpipe.state == MPIPE_Idle) {
+        //mpipe.state     = MPIPE_Idle;
+        mpipe_rxndef_SETUP:
         mpipe.pktbuf    = data;
         mpipe.pktlen    = 6;
-#   endif
+        MPIPE_DMAEN(OFF);
 
-    mpipe.state = MPIPE_Idle;
-    MPIPE_DMAEN(OFF);
-    
-#   ifndef MPIPE_RTS_PORT  
-        sub_activate_rx();
-#   endif
+#       if (MPIPE_DMANUM == 0)
+        DMA->CTL0  |= MPIPE_UART_RXTRIG;
+#       elif (MPIPE_DMANUM == 1)
+        DMA->CTL0  |= (MPIPE_UART_RXTRIG << 8);
+#       elif (MPIPE_DMANUM == 2)
+        DMA->CTL1   = MPIPE_UART_RXTRIG;
+#       endif
 
-    return 0;
-#else
+        DMA->CTL4 = (   DMA_Options_RMWDisable | \
+                        DMA_Options_RoundRobinDisable | \
+                        DMA_Options_ENMIEnable  );
+
+        MPIPE_DMA_RXCONFIG(data, 10, ON);
+        UART_OPEN();
+        UART_CLEAR_RXIFG();
+    }
+}
 #endif
-}
 
 
 
 
-void sub_rxdone() {
-	UART_CLOSE();
-	mpipe.state = MPIPE_Idle;
-#   if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
-        mpipe.priority = MPIPE_Low;
-#   endif
-
-    CALLBACK_rxdone(0);
-}
-
-void sub_txdone() {
-	UART_CLOSE();
-    mpipe.sequence.ushort++;    //increment sequence on TX Done
-    mpipe.state = MPIPE_Idle;
-#   if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
-        mpipe.priority = MPIPE_Low;
-#   endif
-
-    CALLBACK_txdone(0);
-}
-
+#ifndef EXTF_mpipe_isr
 void mpipe_isr() {
 /// MPipe is state-based.  Depending on the MPipe implementation and the HW
 /// implementation of the DMA+UART, state transitions may happen differently.
@@ -589,90 +525,112 @@ void mpipe_isr() {
 ///      Ack, and a complete RX process requires TX'ing an Ack. </LI>
 
     switch (mpipe.state) {
-        case MPIPE_Idle: //Note, case might not break
-            CALLBACK_rxdetect(0);
-#           ifdef MPIPE_RTS_PORT
-                MPIPE_CTS_PORT->DOUT   |= MPIPE_CTS_PIN;
-                sub_activate_rx();
-                break;
+        case MPIPE_Idle: //note, case doesn't break!
+#           if ((OT_FEATURE(MPIPE_CALLBACKS) == ENABLED) && !defined(EXTF_mpipe_sig_rxdetect))
+                mpipe.sig_rxdetect(0);  
+#           elif defined(EXTF_mpipe_sig_rxdetect)
+                mpipe_sig_rxdetect(0);
 #           endif
-            
-        case MPIPE_RxHeader: {
+
+        case MPIPE_RxHeader: 
             mpipe.state     = MPIPE_RxPayload;
             mpipe.pktlen   += mpipe.pktbuf[2] + MPIPE_FOOTERBYTES;
-            //@todo Might need to put in a DMA Disabler here
+            //@note DMA doesn't seem to need intermediate disabling here
             MPIPE_DMA_RXCONFIG(mpipe.pktbuf+6, mpipe.pktlen-6, ON);
-            break;
-        }
+            return;
 
         case MPIPE_RxPayload:
-#           if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
+#           if (MPIPE_USE_ACKS)
+            // ACKs must be used when Broadcast mode is off
             if (mpipe.priority != MPIPE_Broadcast) {
-                // Copy RX'ed seq into ACK
-                ot_u8*  seq_val             = &mpipe.pktbuf[mpipe.pktlen-MPIPE_FOOTERBYTES];
-                mpipe.sequence.ubyte[UPPER] = *seq_val++;
-                mpipe.sequence.ubyte[LOWER] = *seq_val;
-
-                mpipe.ackbuf[0] = 0xDD;     //NDEF message flags
-                mpipe.ackbuf[1] = 0;        //Typelen = 0
-                mpipe.ackbuf[2] = 0;        //Paylod len = 0
-                mpipe.ackbuf[3] = 2;        //ID len = 2
-                mpipe.ackbuf[4] = 0;
+                // 1. On ACKs, txndef() requires caller to choose state 
+                // 2. Copy RX'ed sequence number into local sequence number
+                // 3. Copy NACK/ACK status to 6th byte in NDEF header
+                {
+                    ot_u8* scratch;
+                    mpipe.state                 = MPIPE_TxAck_Wait;
+                    scratch                     = &mpipe.pktbuf[mpipe.pktlen-MPIPE_FOOTERBYTES];
+                    mpipe.sequence.ubyte[UPPER] = *scratch++;
+                    mpipe.sequence.ubyte[LOWER] = *scratch;
+                }
                 mpipe.ackbuf[5] = (platform_crc_block(mpipe.pktbuf, mpipe.pktlen)) ? 0x7F : 0;
-
                 mpipe_txndef(mpipe.ackbuf, False, MPIPE_Ack);
-                mpipe.state = MPIPE_TxAck_Wait;
-                break;
+                return;
             }
 #           endif
-            // Broadcast, so no ACK
-            sub_rxdone();
-            break;
+            goto mpipe_isr_RXDONE;
 
         case MPIPE_TxAck_Wait:
-        	//goto mpipe_isr_Tx_Wait;
+            MPIPE_UART->IE = UCTXIE;
+            return;
 
         case MPIPE_TxAck_Done:  // TX'ed an ACK
-        	//MPIPE_UART->IE = 0;
-#           if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
+            MPIPE_UART->IE = 0;
+#           if (MPIPE_USE_ACKS)
             if (mpipe.ackbuf[5] != 0) { // TX'ed a NACK
                 mpipe_rxndef(mpipe.pktbuf, False, mpipe.priority);
                 mpipe.state = MPIPE_RxHeader;
-                break;
+                return;
             }
 #           endif
-            sub_rxdone();
-            break;
+            goto mpipe_isr_RXDONE;
 
         case MPIPE_Tx_Wait:
-        //mpipe_isr_Tx_Wait:
-        	//MPIPE_UART->IE = UCTXIE;
-            //break;
+            MPIPE_UART->IE = UCTXIE;
+            return;
 
         case MPIPE_Tx_Done:
-        	//MPIPE_UART->IE = 0;
-#           if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
-        	if (mpipe.priority != MPIPE_Broadcast) {
+            MPIPE_UART->IE = 0;
+#           if (MPIPE_USE_ACKS)
+            if (mpipe.priority != MPIPE_Broadcast) {
                 mpipe_rxndef(mpipe.ackbuf, False, MPIPE_Ack);
                 mpipe.state = MPIPE_RxAck;
-                break;
+                return;
             }
-#       	endif
-            sub_txdone();  // Broadcast, so no ACK
-        	break;
-
+            goto mpipe_isr_TXDONE;  // Broadcast, so no ACK
+#           endif
+            
         case MPIPE_RxAck:
-#           if (BOARD_FEATURE(USBCONVERTER) != ENABLED)
+#           if (MPIPE_USE_ACKS)
             if (platform_crc_block(mpipe.ackbuf, 10) != 0) { //RX'ed NACK
                 mpipe_txndef(mpipe.pktbuf, False, mpipe.priority);
                 break;
             }
 #           endif
-            //RX'ed ACK
-            sub_txdone();
-            break;
+            goto mpipe_isr_TXDONE;  //RX'ed ACK
+            
+       default: mpipe_kill();
+                return;
     }
+    
+    // This is a stack-less RX-Done subroutine
+    mpipe_isr_RXDONE:
+    UART_CLOSE();
+    mpipe.state = MPIPE_Idle;
+#   if (MPIPE_USE_ACKS)
+        mpipe.priority = MPIPE_Low;
+#   endif
+#   if ((OT_FEATURE(MPIPE_CALLBACKS) == ENABLED) && !defined(EXTF_mpipe_sig_rxdone))
+        mpipe.sig_rxdone(0);
+#   elif defined(EXTF_mpipe_sig_rxdone)
+        mpipe_sig_rxdone(0);
+#   endif
+    return;
+    
+    // This is a stack-less TX-Done subroutine
+    mpipe_isr_TXDONE:
+    UART_CLOSE();
+    mpipe.state = MPIPE_Idle;
+    mpipe.sequence.ushort++;    //increment sequence on TX Done
+#   if ((OT_FEATURE(MPIPE_CALLBACKS) == ENABLED) && !defined(EXTF_mpipe_sig_txdone))
+        mpipe.sig_txdone(0);
+#   elif defined(EXTF_mpipe_sig_txdone)
+        mpipe_sig_txdone(0);
+#   endif
 }
+#endif
+
+
 
 
 #endif

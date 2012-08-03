@@ -172,8 +172,8 @@
   * callback (otapi_ndef_proc) if you are building an NDEF server command pipe.
   */
 
-void otapi_ndef_idle(ot_int code);
-void otapi_ndef_proc(ot_int code);
+void otapi_ndef_idle(void* tmpl);
+void otapi_ndef_proc(void* tmpl);
 #endif
 
 
@@ -232,29 +232,28 @@ typedef enum {
 #if (OT_FEATURE(LOGGER) == ENABLED)
 
 /** @brief  Loads a Logger header into the output queue
-  * @param  id_subcode	(ot_u8) ALP Subcode field
+  * @param  id_subcode	   (ot_u8) ALP Subcode field
   * @param  payload_length (ot_int) length of payload
-  * @retval None
+  * @retval ot_bool        Returns False if the mpipe out-queue is out of space
   * @ingroup OTAPI_c
   *
   * This is for expert use, such as if you are loading formatted data into the
   * log buffer, and you don't want to double buffer.
   */
-void otapi_log_header(ot_u8 id_subcode, ot_int payload_length);
+ot_bool otapi_log_header(ot_u8 id_subcode, ot_int payload_length);
 
 
 
 /** @brief  Log a datastream directly (no double buffering)
-  * @param  data    (ot_u8*) the pre-formatted datastream (NDEF)
+  * @param  None
   * @retval ot_u16  0 on failure, non-zero on non-failure
   * @ingroup OTAPI_c
   *
   * This is the fastest way to log, but the data must be already formatted into
-  * logging format (for official ports, this is NDEF).  The data pointed-to by
-  * the data parameter is not double-buffered into an output buffer, so use it
-  * cautiously.
+  * logging format (for official ports, this is NDEF) and stored in the MPIPE
+  * output queue.
   */
-void otapi_log_direct(ot_u8* data);
+void otapi_log_direct();
 
 
 

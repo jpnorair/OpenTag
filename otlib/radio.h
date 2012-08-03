@@ -116,7 +116,7 @@ extern phymac_struct   phymac[M2_PARAM_MI_CHANNELS];
   * on the MCU.  If you do not have a DMA on your micro, make sure you are using
   * a radio with a FIFO because you need to have one or the other.
   */
-#if (RF_FEATURE(FIFO) == ENABLED)
+#if (RF_FEATURE_FIFO == ENABLED)
 #   define RADIO_BUFFER_TXMAX        RF_FEATURE(TXFIFO_BYTES)
 #   define RADIO_BUFFER_RXMAX        RF_FEATURE(RXFIFO_BYTES)
 #else

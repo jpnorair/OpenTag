@@ -1,4 +1,4 @@
-/*  Copyright 2011 JP Norair
+/*  Copyright 2011-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       OTlib/OT_utils.h
+  * @file       /otlib/OT_utils.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       1 Jan 2011
+  * @date       31 July 2012
   * @brief      Utility definitions and macros for OpenTag
   *
   ******************************************************************************

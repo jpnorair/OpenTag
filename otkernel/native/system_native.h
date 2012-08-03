@@ -134,7 +134,9 @@ typedef struct {
 #   endif
 #   if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED)
         ot_bool (*loadapp)(void);
+#   ifndef EXTF_sys_sig_panic
         ot_sig  panic;
+#   endif
 #   endif
 	
 } sys_struct;

@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTplatform/MSP430F5/veelite_core_X2_MSP430F5.c
+  * @file       /otplatform/msp430f5/veelite_core_X2_MSP430F5.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       05 November 2010
+  * @date       31 July 2012
   * @brief      X2 Method for Veelite Core Functions
   * @ingroup    Veelite
   *
@@ -74,10 +74,16 @@
 #define NAND_erase_page(page_addr)      (ot_u8)FLASH_EraseSegment(page_addr)
 #define NAND_write_short(addr, data)    (ot_u8)FLASH_WriteShort(addr, data)
 
+/// VLX2 Debugging
+/// This driver is quite stable, so debugging features are not implemented
+/// even when DEBUG_ON is active
+#ifdef DEBUG_ON
+//#   define VLX2_DEBUG_ON
+#endif
 
 /// Set Segmentation Fault (code 11) if trying to access an invalid virtual
 /// address.  Vector to User NMI (CC430 Specific)
-#if ((defined DEBUG_ON) && (LOG_FEATURE(FAILS) == ENABLED))
+#if ((defined VLX2_DEBUG_ON) && (LOG_FEATURE(FAILS) == ENABLED))
 #   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
         do { \
             if (vas_check(ADDR) != BANK) { \
@@ -86,7 +92,7 @@
             } \
         } while (0)
 
-#elif ((defined DEBUG_ON) && (LOG_FEATURE(FAILS) == DISABLED))
+#elif ((defined VLX2_DEBUG_ON) && (LOG_FEATURE(FAILS) == DISABLED))
 #   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
         do { \
             if (vas_check(ADDR) != BANK) { \
@@ -95,8 +101,7 @@
         } while (0)
 
 #else
-#   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
-        while(0)
+#   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG);
 
 #endif
 
@@ -376,7 +381,7 @@ ot_u8 vworm_init( ) {
 
 #ifndef EXTF_vworm_print_table
 void vworm_print_table() {
-#ifdef DEBUG_ON
+#ifdef VLX2_DEBUG_ON
 //    ot_int i;
 //
 //    printf("VWORM X2table: Primaries\n");
@@ -454,7 +459,7 @@ ot_u16 vworm_read(vaddr addr) {
     ot_int  offset;
     ot_int  index;
 
-    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_457");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_462");   //__LINE__
 
     /// 1.  Resolve the vaddr directly
     offset  = addr & (VWORM_PAGESIZE-1);
@@ -490,7 +495,7 @@ ot_u8 vworm_write(vaddr addr, ot_u16 data) {
     ot_u16* p_ptr;
     ot_u16* a_ptr;
 
-    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_493");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_498");   //__LINE__
 
     /// 1.  Resolve the vaddr directly
     offset  = addr & (VWORM_PAGESIZE-1);
@@ -560,7 +565,7 @@ ot_u8 vworm_mark(vaddr addr, ot_u16 value) {
 ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
     BUSERROR_CHECK( (((ot_u16)addr < VWORM_BASE_PHYSICAL) || \
-                    ((ot_u16)addr >= (VWORM_BASE_PHYSICAL+VWORM_ALLOC))), 7, "VLC_563");    //__LINE__
+                    ((ot_u16)addr >= (VWORM_BASE_PHYSICAL+VWORM_ALLOC))), 7, "VLC_568");    //__LINE__
 
     return NAND_write_short(addr, value);
 #else
@@ -599,7 +604,7 @@ ot_u16 vsram_read(vaddr addr) {
 #if (VSRAM_SIZE <= 0)
     return 0;
 #else
-    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_602");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_607");   //__LINE__
     addr -= VSRAM_BASE_VADDR;
     addr >>= 1;
     return vsram[addr];
@@ -614,7 +619,7 @@ ot_u8 vsram_mark(vaddr addr, ot_u16 value) {
 #if (VSRAM_SIZE <= 0)
     return ~0;
 #else
-    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_617");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_622");   //__LINE__
     addr 		   -= VSRAM_BASE_VADDR;
     vsram[addr>>1]  = value;
     return 0;
@@ -642,7 +647,7 @@ ot_u8* vsram_get(vaddr addr) {
     return NULL;
 #else
     ot_u8* output;
-    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_646");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_650");   //__LINE__
     addr   -= VSRAM_BASE_VADDR;
     output  = (ot_u8*)vsram + addr;
     return output;

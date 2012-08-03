@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       OT_types.h
+  * @file       /otlib/OT_types.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       1 Jan 2011
+  * @date       21 July 2012
   * @brief      Common casted types
   *
   ******************************************************************************
@@ -37,7 +37,7 @@
   */
 
 // Reset these if already defined.  
-// True/False is defined in Bool type (see types section)
+// True/False is defined in ot_bool type (see types section)
 #   ifdef True
 #       undef    True
 #   endif
@@ -69,8 +69,22 @@
 /** @typedef ot_bool
   * Boolean, takes True or False
   */
-typedef enum { False = 0, True = !False } ot_bool;
-    
+#ifdef __STDC_VERSION__
+#   if (__STDC_VERSION__ >= 199901L)
+#       define __HAS_C99
+#   endif
+#endif
+#ifdef __HAS_C99
+#   include <stdbool.h>
+#   define ot_bool  bool
+#   define True     true
+#   define False    false
+#else
+    typedef enum { False = 0, True = !False } ot_bool;
+#endif
+
+
+
 /** @typedef ot_s8
   * equivalent to @c signed @c char
   */

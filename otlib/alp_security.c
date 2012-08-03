@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/alp_sensor.c
+  * @file       /otlib/alp_sensor.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       1 July 2011
+  * @date       20 July 2012
   * @brief      ALP to Security protocol processor
   * @ingroup    ALP
   *
@@ -39,8 +39,7 @@
 
 
 // No implementaton yet!
-void alp_proc_sec_example(alp_record* in_rec, alp_record* out_rec,
-                            Queue* in_q, Queue* out_q, id_tmpl* user_id    ) {
+void alp_proc_sec_example(alp_tmpl* alp, id_tmpl* user_id    ) {
     
 }
 

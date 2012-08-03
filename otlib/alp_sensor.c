@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/alp_sensor.c
+  * @file       /otlib/alp_sensor.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       1 July 2011
+  * @date       20 July 2011
   * @brief      ALP to Sensor protocol processor
   * @ingroup    ALP
   *
@@ -39,8 +39,7 @@
 
 
 // No implementaton yet!
-void alp_proc_sensor(alp_record* in_rec, alp_record* out_rec, 
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id    ) {
+void alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id    ) {
     
 }
 

@@ -1,0 +1,18 @@
+# Response Data-Shell for basic Upper-layer testing
+
+# Test 1: Broadcast Announcement of Protocol List ISF (should respond with ACK)
+d12 d80 x11 [20 45 20] [1DB0] [1DAA] [00] [00];
+
+# Test 2: Broadcast Inventory on Network Settings ISF
+d12 d80 x11 [20 10 20] [1DB0] [1DAA] [00] [02];
+
+# Test 3: Broadcast Collection on Network Settings ISF, of first 16 bytes from 
+#         Device Features ISF
+d31 d80 x11 [20 16 20] [1DB0] [1DAA] [00] [04] 
+[01 00 30 1DAAAA1DBBBBBBB0 06C6 FF 01 0000 0000];
+
+# Test 4: Anycast Collection on Devices that use OpenTag firmware, of first 26 
+#         bytes from Device Discovery ISFS
+d48 d80 x11 [20 21 20] [1DB0] [1DAA] [00] [06] [10 02 0000 003A] 
+[00 0A] [01 30] [1DB0 11 00 04C6 00 03 0100]
+[1DAAAA1DBBBBBBB0 06C6 FF 01 0000 0000];

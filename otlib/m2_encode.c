@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/m2_encode.c
+  * @file       /otlib/m2_encode.c
   * @author     JP Norair
   * @version    V2.0
-  * @date       01 Feb 2011
+  * @date       31 Jul 2012
   * @brief      Mode 2 SW Encoding support
   * @ingroup    Encode
   * 
@@ -578,7 +578,8 @@ void em2_encode_newframe() {
 #   if (RF_FEATURE(CRC) != ENABLED)
 		if (txq.options.ubyte[UPPER] != 0) {
 			crc_init_stream(txq.length, txq.front);
-        	txq.length  += 2;
+			txq.putcursor   += 2;
+        	txq.length      += 2;
 		}
 #   endif
 

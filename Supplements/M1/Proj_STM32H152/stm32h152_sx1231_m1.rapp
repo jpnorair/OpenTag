@@ -1,0 +1,86 @@
+
+<ApplicationBuild Header="stm32h152_sx1231_m1" Extern=".\stm32h152_sx1231_m1.rapp" Path=".\stm32h152_sx1231_m1.rapp" OutputFile=".\stm32h152_sx1231_m1.elf" sate="96" >
+	<Group Header="CMSIS" Marker="-1" OutputFile="" sate="96" >
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\CMSIS\CM3\CoreSupport\core_cm3.c" Header="core_cm3.c" Marker="-1" OutputFile=".\core_cm3.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\CMSIS\CM3\DeviceSupport\ST\STM32L1xx\system_stm32l1xx.c" Header="system_stm32l1xx.c" Marker="-1" OutputFile=".\system_stm32l1xx.o" sate="0" />
+						
+	</Group>
+	<Group Header="StdPeriph_Driver" Marker="-1" OutputFile="" sate="96" >
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_gpio.c" Header="stm32l1xx_gpio.c" Marker="-1" OutputFile=".\stm32l1xx_gpio.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_dma.c" Header="stm32l1xx_dma.c" Marker="-1" OutputFile=".\stm32l1xx_dma.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_usart.c" Header="stm32l1xx_usart.c" Marker="-1" OutputFile=".\stm32l1xx_usart.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_tim.c" Header="stm32l1xx_tim.c" Marker="-1" OutputFile=".\stm32l1xx_tim.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_spi.c" Header="stm32l1xx_spi.c" Marker="-1" OutputFile=".\stm32l1xx_spi.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_rcc.c" Header="stm32l1xx_rcc.c" Marker="-1" OutputFile=".\stm32l1xx_rcc.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_dbgmcu.c" Header="stm32l1xx_dbgmcu.c" Marker="-1" OutputFile=".\stm32l1xx_dbgmcu.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_syscfg.c" Header="stm32l1xx_syscfg.c" Marker="-1" OutputFile=".\stm32l1xx_syscfg.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\misc.c" Header="misc.c" Marker="-1" OutputFile=".\misc.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_adc.c" Header="stm32l1xx_adc.c" Marker="-1" OutputFile=".\stm32l1xx_adc.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_pwr.c" Header="stm32l1xx_pwr.c" Marker="-1" OutputFile=".\stm32l1xx_pwr.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_exti.c" Header="stm32l1xx_exti.c" Marker="-1" OutputFile=".\stm32l1xx_exti.o" sate="0" />
+						
+	</Group>
+	<Group Header="RIDE" Marker="-1" OutputFile="" sate="96" >
+		<NodeASM Path="..\..\..\Platforms\~MCU_STM32\CMSIS\CM3\DeviceSupport\ST\STM32L1xx\startup\gcc_ride7\startup_stm32l1xx_md.s" Header="startup_stm32l1xx_md.s" Marker="-1" OutputFile=".\startup_stm32l1xx_md.o" sate="0" />
+						
+	</Group>
+	<Group Header="OTlib" Marker="-1" OutputFile="" sate="96" >
+		<NodeC Path="..\..\..\OTlib\queue.c" Header="queue.c" Marker="-1" OutputFile=".\queue.o" sate="0" />
+		<NodeC Path="..\..\..\OTlib\buffers.c" Header="buffers.c" Marker="-1" OutputFile=".\buffers.o" sate="0" />
+						
+	</Group>
+	<Group Header="Platform" Marker="-1" OutputFile="" sate="96" >
+		<NodeC Path="..\..\..\Platforms\STM32H152\platform_STM32H152.c" Header="platform_STM32H152.c" Marker="-1" OutputFile=".\platform_STM32H152.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\STM32H152\debug_uart.c" Header="debug_uart.c" Marker="-1" OutputFile=".\debug_uart.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\STM32H152\M1_radio_SX1231.c" Header="M1_radio_SX1231.c" Marker="-1" OutputFile=".\M1_radio_SX1231.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\STM32H152\mpipe.c" Header="mpipe.c" Marker="-1" OutputFile=".\mpipe.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\STM32H152\spi_sx1231.c" Header="spi_sx1231.c" Marker="-1" OutputFile=".\spi_sx1231.o" sate="0" />
+		<NodeC Path="..\..\..\Platforms\STM32H152\M1_sx1231_stm32l1xx_it.c" Header="M1_sx1231_stm32l1xx_it.c" Marker="-1" OutputFile=".\M1_sx1231_stm32l1xx_it.o" sate="0" />
+						
+	</Group>
+	<Group Header="App" Marker="-1" OutputFile="" sate="98" >
+		<NodeC Path="..\Code\m1_interrogator.c" Header="m1_interrogator.c" Marker="-1" OutputFile=".\m1_interrogator.o" sate="0" />
+						
+	</Group>
+	<Options>
+		<Config Header="Standard" >
+			<Set Header="ApplicationBuild" >
+				<Section Header="General" >
+					<Property Header="TargetFamily" Value="ARM" />
+																																		
+				</Section>
+				<Section Header="Directories" >
+					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;..\..\..\Platforms\~MCU_STM32\CMSIS\CM3\CoreSupport;..\..\..\Platforms\~MCU_STM32\CMSIS\CM3\DeviceSupport\ST\STM32L1xx;..\..\..\Platforms\~MCU_STM32\STM32L1xx_StdPeriph_Driver\inc;..\Code;..\..\..\OTlib;..\..\..\Platforms\STM32H152" Removable="1" />
+																									
+				</Section>
+																			
+			</Set>
+			<Set Header="Target" >
+				<Section Header="ProcessorARM" >
+					<Property Header="Processor" Value="STM32L152VBT6" />
+																																		
+				</Section>
+				<Section Header="ToolSetARM" >
+					<Property Header="BuildToolSetARM" Value="ARM\GNU.config" />
+																																		
+				</Section>
+																										
+			</Set>
+			<Set Header="GCC" >
+				<Section Header="Defines" >
+					<Property Header="Defines" Value="USE_STDPERIPH_DRIVER;RADIO_DEBUG;APP_CONSOLE;WIDE_DYNAMIC_RANGE" Removable="1" />
+							
+				</Section>
+					
+			</Set>
+			<Set Header="LD" >
+				<Section Header="Startup" >
+					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
+					<Property Header="File" Value="" Removable="1" />
+																									
+				</Section>
+																			
+			</Set>
+		</Config>
+	</Options>
+</ApplicationBuild>

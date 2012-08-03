@@ -13,7 +13,7 @@
   * limitations under the License.
   */
 /**
-  * @file       /apps/demo_paLFi/code/app_config.h
+  * @file       /apps/demo_palfi/code/app_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    V1.0
   * @date       16 April 2012

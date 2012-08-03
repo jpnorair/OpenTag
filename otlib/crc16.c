@@ -1,4 +1,4 @@
-/* Copyright 2009-2011 JP Norair
+/* Copyright 2009-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/crc16.c
+  * @file       /otlib/crc16.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       14 November 2011
+  * @date       31 July 2012
   * @brief      Implements block and iterative calculation methods for CRC as
   *             described in the ISO 18000-7 standard document.
   * @ingroup    CRC16
@@ -176,14 +176,13 @@ void sub_calc_byte() {
 
 
 void sub_stream2() {
-    *crc.end 	= (ot_u8)crc.val;
-    crc.stream 	= &otutils_null;
+    *crc.cursor++   = (ot_u8)crc.val;
+    crc.stream 	    = &otutils_null;
 }
 
 void sub_stream1() {
-    *crc.end    = (ot_u8)(crc.val >> 8);
-    crc.end++;
-    crc.stream  = &sub_stream2;
+    *crc.cursor++   = (ot_u8)(crc.val >> 8);
+    crc.stream      = &sub_stream2;
 }
 
 void sub_stream0() {
@@ -197,8 +196,6 @@ void sub_stream0() {
     sub_calc_byte();
     if (crc.cursor == crc.end) {
         crc.stream = &sub_stream1;
-        //crc.end[-2] = crc.val[UPPER];
-        //crc.end[-1] = crc.value.ubyte[LOWER];
     }
 #endif
 }
@@ -215,12 +212,10 @@ ot_u16 crc_calc_block(ot_int block_size, ot_u8* block_addr) {
 #if (MCU_FEATURE(CRC) == ENABLED)
     platform_crc_init();
     crc.cursor = block_addr;
-    crc.end    = block_addr + block_size;
     crc.val    = platform_crc_block(block_addr, block_size);
     
 #else
     crc.cursor = block_addr;
-    //crc.end    = block_addr + block_size;
     crc.val    = CRCBASE;
 
     while (block_size > 0) {
@@ -236,18 +231,19 @@ ot_u16 crc_calc_block(ot_int block_size, ot_u8* block_addr) {
 
 
 
-void crc_init_stream(ot_int stream_size, ot_u8* stream_addr) {
+void crc_init_stream(ot_int stream_size, ot_u8* stream) {
 #if (MCU_FEATURE(CRC) == ENABLED)
-    crc.cursor  = stream_addr;
-    crc.end     = stream_addr + stream_size;
+    crc.cursor  = stream;
+    crc.end     = stream+stream_size;
     crc.stream  = &sub_stream0;
     crc.val     = platform_crc_init();
 
 #else
-    crc.cursor  = stream_addr;
-    crc.end     = stream_addr + stream_size;
+    crc.cursor  = stream;
+    crc.end     = stream+stream_size;
     crc.stream  = &sub_stream0;
     crc.val     = CRCBASE;
+
 #endif
 }
 
@@ -260,11 +256,9 @@ void crc_calc_stream() {
 }
 
 
-
-void crc_update_stream(ot_u8* new_end) {
-    crc.end = new_end;
-}
-
+//void crc_update_stream(ot_u8* new_end) {
+//    crc.end = new_end;
+//}
 
 
 ot_bool crc_check() {
@@ -272,15 +266,9 @@ ot_bool crc_check() {
 }
 
 
-
 ot_u16 crc_get() {
     return crc.val;
 }
-
-
-
-
-
 
 
 

@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,58 +14,79 @@
   *
   */
 /**
-  * @file       /OTlib/ndef.h
+  * @file       /otlib/ndef.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       8 Jun 2011
-  * @brief      OpenTag API for NDEF data format (typically used for wireline messaging)
+  * @date       31 July 2012
+  * @brief      OpenTag NDEF Interface
   * @defgroup   NDEF
   *
-  * Please refer to free documentation available on the NFCForum website if you
-  * want to learn more about NDEF.  You probably need a basic understanding of
-  * NDEF in order to use the messaging API.  There is some limited documentation
-  * paraphrased below from the DASH7 Mode 2 spec and NDEF spec.
-  *
-  * OpenTag API Messages follow the Application Subprotocol rubric, which is
-  * shown below.  This format is encapsulated in NDEF when transmitted over the
-  * API Messaging Interface (usually a 1:1 wireline, like USB/Serial)
-  * +----------------+----------------+----------------+----------------+
-  * | Directive Len  |  Directive ID  | Directive Cmd  | Directive Data |
-  * +----------------+----------------+----------------+----------------+
-  * |    2 Bytes     |    1 Byte      |    1 Byte      |    N-4 Bytes   |
-  * +----------------+----------------+----------------+----------------+
-  * |       N        | encoded value  | encoded value  |   bytestream   |
-  * | (unsigned int) |    (char)      |    (char)      |    (char[])    |
-  * +----------------+----------------+----------------+----------------+
-  *
-  * When encapsulated in NDEF, the above message format is slightly altered.
-  * An NDEF Message consists of multiple "Records," which is an identical 
-  * concept to the way a Subprotocol Message can contain multiple (batched)
-  * Directives.  But the NDEF format has some additional overhead that we honor
-  * (because we like NFC and Android).
+  * NDEF is a data wrapping format/protocol developed by the NFC Forum, and it
+  * is primarily used as a client-server data wrapper for NFC devices.  OpenTag
+  * also can use a subset of NDEF for client-server interfacing.  The DASH7 ALP
+  * format is a streamlined version of NDEF, so the ALP module is used to 
+  * process NDEF formatted data as well as Pure-ALP data.
   * 
-  *   07   06   05   04   03   02   01   00        OpenTag Subset Usage
+  * Please refer to free documentation available on the NFCForum website if you
+  * want to learn more about NDEF.  You can also look at the OpenTag wiki, 
+  * which has a good summary of NDEF and ALP: http://wiki.indigresso.com.  
+  * Additionally, there is some information below.
+  *
+  * <PRE>
+  * OpenTag uses two types of NDEF headers, both shown below:
+  * 
+  * 0             8         16            24       32       40        48
+  * +------------+----------+-------------+--------+--------+---------+
+  * | NDEF Flags | Type Len | Payload Len | ID Len | ALP ID | ALP CMD |
+  * +------------+----------+-------------+--------+--------+---------+
+  * |  bitfield  |    0     |      N      |   2    |   X    |    Y    |
+  * +------------+----------+-------------+--------+--------+---------+
+  * Message initiation header type: flags are always 1--11101 (Unknown TNF),
+  * so this header is always used as the first record in the NDEF message.
+  * The N-byte payload follows the header, and then the record is over.
+  *
+  * 0             8         16            24
+  * +------------+----------+-------------+
+  * | NDEF Flags | Type Len | Payload Len |
+  * +------------+----------+-------------+
+  * |  bitfield  |    0     |      N      |
+  * +------------+----------+-------------+
+  * Message continuation header type: flags are always 0--10110 (Unchanged TNF),
+  * so this header is never the first record in the NDEF message, but it is
+  * always the subsequent record header in the NDEF message.  The N-byte payload
+  * follows the header, and then the record is over.
+  *
+  * 0             8            16       24        32
+  * +------------+-------------+--------+---------+
+  * | ALP Flags  | Payload Len | ALP ID | ALP CMD |
+  * +------------+-------------+--------+---------+
+  * |  bitfield  |      N      |   X    |    Y    |
+  * +------------+-------------+--------+---------+
+  * Universal ALP header (for comparison): flags are always --z10000.  The 
+  * NDEF chunk flag (z) is ignored, as the values of MB and ME are sufficent to 
+  * implicitly determine the value of the chunk flag.
+  *
+  *
+  * Below is the complete NDEF header spec, with OpenTag usage notes
+  * 
+  *   07   06   05   04   03   02   01   00        OpenTag NDEF Subset Usage
   * +----+----+----+----+----+----+----+----+  =================================
-  * | MB | ME | CF | SR | IL |     TNF      |  --> xxx11101 or 0xx10110
+  * | MB | ME | CF | SR | IL |     TNF      |  --> 1--11101 or 0--10110
   * +----+----+----+----+----+----+----+----+
-  * |      TYPE LENGTH (1 Byte: TLEN)       |  --> Always zero
+  * |      TYPE LENGTH (1 Byte: TLEN)       |  --> Always present, Value = 0
   * +----+----+----+----+----+----+----+----+
-  * |  PAYLOAD LENGTH (1 or 4 Bytes: PLEN)  |  --> Always one byte, 0-255
+  * |  PAYLOAD LENGTH (1 or 4 Bytes: PLEN)  |  --> 1 byte on SR=1, Value = 0-255
   * +----+----+----+----+----+----+----+----+
-  * |    ID LENGTH (0 or 1 Bytes: IDLEN)    |  --> When IL=1, value always is 2
+  * |    ID LENGTH (0 or 1 Bytes: IDLEN)    |  --> Present on IL=1, Value = 2
   * +----+----+----+----+----+----+----+----+
   * |          TYPE (TLEN Bytes)            |  --> Never present
   * +----+----+----+----+----+----+----+----+
-  * |           ID (IDLEN Bytes)            |  --> When IL=1, Two bytes
+  * |           ID (IDLEN Bytes)            |  --> Present on IL=1, 2 bytes
   * +----+----+----+----+----+----+----+----+
   * |         PAYLOAD (PLEN Bytes)          |  --> 0-255 bytes
   * +----+----+----+----+----+----+----+----+
   * 
-  * For Application Layer Protocol directives packed inside NDEF records:
-  * - Initial TNF uses the UNKNOWN setting, with TLEN=0 and no TYPE Field
-  * - Subsequent TNFs (if chunking) use UNCHANGED
-  * - the ID is always a 2 byte value containing the Directive ID and Cmd
-  * - Directive Length is subtracted by 4 and stored in Payload Length field
+  * </PRE>
   ******************************************************************************
   */
 
@@ -73,8 +94,6 @@
 #define __NDEF_H
 
 #include "OT_config.h"
-
-#if (OT_FEATURE(NDEF) == ENABLED)
 
 #include "OT_types.h"
 #include "OTAPI_tmpl.h"
@@ -120,180 +139,6 @@ typedef enum {
     TNF_Unchanged,
     TNF_Reserved
 } NDEF_tnf;
-
-
-typedef enum {
-    MSG_Null        = 0,
-    MSG_Chunking_In = 1,
-    MSG_Chunking_Out= 2,
-    MSG_End         = 3
-} NDEF_status;
-
-
-
-
-/** ndef_message is an internal data store that is exposed only for purposes of
-  * transparency (this is an open source project).
-  */
-typedef struct {
-    //Queue*  msgq;
-    ot_u8   last_flags;
-    //ot_u8   msg_tnf;
-    //ot_int  msg_records;
-} ndef_message;
-
-//If you want to expose the message data store, uncomment this.
-//extern ndef_message ndef;
-
-
-
-
-/** @brief  Begins a new message.  A message can contain one or more records.
-  * @param  output      (Queue*) Pointer to Queue where record/message is buffered
-  * @retval ot_bool      False/True when output parameter is Null/Non-Null
-  * @ingroup NDEF
-  *
-  * The output parameter should point to a Queue that is persistent in memory or
-  * at lest persistent during the processing of the message.  In other terms, if
-  * you have the Queue declared in the C stack (i.e. within a function), make 
-  * sure that function does not return prior to the message being sent (this 
-  * will cause the C stack to pop the Queue declaration before the NDEF message
-  * is finished operating on it).  If you declare the Queue in persistent 
-  * memory, there is nothing to worry about.
-  *
-  * If otapi_new_ndefmsg is called while another message is being built, the
-  * latter call will wipe-out the prior message.
-  */
-ot_bool ndef_new_msg(Queue* output);
-
-
-
-
-/** @brief  Creates a new record.  A message can contain one or more records.
-  * @param  record      (alp_record*) Pointer to struct containing record attributes
-  * @param  record_data (ot_u8*) Payload data for the record
-  * @param  output      (Queue*) Queue for output message (usually &dir_out)
-  * @retval ot_bool     False/True on error/no error
-  * @ingroup NDEF
-  *
-  * The record payload does not need to be double buffered.  If parameter 
-  * record_data == NULL, no bytes will be written to the output queue,
-  * and the queue putcursor will stay at the insertion point of the payload.
-  * This allows the user to manually load data into the record via the queue
-  * write functions (see queue.h).  If the user fails to load in the appropriate
-  * amount of bytes, as indicated by the record->payload_length parameter, the
-  * next call to otapi_new_ndefrec() or otapi_send_ndefmsg() will automatically 
-  * crop or pad the payload in order to make sure that the length value written
-  * to the record matches exactly the number of bytes in the payload.  While 
-  * this feature will protect the record structure, it may corrupt the data. 
-  * Therefore, the user should take steps to ensure the payload data is loaded
-  * to the output queue accurately.
-  *
-  * The return value will report an error when the record parameter is 
-  * malformed.  On error, nothing will be written the message queue.
-  */
-ot_bool ndef_new_record(alp_record* record, ot_u8* record_data, Queue* output);
-
-
-
-
-/** @brief  Sends over Mpipe the NDEF message stored in the suppiled queuep
-  * @param  output      (Queue*) Queue containing output data from Queue.front
-  * @retval void
-  * @ingroup NDEF
-  *
-  * ndef_send_msg() will automatically align the data in the queue to match the
-  * specifications of the NDEF message & record headers.  Then it will push this
-  * data to the Mpipe.
-  */
-void ndef_send_msg(Queue* output);
-
-
-
-
-
-/** @brief  Loads a queue into the NDEF module, for later parsing
-  * @param  input       (Queue*) Pointer to Queue where record/message is buffered
-  * @retval ot_bool     False/True when input parameter is Null/Non-Null
-  * @ingroup NDEF
-  * @sa ndef_send_msg()
-  *
-  * This is the RX version of ndef_send_msg().  It does not actually parse any
-  * data, but it must be called before calling otapi_parse_ndefrec() is called.
-  */
-ot_bool ndef_load_msg(Queue* input);
-
-
-
-
-
-/** @brief  Parses received NDEF data
-  * @param  in_q        (Queue*) Input data queue
-  * @param  out_q       (Queue*) Output data queue
-  * @retval NDEF_status Enumerated value of parsing & message status
-  * @ingroup NDEF
-  *
-  * The function returns:
-  * <LI> MSG_End when processing is done and there is a response    </LI>
-  * <LI> MSG_Null if processing is done and there is no response    </LI>
-  * <LI> MSG_Chunking_In if the message is not finished being received  </LI>
-  * <LI> MSG_Chunking_Out if processing is underway and response must be chunked out </LI>
-  * 
-  * This function is called "ndef_parse_record" because it works at the record
-  * level, but it also manages most of the message handling.  In typical usage
-  * it is called when MPipe finishes receiving a packet.  Because it does do
-  * some message handling, if the total message is assembled across multiple
-  * frames/records, this function will only do processing once the message is
-  * fully transfered or if the chunk bit is set.
-  *
-  * A good usage example is in otapi_ndef_proc() (implemented inside ndef.c).
-  * In the main app code, if the mpipe RXDONE callback is set to this, that is
-  * a sufficient implementation in most cases.
-  * 
-  * In almost all circumstances, out_q should be &dir_out (see buffers.h). in_q
-  * is more flexible, but it is usually &dir_in.  The parameters for in_rec and
-  * out_rec just need to be allocated by the caller.  The caller can use them
-  * for additional visibility into the NDEF parsing process, if desired.
-  *
-  * @note Parsing Capability Limitations
-  * This version of the function is experimental and it is not designed to work
-  * with record chunking (on input or output) or NDEF messages longer than the
-  * input or output queues (nominally, 256 bytes).  In some cases it might work
-  * with such long messages, but in other cases it might not.  In production
-  * environments, keep total message length less than the allocation of dir_in.
-  *
-  * @note Usability of NDEF within OpenTag
-  * At this time, OpenTag uses only a subset of NDEF.  Therefore, any records
-  * that do not conform to this feature subset will be ignored.  The subset is
-  * of the "UNKNOWN" TNF, where the ID is two bytes and the payload contents are
-  * defined by the ID bytes.  The documentation at the top of this header file
-  * goes into greater detail on this topic.
-  */
-NDEF_status ndef_parse_record(Queue* in_q, Queue* out_q);
-
-
-
-
-
-
-
-/** Bonus functions (implementation is optional, and pending).  These are 
-  * similar in design to Android (Gingerbread) NDEF API, although they are not
-  * designed in a way that makes much sense for embedded usage (Not my fault,
-  * Google's fault for designing an API with lots of data bufferring, a typical
-  * design problem of OO projects).
-  *
-  * If you have a heavy client (like a PC or an OMAP), you may seek to implement
-  * these on the client side.  They will probably never go into the server side.
-  */
-
-///void ndef_assemble_record(Queue* output, ndef_record* record);
-///void ndef_assemble_message(Queue* output, ot_int num_records, ndef_record* record_array);
-///void ndef_copy_record(Queue* output, ot_uint data_length ot_u8* data);
-///void ndef_copy_message(Queue* output, ot_uint data_length ot_u8* data);
-
-
-#endif
 
 
 #endif

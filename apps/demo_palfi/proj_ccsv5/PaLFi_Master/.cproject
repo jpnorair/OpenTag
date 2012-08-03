@@ -103,7 +103,7 @@
 						<tool id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerDebug.2043724402.1369982183" name="MSP430 Linker" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerDebug.2043724402"/>
 					</fileInfo>
 					<sourceEntries>
-						<entry excluding="otlibext/veelite_experimental.c|otlibext/otcoap_registry.c|otlibext/coap_parse.c|lnk_msp430f5509.cmd|lnk_4+24_5509.cmd|lnk_8+47_small.cmd|lnk_msp430f5529.cmd|lnk_5509.cmd|OTlibext" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="otlibext/experimental|otlibext/coap|otlibext/veelite_experimental.c|otlibext/otcoap_registry.c|otlibext/coap_parse.c|lnk_msp430f5509.cmd|lnk_4+24_5509.cmd|lnk_8+47_small.cmd|lnk_msp430f5529.cmd|lnk_5509.cmd|OTlibext" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -166,7 +166,7 @@
 									<listOptionValue builtIn="false" value="&quot;B:/otlibext&quot;"/>
 								</option>
 								<option id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.ABI.1005968320" name="Application binary interface (--abi)" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.ABI" value="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.ABI.coffabi" valueType="enumerated"/>
-								<option id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.OPT_FOR_SPEED.1369902032" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.OPT_FOR_SPEED" value="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.OPT_FOR_SPEED.0" valueType="enumerated"/>
+								<option id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.OPT_FOR_SPEED.1369902032" name="Control speed vs. size trade-offs (0=size, 5=speed) (--opt_for_speed, -mf)" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.OPT_FOR_SPEED" value="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compilerID.OPT_FOR_SPEED.0" valueType="enumerated"/>
 								<inputType id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compiler.inputType__C_SRCS.224032702" name="C Sources" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compiler.inputType__C_SRCS"/>
 								<inputType id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compiler.inputType__CPP_SRCS.865947548" name="C++ Sources" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compiler.inputType__CPP_SRCS"/>
 								<inputType id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compiler.inputType__ASM_SRCS.1085337168" name="Assembly Sources" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.compiler.inputType__ASM_SRCS"/>
@@ -199,7 +199,7 @@
 						<tool id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerRelease.1288026921.1130619459" name="MSP430 Linker" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerRelease.1288026921"/>
 					</fileInfo>
 					<sourceEntries>
-						<entry excluding="otlibext/veelite_experimental.c|otlibext/otcoap_registry.c|otlibext/coap_parse.c|lnk_msp430f5509.cmd|lnk_4+24_5509.cmd|lnk_4+24_5529.cmd|lnk_8+47_small.cmd|lnk_5509.cmd|OTlibext" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="otlibext/experimental|otlibext/coap|otlibext/veelite_experimental.c|otlibext/otcoap_registry.c|otlibext/coap_parse.c|lnk_msp430f5509.cmd|lnk_4+24_5509.cmd|lnk_4+24_5529.cmd|lnk_8+47_small.cmd|lnk_5509.cmd|OTlibext" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -306,7 +306,7 @@
 						<tool id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerDebug.770966097.852409353" name="MSP430 Linker" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerDebug.770966097"/>
 					</fileInfo>
 					<sourceEntries>
-						<entry excluding="otlibext/veelite_experimental.c|otlibext/otcoap_registry.c|otlibext/coap_parse.c|lnk_msp430f5509.cmd|lnk_8+47_small.cmd|lnk_4+24_5529.cmd|lnk_5509.cmd|lnk_msp430f5529.cmd|OTlibext" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="otlibext/experimental|otlibext/coap|otlibext/veelite_experimental.c|otlibext/otcoap_registry.c|otlibext/coap_parse.c|lnk_msp430f5509.cmd|lnk_8+47_small.cmd|lnk_4+24_5529.cmd|lnk_5509.cmd|lnk_msp430f5529.cmd|OTlibext" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

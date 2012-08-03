@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /apps/.../build_config.h
+  * @file       /apps/demo_opmode/code/build_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    V1.0
-  * @date       16 November 2011
+  * @date       31 July 2012
   * @brief      Most basic list of constants needed to configure build
   *
   * Do not include this file.  Include OTAPI.h (or OT_config.h + OT_types.h)
@@ -51,7 +51,7 @@
   * defining DEBUG_ON as a built-in via the compiler (preferred)
   */
 #ifndef DEBUG_ON
-//#   define DEBUG_ON
+#   define DEBUG_ON
 #endif
 
 

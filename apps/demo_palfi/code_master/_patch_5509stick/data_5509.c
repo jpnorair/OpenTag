@@ -1,4 +1,4 @@
-/*  Copyright 2010-2011, JP Norair
+/*  Copyright 2010-2012, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
   * limitations under the License.
   */
 /**
-  * @file       /apps/Demo_PaLFi/Code_Master/data.c
+  * @file       /apps/demo_palfi/code_master/_patch_5509stick/data_5509.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       16 April 2011
+  * @date       31 July 2012
   * @brief      PaLFi Demo Main Default Data
   * 
   ******************************************************************************
@@ -24,6 +24,14 @@
 
 #ifndef _DATA_C
 #define _DATA_C
+
+
+
+#ifdef DEBUG_ON
+#   define __VID    0xFF, 0xFF
+#   define __UID    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+#endif
+
 
 
 /** Default File data allocations

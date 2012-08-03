@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       OTlib/crc16.h
+  * @file       /otlib/crc16.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       7 Jan 2011
+  * @date       31 July 2012
   * @brief      CRC16 implementation
   * @defgroup   CRC16 (CRC16 Module)
   * @ingroup    CRC16
@@ -41,8 +41,8 @@
 typedef struct {
     ot_u8*      cursor;
     ot_u8*      end;
-    ot_u16      val;
     void        (*stream)();
+    ot_u16      val;
 } crc_struct;
 
 extern crc_struct crc;
@@ -65,21 +65,17 @@ ot_u16 crc_calc_block(ot_int block_size, ot_u8 *block_addr);
 
 
 /** @brief Initializes streaming CRC16 engine
-  * @param stream_size  (ot_int) length of datastream
-  * @param stream_addr  (ot_u8*) pointer to start of datastream
+  * @param stream_size  (ot_int) Number of bytes in stream
+  * @param stream       (ot_u8*) pointer to the data for CRC calculation
   * @retval None
   * @ingroup CRC16
+  *
   * This must be run prior to engaging a streaming CRC calculation.  Only one
   * streaming CRC object may exist, so right now it's impossible to do streaming
   * CRC on parallel/concurrent data-streams.  init_crc_stream will zero the
   * crc_partial global variable before operating.
-  *
-  * @note Make sure to set stream_size to 255 (or whatever is your max stream)
-  *       if you are using a type of datastream that has variable length.  Use
-  *       crc_update_stream() to change to the correct stream length once you
-  *       find out what it is.
   */
-void crc_init_stream(ot_int stream_size, ot_u8* stream_addr);
+void crc_init_stream(ot_int stream_size, ot_u8* stream);
 
 
 
@@ -98,7 +94,7 @@ void crc_calc_stream();
 
 
 
-/** @brief Updates the end of the CRC stream
+/* @brief Updates the end of the CRC stream
   * @param new_end      (ot_u8*) new end pointer for crc stream
   * @retval None
   * @ingroup CRC16
@@ -107,7 +103,7 @@ void crc_calc_stream();
   * of decoding.  Use this function to tell the CRC streamer where the end of
   * the stream is, once you know where it is.
   */
-void crc_update_stream(ot_u8* new_end);
+//void crc_update_stream(ot_u8* new_end);
 
 
 

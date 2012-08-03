@@ -26,6 +26,14 @@
 #ifndef _DATA_C
 #define _DATA_C
 
+
+#ifdef (DEBUG_ON)
+#   define __VID    0xFF, 0xFF
+#   define __UID    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+#endif
+
+
+
 /** Default File data allocations
   * ============================================================================
   * - Veelite also uses an additional 1536 bytes for wear leveling
@@ -382,6 +390,15 @@ const ot_u8 isf_stock_files[] = {
     0x00,                                               /* Regulatory Code */
     0x01,                                               /* Duty Cycle (100%) */
 
+    0x2A,                                               /* Channel Spectrum ID */
+    0x00,                                               /* Channel Parameters */
+    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
+    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
+    (ot_u8)( (-85) + 140 ),                             /* CS RSSI Threshold */
+    (ot_u8)( (-92) + 140 ),                             /* CCA RSSI Threshold*/
+    0x00,                                               /* Regulatory Code */
+    0x01,                                               /* Duty Cycle (100%) */
+
     0x10,                                               /* Channel Spectrum ID */
     0x00,                                               /* Channel Parameters */
     (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
@@ -395,15 +412,6 @@ const ot_u8 isf_stock_files[] = {
     0x00,                                               /* Channel Parameters */
     (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
     (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-85) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-92) + 140 ),                             /* CCA RSSI Threshold*/
-    0x00,                                               /* Regulatory Code */
-    0x01,                                               /* Duty Cycle (100%) */
-
-    0x2D,                                               /* Channel Spectrum ID */
-    0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
     (ot_u8)( (-80) + 140 ),                             /* CS RSSI Threshold */
     (ot_u8)( (-90) + 140 ),                             /* CCA RSSI Threshold*/
     0x00,                                               /* Regulatory Code */
@@ -413,7 +421,6 @@ const ot_u8 isf_stock_files[] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-
 
     /* real time scheduler: id=0x03, len=12, alloc=12 */
     0x00, 0x0F,                                         /* SSS Sync Mask */

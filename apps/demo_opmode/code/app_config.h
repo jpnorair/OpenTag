@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /apps/Demo_Opmode/app_config.h
+  * @file       /apps/demo_opmode/code/app_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    V1.0
-  * @date       16 December 2011
+  * @date       31 July 2012
   * @brief      Application Configuration File for Opmode Demo
   *
   * Don't actually include this.  Include OTAPI.h or (OT_config.h + OT_types.h)
@@ -29,6 +29,8 @@
 #define __APP_CONFIG_H
 
 #include "build_config.h"
+
+
 
 /// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
 #ifdef ENABLED
@@ -101,12 +103,13 @@
 #define OT_FEATURE_M1                   NOT_AVAILABLE                       // Mode 1 Featureset: Generally not implemented
 #define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
 #define OT_FEATURE_SESSION_DEPTH        OT_PARAM_SESSION_DEPTH
-#define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE    
+#define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE
+#define OT_FEATURE_EXTERNAL_EVENT       (OT_FEATURE_LF | OT_FEATURE_HF)
 #define OT_FEATURE_SYSKERN_CALLBACKS    ENABLED                             // Kernel callbacks from system layer
-#define OT_FEATURE_SYSRF_CALLBACKS      ENABLED                             // RF Process callbacks from system layer
+#define OT_FEATURE_SYSRF_CALLBACKS      DISABLED                            // RF Process callbacks from system layer
 #define OT_FEATURE_SYSIDLE_CALLBACKS    DISABLED                            // Idle Process callbacks from system layer
-#define OT_FEATURE_M2NP_CALLBACKS       ENABLED                             // Signal callbacks from Network (M2NP) layer
-#define OT_FEATURE_M2QP_CALLBACKS       ENABLED                             // Signal callbacks from Transport (M2QP) layer
+#define OT_FEATURE_M2NP_CALLBACKS       DISABLED                            // Signal callbacks from Network (M2NP) layer
+#define OT_FEATURE_M2QP_CALLBACKS       DISABLED                            // Signal callbacks from Transport (M2QP) layer
 #define OT_FEATURE_MPIPE_CALLBACKS      DISABLED                            // Signal callbacks from MPIPE
 #define OT_FEATURE_SW_WATCHDOG          DISABLED
 #define OT_FEATURE_HW_WATCHDOG          DISABLED
@@ -154,7 +157,6 @@
 #define M2_FEATURE_LEGACY               NOT_AVAILABLE                       // Legacy (Mode 1) channel (ch 01)
 #define M2_FEATURE_NORMAL               ENABLED                             // Low-speed channels (ch 1x, 9x)
 #define M2_FEATURE_TURBO                ENABLED                             // High-speed channels (ch 2x, Ax)
-#define M2_FEATURE_BLINK                DISABLED                            // Blink channels (ch 3x, Bx)
 #define M2_FEATURE_AUTOSCALE            DISABLED                            // Adaptive TX power fall-off algorithm
 #define M2_FEATURE_BEACONS              ENABLED                             // Automated Beacon transmissions
 #define M2_PARAM_BEACON_TCA             12                                  // Ticks to do CSMA for Beacons
@@ -235,11 +237,6 @@
 #define _ALLOC_SHIFT        1
 #define _MIRALLOC_OFFSET    _ALLOC_OFFSET
 #define _MIRALLOC_SHIFT     _ALLOC_SHIFT
-  
-#define IN_VWORM    0x01
-#define IN_VEEPROM  0x02        // VEEPROM doesn't actually exist anymore!
-#define IN_VSRAM    0x04
-#define IN_MIRROR   0x80
 
 
 
@@ -375,9 +372,10 @@
   * plus at least two additional user ISFs.
   */
 #define ISF_TOTAL_BYTES                         1536
-#define ISF_NUM_M1_FILES                        10
+#define ISF_NUM_M1_FILES                        7
 #define ISF_NUM_M2_FILES                        16
-#define ISF_NUM_USER_FILES                      16  //max allowed user files
+#define ISF_NUM_EXT_FILES                       1   // Usually at least 1 (app ext)
+#define ISF_NUM_USER_FILES                      0  //max allowed user files
 
 ///@todo define this after mirror is alloc'ed
 #define ISF_MIRROR_VADDR                        0xC000
@@ -439,8 +437,6 @@
 #define ISF_ID_table_query_size                 0x14
 #define ISF_ID_table_query_results              0x15
 #define ISF_ID_hardware_fault_status            0x16
-#define ISF_ID_external_events_list             0x17
-#define ISF_ID_external_events_alarm_list       0x18
 #define ISF_ID_application_extension            0xFF
 
 /// ISF Mirror Enabling: <BR>
@@ -457,7 +453,7 @@
 #define ISF_ENMIRROR_protocol_list              0
 #define ISF_ENMIRROR_isfs_list                  0
 #define ISF_ENMIRROR_gfb_file_list              0
-#define ISF_ENMIRROR_location_data_list         0
+#define ISF_ENMIRROR_location_data_list         1
 #define ISF_ENMIRROR_ipv6_addresses             0
 #define ISF_ENMIRROR_sensor_list                0
 #define ISF_ENMIRROR_sensor_alarms              0
@@ -470,9 +466,7 @@
 #define ISF_ENMIRROR_table_query_size           0
 #define ISF_ENMIRROR_table_query_results        0
 #define ISF_ENMIRROR_hardware_fault_status      0
-#define ISF_ENMIRROR_external_events_list       0
-#define ISF_ENMIRROR_external_events_alarm_list 0
-#define ISF_ENMIRROR_application_extension      0
+#define ISF_ENMIRROR_application_extension      1
 
 
 /// ISF file default privileges                                     <BR>
@@ -507,8 +501,6 @@
 #define ISF_MOD_table_query_size                b00100100
 #define ISF_MOD_table_query_results             b00100100
 #define ISF_MOD_hardware_fault_status           b00100100
-#define ISF_MOD_external_events_list            b00100100
-#define ISF_MOD_external_events_alarm_list      b00100100
 #define ISF_MOD_application_extension           b00100100
 
 /// ISF file default length: 
@@ -520,7 +512,7 @@
 #define ISF_LEN_real_time_scheduler             12
 #define ISF_LEN_sleep_scan_sequence             4
 #define ISF_LEN_hold_scan_sequence              8
-#define ISF_LEN_beacon_transmit_sequence        24
+#define ISF_LEN_beacon_transmit_sequence        16
 #define ISF_LEN_protocol_list                   4
 #define ISF_LEN_isfs_list                       12
 #define ISF_LEN_gfb_file_list                   GFB_NUM_FILES
@@ -537,8 +529,6 @@
 #define ISF_LEN_table_query_size                1
 #define ISF_LEN_table_query_results             7
 #define ISF_LEN_hardware_fault_status           3
-#define ISF_LEN_external_events_list            0
-#define ISF_LEN_external_events_alarm_list      0
 #define ISF_LEN_application_extension           0
 
 /// Stock ISF file max data lengths (not aligned, just max)
@@ -552,9 +542,9 @@
 #define ISF_MAX_hold_scan_sequence              32  //8 scans
 #define ISF_MAX_beacon_transmit_sequence        24  //3 beacons
 #define ISF_MAX_protocol_list                   16  //16 protocols
-#define ISF_MAX_isfs_list                       24  //24 isfs indices
+#define ISF_MAX_isfs_list                       16  //16 isfs indices
 #define ISF_MAX_gfb_file_list                   8   //8 gfb files
-#define ISF_MAX_location_data_list              96  //8 location vertices (or 16 if using VIDs)
+#define ISF_MAX_location_data_list              64  //8 location vertices (or 16 if using VIDs)
 #define ISF_MAX_ipv6_addresses                  48
 #define ISF_MAX_sensor_list                     16  //1 sensor
 #define ISF_MAX_sensor_alarms                   2   //1 sensor
@@ -567,9 +557,7 @@
 #define ISF_MAX_table_query_size                1
 #define ISF_MAX_table_query_results             7
 #define ISF_MAX_hardware_fault_status           3
-#define ISF_MAX_external_events_list            0
-#define ISF_MAX_external_events_alarm_list      0
-#define ISF_MAX_application_extension           16
+#define ISF_MAX_application_extension           64
 
 
 /// BEGINNING OF AUTOMATIC ISF STUFF (You can probably leave it alone)
@@ -590,8 +578,8 @@
 #define ISF_BASE_protocol_list                  (ISF_BASE_beacon_transmit_sequence+ISF_ALLOC(beacon_transmit_sequence))
 #define ISF_BASE_isfs_list                      (ISF_BASE_protocol_list+ISF_ALLOC(protocol_list))
 #define ISF_BASE_gfb_file_list                  (ISF_BASE_isfs_list+ISF_ALLOC(isfs_list))
-#define ISF_BASE_location_data_list             (ISF_BASE_gfb_file_list+ISF_ALLOC(gfb_file_list))
-#define ISF_BASE_ipv6_addresses                 (ISF_BASE_location_data_list+ISF_ALLOC(location_data_list))
+#define ISF_BASE_location_data_list             (0xFFFF)
+#define ISF_BASE_ipv6_addresses                 (ISF_BASE_gfb_file_list+ISF_ALLOC(gfb_file_list))
 #define ISF_BASE_sensor_list                    (ISF_BASE_ipv6_addresses+ISF_ALLOC(ipv6_addresses))
 #define ISF_BASE_sensor_alarms                  (ISF_BASE_sensor_list+ISF_ALLOC(sensor_list))
 #define ISF_BASE_root_authentication_key        (ISF_BASE_sensor_alarms+ISF_ALLOC(sensor_alarms))
@@ -603,10 +591,8 @@
 #define ISF_BASE_table_query_size               (ISF_BASE_memory_size+ISF_ALLOC(memory_size))
 #define ISF_BASE_table_query_results            (ISF_BASE_table_query_size+ISF_ALLOC(table_query_size))
 #define ISF_BASE_hardware_fault_status          (ISF_BASE_table_query_results+ISF_ALLOC(table_query_results))
-#define ISF_BASE_external_events_list           (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
-#define ISF_BASE_external_events_alarm_list     (ISF_BASE_external_events_list+ISF_ALLOC(external_events_list))
-#define ISF_BASE_application_extension          (ISF_BASE_external_events_alarm_list+ISF_ALLOC(external_events_alarm_list))
-#define ISF_BASE_NEXT                           (ISF_BASE_application_extension+ISF_ALLOC(application_extension))
+#define ISF_BASE_application_extension          (0xFFFF)
+#define ISF_BASE_NEXT                           (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
 
 /// ISF file mirror address computation
 #define ISF_MIRROR(VAL)                         (unsigned short)(((ISF_ENMIRROR_##VAL != 0) - 1) | (ISF_MIRROR_##VAL) )
@@ -633,9 +619,7 @@
 #define ISF_MIRROR_table_query_size             (ISF_MIRROR_memory_size+ISF_MIRALLOC(memory_size))
 #define ISF_MIRROR_table_query_results          (ISF_MIRROR_table_query_size+ISF_MIRALLOC(table_query_size))
 #define ISF_MIRROR_hardware_fault_status        (ISF_MIRROR_table_query_results+ISF_MIRALLOC(table_query_results))
-#define ISF_MIRROR_external_events_list         (ISF_MIRROR_hardware_fault_status+ISF_MIRALLOC(hardware_fault_status))
-#define ISF_MIRROR_external_events_alarm_list   (ISF_MIRROR_external_events_list+ISF_MIRALLOC(external_events_list))
-#define ISF_MIRROR_application_extension        (ISF_MIRROR_external_events_alarm_list+ISF_MIRALLOC(external_events_alarm_list))
+#define ISF_MIRROR_application_extension        (ISF_MIRROR_hardware_fault_status+ISF_MIRALLOC(hardware_fault_status))
 #define ISF_MIRROR_NEXT                         (ISF_MIRROR_application_extension+ISF_MIRALLOC(application_extension))
 
 /// Total amount of stock ISF data stored in ROM
@@ -662,8 +646,6 @@
                                 ISF_ALLOC(table_query_size) + \
                                 ISF_ALLOC(table_query_results) + \
                                 ISF_ALLOC(hardware_fault_status) + \
-                                ISF_ALLOC(external_events_list) + \
-                                ISF_ALLOC(external_events_alarm_list) + \
                                 ISF_ALLOC(application_extension))
 
 #define ISF_VWORM_HEAP_BYTES    ISF_VWORM_STOCK_BYTES

@@ -1,4 +1,4 @@
-/* Copyright 2010 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/platform_CC430.c
+  * @file       /otplatform/cc430/platform_CC430.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       16 July 2011
+  * @date       31 July 2012
   * @brief      ISRs and hardware services abstracted by the platform module
   * @ingroup    Platform
   *
@@ -475,7 +475,7 @@ void platform_poweron() {
     platform_init_gptim(0x01C3);        // Initialize GPTIM (to 1024 Hz)
     platform_init_gpio();
     platform_init_memcpy();
-    platform_init_prand(0xBEEF);        // BEEF is tasty
+    platform_init_prand( *((ot_u16*)0x1A10) );  //seed using part of HW Chip ID
 
     /// 3. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
@@ -505,6 +505,28 @@ void platform_init_OT() {
 	vl_init();      //Veelite init must be second
 	radio_init();   //radio init third
 	sys_init();     //system init last
+	
+#   if (defined(__DEBUG__) || defined(DEBUG_ON))
+    /// If debugging, find the Chip ID and use 6 out of 8 bytes of it to yield
+    /// the UID.  This ID might not be entirely unique -- technically, there is
+    /// 1/65536 chance of non-uniqueness, but practically the chance is much
+    /// lower, given the way chips are distributed.  For test/debug, this is 
+    /// adequately unique.
+    ///
+    /// @note the ID is inserted via Veelite, so it is abstracted from the 
+    /// file memory configuration of your board and/or app. 
+    {
+        vlFILE* fp;
+        ot_int  i;
+        
+        fp = ISF_open_su(1);
+        for (i=2; i<8; i+=2) {
+            //0x1A0A is the first address of an 8 byte chip ID
+            vl_write( fp, i, *(ot_u16*)(0x1A0A+i) );
+        } 
+        vl_close(fp);
+    }
+#   endif
 }
 
 
@@ -565,60 +587,6 @@ void platform_init_busclk() {
     UCS->CTL5   = (div1 << clockACLK) | \
 		          (div1 << clockMCLK) | \
 		          (_SMCLK_DIV << clockSMCLK);
-
-/*
-    ClockInit_Type   ClockInitStruct;
-    //FLLInit_Type     FLLInitStruct;
-
-    /// 1. Select LF clock: it can be REFO or XT1 (XT1 is preferred).  If an
-    ///    LF crystal is available, it will be used for XT1.
-#   if defined(MCU_PARAM_LFXTALHz)
-#       define CLKSRC_32768     sourceXT1
-        GPIO5->SEL |= (GPIO_Pin_0 | GPIO_Pin_1);
-        UCS->CTL6   = (UCS_CTL6_XT2OFF | 0xC0 | UCS_CTL6_XTS_low | UCS_CTL6_XT1BYPASS_off | UCS_CTL6_XCAP_2 );
-        UCS_LFXT1Init();
-        SELECT_ACLK(ACLKSRC_XT1CLK);
-#   else
-#       define CLKSRC_32768     sourceREFO
-        SELECT_ACLK(ACLKSRC_REFOCLK);
-        UCS->CTL6   = (UCS_CTL6_XT2OFF | UCS_CTL6_XT1OFF ); //Disable LFXT1
-#   endif
-
-    ///2.   Startup HFXT2 (26 MHz)
-    ///     This is power-on default behavior and hence is commented-out
-    //P5SEL |= BIT2+BIT3;                       // Port select XT2
-    //do{
-    //    status = XT2_Start_Timeout(XT2DRIVE_0, 50000);
-    //} while(status == UCS_STATUS_ERROR);
-
-    ///3. CONFIGURE FLL - set DCO to multiply the LS clock to generate the HS clock
-    ///   Typically, the LS clock is 32768 Hz and HS clock is ~20 MHz (mult=610)
-    UCS->CTL3 = ((ot_u16)CLKSRC_32768 << 4) | (ot_u16)refdiv1;
-    UCS_FLL_settle((PLATFORM_HSCLOCK_HZ/1000), (PLATFORM_HSCLOCK_HZ/PLATFORM_LSCLOCK_HZ));
-
-    ///4. Configure ACLK to 32768 Hz, using RTC crystal oscillator
-    ///   This is power-on default behavior and may be removed if desired
-    ClockInitStruct.Clock       = clockACLK;
-    ClockInitStruct.Source      = CLKSRC_32768;
-    ClockInitStruct.Div         = div1;             //div 1
-    UCS_ClockInit(&ClockInitStruct);
-
-    ///5. Configure MCLK to DCO
-    ///   default behavior is DCODIV, which produces the same result after the FLL settings
-    ClockInitStruct.Clock       = clockMCLK;
-    ClockInitStruct.Source      = sourceDCO;    //default: sourceDCODIV;
-    ClockInitStruct.Div         = div1;
-    UCS_ClockInit(&ClockInitStruct);
-
-    ///6. Configure SMCLK to DCO/8 (going to be ~2.5 MHz), and assure it is enabled
-    ///   default behavior is DCODIV, which produces the same result after the FLL settings
-    ///   The divide-by-8 is not default behavior
-    ClockInitStruct.Clock       = clockSMCLK;
-    ClockInitStruct.Source      = sourceDCO;    //default: sourceDCODIV;
-    ClockInitStruct.Div         = div8;
-    UCS_ClockInit(&ClockInitStruct);
-    UCS_SMCLKCmd(ENABLE);
-*/
 }
 
 
@@ -1002,7 +970,7 @@ ot_u16 platform_prand_u16() {
 /// initialized at startup with the device ID or serial number (or something)
     ot_u16 scratch  = CRC->INIRES;
     CRC->INIRES     = prand_reg;
-    CRCb->DIRB_L    = 0;
+    CRCb->DIRB_L    = UCSCTL0_L;        // contains rotating FLL modulation value
     prand_reg       = CRC->INIRES;
     CRC->INIRES     = scratch;
 

@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /OTlib/m2_network.h
+  * @file       /otlib/m2_network.h
   * @author     JP Norair
   * @version    V1.0
   * @date       2 November 2011
@@ -74,7 +74,6 @@
 #define M2AC_VID                (0x01 << 5)
 #define M2AC_NLS                (0x01 << 4)
 
-
 // M2NP Command Code Options
 #define M2CC_SLEEP              (0x01 << 4) 
 #define M2CC_EXT                (0x01 << 5) 
@@ -111,7 +110,6 @@ typedef struct {
 } m2npsig_struct;
 
 
-
 typedef struct {
     routing_tmpl    rt;
     header_struct   header;
@@ -119,6 +117,7 @@ typedef struct {
         m2npsig_struct  signal;    
 #   endif
 } m2np_struct;
+
 
 typedef struct {
     ot_u8   ctl;
@@ -128,14 +127,13 @@ typedef struct {
     //ot_u16  data_total;
 } dscfg_struct;
 
+
 typedef struct {
     dscfg_struct    dscfg;
-    //alp_record      in_rec;
-    alp_record      out_rec;
 } m2dp_struct;
 
 
-#if (OT_FEATURE(ALP) == ENABLED)
+#if (OT_FEATURE(M2DP) == ENABLED)
     extern m2dp_struct m2dp;
 #endif
 extern m2np_struct m2np;
@@ -170,6 +168,21 @@ void network_init();
   * @ingroup Network
   */
 m2session* network_parse_bf();
+
+
+
+
+/** @brief  Marks a foreground frame as damaged (CRC is bad).
+  * @param  none
+  * @retval none
+  * @ingroup Network
+  *
+  * This function will set the frametype to 3 (damaged frame).  With OpenTag,
+  * this is important only for multi-frame packets.  single-frame packets with
+  * CRC violation are treated as a bad packet directly by the MAC layer.
+  */
+void network_mark_ff();
+
 
 
 /** @brief  parses and routes a foreground frame
@@ -231,7 +244,6 @@ void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack);
 
 
 /** @brief  Loads Mode 2 DLL and Network layer frame footers into the TX queue
-  * @param  session     (m2session*) Pointer to active session
   * @retval None
   * @ingroup Network
   *
@@ -240,7 +252,7 @@ void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack);
   * which at least contains the CRC.  It will also calculate the frame length
   * and set that field of the frame accordingly.
   */
-void m2np_footer(m2session* session);
+void m2np_footer();
 
 
 
@@ -339,65 +351,52 @@ ot_int m2advp_init_flood(m2session* session, ot_u16 schedule);
 
 /** M2DP Network Functions
   * ============================================================================
-  * - M2DP = Mode 2 Datastream Protocol
-  * - Very little overhead, good for arbitrary data encapsulation
-  * - Supports multi-frame packets and multi-packet streams
-  * - No inherent flow control or ACK (requires a session layer to do it)
+  * <LI> M2DP = Mode 2 Datastream Protocol  </LI>
+  * <LI> Very little overhead, good for arbitrary data encapsulation  </LI>
+  * <LI> For OpenTag usage, M2DP frames may only occur in a multiframe packet,
+  *      as part of datastream transport.  In this case, the first frame in
+  *      the packet is always an M2NP frame.  </LI>
+  * <PRE>
+  * M2DP Frame Format
   * 
-  * @note OpenTag uses a spec-legal, partial implementation of M2DP, including:
-  * - Encapsulated data is restricted to supported application subprotocols
-  * - Requires in-order frame delivery for datastreams that span multiple frames
-  * - Usage with multiframe packets should work but is untested
-  */
-
-/** @brief  Prepares an M2DP frame, moving the queue putcursor as needed
-  * @param  frame_id    (ot_u8) Frame ID of the M2DP frame
-  * @param  session     (m2session*) Pointer to active session
-  * @retval none
-  * @ingroup Network
-  */
-void m2dp_open(ot_u8 frame_id, m2session* session);
-
-
-
-/** @brief  Parses an M2DP frame, which is expected to carry an embedded ALP
-  * @param  session     (m2session*) Pointer to active session
-  * @retval ot_int      negative on parse error, 0 on parse success
-  * @ingroup Network
-  */
-ot_int m2dp_parse_dspkt(m2session* session);
-
-
-
-/** @brief  Marks an M2DP frame as damaged (CRC is bad).
-  * @param  session     (m2session*) Pointer to active session
-  * @retval none
-  * @ingroup Network
+  * 0     1        4     4+a         4+a+n    
+  * +-----+--------+------+------------+---------------+-----+
+  * | Len | FF Hdr | DLLS | UL Payload | DLLS Padding  | CRC |
+  * +-----+--------+------+------------+---------------+-----+
+  *                 [Opt]       n
+  * 
+  * The Upper Layer Payload and Padding may be encrypted.  Padding bytes take
+  * random values, and the amount of padding is specified in DLLS field.
   *
-  * The datastream transport protocol (that tunnels within M2QP) is kind of like
-  * SCTP.  Frames do not NEED to be transported in order (unlike TCP).  So when
-  * a frame is damaged, it is marked, and it can be re-transfered later without
-  * interrupting the stream.
-  *
-  * @note Implementing the SCTP-style stream marking is not practical for light
-  * devices because it requires a "large" RAM buffer.  So on light devices,
-  * set Max-Frames-Per-Packet to 1 in order to get TCP-like behavior. 
+  * - FF Hdr Info Field must have En_Addr = 0 and Frame_Type = 2
+  * - a: length of DLLS header.  Typcially 1 byte in M2DP.
+  * - n: length of Upper Layer Payload
+  * </PRE>
   */
-void m2dp_mark_dsframe(m2session* session);
 
-
-
-/** @brief  Processing function for ALP contents of the Datstream frame
+/** @brief  Appends an M2DP frame to the packet, and adjusts previous frame
   * @param  none
   * @retval none
   * @ingroup Network
   *
-  * The input frame is expected to be in the RX queue (rxq, from buffers.h).
-  * The output is put onto TX queue (txq, from buffers.h).  The ALP states are
-  * managed internally via the m2dp data "object."
+  * OpenTag only supports usage of M2DP frames as subsequent frames in 
+  * multiframe packets, where the first frame is always an M2NP frame.  This
+  * function can be used to append such an M2DP frame to the packet currently
+  * in the transmit queue.
+  *
+  * m2dp_append() does three things:
+  * <LI> only writes the header(s) of the M2DP frame, and it a
   */
-void m2dp_dsproc();
+void m2dp_append();
 
+
+
+/** @brief  Writes the footer of the M2DP frame, thus finishing the frame
+  * @param  none
+  * @retval none
+  * @ingroup Network
+  */
+void m2dp_footer();
 
 
 

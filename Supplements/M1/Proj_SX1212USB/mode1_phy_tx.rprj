@@ -1,0 +1,4 @@
+
+<Project Header="Project 'mode1_phy_tx'" Path=".\mode1_phy_tx.rprj" Project="Yes" OutputFile="" sate="96" ActiveApp="mode1_phy_tx" >
+	<ApplicationBuild Header="mode1_phy_tx" Extern=".\mode1_phy_tx.rapp" Path=".\mode1_phy_tx.rapp" OutputFile=".\mode1_phy_tx.elf" sate="96" />
+</Project>

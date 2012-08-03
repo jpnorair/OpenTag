@@ -16,7 +16,7 @@
   * @file       /apps/demo_palfi/code_slave/main.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       16 April 2011
+  * @date       31 July 2011
   * @brief      PaLFi Demo Main
   *
   * This Demonstration Intends to Show:
@@ -217,70 +217,16 @@ void app_sleep() {
 
 
 
-/** Kernel Callback Applet Links  <BR>
-  * =======================================================================<BR>
-  * The Kernel (System Module) has a few callbacks.  Most applications are
-  * easier to attach to the Transport Layer, but the Kernel Callbacks can
-  * be useful for certain things.
-  *
-  * As with all OpenTag callbacks, you have the option to compile them as
-  * dynamic callbacks (function pointers that you assign during runtime) or as
-  * static callbacks (specific functions).  In this demo app, static callbacks
-  * are used.  Static callbacks are better, as long as you don't need to change
-  * the feature attached to a callback.
+/** OTlib/OTAPI Callback Applets  <BR>
+  * ========================================================================<BR>
+  * This app uses some of the "std" applets from /otlibext/applets_std
+  * The applets used are selected in extf_config.h
   */
-void sys_sig_panic(ot_int code) {
-/// Kernel panic.  You could have it print something out, or blink LEDs, or
-/// whatever.  The system function sys_panic() does the important shutdown
-/// routines, so this callback is just for reporting purposes
-	OTAPI_LOG_MSG(MSG_raw, 3, 2, (ot_u8*)"WTF", (ot_u8*)&code);
-}
-
-
-void sys_sig_rfainit(ot_int pcode) {
-/// This is a static callback.   The kernel uses it when it is starting up a 
-/// radio process.  It is used here to turn-on activity LEDs.
-
-    // Assume that (1 <= code1 <= 5), which is the case in normal operation
-    if (pcode < 3)  otapi_led2_on();
-    else            otapi_led1_on();
-}
-
-
 
 void sys_sig_rfaterminate(ot_int pcode, ot_int scode) {
-/// This is a static callback.   The kernel uses it when it is finishing a 
-/// radio process.  It is used here to turn-off activity LEDs.
-    otapi_led2_off();
-    otapi_led1_off();
+    otapi_led2_off();   //Orange LED off
+    otapi_led1_off();   //Green LED off
 }
-
-
-
-
-
-void network_sig_route(ot_int code, ot_int protocol) {
-#if (MPIPE_FOR_DEBUGGING)
-	static const ot_u8 label_dialog[]	= { 9, 'M','2','_','D','i','a','l','o','g' };
-	static const ot_u8 label_nack[]		= { 7, 'M','2','_','N','a','c','k' };
-	static const ot_u8 label_stream[]	= { 9, 'M','2','_','S','t','r','e','a','m' };
-	static const ot_u8 label_unknown[]	= { 4, 'P','K','T','?' };
-
-	static const ot_u8* labels[] 		= { label_dialog,
-											label_nack,
-											label_stream,
-											label_unknown };
-	if ( (ot_u16)protocol > 2 )
-		protocol = 3;
-
-	otapi_log_msg(	MSG_raw,
-					labels[protocol][0],
-					rxq.length,
-					(ot_u8*)&(labels[protocol][1]),
-					rxq.front	);
-#endif
-}
-
 
 
 
@@ -288,11 +234,6 @@ void network_sig_route(ot_int code, ot_int protocol) {
   * =======================================================================<BR>
   * The user application naturally connects to the Transport Layer, which
   * provides the application with processed data payloads.
-  *
-  * Function input parameters
-  * Arg 1:  (id_tmpl*) Pointer to device id from requester [->length, ->value]
-  * Arg 2:  (ot_int) Length of the data payload
-  * Arg 3:  (ot_u8*) The data payload
   *
   * Function output:
   * Output is always ot_bool.  For responses this doesn't matter.  For requests,
@@ -309,22 +250,6 @@ void network_sig_route(ot_int code, ot_int protocol) {
   * are used.  Static callbacks are better, as long as you don't need to change
   * the feature attached to a callback.
   */
-
-ot_bool m2qp_sig_udpreq(id_tmpl* id, ot_int payload_length, ot_u8* payload) {
-    return False;
-}
-
-ot_bool m2qp_sig_errresp(id_tmpl* id, ot_int payload_length, ot_u8* payload) {
-    return False;
-}
-
-ot_bool m2qp_sig_stdresp(id_tmpl* id, ot_int payload_length, ot_u8* payload) {
-    return False;
-}
-
-ot_bool m2qp_sig_a2presp(id_tmpl* id, ot_int payload_length, ot_u8* payload) {
-    return False;
-}
 
 
 

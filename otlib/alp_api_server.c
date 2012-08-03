@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/alp_api_server.c
+  * @file       /otlib/alp_api_server.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       08 July 2011
+  * @date       20 July 2012
   * @brief      Application Layer Protocol for API calls
   * @ingroup    ALP
   *
@@ -74,7 +74,20 @@ typedef enum {
 // LLDP Data Type breakdown subroutines
 // (Add more when new otapi functions are added, using new data types in args)
 
+typedef ot_u16 (*otapi_icmd)(Queue*);           // Irregular form routine
+typedef ot_u16 (*otapi_cmd)(ot_u8*, void*);     // Standard form routine (used in M2QP)
 typedef void (*sub_bdtmpl)(Queue*, void*);
+
+ot_u16 icmd_session_number(Queue* in_q);
+ot_u16 icmd_session_flush(Queue* in_q);
+ot_u16 icmd_session_isblocked(Queue* in_q);
+
+ot_u16 icmd_sys_init(Queue* in_q);
+ot_u16 icmd_sys_newsession(Queue* in_q);
+ot_u16 icmd_sys_openrequest(Queue* in_q);
+ot_u16 icmd_sys_closerequest(Queue* in_q);
+ot_u16 icmd_sys_startflood(Queue* in_q);
+ot_u16 icmd_sys_startdialog(Queue* in_q);
 
 void sub_breakdown_u8(Queue* in_q, void* data_type);
 void sub_breakdown_u16(Queue* in_q, void* data_type);
@@ -93,8 +106,61 @@ void sub_breakdown_isfcomp_tmpl(Queue* in_q, void* data_type);
 void sub_breakdown_isfcall_tmpl(Queue* in_q, void* data_type);
 
 
-// Standard form routine
-typedef ot_u16 (*otapi_cmd)(ot_u8*, void*);
+ot_u16 icmd_session_number(Queue* in_q) {
+    return otapi_session_number();
+}
+
+ot_u16 icmd_session_flush(Queue* in_q) {
+    return otapi_flush_sessions();
+}
+
+ot_u16 icmd_session_isblocked(Queue* in_q) {
+    ot_u8 channel_id;
+    sub_breakdown_u8(in_q, &channel_id);
+    return otapi_is_session_blocked(channel_id);
+}
+
+ot_u16 icmd_sys_init(Queue* in_q) {
+    return otapi_sysinit();
+}
+
+ot_u16 icmd_sys_newsession(Queue* in_q) {
+    session_tmpl new_session;
+    sub_breakdown_session_tmpl(in_q, &new_session);
+    return otapi_new_session(&new_session);
+}
+
+ot_u16 icmd_sys_openrequest(Queue* in_q) {
+    ot_u8 addr_byte;
+    ot_u8 routing[sizeof(routing_tmpl)];
+    sub_breakdown_u8(in_q, &addr_byte);
+    
+    // Use routing_tmpl for unicast or anycast and additionally grab
+    // target id for unicast
+    if ((addr_byte & 0x40) == 0) {
+        if ((addr_byte & 0x80) == 0) {
+            sub_breakdown_id_tmpl(in_q, &((routing_tmpl*)routing)->dlog);
+        }
+        sub_breakdown_routing_tmpl(in_q, routing);
+    }
+    return otapi_open_request( (addr_type)addr_byte, (routing_tmpl*)routing );
+}
+
+ot_u16 icmd_sys_closerequest(Queue* in_q) {
+    return otapi_close_request();
+}
+
+ot_u16 icmd_sys_startflood(Queue* in_q) {
+    ot_u16 flood_duration;
+    sub_breakdown_u16(in_q, &flood_duration);
+    return otapi_start_flood(flood_duration);
+}
+
+ot_u16 icmd_sys_startdialog(Queue* in_q) {
+    return otapi_start_dialog();
+}
+
+
 
 
 void sub_breakdown_u8(Queue* in_q, void* data_type) {
@@ -237,131 +303,86 @@ void sub_breakdown_isfcall_tmpl(Queue* in_q, void* data_type) {
 
 
 
+static const sub_bdtmpl bdtmpl_cmd[15] = {
+    &sub_breakdown_u8,            //0
+    &sub_breakdown_u16,           //1
+    &sub_breakdown_u32,           //2
+    &sub_breakdown_queue,         //3
+    &sub_breakdown_session_tmpl,  //4
+    &sub_breakdown_command_tmpl,  //5
+    &sub_breakdown_id_tmpl,       //6
+    &sub_breakdown_routing_tmpl,  //7
+    &sub_breakdown_dialog_tmpl,   //8
+    &sub_breakdown_query_tmpl,    //9
+    &sub_breakdown_ack_tmpl,      //10
+    &sub_breakdown_error_tmpl,    //11
+    &sub_breakdown_isfcomp_tmpl,  //12
+    &sub_breakdown_isfcall_tmpl,  //13
+    &sub_breakdown_shell_tmpl     //14
+};
+
+static const otapi_icmd session_cmd[3] = {
+	(otapi_icmd)&icmd_session_number,
+    (otapi_icmd)&icmd_session_flush,
+    (otapi_icmd)&icmd_session_isblocked
+};
+
+static const otapi_icmd system_cmd[6] = {
+	(otapi_icmd)&icmd_sys_init,
+	(otapi_icmd)&icmd_sys_newsession,
+	(otapi_icmd)&icmd_sys_openrequest,
+	(otapi_icmd)&icmd_sys_closerequest,
+	(otapi_icmd)&icmd_sys_startflood,
+	(otapi_icmd)&icmd_sys_startdialog
+};
+
+static const otapi_cmd m2qp_cmd[11] = {
+    (otapi_cmd)&otapi_put_command_tmpl,      //5
+    (otapi_cmd)&otapi_put_dialog_tmpl,       //8
+    (otapi_cmd)&otapi_put_query_tmpl,        //9
+    (otapi_cmd)&otapi_put_ack_tmpl,          //10
+    (otapi_cmd)&otapi_put_error_tmpl,        //11
+    (otapi_cmd)&otapi_put_isf_comp,          //12
+    (otapi_cmd)&otapi_put_isf_call,          //13
+    (otapi_cmd)&otapi_put_isf_return,        //13
+    (otapi_cmd)&otapi_put_reqds,             //3
+    (otapi_cmd)&otapi_put_propds,            //3
+    (otapi_cmd)&otapi_put_shell_tmpl         //14
+};
 
 
 
 
 
-
-
-
-void alp_proc_api_session(alp_record* in_rec, alp_record* out_rec,
-                                Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
-/// @note Usage of Session functions via API
-/// Treatment of session functions via ALP is not really supported, and this
-/// Function is probably useless for now.  OTAPI session usage is primarily for
-/// C-API and DASHForth API users.
-
-/// Session functions are of special form, so the parsing is programmatic.  
-/// Standard form is ot_u16 otapi_function(ot_u8*, void*).
-    ot_u16 retval;
-    ot_bool respond         = (ot_bool)(in_rec->dir_cmd & 0x80);
-    out_rec->payload_length = 0;
-
-    if ( (in_rec->dir_cmd > 3) || (!auth_isroot(user_id)) )
-        return;
+ot_bool sub_proc_api_irregular(alp_tmpl* alp, id_tmpl* user_id, otapi_icmd* cmd, ot_u8 cmd_limit) {
+    ot_u16  retval;
+    ot_u8   respond     = (alp->inrec.cmd & 0x80);
+    ot_u8   lookup_cmd  = (alp->inrec.cmd & ~0x80) - 1;
     
-    switch ( in_rec->dir_cmd ) {
-        case sesindex_null:
-            return;
-            
-        case sesindex_session_number:
-            retval = otapi_session_number();
-            break;
+    /// Do boundary check, and make sure caller is root
+    if ( (lookup_cmd >= cmd_limit) || (auth_isroot(user_id) == False) )
+        return False;
         
-        case sesindex_flush_sessions:
-            retval = otapi_flush_sessions();
-            break;
-            
-        case sesindex_is_session_blocked: {
-            ot_u8 channel_id;
-            sub_breakdown_u8(in_q, &channel_id);
-            retval = otapi_is_session_blocked(channel_id);
-            break;
-        }
-    }
+    /// Lookup and process the irregular command, supplying it from input queue
+    retval = cmd[lookup_cmd](alp->inq);
     
     /// Write back the twobye retval integer when response is enabled
-    alp_load_retval(respond, (in_rec->dir_cmd | 0x40), retval, out_rec, out_q);
+    return alp_load_retval(alp, retval);
+}
+
+
+ot_bool alp_proc_api_session(alp_tmpl* alp, id_tmpl* user_id ) {   
+    return sub_proc_api_irregular(alp, user_id, (otapi_icmd*)session_cmd, 3);
+}
+
+
+ot_bool alp_proc_api_system(alp_tmpl* alp, id_tmpl* user_id ) {   
+    return sub_proc_api_irregular(alp, user_id, (otapi_icmd*)system_cmd, 6);
 }
 
 
 
-
-
-void alp_proc_api_system(alp_record* in_rec, alp_record* out_rec,
-                                Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
-/// System functions are of special form, so the parsing is programmatic.
-/// Standard form is ot_u16 otapi_function(ot_u8*, void*).
-
-    sysindex function_code;
-    ot_u16  retval;
-    
-    ot_bool respond         = (ot_bool)(in_rec->dir_cmd & 0x80);
-    in_rec->dir_cmd        &= 7;
-    function_code           = (sysindex)in_rec->dir_cmd;
-    out_rec->payload_length = 0;
-    
-    if ( (function_code > 6) || (!auth_isroot(user_id)) )
-        return;
-    
-    switch ( function_code ) {
-        case sysindex_null: 
-            return;
-        
-        case sysindex_sysinit:
-            retval = otapi_sysinit();
-            break;
-        
-        case sysindex_new_session: {
-            session_tmpl new_session;
-            sub_breakdown_session_tmpl(in_q, &new_session);
-            retval = otapi_new_session(&new_session);
-            break;
-        }
-        
-        case sysindex_open_request: {
-            ot_u8 addr_byte;
-            ot_u8 routing[sizeof(routing_tmpl)];
-            sub_breakdown_u8(in_q, &addr_byte);
-            
-            // Use routing_tmpl for unicast or anycast and additionally grab
-            // target id for unicast
-            if ((addr_byte & 0x40) == 0) {
-                if ((addr_byte & 0x80) == 0) {
-                    sub_breakdown_id_tmpl(in_q, &((routing_tmpl*)routing)->dlog);
-                }
-                sub_breakdown_routing_tmpl(in_q, routing);
-            }
-            retval = otapi_open_request( (addr_type)addr_byte, (routing_tmpl*)routing );
-            break;
-        }
-        
-        case sysindex_close_request: 
-            retval = otapi_close_request();
-            break;
-        
-        case sysindex_start_flood: {
-            ot_u16 flood_duration;
-            sub_breakdown_u16(in_q, &flood_duration);
-            retval = otapi_start_flood(flood_duration);
-            break;
-        }
-        
-        case sysindex_start_dialog:
-            retval = otapi_start_dialog();
-            break;
-    }
-    
-    /// Write back the twobyte retval integer when response is enabled
-    alp_load_retval(respond, (in_rec->dir_cmd | 0x40), retval, out_rec, out_q);
-}
-
-
-
-
-void alp_proc_api_query(alp_record* in_rec, alp_record* out_rec,
-                                Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
+ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id ) {
 /// The M2QP API calls follow the rules that future extensions to the API shall
 /// abide, apart from special cases which *must* be cleared by the developer
 /// community prior to becoming official.
@@ -370,101 +391,35 @@ void alp_proc_api_query(alp_record* in_rec, alp_record* out_rec,
         { 5, 8, 9, 10, 11, 12, 13, 13, 3, 3, 14 };
 
     //sub_bdtmpl  get_tmpl;
-    static const sub_bdtmpl tmpl[15] = {
-        &sub_breakdown_u8,            //0
-        &sub_breakdown_u16,           //1
-        &sub_breakdown_u32,           //2
-        &sub_breakdown_queue,         //3
-        &sub_breakdown_session_tmpl,  //4
-        &sub_breakdown_command_tmpl,  //5
-        &sub_breakdown_id_tmpl,       //6
-        &sub_breakdown_routing_tmpl,  //7
-        &sub_breakdown_dialog_tmpl,   //8
-        &sub_breakdown_query_tmpl,    //9
-        &sub_breakdown_ack_tmpl,      //10
-        &sub_breakdown_error_tmpl,    //11
-        &sub_breakdown_isfcomp_tmpl,  //12
-        &sub_breakdown_isfcall_tmpl,  //13
-        &sub_breakdown_shell_tmpl     //14
-    };
-
-    //otapi_cmd   cmd;
-    static const otapi_cmd cmd[11] = {
-        (otapi_cmd)&otapi_put_command_tmpl,      //5
-        (otapi_cmd)&otapi_put_dialog_tmpl,       //8
-        (otapi_cmd)&otapi_put_query_tmpl,        //9
-        (otapi_cmd)&otapi_put_ack_tmpl,          //10
-        (otapi_cmd)&otapi_put_error_tmpl,        //11
-        (otapi_cmd)&otapi_put_isf_comp,          //12
-        (otapi_cmd)&otapi_put_isf_call,          //13
-        (otapi_cmd)&otapi_put_isf_return,        //13
-        (otapi_cmd)&otapi_put_reqds,             //3
-        (otapi_cmd)&otapi_put_propds,            //3
-        (otapi_cmd)&otapi_put_shell_tmpl         //14
-    };
-
     ot_u8   dt_buf[24];   // 24 bytes is a safe amount, although less might suffice
     ot_u16  txq_len;
     ot_u8   status;
-    ot_u8   lookup_cmd      = (in_rec->dir_cmd & ~0x80) - 1;
-    ot_bool respond         = (ot_bool)(in_rec->dir_cmd & 0x80);
-    out_rec->payload_length = 0;
+    ot_u8   lookup_cmd      = (alp->inrec.cmd & ~0x80) - 1;
+    ot_bool respond         = (ot_bool)(alp->inrec.cmd & 0x80);
+    
+    //alp->outrec.plength = 0;
     
     if ( (lookup_cmd >= OTAPI_M2QP_FUNCTIONS) || (auth_isroot(user_id) == False) )
-        return;
+        return False;
     
     /// Load template from ALP dir cmd into C datatype
-    /*
-    switch (argmap[lookup_cmd]) {
-        case 0:     get_tmpl = &sub_breakdown_u8;               break;
-        case 1:     get_tmpl = &sub_breakdown_u16;              break;
-        case 2:     get_tmpl = &sub_breakdown_u32;              break;
-        case 3:     get_tmpl = &sub_breakdown_queue;            break;
-        case 4:     get_tmpl = &sub_breakdown_session_tmpl;     break;
-        case 5:     get_tmpl = &sub_breakdown_command_tmpl;     break;
-        case 6:     get_tmpl = &sub_breakdown_id_tmpl;          break;
-        case 7:     get_tmpl = &sub_breakdown_routing_tmpl;     break;
-        case 8:     get_tmpl = &sub_breakdown_dialog_tmpl;      break;
-        case 9:     get_tmpl = &sub_breakdown_query_tmpl;       break;
-        case 10:    get_tmpl = &sub_breakdown_ack_tmpl;         break;
-        case 11:    get_tmpl = &sub_breakdown_error_tmpl;       break;
-        case 12:    get_tmpl = &sub_breakdown_isfcomp_tmpl;     break;
-        case 13:    get_tmpl = &sub_breakdown_isfcall_tmpl;     break;
-        case 14:    get_tmpl = &sub_breakdown_shell_tmpl;       break;
-    }
-    get_tmpl(in_q, (void*)dt_buf);
-    */
-    tmpl[argmap[lookup_cmd]](in_q, (void*)dt_buf);
+    bdtmpl_cmd[argmap[lookup_cmd]](alp->inq, (void*)dt_buf);
     
     /// Run ALP command, using input template
-    /*
-    switch (lookup_cmd) {
-        case 0: 	cmd = &otapi_put_command_tmpl;				break; 	//5
-        case 1:     cmd = &otapi_put_dialog_tmpl;               break;	//8
-        case 2:     cmd = &otapi_put_query_tmpl;                break;	//9
-        case 3:     cmd = &otapi_put_ack_tmpl;                  break;	//10
-        case 4:     cmd = &otapi_put_error_tmpl;                break;	//11
-        case 5:     cmd = &otapi_put_isf_comp;                  break;	//12
-        case 6:     cmd = &otapi_put_isf_call;                  break; 	//13
-        case 7:     cmd = &otapi_put_isf_return;                break; 	//13
-        case 8:     cmd = &otapi_put_reqds;                     break;	//3
-        case 9:     cmd = &otapi_put_propds;                    break;	//3
-        case 10:    cmd = &otapi_put_shell_tmpl;                break;	//14
-    }
-    txq_len = cmd(&status, (void*)dt_buf);
-    */
-    txq_len = cmd[lookup_cmd](&status, (void*)dt_buf);
+    txq_len = m2qp_cmd[lookup_cmd](&status, (void*)dt_buf);
     
     /// Response to ALP query command includes three bytes:
     /// byte 1 - status (0 is error)
     /// bytes 2 & 3 - 16 bit integer, length of TXQ
     if (respond) {
-        out_rec->flags         &= ~ALP_FLAG_CF;
-        out_rec->dir_cmd        = in_rec->dir_cmd | 0x40;
-        out_rec->payload_length = 3;
-        q_writebyte(out_q, status);
-        q_writeshort(out_q, txq_len);
+        alp->outrec.flags   &= ~ALP_FLAG_CF;
+        alp->outrec.cmd     |= 0x40;
+        alp->outrec.plength  = 3;
+        q_writebyte(alp->outq, status);
+        q_writeshort(alp->outq, txq_len);
     }
+    
+    return respond;
 }
 
 

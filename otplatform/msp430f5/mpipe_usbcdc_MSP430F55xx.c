@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /otplatform/msp430f5/mpipe_usbcdc_MSP430F55xx.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       11 Mar 2012
+  * @date       31 July 2012
   * @brief      Message Pipe (MPIPE) USB Virtual COM implementation for MSP430F55xx
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
@@ -33,6 +33,7 @@
 
 #include "OT_config.h"
 #include "OT_platform.h"
+#include "buffers.h"
 
 /// Do not compile if MPIPE is disabled, or MPIPE does not use USB VCOM
 #if ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_FEATURE(MPIPEVCOM) == ENABLED))
@@ -63,8 +64,6 @@
 
 /** Mpipe Module Data (used by all Mpipe implementations)   <BR>
   * ========================================================================<BR>
-  * At present this consumes 24 bytes of SRAM.  6 bytes could be freed by
-  * removing the callbacks, which might not be used.
   */
   
 // Footer is 2 byte sequence ID + CRC (usually 2 bytes, but could be more)
@@ -72,28 +71,29 @@
 
 
 typedef struct {
+    //ot_u8           ackbuf[10];
+    //mpipe_priority  priority;
     mpipe_state     state;
-    mpipe_priority  priority;
     ot_uni16        sequence;
     ot_u8*          pktbuf;
     ot_int          pktlen;
-    ot_u8           ackbuf[10];
     
 #   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
-        void (*sig_rxdone)(ot_int);
-        void (*sig_txdone)(ot_int);
-        void (*sig_rxdetect)(ot_int);
+        ot_sigv sig_rxdone;
+        ot_sigv sig_txdone;
+        ot_sigv sig_rxdetect;
 #   endif
 } mpipe_struct;
 
 
-typedef struct {
-    ot_int i;
-} mpipe_ext_struct;
+//typedef struct {
+//    ot_int i;
+//} mpipe_ext_struct;
 
 
-mpipe_struct mpipe;
-mpipe_ext_struct mpipe_ext;
+mpipe_struct        mpipe;
+//mpipe_ext_struct    mpipe_ext;
+alp_tmpl            mpipe_alp;
 
 
 
@@ -102,9 +102,7 @@ mpipe_ext_struct mpipe_ext;
 /** Mpipe Main Subroutine Prototypes   <BR>
   * ========================================================================
   */
-void sub_usb_loadrx();
 ot_u8 sub_usb_loadtx();
-void sub_usb_portsetup();
 
 
 
@@ -240,7 +238,6 @@ ot_u8 USBCDC_handleSendCompleted (ot_u8 intfNum) {
   */
 ot_u8 USBCDC_handleReceiveCompleted (ot_u8 intfNum){
     //TO DO: You can place your code here
-    //sub_usb_loadrx();
     mpipe_isr();
     return True;
 }
@@ -397,9 +394,6 @@ ot_u8 OEP0InterruptHandler(void) {
 /** Mpipe Main Subroutines   <BR>
   * ========================================================================
   */
-void sub_usb_loadrx() {
-
-}
   
 ot_u8 sub_usb_loadtx() {
     ot_u16  transfer_start = 0;
@@ -426,15 +420,15 @@ ot_u8 sub_usb_loadtx() {
   */
 
 #if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
-void mpipe_setsig_txdone(void (*signal)(ot_int)) {
+void mpipe_setsig_txdone(ot_sigv signal) {
     mpipe.sig_txdone = signal;
 }
 
-void mpipe_setsig_rxdone(void (*signal)(ot_int)) {
+void mpipe_setsig_rxdone(ot_sigv signal) {
     mpipe.sig_rxdone = signal;
 }
 
-void mpipe_setsig_rxdetect(void (*signal)(ot_int)) {
+void mpipe_setsig_rxdetect(ot_sigv signal) {
     mpipe.sig_rxdetect = signal;
 }
 #endif
@@ -447,7 +441,7 @@ void mpipe_setsig_rxdetect(void (*signal)(ot_int)) {
 /** Mpipe Main Public Functions  <BR>
   * ========================================================================
   */
-
+  
 ot_u8 mpipe_footerbytes() {
     return MPIPE_FOOTERBYTES;
 }
@@ -459,11 +453,13 @@ ot_int mpipe_init(void* port_id) {
 /// 2. Prepare the HW, which in this case is a USB Virtual TTY
 
 #   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
-        mpipe.sig_rxdone    = &otutils_sig_null;
-        mpipe.sig_txdone    = &otutils_sig_null;
-        mpipe.sig_rxdetect  = &otutils_sig_null;
+        mpipe.sig_rxdone    = &otutils_sigv_null;
+        mpipe.sig_txdone    = &otutils_sigv_null;
+        mpipe.sig_rxdetect  = &otutils_sigv_null;
 #   endif
 
+    mpipe_alp.inq           = &dir_in;
+    mpipe_alp.outq          = &dir_out;
     mpipe.sequence.ushort   = 0;          //not actually necessary
     mpipe.state             = MPIPE_Null;
     
@@ -488,7 +484,7 @@ void mpipe_kill() {
 
 void mpipe_wait() {
     while (mpipe.state != MPIPE_Idle) {
-        SLEEP_MCU();
+        //SLEEP_MCU();
     }
 }
 
@@ -526,7 +522,7 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
         data[mpipe.pktlen++] = crcval.ubyte[UPPER];
         data[mpipe.pktlen++] = crcval.ubyte[LOWER];
     
-        mpipe_ext.i = 0;
+        //mpipe_ext.i = 0;
         //sub_usb_loadtx();
         USBCDC_sendData(mpipe.pktbuf, mpipe.pktlen, CDC0_INTFNUM);
 

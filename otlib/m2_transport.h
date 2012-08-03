@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/m2_transport.h
+  * @file       /otlib/m2_transport.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       2 November 2011
+  * @date       31 July 2012
   * @brief      Mode 2 Query Protocol (Transport Layer)
   * @ingroup    M2QP
   *
@@ -107,8 +107,25 @@
 
 
 
+/** External Facing Datatypes   <BR>
+  * ========================================================================<BR>
+  * These data types are sometimes referred by external functions.
+  */
+typedef struct {
+    ot_u8   code;
+    ot_u8   ext;
+} cmd_data;
 
-/** PM2 data types
+typedef struct {
+    ot_u16  sequence;   // datastream sequence counter
+    ot_u8   fpp;        // frames per packet field
+    ot_u8   srcport;    // source port field
+} ds_data;
+
+
+
+/** PM2 data types  <BR>
+  * ========================================================================<BR>
   * These are not really supposed to be used externally, but leaving them
   * exposed does not hurt anything, and it makes module testing much easier.
   */
@@ -134,38 +151,45 @@ typedef struct {
     ot_int  comp_offset;  
 } query_data;
 
-typedef struct {
-    ot_u8   code;
-    ot_u8   ext;
-} cmd_data;
 
 
 
-/** ot_sigresp function pointer type
-  * param1 = Device ID pointer of responding device
-  * param2 = length of packet payload
-  * param3 = data pointer to packet payload
+
+/** ot_m2qpsig function pointer type
+  * param1  (ot_u8) Transport data (callback-dependent)
+  * param2  (ot_u8) Transport data (callback-dependent)
+  * param3  (id_tmpl*)  Device ID pointer of responding device
   *
   * Do not alter the Device ID data in your callback!!! 
   * It points to m2np.rt.dlog from m2_network.h
   */
-typedef ot_bool (*ot_sigresp)(id_tmpl*, ot_int, ot_u8*);
+typedef ot_bool (*ot_m2qpsig)(ot_u8, ot_u8, id_tmpl*);
 
+
+#define M2QP_HANDLES_ERROR  (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER))
+#define M2QP_HANDLES_A2P    (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER))
 
 typedef struct {
-    ot_sigresp shell_request;
-    
-#   if ((M2_FEATURE(GATEWAY) == ENABLED) || (M2_FEATURE(SUBCONTROLLER) == ENABLED))
-        ot_sigresp error_response;
-        ot_sigresp std_response;
-        ot_sigresp a2p_response;
-#       if (M2_FEATURE(DATASTREAM) == ENABLED)    
-            ot_sigresp dspkt_response;
-            ot_sigresp dsack_response;
-#       endif
-#   endif
-
-} m2qp_sigs;
+#if !defined(EXTF_m2qp_sig_isf)
+    ot_m2qpsig isf;
+#endif
+#if !defined(EXTF_m2qp_sig_udp)
+    ot_m2qpsig udp;
+#endif
+#if !defined(EXTF_m2qp_sig_dspkt) && M2_FEATURE(DATASTREAM)
+    ot_m2qpsig dspkt;
+#endif
+#if !defined(EXTF_m2qp_sig_dsack) && M2_FEATURE(M2DP)
+    ot_m2qpsig dsack;
+#endif
+#if !defined(EXTF_m2qp_sig_error) && M2QP_HANDLES_ERROR
+    ot_m2qpsig error;
+#endif
+#if !defined(EXTF_m2qp_sig_a2p) && M2QP_HANDLES_A2P
+    ot_m2qpsig a2p;
+#endif
+} 
+m2qp_sigs;
 
 
 
@@ -177,7 +201,10 @@ typedef struct {
     query_data      qdata;      // internal usage
     query_tmpl      qtmpl;
 #   if (OT_FEATURE(M2QP_CALLBACKS) == ENABLED)
-        m2qp_sigs   signal;
+        m2qp_sigs   sig;
+#   endif
+#   if (M2_FEATURE(DATASTREAM) == ENABLED)
+        alp_tmpl    ds;
 #   endif
 } m2qp_struct;
 
@@ -243,10 +270,10 @@ ot_int m2qp_put_isf( ot_u8 isf_id, ot_u8 offset, ot_u16 max_length );
 
 
 
-/****************************** 
- * M2QP Parsing Functions *
- ******************************/
 
+/** M2QP Parsing Functions  <BR>
+  * =======================================================================
+  */
 
 /** @brief A Null Callback for ot_sigresp types (response callbacks)
   * @param  responder_id    (id_tmpl*) pointer to m2np.rt.txer
@@ -311,28 +338,33 @@ void m2qp_mark_dsframe();
 
 
 
-/** Static Callbacks
+/** Static Callbacks    <BR>
   * ========================================================================<BR>
+  * The user can assume that the payload data is stored in the RXQ and the
+  * queue pointers are set properly.
+  */
+ot_bool m2qp_sig_isf(   ot_u8 type,     ot_u8 opcode,   id_tmpl* user_id    );
+ot_bool m2qp_sig_udp(   ot_u8 srcport,  ot_u8 dstport,  id_tmpl* user_id    );
+ot_bool m2qp_sig_error( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
+ot_bool m2qp_sig_a2p(   ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
+
+// Subject to change
+ot_bool m2qp_sig_dspkt( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
+ot_bool m2qp_sig_dsack( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
+
+
+
+
+
+
+
+
+
+/** Protocol ISF Functions  <BR>
+  * =======================================================================
   */
 
-ot_bool m2qp_sig_errresp(id_tmpl* id, ot_int payload_length, ot_u8* payload);
-ot_bool m2qp_sig_stdresp(id_tmpl* id, ot_int payload_length, ot_u8* payload);
-ot_bool m2qp_sig_a2presp(id_tmpl* id, ot_int payload_length, ot_u8* payload);
-ot_bool m2qp_sig_dsresp(id_tmpl* id, ot_int payload_length, ot_u8* payload);
-ot_bool m2qp_sig_dsack(id_tmpl* id, ot_int payload_length, ot_u8* payload);
-ot_bool m2qp_sig_udpreq(id_tmpl* id, ot_int payload_length, ot_u8* payload);
-
-
-
-
-
-
-
-/**************************
- * Protocol UDB Functions *
- **************************/
-
-/** @brief Breaks down UDB Comparison Template, and runs the comparison
+/** @brief Breaks down ISF Comparison Template, and runs the comparison
   * @param  is_series: (ot_u8) 0 is for ISF Comp, non-zero for ISFS Comp
   * @retval ot_int:     Score value for the comparison (see notes below)
   * @ingroup Protocol_Special
@@ -369,26 +401,26 @@ ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id);
   * @retval ot_int:     Number of total data bytes in the called dataset
   * @ingroup Protocol_Special
   *
-  * Parses and manages a UDB Element or UDB List Call Template, writing to the 
-  * TX queue the UDB Element or UDB List Return Template.
+  * Parses and manages a ISF File or ISF List Call Template, writing to the 
+  * TX queue the ISF File or ISF List Return Template.
   *
    * The score value (output) is structured as follows:
   * - negative values:  An error has occurred.
   *                     The value returned is -1 * [Mode 2 Error Code]
   *
-  * - non-negative:     The number of UDB data bytes in the called dataset.
-  *                     This does not include UDB header bytes, which are 
-  *                     2 bytes for each UDB element in the called dataset.
+  * - non-negative:     The number of ISF data bytes in the called dataset.
+  *                     This does not include ISF header bytes, which are 
+  *                     2 bytes for each ISF file in the called dataset.
   */
 ot_int m2qp_isf_call( ot_u8 is_series, Queue* input_q, id_tmpl* user_id );
 
 
 
 
-/** @brief Toolkit function for accessing UDB data, processing it, and returning a value
-  * @param  is_series     (ot_u8)   0 is for UDB Element, non-zero for UDB List
-  * @param  isf_id        (ot_int)  ID for the UDB Element or List
-  * @param  offset        (ot_int)  Byte offset into the UDB dataset
+/** @brief Toolkit function for accessing ISF data, processing it, and returning a value
+  * @param  is_series     (ot_u8)   0 is for ISF File, non-zero for ISF List
+  * @param  isf_id        (ot_int)  ID for the ISF File or List
+  * @param  offset        (ot_int)  Byte offset into the ISF dataset
   * @param  window_bytes  (ot_int)  Number of bytes, following offset, to process
   * @param  load_function (ot_int (*)(ot_int*, ot_u8) ) Processing function
   * @retval ot_int        A running sum of returns from the processing function
@@ -399,7 +431,7 @@ ot_int m2qp_isf_call( ot_u8 is_series, Queue* input_q, id_tmpl* user_id );
   * @sa sub_load_comparison()
   * @sa sub_load_return()
   *
-  * In a nutshell, this function can do basically anything to any kind of UDB
+  * In a nutshell, this function can do basically anything to any kind of ISF
   * dataset.  It is typically only used by pm2_isf_comp() or pm2_isf_call().
   * It is one of the cooler and more useful functions in OpenTag.
   * 

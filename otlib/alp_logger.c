@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/alp_logger.c
+  * @file       /otlib/alp_logger.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       1 July 2011
+  * @date       20 July 2012
   * @brief      ALP to Logger processor
   * @ingroup    ALP
   *
@@ -38,24 +38,21 @@
 #include "auth.h"
 #include "queue.h"
 
-void alp_proc_logger(alp_record* in_rec, alp_record* out_rec, \
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
-    
-    out_rec->payload_length = 0;
+ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
+/// Logger ALP is like ECHO.  The input is copied to the output.
     
     // Only root can log directly (this is an important security firewall)
-    if (auth_isroot(user_id)) {    
-        out_rec->flags          = in_rec->flags & ~(ALP_FLAG_MB | ALP_FLAG_ME);
-        out_rec->dir_id         = 4;
-        out_rec->dir_cmd        = 0;
-        out_rec->payload_length = in_rec->payload_length;
+    if (auth_isroot(user_id) == False)
+        return False;
         
-        // Calling logger echos input queue to output queue.
-        // Caller needs to decide what to do with the output queue.
-        if (in_q != out_q) {
-            q_writestring(out_q, in_q->getcursor, out_rec->payload_length);
-        }                    
+    alp->outrec.flags   = alp->inrec.flags;
+    alp->outrec.plength = alp->inrec.plength;
+    
+    if (alp->inq != alp->outq) {
+        q_writestring(alp->outq, alp->inq->getcursor, alp->inrec.plength);
     }
+    
+    return True;
 }
 
 #endif

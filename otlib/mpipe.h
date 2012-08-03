@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,31 +14,29 @@
   *
   */
 /**
-  * @file       /OTlib/mpipe.h
+  * @file       /otlib/mpipe.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       1 July 2011
+  * @date       31 July 2012
   * @brief      Message Pipe (MPIPE) interface
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
   *
-  * The Message Pipe is used to traffic data between a server and client.  It is
-  * used with NDEF (typically) and some form of wired, serial connection between
-  * the client and server (typically).
+  * The Message Pipe is used to traffic data between a server and client.  This
+  * present implementation always uses NDEF as a data wrapping format, and it 
+  * typically uses a wireline interface such as serial or USB CDC.
   *
-  * Configuring the type of Mpipe is done in platform_config_[platform name].h.  
-  * On chips, Mpipe is going to be something like a UART, SPI, I2C, USB, or
-  * something like one of these types of data buses.  On OSes, Mpipe is going to
-  * be an inter-process pipe, or something like that.  The Mpipe implementation
-  * is stored in /Platforms/[platform name]/mpipe_[platform name].c.
+  * Mpipe is a message interface, not a function-based API.  The functions in
+  * the MPipe module perform MAC and I/O type features.  However, the MPipe
+  * Payload is tightly coupled to NDEF, and, in OpenTag, NDEF is tightly 
+  * coupled to the ALP interface.  Furthermore, the ALP interface is available
+  * for use as a functional API.  So, in practical terms, MPipe's purpose is as
+  * a messaging API between client (e.g. PC) and server (OpenTag DASH7 device).
+  *
+  * To configure MPipe, alter the board configuration header file.  These are
+  * found in the /board directory.  Different boards support different MPipe
+  * interfaces.
   * 
-  * Mpipe is a message interface, not a function-based API!  However, the 
-  * messages themselves may be parsed and vectored to OTAPI functions or other 
-  * kinds of programmatic interfaces (such as a Forth VM that acts on the 
-  * message data as DASHForth program words).  Therefore, the functions in the 
-  * Mpipe module are for establishing the Mpipe connection and dispatching data 
-  * across it.
-  *
   * @note Mpipe Protocol
   * The Mpipe Protocol is completely implementation dependent.  Interfaces that
   * do not include an integrated MAC layer (addressing and data integrity) will
@@ -54,6 +52,9 @@
 #include "OT_config.h"
 
 #if (OT_FEATURE(MPIPE) == ENABLED)
+
+#include "alp.h"
+
 
 
 ///@todo when more hardware is supported by mpipe, variations of this will be
@@ -96,6 +97,13 @@ typedef enum {
 } mpipe_state;
 
 
+/** MPipe ALP allocation         <BR>
+  * ========================================================================<BR>
+  * This should be allocated in the MPipe driver if you are using an ALP-based
+  * data wrapper for MPipe.  NDEF is an ALP-based wrapper, and it is the only
+  * wrapper currently supported by Mainline MPipe implementations.
+  */
+extern alp_tmpl mpipe_alp;
 
 
 
@@ -178,55 +186,40 @@ mpipe_state mpipe_status();
 
 #if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
 /** @brief  Attaches a callback for TX done
-  * @param  signal      (void (*)(ot_int))  Signal handler callback
+  * @param  signal      (ot_sigv)  Signal handler callback
   * @retval None
   * @ingroup Mpipe
-  *
-  * The signal handler prototype is of the POSIX specification.  Certain 
-  * platform implementations may ignore the signal handler, but, generally, in
-  * MCU implementations the Mpipe ISR function will call "signal(0)" before it
-  * returns.
   * 
   * @note Only available when OT_FEATURE_MPIPE_CALLBACKS is ENABLED in OT_config.h
   */
-void mpipe_setsig_txdone(void (*signal)(ot_int));
+void mpipe_setsig_txdone(ot_sigv signal);
 
 
 
 /** @brief  Attaches a callback for RX done
-  * @param  signal      (void (*)(ot_int))  Signal handler callback
+  * @param  signal      (ot_sigv)  Signal handler callback
   * @retval None
   * @ingroup Mpipe
   *
-  * The signal handler prototype is of the POSIX specification.  Certain
-  * platform implementations may ignore the signal handler, but, generally, in
-  * MCU implementations the Mpipe ISR function will call "signal(0)" before it
-  * returns.
-  * 
   * @note Only available when OT_FEATURE_MPIPE_CALLBACKS is ENABLED in OT_config.h
   */
-void mpipe_setsig_rxdone(void (*signal)(ot_int));
+void mpipe_setsig_rxdone(ot_sigv signal);
 
 
 
 /** @brief  Attaches a callback for RX detect
-  * @param  signal      (void (*)(ot_int))  Signal handler callback
+  * @param  signal      (ot_sigv)  Signal handler callback
   * @retval None
   * @ingroup Mpipe
-  *
-  * The signal handler prototype is of the POSIX specification.  Certain
-  * platform implementations may ignore the signal handler, but, generally, in
-  * MCU implementations the Mpipe ISR function will call "signal(0)" before it
-  * returns.
   * 
   * @note Only available when OT_FEATURE_MPIPE_CALLBACKS is ENABLED in OT_config.h
   */
-void mpipe_setsig_rxdetect(void (*signal)(ot_int));
+void mpipe_setsig_rxdetect(ot_sigv signal);
 
 #else
 
 /** @brief  Static Callback Functions
-  * @param  code      	(ot_int) Integer input parameter to signal (typ 0)
+  * @param  code      	(void*) pointer to some sort of template (extensible)
   * @retval None
   * @ingroup Mpipe
   *
@@ -244,9 +237,9 @@ void mpipe_setsig_rxdetect(void (*signal)(ot_int));
   * "xxx" will be txdone, rxdone, or rxdetect.  Define one for each callback
   * you want to implement.
   */
-void mpipe_sig_txdone(ot_int code);
-void mpipe_sig_rxdone(ot_int code);
-void mpipe_sig_rxdetect(ot_int code);
+void mpipe_sig_txdone(void* tmpl);
+void mpipe_sig_rxdone(void* tmpl);
+void mpipe_sig_rxdetect(void* tmpl);
 
 #endif
 

@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@
   *
   */
 /**
-  * @file       /apps/.../platform_config.h
+  * @file       /apps/demo_opmode/code/platform_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    V1.0
-  * @date       16 November 2011
-  * @brief      Board & Platform Selection
+  * @date       31 July 2012
+  * @brief      Board & Platform Selection for Demo Opmode app
   *
-  * Don't actually include this.  Include OT_platform.h instead.
+  * Don't actually include this.  Include OT_platform.h instead.  This file and
+  * others like it are important to the preprocessor-based configuration scheme.
   ******************************************************************************
   */
 
@@ -30,40 +31,50 @@
 #include "build_config.h"
 
 
-//STM32F10x Boards
-//#define BOARD_MLX73Proto_E
-
-//STM32L1xx Boards
-//#define BOARD_SX1231Proto_H152
-
-//CC430 Boards
-#define BOARD_AG430DK_GW1
-//#define BOARD_AG430DK_EP1
-//#define BOARD_EM430RF
-//#define BOARD_eZ430Chronos
 
 
+/// Default Board setting: (EM430RF). 
+/// You should set BOARD_... as a constant that gets passed to the compiler as 
+/// a command-line argument (or whatever is equivalent).  You can also change
+/// the default if you wish.
+
+#if (!defined(BOARD_MLX73Proto_E) && \
+    !defined(BOARD_SX1231Proto_H152) && \
+    !defined(BOARD_AG430DK_GW1) && \
+    !defined(BOARD_AG430DK_EP1) && \
+    !defined(BOARD_EM430RF) && \
+    !defined(BOARD_eZ430Chronos))
+#   define BOARD_EM430RF
+#endif
+
+
+
+
+/// Presently supported Boards for Demo Opmode App:
+/// <LI> BOARD_MLX73Proto_E (STM32F)        </LI>
+/// <LI> BOARD_SX1231Proto_H152 (STM32L)    </LI>
+/// <LI> BOARD_AG430DK_GW1 (CC430)          </LI>
+/// <LI> BOARD_AG430DK_EP1 (CC430)          </LI>
+/// <LI> BOARD_EM430RF (CC430)            	</LI>
+/// <LI> BOARD_eZ430Chronos (CC430)         </LI>
 
 #if defined(BOARD_MLX73Proto_E)
-#   include "STM32F10x/board_MLX73Proto_E.h"
+#   include "stm32f10x/board_MLX73Proto_E.h"
 
 #elif defined(BOARD_SX1231Proto_H152)
-#   include "STM32L1xx/board_SX1231Proto_H152.h"
+#   include "stm32l1xx/board_SX1231Proto_H152.h"
 
-#elif defined(BOARD_AG430DK_GW1)
-#   include "CC430/board_AG430DK_GW1.h"
-
-#elif defined(BOARD_AG430DK_EP1)
-#   include "CC430/board_AG430DK_EP1.h"
+#elif defined(BOARD_AG430DK_GW1) || defined(BOARD_AG430DK_EP1)
+#   include "cc430/board_AG430DK_GW1.h"
 
 #elif defined(BOARD_EM430RF)
-#   include "CC430/board_EM430RF.h"
+#   include "cc430/board_EM430RF.h"
 
 #elif defined(BOARD_eZ430Chronos)
-#   include "CC430/board_eZ430Chronos.h"
+#   include "cc430/board_ez430chronos.h"
 
 #else
-#   error "BOARD is set to an unknown value in platform_config.h"
+#   error "No support BOARD is defined"
 
 #endif
 

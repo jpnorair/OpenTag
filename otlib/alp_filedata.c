@@ -1,4 +1,4 @@
-/*  Copyright 2010-2011, JP Norair
+/*  Copyright 2010-2012, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,35 +14,36 @@
   *
   */
 /**
-  * @file       /OTlib/alp_filedata.c
+  * @file       /otlib/alp_filedata.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       08 May 2011
+  * @date       20 July 2011
   * @brief      Application Layer protocol (ALP) for Filesystem Operations
   * @ingroup    ALP's
   *
-  * Works with the file system (veelite) and the general form of ALP's.  The
-  * ALP's may be transmitted as LLDP (condensed over-the-air server-to-server) 
-  * or NDEF (over the wire for client-server).
+  * Works with the file system (veelite) and the general form of ALPs.  
+  * The ALPs may be "pure ALP" or translated from NDEF.
   *
-  * File Data Subprotocol, Basic Directive Structure (LLDP).  The NDEF format is
-  * somewhat different, but the information is conveyed to this module in the
-  * same way (through the proc function).
-  * +-----------+-----------+-----------+-----------+
-  * | Directive | Directive | Directive | Directive |
-  * |  Length   |    ID     |  Command  |   Data    |
-  * +-----------+-----------+-----------+-----------+
-  * |  2 Bytes  |  1 Byte   |  1 Byte   | N-4 Bytes |
-  * +-----------+-----------+-----------+-----------+
-  * |     N     |    0x60   |     —     |     —     |
-  * +-----------+-----------+-----------+-----------+
+  * <PRE>
+  * 0             8            16       24        32
+  * +------------+-------------+--------+---------+
+  * | ALP Flags  | Payload Len | ALP ID | ALP CMD |
+  * +------------+-------------+--------+---------+
+  * |  bitfield  |      N      |   X    |    Y    |
+  * +------------+-------------+--------+---------+
+  * Universal ALP header (for comparison): flags are always --z10000.  The 
+  * NDEF chunk flag (z) is ignored, as the values of MB and ME are sufficent to 
+  * implicitly determine the value of the chunk flag.
   *
-  * Directive Command Field:
+  * ALP ID Field
+  * b7-0:   File ALP ID     0x01 
+  *
+  * ALP Command Field:
   * b7:     Respond Bit     0 don't respond
   *                         1 Respond with directive return template
   *
   * b6-4:   File Block      001 GFB
-  *                         010 ISFSB (Series)
+  *                         010 ISSB
   *                         011 ISFB
   *
   * b3-0:   Operand         0000: Read File Permissions 
@@ -59,6 +60,7 @@
   *                         1101: Return File Header + Data 
   *                         1110: Restore File (optional) 
   *                         1111: Return Error
+  *</PRE>
   ******************************************************************************
   */
 
@@ -74,32 +76,24 @@
 
 
 // Processing subroutines
-typedef ot_int (*sub_file)(ot_bool, alp_record*, Queue*, Queue*, id_tmpl*);
+typedef ot_int (*sub_file)(alp_tmpl*, id_tmpl*, ot_bool);
 
 
-ot_int sub_return(ot_bool respond, alp_record* in_rec, 
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id );
+ot_int sub_return(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond );
 
-ot_int sub_fileperms(ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id );
+ot_int sub_fileperms(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond );
                         
-ot_int sub_fileheaders(ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id );
+ot_int sub_fileheaders(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond );
                         
-ot_int sub_filedata(ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id );
+ot_int sub_filedata(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond );
                         
-ot_int sub_filedelete(ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id );
+ot_int sub_filedelete(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond );
                         
-ot_int sub_filecreate(ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id );   
+ot_int sub_filecreate(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond );  
                                   
-ot_int sub_filerestore(ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id );
+ot_int sub_filerestore(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond );
                         
-//ot_int sub_fileerror(ot_bool respond, alp_record* in_rec, 
-//                        Queue* in_q, Queue* out_q, id_tmpl* user_id );
+//ot_int sub_fileerror(ot_bool respond, alp_tmpl* alp, id_tmpl* user_id );
 
 
 
@@ -109,11 +103,10 @@ ot_int sub_filerestore(ot_bool respond, alp_record* in_rec,
 
 
 // Callable processing function
-void alp_proc_filedata(alp_record* in_rec, alp_record* out_rec, \
-                            Queue* in_q, Queue* out_q, id_tmpl* user_id) {
+ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id) {
     //sub_file cmd;
-    const sub_file cmd[] = {
-  	  	  &sub_fileperms,
+    static const sub_file cmd_fn[] = {
+          &sub_fileperms,
           &sub_return,
           &sub_fileperms,
           &sub_fileperms,
@@ -131,44 +124,24 @@ void alp_proc_filedata(alp_record* in_rec, alp_record* out_rec, \
           &sub_return
     };
 
-	ot_int  data_out;
-    ot_bool respond = (ot_bool)(in_rec->dir_cmd & 0x80);
+    ot_int  data_out;
+    ot_bool respond = (ot_bool)(alp->inrec.cmd & 0x80);
     
     // Return value is the number of bytes of output the command has produced
-    /*
-    switch (in_rec->dir_cmd & 0x0F) {
-        case 0:     cmd = &sub_fileperms;               break;
-        case 1:     cmd = &sub_return;                  break;
-        case 2:     //cmd = &sub_fileperms;               break;
-        case 3:     cmd = &sub_fileperms;               break;
-        case 4:     cmd = &sub_filedata;                break;
-        case 5:     cmd = &sub_return;                  break;
-        case 6:     //cmd = &sub_filedata;                break;
-        case 7:     cmd = &sub_filedata;                break;
-        case 8:     cmd = &sub_fileheaders;             break;
-        case 9:     cmd = &sub_return;                  break;
-        case 10:    cmd = &sub_filedelete;              break;
-        case 11:    cmd = &sub_filecreate;              break;
-        case 12:    cmd = &sub_filedata;                break;
-        case 13:    cmd = &sub_return;                  break;
-        case 14:    cmd = &sub_filerestore;             break;
-        case 15:    cmd = &sub_return;                  break;
-    }
-    data_out = cmd(respond, in_rec, in_q, out_q, user_id);
-    */
-    data_out = cmd[in_rec->dir_cmd & 0x0F](respond, in_rec, in_q, out_q, user_id);
+    data_out = cmd_fn[alp->inrec.cmd & 0x0F](alp, user_id, respond);
     
     if (respond) {        
         //Transform input cmd to error or data return variant for response
-        // - for write and control funcs, error is the response
+        // - for write and control funcs, error is the only type of response
         // - for read, data return is the response
-        out_rec->dir_cmd    = in_rec->dir_cmd & ~0x80;
-        out_rec->dir_cmd   |= (in_rec->dir_cmd & 0x02) ? 0x0F : 0x01;   //02 is write mask
-        out_rec->flags     &= ~ALP_FLAG_CF;
-        out_rec->flags     |= (ot_u8)(in_rec->bookmark != NULL) << 5;
+        // - 02 is the write-cmd mask, 03 is the return-cmd mask, 0F is the error cmd
+        alp->outrec.cmd     = alp->inrec.cmd & ~(0x80 | ALP_FLAG_CF);
+        alp->outrec.cmd    |= (alp->inrec.cmd & 0x02) ? 0x0F : 0x01;
     }
     
-    out_rec->payload_length = data_out;
+    alp->outrec.plength = data_out;
+    
+    return (ot_bool)(data_out);
 }
 
 
@@ -176,8 +149,7 @@ void alp_proc_filedata(alp_record* in_rec, alp_record* out_rec, \
 
 
 // Return functions are not handled by the server (ignore)
-ot_int sub_return(ot_bool respond, alp_record* in_rec,
-                    Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
+ot_int sub_return(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond) {
     return 0;
 }
 
@@ -196,17 +168,15 @@ ot_bool sub_qnotfull(ot_bool write, ot_u8 write_size, Queue* q) {
 
 
 
-ot_int sub_fileperms(ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
-    
+ot_int sub_fileperms( alp_tmpl* alp, id_tmpl* user_id, ot_bool respond ) {
     ot_int  data_out    = 0;
-    ot_int  data_in     = in_rec->payload_length;
-    vlBLOCK file_block  = (vlBLOCK)((in_rec->dir_cmd >> 4) & 0x07);
-    ot_u8   file_mod    = ((in_rec->dir_cmd & 0x02) ? VL_ACCESS_W : VL_ACCESS_R);
+    ot_int  data_in     = alp->inrec.plength;
+    vlBLOCK file_block  = (vlBLOCK)((alp->inrec.cmd >> 4) & 0x07);
+    ot_u8   file_mod    = ((alp->inrec.cmd & 0x02) ? VL_ACCESS_W : VL_ACCESS_R);
 
     /// Loop through all the listed file ids and process permissions.
-    while ((data_in > 0) && sub_qnotfull(respond, 2, out_q)) {
-        ot_u8   file_id         = q_readbyte(in_q);
+    while ((data_in > 0) && sub_qnotfull(respond, 2, alp->outq)) {
+        ot_u8   file_id         = q_readbyte(alp->inq);
         ot_bool allow_write     = respond;
         vaddr   header;
         
@@ -215,7 +185,7 @@ ot_int sub_fileperms(ot_bool respond, alp_record* in_rec,
         if (file_mod == VL_ACCESS_W ) {
             /// run the chmod and return the error code (0 is no error)
             data_in--;  // two for the new mod
-            file_mod = vl_chmod(file_block, file_id, q_readbyte(in_q), user_id);
+            file_mod = vl_chmod(file_block, file_id, q_readbyte(alp->inq), user_id);
         }
         else if (allow_write) {
             /// Get the header address and return mod (offset 5).  The root user
@@ -231,46 +201,44 @@ ot_int sub_fileperms(ot_bool respond, alp_record* in_rec,
         }
         if (allow_write) {
             /// load the data onto the output, if response enabled
-            q_writebyte(out_q, file_id);
-            q_writebyte(out_q, file_mod);
+            q_writebyte(alp->outq, file_id);
+            q_writebyte(alp->outq, file_mod);
             data_out += 2;
         }
     }
     
     /// return number of bytes put onto the output (always x2)
-    in_rec->bookmark = (void*)sub_testchunk(data_in);
+    alp->inrec.bookmark = (void*)sub_testchunk(data_in);
     return data_out;
 }
 
 
 
 
-ot_int sub_fileheaders( ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
-    
+ot_int sub_fileheaders( alp_tmpl* alp, id_tmpl* user_id, ot_bool respond ) {
     ot_int  data_out    = 0;
-    ot_int  data_in     = in_rec->payload_length;
-    vlBLOCK file_block  = (vlBLOCK)((in_rec->dir_cmd >> 4) & 0x07);
+    ot_int  data_in     = alp->inrec.plength;
+    vlBLOCK file_block  = (vlBLOCK)((alp->inrec.cmd >> 4) & 0x07);
 
     /// Only run if respond bit is set!
     if (respond) {
-        while ((data_in > 0) && sub_qnotfull(respond, 6, out_q)) {
+        while ((data_in > 0) && sub_qnotfull(respond, 6, alp->outq)) {
             vaddr   header;
             ot_bool allow_output = True;
             
             data_in--;  // one for the file id
             
             allow_output = (ot_bool)(vl_getheader_vaddr(&header, file_block, \
-                                    q_readbyte(in_q), VL_ACCESS_R, NULL) == 0);
+                                    q_readbyte(alp->inq), VL_ACCESS_R, NULL) == 0);
             if (allow_output) {
-                q_writeshort_be(out_q, vworm_read(header + 4)); // id & mod
-                q_writeshort(out_q, vworm_read(header + 0)); // length
-                q_writeshort(out_q, vworm_read(header + 2)); // alloc
+                q_writeshort_be(alp->outq, vworm_read(header + 4)); // id & mod
+                q_writeshort(alp->outq, vworm_read(header + 0)); // length
+                q_writeshort(alp->outq, vworm_read(header + 2)); // alloc
                 data_out += 6;
             }
         }
         
-        in_rec->bookmark = (void*)sub_testchunk(data_in);
+        alp->inrec.bookmark = (void*)sub_testchunk(data_in);
     }
     
     return data_out; 
@@ -279,17 +247,17 @@ ot_int sub_fileheaders( ot_bool respond, alp_record* in_rec,
 
 
 
-ot_int sub_filedata(ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
-    
+ot_int sub_filedata( alp_tmpl* alp, id_tmpl* user_id, ot_bool respond ) {
     vlFILE* fp;
     ot_u16  offset;
     ot_u16  span;
     ot_int  data_out    = 0;
-    ot_int  data_in     = in_rec->payload_length;
-    ot_bool inc_header  = (ot_bool)((in_rec->dir_cmd & 0x0F) == 0x0C);
-    vlBLOCK file_block  = (vlBLOCK)((in_rec->dir_cmd >> 4) & 0x07);
-    ot_u8   file_mod    = ((in_rec->dir_cmd & 0x02) ? VL_ACCESS_W : VL_ACCESS_R);
+    ot_int  data_in     = alp->inrec.plength;
+    ot_bool inc_header  = (ot_bool)((alp->inrec.cmd & 0x0F) == 0x0C);
+    vlBLOCK file_block  = (vlBLOCK)((alp->inrec.cmd >> 4) & 0x07);
+    ot_u8   file_mod    = ((alp->inrec.cmd & 0x02) ? VL_ACCESS_W : VL_ACCESS_R);
+    Queue*  inq         = alp->inq;
+    Queue*  outq        = alp->outq;
     
     while (data_in > 0) {
         vaddr   header;
@@ -297,14 +265,16 @@ ot_int sub_filedata(ot_bool respond, alp_record* in_rec,
         ot_u8   file_id;
         ot_u16  limit;
         
-        in_rec->bookmark= in_q->getcursor;
-        file_id         = q_readbyte(in_q);
-        offset          = q_readshort(in_q);
-        span            = q_readshort(in_q);
-        limit           = offset + span;
-        err_code        = vl_getheader_vaddr(&header, file_block, file_id, file_mod, user_id);
-        file_mod        = ((file_mod & VL_ACCESS_W) != 0);
-        fp              = NULL;
+        alp->inrec.bookmark     = inq->getcursor;
+        alp->outrec.bookmark    = NULL;
+        
+        file_id     = q_readbyte(inq);
+        offset      = q_readshort(inq);
+        span        = q_readshort(inq);
+        limit       = offset + span;
+        err_code    = vl_getheader_vaddr(&header, file_block, file_id, file_mod, user_id);
+        file_mod    = ((file_mod & VL_ACCESS_W) != 0);
+        //fp          = NULL;
         
         // A. File error catcher Stage
         // (In this case, gotos make it more readable)
@@ -328,8 +298,8 @@ ot_int sub_filedata(ot_bool respond, alp_record* in_rec,
         }
         
         if (limit > fp->alloc) {
-        	limit 		= fp->alloc;
-        	err_code	= 0x08;
+            limit       = fp->alloc;
+            err_code    = 0x08;
         }
 
         // B. File Writing or Reading Stage
@@ -339,10 +309,10 @@ ot_int sub_filedata(ot_bool respond, alp_record* in_rec,
         // 3. miscellaneous write error occurs when vl_write fails
         if (file_mod) {
             for (; offset<limit; offset+=2, span-=2, data_in-=2) {
-                if (in_q->getcursor >= in_q->back) {
+                if (inq->getcursor >= inq->back) {
                     goto sub_filedata_overrun;
                 }
-                err_code |= vl_write(fp, offset, q_readshort_be(in_q));
+                err_code |= vl_write(fp, offset, q_readshort_be(inq));
             }
         }
         
@@ -356,37 +326,37 @@ ot_int sub_filedata(ot_bool respond, alp_record* in_rec,
             overhead    = 6;
             overhead   += (inc_header != 0) << 2; 
             
-            if ((out_q->putcursor+overhead) >= out_q->back) {
+            if ((outq->putcursor+overhead) >= outq->back) {
                 goto sub_filedata_overrun;
             }
             
-            q_writeshort_be(out_q, vworm_read(header + 4)); // id & mod
+            q_writeshort_be(outq, vworm_read(header + 4)); // id & mod
             if (inc_header) {
-                q_writeshort(out_q, vworm_read(header + 0));    // length
-                q_writeshort(out_q, vworm_read(header + 2));    // alloc
+                q_writeshort(outq, vworm_read(header + 0));    // length
+                q_writeshort(outq, vworm_read(header + 2));    // alloc
                 data_out += 4;
             }
-            q_writeshort(out_q, offset);
-            q_writeshort(out_q, span);
+            q_writeshort(outq, offset);
+            q_writeshort(outq, span);
             data_out += 6;
             
             for (; offset<limit; offset+=2, span-=2, data_out+=2) {
-                if ((out_q->putcursor+2) >= out_q->back) {
+                if ((outq->putcursor+2) >= outq->back) {
                     goto sub_filedata_overrun;
                 }
-                q_writeshort_be(out_q, vl_read(fp, offset));
+                q_writeshort_be(outq, vl_read(fp, offset));
             }
         }
         
         // C. Error Sending Stage
         sub_filedata_senderror:
         if (respond & ((err_code != 0) | file_mod)) {
-            if ((out_q->putcursor+2) >= out_q->back) {
+            if ((outq->putcursor+2) >= outq->back) {
                 goto sub_filedata_overrun;
             }
-            q_writebyte(out_q, file_id);
-            q_writebyte(out_q, err_code);
-            q_markbyte(in_q, span);         // go past any leftover input data
+            q_writebyte(outq, file_id);
+            q_writebyte(outq, err_code);
+            q_markbyte(inq, span);         // go past any leftover input data
             data_out += 2;
         }
         
@@ -397,7 +367,7 @@ ot_int sub_filedata(ot_bool respond, alp_record* in_rec,
     
     // Total Completion:
     // Set bookmark to NULL, because the record was completely processed
-    in_rec->bookmark = NULL;
+    alp->inrec.bookmark = NULL;
     return data_out;
     
     
@@ -407,14 +377,12 @@ ot_int sub_filedata(ot_bool respond, alp_record* in_rec,
     vl_close(fp);
     {
         ot_u8* scratch;
-        in_q->getcursor = (ot_u8*)in_rec->bookmark;
-        scratch         = in_q->putcursor;
-        in_q->putcursor = in_q->getcursor + 1;
-        
-        q_writeshort(in_q, offset);
-        q_writeshort(in_q, span);
-        
-        in_q->putcursor = scratch;
+        inq->getcursor  = (ot_u8*)alp->inrec.bookmark;
+        scratch         = inq->getcursor + 1;
+        *scratch++      = ((ot_u8*)&offset)[UPPER];
+        *scratch++      = ((ot_u8*)&offset)[LOWER];
+        *scratch++      = ((ot_u8*)&span)[UPPER];
+        *scratch        = ((ot_u8*)&span)[LOWER];
     }
     
     return data_out;
@@ -425,65 +393,62 @@ ot_int sub_filedata(ot_bool respond, alp_record* in_rec,
 
 
 
-ot_int sub_filedelete(  ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
-                        
+ot_int sub_filedelete( alp_tmpl* alp, id_tmpl* user_id, ot_bool respond ) {          
     ot_int  data_out    = 0;
-    ot_int  data_in     = in_rec->payload_length;
-    vlBLOCK file_block  = (vlBLOCK)((in_rec->dir_cmd >> 4) & 0x07);
+    ot_int  data_in     = alp->inrec.plength;
+    vlBLOCK file_block  = (vlBLOCK)((alp->inrec.cmd >> 4) & 0x07);
     
-    while ((data_in > 0) && sub_qnotfull(respond, 2, out_q)) {
+    while ((data_in > 0) && sub_qnotfull(respond, 2, alp->outq)) {
         ot_u8   err_code;
         ot_u8   file_id;
         
         data_in--;
-        file_id     = q_readbyte(in_q);
+        file_id     = q_readbyte(alp->inq);
         err_code    = vl_delete(file_block, file_id, user_id);
     
         if (respond) {
-            q_writebyte(out_q, file_id);
-            q_writebyte(out_q, err_code);
+            q_writebyte(alp->outq, file_id);
+            q_writebyte(alp->outq, err_code);
             data_out += 2;
         }
     }    
     
-    in_rec->bookmark = (void*)sub_testchunk(data_in);
+    alp->inrec.bookmark = (void*)sub_testchunk(data_in);
     return data_out;     
 }
 
 
 
 
-ot_int sub_filecreate(  ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id  ) {
-    
+ot_int sub_filecreate(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond) {
     ot_int  data_out    = 0;
-    ot_int  data_in     = in_rec->payload_length;
-    vlBLOCK file_block  = (vlBLOCK)((in_rec->dir_cmd >> 4) & 0x07);
+    ot_int  data_in     = alp->inrec.plength;
+    vlBLOCK file_block  = (vlBLOCK)((alp->inrec.cmd >> 4) & 0x07);
     
-    while ((data_in > 0) && sub_qnotfull(respond, 2, out_q)) {
+    while ((data_in > 0) && sub_qnotfull(respond, 2, alp->outq)) {
         vlFILE*     fp = NULL;
-        Twobytes    idmod;
-        //ot_u16      length;
+        ot_u8       id;
+        ot_u8       mod;
         ot_u16      alloc;
         ot_u8       err_code;
         
-        data_in        -= 6;
-        idmod.ushort    = q_readshort_be(in_q);
-        /*length          =*/ q_readshort(in_q);
-        alloc           = q_readshort(in_q);
-        err_code        = vl_new(&fp, file_block, idmod.ubyte[0], idmod.ubyte[1], alloc, user_id);
+        data_in            -= 6;
+        id                  = *alp->inq->getcursor++;
+        mod                 = *alp->inq->getcursor;
+        alp->inq->getcursor+= 3;                        // cursor goes past mod+length (length ignored)
+        alloc               = q_readshort(alp->inq);
+        err_code            = vl_new(&fp, file_block, id, mod, alloc, user_id);
         
         if (respond) {
-            q_writebyte(out_q, idmod.ubyte[0]);
-            q_writebyte(out_q, err_code);
+            q_writebyte(alp->outq, id);
+            q_writebyte(alp->outq, err_code);
             data_out += 2;
         }
         
         vl_close(fp);
-    }    
+    }
     
-    in_rec->bookmark = (void*)sub_testchunk(data_in);
+    alp->inrec.bookmark = (void*)sub_testchunk(data_in);
     return data_out;      
 }
 
@@ -491,26 +456,24 @@ ot_int sub_filecreate(  ot_bool respond, alp_record* in_rec,
 
 
 /// Not currently supported, always returns "unrestorable" error
-ot_int sub_filerestore( ot_bool respond, alp_record* in_rec,
-                        Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
-    
+ot_int sub_filerestore(alp_tmpl* alp, id_tmpl* user_id, ot_bool respond ) {
     ot_int  data_out    = 0;
-    ot_int  data_in     = in_rec->payload_length;
-    //vlBLOCK file_block  = ((in_rec->dir_cmd >> 4) & 0x07);
+    ot_int  data_in     = alp->inrec.plength;
+    //vlBLOCK file_block  = ((alp->inrec.cmd >> 4) & 0x07);
     
-    while ((data_in > 0) && sub_qnotfull(respond, 2, out_q)) {
+    while ((data_in > 0) && sub_qnotfull(respond, 2, alp->outq)) {
         ot_u8   err_code    = 0x03;
-        ot_u8   file_id     = q_readbyte(in_q);
+        ot_u8   file_id     = q_readbyte(alp->inq);
         data_in            -= 1;
     
         if (respond) {
-            q_writebyte(out_q, file_id);
-            q_writebyte(out_q, err_code);
+            q_writebyte(alp->outq, file_id);
+            q_writebyte(alp->outq, err_code);
             data_out += 2;
         }
     }    
     
-    in_rec->bookmark = (void*)sub_testchunk(data_in);
+    alp->inrec.bookmark = (void*)sub_testchunk(data_in);
     return data_out;     
 }
 
@@ -520,8 +483,8 @@ ot_int sub_filerestore( ot_bool respond, alp_record* in_rec,
 // meet specification.  This function will log received errors.
 //ot_int sub_fileerror(ot_bool respond, ot_bool include_header, 
 //                        vlBLOCK file_block, ot_u8 file_mod, ot_int data_in, 
-//                        Queue* in_q, Queue* out_q, id_tmpl* user_id ) {
-//    return otapi_log_msg(6, data_in, "ERR_VL", q_markbyte(in_q, data_in) );
+//                        Queue* alp->inq, Queue* alp->outq., id_tmpl* user_id ) {
+//    return otapi_log_msg(6, data_in, "ERR_VL", q_markbyte(alp->inq, data_in) );
 //}
 
 

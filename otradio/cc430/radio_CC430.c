@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /otradio/cc430/radio_CC430.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       13 Oct 2011
+  * @date       22 July 2012
   * @brief      Radio Driver (RF transceiver) for CC430
   * @defgroup   Radio (Radio Module)
   * @ingroup    Radio
@@ -1178,10 +1178,11 @@ void subcc430_null(ot_int arg1, ot_int arg2) { }
 
 
 void subcc430_finish(ot_int main_err, ot_int frame_err) {
-    /// 1. Turn-off interrupts, reset autocalibration flag
+    /// 1. Turn-off interrupts, reset autocalibration flag, clear DATA mutex
     radio_gag();
     //radio_idle();
     subcc430_reset_autocal();
+    sys_clear_mutex(SYS_MUTEX_RADIO_DATA);
     
     /// 2. Run Callback, then reset radio & callback to null state
     radio.evtdone(main_err, frame_err);

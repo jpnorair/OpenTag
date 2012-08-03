@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /board/CC430/board_EM430RF.h
+  * @file       /board/cc430/board_EM430RF.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       17 November 2011
+  * @date       31 July 2012
   * @brief      Board Configuration for Classic TI/Amber EM430RF (CC430)
   * @ingroup    Platform
   *
@@ -32,6 +32,12 @@
 #include "build_config.h"
 #include "platform_CC430.h"
 #include "radio_CC430.h"
+
+#ifdef __NULL_RADIO__
+#   include "radio_null.h"
+#else
+#   include "radio_CC430.h"
+#endif
 
 
 
@@ -56,55 +62,123 @@
 
 /** Additional RF Front End Parameters and Settings <BR>
   * ========================================================================<BR>
-  * The TI EM430 kits so far only come in 900 MHz tune.
+  * The TI EM430 kits so far must be re-configured to 433 MHz, or set to 866.
   */
 #define RF_PARAM_BAND   866
+#define RF_HDB_ATTEN    6       //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_RSSI_OFFSET  3       //Offset applied to RSSI calculation
 
 
 
-/** Additional Platform Parameters and Settings <BR>
+/** MCU Feature settings      <BR>
   * ========================================================================<BR>
-  * Change this if you are using a USB-serial converter, or not.  This affects
-  * the way MPipe is built, so it only matters if you are building MPipe
+  * Implemented capabilities of the CC430F5137/6137 variants.
+  *
   */
+#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL       // FEATURE                  AVAILABILITY
+#define MCU_FEATURE_CRC                 ENABLED                 // CCITT CRC16              Low
+#define MCU_FEATURE_AES128              ENABLED                 // AES128 engine            Moderate
+#define MCU_FEATURE_ECC                 DISABLED                // ECC engine               Low
+#define MCU_FEATURE_ALGE                DISABLED                // Algebraic Eraser engine  Rare/None yet
+#define MCU_FEATURE_RADIODMA            DISABLED
+#define MCU_FEATURE_RADIODMA_TXBYTES    0
+#define MCU_FEATURE_RADIODMA_RXBYTES    0
+#define MCU_FEATURE_MAPEEPROM           DISABLED
+#define MCU_FEATURE_MPIPEDMA            ENABLED      // MPipe is only useful for debug mode
+#define MCU_FEATURE_MEMCPYDMA           DISABLED      // Must be disabled if MPIPEDMA is enabled
+
+#define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
+#define MCU_PARAM_POINTERSIZE           2
+
 #define PLATFORM_FEATURE_USBCONVERTER    ENABLED
 
 
 
-/** Basic GPIO Setup <BR>
+
+/** Board-based Feature Settings <BR>
   * ========================================================================<BR>
-  * <LI>MPipe is a UART-based serial interface.  It needs to be specified with
-  *     a UART peripheral number and RX/TX port & pin configurations. </LI>
-  * <LI>OT Triggers are test outputs, usually LEDs.  They should be configured
-  *     to ports & pins where there are LED or other trigger connections.</LI>
-  * <LI>The GWN feature is part of a true-random-number generator.  It is
-  *     optional.  It needs a port & pin for the ADC input (GWNADC) and also,
-  *     optionally, one for a Zener driving output port & pin.  Using a Zener
-  *     can greatly accelerate the random number generation process.</LI>
+  * Notes apart from the obvious:  
+  *
+  * 1. There is a general purpose button attached to P1.5.  The other two 
+  * buttons are hooked directly into the PaLFi core.  In the board schematic 
+  * and documentation, this button is defined as "SW2".  This button is active-
+  * low and it requires you to pull-up the input pin.
+  * 
+  * 2. The 2 LEDs (TRIGS 1-2) are normal-biased.
   */
-#define MPIPE_UARTNUM       0           //0 or 1 (A or B)
-#define MPIPE_UART_PORTNUM  1
-#define MPIPE_UART_RXPIN    GPIO_Pin_5
-#define MPIPE_UART_TXPIN    GPIO_Pin_6
+#define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
+#define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
+#define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL used as Clock source
+#define BOARD_FEATURE_HFXTAL            DISABLED                // HF XTAL used as Clock source
+#define BOARD_FEATURE_INVERT_TRIG1      DISABLED
+#define BOARD_FEATURE_INVERT_TRIG2      DISABLED
 
-#define OT_TRIG1_PORTNUM    3
-#define OT_TRIG1_PIN        GPIO_Pin_3
-#define OT_TRIG1_HIDRIVE    ENABLED
-#define OT_TRIG2_PORTNUM    3
-#define OT_TRIG2_PIN        GPIO_Pin_4
-#define OT_TRIG2_HIDRIVE    ENABLED
+#define BOARD_SW2_PORT                  GPIO1
+#define BOARD_SW2_PIN                   GPIO_Pin_7
+#define BOARD_SW2_POLARITY              0
 
-// Pin that can be used for ADC-based random number (usually floating pin)
-// You could also put on a low voltage, reverse-biased zener on the board
-// to produce a pile of noise.  2.1V seems like a good value.
-#define OT_GWNADC_PORTNUM   2
-#define OT_GWNADC_PIN       GPIO_Pin_1
-#define OT_GWNADC_BITS      1
-//#define OT_GWNZENER_PORT    GPIO2
-//#define OT_GWNZENER_PIN     GPIO_Pin_2
-//#define OT_GWNZENER_HIDRIVE DISABLED
+#define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
+#define BOARD_PARAM_LFHz                32768
+#define BOARD_PARAM_LFtol               0.00002
+#define BOARD_PARAM_HFHz                32768
+#define BOARD_PARAM_HFmult              610                     // DCO = HFHz * HFmult
+#define BOARD_PARAM_HFtol               BOARD_PARAM_LFtol
+#define BOARD_PARAM_MCLKDIV             1                       // Master Clock = DCO / MCLKDIV
+#define BOARD_PARAM_SMCLKDIV            8                       // Submaster Clock = DCO / SMCLKDIV (~2.5 MHz)
+
+#if (BOARD_FEATURE(LFXTAL) == ENABLED)
+#   define BOARD_LFXT_PINS      (GPIO_Pin_0 | GPIO_Pin_1)
+#   define BOARD_LFXT_CONF      (UCS_CTL6_XTS_low | UCS_CTL6_XT1BYPASS_off | UCS_CTL6_XCAP_2 )
+#else
+#   define BOARD_LFXT_PINS      0
+#   define BOARD_LFXT_CONF      (XT1OFF)
+#endif
+
+#if (BOARD_FEATURE(HFXTAL) == ENABLED)
+#   define BOARD_HFXT_PINS      (GPIO_Pin_2 | GPIO_Pin_3)
+#   define BOARD_HFXT_CONF      (XT2DRIVE_3)
+#else
+#   define BOARD_HFXT_PINS      0
+#   define BOARD_HFXT_CONF      (UCS_CTL6_XT2OFF | 0xC0 )
+#endif
 
 
+OT_INLINE_H void BOARD_PORT_STARTUP(void) {
+/// Configure all ports to grounded outputs in order to minimize current
+    P1DIR = 0xFF;
+    P2DIR = 0xFF;
+    P3DIR = 0xFF;
+    P4DIR = 0xFF;
+    
+#   if (defined(DEBUG_ON) || defined(__DEBUG__))
+    PJDIR = 0x00;
+#   else
+    PJDIR = 0xFF;
+#   endif    
+    
+    P1OUT = 0x00;
+    P2OUT = 0x00;
+    P3OUT = 0x00;
+    P4OUT = 0x00;
+    PJOUT = 0x00;
+}
+
+// LFXT1 Preconfiguration, using values local to the board design
+// ALL CC430 Boards MUST HAVE SOME VARIANT OF THIS
+OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
+    // Turn on XT1 as LF crystal.  Let RF core manage 26 MHz XT2
+    GPIO5->SEL |= BOARD_LFXT_PINS | BOARD_HFXT_PINS;
+    UCS->CTL6   = BOARD_LFXT_CONF | BOARD_HFXT_CONF;
+    
+    // Loop until XT2, XT1, and DCO all stabilize
+    do {
+        UCSCTL7 &= ~(XT2OFFG + XT1LFOFFG + DCOFFG);
+        SFRIFG1 &= ~OFIFG;
+    } while (SFRIFG1&OFIFG);
+  
+    // Set LF and HF drive strength to minimum (depends on XTAL spec)
+    UCS->CTL6  &= ~(XT1DRIVE_3);
+}
 
 
 
@@ -114,20 +188,24 @@
   * OpenTag needs to know where it can put Nonvolatile memory (file system) and
   * how much space it can allocate for filesystem.
   */
-#define SRAM_START_ADDR         0x0000
-#define SRAM_SIZE               (4*1024)
-#define EEPROM_START_ADDR       0
-#define EEPROM_SIZE             0
-#define FLASH_START_ADDR        0x8000
-#define FLASH_START_PAGE        0
-#define FLASH_PAGE_SIZE         512
-#define FLASH_NUM_PAGES         64
-#define FLASH_WORD_BYTES        2
-#define FLASH_WORD_BITS         (FLASH_WORD_BYTES*8)
-#define FLASH_FS_ALLOC          (512*8)     //using only 8 blocks: 5 primary, 3 fallow
-#define FLASH_FS_ADDR           0x8000
+#define SRAM_START_ADDR             0x0000
+#define SRAM_SIZE                   (4*1024)
+#define EEPROM_START_ADDR           0
+#define EEPROM_SIZE                 0
+#define FLASH_START_ADDR            0x8000
+#define FLASH_START_PAGE            0
+#define FLASH_PAGE_SIZE             512
+#define FLASH_WORD_BYTES            2
+#define FLASH_WORD_BITS             (FLASH_WORD_BYTES*8)
+#ifdef __LARGE_MEMORY__
+#   warn "No current CC430 part has large-memory model"
+#else
+#   define FLASH_NUM_PAGES          64
+#   define FLASH_FS_ALLOC           (512*8)     //allocating total of 8 blocks (4KB)
+#   define FLASH_FS_ADDR            0x8000
+#   define FLASH_FS_FALLOWS         3
+#endif
 #define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
-
 
 
 
@@ -149,77 +227,36 @@
 
 
 
-/** MCU Feature settings      <BR>
+/** Note: Clocking for the Board's MCU      <BR>
   * ========================================================================<BR>
-  * Implemented capabilities of the CC430F5137/6137 variants.
-  *
-  * @note The CC430 has only one DMA, and it cannot perform interleaved data
-  * operations.  Thus if you use a DMA for a non-blocking I/O process (such as
-  * MPipe), you cannot safely use the DMA for anything else.
+  * The CC430 MCU can be clocked up to 20MHz.  OpenTag uses the ACLK at 1024 Hz
+  * for GPTIM, so it's important to define either the internal 32768Hz osc or
+  * an external LFXTAL (on XT1).  The MCLK and SMCLK can be generated by XT2,
+  * a multiplied XT2, or a multiplied XT1.
   */
-#define MCU_FEATURE(VAL)                 MCU_FEATURE_##VAL       // FEATURE                  AVAILABILITY
-#define MCU_FEATURE_CRC                  ENABLED                 // CCITT CRC16              Low
-#define MCU_FEATURE_AES128               ENABLED                 // AES128 engine            Moderate
-#define MCU_FEATURE_ECC                  DISABLED                // ECC engine               Low
-#define MCU_FEATURE_ALGE                 DISABLED                // Algebraic Eraser engine  Rare/None yet
-#define MCU_FEATURE_RADIODMA             DISABLED
-#define MCU_FEATURE_RADIODMA_TXBYTES     0
-#define MCU_FEATURE_RADIODMA_RXBYTES     0
-#define MCU_FEATURE_MAPEEPROM            DISABLED
-#define MCU_FEATURE_MPIPEDMA             ENABLED
-#define MCU_FEATURE_MEMCPYDMA            DISABLED   // Must be disabled if MPIPEDMA is enabled
+#define MCU_PARAM_LFXTALHz              BOARD_PARAM_LFHz
+#define MCU_PARAM_LFXTALtol             BOARD_PARAM_LFtol
+//#define MCU_PARAM_LFOSCHz               BOARD_PARAM_LFHz
+//#define MCU_PARAM_LFOSCtol              BOARD_PARAM_LFtol
+//#define MCU_PARAM_XTALHz                BOARD_PARAM_HFHz
+//#define MCU_PARAM_XTALmult              BOARD_PARAM_HFmult
+//#define MCU_PARAM_XTALtol               BOARD_PARAM_HFtol
+#define MCU_PARAM_OSCHz                 (BOARD_PARAM_HFHz*BOARD_PARAM_HFmult)
+#define MCU_PARAM_OSCmult               BOARD_PARAM_HFmult
+#define MCU_PARAM_OSCtol                BOARD_PARAM_HFtol
 
+#define PLATFORM_MCLK_DIV           BOARD_PARAM_MCLKDIV
+#define PLATFORM_SMCLK_DIV          BOARD_PARAM_SMCLKDIV
 
-
-
-
-/** Note: Clocking for this platform      <BR>
-  * ========================================================================<BR>
-  * The STM32 can be set at different clock rates.  I generally recommend using
-  * the highest clock speed that can be used without activating the PLL.  There
-  * is some marginal benefit as well if you keep wait states to 0.
-  *
-  * Flash Wait States per Clock speed:                              <BR>
-  * STM32F: Vnom:   0 < clock <= 24MHz :    0 wait states           <BR>
-  * STM32F: Vnom:   24 < clock <= 48MHz :   1 wait state            <BR>
-  * STM32F: Vnom:   48 < clock <= 72MHz :   2 wait states           <BR>
-  * STM32L: 1.2V:   0 < clock <= 2MHz :     0 wait states           <BR>
-  * STM32L: 1.2V:   2 < clock <= 4MHz :     1 wait state            <BR>
-  * STM32L: 1.5V:   0 < clock <= 8MHz :     0 wait states           <BR>
-  * STM32L: 1.5V:   8 < clock <= 16MHz :    1 wait state            <BR>
-  * STM32L: 1.8V:   0 < clock <= 16MHz :    0 wait states           <BR>
-  * STM32L: 1.8V:   16 < clock <= 32MHz :   1 wait state            <BR>
-  *
-  */
-#define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
-#define MCU_PARAM_LFXTALHz              32768                   // Uncomment (and change) if using LF XTAL
-#define MCU_PARAM_LFXTALtol             0.00002                  // Uncomment (and change) if using LF XTAL
-//#define MCU_PARAM_LFOSCHz               32768                   // Uncomment (and change) if using LF OSC
-//#define MCU_PARAM_LFOSCtol              0.01                    // Uncomment (and change) if using LF OSC
-//#define MCU_PARAM_XTALHz                27000000                // Uncomment (and change) if using XTAL
-//#define MCU_PARAM_XTALtol               0.0001                  // Uncomment (and change) if using XTAL
-#define MCU_PARAM_OSCHz                 19990000                // OSC can do ~20 MHz
-#define MCU_PARAM_OSCtol                0.01                    // STM32 Osc typ +/- 1%
-  
-#if defined(MCU_PARAM_LFXTALHz)
-#   define PLATFORM_LSCLOCK_HZ      MCU_PARAM_LFXTALHz
-#   define PLATFORM_LSCLOCK_ERROR   MCU_PARAM_LFXTALtol
-
-#elif defined(MCU_PARAM_LFOSCHz)
-#   define PLATFORM_LSCLOCK_HZ      MCU_PARAM_LFOSCHz
-#   define PLATFORM_LSCLOCK_ERROR   MCU_PARAM_LFOSCtol
-
-#endif
-
-#if defined(MCU_PARAM_XTALHz)
-#   define PLATFORM_HSCLOCK_HZ      MCU_PARAM_XTALHz
-#   define PLATFORM_HSCLOCK_ERROR   MCU_PARAM_XTALtol
-
-#elif defined(MCU_PARAM_OSCHz)
-#   define PLATFORM_HSCLOCK_HZ      MCU_PARAM_OSCHz
-#   define PLATFORM_HSCLOCK_ERROR   MCU_PARAM_OSCtol
-
-#endif
+#define PLATFORM_LSCLOCK_PINS       BOARD_LFXT_PINS
+#define PLATFORM_LSCLOCK_CONF       BOARD_LFXT_CONF
+#define PLATFORM_HSCLOCK_PINS       BOARD_HFXT_PINS
+#define PLATFORM_HSCLOCK_CONF       BOARD_HFXT_CONF
+#define PLATFORM_LSCLOCK_HZ         BOARD_PARAM_LFHz
+#define PLATFORM_LSCLOCK_ERROR      BOARD_PARAM_LFtol
+#define PLATFORM_HSCLOCK_HZ         (BOARD_PARAM_HFHz*BOARD_PARAM_HFmult)
+#define PLATFORM_HSCLOCK_ERROR      BOARD_PARAM_HFtol
+#define PLATFORM_HSCLOCK_MULT       BOARD_PARAM_HFmult
 
 
 
@@ -230,10 +267,10 @@
   * OT_TRIG:    Optional test trigger usable in OpenTag apps (often LEDs)   <BR>
   * MPIPE:      UART to use for the MPipe                                   <BR>
   */
-
-#define OT_GPTIM            TIM0A5
-#define OT_GPTIM_IRQ        TIM0A5_IRQChannel
-#define OT_GPTIM_VECTOR     TIMER0_A1_VECTOR
+  
+#define OT_GPTIM            TIM1A3
+#define OT_GPTIM_IRQ        TIM1A3_IRQChannel
+#define OT_GPTIM_VECTOR     TIMER1_A1_VECTOR
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
@@ -251,30 +288,45 @@
 
 #define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded, or else CCS shits in its pants
 
-///@todo Make "PLATFORM_GPTIM" conform to new "OT_GPTIM" nomenclature
-///      Then this legacy definition block can be removed.
-#define PLATFORM_GPTIM_HZ        PLATFORM_LSCLOCK_HZ
-#define PLATFORM_GPTIM_PS        32
-#define PLATFORM_GPTIM_CLK       (PLATFORM_LSCLOCK_HZ/PLATFORM_GPTIM_PS)
-#define PLATFORM_GPTIM_RES       OT_GPTIM_RES
-#define PLATFORM_GPTIM_ERROR     OT_GPTIM_ERROR
-#define PLATFORM_GPTIM_ERRDIV    OT_GPTIM_ERRDIV       
-#define PLATFORM_GPTIM_DEV       0
 
-///@todo Legacy -- remove 
-#define PLATFORM_HSI0_FREQ       8000000
-#define PLATFORM_HSI1_FREQ       16000000
-#define PLATFORM_HSI2_FREQ       20000000
-#define PLATFORM_HSI3_FREQ       25000000
-#define PLATFORM_XTAL_FREQ       27000000
-#define PLATFORM_LSE_FREQ        32768
 
-///@todo Legacy -- remove 
-#define HSCLOCK_HZ               PROC_HSI2_FREQ
-#define LSCLOCK_HZ               PROC_LSE_FREQ
-#define HSCLOCK_ERROR            0.01
-#define HSCLOCK_ERRPCT           (HSCLOCK_ERROR*100)
-#define LSCLOCK_ERROR            0
+
+
+
+
+/** Basic GPIO Setup <BR>
+  * ========================================================================<BR>
+  * <LI>MPipe is a UART-based serial interface.  It needs to be specified with
+  *     a UART peripheral number and RX/TX port & pin configurations. </LI>
+  * <LI>OT Triggers are test outputs, usually LEDs.  They should be configured
+  *     to ports & pins where there are LED or other trigger connections.</LI>
+  * <LI>The GWN feature is part of a true-random-number generator.  It is
+  *     optional.  It needs a port & pin for the ADC input (GWNADC) and also,
+  *     optionally, one for a Zener driving output port & pin.  Using a Zener
+  *     can greatly accelerate the random number generation process.</LI>
+  */
+#define MPIPE_UARTNUM       0           //0 or 1 (A or B)
+#define MPIPE_UART_PORTNUM  1
+#define MPIPE_UART_RXPIN    GPIO_Pin_5
+#define MPIPE_UART_TXPIN    GPIO_Pin_6
+
+#define OT_TRIG1_PORTNUM    1
+#define OT_TRIG1_PIN        GPIO_Pin_0
+#define OT_TRIG1_HIDRIVE    ENABLED
+#define OT_TRIG2_PORTNUM    3
+#define OT_TRIG2_PIN        GPIO_Pin_6
+#define OT_TRIG2_HIDRIVE    ENABLED
+
+// Pin that can be used for ADC-based random number (usually floating pin)
+// You could also put on a low voltage, reverse-biased zener on the board
+// to produce a pile of noise.  2.1V seems like a good value.
+#define OT_GWNADC_PORTNUM   2
+#define OT_GWNADC_PIN       GPIO_Pin_1
+#define OT_GWNADC_BITS      1
+//#define OT_GWNZENER_PORT    GPIO2
+//#define OT_GWNZENER_PIN     GPIO_Pin_2
+//#define OT_GWNZENER_HIDRIVE DISABLED
+
 
 
 #if (OT_TRIG1_PORTNUM == 1)
@@ -298,7 +350,7 @@
 #endif
 
 
-#ifdef (OT_GWNADC_PORTNUM)
+#ifdef OT_GWNADC_PORTNUM
 #   if (OT_GWNADC_PORTNUM == 2)
 #       define OT_GWNADC_PORT      GPIO2
 #   else
@@ -306,7 +358,7 @@
 #   endif
 #endif
 
-#ifdef (OT_GWNZENER_PORTNUM)
+#ifdef OT_GWNZENER_PORTNUM
 #   if (OT_GWNZENER_PORTNUM == 1)
 #       define OT_GWNZENER_PORT    GPIO1
 #   elif (OT_GWNZENER_PORTNUM == 2)
@@ -330,7 +382,6 @@
 #elif (MPIPE_UART_PORTNUM == 3)
 #   define MPIPE_UART_PORTMAP  P3M
 #   define MPIPE_UART_PORT     GPIO3
-#else
 #elif (MPIPE_UART_PORTNUM == 4)
 #   define MPIPE_UART_PORTMAP  P4M
 #   define MPIPE_UART_PORT     GPIO4
@@ -341,14 +392,14 @@
 #define MPIPE_UART_PINS     (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
 
 #if (MPIPE_UARTNUM == 0)
-#   define MPIPE_UART           UART0
+#   define MPIPE_UART           UARTA0
 #   define MPIPE_UART_RXSIG     PM_UCA0RXD
 #   define MPIPE_UART_TXSIG     PM_UCA0TXD
 #	define MPIPE_UART_RXTRIG	DMA_Trigger_UCA0RXIFG
 #	define MPIPE_UART_TXTRIG	DMA_Trigger_UCA0TXIFG
 #   define MPIPE_UART_VECTOR    USCI_A0_VECTOR
 #elif (MPIPE_UARTNUM == 1)
-#   define MPIPE_UART           UART1
+#   define MPIPE_UART           UARTB0
 #   define MPIPE_UART_RXSIG     PM_UCB0RXD
 #   define MPIPE_UART_TXSIG     PM_UCB0TXD
 #	define MPIPE_UART_RXTRIG	DMA_Trigger_UCB0RXIFG
@@ -432,88 +483,6 @@
 
 
 /******* ALL SHIT BELOW HERE IS SUBJECT TO REDEFINITION **********/
-
-/// Deprecated configuration stuff
-#ifdef __VEELITE_NOINIT
-#   define PLATFORM_INIT_VEELITE   DISABLED 
-#else
-#   define PLATFORM_INIT_VEELITE   ENABLED
-#endif
-
-#ifdef __SYSTEM_NOINIT
-#   define PLATFORM_INIT_SYSTEM    DISABLED 
-#else
-#   define PLATFORM_INIT_SYSTEM    ENABLED
-#endif
-
-#ifdef __SESSION_NOINIT
-#   define PLATFORM_INIT_SESSION   DISABLED 
-#else
-#   define PLATFORM_INIT_SESSION   ENABLED
-#endif
-
-#ifdef __AUTH_NOINIT
-#   define PLATFORM_INIT_AUTH      DISABLED 
-#else
-#   define PLATFORM_INIT_AUTH      ENABLED
-#endif 
-
-#ifdef __BUFFERS_NOINIT
-#   define PLATFORM_INIT_BUFFERS   DISABLED 
-#else
-#   define PLATFORM_INIT_BUFFERS   ENABLED
-#endif 
-
-#ifdef __MPIPE_NOINIT
-#   define PLATFORM_INIT_MPIPE     DISABLED 
-#else
-#   define PLATFORM_INIT_MPIPE     ENABLED
-#endif 
-
-#ifdef __RADIO_NOINIT
-#   define PLATFORM_INIT_RADIO     DISABLED 
-#else
-#   define PLATFORM_INIT_RADIO     ENABLED
-#endif 
-
-
-
-/** Deprecated Timer Macros
-  */
-#   define GPTIM_HZ_TI          1024
-#   define GPTIM_HZ_STI         32768
-#   define INIT_GPTIM_TI()      do { \
-                                    OT_GPTIM->CTL   = 0x01C6; \
-                                    OT_GPTIM->EX0   = 0x0003; \
-                                } while(0)
-                                    
-#   define INIT_GPTIM_STI()     do { \
-                                    OT_GPTIM->CTL   = 0x0106; \
-                                    OT_GPTIM->EX0   = 0x0000; \
-                                } while(0)
-                                
-#   define STOP_GPTIM()         OT_GPTIM->CTL  |= (u16)0x0004
-
-#   define RUN_GPTIM(TICKS)     do { \
-                                    STOP_GPTIM(); \
-                                    OT_GPTIM->CCR0  = (u16)TICKS; \
-                                    OT_GPTIM->CTL  |= (u16)0x0020; \
-                                } while(0)
-#   define RUN_GPTIM_TI(TICKS)  do { \
-                                    INIT_GPTIM_LO(); \
-                                    OT_GPTIM->CCR0  = (u16)TICKS; \
-                                    OT_GPTIM->CTL  |= (u16)0x0020; \
-                                } while(0)
-#   define RUN_GPTIM_STI(TICKS) do { \
-                                    INIT_GPTIM_HI(); \
-                                    OT_GPTIM->CCR0  = (u16)TICKS; \
-                                    OT_GPTIM->CTL  |= (u16)0x0020; \
-                                } while(0)
-
-
-
-
-
 
 
 

@@ -102,6 +102,11 @@
 			<location>B:/otlib</location>
 		</link>
 		<link>
+			<name>otlibext</name>
+			<type>2</type>
+			<location>B:/otlibext</location>
+		</link>
+		<link>
 			<name>otplatform/cc430</name>
 			<type>2</type>
 			<location>B:/otplatform/cc430</location>

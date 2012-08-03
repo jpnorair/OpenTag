@@ -17,7 +17,7 @@
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    V1.0
   * @date       16 April 2012
-  * @brief      Board & Platform Selection
+  * @brief      Board & Platform Selection for Demo PaLFI app
   *
   * Don't actually include this.  Include OT_platform.h instead.
   ******************************************************************************

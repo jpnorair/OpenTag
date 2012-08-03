@@ -54,6 +54,21 @@
 #include "veelite.h"
 
 
+#ifndef GPTIM_SHIFT
+#   define GPTIM_SHIFT 0
+#endif
+
+#if (GPTIM_SHIFT != 0)
+#   define CLK_UNIT         ot_long
+#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> GPTIM_SHIFT)
+#   define TI2CLK(TICKS)    ((ot_long)TICKS << GPTIM_SHIFT)
+#else
+#   define CLK_UNIT         ot_u16
+#   define CLK2TI(CLOCKS)   (CLOCKS)
+#   define TI2CLK(TICKS)    (TICKS)
+#endif
+
+
 #define SWDP    OT_FEATURE(WATCHDOG_PERIOD)
 
 OT_INLINE void SYS_WATCHDOG_RUN() {
@@ -321,7 +336,7 @@ ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
 ot_u16 otapi_close_request() {
 /// Set the footer if the session is valid
     if (session_count() >= 0) {
-        m2np_footer( session_top() );
+        m2np_footer( /* session_top() */ );
         return 1;
     }
     return 0;
@@ -404,7 +419,7 @@ void sys_init() {
         sys.loadapp = &sys_loadapp_null;
 #   endif
 
-#	if ((OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED) && !defined(EXTF_sys_sig_panic))
+#   if ((OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED) && !defined(EXTF_sys_sig_panic))
         sys.panic = &otutils_sig_null;
 #   endif
 
@@ -420,24 +435,24 @@ void sys_init() {
 #   endif
         
 #   if ((M2_FEATURE(ENDPOINT) == ENABLED) && \
-		(OT_FEATURE(SYSIDLE_CALLBACKS) == ENABLED) && \
-		!defined(EXTF_sys_sig_sssprestart))
+        (OT_FEATURE(SYSIDLE_CALLBACKS) == ENABLED) && \
+        !defined(EXTF_sys_sig_sssprestart))
             sys.evt.SSS.prestart = &otutils_sigv_null;
 #   endif
 
 #   if ((M2_FEATURE(BEACONS) == ENABLED) && \
-		(OT_FEATURE(SYSIDLE_CALLBACKS) == ENABLED) && \
-		!defined(EXTF_sys_sig_btsprestart))
+        (OT_FEATURE(SYSIDLE_CALLBACKS) == ENABLED) && \
+        !defined(EXTF_sys_sig_btsprestart))
             sys.evt.BTS.prestart = &otutils_sigv_null;
 #   endif
 
 #   if (OT_FEATURE(EXTERNAL_EVENT) == ENABLED)
         sys.evt.EXT.event_no = 0;
 #       if ((OT_FEATURE(SYSIDLE_CALLBACKS) == ENABLED) && \
-		    !defined(EXTF_sys_sig_extprocess))
+            !defined(EXTF_sys_sig_extprocess))
             sys.evt.EXT.prestart = &otutils_sigv_null;
 #       endif
-#	endif
+#   endif
 
     /// Initialize non-platform modules
     network_init();
@@ -745,9 +760,9 @@ OT_INLINE void sub_next_event(ot_long* event_eta) {
     *event_eta = 65535;
 
     for (i=(IDLE_EVENTS-1); i>=0; i--) {
-    	if (sys.evt.idle[i].event_no != 0) {
-    		sub_idlevt_ctrl(&sys.evt.idle[i], event_eta, isf_lut[i]);
-    	}
+        if (sys.evt.idle[i].event_no != 0) {
+            sub_idlevt_ctrl(&sys.evt.idle[i], event_eta, isf_lut[i]);
+        }
     }
 }
 
@@ -820,23 +835,28 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                 session->counter    = 0;
                 proc_score          = network_route_ff(session);
                 
-                /// If the score is negative, then the packet is not
-                /// meant for this device.  Else, prepare for TX and 
-                /// potentially a follow-up listen.
+                /// If the state is response, then processing is done.
+                /// If the score is negative, then the packet is not meant for 
+                /// this device.  Else, prepare response and potentially a 
+                /// follow-up listen.
                 if (proc_score >= 0) {
                     sub_fceval(proc_score);
                     sys.evt.hold_cycle  = 0;
                     dll.idle_state      = M2_MACIDLE_HOLD;
 
                     /// If the Listen flag is high, then clone the session to 
-                    /// a time in the future, when it will listen.  But first,
-                    /// wipe-out any sessions that could get in the way
+                    /// a time in the future, when it will listen.
+                    /// <LI> dll.comm.tc has just been assigned by the request.
+                    ///      It is the response contention period (Tc). </LI>
+                    /// <LI> This device should listen again after Tc ends, so
+                    ///      the session is cloned & scheduled for Tc </LI>
+                    /// <LI> The current session is popped after response, or 
+                    ///      on next kernel loop (immediately) if no response </LI>
                     if (session->flags & M2FI_LISTEN) {
                         m2session* s_clone;
 
-                        session_refresh(dll.comm.tc);
-                        session_drop();
-                    
+                        //session_refresh(dll.comm.tc);
+                        //session_drop();
                         /// Offset the Tc if tryping to beat timing slop,
                         //dll.comm.tc -= OFFSET VALUE ... TBD
                     
@@ -852,8 +872,11 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                         dll.comm.rx_chanlist    = &dll.comm.scratch[1];
                         dll.comm.rx_chanlist[0] = session->channel;   
                         dll.comm.rx_timeout     = 10;
+                        
+                        // Tc is reduced
                         dll.comm.tc            -= rm2_pkt_duration(txq.length);
                     }
+                    
                 }
                 sys.mutex &= ~SYS_MUTEX_PROCESSING;
             } break;
@@ -866,16 +889,16 @@ ot_uint sys_event_manager(ot_uint elapsed) {
             // subthread 4: Radio is known to be doing something: return event_eta
             case TASK_radio: { 
                 if (sys.evt.RFA.nextevent <= 0) {
-                	if (sys.evt.RFA.event_no < 3) {	// RX tasks
-                		sysevt_receive();           // Manage RX timeouts in SW
-                	}
-                	else if (sys.evt.RFA.event_no < 5) {
-                		sysevt_txcsma();            // Manage CSMA process in SW
-                	}
-                	else {
-                		SYS_WATCHDOG_RUN();         // Wait for TX to complete
+                    if (sys.evt.RFA.event_no < 3) { // RX tasks
+                        sysevt_receive();           // Manage RX timeouts in SW
+                    }
+                    else if (sys.evt.RFA.event_no < 5) {
+                        sysevt_txcsma();            // Manage CSMA process in SW
+                    }
+                    else {
+                        SYS_WATCHDOG_RUN();         // Wait for TX to complete
                         return 1;                   // come back in 1 tick
-                	}
+                    }
                     break;
                 }
                 return sys.evt.RFA.nextevent;
@@ -996,6 +1019,7 @@ OT_INLINE Task_Index sub_clock_tasks(ot_uint elapsed) {
     if (sys.evt.RFA.event_no != 0) {
         output                  = TASK_radio;
         sys.evt.RFA.nextevent  -= elapsed;
+        dll.comm.rx_timeout    -= elapsed;
     }
 
     // Do Immediate Packet Processing (Priority 1)
@@ -1070,12 +1094,12 @@ void sub_scan_channel(idletime_event* idlevt, ot_u8 SS_ISF) {
         
         /// Set the next idle event from the two-byte Next Scan field
 #       ifdef __BIG_ENDIAN__
-            idlevt->nextevent   = vl_read(fp, idlevt->cursor+=2 );
+            idlevt->nextevent   = TI2CLK( vl_read(fp, idlevt->cursor+=2 ) );
 #       else
             scratch.ushort      = vl_read(fp, (idlevt->cursor)+=2 );
             scratch.ushort      = (scratch.ushort << 8) | (scratch.ushort >> 8);
-            					///@todo implement inline swap function in platform
-            idlevt->nextevent   = (ot_long)scratch.ushort;
+                                ///@todo implement inline swap function in platform
+            idlevt->nextevent   = TI2CLK(scratch.ushort);
 #       endif
         
         /// Advance cursor to next datum, go back to 0 if end of sequence
@@ -1100,7 +1124,7 @@ void sub_scan_channel(idletime_event* idlevt, ot_u8 SS_ISF) {
         
     /// Background Scan or Foreground Scan is based on flags
     s_flags = (s_flags & 0x80) ? \
-                (M2_NETSTATE_REQRX | M2_NETSTATE_INIT |M2_NETFLAG_FLOOD ) : \
+                (M2_NETSTATE_REQRX | M2_NETSTATE_INIT | M2_NETFLAG_FLOOD ) : \
                 (M2_NETSTATE_REQRX | M2_NETSTATE_INIT);
 
     session_new(0, s_flags, s_channel);
@@ -1142,8 +1166,8 @@ void sysevt_beacon() {
     // - Assure cmd code is always Broadcast & Announcement
     scratch.ushort          = vl_read(fp, sys.evt.BTS.cursor);
     session                 = session_new(  0,
-    		                                (M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX),
-    		                                scratch.ubyte[0]  );
+                                            (M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX),
+                                            scratch.ubyte[0]  );
     session->subnet         = dll.netconf.b_subnet;
     beacon_params           = scratch.ubyte[1];
     session->flags          = (dll.netconf.dd_flags & ~0x30);
@@ -1157,11 +1181,11 @@ void sysevt_beacon() {
         
     // Last 2 bytes: Next Scan ticks
 #   ifdef __BIG_ENDIAN__
-        sys.evt.BTS.nextevent   = vl_read(fp, sys.evt.BTS.cursor+=2);
+        sys.evt.BTS.nextevent   = TI2CLK( vl_read(fp, sys.evt.BTS.cursor+=2) );
 #   else
         scratch.ushort          = vl_read(fp, sys.evt.BTS.cursor+=2);
         scratch.ushort          = (scratch.ushort << 8) | (scratch.ushort >> 8);
-        sys.evt.BTS.nextevent   = (ot_long)scratch.ushort;
+        sys.evt.BTS.nextevent   = TI2CLK(scratch.ushort);
 #   endif
         
     // - Move cursor onto next beacon period, 
@@ -1205,7 +1229,7 @@ void sysevt_beacon() {
 
     /// Finish building the beacon packet.  If the 
     if (m2qp_isf_call((beacon_params & 1), &beacon_queue, AUTH_GUEST) >= 0) {
-        m2np_footer(session);
+        m2np_footer( /* session */ );
 #       if ((OT_FEATURE(SYSIDLE_CALLBACKS) == ENABLED) &&\
             !defined(EXTF_sys_sig_btsprestart)  )
             sys.evt.BTS.prestart( (void*)&sys.evt.BTS );
@@ -1250,13 +1274,14 @@ void sysevt_receive() {
 /// applications using very custom builds of OpenTag.
 
 #if (RF_FEATURE(RXTIMER) == DISABLED)
-	if (((sys.mutex & SYS_MUTEX_RADIO_DATA) == 0) || \
-		(dll.comm.csmaca_params & M2_CSMACA_A2P)  ) {
+    if (((sys.mutex & SYS_MUTEX_RADIO_DATA) == 0) || \
+        (dll.comm.csmaca_params & M2_CSMACA_A2P)  ) {
         rm2_rxtimeout_isr();
-	}
+        
+    }
 #else
         // Add a little bit of time in case the radio timer is a bit slow.
-        sys.evt.RFA.nextevent = 10;
+        sys.evt.RFA.nextevent = TI2CLK(10);
         sys.evt.RFA.event_no  = 0;
 #endif
 }
@@ -1286,7 +1311,7 @@ void sysevt_bscan() {
 #   endif
     
     sys.evt.RFA.event_no    = 1;
-    sys.evt.RFA.nextevent   = dll.comm.rx_timeout;
+    sys.evt.RFA.nextevent   = TI2CLK(dll.comm.rx_timeout);
     sys.mutex               = SYS_MUTEX_RADIO_LISTEN;
     rm2_rxinit_bf(dll.comm.rx_chanlist[0], &rfevt_bscan);
 #endif
@@ -1311,7 +1336,7 @@ void rfevt_bscan(ot_int scode, ot_int fcode) {
 
         if ((scode >= 0) && (sub_mac_filter() == True)) {
             sys.mutex = SYS_MUTEX_PROCESSING;
-            network_parse_bf();					// must create a new session
+            network_parse_bf();                 // must create a new session
         }
 #       if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
             !defined(EXTF_sys_sig_rfaterminate)  )
@@ -1320,8 +1345,8 @@ void rfevt_bscan(ot_int scode, ot_int fcode) {
             sys_sig_rfaterminate(1, scode);
 #       endif
 
-        sys.mutex 				= 0;
-        sys.evt.RFA.event_no 	= 0;
+        sys.mutex               = 0;
+        sys.evt.RFA.event_no    = 0;
     }
 }
 
@@ -1345,7 +1370,7 @@ void sysevt_fscan() {
     /// Set up events so that the next RF event will occur when this times-out.
     /// Listening will block non-RFA events from occuring.
     sys.mutex               = SYS_MUTEX_RADIO_LISTEN;
-    sys.evt.RFA.nextevent   = dll.comm.rx_timeout;
+    sys.evt.RFA.nextevent   = TI2CLK(dll.comm.rx_timeout);
     sys.evt.RFA.event_no    = 2;
     session                 = session_top();
     
@@ -1359,8 +1384,8 @@ void sysevt_fscan() {
 void rfevt_frx(ot_int pcode, ot_int fcode) {
 /// Radio Core event callback, called by the radio driver when a frame is rx'ed
 /// or if there is some type of error.
-    ot_int 		frx_code = 0;
-    m2session* 	session  = session_top();
+    ot_int      frx_code = 0;
+    m2session*  session  = session_top();
     
     /// If pcode is less than zero, it is because of a listening timeout.
     /// Listening timeouts happen after unfulfilled request scanning, or after
@@ -1368,36 +1393,35 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
     /// the session persists.  These cases are implemented below.
     if (pcode < 0) {
 #   if (RF_FEATURE(RXTIMER) == ENABLED)
-    	// For RF Core-based RX timer, set pcode = 0 to pre-empt kernel
-    	// For MCU-based RX timer, kernel already manages timeout event
+        // For RF Core-based RX timer, set pcode = 0 to pre-empt kernel
+        // For MCU-based RX timer, kernel already manages timeout event
         pcode = 0;
 #   endif
         sys.evt.RFA.event_no    = 0;
         //frx_code                = -1;
         if (dll.comm.redundants) {
-        	session->netstate = (M2_NETSTATE_REQTX | M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX);
+            session->netstate = (M2_NETSTATE_REQTX | M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX);
         }
         else if (dll.comm.csmaca_params & M2_CSMACA_A2P) {
-        	session->netstate ^= 0x30;	// Converts RESPRX->REQTX, REQRX->RESPTX
+            session->netstate ^= 0x30;  // Converts RESPRX->REQTX, REQRX->RESPTX
         }
         else {
-        	session->netstate = M2_NETFLAG_SCRAP;
+            session->netstate = M2_NETFLAG_SCRAP;
         }
     }
     
     // pcode: When non-negative, the number of frames remaining.
     else {
-    	//frx_code = 0;
-
         /// Handle damaged frames (bad CRC)
         /// <LI> Multiframe datastreams: mark the packet as bad, and continue </LI>
         /// <LI> Normal data packets (single frame): ignore the packet </LI>
         if (fcode != 0) {
-#           if (M2_FEATURE(DATASTREAM) == ENABLED)
-            if ((session->netstate & M2_NETSTATE_DSDIALOG)) 
-                m2dp_mark_dsframe(session);
-#           endif
+#       if (M2_FEATURE(M2DP) == ENABLED)
+            frx_code -= ((session->netstate & M2_NETSTATE_DSDIALOG) == 0);
+            network_mark_ff();
+#       else
             frx_code = -1;
+#       endif
         }
         
         /// Run subnet filtering on frames with good CRC
@@ -1410,32 +1434,31 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
         /// <LI> When request is bad or when response is any form, retry
         ///      listening until window times-out </LI>
         /// <LI> Don't return to kernel for bad frames </LI>
-        /// <LI> Finish RF task after receiving a good request </LI>
+        /// <LI> After receiving good request, turn-off radio subsystem </LI>
         if (pcode == 0) {
-        	fcode = (session->netstate & M2_NETSTATE_RESP);  // repurpose fcode
-        	if (frx_code == 0) {
-        		sys.mutex |= SYS_MUTEX_PROCESSING;
-        	}
-        	if (frx_code | fcode) {
-        		pcode = frx_code;		//don't return to kernel for bad frames
-        		rm2_reenter_rx(0);
-        	}
-        	else if (fcode == 0) {
-        		sys.evt.RFA.event_no = 0;
-        		radio_sleep();
-        	}
+            fcode       = (session->netstate & M2_NETSTATE_RESP);  // repurpose fcode
+            sys.mutex   = (frx_code) ? 0 : SYS_MUTEX_PROCESSING;
+
+            if (frx_code | fcode) {
+                pcode = frx_code;       //don't return to kernel for bad frames
+                rm2_reenter_rx(0);
+            }
+            else if (fcode == 0) {
+                sys.evt.RFA.event_no = 0;
+                radio_sleep();
+            }
         }
     }
 
     /// If the RF event is set to 0, it is finished and the termination
     /// callback should be used.
     if (sys.evt.RFA.event_no == 0) {
-#   	if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
-        	!defined(EXTF_sys_sig_rfaterminate)  )
-        	sys.evt.RFA.terminate(2, frx_code);
-#   	elif defined(EXTF_sys_sig_rfaterminate)
-        	sys_sig_rfaterminate(2, frx_code);
-#   	endif
+#       if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
+            !defined(EXTF_sys_sig_rfaterminate)  )
+            sys.evt.RFA.terminate(2, frx_code);
+#       elif defined(EXTF_sys_sig_rfaterminate)
+            sys_sig_rfaterminate(2, frx_code);
+#       endif
     }
 
     /// When session restart or continuation is needed, pre-empt the kernel.
@@ -1468,7 +1491,7 @@ void sysevt_initbtx() {
     sys.evt.RFA.nextevent   = 0;    // Normal TX CSMA process
     dll.comm.tca            = dll.comm.tc;
 #   else
-    sys.evt.RFA.nextevent   = dll.comm.tc + sys.evt.adv_time;   // TX timeout
+    sys.evt.RFA.nextevent   = dll.comm.tc + TI2CLK(sys.evt.adv_time);   // TX timeout
 #   endif
 
 #endif
@@ -1482,7 +1505,7 @@ void sysevt_initftx() {
 /// Initialize the TX Engine for foreground packet transmission.  This requires
 /// a CSMA-CA routine that runs prior to the data transmission.  The system 
 /// layer manages TX CSMA when it is not part of the Radio Core featureset.
-	sys.evt.RFA.event_no = 4;
+    sys.evt.RFA.event_no = 4;
 
 #   if ((OT_FEATURE(SYSRF_CALLBACKS) == ENABLED) &&\
         !defined(EXTF_sys_sig_rfainit)  )
@@ -1535,11 +1558,12 @@ void sysevt_txcsma() {
             /// - A2P must get the full packet TX'ed before the end of contention       <BR>
             /// - NA2P (normal) must start TX before end of contention
             case -1: 
-            	sys.mutex               = SYS_MUTEX_RADIO_DATA;
-            	sys.evt.RFA.event_no   += 2;
+                sys.mutex               = SYS_MUTEX_RADIO_DATA;
+                sys.evt.RFA.event_no   += 2;
 #               if (SYS_FLOOD == ENABLED)
                 sys.evt.RFA.nextevent   = (sys.evt.RFA.event_no == 5) ? \
-                                            sys.evt.adv_time : rm2_pkt_duration(txq.length);
+                                            TI2CLK(sys.evt.adv_time) : \
+                                            rm2_pkt_duration(txq.length);
 #               else
                 sys.evt.RFA.nextevent   = rm2_pkt_duration(txq.length);
 #               endif
@@ -1654,7 +1678,7 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         ///   which means this method only works for contiguous floods.     <BR>
         /// - End the flood if the counter is over, else maintain flood
         case 2: {
-            scratch = sys.evt.adv_time - platform_get_gptim();
+            scratch = TI2CLK(sys.evt.adv_time) - platform_get_gptim();
             ///@todo figure out how to fit this into new event manager
             
             if (scratch < rm2_pkt_duration(7)) {
@@ -1717,7 +1741,7 @@ void sub_idlevt_ctrl(idletime_event* idlevt, ot_long* eta, ot_u8 sequence_id) {
         
         // Load Mask and Value (always stored as big endian)
         ssmask  = ISF_read(fp, offset);
-        ssmask	= PLATFORM_ENDIAN16(ssmask);
+        ssmask  = PLATFORM_ENDIAN16(ssmask);
         ssvalue = ISF_read(fp, offset+=2);
         ssvalue = PLATFORM_ENDIAN16(ssvalue);
         vl_close(fp);
@@ -1841,16 +1865,18 @@ ot_bool sub_mac_filter() {
 
 void sub_csma_scramble() {
 /// Sort of optional: Go through the channel list and scramble the channel
-/// entries randomly so that different devices aren't trying to respond on the
-/// same channels at the same time.
-    if (dll.comm.tx_channels > 1) {
-        ot_u8 i, j, k, rot1, rot2, scratch;
-        rot1 = platform_prand_u8();
-        rot2 = platform_prand_u8();
+/// entries randomly in order to improve band utilization, as multiple devices
+/// will scramble the list differently.
+    ot_u8 txchans = dll.comm.tx_channels - 1;
+
+    if (txchans) {
+        ot_u8       i, j, k, scratch;
+        ot_uni16    rot;
+        rot.ushort = platform_prand_u16();
         
-        for (i=0; i<(dll.comm.tx_channels-1); i++) {
-            j = i + ((rot1&1) != 0);
-            k = (dll.comm.tx_channels-1) * ((rot2&1) != 0);
+        for (i=0; i<txchans; i++) {
+            j = i + ((rot.ubyte[0] & 1) != 0);
+            k = txchans * ((rot.ubyte[1] & 1) != 0);
             
             scratch                 = dll.comm.tx_chanlist[i];
             dll.comm.tx_chanlist[i] = dll.comm.tx_chanlist[k];
@@ -1859,8 +1885,8 @@ void sub_csma_scramble() {
             dll.comm.tx_chanlist[i] = dll.comm.tx_chanlist[j];
             dll.comm.tx_chanlist[j] = scratch;
             
-            rot1 >>= 1;
-            rot2 >>= 1;
+            rot.ushort     &= ~0x0101;   //Shift each byte right 1 bit
+            rot.ushort    >>= 1;
         }
     }
 }
@@ -1868,19 +1894,22 @@ void sub_csma_scramble() {
 
 
 
-ot_uint sub_fcinit() {
+CLK_UNIT sub_fcinit() {
 /// Pick a time offset to begin the first transmission attempt, and setup
 /// flow-congestion loop parameters.
     
+    // Scramble the CSMA channel list
+    sub_csma_scramble();
+    
     // Pick a slot offset: currently only RIGD and RAIND need a random slot.
     // {0,1,2,3} = {RIGD, RAIND, AIND, Default MAC CA} 
-    switch ( (dll.comm.csmaca_params >> 3) & 0x03 ) {
+    switch ( (dll.comm.csmaca_params >> 3) & 3 ) {
         case 0: return sub_rigd_newslot();
                 
         case 1: {
-            ot_u16 random;
-            random  = platform_prand_u16();
-            random %= (dll.comm.tca - rm2_pkt_duration(txq.front[0]));
+            CLK_UNIT random;
+            random  = TI2CLK(platform_prand_u16());
+            random %= (dll.comm.tca - rm2_pkt_duration(txq.front[0]) );
             return random;
         }
         
@@ -1903,41 +1932,43 @@ void sub_fceval(ot_int query_score) {
 
 
 
-ot_uint sub_fcloop() {
+CLK_UNIT sub_fcloop() {
     /// {0,1,2,3} = {RIGD, RAIND, AIND, Default MAC CA} 
     /// Default MAC CA just waits Tg before trying again
     switch ( (dll.comm.csmaca_params >> 3) & 3 ) {
         case 0: return sub_rigd_nextslot() + sub_rigd_newslot();
         case 1: 
         case 2: return sub_aind_nextslot();
-        case 3: return phymac[0].tg;
+        case 3: return TI2CLK(phymac[0].tg);
     }
 } //ignore compiler warning here (switch will always return)
 
 
 
 
-ot_uint sub_rigd_newslot() {
+CLK_UNIT sub_rigd_newslot() {
 /// halve tc from previous value and offset a random within that duration
-    ot_u16 random;
-    random          = platform_prand_u16();
+    CLK_UNIT random;
+    random          = TI2CLK(platform_prand_u16());
     dll.comm.tc   >>= 1;
     dll.comm.tca    = dll.comm.tc;
-    return          (random % dll.comm.tc);
+    return          (random % (CLK_UNIT)dll.comm.tc);
 }
 
 
 
 
-ot_uint sub_rigd_nextslot() {
-    ot_long wait = (dll.comm.tc - dll.comm.tca);
-    return (wait < 0) ? 0 : (ot_uint)wait;
+CLK_UNIT sub_rigd_nextslot() {
+    ot_long wait;
+    wait = (dll.comm.tc - dll.comm.tca);
+    
+    return (wait < 0) ? 0 : (CLK_UNIT)wait;
 }
 
 
 
 
-ot_uint sub_aind_nextslot() {
+CLK_UNIT sub_aind_nextslot() {
 /// Works for RAIND or AIND next slot
     return rm2_pkt_duration(txq.front[0]);
 }

@@ -1,4 +1,4 @@
-/*  Copyright 2010-2011, JP Norair
+/*  Copyright 2010-2012, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -540,7 +540,7 @@
 #define ISF_MAX_hold_scan_sequence              32  //8 scans
 #define ISF_MAX_beacon_transmit_sequence        24  //3 beacons
 #define ISF_MAX_protocol_list                   16  //16 protocols
-#define ISF_MAX_isfs_list                       24  //24 isfs indices
+#define ISF_MAX_isfs_list                       16  //16 isfs indices
 #define ISF_MAX_gfb_file_list                   8   //8 gfb files
 #define ISF_MAX_location_data_list              96  //8 location vertices (or 16 if using VIDs)
 #define ISF_MAX_ipv6_addresses                  48

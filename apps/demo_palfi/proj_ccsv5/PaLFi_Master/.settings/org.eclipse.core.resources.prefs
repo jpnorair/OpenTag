@@ -1,4 +1,4 @@
-#Mon Jul 09 21:31:30 PDT 2012
+#Thu Aug 02 15:46:25 PDT 2012
 eclipse.preferences.version=1
 encoding//Debug_5509/app_code/subdir_rules.mk=UTF-8
 encoding//Debug_5509/app_code/subdir_vars.mk=UTF-8
@@ -8,6 +8,8 @@ encoding//Debug_5509/otkernel/native/subdir_rules.mk=UTF-8
 encoding//Debug_5509/otkernel/native/subdir_vars.mk=UTF-8
 encoding//Debug_5509/otlib/subdir_rules.mk=UTF-8
 encoding//Debug_5509/otlib/subdir_vars.mk=UTF-8
+encoding//Debug_5509/otlibext/applets_std/subdir_rules.mk=UTF-8
+encoding//Debug_5509/otlibext/applets_std/subdir_vars.mk=UTF-8
 encoding//Debug_5509/otlibext/subdir_rules.mk=UTF-8
 encoding//Debug_5509/otlibext/subdir_vars.mk=UTF-8
 encoding//Debug_5509/otplatform/msp430f5/subdir_rules.mk=UTF-8

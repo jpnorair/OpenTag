@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /OTlib/m2_network.c
+  * @file       /otlib/m2_network.c
   * @author     JP Norair
   * @version    V1.0
   * @date       2 November 2011
@@ -120,6 +120,19 @@ m2session* network_parse_bf() {
 
 
 
+
+#ifndef EXTF_network_mark_ff
+void network_mark_ff() {
+/// Mark a received frame as damaged by setting the frametype to 3 (11).
+/// Typically, this is done only for frames in multiframe packets, which can
+/// use this feature to provide selective acking.
+    rxq.front[3] |= 3;
+}
+#endif
+
+
+
+
 #ifndef EXTF_network_route_ff
 ot_int network_route_ff(m2session* session) {
     ot_int route_val;
@@ -128,10 +141,10 @@ ot_int network_route_ff(m2session* session) {
     rxq.front[0] -= 2;
     
     /// Acquire Flags and Protocol from the Frame Info Field
-    session->protocol   = (rxq.front[3] & M2FI_FRTYPEMASK);
-    m2np.header.fr_info = rxq.front[3];
-    session->flags      = rxq.front[3] & 0xC0;
-    rxq.getcursor       = &rxq.front[4]; 
+    rxq.getcursor       = &rxq.front[3];
+    session->protocol   = (*rxq.getcursor & M2FI_FRTYPEMASK);
+    session->flags      = *rxq.getcursor & 0xC0;
+    m2np.header.fr_info = *rxq.getcursor++;
     
     /// Treat Non-Mode-2 Protocols
     /// @note Non-Mode-2 protocols not supported at this time
@@ -226,14 +239,12 @@ ot_int network_route_ff(m2session* session) {
                     m2np.rt.dest.value = q_markbyte(&rxq, m2np.rt.dest.length);
                 }
             }
-            route_val = m2qp_parse_frame(session);   // Routing has passed!
-            break;
-        }
+        } // Note case fall-through
     
         case M2FI_STREAM: {
-            ///@todo currently, do nothing, just assume that getcursor is where
-            ///      it needs to be, at the front of the data.
-            route_val           = m2dp_parse_dspkt(session);
+            /// M2DP gets parsed just like M2NP, but it uses the Network data
+        	/// stored from the last M2NP frame
+            route_val = m2qp_parse_frame(session);
             break;
         }
         
@@ -270,96 +281,104 @@ ot_int network_route_ff(m2session* session) {
 
 #ifndef EXTF_m2np_header
 void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack) {
+/// Build an M2NP header, which gets forwarded in all cases to M2QP at the 
+/// transport layer, and which has NM2=0, Frame_Type={0,1}
 
-    /// Prep txq, and write Frame Info & Addr Ctrl Fields (universal)
+    /// 1. Prep txq, and write Frame Info & Addr Ctrl Fields (universal)
     q_start(&txq, 0, 0);
-    //q_writebyte(&txq, 0);                           // null length (placeholder only)
-    //q_writebyte(&txq, 0);                           // Dummy TX EIRP setting (placeholder only)
-    q_writeshort(&txq, 0x0000);
+    txq.back                = txq.getcursor + 254; 
+    q_writebyte(&txq, 0);                           // null length (placeholder only)
+    q_writebyte(&txq, 0);                           // Dummy TX EIRP setting (placeholder only)
+    //q_writeshort(&txq, 0x0000);
     q_writebyte(&txq, session->subnet);
     session->netstate      |= (addressing) ? 0 : M2_NETFLAG_FIRSTRX;    //Set FIRSTRX mode on Unicast
+    m2np.header.fr_info     = (session->flags & 0xC0);
     addressing             |= (session->flags & 0x3F);
-    m2np.header.fr_info     = session->flags & 0xC0;
-    m2np.header.fr_info    += nack;
-    {
-        ot_u8 frspec            = (session->protocol == 0);
-        m2np.header.fr_info    |= frspec ? M2FI_ENADDR : M2FI_STREAM;
-        m2np.header.addr_ctl    = frspec ? addressing : 0;
-    }
+    m2np.header.addr_ctl    = addressing;
+    m2np.header.fr_info    |= nack;
+    m2np.header.fr_info    |= M2FI_ENADDR;
     q_writebyte(&txq, m2np.header.fr_info);
     
+    /// 2. If required, enable DLLS encryption.  AES128 is the only currently
+    ///    supported crypto in OpenTag.  It will be applied in m2np_footer().
+    ///    If DLLS is enabled, NLS will be forced-off, because both of them
+    ///    cannot be active on the same frame.
+    ///    @todo Experimental!
 #   if (OT_FEATURE(DLL_SECURITY))
     if (m2np.header.fr_info & M2FI_DLLS) {
-        ///@todo experimental
-        AES_load_static_key(ISF_ID(user_authentication_key), (ot_u32*)rxq.front);
-        AES_keyschedule_enc((ot_u32*)rxq.front, (ot_u32*)(rxq.front+16));
-        AES_encrypt(&txq.front[4], &txq.front[4], (ot_u32*)(rxq.front+16));
+        auth_setup(&txq, b00100000, 249);
+        m2np.header.addr_ctl &= ~M2_FLAG_NLS;
     }
 #   endif
     
-    /// Write M2NP Address Templates
-    if (m2np.header.fr_info & M2FI_ENADDR) {
-        // Add Dialog ID, Address Ctrl Field, and Source Address
-        q_writebyte(&txq, session->dialog_id);
-        q_writebyte(&txq, m2np.header.addr_ctl);
-        m2np_put_deviceid( (ot_bool)(m2np.header.addr_ctl & M2AC_VID) );
-        
-        ///@todo Put NLS auth header (NLS not currently supported)
-#       if (OT_FEATURE(NL_SECURITY))
-        if (m2np.header.addr_ctl & M2_FLAG_NLS) {
-        }
-#       endif
-        
-        /// Unicast: add Target address, and rebase it from the TX Queue, which
-        /// is non-volatile for the remaining duration of the dialog
-        if ((m2np.header.addr_ctl & 0xC0) == 0) {
-            q_writestring(&txq, m2np.rt.dlog.value, m2np.rt.dlog.length);
-            m2np.rt.dlog.value = (txq.putcursor - m2np.rt.dlog.length);
-        }
-        
-        // Anycast or unicast: Multi-Hopping
-        if ((m2np.header.addr_ctl & 0x40) == 0) {
-            ot_u8   hopmask = M2HC_ORIG;
-            ot_u8   id_num  = 1;
-            id_tmpl* id     = &m2np.rt.orig;
-            
-            q_writebyte(&txq, m2np.rt.hop_code);
-            if ((m2np.rt.hop_code & M2HC_EXT) != 0) {
-                q_writebyte(&txq, m2np.rt.hop_ext);
-            }
-            while (id_num != 0) {
-                if (m2np.rt.hop_code & hopmask) {
-                    ot_u8* loc = txq.putcursor;
-                    q_writestring(&txq, id->value, id->length);
-                    id->value = loc;
-                }
-                hopmask = M2HC_DEST;
-                id++;		//moves to next id_tmpl (dest)
-                id_num--;
-            }
-        }
+    /// 3. Write Dialog, Addr Ctrl, and Source Address (always included in M2NP)
+    q_writebyte(&txq, session->dialog_id);
+    q_writebyte(&txq, m2np.header.addr_ctl);
+    m2np_put_deviceid( (ot_bool)(m2np.header.addr_ctl & M2AC_VID) );
+
+    /// 4. If required, enabled NLS.  The rules are basically the same as DLLS.
+    ///    @todo Experimental!
+#   if (OT_FEATURE(NL_SECURITY))
+    if (m2np.header.addr_ctl & M2_FLAG_NLS) {
+        auth_setup(&txq, b00100000, (txq.putcursor-txq.getcursor));
     }
+#   endif
+        
+    /// 5. Apply target address, if unicast enabled, and rebase it from the TX 
+    ///    Queue, which remains for the duration of the dialog
+    if ((m2np.header.addr_ctl & 0xC0) == 0) {
+        q_writestring(&txq, m2np.rt.dlog.value, m2np.rt.dlog.length);
+        m2np.rt.dlog.value = (txq.putcursor - m2np.rt.dlog.length);
+    }
+        
+    /// 6. Apply Multihop routing template, if unicast or anycast enabled
+    if ((m2np.header.addr_ctl & 0x40) == 0) {
+        ot_u8   hopmask = M2HC_ORIG;
+        ot_u8   id_num  = 1;
+        id_tmpl* id     = &m2np.rt.orig;
+            
+        q_writebyte(&txq, m2np.rt.hop_code);
+        if ((m2np.rt.hop_code & M2HC_EXT) != 0) {
+            q_writebyte(&txq, m2np.rt.hop_ext);
+        }
+        while (id_num != 0) {
+            if (m2np.rt.hop_code & hopmask) {
+                ot_u8* loc = txq.putcursor;
+                q_writestring(&txq, id->value, id->length);
+                id->value = loc;
+            }
+            hopmask = M2HC_DEST;
+            id     += 1;            //moves to next id_tmpl (dest)
+            id_num -= 1;
+        }
+    } 
 }
 #endif
 
 
 
 #ifndef EXTF_m2np_footer
-void m2np_footer(m2session* session) {
+void m2np_footer() {
+#   if (OT_FEATURE(DLL_SECURITY))
+    /// Add DLLS Padding and run encryption
+    if (m2np.header.fr_info & M2_FLAG_DLLS) {
+        ///@todo Implement AES128 DLLS stuff
+        auth_userkey_encrypt(&txq.getcursor[4], &txq);
+        goto m2np_footer_END;
+    }
+#   endif    
 #   if (OT_FEATURE(NL_SECURITY))
     if (m2np.header.addr_ctl & M2_FLAG_NLS) {
         ///@todo Put footer: NLS not currently supported
+        auth_userkey_encrypt(&txq.getcursor[6], &txq);
     }
 #   endif
 
-#   if (OT_FEATURE(DLL_SECURITY))
-    ///DLLS footer is just padding, goes in automatically during encryption
-    //if (m2np.header.fr_info & M2_FLAG_DLLS) {
-    //}
-#   endif
-    
-    /// Add payload (+txq.length), subtract length byte (-1), add CRC (+2)
-    txq.front[0] = txq.length + 1;
+    m2np_footer_END:
+
+    /// Load frame size into length byte, including -1 for length byte and +2
+    /// for CRC (total, +1).
+    txq.getcursor[0] = (txq.putcursor - txq.getcursor) + 1;
 }
 #endif
 
@@ -387,13 +406,13 @@ void m2np_put_deviceid(ot_bool use_vid) {
 
 #ifndef EXTF_m2np_idcmp
 ot_bool m2np_idcmp(ot_int length, void* id) {
-    ot_bool check = True;
+    ot_bool check   = True;
     ot_u8   use_uid = (length == 8);
     vlFILE* fp;
     
     //file 0=network_settings, 1=device_features
-    fp = ISF_open_su( use_uid );
-    check &= ( ((ot_u16*)id)[0] == vl_read(fp, 0));
+    fp      = ISF_open_su( use_uid );
+    check  &= ( ((ot_u16*)id)[0] == vl_read(fp, 0));
 
     if (use_uid) {
         check &= ( ((ot_u16*)id)[1] == vl_read(fp, 2) );
@@ -484,261 +503,63 @@ ot_int m2advp_init_flood(m2session* session, ot_u16 schedule) {
 
 
 
+
+
 /** M2DP Network Functions
   * ============================================================================
-  * - M2DP = Mode 2 Datastream Protocol
-  * - Very little overhead, good for arbitrary data encapsulation
-  * - Supports multi-frame packets and multi-packet streams
-  * - No inherent flow control or ACK (requires a session layer to do it)
-  * 
-  * @note OpenTag uses a spec-legal, partial implementation of M2DP, including:
-  * - Encapsulated data is restricted to supported application subprotocols
-  * - Requires in-order frame delivery for datastreams that span multiple frames
-  * - Usage with multiframe packets should work but is untested
   */
-#ifndef EXTF_m2dp_open
-void m2dp_open(ot_u8 frame_id, m2session* session) {
-    q_empty(&txq);
-    txq.front[0] = 0;
-    q_writebyte(&txq, session->subnet);
-    q_writebyte(&txq, 0x60);
-    q_writebyte(&txq, (ot_u8)session->counter);    
-    q_writebyte(&txq, frame_id);
-}
-#endif
 
+#ifndef EXTF_m2dp_append
+void m2dp_append() {
+///@note This function is experimental (untested, work-in-progress)
 
-#ifndef EXTF_m2dp_dsproc
-void m2dp_dsproc() {
-/// @note: The code below is basically copied from ndef_parse_record() in
-///        the NDEF module.  At some point this code might be consolidated
-///        and reused across both modules.
-#if (OT_FEATURE(ALP) == ENABLED)
-    ot_u8*      header;
-    alp_record  in_rec;
+    // Mark LAST FRAME to continue to this one, and then move getcursor to the
+    // front of this frame.
+    ///@todo this method might need to change, depending on how queues end up
+    ///      being managed.
+    ot_u8 subnet;
 
-    while ( ((m2dp.out_rec.flags & ALP_FLAG_ME) == 0) && \
-            (rxq.getcursor > rxq.back) ) {
-        /// Get ALP directive header (Damn similar to NDEF)
-        in_rec.flags            = q_readbyte(&rxq);
-        in_rec.payload_length   = q_readbyte(&rxq);
-        in_rec.dir_id           = q_readbyte(&rxq);
-        in_rec.dir_cmd          = q_readbyte(&rxq);
-        
-        /// Set Universal Output Record Flags
-        m2dp.out_rec.flags     |= (in_rec.flags & ALP_FLAG_ME);
+    m2np.header.fr_info    &= ~(M2FI_ENADDR | M2FI_FRTYPEMASK);
+    m2np.header.fr_info    |= (M2FI_STREAM);
+
+    // M2DP will use DLLS on an existing key, such as one specified by NLS from
+    // the M2NP Frame before it.
+#   if (OT_FEATURE(NL_SECURITY))
+    m2np.header.fr_info    |= ((m2np.header.addr_ctl & M2_FLAG_NLS) << 2);
+    m2np.header.addr_ctl   &= ~M2_FLAG_NLS;
+#   endif
     
-        /// Leave room for directive header data (put in later)
-        header                  = txq.putcursor;
-        txq.putcursor          += 4;
-
-        /// Process The input record and yield output
-        /// @todo change the AUTH_GUEST when the Authentication and security
-        ///       mechanisms are actually implemented.
-        alp_proc(&in_rec, &(m2dp.out_rec), &rxq, &txq, AUTH_GUEST);
+    // Basic header stuff:
+    subnet                  = txq.getcursor[2];
+    txq.getcursor[3]       |= M2FI_FRCONT;
+    txq.getcursor           = txq.putcursor;
+    txq.back                = txq.putcursor + 254; 
+    *txq.putcursor++        = 0;                    // length placeholder
+    *txq.putcursor++        = 0;                    // TX EIRP placeholder
+    *txq.putcursor++        = subnet;
+    *txq.putcursor++        = m2np.header.fr_info;
+    txq.length             += 4;
     
-        /// If there's no output data, rewind output queue 
-        /// Else, update header with output from alp_proc()
-        if (m2dp.out_rec.payload_length == 0) {
-            dir_out.putcursor = header; ///@todo check if this should be txq
-        }
-        else {
-            ///@note Line below is temporary hack for pre-release crippleware.
-            ///      If a record spills over (indicates chunking), then mark the
-            ///      Message End bit.  Remaining input records are still parsed,
-            ///      but the output is stopped here.
-            m2dp.out_rec.flags |= (m2dp.out_rec.flags & ALP_FLAG_CF) << 1;  
-        
-            header[0] = m2dp.out_rec.flags;
-            header[1] = m2dp.out_rec.payload_length;
-            header[2] = m2dp.out_rec.dir_id;
-            header[3] = m2dp.out_rec.dir_cmd;
-        }
+    // DLLS header information (gets adjusted on m2dp_close())
+#   if (OT_FEATURE(DLL_SECURITY))
+    if (m2np.header.fr_info & M2FI_DLLS) {
+        auth_setup(&txq, 0, 5);
     }
-#endif
-}
-#endif
+#   endif
 
-
-#ifndef EXTF_m2dp_parse_dspkt
-ot_int m2dp_parse_dspkt(m2session* session) {
-#if (OT_FEATURE(ALP) == ENABLED)
-    /// Put together the beginning of the ACK request, as long as the ACK is
-    /// enabled (set up by the M2QP handshaking).
-    if ((m2dp.dscfg.ctl & M2DS_DISABLE_ACKREQ) == 0) {
-        //ot_u8*  cmd_ptr;
-        //ot_int  cmd_length;
-        
-        /// Step 1: Build the base of the response (everything except the frame numbers)
-        /// @todo - 1a: configure necessary MAC variables for timeouts
-        /// - 1b: prepare the header of the ack response (generic)
-        /// - 1c: prepare the command-specific M2QP data
-        
-        m2np_header(session, 0, 2);                 // (1b) 0 = unicast, 2 = request
-        //cmd_ptr     = txq.putcursor;
-        //cmd_length  = txq.length; 
-        
-        if (m2dp.dscfg.ctl & M2DS_DISABLE_ACKRESP) {     // (1c)
-            q_writebyte(&txq, b10101010);
-            q_writebyte(&txq, b00000010);   //command extension
-        }
-        else {
-            q_writebyte(&txq, b00101010);
-        }
-        
-        
-        /// Step 2: Figure out which M2DP frames are damaged, and write to the 
-        /// response.  The current version of OpenTag supports only 1 frame per
-        /// packet, so the implementation here is a shortcut.  In the future,
-        /// OT might support multiple frames per packet.  There is some sample
-        /// code commented-out that can ID frame errors for multiframe packets.
-        /// It working in theory but hasn't been tested!
-        
-        /// @note the function m2dp_mark_dsframe() is called within the system.c
-        /// RX process when a frame is detected bad.  The value in dmg_count is
-        /// incremented on each call of m2dp_mark_dsframe().
-        q_writebyte(&txq, (ot_u8)m2dp.dscfg.dmg_count);
-        if (m2dp.dscfg.dmg_count != 0) {
-            q_writebyte(&txq, 0);   //damaged frame always is frame 0
-        }
-    }
-    
-    /// If the packet is error free, process the ALPs inside it.
-    if (m2dp.dscfg.dmg_count == 0) {
-        m2dp_dsproc();
-    }
-        
-    ///@todo I probably need to think about a way to engage the "Scrap" features
-    ///      of the ACK control in the event when data integrity is a continuous
-    ///      problem.  "Scrapping" is not a mandatory feature for DASH7, but it
-    ///      can make transfers more efficient.
-    
-    // reset dscfg for next packet
-    m2dp.dscfg.dmg_count = 0;
-    
-    
-    ///@todo Need to correlate a return value to m2dp_dsproc().  It probably
-    ///      only needs to be 0/-1.
-    return 0;
-#else
-    return -1;
-#endif
-}
-#endif
-
-
-#ifndef EXTF_m2dp_mark_dsframe
-void m2dp_mark_dsframe(m2session* session) {
-/// Mark the frame info as FF, which will be parsed later as damaged frame, and
-/// increment the damage counter.
-    rxq.front[3] = 0xFF;
-    m2dp.dscfg.dmg_count++;
 }
 #endif
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* Method for multiframe packet marking of datastreams (for next version)
-
-// - Write number of damaged frames to ACK request
-// - Set damaged frame count back to zero, for next packet
-// - Start at beginning of packet (manual rx queue addressing)
-// - Determine number of frames in the packet (either max, or num frames left)
-// - Damaged frames are marked during RX. ACK the damaged, marked frames.
-
-q_writebyte(&txq, (ot_u8)m2dp.dscfg.dmg_count);
-m2dp.dscfg.dmg_count    = 0;                    // reset for next packet
-data_ptr                = rxq.front; 
-
-if (m2dp.dscfg.fr_count < m2dp.dscfg.fr_per_pkt) {
-    m2dp.dscfg.fr_per_pkt = m2dp.dscfg.fr_left;
+#ifndef EXTF_m2dp_footer
+void m2dp_footer() {
+/// M2DP is similar enough to M2NP that the same footer function may be used.
+    m2np_footer();
 }
-{
-    ot_u8 i;
-    ot_u8 test_is_good;
-    for (i=0; i<m2dp.dscfg.fr_per_pkt; i++) {
-        test_is_good        = ((data_ptr[3] & 0x0F) == 0);  //byte[3] is "frame control"
-        m2dp.dscfg.fr_left -= test_is_good;
-        
-        if (!test_is_good) {
-            q_writebyte(&txq, i);
-        }
-        data_ptr += 255;                //255 is hard-coded max frame length
-    }
-}
-*/
+#endif
 
 
-
-
-
-
-
-
-
-/*
-void sub_ds_stitch() {
-/// Go through all the frames and make the datastream contiguous
-    ot_u8*  dest_ptr;
-    
-    rxq.front           = rxq_data;
-    dest_ptr            = rxq_data;
-    m2dp.dscfg.fr_left  = m2dp.dscfg.fr_count;
-    
-    while (m2dp.dscfg.fr_left > 0) {    
-        ot_int copy_length;
-        rxq.getcursor = rxq.front;
-
-        if (network_route_ff(session) != 0) {
-            //return error, scrap
-            return b0100000;
-        }
-        rxq.getcursor++;    // bypass frame ID
-
-        /// Remove the frame overhead and just leave the datastream
-        /// 1. Following network_route_ff(), the number of overhead bytes = 
-        ///    (1 + rxq.getcursor - rxq.front).  The +1 is factored in above.
-        /// 2. The datastream bytes = frame length - overhead bytes
-        /// 3. The frame length = rxq.front[0]
-        copy_length = (rxq.front[0]-(rxq.getcursor-rxq.front));
-        platform_memcpy(dest_ptr, rxq.getcursor, copy_length);
-        
-        /// network_route_ff() will place the putcursor after the frame data,
-        /// so prepare re-align front (and getcursor) to the next frame)
-        rxq.front = rxq.putcursor;
-        m2dp.dscfg.fr_left--;
-    }
-    
-    //reset queue variables for next operation
-    rxq.front       = rxq_data;
-    rxq.getcursor   = rxq_data;
-    rxq.length      = m2dp.dscfg.data_total;
-    
-    return 0;
-}
-*/
 
 
 

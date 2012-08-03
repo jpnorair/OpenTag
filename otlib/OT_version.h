@@ -66,8 +66,8 @@
 
 //BASE64 Converter
 #define __B64_1(X)      (X+((25<=X)*65))
-#define __B64_2(X)      ((X+((26<=X)&&(X<=51))*4) + (((26<=X)&&(X<=51))*__B64_1(X)))
-#define __B64_3(X)      ((X-((52<=X)&&(X<=61))*4) + (((52<=X)&&(X<=61))*__B64_2(X)))
+#define __B64_2(X)      ((X+((26<=X)&(X<=51))*4) + (((26<=X)&(X<=51))*__B64_1(X)))
+#define __B64_3(X)      ((X-((52<=X)&(X<=61))*4) + (((52<=X)&(X<=61))*__B64_2(X)))
 #define __B64_4(X)      ((X==62)*47 + ((X==62)*__B64_3(X)))
 #define __B64_5(X)      (((X==63)*47) + ((X==63)*__B64_4(X)))
 #define BASE64_EN(BYTE) ((ot_u8)__B64_5( (BYTE & 0x3F) ))
@@ -81,7 +81,7 @@
 #   define OT_BUILDTYPE         'u'
 #endif
 #ifndef OT_BUILDID
-#   define OT_BUILDID           0x0104
+#   define OT_BUILDID           0x0300
 #endif
 #ifndef OT_FEATURELIST
 #   define OT_FEATURELIST       DEV_FEATURES_BITMAP
@@ -131,22 +131,14 @@
 #   define OT_ACTIVE_CLASS      0x0400
 #elif (M2_FEATURE(ENDPOINT) == ENABLED) 
 #   define OT_ACTIVE_CLASS      0x0200
-#elif (M2_FEATURE(BLINKER) == ENABLED) 
-#   define OT_ACTIVE_CLASS      0x0100
 #else
 #   define OT_ACTIVE_CLASS      0x0000
 #endif
 
 
 // Device Datastreaming Settings
-#if ((M2_FEATURE(M2DP) == ENABLED) && (M2_FEATURE(MULTIFRAME) == ENABLED))
-#   define OT_SUPPORTED_DATASTREAM  0x0060
-#elif (M2_FEATURE(M2DP) == ENABLED)
-#   define OT_SUPPORTED_DATASTREAM  0x0040
-#else
-#   define OT_SUPPORTED_DATASTREAM  0x0000
-#endif
-#define OT_ACTIVE_DATASTREAM        OT_SUPPORTED_DATASTREAM
+#define OT_SUPPORTED_DATASTREAM ((M2_FEATURE(DATASTREAM) << 6) | (M2_FEATURE(M2DP) << 7))
+#define OT_ACTIVE_DATASTREAM    OT_SUPPORTED_DATASTREAM
 
 
 // Device FEC Settings
