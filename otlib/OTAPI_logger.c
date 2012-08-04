@@ -51,13 +51,15 @@
 
 
 ot_bool otapi_log_header(ot_u8 id_subcode, ot_int payload_length) {
-	alp_new_record(&mpipe_alp, (ALP_FLAG_MB+5), 255, payload_length);
+	mpipe_alp.outrec.id     = 4;                //Logger ID
+	mpipe_alp.outrec.cmd    = id_subcode;       //Format Type
 	
-	if ((mpipe_alp.outq->putcursor+mpipe_alp.outrec.plength) < mpipe_alp.outq->back) {
-		mpipe_kill();
-		return False;
+	if ((mpipe_alp.outq->putcursor+payload_length) < mpipe_alp.outq->back) {
+		alp_new_record(&mpipe_alp, (ALP_FLAG_MB+5), 255, payload_length);
+		return True;
 	}
-	return True;
+	mpipe_kill();
+	return False;
 }
 
 
@@ -84,6 +86,7 @@ void otapi_log(ot_u8 subcode, ot_int length, ot_u8* data) {
 #ifndef EXTF_otapi_log_msg
 void otapi_log_msg(logmsg_type logcmd, ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* data) {
     ot_int payload_length = label_len + 1 + data_len;
+    //q_empty(mpipe_alp.outq);
     
     if (otapi_log_header(logcmd, payload_length)) {
     	q_writestring(mpipe_alp.outq, label, label_len);

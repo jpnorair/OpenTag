@@ -436,11 +436,13 @@ ot_bool m2qp_sig_error(ot_u8 code, ot_u8 subcode, id_tmpl* user_id) {
 #ifdef EXTF_m2qp_sig_udp
 ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 /// Transport Layer calls this when a UDP-class request has been received.
-    static const char* label[] = { "Data:", "Event:", "RSSI:", "Temp:", "Volt:" };
-    static const char type[]   = {  'x'   ,   't'   ,   'b'  ,   's'  ,   's'   };
-    static const ot_int len[]  = {   8    ,    1    ,    3   ,    2   ,    2    };
-    ot_u8* payload_end;
+    static const char* label[] = { "ID:", "Data:", "Event:", "RSSI:", "Temp:", "Volt:" };
+    static const char type[]   = {  'x' ,   'x'  ,   't'   ,   'b'  ,   's'  ,   's'   };
+    static const ot_int len[]  = {   8  ,    8   ,    1    ,    3   ,    2   ,    2    };
     ot_int scratch;
+    ot_u8  index;
+    ot_u8  input_len;
+    ot_u8* input_data;
 
     // Check Source & Destination Ports of UDP message.
     // In this example, source == FE and DST == FF.  Only requests are logged 
@@ -454,35 +456,32 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
     
     // Grab application protocol Type-Length-Value block and convert it into
     // human readable data, which added to the log.
-    scratch                    += slistf(   mpipe_alp.outq->putcursor, 
-                                            "ID:", 
-                                            'x', 
-                                            user_id->length, 
-                                            user_id->value   );
-    mpipe_alp.outq->putcursor  += scratch;
-    mpipe_alp.outq->length     += scratch;
-    q_writebyte(mpipe_alp.outq, '\n');
+    index       = 0;
+    input_len   = user_id->length;
+    input_data  = user_id->value;
 
-    while (rxq.getcursor < rxq.back) {
-        ot_u8 index;
-        index = q_readbyte(&rxq);
-
-        if      (index == 'D')  index = 0;      // PaLFi data load: 8 bytes
-        else if (index == 'E')  index = 1;      // Event-type information (1 byte)
-        else if (index == 'R')  index = 2;      // PaLFi RSSI bytes (3 bytes)
-        else if (index == 'T')  index = 3;      // Temperature (2 bytes)
-        else if (index == 'V')  index = 4;      // Voltage (2 bytes)
-        else    continue;
-        
-        scratch                    += slistf(   mpipe_alp.outq->putcursor, 
-                                                label[index], 
-                                                type[index], 
-                                                len[index], 
-                                                rxq.getcursor      );
+    while (rxq.getcursor <= rxq.back) {
+    	scratch                     = slistf(   mpipe_alp.outq->putcursor,
+                                                label[index],
+                                                type[index],
+                                                input_len,
+                                                input_data      );
         mpipe_alp.outq->putcursor  += scratch;
         mpipe_alp.outq->length     += scratch;
-        rxq.getcursor              += len[index];
         q_writebyte(mpipe_alp.outq, '\n');
+
+        index = q_readbyte(&rxq);               // Get next index
+
+        if      (index == 'D')  index = 1;      // PaLFi data load: 8 bytes
+        else if (index == 'E')  index = 2;      // Event-type information (1 byte)
+        else if (index == 'R')  index = 3;      // PaLFi RSSI bytes (3 bytes)
+        else if (index == 'T')  index = 4;      // Temperature (2 bytes)
+        else if (index == 'V')  index = 5;      // Voltage (2 bytes)
+        else    break;
+        
+        input_len	    = len[index];
+        input_data      = rxq.getcursor;
+        rxq.getcursor  += input_len;
     }
     
     // Close the log file, send it out, return success

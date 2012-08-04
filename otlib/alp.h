@@ -88,6 +88,10 @@ typedef struct {
 
 
 
+void alp_init(alp_tmpl* alp, ot_queue* inq, ot_queue* outq);
+
+
+
 /** @brief Break a running ALP stream (due to error), and load error record
   * @param  alp                 (alp_tmpl*) ALP I/O control structure
   * @retval None

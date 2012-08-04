@@ -121,6 +121,17 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
 
 
 
+#ifndef EXTF_alp_init
+void alp_init(alp_tmpl* alp, ot_queue* inq, ot_queue* outq) {
+	alp->inrec.flags    = 0;
+	alp->outrec.flags   = 0;
+	alp->inq            = inq;
+	alp->outq           = outq;
+}
+#endif
+
+
+
 #ifndef EXTF_alp_break
 void alp_break(alp_tmpl* alp) {
 /// Break a running stream, and manually put a break record onto the stream
@@ -149,20 +160,19 @@ void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payl
 	// Chunk and End will be intelligently set in this function, but Begin must
 	// be set by the caller, AFTER this function.
 	alp->outrec.flags |= flags;
+	alp->outrec.flags |= NDEF_SR;
 #   if (OT_FEATURE(NDEF))
 	alp->outrec.flags &= ~(ALP_FLAG_ME | ALP_FLAG_CF | NDEF_IL);
 #   else
     alp->outrec.flags &= ALP_FLAG_MB;
 #   endif
-	alp->outrec.flags |= NDEF_SR;
 
     // NDEF TNF needs to be 5 (with ID) on MB=1 and 6 (no ID) or MB=0
 	// Pure ALP should always have IL=0 and TNF=0
 #   if (OT_FEATURE(NDEF))
     if (alp->outrec.flags & 7) {
         alp->outrec.flags &= ~7;
-        alp->outrec.flags |= (alp->outrec.flags & ALP_FLAG_MB) ? \
-                                                        (NDEF_IL+5) : 6;
+        alp->outrec.flags |= (alp->outrec.flags & ALP_FLAG_MB) ? (NDEF_IL+5) : 6;
     }
 #   endif
 

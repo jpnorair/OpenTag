@@ -452,14 +452,14 @@ ot_int mpipe_init(void* port_id) {
 /// 1. Set all signal callbacks to NULL, and initialize other variables.
 /// 2. Prepare the HW, which in this case is a USB Virtual TTY
 
+	alp_init(&mpipe_alp, &dir_in, &dir_out);
+
 #   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
         mpipe.sig_rxdone    = &otutils_sigv_null;
         mpipe.sig_txdone    = &otutils_sigv_null;
         mpipe.sig_rxdetect  = &otutils_sigv_null;
 #   endif
 
-    mpipe_alp.inq           = &dir_in;
-    mpipe_alp.outq          = &dir_out;
     mpipe.sequence.ushort   = 0;          //not actually necessary
     mpipe.state             = MPIPE_Null;
     
