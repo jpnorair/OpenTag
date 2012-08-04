@@ -492,7 +492,7 @@ void platform_poweron() {
     platform_init_gptim(0x01C3);        // Initialize GPTIM (to 1024 Hz)
     platform_init_gpio();
     platform_init_memcpy();
-    platform_init_prand(0xBEEF);        // BEEF is tasty
+    platform_init_prand( *((ot_u16*)0x1A10) );   // Seed is part of Chip ID
 
     /// 3. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
@@ -531,6 +531,36 @@ void platform_init_OT() {
 	vl_init();      //Veelite init must be second
 	radio_init();   //radio init third
 	sys_init();     //system init last
+
+#   if (defined(__DEBUG__) || defined(DEBUG_ON))
+    /// If debugging, find the Chip ID and use 6 out of 8 bytes of it to yield
+    /// the UID.  This ID might not be entirely unique -- technically, there is
+    /// 1/65536 chance of non-uniqueness, but practically the chance is much
+    /// lower, given the way chips are distributed.  For test/debug, this is
+    /// adequately unique.
+    ///
+    /// @note the ID is inserted via Veelite, so it is abstracted from the
+    /// file memory configuration of your board and/or app.
+    {
+		vlFILE* fpid;
+		ot_u16* hwid;
+		ot_int  i;
+
+        fpid    = ISF_open_su(1);
+        hwid    = (ot_u16*)(0x1A08);
+
+        for (i=2; i<8; i+=2) {
+        	ot_u16 scratch;
+        	scratch	    = *hwid++;
+        	scratch	    = __swap_bytes(scratch);
+        	scratch	   ^= *hwid++;
+
+            vl_write(fpid, i, scratch);
+        }
+        vl_close(fpid);
+    }
+#endif
+
 
 #   ifdef BOARD_RF430USB_5509
 	// For this board, Radio must be initialized before MPipe

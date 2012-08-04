@@ -1001,7 +1001,6 @@ OT_INLINE Task_Index sub_clock_tasks(ot_uint elapsed) {
     Task_Index output = TASK_idle;
 
     // Clock Tca & RX timeout
-    //dll.comm.rx_timeout -= elapsed;
     dll.comm.tca        -= elapsed;
     //dll.comm.tc         -= elapsed;
 
@@ -1200,12 +1199,8 @@ void sysevt_beacon() {
     ///Start building the beacon packet
     m2np_header(session, 0x40, 0);
     q_writebyte(&txq, 0x20 + (beacon_params & 1));
-    {
-        ot_u8 increment;
-        *txq.putcursor  = (beacon_params & 0x04);
-        increment       = ((beacon_params & 0x04) != 0);
-        txq.putcursor  += increment;
-        txq.length     += increment;
+    if (beacon_params & 0x04) {
+    	q_writebyte(&txq, (beacon_params & 0x04));
     }
 
     /// Setup the comm parameters, if the channel is available
@@ -1607,19 +1602,16 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
     /// - Allow scheduling of redundant TX on responses, or request with no response
     /// - End session if no redundant, and no listening required
     else {
-        ot_u8 scrap_bit;
         sys.mutex               = 0;
         sys.evt.RFA.event_no    = 0;
         session                 = session_top();
-        //scrap_bit               = (dll.comm.rx_timeout == 0) | \
-        //                          ((session->netstate & M2_NETSTATE_TMASK) == M2_NETSTATE_RESPTX);
-        scrap_bit               = (dll.comm.rx_timeout == 0);
-        scrap_bit              |= ((session->netstate & M2_NETSTATE_RESPTX) != 0);
         dll.comm.redundants    -= 1;
         
         // Send redundant TX immediately, but only if no response window or if
         // this packet is a response.
-        if (scrap_bit && dll.comm.redundants) {
+        if ( (dll.comm.redundants != 0) && \
+        	 ((session->netstate & M2_NETSTATE_RESPTX) \
+        	 || ((ot_int)dll.comm.rx_timeout <= 0)) ) {
             dll.comm.csmaca_params = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
             rm2_prep_resend();
         }
@@ -1627,7 +1619,7 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
         // End Session if no redundant, no response window, if this itself is a
         // response, or if there is some sort of error
         else {
-            scrap_bit          |= (pcode != 0);         //some sort of error
+            ot_u8 scrap_bit     = (pcode != 0);         //some sort of error
             session->netstate  |= (scrap_bit << 7);     //M2_NETFLAG_SCRAP
             session->netstate  &= ~M2_NETSTATE_TMASK;
             session->netstate  |= M2_NETSTATE_RESPRX;

@@ -577,15 +577,15 @@ void em2_encode_newframe() {
     /// 1. Prepare the CRC, also adding 2 bytes to the frame length
 #   if (RF_FEATURE(CRC) != ENABLED)
 		if (txq.options.ubyte[UPPER] != 0) {
-			crc_init_stream(txq.length, txq.front);
-			txq.putcursor   += 2;
+			crc_init_stream(txq.length, txq.getcursor);
+			//txq.putcursor   += 2;
         	txq.length      += 2;
 		}
 #   endif
 
     /// 2. Align encoder control variables with tx frame
     em2.bytes   = txq.length;
-    em2.fr_info = &txq.front[3];
+    em2.fr_info = &txq.getcursor[3];
     
     /// 3. Prepare frame encoder, depending on frame type and supported methods.
     ///    (0) HW Encoder: do nothing. 
