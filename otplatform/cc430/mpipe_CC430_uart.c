@@ -328,6 +328,9 @@ ot_int mpipe_init(void* port_id) {
     mpipe.state             = MPIPE_Idle;
 
     alp_init(&mpipe_alp, &dir_in, &dir_out);
+    mpipe_alp.inq->back    -= 10;
+    mpipe_alp.outq->back   -= 10;
+
     sub_uart_portsetup();
     mpipe_setspeed(MPIPE_115200bps);     //default baud rate
 
@@ -340,6 +343,7 @@ ot_int mpipe_init(void* port_id) {
 #ifndef EXTF_mpipe_kill
 void mpipe_kill() {
 	q_empty(mpipe_alp.outq);
+	mpipe_alp.outq->back -= 10;
 }
 #endif
 
@@ -487,6 +491,7 @@ void mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
                         DMA_Options_ENMIEnable  );
 
         q_empty(mpipe_alp.inq);
+        mpip_alp.inq->back -=10;
         MPIPE_DMA_RXCONFIG(mpipe_alp.inq->front, 10, ON);
         UART_OPEN();
         UART_CLEAR_RXIFG();
@@ -616,6 +621,7 @@ void mpipe_isr() {
     mpipe.state = MPIPE_Idle;
     //if (mpipe_alp.outq->getcursor == mpipe_alp.outq->putcursor) {
     	q_empty(mpipe_alp.outq);
+    	mpipe_alp.outq->back -= 10;
     //}
 #   if ((OT_FEATURE(MPIPE_CALLBACKS) == ENABLED) && !defined(EXTF_mpipe_sig_txdone))
         mpipe.sig_txdone(0);

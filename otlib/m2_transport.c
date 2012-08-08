@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/m2_transport.c
+  * @file       /otlib/m2_transport.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       2 November 2011
+  * @date       7 August 2012
   * @brief      Mode 2 Query Protocol Implementation (Transport Layer)
   * @ingroup    M2QP
   ******************************************************************************
