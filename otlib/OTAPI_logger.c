@@ -51,36 +51,31 @@
 
 
 ot_bool otapi_log_header(ot_u8 id_subcode, ot_int payload_length) {
-	mpipe_alp.outrec.id     = 4;                //Logger ID
-	mpipe_alp.outrec.cmd    = id_subcode;       //Format Type
+	if (mpipe_status() == MPIPE_Idle) {
+        mpipe_alp.outrec.id     = 4;                //Logger ID
+        mpipe_alp.outrec.cmd    = id_subcode;       //Format Type
 	
-	if ((mpipe_alp.outq->putcursor+payload_length) < mpipe_alp.outq->back) {
-		alp_new_record(&mpipe_alp, (ALP_FLAG_MB+5), 255, payload_length);
-		return True;
+	    if ((mpipe_alp.outq->putcursor+payload_length) < mpipe_alp.outq->back) {
+		    alp_new_record(&mpipe_alp, (ALP_FLAG_MB+5), 255, payload_length);
+		    return True;
+	    }
+	    mpipe_kill();
 	}
-	mpipe_kill();
 	return False;
-}
-
-
-
-ot_bool sub_dirout_check(ot_int payload_length) {
-///@todo Magic number 10 is the size of the logging overhead...
-///      It equals 6 bytes NDEF plus 4 bytes MPipe.  It should be a constant.
-    return (ot_bool)((dir_out.front+payload_length+10) < dir_out.back);
 }
 
 
 
 #ifndef EXTF_otapi_log
 void otapi_log(ot_u8 subcode, ot_int length, ot_u8* data) {
-    if (sub_dirout_check(length)) {
-        otapi_log_header(subcode, length);
+    if (otapi_log_header(subcode, length)) {
         q_writestring(mpipe_alp.outq, data, length);
-        mpipe_txndef(mpipe_alp.outq->front, False, MPIPE_Broadcast);
+        mpipe_txndef(mpipe_alp.outq->getcursor, False, MPIPE_Broadcast);
     }
 }
 #endif
+
+
 
 
 #ifndef EXTF_otapi_log_msg
@@ -92,7 +87,7 @@ void otapi_log_msg(logmsg_type logcmd, ot_int label_len, ot_int data_len, ot_u8*
     	q_writestring(mpipe_alp.outq, label, label_len);
     	q_writebyte(mpipe_alp.outq, ' ');
     	q_writestring(mpipe_alp.outq, data, data_len);
-    	mpipe_txndef(mpipe_alp.outq->front, False, MPIPE_Broadcast);
+    	mpipe_txndef(mpipe_alp.outq->getcursor, False, MPIPE_Broadcast);
     }
 }
 #endif
@@ -106,14 +101,14 @@ void otapi_log_hexmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* da
     ot_int payload_length = label_len + 1 + (data_len<<1);
 
     if (otapi_log_header(7, payload_length)) {
-        q_writestring(&dir_out, label, label_len);
-        q_writebyte(&dir_out, ' ');
+        q_writestring(mpipe_alp.outq, label, label_len);
+        q_writebyte(mpipe_alp.outq, ' ');
         
-        payload_length              = otutils_bin2hex(data, dir_out.putcursor, data_len);
+        payload_length              = otutils_bin2hex(data, mpipe_alp.outq->putcursor, data_len);
         mpipe_alp.outq->putcursor  += payload_length;
         mpipe_alp.outq->length     += payload_length;
 
-        mpipe_txndef(mpipe_alp.outq->front, False, MPIPE_Broadcast);
+        mpipe_txndef(mpipe_alp.outq->getcursor, False, MPIPE_Broadcast);
     }
 }
 #endif
@@ -122,7 +117,7 @@ void otapi_log_hexmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* da
 
 #ifndef EXTF_otapi_log_direct
 void otapi_log_direct() {
-    mpipe_txndef(mpipe_alp.outq->front, False, MPIPE_Broadcast);
+    mpipe_txndef(mpipe_alp.outq->getcursor, False, MPIPE_Broadcast);
 }
 #endif
 

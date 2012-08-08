@@ -108,6 +108,7 @@
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
 #define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
+#define BOARD_FEATURE_MPIPE_QMGMT		ENABLED
 #define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL used as Clock source
 #define BOARD_FEATURE_HFXTAL            DISABLED                // HF XTAL used as Clock source
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
@@ -398,15 +399,8 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #	define MPIPE_UART_RXTRIG	DMA_Trigger_UCA0RXIFG
 #	define MPIPE_UART_TXTRIG	DMA_Trigger_UCA0TXIFG
 #   define MPIPE_UART_VECTOR    USCI_A0_VECTOR
-#elif (MPIPE_UARTNUM == 1)
-#   define MPIPE_UART           UARTB0
-#   define MPIPE_UART_RXSIG     PM_UCB0RXD
-#   define MPIPE_UART_TXSIG     PM_UCB0TXD
-#	define MPIPE_UART_RXTRIG	DMA_Trigger_UCB0RXIFG
-#	define MPIPE_UART_TXTRIG	DMA_Trigger_UCB0TXIFG
-#   define MPIPE_UART_VECTOR    USCI_B0_VECTOR
 #else
-#   error "MPIPE_UART is not defined to an available index (0-1)"
+#   error "MPIPE_UART is not defined to an available index (0)"
 #endif
 
 #if (MCU_FEATURE_MPIPEDMA == ENABLED)

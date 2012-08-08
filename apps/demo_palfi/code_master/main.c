@@ -49,10 +49,6 @@
 #include "radio.h"
 
 
-// These should probably get integrated into OTAPI at some point
-#include "mpipe.h"
-
-
 
 
 
@@ -220,6 +216,7 @@ OT_INTERRUPT void app_buttons_isr(void) {
 /// USB Stick
 #elif defined(BOARD_RF430USB_5509)
 #include "_patch_5509stick/extf_code.c"
+
 void sub_trig3_high()   { }
 void sub_trig3_low()    { }
 void sub_trig3_toggle() { }

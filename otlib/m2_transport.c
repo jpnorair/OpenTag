@@ -386,6 +386,7 @@ static const ot_sub opgroup_proc[8] = { &sub_opgroup_globalisf,     //Announceme
 
 #ifndef EXTF_m2qp_sig_null
 ot_bool m2qp_sig_null(id_tmpl* responder_id, ot_int payload_length, ot_u8* payload) {
+    return False;
 }
 #endif
 

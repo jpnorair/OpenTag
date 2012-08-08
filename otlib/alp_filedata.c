@@ -135,7 +135,7 @@ ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id) {
         // - for write and control funcs, error is the only type of response
         // - for read, data return is the response
         // - 02 is the write-cmd mask, 03 is the return-cmd mask, 0F is the error cmd
-        alp->outrec.cmd     = alp->inrec.cmd & ~(0x80 | ALP_FLAG_CF);
+        alp->outrec.cmd    &= ~0x80;
         alp->outrec.cmd    |= (alp->inrec.cmd & 0x02) ? 0x0F : 0x01;
     }
     
@@ -350,7 +350,7 @@ ot_int sub_filedata( alp_tmpl* alp, id_tmpl* user_id, ot_bool respond ) {
         
         // C. Error Sending Stage
         sub_filedata_senderror:
-        if (respond & ((err_code != 0) | file_mod)) {
+        if (respond && (err_code | file_mod)) {
             if ((outq->putcursor+2) >= outq->back) {
                 goto sub_filedata_overrun;
             }

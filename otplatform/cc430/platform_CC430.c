@@ -516,15 +516,22 @@ void platform_init_OT() {
     /// @note the ID is inserted via Veelite, so it is abstracted from the 
     /// file memory configuration of your board and/or app. 
     {
-        vlFILE* fp;
-        ot_int  i;
-        
-        fp = ISF_open_su(1);
+		vlFILE* fpid;
+		ot_u16* hwid;
+		ot_int  i;
+
+        fpid    = ISF_open_su(1);
+        hwid    = (ot_u16*)(0x1A08);
+
         for (i=2; i<8; i+=2) {
-            //0x1A0A is the first address of an 8 byte chip ID
-            vl_write( fp, i, *(ot_u16*)(0x1A0A+i) );
-        } 
-        vl_close(fp);
+        	ot_u16 scratch;
+        	scratch	    = *hwid++;
+        	scratch	    = __swap_bytes(scratch);
+        	scratch	   ^= *hwid++;
+
+            vl_write(fpid, i, scratch);
+        }
+        vl_close(fpid);
     }
 #   endif
 }

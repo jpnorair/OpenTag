@@ -1007,7 +1007,7 @@ OT_INLINE Task_Index sub_clock_tasks(ot_uint elapsed) {
     for (i=(IDLE_EVENTS-1); i>=0; i--) {
         sys.evt.idle[i].nextevent -= (ot_long)elapsed;
         if ((sys.evt.idle[i].event_no != 0) && (sys.evt.idle[i].nextevent <= 0))
-            output = TASK_hold+i;
+            output = (TASK_hold+i);
     }
 
     // Clock sessions (Priority 3)
@@ -1436,7 +1436,7 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
 
             if (frx_code | fcode) {
                 pcode = frx_code;       //don't return to kernel for bad frames
-                rm2_reenter_rx(0);
+                rm2_reenter_rx(False);
             }
             else if (fcode == 0) {
                 sys.evt.RFA.event_no = 0;

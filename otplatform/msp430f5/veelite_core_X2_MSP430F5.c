@@ -54,10 +54,8 @@
   ******************************************************************************
   */
 
-#include "OT_types.h"
-#include "OT_config.h"
-#include "OT_platform.h"
 #include "OTAPI.h"              // for logging faults
+#include "OT_platform.h"
 #include "veelite_core.h"
 
 #ifndef OT_FEATURE_VLNVWRITE
@@ -108,7 +106,7 @@
 
 /// Set Bus Error (code 7) on physical flash access faults (X2table errors).
 /// Vector to Access Violation ISR (CC430 Specific)
-#if (LOG_FEATURE(FAULTS) == ENABLED)
+#if defined(VLX2_DEBUG_ON) && (LOG_FEATURE(FAULTS) == ENABLED)
 #   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
         do { \
             if (EXPR) { \
@@ -117,11 +115,13 @@
             } \
         } while (0)
 
-#else
+#elif defined(VLX2_DEBUG_ON)
 #   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
         do { \
             if (EXPR) FLASH->CTL3 |= ACCVIFG; \
         } while (0)
+#else
+#   define BUSERROR_CHECK(EXPR, MSGLEN, MSG);
 #endif
 
 

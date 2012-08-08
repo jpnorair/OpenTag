@@ -29,6 +29,7 @@
 #define __radio_CC430_H
 
 #include "OT_support.h"
+#include "OT_types.h"
 
 
 #ifndef ENABLED

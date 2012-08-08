@@ -64,6 +64,13 @@ typedef ot_bool (*sub_proc)(alp_tmpl*, id_tmpl*);
 
 
 
+// Subroutines
+ot_bool sub_proc_null(alp_tmpl* a0, id_tmpl* a1);
+ot_u8   sub_get_headerlen(ot_u8 tnf);
+void    sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len);
+
+
+
 
 ot_bool sub_proc_null(alp_tmpl* a0, id_tmpl* a1) {
 	return False;
@@ -107,7 +114,7 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
             alp->outrec.flags  |= TNF_Unchanged;    // Make next record "Unchanged"
             *hdr_position++     = 2;                //NDEF ID Len
             *hdr_position++     = alp->outrec.id;   //ALP-ID    (ID 1)
-            *hdr_position++     = alp->outrec.cmd;  //ALP-CMD   (ID 2)
+            *hdr_position       = alp->outrec.cmd;  //ALP-CMD   (ID 2)
         }
     }
     else
@@ -146,8 +153,7 @@ void alp_break(alp_tmpl* alp) {
     alp->outrec.id      = 0;
     alp->outrec.cmd     = 0;
     
-    sub_insert_header(alp, NULL, sub_getheader_len(tnf));
-    
+    sub_insert_header(alp, NULL, sub_get_headerlen(tnf));
 }
 #endif
 
@@ -196,6 +202,7 @@ void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payl
 
 
 
+
 #ifndef EXTF_alp_new_message
 void alp_new_message(alp_tmpl* alp, ot_u8 payload_limit, ot_int payload_remaining) {
 /// Prepare the flags and payload length for the first record in a message
@@ -229,12 +236,13 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
             break;
         }
         
-        /// Load a new input record only when the last output record is not
-        /// a "chunk" record.  If the input record header does not match
+        /// Load a new input record only when the last output record has the
+        /// "Message End" flag set.  Therefore, it was the last record of a
+        /// previous message.  If new input record header does not match
         /// OpenTag requirement, bypass it and go to the next.  Else, copy
         /// the input record to the output record.  alp_proc() will adjust
         /// the output payload length and flags, as necessary.
-        if ((alp->outrec.flags & (ALP_FLAG_MB|ALP_FLAG_ME)) == 0) {
+        if (alp->outrec.flags & ALP_FLAG_ME) {
             if (alp_parse_header(alp) == False) {
                 return MSG_Null;
             }
@@ -295,48 +303,39 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
 
 #ifndef EXTF_alp_parse_header
 ot_bool alp_parse_header(alp_tmpl* alp) {
-#if (OT_FEATURE(NDEF) != ENABLED)
-    ot_bool tnf_is_valid;
-    tnf_is_valid = (ot_bool)((alp->inrec.flags & 7) == 0);
+    // ALP & NDEF Universal Field (Flags)
+    alp->inrec.flags = *alp->inq->getcursor++;
 
-    if (tnf_is_valid) {
-        platform_memcpy(&alp->inrec.flags, alp->inq->getcursor, 4);
+    // ALP type
+    if ((alp->inrec.flags & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) {
+    	ot_u8* qdata;
+    	qdata                   = alp->inq->getcursor;
+    	alp->inq->getcursor    += 3;
+    	platform_memcpy(&alp->inrec.plength, qdata, 3);
+    	return True;
     }
-    return tnf_is_valid;
 
-#else
-    // Load Flags byte (universal)
-    alp->inrec.flags = q_readbyte(alp->inq);
+#if (OT_FEATURE(NDEF) == ENABLED)
+    // NDEF Universal Fields
+    alp->inq->getcursor++;	                            //bypass type length
+    alp->inrec.plength  = *alp->inq->getcursor++;       //get payload length
     
-    // Check for valid framing
-    // Being strict here should help against hacking
-    if (((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_MB+NDEF_SR+NDEF_IL+5)) || \
-        ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_SR+6)) || \
-        ((alp->inrec.flags & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) ) {
-        
-        alp->inrec.plength = q_readbyte(alp->inq);
-        
-        // IL==1 only implicitly when TNF==Unknown and MB==1
-        if (alp->inrec.flags & NDEF_IL) {
-            if (q_readbyte(alp->inq) != 2) {
-                goto alp_parse_header_FAIL;
-            }
-        }
-        
-        // Update the id & cmd when TNF == 0 or 5.  The top-level if statement
-        // ensures that only TNF = {0, 5, 6}
-        if ((alp->inrec.flags & 2) == 0) {
-            alp->inrec.id   = q_readbyte(alp->inq);
-            alp->inrec.cmd  = q_readbyte(alp->inq);
-        }
-
+    // NDEF Type Unchanged (for Chunking)
+    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_SR+6)) {
         return True;
     }
     
-    alp_parse_header_FAIL:
-    return False;
-
+    // NDEF Type Unknown (for MB==1)
+    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_MB+NDEF_SR+NDEF_IL+5)) {
+    	if (*alp->inq->getcursor++ == 2) {
+    		alp->inrec.id   = *alp->inq->getcursor++;
+            alp->inrec.cmd  = *alp->inq->getcursor++;
+            return True;
+    	}
+    }
 #endif
+
+    return False;
 }
 #endif
 
@@ -421,6 +420,9 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
     ///@todo Output bookmark is not implemented yet in any ALP.
     alp->outrec.flags   &= ~ALP_FLAG_ME;
     alp->outrec.flags   |= (alp->outrec.bookmark) ? ALP_FLAG_CF : ALP_FLAG_ME;
+
+    // Return 0 length (False) or non-zero length (True)
+    return (ot_bool)alp_id;
 }
 #endif
 

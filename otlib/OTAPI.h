@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /OTlib/OTAPI.h
+  * @file       /otlib/OTAPI.h
   * @author     JP Norair
   * @version    V1.0
   * @date       26 Jan 2012
@@ -30,20 +30,17 @@
 #ifndef __OTAPI_H
 #define __OTAPI_H
 
-#include "OT_types.h"       // OpenTag types
-#include "OT_config.h"      // OpenTag library-level configuration
-#include "OT_utils.h"       // Utility functions
+#include "OT_types.h"           // OpenTag types
+#include "OTAPI_tmpl.h"         // Template data types used a lot in OT/DASH7
+#include "OT_config.h"          // OpenTag library-level configuration
+#include "OT_utils.h"           // Utility functions
 
-#include "OTAPI_tmpl.h"     // Template data types used a lot in OT/DASH7
-
-#include "buffers.h"        // Built-in buffers
-#include "queue.h"          // A buffer data-type module
-
-#include "system.h"         // Data Link Layer & Kernel
-#include "m2_network.h"     // Network Layer
-#include "m2_transport.h"           // Transport Layer
-
-#include "veelite.h"
+#include "buffers.h"            // Built-in buffers
+#include "queue.h"              // A buffer data-type module
+#include "system.h"             // Data Link Layer & Kernel
+#include "m2_network.h"         // Network Layer
+#include "m2_transport.h"       // Transport Layer
+#include "veelite.h"            // Filesystem (Also Presentation Layer)
 
 ///@todo Kernel-level stuff should be encapsulated in generic system-layer functions
 #if (OT_FEATURE(CUSTOM_KERNEL) == ENABLED)
@@ -51,7 +48,6 @@
 #else
 #   include "native/system_native.h"
 #endif
-
 
 
 

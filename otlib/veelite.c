@@ -842,7 +842,7 @@ vaddr sub_isf_search(ot_u8 id) {
     //}
     
     // File ID does not exist
-    return NULL_vaddr;
+    //return NULL_vaddr;
 }
 
 

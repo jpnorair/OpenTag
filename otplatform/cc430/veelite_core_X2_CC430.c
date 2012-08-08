@@ -51,18 +51,11 @@
   * - TI MSP430
   * - ST STM32 (and all STM32-based devices)
   *
-  * The following chips may work with this module, but have not been tested.
-  * Most chips with 32 bit words can be dealt with at the NAND access level,
-  * and this file can stay the same.
-  * - ADI ADµCRF101 (uses 32 bit Flash words)
-  *
   ******************************************************************************
   */
 
-#include "OT_types.h"
-#include "OT_config.h"
-#include "OT_platform.h"
 #include "OTAPI.h"              // for logging faults
+#include "OT_platform.h"
 #include "veelite_core.h"
 
 #ifndef OT_FEATURE_VLNVWRITE
@@ -113,7 +106,7 @@
 
 /// Set Bus Error (code 7) on physical flash access faults (X2table errors).
 /// Vector to Access Violation ISR (CC430 Specific)
-#if (LOG_FEATURE(FAULTS) == ENABLED)
+#if defined(VLX2_DEBUG_ON) && (LOG_FEATURE(FAULTS) == ENABLED)
 #   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
         do { \
             if (EXPR) { \
@@ -122,11 +115,13 @@
             } \
         } while (0)
 
-#else
+#elif defined(VLX2_DEBUG_ON)
 #   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
         do { \
             if (EXPR) FLASH->CTL3 |= ACCVIFG; \
         } while (0)
+#else
+#   define BUSERROR_CHECK(EXPR, MSGLEN, MSG);
 #endif
 
 
@@ -175,6 +170,8 @@
   * ========================================================================<BR>
   */
 
+#if (OT_FEATURE(VLNVWRITE) == ENABLED)
+
 /** @typedef Pdata
   * A Union that allows saving a pointer.
   */
@@ -210,8 +207,6 @@ X2_struct X2table;
 
 
 
-
-
 /** Local Subroutine Prototypes <BR>
   * ========================================================================<BR>
   */
@@ -230,7 +225,7 @@ ot_u16* sub_recombine_block(block_ptr* block_in, ot_int skip, ot_int span);
   */
 void sub_attach_fallow(block_ptr* block_in);
 
-
+#endif
 #endif
 
 
@@ -267,8 +262,28 @@ vas_loc vas_check(vaddr addr) {
   * ========================================================================<BR>
   */
 
+///@note If using GCC, you should be using the "KEEP" option in your linker
+///      script to make sure the linker does not discard the filesystem data as
+///      part of optimization.  If you still can't implement KEEP, you can set 
+///      this define (below), which will run a routine during init that touches 
+///      all the FS arrays.    
+
+#if (CC_SUPPORT == GCC)
+#   warn "Make sure to use KEEP() around filesystem arrays in your linker script.  If you can't, uncomment _TOUCH_FILEDATA in veelite_core_X2...c"
+//#   define _TOUCH_FILEDATA
+#endif
+
+#if defined(_TOUCH_FILEDATA)
+    extern volatile const ot_u8 overhead_files[];
+    extern const ot_u8 isfs_stock_codes[];
+    extern const ot_u8 gfb_stock_files[];
+    extern const ot_u8 isf_stock_files[];
+#endif
+
+
+#ifndef EXTF_vworm_format
 ot_u8 vworm_format( ) {
-#if (VWORM_SIZE > 0)
+#if ((VWORM_SIZE > 0) && (OT_FEATURE(VLNVWRITE) == ENABLED))
     ot_int      i;
     ot_u16*     cursor;
     ot_u8       output = 0;
@@ -291,40 +306,33 @@ ot_u8 vworm_format( ) {
     return 0;
 #endif
 }
-
-#if (CC_SUPPORT == GCC)
-/* accessing files here prevents compiler from optimizing them away */
-extern volatile const ot_u8 overhead_files[];
-extern const ot_u8 isfs_stock_codes[];
-extern const ot_u8 gfb_stock_files[];
-extern const ot_u8 isf_stock_files[];
 #endif
 
+
+
+#ifndef EXTF_vworm_init
 ot_u8 vworm_init( ) {
-#if (VWORM_SIZE > 0)
+#if ((VWORM_SIZE > 0) && (OT_FEATURE(VLNVWRITE) == ENABLED))
     ot_u8   test    = 0;
     ot_u16* s_ptr;
 
-#if (CC_SUPPORT == GCC)
-    /* access const files here to prevent linker discarding them */
-    if (overhead_files != (ot_u8 *)(FLASH_FS_ADDR + OVERHEAD_START_VADDR)) {
-        return 1;//for (;;) __nop();
-    }
-
-    if (isfs_stock_codes != (ot_u8 *)(FLASH_FS_ADDR + ISFS_START_VADDR) ) {
-        for (;;) __nop();
-    }
-
-#if     (GFB_TOTAL_BYTES > 0)
-    if (gfb_stock_files != (ot_u8 *)(FLASH_FS_ADDR + GFB_START_VADDR) ) {
-        for (;;) __nop();
-    }
-#endif /* (GFB_TOTAL_BYTES > 0) */
-
-    if (isf_stock_files != (ot_u8 *)(FLASH_FS_ADDR + ISF_START_VADDR) ) {
-        for (;;) __nop();
-    }
-#endif /* (CC_SUPPORT == GCC) */
+#   if defined(_TOUCH_FILEDATA)
+        /* access const files here to prevent linker discarding them */
+        if (overhead_files != (ot_u8 *)(FLASH_FS_ADDR + OVERHEAD_START_VADDR)) {
+            return 1;
+        }
+        if (isfs_stock_codes != (ot_u8 *)(FLASH_FS_ADDR + ISFS_START_VADDR) ) {
+            for (;;) __nop();
+        }
+#       if (GFB_TOTAL_BYTES > 0)
+            if (gfb_stock_files != (ot_u8 *)(FLASH_FS_ADDR + GFB_START_VADDR) ) {
+                for (;;) __nop();
+            }
+#       endif
+        if (isf_stock_files != (ot_u8 *)(FLASH_FS_ADDR + ISF_START_VADDR) ) {
+            for (;;) __nop();
+        }
+#   endif
 
     s_ptr = (ot_u16*)(VWORM_BASE_PHYSICAL + (VWORM_PAGESIZE*(VWORM_NUM_PAGES-1)));
 
@@ -367,9 +375,11 @@ ot_u8 vworm_init( ) {
     return 0;
 #endif
 }
+#endif
 
 
 
+#ifndef EXTF_vworm_print_table
 void vworm_print_table() {
 #ifdef VLX2_DEBUG_ON
 //    ot_int i;
@@ -387,9 +397,11 @@ void vworm_print_table() {
 //    }
 #endif
 }
+#endif
 
 
 
+#ifndef EXTF_vworm_save
 ot_u8 vworm_save( ) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
     /// @note init & save processes have not been tested enough.
@@ -435,17 +447,19 @@ ot_u8 vworm_save( ) {
     return 0;
 #endif
 }
+#endif
 
 
 
+#ifndef EXTF_vworm_read
 ot_u16 vworm_read(vaddr addr) {
-#if (VWORM_SIZE > 0)
+#if ((VWORM_SIZE > 0) && (OT_FEATURE(VLNVWRITE) == ENABLED))
     ot_u16* a_ptr;
     ot_u16* p_ptr;
     ot_int  offset;
     ot_int  index;
 
-    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_448");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_462");   //__LINE__
 
     /// 1.  Resolve the vaddr directly
     offset  = addr & (VWORM_PAGESIZE-1);
@@ -460,13 +474,19 @@ ot_u16 vworm_read(vaddr addr) {
     a_ptr   = PTR_OFFSET(X2table.block[index].ancillary, offset);
 
     return ~(*p_ptr ^ *a_ptr);
+
+#elif (OT_FEATURE(VLNVWRITE) != ENABLED)
+    return *((ot_u16*)addr);
+
 #else
     return 0;
 #endif
 }
+#endif
 
 
 
+#ifndef EXTF_vworm_write
 ot_u8 vworm_write(vaddr addr, ot_u16 data) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
     ot_int  index;
@@ -475,7 +495,7 @@ ot_u8 vworm_write(vaddr addr, ot_u16 data) {
     ot_u16* p_ptr;
     ot_u16* a_ptr;
 
-    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_478");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_498");   //__LINE__
 
     /// 1.  Resolve the vaddr directly
     offset  = addr & (VWORM_PAGESIZE-1);
@@ -529,28 +549,34 @@ ot_u8 vworm_write(vaddr addr, ot_u16 data) {
     return 0;
 #endif
 }
+#endif
 
 
 
+#ifndef EXTF_vworm_mark
 ot_u8 vworm_mark(vaddr addr, ot_u16 value) {
     return vworm_write(addr, value);
 }
+#endif
 
 
 
+#ifndef EXTF_vworm_mark_physical
 ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
     BUSERROR_CHECK( (((ot_u16)addr < VWORM_BASE_PHYSICAL) || \
-                    ((ot_u16)addr >= (VWORM_BASE_PHYSICAL+VWORM_ALLOC))), 7, "VLC_544");    //__LINE__
+                    ((ot_u16)addr >= (VWORM_BASE_PHYSICAL+VWORM_ALLOC))), 7, "VLC_566");    //__LINE__
 
     return NAND_write_short(addr, value);
 #else
     return 0;
 #endif
 }
+#endif
 
 
 
+#ifndef EXTF_vworm_wipeblock
 ot_u8 vworm_wipeblock(vaddr addr, ot_uint wipe_span) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
     ot_u8 output = 0;
@@ -565,7 +591,7 @@ ot_u8 vworm_wipeblock(vaddr addr, ot_uint wipe_span) {
     return 0;
 #endif
 }
-
+#endif
 
 
 
@@ -573,34 +599,36 @@ ot_u8 vworm_wipeblock(vaddr addr, ot_uint wipe_span) {
 /** VSRAM Functions <BR>
   * ========================================================================<BR>
   */
-
+#ifndef EXTF_vsram_read
 ot_u16 vsram_read(vaddr addr) {
 #if (VSRAM_SIZE <= 0)
     return 0;
 #else
-    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_581");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_607");   //__LINE__
     addr -= VSRAM_BASE_VADDR;
     addr >>= 1;
     return vsram[addr];
 #endif
 }
+#endif
 
 
 
+#ifndef EXTF_vsram_mark
 ot_u8 vsram_mark(vaddr addr, ot_u16 value) {
 #if (VSRAM_SIZE <= 0)
     return ~0;
 #else
-    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_594");   //__LINE__
-    addr -= VSRAM_BASE_VADDR;
-    addr >>= 1;
-    vsram[addr] = value;
+    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_622");   //__LINE__
+    addr 		   -= VSRAM_BASE_VADDR;
+    vsram[addr>>1]  = value;
     return 0;
 #endif
 }
+#endif
 
 
-
+#ifndef EXTF_vsram_mark_physical
 ot_u8 vsram_mark_physical(ot_u16* addr, ot_u16 value) {
 #if (VSRAM_SIZE <= 0)
     return ~0;
@@ -609,21 +637,23 @@ ot_u8 vsram_mark_physical(ot_u16* addr, ot_u16 value) {
     return 0;
 #endif
 }
+#endif
 
 
 
+#ifndef EXTF_vsram_get
 ot_u8* vsram_get(vaddr addr) {
 #if (VSRAM_SIZE <= 0)
     return NULL;
 #else
     ot_u8* output;
-    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_620");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_650");   //__LINE__
     addr   -= VSRAM_BASE_VADDR;
     output  = (ot_u8*)vsram + addr;
     return output;
 #endif
 }
-
+#endif
 
 
 

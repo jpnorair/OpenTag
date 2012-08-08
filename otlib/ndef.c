@@ -53,8 +53,10 @@ void otapi_ndef_idle(void* tmpl) {
 /// pointer to an alp_tmpl used for the NDEF/ALP interface.
     
     // MPipe-ALP variant (input param can be NULL)
+#ifndef BOARD_FEATURE_MPIPE_QMGMT
     q_empty(mpipe_alp.inq);
     q_empty(mpipe_alp.outq);
+#endif
     //out_q->back -= mpipe_footerbytes();
     mpipe_rxndef( mpipe_alp.inq->front, False, MPIPE_Low );
 }
@@ -71,7 +73,7 @@ void otapi_ndef_proc(void* tmpl) {
 /// Mpipe.  tmpl input parameter can be NULL.  Otherwise, tmpl should be a 
 /// pointer to an alp_tmpl used for the NDEF/ALP interface.
 
-    switch (alp_parse_message((alp_tmpl*)tmpl, NULL)) {
+    switch (alp_parse_message(&mpipe_alp, NULL)) {
         //wipe queue and go back to idle listening
         case MSG_Null:
             otapi_ndef_idle(0);

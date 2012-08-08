@@ -32,14 +32,11 @@
 
 
 #include "OT_config.h"
-#include "OT_platform.h"
-#include "buffers.h"
 
 /// Do not compile if MPIPE is disabled, or MPIPE does not use USB VCOM
 #if ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_FEATURE(MPIPEVCOM) == ENABLED))
 
-#include "mpipe.h"
-#include "OT_utils.h"
+#include "OTAPI.h"
 
 
 #include "usb_cdc_driver/usb_descriptors.h"
@@ -75,8 +72,8 @@ typedef struct {
     //mpipe_priority  priority;
     mpipe_state     state;
     ot_uni16        sequence;
-    ot_u8*          pktbuf;
-    ot_int          pktlen;
+    //ot_u8*          pktbuf;
+    //ot_int          pktlen;
     
 #   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
         ot_sigv sig_rxdone;
@@ -397,14 +394,17 @@ ot_u8 OEP0InterruptHandler(void) {
   
 ot_u8 sub_usb_loadtx() {
     ot_u16  transfer_start = 0;
-    ot_u16  rxbytes = 0;
+    ot_u16  bytes = 0;
     ot_u8   output;
         
-    if ((USBCDC_intfStatus(CDC0_INTFNUM, &transfer_start, &rxbytes) & kUSBCDC_waitingForSend)) {
+    if ((USBCDC_intfStatus(CDC0_INTFNUM, &transfer_start, &bytes) & kUSBCDC_waitingForSend)) {
     	output = 255;   //255 is just non-zero, nothing special
     }
     else {
-        output = USBCDC_sendData(mpipe.pktbuf, mpipe.pktlen, CDC0_INTFNUM);
+        bytes   = mpipe_alp.outq->putcursor-mpipe_alp.outq->getcursor;
+        output  = USBCDC_sendData(  mpipe_alp.outq->getcursor, 
+                                    bytes, 
+                                    CDC0_INTFNUM);
     }
 
     return output;
@@ -477,6 +477,7 @@ ot_int mpipe_init(void* port_id) {
 
 
 void mpipe_kill() {
+    q_empty(mpipe_alp.outq);
 	mpipe.state = MPIPE_Null;
     USB_disconnect();
 }
@@ -509,22 +510,21 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
 ///       function call, if you need blocking on certain transmissions.
 
     if (mpipe.state == MPIPE_Idle) {
-    	ot_uni16 crcval;
+    	ot_u16 scratch;
+        mpipe.state = MPIPE_Tx_Done;
+    
+        q_writeshort(mpipe_alp.outq, mpipe.sequence.ushort);                // Sequence Number
 
-        mpipe.pktbuf    = data;
-        mpipe.pktlen    = data[2] + 6;
-        mpipe.state     = MPIPE_Tx_Done;
-    
-        // add sequence id & crc to end of the datastream
-        data[mpipe.pktlen++] = mpipe.sequence.ubyte[UPPER];
-        data[mpipe.pktlen++] = mpipe.sequence.ubyte[LOWER];
-        crcval.ushort        = platform_crc_block(data, mpipe.pktlen);
-        data[mpipe.pktlen++] = crcval.ubyte[UPPER];
-        data[mpipe.pktlen++] = crcval.ubyte[LOWER];
-    
-        //mpipe_ext.i = 0;
-        //sub_usb_loadtx();
-        USBCDC_sendData(mpipe.pktbuf, mpipe.pktlen, CDC0_INTFNUM);
+        scratch = mpipe_alp.outq->putcursor - mpipe_alp.outq->getcursor;    //data length
+        scratch = platform_crc_block(mpipe_alp.outq->getcursor, scratch);   //CRC value
+        q_writeshort(mpipe_alp.outq, scratch);                              //Put CRC
+        
+        scratch                     = mpipe_alp.outq->putcursor \
+                                    - mpipe_alp.outq->getcursor;            //data length w/ CRC
+        data                        = mpipe_alp.outq->getcursor;            //data start
+        mpipe_alp.outq->getcursor   = mpipe_alp.outq->putcursor;            //move queue past packet
+        
+        USBCDC_sendData(data, scratch, CDC0_INTFNUM);
 
         // Wait for the USB transmission to complete (optional).
         if (blocking) {
@@ -539,15 +539,12 @@ void mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
 /// @note Using blocking: OpenTag currently does not implement blocking for RX.
 ///       However, RX typically is called automatically after TX, so the system
 ///       goes into RX (listening) whenever it is not in TX.
-
 	if (blocking) {
     	mpipe_wait();
     }
     if (mpipe.state == MPIPE_Idle) {
-      //mpipe_ext.i     = 0;
-        mpipe.state     = MPIPE_Idle;
-        mpipe.pktbuf    = data;
-        USBCDC_receiveData(data, 6, CDC0_INTFNUM);
+        q_empty(mpipe_alp.inq);
+        USBCDC_receiveData(mpipe_alp.inq->front, 10, CDC0_INTFNUM);
     }
 }
 
@@ -562,22 +559,22 @@ void mpipe_isr() {
 #			endif
         
         case MPIPE_RxHeader: {
-            mpipe.state     = MPIPE_RxPayload;
-            mpipe.pktlen    = mpipe.pktbuf[2] + MPIPE_FOOTERBYTES;
-            USBCDC_receiveData((mpipe.pktbuf + 6), mpipe.pktlen, CDC0_INTFNUM);
+            mpipe.state             = MPIPE_RxPayload;
+            mpipe_alp.inq->length   = mpipe_alp.inq->front[2] + 10;
+            USBCDC_receiveData( mpipe_alp.inq->front+6, 
+                                mpipe_alp.inq->front[2], 
+                                CDC0_INTFNUM    );
             break;
         }
         
         case MPIPE_RxPayload: 
-            //if (mpipe_ext.i >= mpipe.pktlen) {
-                /// The reception is completely done.  Go to Idle and do callback.
-                mpipe.state = MPIPE_Idle;
-#               if ((OT_FEATURE(MPIPE_CALLBACKS) == ENABLED) && !defined(EXTF_mpipe_sig_rxdone))
-                    mpipe.sig_rxdone(0);
-#           	elif defined(EXTF_mpipe_sig_rxdone)
-                    mpipe_sig_rxdone(0);
-#				endif
-            //}
+            /// The reception is completely done.  Go to Idle and do callback.
+            mpipe.state = MPIPE_Idle;
+#           if ((OT_FEATURE(MPIPE_CALLBACKS) == ENABLED) && !defined(EXTF_mpipe_sig_rxdone))
+                mpipe.sig_rxdone(0);
+#           elif defined(EXTF_mpipe_sig_rxdone)
+                mpipe_sig_rxdone(0);
+#			endif
             break;
         
 //        case MPIPE_Tx_Wait:
@@ -585,16 +582,13 @@ void mpipe_isr() {
         	/// event when the last page has been loaded, not when the packet
         	/// is actually complete.  I prefer the latter function, and I will
         	/// change the lib when I get the chance.
-            //sub_usb_loadtx();
-            //if (mpipe.pktlen > 0) {
-            //	break;
-            //}
         
         case MPIPE_Tx_Done: 
-            /// Called when the transmission is completely done.  Increment the sequence ID
+            /// Called when the transmission is done.  Increment the sequence ID
             /// and change state back to Idle.  Do the callback if necessary
             mpipe.state = MPIPE_Idle;
             mpipe.sequence.ushort++;
+            q_empty(mpipe_alp.outq);
 #           if ((OT_FEATURE(MPIPE_CALLBACKS) == ENABLED) && !defined(EXTF_mpipe_sig_txdone))
                 mpipe.sig_txdone(0);
 #           elif defined(EXTF_mpipe_sig_txdone)

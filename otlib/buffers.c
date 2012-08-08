@@ -26,6 +26,18 @@
 
 #include "buffers.h"
 
+
+#define DIR_ENABLED (OT_FEATURE(NDEF) || OT_FEATURE(ALP) || OT_FEATURE(MPIPE))
+#define TXRX_SIZE   ((M2_PARAM_MAXFRAME + (M2_PARAM_MAXFRAME & 1)) * (OT_FEATURE(SERVER) == ENABLED))
+#define DIR_SIZE    ((OT_FEATURE(BUFFER_SIZE) - (TXRX_SIZE*2))/2)
+
+#if ((DIR_SIZE < 0) && DIR_ENABLED)
+#   error "DIR Queues (Needed for ALP/NDEF/MPIPE) are configured with negative allocation."
+#elif ((DIR_SIZE < 256) && DIR_ENABLED)
+#   warn "DIR Queues (Needed for ALP/NDEF/MPIPE) are configured with < 256 byte allocation."
+#endif
+
+
 ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
 
 #if (OT_FEATURE(SERVER) == ENABLED)
@@ -33,9 +45,7 @@ ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
     Queue txq;
 #endif
 
-#if (   (OT_FEATURE(NDEF)  == ENABLED) || \
-        (OT_FEATURE(ALP)   == ENABLED) || \
-        (OT_FEATURE(MPIPE) == ENABLED) )
+#if (DIR_ENABLED)
     Queue dir_in;
     Queue dir_out;
 #endif
@@ -43,26 +53,14 @@ ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
 
 
 void buffers_init() {
-    ot_int max;
-
-#   if (OT_FEATURE(SERVER) == ENABLED)
-        /// TX/RX queues
-        max = M2_PARAM_MAXFRAME + (M2_PARAM_MAXFRAME & 1);  //keep even
-        q_init(&rxq, otbuf, max);
-        q_init(&txq, otbuf+max, max);
-#   else
-        max = 0;
-#   endif
-    
-#if (   (OT_FEATURE(NDEF)  == ENABLED) || \
-        (OT_FEATURE(ALP)   == ENABLED) || \
-        (OT_FEATURE(MPIPE) == ENABLED) )
-        /// Console queues can use the same space (half duplex).  For heavy
-        /// clients with memory to spare, feel free to make full duplex.
-        max <<= 1;  // (max *= 2)
-        q_init(&dir_in, otbuf+max, (OT_FEATURE(BUFFER_SIZE)-max) );    
-        q_init(&dir_out, otbuf+max, (OT_FEATURE(BUFFER_SIZE)-max) );    
-#   endif
+#if (OT_FEATURE(SERVER) == ENABLED)
+    q_init(&rxq,    otbuf,              TXRX_SIZE);
+    q_init(&txq,    otbuf+TXRX_SIZE,    TXRX_SIZE);
+#endif
+#if (DIR_ENABLED)
+    q_init(&dir_in,     otbuf+(TXRX_SIZE*2),            DIR_SIZE );
+    q_init(&dir_out,    otbuf+(TXRX_SIZE*2)+DIR_SIZE,   DIR_SIZE );
+#endif
 }
 
 

@@ -158,13 +158,13 @@
   
 typedef struct {
 #   if (MPIPE_USE_ACKS)
-        ot_u8           ackbuf[10];
+        //ot_u8           ackbuf[10];
         mpipe_priority  priority;
 #   endif
     mpipe_state     state;
     ot_uni16        sequence;
-    ot_u8*          pktbuf;
-    ot_int          pktlen;
+    //ot_u8*          pktbuf;
+    //ot_int          pktlen;
 
 #   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
         ot_sigv sig_rxdone;
@@ -244,7 +244,7 @@ OT_INTERRUPT void mpipe_dma_isr(void) {
     LPM4_EXIT;
 }
 
-
+/*
 #if (CC_SUPPORT == CL430)
 #   pragma vector=MPIPE_UART_VECTOR
 #elif (CC_SUPPORT == GCC)
@@ -263,8 +263,8 @@ OT_INTERRUPT void mpipe_uart_isr(void) {
     }
     LPM4_EXIT;
 }
+*/
 #endif
-
 
 
 
@@ -294,27 +294,14 @@ void mpipe_setsig_rxdetect(ot_sigv signal) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 /** Mpipe Main Public Functions  <BR>
   * ========================================================================
   */
-
-#ifndef EXT_mpipe_footerbytes
+#ifndef EXTF_mpipe_footerbytes
 ot_u8 mpipe_footerbytes() {
     return MPIPE_FOOTERBYTES;
 }
 #endif
-
 
 
 #ifndef EXTF_mpipe_init
@@ -330,19 +317,13 @@ ot_int mpipe_init(void* port_id) {
     mpipe.sig_rxdetect  = &otutils_sigv_null;
 #endif
 #if (MPIPE_USE_ACKS)
-    mpipe.ackbuf[0] = 0xDD;     //NDEF message flags
-    mpipe.ackbuf[1] = 0;        //Typelen = 0
-    mpipe.ackbuf[2] = 0;        //Paylod len = 0
-    mpipe.ackbuf[3] = 2;        //ID len = 2
-    mpipe.ackbuf[4] = 0;
     mpipe.priority  = MPIPE_Low;
 #endif
-    mpipe.state     = MPIPE_Idle;
-    mpipe_alp.inq   = &dir_in;
-    mpipe_alp.outq  = &dir_out;
 
-    //mpipe.sequence.ushort   = 0;          //not actually necessary
+    mpipe.sequence.ushort   = 0;          //not actually necessary
+    mpipe.state             = MPIPE_Idle;
 
+    alp_init(&mpipe_alp, &dir_in, &dir_out);
     sub_uart_portsetup();
     mpipe_setspeed(MPIPE_115200bps);     //default baud rate
 
@@ -354,7 +335,7 @@ ot_int mpipe_init(void* port_id) {
 
 #ifndef EXTF_mpipe_kill
 void mpipe_kill() {
-/// Figure out what to put in here
+	q_empty(mpipe_alp.outq);
 }
 #endif
 
@@ -373,16 +354,15 @@ void mpipe_wait() {
 #ifndef EXTF_mpipe_setspeed
 void mpipe_setspeed(mpipe_speed speed) {
     ot_u8* baud_data;
-
     /// You will need to change this baud rate matrix if
-    /// you change the bit clock from SMCLK @ 6 MHz
+    /// you change the bit clock from SMCLK @ 2.496 MHz
     /// Order is [ BR0, BR1, MCTL, ... ]
     /// BR1:0 = Floor(BitCLK/BaudRate)
     /// MCTL  = Round(((BitCLK/BaudRate) - Floor(BitCLK/BaudRate)) * 8) << 1
-    static const ot_u8 baud_matrix[] = { 0x71, 0x02, 0x00, 0, 
-                                         0xD0, 0x00, 0x92, 0, 
-                                         0x68, 0x00, 0x08, 0, 
-                                         0x34, 0x00, 0x40, 0  };
+    static const ot_u8 baud_matrix[] = { 0x04, 0x01, 0x00, 0, \
+                                         0x56, 0x00, 0x0A, 0, \
+                                         0x2B, 0x00, 0x06, 0, \
+                                         0x15, 0x00, 0x0A, 0  };
 
 #   if (MCU_FEATURE(MPIPEDMA) == ENABLED)
         MPIPE_DMAEN(OFF);
@@ -396,8 +376,8 @@ void mpipe_setspeed(mpipe_speed speed) {
     // Use SMCLK and keep UART reset
     MPIPE_UART->CTL0 = 0;
     MPIPE_UART->CTL1 = 0x81;
-    MPIPE_UART->IE   = 0;
-    MPIPE_UART->IFG  = 0;
+    //MPIPE_UART->IE   = 0;
+    //MPIPE_UART->IFG  = 0;
     baud_data        = (ot_u8*)&baud_matrix[speed << 2];
     MPIPE_UART->BR0  = *baud_data++;
     MPIPE_UART->BR1  = *baud_data++;
@@ -415,6 +395,7 @@ mpipe_state mpipe_status() {
 
 
 
+
 #ifndef EXTF_mpipe_txndef
 void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
 /// Data TX will only occur if this function is called when the MPipe state is
@@ -422,7 +403,6 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
 /// which case the state doesn't need to be Idle.  Lastly, if you specify the 
 /// blocking parameter, the function will not return until the packet is 
 /// completely transmitted.
-    ot_uni16    crcval;
     ot_int      data_length;
 
 #if (MPIPE_USE_ACKS)
@@ -432,11 +412,8 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
     }
 #endif
     if (mpipe.state == MPIPE_Idle) {
-        mpipe.state     = MPIPE_Tx_Wait
+        mpipe.state     = MPIPE_Tx_Wait;
         mpipe_txndef_SETUP:
-        mpipe.pktbuf    = data;
-        data_length     = data[2] + 6;
-        //mpipe.pktlen    = data[2] + 6;
         MPIPE_DMAEN(OFF);
 
 #       if (MPIPE_DMANUM == 0)
@@ -451,12 +428,17 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
                         DMA_Options_RoundRobinDisable | \
                         DMA_Options_ENMIEnable  );
 
-        // add sequence id & crc to end of the datastream
-        data[data_length++] = mpipe.sequence.ubyte[UPPER];
-        data[data_length++] = mpipe.sequence.ubyte[LOWER];
-        crcval.ushort       = platform_crc_block(data, data_length);
-        data[data_length++] = crcval.ubyte[UPPER];
-        data[data_length++] = crcval.ubyte[LOWER];
+        // Sequence Number
+        q_writeshort(mpipe_alp.outq, mpipe.sequence.ushort);
+
+        // Data alignment
+        data                        = mpipe_alp.outq->getcursor;
+        data_length                 = mpipe_alp.outq->putcursor \
+        		                    - mpipe_alp.outq->getcursor;
+        // CRC
+        q_writeshort(mpipe_alp.outq, platform_crc_block(data, data_length));
+        data_length                += 2;
+        mpipe_alp.outq->getcursor   = mpipe_alp.outq->putcursor;
 
         MPIPE_DMA_TXCONFIG(data, data_length, ON);
         UART_OPEN();
@@ -468,6 +450,7 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
     }
 }
 #endif
+
 
 
 
@@ -485,8 +468,6 @@ void mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
     if (mpipe.state == MPIPE_Idle) {
         //mpipe.state     = MPIPE_Idle;
         mpipe_rxndef_SETUP:
-        mpipe.pktbuf    = data;
-        mpipe.pktlen    = 6;
         MPIPE_DMAEN(OFF);
 
 #       if (MPIPE_DMANUM == 0)
@@ -501,7 +482,8 @@ void mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
                         DMA_Options_RoundRobinDisable | \
                         DMA_Options_ENMIEnable  );
 
-        MPIPE_DMA_RXCONFIG(data, 10, ON);
+        q_empty(mpipe_alp.inq);
+        MPIPE_DMA_RXCONFIG(mpipe_alp.inq->front, 10, ON);
         UART_OPEN();
         UART_CLEAR_RXIFG();
     }
@@ -533,10 +515,12 @@ void mpipe_isr() {
 #           endif
 
         case MPIPE_RxHeader: 
-            mpipe.state     = MPIPE_RxPayload;
-            mpipe.pktlen   += mpipe.pktbuf[2] + MPIPE_FOOTERBYTES;
-            //@note DMA doesn't seem to need intermediate disabling here
-            MPIPE_DMA_RXCONFIG(mpipe.pktbuf+6, mpipe.pktlen-6, ON);
+        	///@note DMA doesn't seem to need intermediate disabling here
+            mpipe.state             = MPIPE_RxPayload;
+            mpipe_alp.inq->length   = mpipe_alp.inq->front[2] + 10;
+            MPIPE_DMA_RXCONFIG( mpipe_alp.inq->front+10, \
+            		            mpipe_alp.inq->front[2], \
+            		            ON);
             return;
 
         case MPIPE_RxPayload:
@@ -548,27 +532,31 @@ void mpipe_isr() {
                 // 3. Copy NACK/ACK status to 6th byte in NDEF header
                 {
                     ot_u8* scratch;
-                    mpipe.state                 = MPIPE_TxAck_Wait;
-                    scratch                     = &mpipe.pktbuf[mpipe.pktlen-MPIPE_FOOTERBYTES];
+                    mpipe.state = MPIPE_TxAck_Wait;
+                    scratch     = \
+                    	mpipe_alp.inq->front[mpipe_alp.inq->length-MPIPE_FOOTERBYTES];
                     mpipe.sequence.ubyte[UPPER] = *scratch++;
                     mpipe.sequence.ubyte[LOWER] = *scratch;
                 }
-                mpipe.ackbuf[5] = (platform_crc_block(mpipe.pktbuf, mpipe.pktlen)) ? 0x7F : 0;
-                mpipe_txndef(mpipe.ackbuf, False, MPIPE_Ack);
+                sub_txack_header();
+                if (platform_crc_block(mpipe_alp.inq->front, mpipe_alp.inq->length)) {
+                	mpipe.outq->front[5] = 0x7F;
+                }
+                mpipe_txndef(NULL, False, MPIPE_Ack);
                 return;
             }
 #           endif
             goto mpipe_isr_RXDONE;
 
         case MPIPE_TxAck_Wait:
-            MPIPE_UART->IE = UCTXIE;
-            return;
+            //MPIPE_UART->IE = UCTXIE;
+            //return;
 
         case MPIPE_TxAck_Done:  // TX'ed an ACK
-            MPIPE_UART->IE = 0;
+            //MPIPE_UART->IE = 0;
 #           if (MPIPE_USE_ACKS)
-            if (mpipe.ackbuf[5] != 0) { // TX'ed a NACK
-                mpipe_rxndef(mpipe.pktbuf, False, mpipe.priority);
+            if (mpipe_alp.outq->front[5] != 0) { // TX'ed a NACK
+                mpipe_rxndef(NULL, False, mpipe.priority);
                 mpipe.state = MPIPE_RxHeader;
                 return;
             }
@@ -576,14 +564,14 @@ void mpipe_isr() {
             goto mpipe_isr_RXDONE;
 
         case MPIPE_Tx_Wait:
-            MPIPE_UART->IE = UCTXIE;
-            return;
+            //MPIPE_UART->IE = UCTXIE;
+            //return;
 
         case MPIPE_Tx_Done:
-            MPIPE_UART->IE = 0;
+            //MPIPE_UART->IE = 0;
 #           if (MPIPE_USE_ACKS)
             if (mpipe.priority != MPIPE_Broadcast) {
-                mpipe_rxndef(mpipe.ackbuf, False, MPIPE_Ack);
+                mpipe_rxndef(NULL, False, MPIPE_Ack);
                 mpipe.state = MPIPE_RxAck;
                 return;
             }
@@ -592,8 +580,8 @@ void mpipe_isr() {
             
         case MPIPE_RxAck:
 #           if (MPIPE_USE_ACKS)
-            if (platform_crc_block(mpipe.ackbuf, 10) != 0) { //RX'ed NACK
-                mpipe_txndef(mpipe.pktbuf, False, mpipe.priority);
+            if (platform_crc_block(mpipe_alp.inq->front, 10) != 0) { //RX'ed NACK
+                mpipe_txndef(NULL, False, mpipe.priority);
                 break;
             }
 #           endif
@@ -620,13 +608,17 @@ void mpipe_isr() {
     // This is a stack-less TX-Done subroutine
     mpipe_isr_TXDONE:
     UART_CLOSE();
-    mpipe.state = MPIPE_Idle;
     mpipe.sequence.ushort++;    //increment sequence on TX Done
+    mpipe.state = MPIPE_Idle;
+    //if (mpipe_alp.outq->getcursor == mpipe_alp.outq->putcursor) {
+    	q_empty(mpipe_alp.outq);
+    //}
 #   if ((OT_FEATURE(MPIPE_CALLBACKS) == ENABLED) && !defined(EXTF_mpipe_sig_txdone))
         mpipe.sig_txdone(0);
 #   elif defined(EXTF_mpipe_sig_txdone)
         mpipe_sig_txdone(0);
 #   endif
+
 }
 #endif
 
