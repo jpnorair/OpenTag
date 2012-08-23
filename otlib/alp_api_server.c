@@ -101,7 +101,7 @@ void sub_breakdown_dialog_tmpl(Queue* in_q, void* data_type);
 void sub_breakdown_query_tmpl(Queue* in_q, void* data_type);
 void sub_breakdown_ack_tmpl(Queue* in_q, void* data_type);
 void sub_breakdown_error_tmpl(Queue* in_q, void* data_type);   //Client only? 
-void sub_breakdown_shell_tmpl(Queue* in_q, void* data_type);
+void sub_breakdown_udp_tmpl(Queue* in_q, void* data_type);
 void sub_breakdown_isfcomp_tmpl(Queue* in_q, void* data_type);
 void sub_breakdown_isfcall_tmpl(Queue* in_q, void* data_type);
 
@@ -279,13 +279,13 @@ void sub_breakdown_error_tmpl(Queue* in_q, void* data_type) {
     ((error_tmpl*)data_type)->data      = in_q->getcursor;  ///@todo build a routine for code:subcode --> data length
 }
 
-void sub_breakdown_shell_tmpl(Queue* in_q, void* data_type) {
-    ot_int shell_data_length;
-    ((shell_tmpl*)data_type)->req_port      = q_readbyte(in_q);
-    ((shell_tmpl*)data_type)->resp_port     = q_readbyte(in_q);
-    shell_data_length                       = q_readbyte(in_q);
-    ((shell_tmpl*)data_type)->data_length   = shell_data_length;
-    ((shell_tmpl*)data_type)->data          = q_markbyte(in_q, shell_data_length);
+void sub_breakdown_udp_tmpl(Queue* in_q, void* data_type) {
+    ot_int udp_data_length;
+    ((udp_tmpl*)data_type)->src_port      = q_readbyte(in_q);
+    ((udp_tmpl*)data_type)->dst_port      = q_readbyte(in_q);
+    udp_data_length                       = q_readbyte(in_q);
+    ((udp_tmpl*)data_type)->data_length   = udp_data_length;
+    ((udp_tmpl*)data_type)->data          = q_markbyte(in_q, udp_data_length);
 }
 
 void sub_breakdown_isfcomp_tmpl(Queue* in_q, void* data_type) {
@@ -295,10 +295,8 @@ void sub_breakdown_isfcomp_tmpl(Queue* in_q, void* data_type) {
 }
 
 void sub_breakdown_isfcall_tmpl(Queue* in_q, void* data_type) {
-    ((isfcall_tmpl*)data_type)->is_series   = q_readbyte(in_q);
-    ((isfcall_tmpl*)data_type)->isf_id      = q_readbyte(in_q);
+    sub_breakdown_isfcomp_tmpl(in_q, data_type);
     ((isfcall_tmpl*)data_type)->max_return  = q_readshort(in_q);
-    ((isfcall_tmpl*)data_type)->offset      = q_readshort(in_q);
 }
 
 
@@ -318,7 +316,7 @@ static const sub_bdtmpl bdtmpl_cmd[15] = {
     &sub_breakdown_error_tmpl,    //11
     &sub_breakdown_isfcomp_tmpl,  //12
     &sub_breakdown_isfcall_tmpl,  //13
-    &sub_breakdown_shell_tmpl     //14
+    &sub_breakdown_udp_tmpl     //14
 };
 
 static const otapi_icmd session_cmd[3] = {
@@ -347,7 +345,7 @@ static const otapi_cmd m2qp_cmd[11] = {
     (otapi_cmd)&otapi_put_isf_return,        //13
     (otapi_cmd)&otapi_put_reqds,             //3
     (otapi_cmd)&otapi_put_propds,            //3
-    (otapi_cmd)&otapi_put_shell_tmpl         //14
+    (otapi_cmd)&otapi_put_udp_tmpl         //14
 };
 
 

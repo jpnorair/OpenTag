@@ -297,13 +297,13 @@ ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall) {
 #endif
 
 
-#ifndef EXTF_otapi_put_shell_tmpl
-ot_u16 otapi_put_shell_tmpl(ot_u8* status, shell_tmpl* shell) {
+#ifndef EXTF_otapi_put_udp_tmpl
+ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
 /// There is no error/exception handling in this implementation, but it is
 /// possible to add in the future
-    q_writebyte(&txq, shell->req_port);
-    q_writebyte(&txq, shell->resp_port);
-    q_writestring(&txq, shell->data, shell->data_length);
+    q_writebyte(&txq, udp->src_port);
+    q_writebyte(&txq, udp->dst_port);
+    q_writestring(&txq, udp->data, udp->data_length);
     
     *status = 1;
     return txq.length;

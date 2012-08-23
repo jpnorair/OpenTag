@@ -92,11 +92,19 @@
 #define MCU_FEATURE_RADIODMA_TXBYTES     0
 #define MCU_FEATURE_RADIODMA_RXBYTES     0
 #define MCU_FEATURE_MAPEEPROM            DISABLED
-#define MCU_FEATURE_MPIPEDMA             (DISABLED || MPIPE_FOR_DEBUGGING)      // MPipe is only useful for debug mode
-#define MCU_FEATURE_MEMCPYDMA            (ENABLED && !MCU_FEATURE_MPIPEDMA)      // Must be disabled if MPIPEDMA is enabled
+#define MCU_FEATURE_MPIPEDMA             (ENABLED && MPIPE_FOR_DEBUGGING)      // MPipe is only useful for debug mode
+#define MCU_FEATURE_MEMCPYDMA            ENABLED 
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_POINTERSIZE           2
+
+OT_INLINE_H BOARD_DMA_COMMON_INIT() {
+    DMA->CTL4 = (   DMA_Options_RMWDisable | \
+                    DMA_Options_RoundRobinDisable | \
+                    DMA_Options_ENMIEnable  );
+}
+
+
 
 
 

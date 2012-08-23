@@ -88,16 +88,18 @@ typedef struct {
 #define OT_FEATURE_EXTERNAL_EVENT	ENABLED
 #endif
 
-#define HSS_INDEX       0
+
+#define EXT_INDEX       0
+#define HSS_INDEX       (EXT_INDEX+(OT_FEATURE(EXTERNAL_EVENT) == ENABLED))
 #define SSS_INDEX       (HSS_INDEX+(M2_FEATURE(ENDPOINT) == ENABLED))
 #define BTS_INDEX       (SSS_INDEX+(M2_FEATURE(BEACONS) == ENABLED))
-#define EXT_INDEX       (BTS_INDEX+(OT_FEATURE(EXTERNAL_EVENT) == ENABLED))
-#define IDLE_EVENTS     (EXT_INDEX+1)
+#define IDLE_EVENTS     (BTS_INDEX+1)
 
+#define EXT     idle[EXT_INDEX]
 #define HSS     idle[HSS_INDEX]
 #define SSS     idle[SSS_INDEX]
 #define BTS     idle[BTS_INDEX]
-#define EXT     idle[EXT_INDEX]
+
 
 
 
@@ -133,6 +135,7 @@ typedef struct {
         ot_u16      watchdog;
 #   endif
 #   if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED)
+#   warn "The Loadapp callback is deprecated.  Use Session callback instead."
         ot_bool (*loadapp)(void);
 #   ifndef EXTF_sys_sig_panic
         ot_sig  panic;

@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /board/cc430/board_EM430RF.h
+  * @file       /board/cc430/board_wizzimote.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       31 July 2012
-  * @brief      Board Configuration for Classic TI/Amber EM430RF (CC430)
+  * @date       7 August 2012
+  * @brief      Board Configuration for WizziMote/WizziKit (CC430)
   * @ingroup    Platform
   *
   * Do not include this file, include OT_platform.h
@@ -26,8 +26,8 @@
   */
   
 
-#ifndef __board_EM430RF_H
-#define __board_EM430RF_H
+#ifndef __board_WIZZIMOTE_H
+#define __board_WIZZIMOTE_H
 
 #include "build_config.h"
 #include "platform_CC430.h"
@@ -64,7 +64,7 @@
   * ========================================================================<BR>
   * The TI EM430 kits so far must be re-configured to 433 MHz, or set to 866.
   */
-#define RF_PARAM_BAND   866
+#define RF_PARAM_BAND   433
 #define RF_HDB_ATTEN    6       //Half dB attenuation (units = 0.5dB), used to scale TX power
 #define RF_RSSI_OFFSET  3       //Offset applied to RSSI calculation
 
@@ -83,7 +83,7 @@
 #define MCU_FEATURE_RADIODMA_TXBYTES    0
 #define MCU_FEATURE_RADIODMA_RXBYTES    0
 #define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPEDMA            ENABLED      // MPipe is only useful for debug mode
+#define MCU_FEATURE_MPIPEDMA            ENABLED
 #define MCU_FEATURE_MEMCPYDMA           ENABLED
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
@@ -101,12 +101,14 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 
 
 
-
 /** Board-based Feature Settings <BR>
   * ========================================================================<BR>
   * Notes apart from the obvious:  
   *
-  * 1. There is a general purpose button attached to P1.7
+  * 1. There is a general purpose button attached to P1.5.  The other two 
+  * buttons are hooked directly into the PaLFi core.  In the board schematic 
+  * and documentation, this button is defined as "SW2".  This button is active-
+  * low and it requires you to pull-up the input pin.
   * 
   * 2. The 2 LEDs (TRIGS 1-2) are normal-biased.
   */
@@ -118,9 +120,58 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG2      DISABLED
 
+#define BOARD_SW1_PORT                  GPIO1
+#define BOARD_SW1_PIN                   GPIO_Pin_6
+#define BOARD_SW1_POLARITY              0
 #define BOARD_SW2_PORT                  GPIO1
-#define BOARD_SW2_PIN                   GPIO_Pin_7
+#define BOARD_SW2_PIN                   GPIO_Pin_5
 #define BOARD_SW2_POLARITY              0
+#define BOARD_SW3_PORT                  GPIO1
+#define BOARD_SW3_PIN                   GPIO_Pin_4
+#define BOARD_SW3_POLARITY              0
+
+#define BOARD_LED1_PORT                 GPIO1
+#define BOARD_LED1_PIN                  GPIO_Pin_7
+#define BOARD_LED1_POLARITY             1
+#define BOARD_LED1_HIDRIVE              0
+#define BOARD_LED2_PORT                 GPIO3
+#define BOARD_LED2_PIN                  GPIO_Pin_7
+#define BOARD_LED2_POLARITY             1
+#define BOARD_LED2_HIDRIVE              0
+#define BOARD_LED3_PORT                 GPIO3
+#define BOARD_LED3_PIN                  GPIO_Pin_6
+#define BOARD_LED3_POLARITY             1
+#define BOARD_LED3_HIDRIVE              0
+
+#define BOARD_ADIO0_PORT                GPIO2
+#define BOARD_ADIO0_PIN                 GPIO_Pin_5
+#define BOARD_ADIO1_PORT                GPIO2
+#define BOARD_ADIO1_PIN                 GPIO_Pin_4
+#define BOARD_ADIO2_PORT                GPIO2
+#define BOARD_ADIO2_PIN                 GPIO_Pin_3
+#define BOARD_ADIO3_PORT                GPIO2
+#define BOARD_ADIO3_PIN                 GPIO_Pin_2
+#define BOARD_ADIO5_PORT                GPIO2
+#define BOARD_ADIO5_PIN                 GPIO_Pin_6
+#define BOARD_ADIO5_PORT                GPIO2
+#define BOARD_ADIO5_PIN                 GPIO_Pin_7
+
+#define BOARD_GPIO0_PORT                GPIOJ
+#define BOARD_GPIO0_PIN                 GPIO_Pin_3
+#define BOARD_GPIO1_PORT                GPIOJ
+#define BOARD_GPIO1_PIN                 GPIO_Pin_2
+#define BOARD_GPIO2_PORT                GPIOJ
+#define BOARD_GPIO2_PIN                 GPIO_Pin_1
+#define BOARD_GPIO3_PORT                GPIOJ
+#define BOARD_GPIO3_PIN                 GPIO_Pin_0
+#define BOARD_GPIO4_PORT                GPIO1
+#define BOARD_GPIO4_PIN                 GPIO_Pin_0
+#define BOARD_GPIO5_PORT                GPIO1
+#define BOARD_GPIO5_PIN                 GPIO_Pin_1
+#define BOARD_GPIO6_PORT                GPIO1
+#define BOARD_GPIO6_PIN                 GPIO_Pin_2
+#define BOARD_GPIO7_PORT                GPIO1
+#define BOARD_GPIO7_PIN                 GPIO_Pin_3
 
 #define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
 #define BOARD_PARAM_LFHz                32768
@@ -153,7 +204,6 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
     P1DIR = 0xFF;
     P2DIR = 0xFF;
     P3DIR = 0xFF;
-    P4DIR = 0xFF;
     
 #   if (defined(DEBUG_ON) || defined(__DEBUG__))
     PJDIR = 0x00;
@@ -164,7 +214,6 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
     P1OUT = 0x00;
     P2OUT = 0x00;
     P3OUT = 0x00;
-    P4OUT = 0x00;
     PJOUT = 0x00;
 }
 
@@ -310,102 +359,38 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   *     optionally, one for a Zener driving output port & pin.  Using a Zener
   *     can greatly accelerate the random number generation process.</LI>
   */
-#define MPIPE_UARTNUM       0           //0 or 1 (A or B)
-#define MPIPE_UART_PORTNUM  1
-#define MPIPE_UART_RXPIN    GPIO_Pin_5
-#define MPIPE_UART_TXPIN    GPIO_Pin_6
+#define MPIPE_DMANUM        2
+#define MPIPE_UART_PORT     GPIO2
+#define MPIPE_UART_PORTMAP  P2M
+#define MPIPE_UART_RXPIN    GPIO_Pin_0
+#define MPIPE_UART_TXPIN    GPIO_Pin_1
 
-#define OT_TRIG1_PORTNUM    1
-#define OT_TRIG1_PIN        GPIO_Pin_0
-#define OT_TRIG1_HIDRIVE    ENABLED
-#define OT_TRIG2_PORTNUM    3
-#define OT_TRIG2_PIN        GPIO_Pin_6
-#define OT_TRIG2_HIDRIVE    ENABLED
+#define OT_TRIG1_PORT       BOARD_LED1_PORT
+#define OT_TRIG1_PIN        BOARD_LED1_PIN
+#define OT_TRIG1_HIDRIVE    BOARD_LED1_HIDRIVE
+#define OT_TRIG2_PORT       BOARD_LED2_PORT
+#define OT_TRIG2_PIN        BOARD_LED2_PIN
+#define OT_TRIG2_HIDRIVE    BOARD_LED2_HIDRIVE
 
 // Pin that can be used for ADC-based random number (usually floating pin)
 // You could also put on a low voltage, reverse-biased zener on the board
 // to produce a pile of noise.  2.1V seems like a good value.
-#define OT_GWNADC_PORTNUM   2
-#define OT_GWNADC_PIN       GPIO_Pin_1
+#define OT_GWNADC_PORTNUM   BOARD_ADIO5_PORT
+#define OT_GWNADC_PIN       BOARD_ADIO5_PIN
 #define OT_GWNADC_BITS      1
-//#define OT_GWNZENER_PORT    GPIO2
-//#define OT_GWNZENER_PIN     GPIO_Pin_2
-//#define OT_GWNZENER_HIDRIVE DISABLED
+//#define OT_GWNZENER_PORT    BOARD_GPIO7_PORT
+//#define OT_GWNZENER_PIN     BOARD_GPIO7_PIN
+//#define OT_GWNZENER_HIDRIVE BOARD_GPIO7_HIDRIVE
 
 
-
-#if (OT_TRIG1_PORTNUM == 1)
-#   define OT_TRIG1_PORT    GPIO1
-#elif (OT_TRIG1_PORTNUM == 2)
-#   define OT_TRIG1_PORT    GPIO2
-#elif (OT_TRIG1_PORTNUM == 3)
-#   define OT_TRIG1_PORT    GPIO3
-#elif (OT_TRIG1_PORTNUM == 4)
-#   define OT_TRIG1_PORT    GPIO4
-#endif
-
-#if (OT_TRIG2_PORTNUM == 1)
-#   define OT_TRIG2_PORT    GPIO1
-#elif (OT_TRIG2_PORTNUM == 2)
-#   define OT_TRIG2_PORT    GPIO2
-#elif (OT_TRIG2_PORTNUM == 3)
-#   define OT_TRIG2_PORT    GPIO3
-#elif (OT_TRIG2_PORTNUM == 4)
-#   define OT_TRIG2_PORT    GPIO4
-#endif
-
-
-#ifdef OT_GWNADC_PORTNUM
-#   if (OT_GWNADC_PORTNUM == 2)
-#       define OT_GWNADC_PORT      GPIO2
-#   else
-#       error "GWNADC (White Noise ADC Input Pin) must be on port 2"
-#   endif
-#endif
-
-#ifdef OT_GWNZENER_PORTNUM
-#   if (OT_GWNZENER_PORTNUM == 1)
-#       define OT_GWNZENER_PORT    GPIO1
-#   elif (OT_GWNZENER_PORTNUM == 2)
-#       define OT_GWNZENER_PORT    GPIO2
-#   elif (OT_GWNZENER_PORTNUM == 3)
-#       define OT_GWNZENER_PORT    GPIO3
-#   elif (OT_GWNZENER_PORTNUM == 4)
-#       define OT_GWNZENER_PORT    GPIO4
-#   else
-#       error "GWNZENER (White Noise Zener Diode Output) must be on port 1, 2, 3, or 4"
-#   endif
-#endif
-
-
-#if (MPIPE_UART_PORTNUM == 1)
-#   define MPIPE_UART_PORTMAP  P1M
-#   define MPIPE_UART_PORT     GPIO1
-#elif (MPIPE_UART_PORTNUM == 2)
-#   define MPIPE_UART_PORTMAP  P2M
-#   define MPIPE_UART_PORT     GPIO2
-#elif (MPIPE_UART_PORTNUM == 3)
-#   define MPIPE_UART_PORTMAP  P3M
-#   define MPIPE_UART_PORT     GPIO3
-#elif (MPIPE_UART_PORTNUM == 4)
-#   define MPIPE_UART_PORTMAP  P4M
-#   define MPIPE_UART_PORT     GPIO4
-#else
-#   error "MPipe UART needs to be on GPIO1, 2, 3, or 4"
-#endif
 
 #define MPIPE_UART_PINS     (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
-
-#if (MPIPE_UARTNUM == 0)
-#   define MPIPE_UART           UARTA0
-#   define MPIPE_UART_RXSIG     PM_UCA0RXD
-#   define MPIPE_UART_TXSIG     PM_UCA0TXD
-#	define MPIPE_UART_RXTRIG	DMA_Trigger_UCA0RXIFG
-#	define MPIPE_UART_TXTRIG	DMA_Trigger_UCA0TXIFG
-#   define MPIPE_UART_VECTOR    USCI_A0_VECTOR
-#else
-#   error "MPIPE_UART is not defined to an available index (0)"
-#endif
+#define MPIPE_UART          UARTA0
+#define MPIPE_UART_RXSIG    PM_UCA0RXD
+#define MPIPE_UART_TXSIG    PM_UCA0TXD
+#define MPIPE_UART_RXTRIG	DMA_Trigger_UCA0RXIFG
+#define MPIPE_UART_TXTRIG	DMA_Trigger_UCA0TXIFG
+#define MPIPE_UART_VECTOR   USCI_A0_VECTOR
 
 #if (MCU_FEATURE_MPIPEDMA == ENABLED)
 #   define MPIPE_DMANUM    2
@@ -420,44 +405,46 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   endif
 #endif
 
-#   if (MPIPE_UART_RXPIN == GPIO_Pin_0)
-#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP0
-#   elif (MPIPE_UART_RXPIN == GPIO_Pin_1)
-#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP1
-#   elif (MPIPE_UART_RXPIN == GPIO_Pin_2)
-#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP2
-#   elif (MPIPE_UART_RXPIN == GPIO_Pin_3)
-#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP3
-#   elif (MPIPE_UART_RXPIN == GPIO_Pin_4)
-#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP4
-#   elif (MPIPE_UART_RXPIN == GPIO_Pin_5)
-#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP5
-#   elif (MPIPE_UART_RXPIN == GPIO_Pin_6)
-#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP6
-#   elif (MPIPE_UART_RXPIN == GPIO_Pin_7)
-#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP7
-#   else
-#       error "MPIPE_UART_RXPIN out of bounds"
-#   endif
-#   if (MPIPE_UART_TXPIN == GPIO_Pin_0)
-#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP0
-#   elif (MPIPE_UART_TXPIN == GPIO_Pin_1)
-#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP1
-#   elif (MPIPE_UART_TXPIN == GPIO_Pin_2)
-#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP2
-#   elif (MPIPE_UART_TXPIN == GPIO_Pin_3)
-#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP3
-#   elif (MPIPE_UART_TXPIN == GPIO_Pin_4)
-#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP4
-#   elif (MPIPE_UART_TXPIN == GPIO_Pin_5)
-#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP5
-#   elif (MPIPE_UART_TXPIN == GPIO_Pin_6)
-#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP6
-#   elif (MPIPE_UART_TXPIN == GPIO_Pin_7)
-#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP7
-#   else
-#       error "MPIPE_UART_TXPIN out of bounds"
-#   endif
+#if (MPIPE_UART_RXPIN == GPIO_Pin_0)
+#    define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP0
+#elif (MPIPE_UART_RXPIN == GPIO_Pin_1)
+#    define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP1
+#elif (MPIPE_UART_RXPIN == GPIO_Pin_2)
+#    define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP2
+#elif (MPIPE_UART_RXPIN == GPIO_Pin_3)
+#    define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP3
+#elif (MPIPE_UART_RXPIN == GPIO_Pin_4)
+#    define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP4
+#elif (MPIPE_UART_RXPIN == GPIO_Pin_5)
+#    define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP5
+#elif (MPIPE_UART_RXPIN == GPIO_Pin_6)
+#    define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP6
+#elif (MPIPE_UART_RXPIN == GPIO_Pin_7)
+#    define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP7
+#else
+#    error "MPIPE_UART_RXPIN out of bounds"
+#endif
+
+#if (MPIPE_UART_TXPIN == GPIO_Pin_0)
+#    define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP0
+#elif (MPIPE_UART_TXPIN == GPIO_Pin_1)
+#    define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP1
+#elif (MPIPE_UART_TXPIN == GPIO_Pin_2)
+#    define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP2
+#elif (MPIPE_UART_TXPIN == GPIO_Pin_3)
+#    define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP3
+#elif (MPIPE_UART_TXPIN == GPIO_Pin_4)
+#    define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP4
+#elif (MPIPE_UART_TXPIN == GPIO_Pin_5)
+#    define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP5
+#elif (MPIPE_UART_TXPIN == GPIO_Pin_6)
+#    define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP6
+#elif (MPIPE_UART_TXPIN == GPIO_Pin_7)
+#    define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP7
+#else
+#    error "MPIPE_UART_TXPIN out of bounds"
+#endif
+
 
 
 

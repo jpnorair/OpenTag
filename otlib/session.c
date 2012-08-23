@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/session.c
+  * @file       /otlib/session.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       6 Mar 2011
+  * @date       8 Aug 2012
   * @brief      ISO 18000-7.4 Session Framework
   * @ingroup    Session
   *
@@ -110,15 +110,14 @@ m2session* session_new(ot_uint new_counter, ot_u8 new_netstate, ot_u8 new_channe
         session.top++;
 
         for (i=session.top; i>pos; ) {
-            ///@note Beware of stupid, little endian bullshit in this loop.
-            ///      The order of the new = old seems to matter.
-            ot_u32* new = (ot_u32*)&session.heap[i];
-            ot_u32* old = (ot_u32*)&session.heap[--i];
-            new[1]      = old[1];
-            new[0]      = old[0];
-            
-            ///@todo Experimental
-            //platform_memcpy((ot_u8*)old, (ot_u8*)new, sizeof(session));
+            ///@note The order of the new = old seems to matter.
+            //ot_u32* new = (ot_u32*)&session.heap[i];
+            //ot_u32* old = (ot_u32*)&session.heap[--i];
+            //new[1]      = old[1];
+            //new[0]      = old[0];
+            ot_u8* new = (ot_u8*)&session.heap[i];
+            ot_u8* old = (ot_u8*)&session.heap[--i];
+            platform_memcpy(old, new, sizeof(session));
         }
     }
     
@@ -128,23 +127,23 @@ m2session* session_new(ot_uint new_counter, ot_u8 new_netstate, ot_u8 new_channe
         pos--;
         
         for (i=0; i<pos; ) {
-            ///@note Beware of stupid, little endian bullshit in this loop.
-            ///      The order of the new = old seems to matter.
-            ot_u32* new = (ot_u32*)&session.heap[i];
-            ot_u32* old = (ot_u32*)&session.heap[++i];
-            new[0]      = old[0];
-            new[1]      = old[1];
-            
-            ///@todo Experimental
-            //platform_memcpy((ot_u8*)old, (ot_u8*)new, sizeof(session));
+            ///@note The order of the new = old seems to matter.
+            //ot_u32* new = (ot_u32*)&session.heap[i];
+            //ot_u32* old = (ot_u32*)&session.heap[++i];
+            //new[0]      = old[0];
+            //new[1]      = old[1];
+            ot_u8* new = (ot_u8*)&session.heap[i];
+            ot_u8* old = (ot_u8*)&session.heap[++i];
+            platform_memcpy(new, old, sizeof(session));
         }
     }
     
     /// Write-out the session
+    session.heap[pos].applet    = NULL;
     session.heap[pos].counter   = new_counter;
     session.heap[pos].channel   = new_channel;
     session.heap[pos].dialog_id = ++session.seq_number;
-    session.heap[pos].protocol  = 0;                ///default protocol = 0 (Mode 2 normal dialog)
+  //session.heap[pos].protocol  = 0;                ///session.protocol is deprecated
     session.heap[pos].netstate  = new_netstate;     ///@note, may need to or with M2_NETSTATE_INIT
     
     return &session.heap[pos];

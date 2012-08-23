@@ -235,7 +235,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
             ((alp->outq->back - alp->outq->putcursor) < 6)) {
             break;
         }
-        
+
         /// Load a new input record only when the last output record has the
         /// "Message End" flag set.  Therefore, it was the last record of a
         /// previous message.  If new input record header does not match
@@ -305,6 +305,12 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
 ot_bool alp_parse_header(alp_tmpl* alp) {
     // ALP & NDEF Universal Field (Flags)
     alp->inrec.flags = *alp->inq->getcursor++;
+
+    // Clear bookmarks on new message input
+    if (alp->inrec.flags & ALP_FLAG_MB) {
+    	alp->inrec.bookmark     = NULL;
+    	alp->outrec.bookmark    = NULL;
+    }
 
     // ALP type
     if ((alp->inrec.flags & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) {

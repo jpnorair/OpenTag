@@ -1,4 +1,4 @@
-/*  Copyright 2010-2012, JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -11,19 +11,17 @@
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
+  *
   */
 /**
-  * @file       /apps/demo_palfi/code/app_config.h
+  * @file       /apps/null_posix/app_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    V1.0
-  * @date       16 April 2012
-  * @brief      Application Configuration File for PaLFi Demo: USB STICK VERSION
+  * @date       31 July 2012
+  * @brief      Application Configuration File for NULL POSIX
   *
   * Don't actually include this.  Include OTAPI.h or (OT_config.h + OT_types.h)
   * instead.
-  *
-  * ++++ USB STICK VERSION ++++ USB STICK VERSION ++++ USB STICK VERSION ++++
-  *
   ******************************************************************************
   */
 
@@ -31,6 +29,8 @@
 #define __APP_CONFIG_H
 
 #include "build_config.h"
+
+
 
 /// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
 #ifdef ENABLED
@@ -70,22 +70,23 @@
 #define OT_PARAM(VAL)                   OT_PARAM_##VAL
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
-#define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    
+#define OT_PARAM_BUFFER_SIZE            4608                                // Typically, must be at least 512 bytes    
 #define OT_PARAM_WATCHDOG_PERIOD        16                                  // Number of ticks before exception, following expected event return time
 #define OT_PARAM_KERNEL_LIMIT           -1                                  // Maximum ticks between kernel calls (if<=0, no limit)
 
 #define OT_FEATURE(VAL)                 OT_FEATURE_##VAL
-#define OT_FEATURE_SERVER               ENABLED                             // "Server" is a build containing the OpenTag stack
-#define OT_FEATURE_CLIENT               (OT_FEATURE_SERVER != ENABLED)      // "Client" is a command console (typ. PC)
-#define OT_FEATURE_CAPI                 ENABLED                             // "otapi" C function usage in server-side apps
-#define OT_FEATURE_C_SERVER             (OT_FEATURE_CAPI)                   // "otapi" C function usage in server-side apps
+#define OT_FEATURE_SERVER               DISABLED                            // "Server" is a build containing the OpenTag stack
+#define OT_FEATURE_CLIENT               DISABLED                            // "Client" is a command console (typ. PC)
+#define OT_FEATURE_CAPI                 DISABLED                            // "otapi" C function usage in server-side apps
+#define OT_FEATURE_C_SERVER             OT_FEATURE_CAPI                     // "otapi" C function usage in server-side apps
 #define OT_FEATURE_DASHFORTH            NOT_AVAILABLE                       // DASHFORTH Applet VM (server-side), or JIT (client-side)
-#define OT_FEATURE_LOGGER               ENABLED                             // Mpipe-based data logging & printing
-#define OT_FEATURE_ALP                  (ENABLED || (OT_FEATURE_CLIENT))    // Application Layer Protocol Support
-#define OT_FEATURE_ALPAPI               (ENABLED && (OT_FEATURE_ALP))       // Application Layer Protocol callable API's
-#define OT_FEATURE_MPIPE                ENABLED
-#define OT_FEATURE_NDEF                 (OT_FEATURE_MPIPE)                  // NDEF wrapper for Messaging API
-#define OT_FEATURE_VEELITE              ENABLED                             // Veelite DASH7 File System
+#define OT_FEATURE_LOGGER               DISABLED                            // Mpipe-based data logging & printing
+#define OT_FEATURE_ALP                  (DISABLED || OT_FEATURE_CLIENT)      // Application Layer Protocol (ALP) Support
+#define OT_FEATURE_ALPAPI               (ENABLED && OT_FEATURE_ALP)         // Built-in ALP callable API's
+#define OT_FEATURE_ALPEXT               (ENABLED && OT_FEATURE_ALP)         // Unknown ALP IDs get forwarded to User App
+#define OT_FEATURE_MPIPE                DISABLED
+#define OT_FEATURE_NDEF                 OT_FEATURE_MPIPE                    // NDEF wrapper for Messaging API
+#define OT_FEATURE_VEELITE              DISABLED                            // Veelite DASH7 File System
 #define OT_FEATURE_VLFPS                OT_PARAM_VLFPS
 #define OT_FEATURE_VLNVWRITE            DISABLED                            // File writes in Veelite
 #define OT_FEATURE_VLNEW                DISABLED                            // File create/delete in Veelite
@@ -113,7 +114,7 @@
 #define OT_FEATURE_MPIPE_CALLBACKS      DISABLED                            // Dynamic callbacks from MPIPE
 #define OT_FEATURE_SW_WATCHDOG          DISABLED
 #define OT_FEATURE_HW_WATCHDOG          DISABLED
-#define OT_FEATURE_WATCHDOG_PERIOD      OT_PARAM_WATCHDOG_PERIOD                              
+#define OT_FEATURE_WATCHDOG_PERIOD      OT_PARAM_WATCHDOG_PERIOD                             
 
 
 
@@ -168,6 +169,7 @@
 #else
 #    define M2_PARAM_MFPP             1                                     // MFPP always 1 when M2DP is DISABLED (don't change)
 #endif
+
 
 // General derived constants
 #define M2_FEATURE_MULTIFRAME           (M2_FEATURE_MFPP > 1)
@@ -238,11 +240,6 @@
 #define _ALLOC_SHIFT        1
 #define _MIRALLOC_OFFSET    _ALLOC_OFFSET
 #define _MIRALLOC_SHIFT     _ALLOC_SHIFT
-  
-#define IN_VWORM    0x01
-#define IN_VEEPROM  0x02        // VEEPROM doesn't actually exist anymore!
-#define IN_VSRAM    0x04
-#define IN_MIRROR   0x80
 
 
 
@@ -252,8 +249,8 @@
   * The front of the filesystem stores file headers.  The amount below must
   * be coordinated with your linker file.
   */
-#define OVERHEAD_START_VADDR                0x1800
-#define OVERHEAD_TOTAL_BYTES                (360)
+#define OVERHEAD_START_VADDR                0x0000
+#define OVERHEAD_TOTAL_BYTES                0x0360
 
 
 
@@ -266,12 +263,19 @@
   * TOTAL_BYTES you allocate to the ISFSB bank corresponds to the amount set in
   * the linker file.
   */
-#define ISFS_TOTAL_BYTES        			32
+/** ISFSB Files (Indexed Short File Series Block)   <BR>
+  * ========================================================================<BR>
+  * ISFSB Files are strings of ISF IDs that bundle/batch related ISF's.  ISFs
+  * are not all the same length (max length = 16).  Also, make sure that the 
+  * TOTAL_BYTES you allocate to the ISFSB bank corresponds to the amount set in
+  * the linker file.
+  */
+#define ISFS_TOTAL_BYTES        			 0xA0
 #define ISFS_NUM_M1_LISTS                    4
 #define ISFS_NUM_M2_LISTS                    4
 #define ISFS_NUM_EXT_LISTS                   0
 
-#define ISFS_START_VADDR                     (FLASH_START_ADDR)
+#define ISFS_START_VADDR                     (OVERHEAD_START_VADDR + OVERHEAD_TOTAL_BYTES)
 #define ISFS_NUM_USER_LISTS                  ISFS_NUM_EXT_LISTS
 #define ISFS_NUM_STOCK_LISTS                 (ISFS_NUM_M1_LISTS + ISFS_NUM_M2_LISTS)
 #define ISFS_NUM_LISTS                       (ISFS_NUM_STOCK_LISTS + ISFS_NUM_USER_LISTS)
@@ -285,7 +289,6 @@
 #define ISFS_ID_device_capability            0x11
 #define ISFS_ID_device_channel_utilization   0x12
 #define ISFS_ID_location_data                0x18
-#define ISFS_ID_extended_service             0x80
 
 #define ISFS_MOD(VAL)                        b00100100
 
@@ -341,6 +344,7 @@
 
 
 
+
 /** GFB (Generic File Block)
   * ========================================================================<BR>
   * GFB is a mostly unstructured data space.  You can change the definitions 
@@ -383,10 +387,13 @@
 
 ///@todo define this after mirror is alloc'ed
 #define ISF_MIRROR_VADDR                        0x0000
-#define ISF_TOTAL_BYTES         				480
+#define ISF_TOTAL_BYTES         				0x600
 #define ISF_START_VADDR                         (GFB_START_VADDR + GFB_TOTAL_BYTES)
 #define ISF_NUM_STOCK_FILES                     (ISF_NUM_M1_FILES + ISF_NUM_M2_FILES + ISF_NUM_EXT_FILES)
 #define ISF_NUM_FILES                           (ISF_NUM_STOCK_FILES + ISF_NUM_USER_FILES)
+
+
+
 
 
 /** ISFB Structure    <BR>
@@ -447,32 +454,7 @@
 /// ISF Mirror Enabling: <BR>
 /// ISFB files can be mirrored in RAM.  Set to 0/1 to Disable/Enable each file 
 /// mirror.  Mirroring speeds-up file access, but it can consume a lot of RAM.
-#define ISF_ENMIRROR(VAL)                       ISF_ENMIRROR_##VAL
-#define ISF_ENMIRROR_network_settings           1
-#define ISF_ENMIRROR_device_features            1
-#define ISF_ENMIRROR_channel_configuration      1
-#define ISF_ENMIRROR_real_time_scheduler        1
-#define ISF_ENMIRROR_sleep_scan_sequence        1
-#define ISF_ENMIRROR_hold_scan_sequence         1
-#define ISF_ENMIRROR_beacon_transmit_sequence   1
-#define ISF_ENMIRROR_protocol_list              1
-#define ISF_ENMIRROR_isfs_list                  1
-#define ISF_ENMIRROR_gfb_file_list              1
-#define ISF_ENMIRROR_location_data_list         1
-#define ISF_ENMIRROR_ipv6_addresses             1
-#define ISF_ENMIRROR_sensor_list                1
-#define ISF_ENMIRROR_sensor_alarms              1
-#define ISF_ENMIRROR_root_authentication_key    1
-#define ISF_ENMIRROR_user_authentication_key    1
-#define ISF_ENMIRROR_routing_code               1
-#define ISF_ENMIRROR_user_id                    1
-#define ISF_ENMIRROR_optional_command_list      1
-#define ISF_ENMIRROR_memory_size                1
-#define ISF_ENMIRROR_table_query_size           1
-#define ISF_ENMIRROR_table_query_results        1
-#define ISF_ENMIRROR_hardware_fault_status      1
-#define ISF_ENMIRROR_port_254                   1
-#define ISF_ENMIRROR_application_extension      1
+#define ISF_ENMIRROR(VAL)                       0
 
 
 /// ISF file default privileges                                     <BR>
@@ -587,8 +569,8 @@
 #define ISF_BASE_protocol_list                  (ISF_BASE_beacon_transmit_sequence+ISF_ALLOC(beacon_transmit_sequence))
 #define ISF_BASE_isfs_list                      (ISF_BASE_protocol_list+ISF_ALLOC(protocol_list))
 #define ISF_BASE_gfb_file_list                  (ISF_BASE_isfs_list+ISF_ALLOC(isfs_list))
-#define ISF_BASE_location_data_list             (0xFFFF)
-#define ISF_BASE_ipv6_addresses                 (ISF_BASE_gfb_file_list+ISF_ALLOC(gfb_file_list))
+#define ISF_BASE_location_data_list             (ISF_BASE_gfb_file_list+ISF_ALLOC(gfb_file_list))
+#define ISF_BASE_ipv6_addresses                 (ISF_BASE_location_data_list+ISF_ALLOC(location_data_list))
 #define ISF_BASE_sensor_list                    (ISF_BASE_ipv6_addresses+ISF_ALLOC(ipv6_addresses))
 #define ISF_BASE_sensor_alarms                  (ISF_BASE_sensor_list+ISF_ALLOC(sensor_list))
 #define ISF_BASE_root_authentication_key        (ISF_BASE_sensor_alarms+ISF_ALLOC(sensor_alarms))
@@ -600,9 +582,9 @@
 #define ISF_BASE_table_query_size               (ISF_BASE_memory_size+ISF_ALLOC(memory_size))
 #define ISF_BASE_table_query_results            (ISF_BASE_table_query_size+ISF_ALLOC(table_query_size))
 #define ISF_BASE_hardware_fault_status          (ISF_BASE_table_query_results+ISF_ALLOC(table_query_results))
-#define ISF_BASE_port_254                       (0xFFFF)
-#define ISF_BASE_application_extension          (0xFFFF)
-#define ISF_BASE_NEXT                           (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
+#define ISF_BASE_port_254                       (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
+#define ISF_BASE_application_extension          (ISF_BASE_port_254+ISF_ALLOC(port_254))
+#define ISF_BASE_NEXT                           (ISF_BASE_application_extension+ISF_ALLOC(application_extension))
 
 /// ISF file mirror address computation
 #define ISF_MIRROR(VAL)                         (unsigned short)(((ISF_ENMIRROR_##VAL != 0) - 1) | (ISF_MIRROR_##VAL) )
@@ -644,6 +626,7 @@
                                 ISF_ALLOC(protocol_list) + \
                                 ISF_ALLOC(isfs_list) + \
                                 ISF_ALLOC(gfb_file_list) + \
+                                ISF_ALLOC(location_data_list) + \
                                 ISF_ALLOC(ipv6_addresses) + \
                                 ISF_ALLOC(sensor_list) + \
                                 ISF_ALLOC(sensor_alarms) + \
@@ -655,7 +638,10 @@
                                 ISF_ALLOC(memory_size) + \
                                 ISF_ALLOC(table_query_size) + \
                                 ISF_ALLOC(table_query_results) + \
-                                ISF_ALLOC(hardware_fault_status) )
+                                ISF_ALLOC(hardware_fault_status) + \
+                                ISF_ALLOC(port_254) + \
+                                ISF_ALLOC(application_extension))
+
 
 #define ISF_VWORM_HEAP_BYTES    ISF_VWORM_STOCK_BYTES
 #define ISF_HEAP_BYTES          ISF_VWORM_HEAP_BYTES

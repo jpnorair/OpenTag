@@ -84,7 +84,7 @@ typedef struct {
 
 
 
-#if ((OT_FEATURE(SERVER) == ENABLED) && (OT_FEATURE(ALP) == ENABLED))
+#if ( OT_FEATURE(SERVER) && OT_FEATURE(ALP) )
 
 
 
@@ -253,7 +253,7 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received filesystem ALP record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool		True if output
   * @ingroup ALP
   */
 ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id);

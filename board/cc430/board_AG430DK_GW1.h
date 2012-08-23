@@ -85,12 +85,18 @@
 #define MCU_FEATURE_RADIODMA_RXBYTES     0
 #define MCU_FEATURE_MAPEEPROM            DISABLED
 #define MCU_FEATURE_MPIPEDMA             ENABLED
-#define MCU_FEATURE_MEMCPYDMA            DISABLED   // Must be disabled if MPIPEDMA is enabled
+#define MCU_FEATURE_MEMCPYDMA            ENABLED
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_POINTERSIZE           2
 
 #define PLATFORM_FEATURE_USBCONVERTER    ENABLED
+
+OT_INLINE_H BOARD_DMA_COMMON_INIT() {
+    DMA->CTL4 = (   DMA_Options_RMWDisable | \
+                    DMA_Options_RoundRobinDisable | \
+                    DMA_Options_ENMIEnable  );
+}
 
 
 

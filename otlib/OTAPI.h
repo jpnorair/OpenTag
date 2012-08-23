@@ -187,19 +187,16 @@ void otapi_ndef_proc(void* tmpl);
 
 
 /** @brief  Process a received user-proprietary ALP record
-  * @param  in_rec      (alp_record*) Header of input ALP record, to be processed
-  * @param  out_rec     (alp_record*) Header of output ALP record, due to processing
-  * @param  in_q        (Queue*) input queue containing record
-  * @param  out_q       (Queue*) output queue for [optional] record response
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool		True if output
   * @ingroup ALP
   *
   * Very important: if OT_FEATURE(ALPEXT) == ENABLED, the user application must
   * implement this function somewhere.  Any ALP ID's that get processed by ALP
   * which do not match known ID's will get dumped into this function.
   */
-void otapi_alpext_proc(alp_record* in_rec, alp_record* out_rec, Queue* in_q, Queue* out_q, id_tmpl* user_id);
+ot_bool otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id);
 #endif
 
 

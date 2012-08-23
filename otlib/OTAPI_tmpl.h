@@ -255,8 +255,8 @@ typedef struct {
 typedef struct {
     ot_u8   is_series;
     ot_u8   isf_id;
-    ot_s16  max_return;
     ot_s16  offset;
+    ot_s16  max_return;
 } isfcall_tmpl;
 
 
@@ -312,11 +312,11 @@ typedef struct {
 
 #define __SIZEOF_shell_tmpl (1+1+1+(1*PLATFORM_POINTER_SIZE))
 typedef struct {
-    ot_u8   req_port;
-    ot_u8   resp_port;
+    ot_u8   src_port;
+    ot_u8   dst_port;
     ot_u8   data_length;
     ot_u8*  data;
-} shell_tmpl;
+} udp_tmpl;
 
 
 

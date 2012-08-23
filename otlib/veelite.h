@@ -1,4 +1,4 @@
-/*  Copyright 2010-2011, JP Norair
+/*  Copyright 2010-2012, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       OTlib/veelite.h
+  * @file       otlib/veelite.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       6 Nov 2011
+  * @date       31 July 2012
   * @brief      Veelite virtual data interface for ISO 18000-7 Mode 1/2
   * @ingroup    Veelite
   *

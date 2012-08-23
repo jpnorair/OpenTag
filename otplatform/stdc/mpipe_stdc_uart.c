@@ -503,7 +503,7 @@ void mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
 
         q_empty(mpipe_alp.inq);
         //mpipe_alp.inq->back -=10;
-        MPIPE_DMA_RXCONFIG(mpipe_alp.inq->front, 6, ON);
+        MPIPE_DMA_RXCONFIG(mpipe_alp.inq->front, 10, ON);
         UART_OPEN();
         UART_CLEAR_RXIFG();
     }
@@ -538,9 +538,9 @@ void mpipe_isr() {
         	///@note DMA doesn't seem to need intermediate disabling here
             mpipe.state             = MPIPE_RxPayload;
             mpipe_alp.inq->length   = mpipe_alp.inq->front[2] + 10;
-            mpipe_alp.inq->back     = (mpipe_alp.inq->front+6) + mpipe_alp.inq->front[2];
-            MPIPE_DMA_RXCONFIG( (mpipe_alp.inq->front+6), \
-            		            mpipe_alp.inq->front[2]+4, \
+            mpipe_alp.inq->back     = mpipe_alp.inq->front + mpipe_alp.inq->front[2] + 6;
+            MPIPE_DMA_RXCONFIG( mpipe_alp.inq->front+10, \
+            		            mpipe_alp.inq->front[2], \
             		            ON);
             return;
 

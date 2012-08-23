@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/session.h
+  * @file       /otlib/session.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       6 Mar 2011
+  * @date       8 August 2012
   * @brief      ISO 18000-7.4 Session Framework
   * @defgroup   Session (Session Layer)
   * @ingroup    Session
@@ -48,30 +48,7 @@
 
 
 
-/** Mode 2 Session Struct
-  * The session struct is a 12 byte message container that is passed between
-  * many layers
-  * 
-  * counter     (ot_uint) A number of ti until the session is scheduled to
-  *             begin.  This is, in fact, an event timeout.
-  *
-  * netstate    (ot_u8) A code representing what kind of session is underway,
-  *             as well as a network association state.
-  *
-  * channel     (ot_u8) primary channel ID that the session is using.
-  *
-  * subnet      (ot_u8) This is the subnet value of the session.  It is loaded
-  *             when a session becomes associated.
-  *
-  * dialog_id   (ot_u8) This is the dialog value of the session, which is loaded
-  *             when a session is associated.  It is a random number that needs
-  *             to be provided if instantiating the session, or loaded from the
-  *             request if you are attaching to the session.
-  *
-  * flags       (ot_u8) Protocol Flags viable to the session.  These are aligned
-  *             with the flag values from M2NP/M2QP, but they are generic enough
-  *             that they could be used for other dialog-based protocols, too.
-  */
+
 
 /** Session Network State Flags
   * Used in the m2session.netstate container for the unassoc-synced-
@@ -112,7 +89,7 @@
 #define M2_EIRP_0p5DBM(VAL)         (ot_int)(-80 + (VAL))
 
 
-/** Protocols (Translated)
+/** Protocols (Deprecated)
   */
 #define M2_PROTOCOL_M2NP            0x0
 #define M2_PROTOCOL_M2QP            0x0
@@ -134,7 +111,41 @@
 
 
 
-typedef struct {
+
+/** @typedef m2session
+  * @brief The "session" is a Mode 2 dialog sequence container.
+  *
+  * applet      (ot_app) Applet associated with a session.  The Applet is run
+  *             from the kernel immediately before the session is activated, so
+  *             it is the customary place where the user constructs a request.
+  *             The user MUST set to NULL when done with the applet.
+  * 
+  * counter     (ot_uint) A number of ticks (ti) indicating session schedule.
+  *             When counter == 0, the kernel should activate the session.
+  *             The kernel can use session_refresh() (or other session module 
+  *             functions) to manage the counter.
+  *
+  * channel     (ot_u8) The Channel ID that the session is using for requests.
+  *
+  * dialog_id   (ot_u8) Each session has a one-byte Dialog ID used for basic
+  *             matching of request & response in a dialog sequence.  It should
+  *             be assigned different values from one session to the next.  The
+  *             Session Module uses an incrementer to do this.
+  *
+  * protocol    (ot_u8) Deprecated, but kept for alignment purposes.
+  *
+  * netstate    (ot_u8) Control code for Mode 2 network behavior.  Applets can
+  *             usually ignore this, except for setting SCRAP to kill a session.
+  *
+  * subnet      (ot_u8) For network-generated sessions, this gets set in the
+  *             Network Module.  For system & user-generated sessions, this 
+  *             takes the value of the Device Subnet (normal request) or Beacon
+  *             Subnet (beacon request) field from Network Settings ISF 0.
+  *
+  * flags       (ot_u8) Certain Mode 2 protocol flags that get propagated.
+  */
+typedef struct m2session {
+	void    (*applet)(struct m2session*);
     ot_u16  counter;
     ot_u8   channel;
     ot_u8   dialog_id;
@@ -145,10 +156,26 @@ typedef struct {
 } m2session;
 
 
+
+/** @typedef ot_app
+  * @brief Applet callback that is associated with Mode 2 session
+  *
+  * When using the native kernel, the applet function is used directly as an
+  * application callback.  If using other RTOS types, it could be a function
+  * wrapper for a threading system, or something else.
+  *
+  * @note The user function may need to manipulate the session variables of the
+  * input in order to control kernel processes.
+  */
+typedef void (*ot_app)(m2session*);
+
+
+
+
 typedef struct {
-    m2session   heap[OT_FEATURE(SESSION_DEPTH)];
     ot_s8       top;
     ot_u8       seq_number;
+    m2session   heap[OT_FEATURE(SESSION_DEPTH)];
 } session_struct;
 
 extern session_struct session;

@@ -136,12 +136,33 @@ ot_u8 mpipe_footerbytes();
 ot_int mpipe_init(void* port_id);
 
 
+
 /** @brief  Kills the Mpipe: not always implemented
   * @param  None 
   * @retval None
   * @ingroup Mpipe
   */
 void mpipe_kill();
+
+
+
+/** @brief  Blocks MPipe from operating
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  * @sa mpipe_unblock()
+  */
+void mpipe_block();
+
+
+
+/** @brief  Un-blocks MPipe, allowing operation again
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  * @sa mpipe_block()
+  */
+void mpipe_unblock();
 
 
 

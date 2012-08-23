@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /OTradio/CC1101/CC1101_interface.h
+  * @file       /otradio/cc1101/CC1101_interface.h
   * @author     JP Norair
   * @version    V1.0
   * @date       5 April 2012
@@ -341,11 +341,11 @@ void cc1101_set_txpwr(ot_u8 pwr_code);
 #define RFINT(VAL)          RFI_##VAL
 
 #define RFI_SOURCE0         (1 << RADIO_IRQ0_SRCLINE)
-#define RFI_SOURCE1         (1 << RADIO_IRQ1_SRCLINE)
+#define RFI_SOURCE1         0 //(1 << RADIO_IRQ1_SRCLINE)
 
 #ifdef RADIO_IRQ2_PIN
 #   define RFI_SOURCE2         (1 << RADIO_IRQ2_SRCLINE)
-#	define RFI_ALL             (RFI_SOURCE0 | /* RFI_SOURCE1 | */ RFI_SOURCE2)
+#	define RFI_ALL             (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2)
 #	define RFI_SYNC            RFI_SOURCE0
 #	define RFI_RXIDLE          RFI_SOURCE2
 #	define RFI_RXEND           RFI_SOURCE0

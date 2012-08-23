@@ -138,23 +138,25 @@ void rfevt_btx(ot_int flcode, ot_int scratch);
   * ============================================================================
   * Just used to make the code nice-looking or for code-reuse
   */
-  
 typedef enum {
     TASK_idle       = 0,
     TASK_processing,
     TASK_radio,
     TASK_session,
-    TASK_hold,
+#   if (OT_FEATURE(EXTERNAL_EVENT))
+        TASK_external,
+#   endif
+#   if (1)      //Hold always available
+        TASK_hold,
+#   endif
 #   if (M2_FEATURE(ENDPOINT) == ENABLED)
         TASK_sleep,
 #   endif
 #   if (M2_FEATURE(BEACONS) == ENABLED)
         TASK_beacon,
 #   endif
-#   if (OT_FEATURE(EXTERNAL_EVENT) == ENABLED)
-        TASK_external,
-#   endif
     TASK_terminus
+    
 } Task_Index;
   
 Task_Index sub_clock_tasks(ot_uint elapsed);
@@ -163,7 +165,6 @@ void    sub_scan_channel(idletime_event* idlevt, ot_u8 SS_ISF);
 
 void    sub_sys_flush();
 ot_u8   sub_default_idle();
-void    sub_idlevt_ctrl(idletime_event* idlevt, ot_long* eta, ot_u8 sequence_id);
 //void    sub_worevt_ctrl(wakeon_event* worevt, ot_long* eta);
 
 
@@ -742,10 +743,56 @@ OT_INLINE ot_int sys_get_mutex() {
 
 
 
+#ifndef EXTF_sys_clock_tasks
+OT_INLINE Task_Index sub_clock_tasks(ot_uint elapsed) {
+#if (OT_FEATURE(EXTERNAL_EVENT))
+#   define BASE_IDLE_TASK	TASK_external
+#else
+#   define BASE_IDLE_TASK   TASK_hold
+#endif
 
-///@todo there is potential to optimize this function, or put it inside sub_clock_tasks()
+    ot_int i;
+    Task_Index output = TASK_idle;
+
+    // Clock Tca & RX timeout
+    dll.comm.tca        -= elapsed;
+    //dll.comm.tc         -= elapsed;
+
+    for (i=(IDLE_EVENTS-1); i>=0; i--) {
+        sys.evt.idle[i].nextevent -= (ot_long)elapsed;
+        if ((sys.evt.idle[i].event_no != 0) && (sys.evt.idle[i].nextevent <= 0))
+            output = (BASE_IDLE_TASK+i);
+    }
+
+    // Clock sessions (Priority 3)
+    if (session_refresh(elapsed))
+        output = TASK_session;
+
+    // Clock the Radio Event (Priority 2)
+    if (sys.evt.RFA.event_no != 0) {
+        output                  = TASK_radio;
+        sys.evt.RFA.nextevent  -= elapsed;
+        dll.comm.rx_timeout    -= elapsed;
+    }
+
+    // Do Immediate Packet Processing (Priority 1)
+    if (sys.mutex & SYS_MUTEX_PROCESSING)
+        output = TASK_processing;
+
+    return output;
+}
+#endif
+
+
+
+
+
 OT_INLINE void sub_next_event(ot_long* event_eta) {
+///@todo there is potential to optimize this function, or put it inside sub_clock_tasks()
     static const ot_u8 isf_lut[] = {
+#		if (OT_FEATURE(EXTERNAL_EVENT))
+    		0xFF,
+#		endif
         ISF_ID(hold_scan_sequence),
 #       if (M2_FEATURE(ENDPOINT) == ENABLED)
             ISF_ID(sleep_scan_sequence),
@@ -753,15 +800,58 @@ OT_INLINE void sub_next_event(ot_long* event_eta) {
 #       if (M2_FEATURE(BEACONS) == ENABLED)
             ISF_ID(beacon_transmit_sequence),
 #       endif
-        0xFF
     };
     
     ot_int i;
     *event_eta = 65535;
+    
+    // If there's a session in the stack, set eta to next session.
+    // If Session is in CONNECTED state, block idle-time tasks
+    if (session_count() >= 0) {
+        m2session* session;
+        session     = session_top();
+        *event_eta  = session->counter;
+        
+        if (session->netstate & M2_NETSTATE_CONNECTED) {
+            return;
+        }
+    }
 
+    // Set eta to next scheduled idle-time task
     for (i=(IDLE_EVENTS-1); i>=0; i--) {
         if (sys.evt.idle[i].event_no != 0) {
-            sub_idlevt_ctrl(&sys.evt.idle[i], event_eta, isf_lut[i]);
+#			if (M2_FEATURE(RTC_SCHEDULER) == ENABLED)
+            	if (idlevt->sched_id != 0) {
+					vlFILE*     fp;
+					ot_int      offset;
+					ot_u16      ssmask;
+					ot_u16      ssvalue;
+
+					fp = ISF_open_su( ISF_ID(real_time_scheduler) );
+					///@todo assert fp
+
+					// This is an arithmetic trick to convert the sequence id to
+					// the proper offset (sleep, hold, beacon) of the RTC ISF
+					// sleep offset = 0, hold offset = 4, beacon offset = 8
+					offset  = (isf_lut[i]-4) << 2;
+
+					// Load Mask and Value (always stored as big endian)
+					ssmask  = ISF_read(fp, offset);
+					ssmask  = PLATFORM_ENDIAN16(ssmask);
+					ssvalue = ISF_read(fp, offset+=2);
+					ssvalue = PLATFORM_ENDIAN16(ssvalue);
+					vl_close(fp);
+
+					// Apply new mask & value to the RTC and reset the synchronized task
+					platform_set_rtc_alarm(sys.evt.idle[i].sched_id, ssmask, ssvalue);
+					sys.evt.idle[i].cursor      = 0;
+					sys.evt.idle[i].nextevent   = 0;
+            	}
+#			endif
+
+            if (sys.evt.idle[i].nextevent < *event_eta) {
+            	*event_eta = sys.evt.idle[i].nextevent;
+            }
         }
     }
 }
@@ -791,22 +881,11 @@ ot_uint sys_event_manager(ot_uint elapsed) {
         ///    (it is at most 50 instructions, I would guess)
         switch (sub_clock_tasks(elapsed)) {
         
-            // Completely Idle Time:
-            // Run an external process that can manipulate the kernel.  If the external
-            // process (loadapp) does not exist or it does not do anything, then EXIT
-            // the kernel and return estimated-time-of-arrival (eta) of next known event.
-            case TASK_idle: {
+            // Completely Idle Time: (TASK=0, or an unknown value)
+            // If there is no task that needs to be executed now, return from
+            // the kernel with number of ticks until the next task event.
+            default: {
                 ot_long event_eta;
-                
-                if (session_count() >= 0) {
-                    m2session* session;
-                    session = session_top();
-                    if (session->netstate & M2_NETSTATE_CONNECTED) {
-                        return session->counter;
-                    }
-                    event_eta = session->counter;
-                }
-               
 #               if ((OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED) && \
                     !defined(EXTF_sys_sig_loadapp) )
                     // The "loadapp" callback should return "True" (non-zero) when 
@@ -821,10 +900,11 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                 if (event_eta <= 0) {
                     break;
                 }
+                
                 return (ot_uint)event_eta;
-            } 
+            }
         
-            
+        
             // Packet Processing Task: 
             // NOT assumed to finish instantly: in order to maintain good timeslot
             // precision, the RF slop and packet processing need to be clocked, too.
@@ -864,7 +944,8 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                                 (dll.comm.tc), 
                                 (M2_NETSTATE_REQRX | M2_NETSTATE_ASSOCIATED),
                                 (dll.comm.rx_chanlist[0])   );
-                    
+                        
+                        s_clone->applet         = session->applet;
                         s_clone->dialog_id      = session->dialog_id;
                         s_clone->subnet         = session->subnet;
                         s_clone->channel        = session->channel;
@@ -872,9 +953,9 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                         dll.comm.rx_chanlist    = &dll.comm.scratch[1];
                         dll.comm.rx_chanlist[0] = session->channel;   
                         dll.comm.rx_timeout     = 10;
-                        
-                        // Tc is reduced
                         dll.comm.tc            -= rm2_pkt_duration(txq.length);
+                        // Note that .tc is reduced so there is no possible
+                        // overlap between transmitting and listening
                     }
                     
                 }
@@ -905,28 +986,49 @@ ot_uint sys_event_manager(ot_uint elapsed) {
             } 
             
         
-            // Session Creation Task (not actually sub-threads)
+            // Session Creation Task:
+            // 1. Drop expired sessions (but top session is kept)
+            // 2. Associated Applet can construct packet, or control parameters
+            // 3. Session is terminated if "SCRAP" bit is 1
+            // 4. Session is processed otherwise
             case TASK_session: {
-                static const ot_sub call_table[4] = {
-                        &sysevt_initftx,
-                        &sysevt_fscan,
-                        &sysevt_initbtx,
-                        &sysevt_bscan
-                    };
-                ot_u8 call_code;
-
+                m2session* session;
+                static const ot_sub call_table[4] = {   &sysevt_initftx,
+                                                        &sysevt_fscan,
+                                                        &sysevt_initbtx,
+                                                        &sysevt_bscan   };
                 session_drop();
                 dll.idle_state  = sub_default_idle();
-                call_code       = (session_netstate() >> 5);
-                if (call_code & 4) {    //scrap session
+                session         = session_top();
+                
+                if (session->applet != NULL) {
+                    session->applet(session);
+                }
+                if (session->netstate & M2_NETFLAG_SCRAP) {
                     session_pop();
                     sys_idle();
                 }
                 else {
-                    call_table[call_code]();
+                    call_table[(session->netstate & 0x60) >> 5]();
                 }
             } break;
         
+            
+            /// IDLE TASKS: 
+            /// @note In applications with high-precision time-slotting, you
+            /// can de-activate the External Task selectively.
+            
+            // External Event Manager: Highest Priority IDLE task
+#           if (OT_FEATURE(EXTERNAL_EVENT) == ENABLED)
+            case TASK_external:
+#           ifdef EXTF_sys_sig_extprocess
+                sys_sig_extprocess(NULL);
+#           else
+                sys.evt.EXT.prestart(NULL);
+#           endif
+                break;
+#           endif
+                
         
             // Hold Scan Management (version for endpoint-enabled devices is special)
 #           if ((SYS_RECEIVE == ENABLED) && (M2_FEATURE(ENDPOINT) == ENABLED))
@@ -963,24 +1065,6 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                 sysevt_beacon();
                 break;
 #           endif
-
-
-            // External Event Manager
-#           if (OT_FEATURE(EXTERNAL_EVENT) == ENABLED)
-            case TASK_external:
-#           ifdef EXTF_sys_sig_extprocess
-                sys_sig_extprocess(NULL);
-#           else
-                sys.evt.EXT.prestart(NULL);
-#           endif
-                break;
-#           endif
-
-
-            // Task error
-            default: {
-                sys_panic(64); ///@todo Pick an appropriate error code
-            } break;
         }
         
         /// Clear [optional] watchdog when Radio Tasks are inactive
@@ -993,41 +1077,6 @@ ot_uint sys_event_manager(ot_uint elapsed) {
 #endif
 
 
-
-
-#ifndef EXTF_sys_clock_tasks
-OT_INLINE Task_Index sub_clock_tasks(ot_uint elapsed) {
-    ot_int i;
-    Task_Index output = TASK_idle;
-
-    // Clock Tca & RX timeout
-    dll.comm.tca        -= elapsed;
-    //dll.comm.tc         -= elapsed;
-
-    for (i=(IDLE_EVENTS-1); i>=0; i--) {
-        sys.evt.idle[i].nextevent -= (ot_long)elapsed;
-        if ((sys.evt.idle[i].event_no != 0) && (sys.evt.idle[i].nextevent <= 0))
-            output = (TASK_hold+i);
-    }
-
-    // Clock sessions (Priority 3)
-    if (session_refresh(elapsed))
-        output = TASK_session;
-
-    // Clock the Radio Event (Priority 2)
-    if (sys.evt.RFA.event_no != 0) {
-        output                  = TASK_radio;
-        sys.evt.RFA.nextevent  -= elapsed;
-        dll.comm.rx_timeout    -= elapsed;
-    }
-
-    // Do Immediate Packet Processing (Priority 1)
-    if (sys.mutex & SYS_MUTEX_PROCESSING)
-        output = TASK_processing;
-
-    return output;
-}
-#endif
 
 
 
@@ -1096,7 +1145,7 @@ void sub_scan_channel(idletime_event* idlevt, ot_u8 SS_ISF) {
             idlevt->nextevent   = TI2CLK( vl_read(fp, idlevt->cursor+=2 ) );
 #       else
             scratch.ushort      = vl_read(fp, (idlevt->cursor)+=2 );
-            scratch.ushort      = (scratch.ushort << 8) | (scratch.ushort >> 8);
+            scratch.ushort      = PLATFORM_ENDIAN16(scratch.ushort);
                                 ///@todo implement inline swap function in platform
             idlevt->nextevent   = TI2CLK(scratch.ushort);
 #       endif
@@ -1183,7 +1232,7 @@ void sysevt_beacon() {
         sys.evt.BTS.nextevent   = TI2CLK( vl_read(fp, sys.evt.BTS.cursor+=2) );
 #   else
         scratch.ushort          = vl_read(fp, sys.evt.BTS.cursor+=2);
-        scratch.ushort          = (scratch.ushort << 8) | (scratch.ushort >> 8);
+        scratch.ushort          = PLATFORM_ENDIAN16(scratch.ushort);
         sys.evt.BTS.nextevent   = TI2CLK(scratch.ushort);
 #   endif
         
@@ -1714,41 +1763,6 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
 //}
 
 
-
-void sub_idlevt_ctrl(idletime_event* idlevt, ot_long* eta, ot_u8 sequence_id) {  
-#if (M2_FEATURE(RTC_SCHEDULER) == ENABLED)
-    if (idlevt->sched_id != 0) {
-        vlFILE*     fp;
-        ot_int      offset;
-        ot_u16      ssmask;
-        ot_u16      ssvalue;
-        
-        fp = ISF_open_su( ISF_ID(real_time_scheduler) );
-        ///@todo assert fp
-        
-        // This is an arithmetic trick to convert the sequence id to
-        // the proper offset (sleep, hold, beacon) of the RTC ISF
-        // sleep offset = 0, hold offset = 4, beacon offset = 8
-        offset  = (sequence_id-4) << 2;
-        
-        // Load Mask and Value (always stored as big endian)
-        ssmask  = ISF_read(fp, offset);
-        ssmask  = PLATFORM_ENDIAN16(ssmask);
-        ssvalue = ISF_read(fp, offset+=2);
-        ssvalue = PLATFORM_ENDIAN16(ssvalue);
-        vl_close(fp);
-        
-        // Apply new mask & value to the RTC and reset the synchronized task
-        platform_set_rtc_alarm(idlevt->sched_id, ssmask, ssvalue);
-        idlevt->cursor      = 0;
-        idlevt->nextevent   = 0;
-    }
-#endif
-        
-    if (idlevt->nextevent < *eta) {
-        *eta = idlevt->nextevent;
-    }
-}
 
 
 

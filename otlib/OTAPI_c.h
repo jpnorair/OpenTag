@@ -521,7 +521,7 @@ ot_u16 otapi_put_propds(ot_u8* status, Queue* dsq);
 
 
 
-/** @brief  Writes shell data to the request queue.
+/** @brief  Writes udp data to the request queue.
   * @param  status      (ot_u8*) returns a status code (0 = error)
   * @param  shell       (shell_tmpl*) Shell template
   * @retval ot_u16      post-op length of the TX queue
@@ -532,7 +532,7 @@ ot_u16 otapi_put_propds(ot_u8* status, Queue* dsq);
   * This function is implemented in a way that matches a portion of the DASH7
   * Mode 2 spec. To understand the data I/O completely, refer to the spec.
   */
-ot_u16 otapi_put_shell_tmpl(ot_u8* status, shell_tmpl* shell);
+ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp);
 
 #endif
 

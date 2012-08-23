@@ -33,6 +33,10 @@
 #ifndef __QUEUE_H
 #define __QUEUE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "OT_types.h"
 //#include "buffers.h"
 
@@ -197,6 +201,10 @@ void q_writestring(ot_queue* q, ot_u8* string, ot_int length);
 void q_readstring(ot_queue* q, ot_u8* string, ot_int length);
 
 
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

@@ -739,6 +739,8 @@ void platform_init_rtc(ot_u32 value) {
 
 void platform_init_memcpy() {
 #if (MCU_FEATURE(MEMCPYDMA) == ENABLED)
+    BOARD_DMA_COMMON_INIT();
+
 #   if (MEMCPY_DMANUM == 0)
         DMA->CTL0  |= DMA_Trigger_DMAREQ;
 #   elif (MEMCPY_DMANUM == 1)
@@ -1001,14 +1003,11 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 #elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
 /// DMA driven method: CC430 DMA Block Transfer is blocking, and the CPU is
 /// stopped during the data movement.  Thus the while loop is not needed.
-/// DMA memcpy cannot be used reliably if OpenTag makes use of the DMA for some
-/// other non-blocking process (e.g. MPipe).
+/// If using DMA for memcpy in addition to MPipe, the throughput of MPipe is
+/// limited to (in practice) about 39000 BYTES/SEC (so, 390kbaud for UART)
     MEMCPY_DMA->SA_L    = (ot_u16)src;
     MEMCPY_DMA->DA_L    = (ot_u16)dest;
     MEMCPY_DMA->SZ      = length;
-    //DMA->CTL4           = ( DMA_Options_RMWDisable | \
-                            DMA_Options_RoundRobinDisable | \
-                            DMA_Options_ENMIDisable      );
     MEMCPY_DMA->CTL     = ( DMA_Mode_Block | \
                             DMA_DestinationInc_Enable | \
                             DMA_SourceInc_Enable | \
@@ -1016,7 +1015,6 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
                             DMA_SourceDataSize_Byte | \
                             DMA_TriggerLevel_RisingEdge | \
                             0x11);
-    //MEMCPY_DMA->CTL    |= 0x0001;
 
     //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
 
