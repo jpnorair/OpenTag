@@ -115,32 +115,35 @@ void otapi_led2_off() {
 /** Platform Data <BR>
   * ============================================================================
   */
-platform_struct platform;
+#define RTC_ALARMS          (1 * OT_FEATURE(RTC))       // Max=3
+#define RTC_OVERSAMPLE      0                           // unsupported on CC430
 
-#if (OT_FEATURE(RTC) == ENABLED)
-#   define RTC_ALARMS       0 //(ALARM_beacon + __todo_IS_STM32L__)
-#   define RTC_OVERSAMPLE   0
-    // RTC_OVERSAMPLE: min 0, max 16
+typedef struct {
+    ot_u8   disabled;
+    ot_u8   taskid;
+    ot_u16  mask;
+    ot_u16  value;
+} rtcalarm;
 
-    typedef struct {
-        ot_bool active;
-        ot_u16  mask;
-        ot_u16  value;
-    } rtcalarm;
-
-    typedef struct {
-#       if (RTC_OVERSAMPLE != 0)
-            ot_u32      utc;
-#       endif
-#       if (RTC_ALARMS > 0)
-            rtcalarm    alarm[RTC_ALARMS]
-#       endif
-    } otrtc_struct;
-
-#   if ((RTC_OVERSAMPLE != 0) || (RTC_ALARMS > 0))
-        otrtc_struct otrtc;
+typedef struct {
+    ot_u16 prand_reg;
+    
+#   if (RTC_OVERSAMPLE)
 #   endif
-#endif
+#   if (RTC_ALARMS > 0)
+        rtcalarm alarm[RTC_ALARMS]
+#   endif
+
+} platform_ext_struct;
+
+
+platform_struct     platform;       //defined in OT_platform.h
+platform_ext_struct platform_ext;
+
+
+
+
+
 
 
 
@@ -332,26 +335,12 @@ OT_INTERRUPT void platform_gptim_isr() {
 // 6. RTC Interrupt
 #if (OT_FEATURE(RTC) == ENABLED)
 
-#if (RTC_ALARMS > 0)
-void sub_juggle_rtc_alarm() {
-    ot_u8  i;
-    ot_u32 comp;
-    ot_u32 next     = ~0;
-    ot_u32 rtcval   = RTC_GetCounter();
-
-    for (i=0; i<RTC_ALARMS; i++) {
-        if (otrtc.alarm[i].active) {
-            comp    = rtcval & ((ot_u32)otrtc.alarm[i].mask << RTC_OVERSAMPLE);
-            comp   += (ot_u32)otrtc.alarm[i].value << RTC_OVERSAMPLE;
-            next    = (comp < next) ? comp : next;
-        }
-    }
-
-    RTC_SetAlarm(rtcval+next);
-}
+#if (RTC_OVERSAMPLE != 0)
+#   error "RTC Oversampling is not supported on CC430"   
 #endif
 
 
+#if (RTC_ALARMS > 0)
 #if (ISR_EMBED(RTC) == ENABLED)
 #	if (CC_SUPPORT == CL430)
 #		pragma vector=RTC_VECTOR
@@ -361,23 +350,28 @@ void sub_juggle_rtc_alarm() {
 		//unknown at this time
 #	endif
 OT_INTERRUPT void platform_rtc_isr() {
-/// Currently Psuedocode.  RTC is normally used with ALARM interrupt.  If it
-/// is oversampling, then it will also interrupt on each second, so the user
-/// can increment the UTC.
-#   if (RTC_OVERSAMPLE != 0)
-        if (__rtc_interrupt_is_second__) {
-            otrtc.utc++;
-            //add clear flag
+/// The only supported interrupt for CC430 is the 1 second interval interrupt.
+/// CC430 (and MSP430) do not have an RTC that is well-suited to some of the 
+/// more advanced RTC-based MAC features of OpenTag/DASH7, so I keep the RTC
+/// implementation as simple as possible.
+    ot_int  i;
+    ot_u16  lowtime = (ot_u16)RTC_GetCounter();
+    
+    for (i=RTC_ALAR
+    MS; i!=0; i--) {
+        if ( 0 == ( (ot_u16)otrtc.alarm[i].disabled \
+                  + lowtime & otrtc.alarm[i].mask \
+                  - otrtc.alarm[i].value & otrtc.alarm[i].mask ) ) {
+            
+            sys_synchronize(otrtc.alarm[i].taskid);
+            
+            //sys.evt.idle[].nextevent   = 0;
+            //sys.evt.idle[otrtc.alarm[i].taskid].event_no    = 1;
         }
-#   endif
-#   if (RTC_ALARMS > 0)
-        if (__rtc_interrupt_is_alarm__) {
-            sub_juggle_rtc_alarm();
-            //add clear flag
-        }
-#    endif
+    }
 }
-#endif
+#endif  // ISR declaration stuff
+#endif  // RTC_ALARM > 0
 
 
 #endif // End of RTC stuff
@@ -501,20 +495,36 @@ void platform_poweroff() {
 
 
 void platform_init_OT() {
-	buffers_init(); //buffers init must be first in order to do core dumps
-	vl_init();      //Veelite init must be second
-	radio_init();   //radio init third
-	sys_init();     //system init last
+    /// 1. Initialize Data sources required by basically all OT features
+    ///    - Buffers module allocates the data queues, used by all I/O
+    ///    - Veelite module allocates and prepares the filesystem
+	buffers_init();
+	vl_init();
+
+    /// 2. Initialize the RTC, if available.  RTC can be initialized outside of
+    ///    OTlib scope (e.g. in platform_poweron()), but doing it here allows
+    ///    filesystem to store a default value.  You can choose to implement
+    ///    that if you wish.  The default time is hard-coded in UTC to:
+    ///    15:00, 20 July 1981, GMT.
+#   if (OT_FEATURE(RTC))
+        platform_init_rtc(364489200);
+#   endif
 	
-#   if (defined(__DEBUG__) || defined(DEBUG_ON))
-    /// If debugging, find the Chip ID and use 6 out of 8 bytes of it to yield
-    /// the UID.  This ID might not be entirely unique -- technically, there is
-    /// 1/65536 chance of non-uniqueness, but practically the chance is much
-    /// lower, given the way chips are distributed.  For test/debug, this is 
-    /// adequately unique.
+	/// 3. Finally, the Radio and System Modules should be initialized.  Radio
+	///    should be initialized before System.
+	radio_init();
+	sys_init();
+	
+
+	/// 4. If debugging, find the Chip ID and use 6 out of 8 bytes of it to
+    ///    yield the UID.  This ID might not be entirely unique -- technically, 
+    ///    there is 1/65536 chance of non-uniqueness, but practically the 
+    ///    chance is much lower, given the way chips are distributed.  For 
+    ///    test/debug, this is adequately unique.
     ///
     /// @note the ID is inserted via Veelite, so it is abstracted from the 
     /// file memory configuration of your board and/or app. 
+#   if (defined(__DEBUG__) || defined(DEBUG_ON))
     {
 		vlFILE* fpid;
 		ot_u16* hwid;
@@ -537,9 +547,11 @@ void platform_init_OT() {
 }
 
 
+
 void platform_fastinit_OT() {
     platform_init_OT();
 }
+
 
 
 void platform_init_busclk() {
@@ -598,7 +610,7 @@ void platform_init_busclk() {
 
 
 void platform_init_periphclk() {
-/// MSP430 Clocks are system wide.  No AHB/APB action like on ARMs
+/// MSP430 Clocks are system wide.  No AHB/APB setup like on ARMs
 }
 
 
@@ -608,6 +620,7 @@ void platform_init_interruptor() {
 /// enable.  Peripheral interrupts are managed independently by the peripherals.
     platform_enable_interrupts();
 }
+
 
 
 void platform_init_gpio() {
@@ -621,42 +634,25 @@ void platform_init_gpio() {
 #if (defined(OT_TRIG1_PORT) && defined(OT_TRIG2_PORT) && (OT_TRIG1_PORTNUM == OT_TRIG2_PORTNUM))
   //OT_TRIG1_PORT->SEL     &= ~(OT_TRIG1_PIN | OT_TRIG2_PIN);
 	OT_TRIG1_PORT->DOUT    &= ~(OT_TRIG1_PIN | OT_TRIG2_PIN);
-    OT_TRIG1_PORT->REN     &= ~(OT_TRIG1_PIN | OT_TRIG2_PIN);
     OT_TRIG1_PORT->DDIR    |= (OT_TRIG1_PIN | OT_TRIG2_PIN);
     OT_TRIG1_PORT->DS      |= ((OT_TRIG1_PIN*(OT_TRIG1_HIDRIVE == ENABLED)) | \
                                (OT_TRIG2_PIN*(OT_TRIG2_HIDRIVE == ENABLED)) );
 #else
 #   ifdef OT_TRIG1_PORT
-        OT_TRIG1_PORT->DOUT    &= ~(OT_TRIG1_PIN);
-        OT_TRIG1_PORT->REN     &= ~(OT_TRIG1_PIN);
+        OT_TRIG1_PORT->DOUT    &= ~OT_TRIG1_PIN;
         OT_TRIG1_PORT->DDIR    |= OT_TRIG1_PIN;
         OT_TRIG1_PORT->DS      |= (OT_TRIG1_PIN*(OT_TRIG1_HIDRIVE == ENABLED));
 #   endif
 #   ifdef OT_TRIG2_PORT
-        OT_TRIG2_PORT->DOUT    &= ~(OT_TRIG2_PIN);
-        OT_TRIG2_PORT->REN     &= ~(OT_TRIG2_PIN);
+        OT_TRIG2_PORT->DOUT    &= ~OT_TRIG2_PIN;
         OT_TRIG2_PORT->DDIR    |= OT_TRIG2_PIN;
         OT_TRIG2_PORT->DS      |= (OT_TRIG2_PIN*(OT_TRIG2_HIDRIVE == ENABLED));
 #   endif
 #endif
 
-#if (defined(OT_GWNZENER_PORT) && defined(OT_GWNADC_PORT) && (OT_GWNZENER_PORTNUM == OT_GWNADC_PORTNUM))
-    OT_GWNADC_PORT->DOUT   &= ~(OT_GWNZENER_PIN);
-    OT_GWNADC_PORT->REN    &= ~(OT_GWNZENER_PIN | OT_GWNADC_PIN);
-    OT_GWNADC_PORT->DDIR   &= ~(OT_GWNADC_PIN);
-    OT_GWNADC_PORT->DDIR   |= OT_GWNZENER_PIN;
-    OT_GWNADC_PORT->DS     |= (OT_GWNZENER_PIN*(OT_GWNZENER_PIN == ENABLED));
-#else
-#   ifdef OT_GWNADC_PORT
-        OT_GWNADC_PORT->REN    &= ~(OT_GWNADC_PIN);
-        OT_GWNADC_PORT->DDIR   &= ~(OT_GWNADC_PIN);
-#   endif
-#   ifdef OT_GWNZENER_PORT
-        OT_GWNZENER_PORT->DOUT &= ~(OT_GWNZENER_PIN);
-        OT_GWNZENER_PORT->REN  &= ~(OT_GWNZENER_PIN);
-        OT_GWNZENER_PORT->DDIR |= OT_GWNZENER_PIN;
-        OT_GWNZENER_PORT->DS   |= (OT_GWNZENER_PIN*(OT_GWNZENER_PIN == ENABLED));
-#   endif
+#ifdef OT_GWNZENER_PORT
+    //OT_GWNZENER_PORT->DOUT &= ~OT_GWNZENER_PIN;
+    OT_GWNZENER_PORT->DDIR |= OT_GWNZENER_PIN;
 #endif
 
 }
@@ -680,9 +676,16 @@ void platform_init_gptim(ot_uint prescaler) {
 }
 
 
+
 void platform_init_watchdog() {
+/// Watchdog is generally unused in OpenTag, which has a kernel to administer
+/// timeouts to I/O task processes.  The Watchdog is free to the user in stable
+/// builds, but in Betas, it might be used by some drivers.
+
+/// @todo Implement a more usable watchdog.  Right now it is not tested.
     platform_reset_watchdog(64);
 }
+
 
 
 void platform_init_resetswitch() {
@@ -717,18 +720,32 @@ void platform_init_systick(ot_uint period) {
 
 
 void platform_init_rtc(ot_u32 value) {
-///@todo Untested, experimental only so far
-#if (OT_FEATURE(RTC) == ENABLED)
+#if (OT_FEATURE(RTC) || defined(OT_GPTIM_USERTC))
 
-    // Set Prescalers for 1 second RTC increments, but no interrupts.
-    // (assuming 32768 Hz ACLK source)
+#   if (BOARD_PARAM_LFHz != 32768)
+#       error "Currently, the RTC must use 32768Hz"
+#   endif
+
+#   ifdef OT_GPTIM_USERTC
+#       error "The MSP430 cannot elegantly support RTC as GPTIM, however, GPTIM can use same ACLK"
+#   endif
+
+    /// Set Prescalers for 1 second RTC increments (assuming 32768 Hz), but 
+    /// do not activate RTC interrupts (the RTC interrupt is used by the RTC
+    /// task scheduler).  When a Task is bound to the scheduler using function
+    /// platform_set_rtc_alarm(), the interrupt is activated.  RTC interrupt is
+    /// deactivated via platform_clear_rtc_alarms(), called to unbind Tasks.
+#   if (RTC_ALARMS > 0)
+#       define _1S_INC  (RT1PSDIV_6 | RT1IP_6)
+#   else
+#       define _1S_INC  (RT1PSDIV_6)
+#   endif
     RTC->PS0CTL = RT0PSDIV_7;
-    RTC->PS1CTL = RT1SSEL_2 + RT1PSDIV_6 + /* RT1PSIE + */ RT1IP_6;
+    RTC->PS1CTL = RT1SSEL_2 | _1S_INC;
     RTC->CTL01  = 0x0800;		// clear RTC interrupts & flags, RT1PS prescaled clock select
     RTC->CTL23  = 0x0000;       // ignore calibration for now, no clock pin output
 
-
-    // Set RTC value from that stored in configuration
+    // Set RTC timer value from input.
     RTC->TIM0   = ((ot_u16*)value)[0];
     RTC->TIM1   = ((ot_u16*)value)[1];
 
@@ -783,6 +800,8 @@ void platform_flush_gptim() {
     OT_GPTIM->CTL  |= 0x0020;   //restart in continuous-up, without interrupt
 }
 
+
+
 void platform_run_watchdog() {
     ot_u16 saved_reg;
     saved_reg   = WDTA->CTL & 0x7F;
@@ -797,6 +816,8 @@ void platform_reset_watchdog(ot_u16 reset) {
     WDTA->CTL = WDTPW | b10111000 | (7-i);
 }
 
+
+
 void platform_enable_rtc() {
     RTC->PS1CTL |= RT1PSIE;
 }
@@ -805,36 +826,65 @@ void platform_disable_rtc() {
     RTC->PS1CTL &= ~RT1PSIE;
 }
 
+void platform_set_time(ot_u32 utc_time) {
+#if (RTC_OVERSAMPLE)
+#else
+    RTC->TIM0   = ((ot_u16*)utc_time)[0];
+    RTC->TIM1   = ((ot_u16*)utc_time)[1];
+#endif
+}
+
 ot_u32 platform_get_time() {
 #if (OT_FEATURE(RTC) == ENABLED)
-#   if (RTC_OVERSAMPLE == 0)
-        return ///@todo find time register, if it exists
+#   if (RTC_OVERSAMPLE)
+    return otrtc.utc;
+    
 #   else
-        return otrtc.utc;
+    ot_u32 output;
+    ((ot_u16*)output)[0]    = RTC->TIM0;
+    ((ot_u16*)output)[1]    = RTC->TIM1;
+    return output;
 #   endif
+
 #else
     return 0;
 #endif
 }
 
-void platform_set_time(ot_u32 utc_time) {
-#if (RTC_OVERSAMPLE != 0)
-    otrtc.utc   = utc_time;
-#else
-    ///@todo find time register, if it exists
+void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
+#if (OT_FEATURE(RTC) == ENABLED)
+#   ifdef __DEBUG__
+    if (alarm_id < RTC_ALARMS)
+#   endif
+    {
+        vlFILE* fp                      = ISF_open_su( ISF_ID(real_time_scheduler) );
+        otrtc.alarm[alarm_id].disabled  = 0;
+        otrtc.alarm[alarm_id].taskid    = task_id;
+        otrtc.alarm[alarm_id].mask      = PLATFORM_ENDIAN16(ISF_read(fp, offset));
+        otrtc.alarm[alarm_id].value     = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
+        vl_close();
+        
+        platform_enable_rtc();
+    }
 #endif
 }
 
-void platform_set_rtc_alarm(ot_u8 alarm_i, ot_u16 mask, ot_u16 value) {
+void platform_clear_rtc_alarms() {
 #if (OT_FEATURE(RTC) == ENABLED)
-    otrtc.alarm[alarm_i].mask     = mask;
-    otrtc.alarm[alarm_i].value    = value;
-#endif
-}
+    platform_disable_rtc();
 
-void platform_enable_rtc_alarm(ot_u8 alarm_id, ot_bool enable) {
-#if (OT_FEATURE(RTC) == ENABLED)
-    otrtc.alarm[alarm_i].active   = enable;
+#   if (RTC_ALARMS > 0)
+        otrtc.alarm[0].disabled = 1;
+#   endif
+#   if (RTC_ALARMS > 1)
+        otrtc.alarm[1].disabled = 1;
+#   endif
+#   if (RTC_ALARMS > 2)
+        otrtc.alarm[2].disabled = 1;
+#   endif
+#   if (RTC_ALARMS > 3)
+#       warn "Currently, only three RTC ALARMS supported"
+#   endif
 #endif
 }
 
@@ -918,55 +968,82 @@ ot_u16 platform_crc_result() {
   */
 
 void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
-/*
-/// The operation here is to pull 32 bits for the least-significant bit of
-/// 32 12 bit samples of the temperature sensor.  The CC430 ADC works fairly
-/// fast, so this function can be done in, ideally, less than 200 us.
-/// One thing you can do is buffer random numbers when the device is idle.
+/// The CC430 ADC works fairly fast, so this function can be done in, ideally, 
+/// less than 200 us.  One thing you can do is buffer random numbers when the
+/// device is idle.
     ot_uint adclsr;
     ot_uint *adcmemory;
     ot_u8   *adcmctl;
 
-#   ifdef OT_GWNZENER_PORT
-        OT_GWNZENER_PORT |= OT_GWNZENER_PIN;
-#   endif
-
-    ///1. Initialize ADC12_A
-    //    - default sampling time = minimum (better for random numbers anyway)
-    //    - use multi-sample-converter
-    ADC12CTL0 = ADC12ON + ADC12MSC;
-
-    // use temperature sensor input source
-    // use internal sampling timer
-    // use repeat-single-channel mode
-    // use other defaults (start at MEM0, MODOSC, no clock divide, etc)
-    ADC12CTL1 = ADC12SHP + ADC12CONSEQ_2;
-
-    // use 12 bit precision
-    // use other defaults, including temp sensor ON
-    ADC12CTL2 = ADC12RES_2;
-
-#   if (OT_GWNADC_BITS == 8)
-    //Special case for direct synthesis of random bytes.
-
+    /// 1. Turn-on ADC12_A
+    /// CTL0 - default sampling time = minimum (better for random numbers)
+    /// CTL1 - internal sample timer, drive by MCLK, repeat-single-channel mode
+    /// CTL2 - temp sensor off, use 12 bit precision
+    /// MEM0 - Set input to the board-defined source, or voltage monitor
+    ADC12CTL0   = ADC12ON;
+    ADC12CTL1   = ADC12SHP + ADC12SSEL_2 + ADC12CONSEQ_2;
+    ADC12CTL2   = ADC12TCOFF + ADC12RES_2;
+#   ifdef OT_GWNADC_PINNUM
+        ADC12MCTL0  = OT_GWNADC_PINNUM;
 #   else
-
+        ADC12MCTL0  = b1011;    // (AVcc - AVss) / 2
+#   endif
+    
+    /// 2. Open Floating pin, if enabled by board
+#   ifdef OT_GWNADC_PINNUM
+        OT_GWNADC_PORT->DDIR  &= ~OT_GWNADC_PIN;
+        OT_GWNADC_PORT->REN   &= ~OT_GWNADC_PIN;
 #   endif
 
-    ///3. Shut down ADC
+    /// 3. Turn-on Zener noisemaker, if enabled by board
+#   ifdef OT_GWNZENER_PORT
+        OT_GWNZENER_PORT->DOUT |= OT_GWNZENER_PIN;
+#   endif
+
+    /// 4. Do Conversion!  Loop until the required number of bytes are produced.
+    ///    The random bytes are produced by shifting-in the least-significant
+    ///    sections of each sample (exactly how many bits is board-defined).
+    while (--bytes_out >= 0) {
+        ot_u8 reg;
+        ADC12CTL0  |= (ADC12ENC | ADC12SC);  //start conversion
+            
+#       if (OT_GWNADC_BITS == 8)
+            //Special case for direct synthesis of random bytes.
+            while (ADC12CTL1 & ADC12BUSY);
+            reg = (ot_u8)__ADCREG__;
+
+#       else
+            ot_u8 shifts = ((8+(OT_GWNADC_BITS-1)) / OT_GWNADC_BITS);
+            
+            while (shifts != 0) {
+                shifts--;
+                while (ADC12CTL1 & ADC12BUSY);
+                reg   <<= OT_GWNADC_BITS;
+                reg    |= ((1<<OT_GWNADC_BITS)-1) & ADC12MEM0;
+            }
+#       endif
+        
+        *rand_out++ = reg;
+    }
+
+    ///5. Shut down ADC, turn-off Zener (if enabled), turn-off pin (if enabled)
     ADC12CTL0 = 0;
 
 #   ifdef OT_GWNZENER_PORT
-        OT_GWNZENER_PORT &= ~(OT_GWNZENER_PIN);
+        OT_GWNZENER_PORT->DOUT &= ~OT_GWNZENER_PIN;
 #   endif
-*/
+#   ifdef OT_GWNADC_PINNUM
+        OT_GWNADC_PORT->DDIR  |= OT_GWNADC_PIN;
+        OT_GWNADC_PORT->DOUT  &= ~OT_GWNADC_PIN;
+#   endif
+
 }
 
 
-ot_u16 prand_reg;
+
 
 void platform_init_prand(ot_u16 seed) {
-    prand_reg = seed;
+    platform_ext.prand_reg = seed;
 }
 
 ot_u8 platform_prand_u8() {
@@ -977,13 +1054,13 @@ ot_u16 platform_prand_u16() {
 /// Run the HW CRC on the prand register stored value.  Always save the value in
 /// the CRC HW and return it when the process is done.  prand_reg should be
 /// initialized at startup with the device ID or serial number (or something)
-    ot_u16 scratch  = CRC->INIRES;
-    CRC->INIRES     = prand_reg;
-    CRCb->DIRB_L    = UCSCTL0_L;        // contains rotating FLL modulation value
-    prand_reg       = CRC->INIRES;
-    CRC->INIRES     = scratch;
+    ot_u16 scratch          = CRC->INIRES;
+    CRC->INIRES             = platform_ext.prand_reg;
+    CRCb->DIRB_L            = UCSCTL0_L;        // contains rotating FLL modulation value
+    platform_ext.prand_reg  = CRC->INIRES;
+    CRC->INIRES             = scratch;
 
-    return prand_reg;
+    return platform_ext.prand_reg;
 }
 
 
@@ -1015,9 +1092,8 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
                             DMA_SourceDataSize_Byte | \
                             DMA_TriggerLevel_RisingEdge | \
                             0x11);
-
     //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
-
+    
 #else
 /// Uses the "Duff's Device" for loop unrolling.  If this is incredibly
 /// confusing to you, check the internet for "Duff's Device."
@@ -1055,9 +1131,6 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
     MEMCPY_DMA->SA_L    = (ot_u16)&value;
     MEMCPY_DMA->DA_L    = (ot_u16)dest;
     MEMCPY_DMA->SZ      = length;
-    //DMA->CTL4           = ( DMA_Options_RMWDisable | \
-                            DMA_Options_RoundRobinDisable | \
-                            DMA_Options_ENMIDisable      );
     MEMCPY_DMA->CTL     = ( DMA_Mode_Block | \
                             DMA_DestinationInc_Enable | \
                             DMA_SourceInc_Disable | \
@@ -1065,8 +1138,6 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
                             DMA_SourceDataSize_Byte | \
                             DMA_TriggerLevel_RisingEdge | \
                             0x11);
-    //MEMCPY_DMA->CTL    |= 0x0001;
-
     //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
 
 #else

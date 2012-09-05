@@ -377,6 +377,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 // to produce a pile of noise.  2.1V seems like a good value.
 #define OT_GWNADC_PORTNUM   BOARD_ADIO5_PORT
 #define OT_GWNADC_PIN       BOARD_ADIO5_PIN
+#define OT_GWNADC_PINNUM    5
 #define OT_GWNADC_BITS      1
 //#define OT_GWNZENER_PORT    BOARD_GPIO7_PORT
 //#define OT_GWNZENER_PIN     BOARD_GPIO7_PIN

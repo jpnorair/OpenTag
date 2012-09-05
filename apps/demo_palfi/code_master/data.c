@@ -147,19 +147,19 @@ const ot_u8 overhead_files[] = {
     SPLIT_SHORT_LE(ISF_BASE(real_time_scheduler)),
     SPLIT_SHORT_LE(ISF_MIRROR(real_time_scheduler)),
 
-    ISF_LEN(sleep_scan_sequence), 0x00,
-    SPLIT_SHORT_LE(ISF_ALLOC(sleep_scan_sequence)),
-    ISF_ID(sleep_scan_sequence),
-    ISF_MOD(sleep_scan_sequence),
-    SPLIT_SHORT_LE(ISF_BASE(sleep_scan_sequence)),
-    SPLIT_SHORT_LE(ISF_MIRROR(sleep_scan_sequence)),
-
     ISF_LEN(hold_scan_sequence), 0x00,
     SPLIT_SHORT_LE(ISF_ALLOC(hold_scan_sequence)),
     ISF_ID(hold_scan_sequence),
     ISF_MOD(hold_scan_sequence),
     SPLIT_SHORT_LE(ISF_BASE(hold_scan_sequence)),
     SPLIT_SHORT_LE(ISF_MIRROR(hold_scan_sequence)),
+    
+    ISF_LEN(sleep_scan_sequence), 0x00,
+    SPLIT_SHORT_LE(ISF_ALLOC(sleep_scan_sequence)),
+    ISF_ID(sleep_scan_sequence),
+    ISF_MOD(sleep_scan_sequence),
+    SPLIT_SHORT_LE(ISF_BASE(sleep_scan_sequence)),
+    SPLIT_SHORT_LE(ISF_MIRROR(sleep_scan_sequence)),
 
     ISF_LEN(beacon_transmit_sequence), 0x00,
     SPLIT_SHORT_LE(ISF_ALLOC(beacon_transmit_sequence)),
@@ -423,17 +423,14 @@ const ot_u8 isf_stock_files[] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* real time scheduler: id=0x03, len=12, alloc=12 */
-    0x00, 0x0F,                                         /* SSS Sync Mask */
-    0x00, 0x08,                                         /* SSS Sync Value */
-    0x00, 0x03,                                         /* HSS Sync Mask */
-    0x00, 0x02,                                         /* HSS Sync Value */
+    0x00, 0x0F,                                         /* HSS Sync Mask */
+    0x00, 0x08,                                         /* HSS Sync Value */
+    0x00, 0x03,                                         /* SSS Sync Mask */
+    0x00, 0x02,                                         /* SSS Sync Value */
     0x00, 0x03,                                         /* BTS Sync Mask */
     0x00, 0x02,                                         /* BTS Sync Value */
 
-    /* sleep scan periods: id=0x04, len=0, alloc=0 */
-    /* Period data format in Section X.9.4.5 of Mode 2 spec */
-
-    /* hold scan periods: id=0x05, len=8, alloc=32 */
+    /* hold scan periods: id=0x04, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
     0x07, 0x41, 0x02, 0x40,                             /* Channel X scan, Scan Code, Next Scan ms */
     0x2A, 0x41, 0x02, 0x40,
@@ -443,6 +440,9 @@ const ot_u8 isf_stock_files[] = {
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
+    
+    /* sleep scan periods: id=0x05, len=0, alloc=0 */
+    /* Period data format in Section X.9.4.5 of Mode 2 spec */
 
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240

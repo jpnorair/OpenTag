@@ -354,26 +354,31 @@ void platform_set_time();
 #endif
 
 /** @brief Sets an indexed RTC alarm.
-  * @param alarm_id     (ot_u8) Alarm index: ALARM_sleep, hold, beacon, event
-  * @param mask         (ot_u16) Alarm comparison mask (applied to lower 16 bits of RTC)
-  * @param value        (ot_u16) Alarm comparison value (applied to lower 16 bits of RTC)
+  * @param alarm_id     (ot_u8) Alarm index
+  * @param task_id      (ot_u8) kernel task handle bound to alarm
+  * @param offset       (ot_u16) offset into RTC Scheduler ISF where parameters exist
   * @retval None
   * @ingroup Platform
   *
-  * @note the ALARM_event is for special usage only.  It is available when]
-  * using the RTC as the kernel timer (GPTIM).
-  *
-  * @note The filesystem stores masks/values as big endian, but this function
-  * will operate in the platform's endian, so make sure to do endian conversion
-  * if you are passing in values stored in the Scheduler ISF.
-  *
-  * This function allows an RTC system to set up multiple, independent alarms.
-  * very optional!  The alarm goes off when the masked value of the RTC is
-  * equal to the masked compare value (i.e. "value").  Masking allows
-  * recurrent alarms, e.g. every 8 mins.
+  * This function is typically called from sys_refresh_scheduler().  You 
+  * probably shouldn't call it from anywhere else.  In your apps, it is better
+  * to use use sys_refresh_scheduler() instead.
   */
-void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u16 mask, ot_u16 value);
-void platform_enable_rtc_alarm(ot_u8 alarm_id, ot_bool enable);
+void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset);
+
+
+/** @brief Clears all RTC alarms
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  *
+  * This function is typically called from sys_refresh_scheduler().  You 
+  * probably shouldn't call it from anywhere else.  In your apps, it is better
+  * to use use sys_refresh_scheduler() instead.
+  */
+void platform_clear_rtc_alarms();
+
+
 
 
 

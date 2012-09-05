@@ -487,6 +487,9 @@ void sys_refresh() {
     dll.netconf.hold_limit  = vl_read(fp, 8);   ///@todo endian conversion
     vl_close(fp);
 
+    // Reset the Scheduler (only does anything if scheduler is implemented)
+    sys_refresh_scheduler();
+
     sub_sys_flush();
 }
 #endif
@@ -820,41 +823,13 @@ OT_INLINE void sub_next_event(ot_long* event_eta) {
     // Set eta to next scheduled idle-time task
     for (i=(IDLE_EVENTS-1); i>=0; i--) {
         if (sys.evt.idle[i].event_no != 0) {
-#			if (M2_FEATURE(RTC_SCHEDULER) == ENABLED)
-            	if (idlevt->sched_id != 0) {
-					vlFILE*     fp;
-					ot_int      offset;
-					ot_u16      ssmask;
-					ot_u16      ssvalue;
-
-					fp = ISF_open_su( ISF_ID(real_time_scheduler) );
-					///@todo assert fp
-
-					// This is an arithmetic trick to convert the sequence id to
-					// the proper offset (sleep, hold, beacon) of the RTC ISF
-					// sleep offset = 0, hold offset = 4, beacon offset = 8
-					offset  = (isf_lut[i]-4) << 2;
-
-					// Load Mask and Value (always stored as big endian)
-					ssmask  = ISF_read(fp, offset);
-					ssmask  = PLATFORM_ENDIAN16(ssmask);
-					ssvalue = ISF_read(fp, offset+=2);
-					ssvalue = PLATFORM_ENDIAN16(ssvalue);
-					vl_close(fp);
-
-					// Apply new mask & value to the RTC and reset the synchronized task
-					platform_set_rtc_alarm(sys.evt.idle[i].sched_id, ssmask, ssvalue);
-					sys.evt.idle[i].cursor      = 0;
-					sys.evt.idle[i].nextevent   = 0;
-            	}
-#			endif
-
             if (sys.evt.idle[i].nextevent < *event_eta) {
             	*event_eta = sys.evt.idle[i].nextevent;
             }
         }
     }
 }
+
 
 
 
@@ -1029,36 +1004,29 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                 break;
 #           endif
                 
-        
             // Hold Scan Management (version for endpoint-enabled devices is special)
-#           if ((SYS_RECEIVE == ENABLED) && (M2_FEATURE(ENDPOINT) == ENABLED))
             case TASK_hold: {
+#           if ((SYS_RECEIVE == ENABLED) && (M2_FEATURE(ENDPOINT) == ENABLED))
                 sys.evt.hold_cycle += (ot_uint)(sys.evt.HSS.cursor == 0);
-                if (((dll.netconf.active & M2_SET_CLASSMASK) == M2_SET_ENDPOINT) && \
-                    (sys.evt.hold_cycle == dll.netconf.hold_limit)) {
-                    sys_goto_sleep();
-                    sysevt_sleepscan();
-                }
-                else {
+                if (((dll.netconf.active & M2_SET_CLASSMASK) != M2_SET_ENDPOINT) || \
+                    (sys.evt.hold_cycle != dll.netconf.hold_limit)) {
                     sysevt_holdscan();
+                    break;
                 }
-            } break;
-        
-#           elif (SYS_RECEIVE == ENABLED)
-            case TASK_hold: 
+                sys_goto_sleep();
+#           else
                 sysevt_holdscan();
                 break;
 #           endif
-        
+            } 
         
             // Sleep Scan Management
 #           if (M2_FEATURE(ENDPOINT) == ENABLED)
-            case TASK_sleep: 
+            case TASK_sleep:
                 sysevt_sleepscan();
                 break;
 #           endif
 
-        
             // Beacon Transmit Managment
 #           if (M2_FEATURE(BEACONS) == ENABLED)
             case TASK_beacon: 
@@ -1075,6 +1043,44 @@ ot_uint sys_event_manager(ot_uint elapsed) {
     while (1);
 }
 #endif
+
+
+
+
+void sys_synchronize(ot_u16 task_id) {
+#ifdef __DEBUG__
+    if ((ot_int)task_id < IDLE_EVENTS)
+#endif
+    {
+        sys.evt.idle[task_id].event_no  = 1;
+        sys.evt.idle[task_id].cursor    = 0;
+        sys.evt.idle[task_id].nextevent = 0;
+        platform_ot_preempt();
+    }
+}
+
+
+void sys_refresh_scheduler() {
+#if (M2_FEATURE(RTC_SCHEDULER))
+    ot_u16  sched_ctrl;
+    ot_u16  offset;
+    ot_int  i, j;
+    
+    platform_clear_rtc_alarms();
+    
+    sched_ctrl = dll.netconf.active;
+    
+    for (i=HSS_INDEX, j=0, offset=0; i<(HSS_INDEX+3); i++, sched_ctrl<<=1, offset+=4) {
+        if (sched_ctrl & M2_SET_HOLDSCHED) {
+            platform_set_rtc_alarm(j++, i, offset);
+        }
+    }
+    
+#endif
+}
+
+
+
 
 
 

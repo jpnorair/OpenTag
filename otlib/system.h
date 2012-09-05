@@ -131,8 +131,8 @@
   */
 #ifdef __BIG_ENDIAN__
 #   define M2_SET_SCHEDMASK            0xE000
-#   define M2_SET_SLEEPSCHED           0x8000
-#   define M2_SET_HOLDSCHED            0x4000
+#   define M2_SET_HOLDSCHED            0x8000
+#   define M2_SET_SLEEPSCHED           0x4000
 #   define M2_SET_BEACONSCHED          0x2000
 #   define M2_SET_CLASSMASK            0x0F00
 #   define M2_SET_GATEWAY              0x0800
@@ -152,8 +152,8 @@
 #   define M2_SET_LEGACY               0x0001
 #else
 #   define M2_SET_SCHEDMASK            0x00E0
-#   define M2_SET_SLEEPSCHED           0x0080
-#   define M2_SET_HOLDSCHED            0x0040
+#   define M2_SET_HOLDSCHED            0x0080
+#   define M2_SET_SLEEPSCHED           0x0040
 #   define M2_SET_BEACONSCHED          0x0020
 #   define M2_SET_CLASSMASK            0x000F
 #   define M2_SET_GATEWAY              0x0008
@@ -503,11 +503,32 @@ ot_int sys_get_mutex();
   * @retval (ot_uint)   Number of ticks until you need to call it next
   * @ingroup System
   * 
-  * This is one of the functions that has to be in your client program.  It is
-  * wrapped inside otapi_run(), which can contain other logic, if desired.
+  * This is the kernel task manager callable.  It is called by the kernel timer
+  * interrupt.  It should not be called anywhere else by any other function.
   */  
 ot_uint sys_event_manager(ot_uint elapsed);
 
+
+
+/** @brief  Synchronize a Kernel Task to an event (typically an RTC alarm)
+  * @param  task_id     (ot_u16) Kernel Task ID (kernel dependent)
+  * @retval none
+  * @ingroup System
+  *
+  * This function is typically called from the Platform Module by an RTC alarm.
+  * Technically, it could be called by any other code, as well.  When called,
+  * it will prepare the task (represented by Task ID) for entry and then call
+  * platform_ot_preempt() so the task can run immediately afterwards.
+  */
+void sys_synchronize(ot_u16 task_id);
+
+
+/** @brief  Refresh the Scheduler Parameters from the Active Settings
+  * @param  None
+  * @retval None
+  * @ingroup System
+  */
+void sys_refresh_scheduler();
 
 
 
@@ -651,27 +672,7 @@ void sys_sig_extprocess(void* event_data);
 
 
 
-/* Scheduler function, not yet!
 
-   @brief Checks the scheduler against the current RTC value
-  * @param sync_data :   (ot_int) byte offset into Scheduler UDB Element
-  * @retval (ot_ulong) : Time remaining until next scheduled event.
-  * @ingroup System
-  *
-  * This is optional, mostly for testing purposes.  The scheduler is not advised
-  * for use unless there's an RTC that can generate its own interrupt.  The 
-  * returned value can be converted to approximate milliseconds by shifting
-  * right 6 bits, or actual milliseconds by dividing by 65.536 (or thereabouts)
-  *
-  * The output format (Time remaining) is in the units of 1/65536 seconds.
-  * The input format can be shortcutted by macros that should be declared nearby
-  * this function prototype.
-
-ot_ulong sys_check_scheduler(ot_int sync_data);
-#define SSS_SYNC_DATA     6
-#define HSS_SYNC_DATA     14
-#define BTS_SYNC_DATA     22
-  */  
 
 
 
