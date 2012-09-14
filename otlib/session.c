@@ -52,13 +52,8 @@ session_struct session;
 
 #ifndef EXTF_session_init
 void session_init() {
-    ot_int i;
-        
-    for (i=0; i<OT_FEATURE(SESSION_DEPTH); i++) {
-        session.heap[i].netstate  = 0;
-    }
-        
     session.top = -1;
+    //platform_memset(session.heap, 0, sizeof(session.heap)); //is this needed?
 }
 #endif
 
@@ -70,12 +65,11 @@ ot_bool session_refresh(ot_uint elapsed_ti) {
     ot_s8   i;
 
     for (i=session.top; (i>=0) /* && (session.heap[i].netstate != 0) */; i--) {
-        if (elapsed_ti >= session.heap[i].counter) {
+        ot_long scratch;
+        scratch = (ot_long)session.heap[i].counter - elapsed_ti;
+        if (scratch <= 0) {
             session.heap[i].counter = 0;
             test                    = True;
-        }
-        else {
-            session.heap[i].counter -= elapsed_ti;
         }
     }
 
@@ -85,8 +79,10 @@ ot_bool session_refresh(ot_uint elapsed_ti) {
 
 
 
+
+
 #ifndef EXTF_session_new
-m2session* session_new(ot_uint new_counter, ot_u8 new_netstate, ot_u8 new_channel) {
+m2session* session_new(ot_app applet, ot_uint new_counter, ot_u8 new_netstate, ot_u8 new_channel) {
     ot_s8 pos = session.top+1;
     
     /// If this is a scheduled session (not ad-hoc) follow the session rules
@@ -139,16 +135,17 @@ m2session* session_new(ot_uint new_counter, ot_u8 new_netstate, ot_u8 new_channe
     }
     
     /// Write-out the session
-    session.heap[pos].applet    = NULL;
+    session.heap[pos].applet    = applet;
     session.heap[pos].counter   = new_counter;
     session.heap[pos].channel   = new_channel;
+    session.heap[pos].netstate  = new_netstate;     ///@note, may need to OR with M2_NETSTATE_INIT
+  //session.heap[pos].protocol  = 0;                ///session.protocol is deprecated  
     session.heap[pos].dialog_id = ++session.seq_number;
-  //session.heap[pos].protocol  = 0;                ///session.protocol is deprecated
-    session.heap[pos].netstate  = new_netstate;     ///@note, may need to or with M2_NETSTATE_INIT
     
     return &session.heap[pos];
 }
 #endif
+
 
 
 
@@ -168,7 +165,7 @@ ot_bool session_occupied(ot_u8 chan_id) {
 
 #ifndef EXTF_session_pop
 void session_pop() {
-    Session0.netstate = 0;
+    //Session0.netstate = 0;
     session.top--;
 }
 #endif

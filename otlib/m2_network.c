@@ -104,7 +104,7 @@ m2session* network_parse_bf() {
                 netstate       |= M2_NETFLAG_FLOOD;
             }
 
-            return session_new( scratch.ushort, netstate, rxq.getcursor[2]);
+            return session_new(NULL, scratch.ushort, netstate, rxq.getcursor[2]);
             ///@todo need to put in session subnet?
         }
         

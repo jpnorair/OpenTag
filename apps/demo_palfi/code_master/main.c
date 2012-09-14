@@ -16,7 +16,7 @@
   * @file       /apps/demo_palfi/code_master/main.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       31 July 2011
+  * @date       31 July 2012
   * @brief      PaLFi Demo Main
   *
   * This Demonstration Intends to Show:
@@ -322,11 +322,19 @@ void app_manager() {
 
 /** OTlib/OTAPI Callback Applets  <BR>
   * ========================================================================<BR>
-  * This app uses some (many) of the "std" applets from /otlibext/applets_std
-  * The applets used are selected in extf_config.h
+  * This app uses some of the "std" applets from /otlibext/applets_std
+  * The applets used are selected in extf_config.h.  They are implemented in
+  * other C files, shown below.  The idea is that you pick the applet you want
+  * in your makefile (or project), but they are all stored in the same folder.
+  *
+  * Typical Reporting Applets Used
+  * sys_sig_panic()				/otlibext/applets_std/sys_sig_panic.c
+  * sys_sig_rfainit()           /otlibext/applets_std/sys_sig_rfainit.c
+  * sys_sig_rfaterminate()      /otlibext/applets_std/sys_sig_rfaterminate_2.c
+  *
+  * Typical Protocol Applets Used
+  * m2qp_sig_udp()              local (below)
   */
-
-
 
 
 /** Transport Layer Callback Applet Links  <BR>
@@ -421,10 +429,6 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
   * the example in the API Quickstart Guide:
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
   */ 
-
-
-
-
 
 
 

@@ -86,7 +86,7 @@ palfiext_struct palfiext;
 
 
 
-void sub_memset(ot_u8* start, ot_u8 size, ot_u8 val);
+
 void sub_program_channels(palfi_CHAN channel, ot_u8 trim_val, ot_u8 base_val);
 void sub_prog_trimswitch(ot_s8 trim_val);
 void sub_measurefreq_init(ot_u8 trim_val);
@@ -94,7 +94,8 @@ void sub_measurefreq_finish(float* t_pulse);
 void sub_calculate_trim();
 
 ot_u8 sub_spi_trx(ot_u8 write);
-ot_bool sub_loaduhf();
+void applet_adcpacket(m2session* session);
+void sub_starttask_uhf();
 void sub_adc_measurement(ot_int* buffer);
 void sub_build_uhfmsg(ot_int* buffer);
 
@@ -202,7 +203,7 @@ OT_INTERRUPT void palfi_tim_isr(void) {
   * occur during normal OpenTag operation.
   *
   * The OpenTag kernel implements asynchronous-pre-emptive multiprocessing.  
-  * You need to activate the process by setting sys.evt.EXT.event_noto a non-
+  * You need to activate the process by setting sys.evt.EXT.event_no to a non-
   * zero value.  The value of event_noonly matters to the application.  In this
   * application, it is used as a feature selector and also as a state-tracker.
   * 
@@ -210,6 +211,10 @@ OT_INTERRUPT void palfi_tim_isr(void) {
   * should return to this process by setting sys.evt.EXT.nextevent to a 
   * positive value (roughly milliseconds)
   */
+
+#ifndef EXTF_sys_sig_extprocess
+#   error "EXTF_sys_sig_extprocess must be defined in extf_config.h for this app to work"
+#endif
 
 void sys_sig_extprocess(void* data) {
 /// This function is a static callback that the kernel calls after the 15ms 
@@ -223,8 +228,8 @@ void sys_sig_extprocess(void* data) {
         case 1:     // no break
         
         // Trimming & Normal 0.1
-        case 2: {   sub_memset(palfi.status, 4, 0);
-                    sub_memset(&palfi.rssi_ok, 6, 0xFF);
+        case 2: {   platform_memset(palfi.status, 0, 4);
+        			platform_memset(&palfi.rssi_ok, 0xFF, 6);
                     palfi_spi_startup();
                     palfi_cmdstatus();
 
@@ -264,10 +269,12 @@ void sys_sig_extprocess(void* data) {
                     } // no break
         
         // Trimming & Normal Exit
+        // There was success, so start the UHF dialog task.  You can edit what
+        // exactly the uhf task does in its implementation (also this file)
         case 4:     
         sys_sig_extprocess_EXIT2:
                     palfi_powerdown();
-                    sys.loadapp = &sub_loaduhf;
+                    sub_starttask_uhf();
                     break;
         
         // Normal Event 1: Bypass ON, VCL OFF
@@ -308,16 +315,36 @@ void sys_sig_extprocess(void* data) {
   * ========================================================================<BR>
   *
   */
-ot_bool sub_loaduhf() {
-/// Attach this applet to the kernel applet loader.  It will do an ADC capture
-/// and build a DASH7 UDP packet (using a generic app protocol).  After it runs
-/// it always clears the applet loader to null, so it only runs once.
+void applet_adcpacket(m2session* session) {
+/// This is an OpenTag session Applet.  It gets called by the kernel after it
+/// is bound to a session (sub_starttask_uhf()) and after the kernel determines
+/// it is the right time to run it.  The way this app is implemented, it will
+/// always get called almost immediately after the task starts.
+///
+/// It does two things:
+/// 1. Do an ADC capture
+/// 2. Build a DASH7 UDP packet (using a generic app protocol).
+///
+/// The kernel detaches the applet from the session, automatically.  You can
+/// reattach it by setting session->applet = &applet_adcpacket, but this will
+/// cause problems for this particular application implementation.
+///
     ot_int data_buffer[2];
     sub_adc_measurement(data_buffer);
     sub_build_uhfmsg(data_buffer);
-    
-    sys.loadapp = &sys_loadapp_null;
-    return True;
+}
+
+
+void sub_starttask_uhf() {
+/// Start a DASH7 session with some basic parameters
+/// The "applet" will run when the session opened by the kernel.
+/// The applet will only run once (unless you do some hacking)
+	session_tmpl s_tmpl;
+	s_tmpl.channel      = (palfi.wake_event & 1) ? ALERT_CHAN1 : ALERT_CHAN2;
+    s_tmpl.subnetmask   = 0;        // Use default subnet
+	s_tmpl.flagmask     = 0;        // Use default app-flags
+	s_tmpl.timeout      = 10;       // Do CSMA for no more than 10 ticks (~10 ms)
+	otapi_new_session(&s_tmpl, &applet_adcpacket);
 }
 
 
@@ -363,23 +390,16 @@ void sub_adc_measurement(ot_int* buffer) {
 }
 
 
+
+
 void sub_build_uhfmsg(ot_int* buffer) {
 /// This is the routine that builds the DASH7 UDP generic protocol message.
 /// The protocol has data elements marked by a letter (T, V, R, E, D) that
 /// signify Temperature, Voltage, RSSI (LF), PaLFi wake Event, and RX Data.
 /// The elements are fixed/known length.
-    session_tmpl    s_tmpl;
     command_tmpl    c_tmpl;
     ot_u8*          data_start;
     ot_u8           status;
-
-    // Create a new session: you could change these parameters
-    // Use "CHAN1" for odd events, "CHAN2" for even events
-    s_tmpl.channel      = (palfi.wake_event & 1) ? ALERT_CHAN1 : ALERT_CHAN2;     
-    s_tmpl.subnetmask   = 0;        // Use default subnet
-    s_tmpl.flagmask     = 0;        // Use default app-flags
-    s_tmpl.timeout      = 10;       // Do CSMA for no more than 10 ticks (~10 ms)
-    otapi_new_session(&s_tmpl);
     
     // Broadcast request (takes no 2nd argument)
     otapi_open_request(ADDR_broadcast, NULL);
@@ -613,14 +633,6 @@ void palfi_cmdcrc(ot_u8 length) {
 }
 
 
-void sub_memset(ot_u8* start, ot_u8 size, ot_u8 val) {
-// clear RSSI array
-    ot_u8* fin;
-    fin     = start + size;
-    
-    while (start != fin)
-        *start++ = val;
-}
 
 
 ot_u8 sub_spi_trx(ot_u8 write) {

@@ -127,7 +127,7 @@ ot_u16 icmd_sys_init(Queue* in_q) {
 ot_u16 icmd_sys_newsession(Queue* in_q) {
     session_tmpl new_session;
     sub_breakdown_session_tmpl(in_q, &new_session);
-    return otapi_new_session(&new_session);
+    return otapi_new_session(&new_session, NULL);
 }
 
 ot_u16 icmd_sys_openrequest(Queue* in_q) {

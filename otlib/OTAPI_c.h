@@ -165,6 +165,7 @@ ot_u16 otapi_sysinit();
 
 /** @brief Manually creates a new ad-hoc session and prepares system.
   * @param  s_tmpl      (session_tmpl*) Session parameters
+  * @param  applet      (void*) Converted to a Session Applet Pointer
   * @retval ot_u16      The session number (see otapi_session_number)
   * @ingroup OTAPI_c
   * @sa otapi_session_number()
@@ -177,7 +178,7 @@ ot_u16 otapi_sysinit();
   * scheduled for some time in the future (they happen right away).  Scheduled
   * sessions are reserved for internal DASH7 usage.
   */
-ot_u16 otapi_new_session(session_tmpl* s_tmpl);
+ot_u16 otapi_new_session(session_tmpl* s_tmpl, void* applet);
 
 
 

@@ -39,7 +39,7 @@ ot_bool applet_udp_querytoken(  session_tmpl* session,
     ot_u8 status;
 
     { //create a new session (it will get copied to session stack)
-        otapi_new_session(session);
+        otapi_new_session(session, NULL);
     }
     
     { //open request for single hop anycast query

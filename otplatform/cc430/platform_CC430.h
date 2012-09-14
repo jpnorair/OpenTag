@@ -39,6 +39,7 @@
   * setting options.
   */
 #define PLATFORM(VAL)           PLATFORM_##VAL
+#define PLATFORM_CC430
 
 #ifndef __LITTLE_ENDIAN__
 #   error "Endian-ness misdefined, should be __LITTLE_ENDIAN__ (check build_config.h)"

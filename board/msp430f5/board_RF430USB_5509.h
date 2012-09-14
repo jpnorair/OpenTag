@@ -92,6 +92,12 @@
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_POINTERSIZE           2
 
+OT_INLINE_H BOARD_DMA_COMMON_INIT() {
+    DMA->CTL4 = (   DMA_Options_RMWDisable | \
+                    DMA_Options_RoundRobinDisable | \
+                    DMA_Options_ENMIEnable  );
+}
+
 
 
 

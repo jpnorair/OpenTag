@@ -24,10 +24,13 @@
   ******************************************************************************
   */
 
+#include "OT_platform.h"
+#ifdef PLATFORM_MSP430F5
+
 #include "OT_utils.h"
 #include "OT_types.h"
 #include "OT_config.h"
-#include "OT_platform.h"
+
 
 #include "cc1101_interface.h"
 
@@ -558,4 +561,4 @@ void cc1101_globalirq_isr() { }
 void cc1101_databus_isr() { }
 
 
-
+#endif

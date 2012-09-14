@@ -43,7 +43,7 @@ ot_bool applet_collect_sensorlist() {
         session.subnet      = 0;
         session.subnetmask  = 0;
         session.timeout     = 16;
-        otapi_new_session(&session);
+        otapi_new_session(&session, NULL);
     }
     { //open request for single hop anycast query
         routing_tmpl routing;

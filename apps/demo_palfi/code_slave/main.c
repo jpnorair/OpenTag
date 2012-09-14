@@ -220,13 +220,16 @@ void app_sleep() {
 /** OTlib/OTAPI Callback Applets  <BR>
   * ========================================================================<BR>
   * This app uses some of the "std" applets from /otlibext/applets_std
-  * The applets used are selected in extf_config.h
+  * The applets used are selected in extf_config.h.  They are implemented in
+  * other C files, shown below.  The idea is that you pick the applet you want
+  * in your makefile (or project), but they are all stored in the same folder.
+  *
+  * Typical Applets Used
+  * sys_sig_rfainit()           /otlibext/applets_std/sys_sig_rfainit.c
+  * sys_sig_rfaterminate()      /otlibext/applets_std/sys_sig_rfaterminate_2.c
+  *
   */
 
-void sys_sig_rfaterminate(ot_int pcode, ot_int scode) {
-    otapi_led2_off();   //Orange LED off
-    otapi_led1_off();   //Green LED off
-}
 
 
 
@@ -235,20 +238,8 @@ void sys_sig_rfaterminate(ot_int pcode, ot_int scode) {
   * The user application naturally connects to the Transport Layer, which
   * provides the application with processed data payloads.
   *
-  * Function output:
-  * Output is always ot_bool.  For responses this doesn't matter.  For requests,
-  * returning false will make the system not respond.
-  *
-  * The data payload is from the RX queue (a reserved buffer)  You can do
-  * anything you want with the RX queue data -- by the time it gets to the
-  * application layer, the lower layers don't need it anymore.  To put response
-  * data, use the TX Queue, another reserved buffer: q_writebyte(&txq, BYTE)
-  *
-  * As with all OpenTag callbacks, you have the option to compile them as
-  * dynamic callbacks (function pointers that you assign during runtime) or as
-  * static callbacks (specific functions).  In this demo app, static callbacks
-  * are used.  Static callbacks are better, as long as you don't need to change
-  * the feature attached to a callback.
+  * At the moment, only the default DASH7 implementation is used.  A callback
+  * to CoAP (over UDP) will be included in a later version.
   */
 
 

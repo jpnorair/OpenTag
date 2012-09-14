@@ -102,11 +102,6 @@
 			<location>B:/otlib</location>
 		</link>
 		<link>
-			<name>otlibext</name>
-			<type>2</type>
-			<location>B:/otlibext</location>
-		</link>
-		<link>
 			<name>otplatform</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
@@ -140,6 +135,46 @@
 			<name>app_code/platform_config.h</name>
 			<type>1</type>
 			<location>B:/apps/demo_palfi/code_master/platform_config.h</location>
+		</link>
+		<link>
+			<name>applets/beacon_discovery.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_capi/beacon_discovery.c</locationURI>
+		</link>
+		<link>
+			<name>applets/collect_sensorlist.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_capi/collect_sensorlist.c</locationURI>
+		</link>
+		<link>
+			<name>applets/mpipe_sig_done.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/mpipe_sig_done.c</locationURI>
+		</link>
+		<link>
+			<name>applets/network_sig_route.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/network_sig_route.c</locationURI>
+		</link>
+		<link>
+			<name>applets/sys_sig_panic.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_panic.c</locationURI>
+		</link>
+		<link>
+			<name>applets/sys_sig_rfainit.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_rfainit.c</locationURI>
+		</link>
+		<link>
+			<name>applets/sys_sig_rfaterminate_2.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_rfaterminate_2.c</locationURI>
+		</link>
+		<link>
+			<name>applets/udp_querytoken.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_capi/udp_querytoken.c</locationURI>
 		</link>
 		<link>
 			<name>otplatform/msp430f5</name>

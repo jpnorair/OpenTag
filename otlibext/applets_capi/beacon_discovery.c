@@ -34,7 +34,7 @@ ot_bool applet_beacon_discovery() {
         session.subnet      = 0;
         session.subnetmask  = 0;
         session.timeout     = 16;
-        otapi_new_session(&session);
+        otapi_new_session(&session, NULL);
     }
     { //open request for broadcast
         otapi_open_request(ADDR_broadcast, NULL);

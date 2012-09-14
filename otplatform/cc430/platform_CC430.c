@@ -209,19 +209,25 @@ platform_ext_struct platform_ext;
 #	endif
 OT_INTERRUPT void platform_usernmi_isr(void) {
     static const ot_u8 error_code[] = {0, 11, 2, 7};
+    /// 11 - segmentation fault (Veelite error)
+    ///  2 - unknown error (Oscillator error)
+    ///  7 - vacant memory access (flash error)
+    /// 10 - bus error (hw bus problem, usually USB timeout)
+    
     ot_u8 sysuniv_reg;
-
     sysuniv_reg     = (ot_u8)SYS->UNIV;
-    sysuniv_reg   >>= 1;
     SYS->UNIV       = 0;        // Clear all User NMI flags
 
     if (sysuniv_reg != 0) {
+        sysuniv_reg   >>= 1;
         sys_panic( error_code[sysuniv_reg] );
     }
 
     //LPM4_EXIT;          // Don't Clear All Sleep Bits
 }
 #endif
+
+
 
 
 // 2. System NMI Interrupt (bus errors and other more serious faults)
@@ -268,7 +274,10 @@ OT_INTERRUPT void platform_sysnmi_isr(void) {
 #endif
 
 
-// 3. Reset Interrupt
+
+
+/// 3.  Reset Interrupt
+///     If specificed, this gets called after reset, during startup
 #ifdef DEBUG_ON
 /*
 #pragma vector=RESET_VECTOR
@@ -1040,8 +1049,6 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
 }
 
 
-
-
 void platform_init_prand(ot_u16 seed) {
     platform_ext.prand_reg = seed;
 }
@@ -1119,6 +1126,32 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 
 
 
+void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length) {
+#if (MCU_FEATURE(MEMCPYDMA) == ENABLED)
+/// DMA driven method: CC430 DMA Block Transfer is blocking, and the CPU is
+/// stopped during the data movement.  Thus the while loop is not needed.
+/// DMA memcpy cannot be used reliably if OpenTag makes use of the DMA for some
+/// other non-blocking process (e.g. MPipe).
+    MEMCPY_DMA->SA_L    = (ot_u16)src;
+    MEMCPY_DMA->DA_L    = (ot_u16)dest;
+    MEMCPY_DMA->SZ      = length;
+    MEMCPY_DMA->CTL     = ( DMA_Mode_Block | \
+                            DMA_DestinationInc_Enable | \
+                            DMA_SourceInc_Enable | \
+                            DMA_DestinationDataSize_Word | \
+                            DMA_SourceDataSize_Word | \
+                            DMA_TriggerLevel_RisingEdge | \
+                            0x11);
+    //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
+
+#else
+    platform_memcpy((ot_u8*)dest, (ot_u8*)src, length<<1);
+
+#endif
+}
+
+
+
 void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
 #if (OS_FEATURE(MEMCPY) == ENABLED)
     memset(dest, value, length);
@@ -1173,6 +1206,38 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
   * ========================================================================<BR>
   * Random crap
   */
+
+void platform_block(ot_u16 sti) {
+/// Low power blocking function.
+/// Drop clock to a very low amount, then do a pointless DMA transfer.  The DMA
+/// transfer is well known as 2 clocks per transfer.  The input sti should be
+/// 10 or larger in order for it to be accurate (~300us).
+    ot_u8 a, b;
+    
+    MEMCPY_DMA->SA_L    = (ot_u16)&a;
+    MEMCPY_DMA->DA_L    = (ot_u16)&b;
+    MEMCPY_DMA->SZ      = (sti-6)>>1;
+    
+    //drop CPU clock to 32768Hz
+    UCS->CTL4   = (CLKSRC_32768 << clockACLK) | \
+    		      (CLKSRC_32768 << clockMCLK) | \
+    		      (sourceDCO << clockSMCLK);
+    
+    // Do meaningless, repetitive copy between "a" and "b"
+    MEMCPY_DMA->CTL     = ( DMA_Mode_Block | \
+                            DMA_DestinationInc_Disable | \
+                            DMA_SourceInc_Disable | \
+                            DMA_DestinationDataSize_Byte | \
+                            DMA_SourceDataSize_Byte | \
+                            DMA_TriggerLevel_RisingEdge | \
+                            0x11);
+    
+    //bring back clock to 20 MHz (or whatever)
+    UCS->CTL4   = (CLKSRC_32768 << clockACLK) | \
+    		      (sourceDCO << clockMCLK) | \
+    		      (sourceDCO << clockSMCLK);
+}
+
 
 void platform_delay(ot_u16 n) {
     ot_u16 reg;

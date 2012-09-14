@@ -94,7 +94,7 @@
 						<tool id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerDebug.290921667.112178776" name="MSP430 Linker" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerDebug.290921667"/>
 					</fileInfo>
 					<sourceEntries>
-						<entry excluding="otlibext/applets_std/sys_sig_rfaterminate.c|otlibext/experimental|otlibext/coap| lnk_cc430f5137_4+32.cmd|cc430f5133.cmd|lnk_cc430f5137_4+32.cmd| lnk_cc430f6137_4+32.cmd|lnk_cc430_4+32.cmd|lnk_cc430f6137.cmd|app_code/data_default.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="otlibext/coap|lnk_cc430f6137.cmd|lnk_cc430_4+32.cmd| lnk_cc430f6137_4+32.cmd|cc430f5133.cmd| lnk_cc430f5137_4+32.cmd|lnk_cc430f5137_4+32.cmd|app_code/data_default.c|otlibext/applets_std/sys_sig_rfaterminate.c|otlibext/experimental" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -196,7 +196,7 @@
 						<tool id="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerDebug.2116292240.271408004" name="MSP430 Linker" superClass="com.ti.ccstudio.buildDefinitions.MSP430_4.0.exe.linkerDebug.2116292240"/>
 					</fileInfo>
 					<sourceEntries>
-						<entry excluding="otlibext/applets_std/sys_sig_rfaterminate.c|otlibext/experimental|otlibext/coap|lnk_cc430_4+32.cmd| lnk_cc430f5137_4+32.cmd|lnk_cc430f5137_4+32.cmd|cc430f5133.cmd| lnk_cc430f6137_4+32.cmd|lnk_cc430f6137.cmd|app_code/data_default.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="otlibext/coap|lnk_cc430f6137.cmd| lnk_cc430f6137_4+32.cmd|lnk_cc430_4+32.cmd|cc430f5133.cmd| lnk_cc430f5137_4+32.cmd|lnk_cc430f5137_4+32.cmd|app_code/data_default.c|otlibext/applets_std/sys_sig_rfaterminate.c|otlibext/experimental" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

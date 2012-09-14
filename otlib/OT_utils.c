@@ -147,7 +147,7 @@ ot_int slistf(ot_u8* dst, const char* label, char format, ot_u8 number, ot_u8* s
 
     // byte or short format (raw integer data)
     if ((format == 'b') || (format == 's')) {
-        Twobytes value;
+        ot_uni16 value;
         while (number > 0) {
             number--;
             if (format == 'b') {

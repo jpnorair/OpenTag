@@ -106,7 +106,7 @@ typedef struct {
 
 /// Organized in order of priority (highest priority first).
 typedef struct {
-    ot_sysevt       process;            // event processing function
+    //ot_sysevt       process;
     ot_uint         adv_time;           // Time for advertising
     ot_uint         hold_cycle;         // current hold cycle
     radio_event     RFA;                // RF Active event

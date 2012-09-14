@@ -43,6 +43,8 @@
   */
 
 #define PLATFORM(VAL)           PLATFORM_##VAL
+#define PLATFORM_STM32F10x
+
 #ifndef __LITTLE_ENDIAN__
 #   error "Endian-ness misdefined, should be __LITTLE_ENDIAN__ (check build_config.h)"
 #endif

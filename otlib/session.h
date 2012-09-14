@@ -127,15 +127,18 @@
   *
   * channel     (ot_u8) The Channel ID that the session is using for requests.
   *
+  * netstate    (ot_u8) Control code for Mode 2 network behavior.  Applets can
+  *             usually ignore this, except for setting SCRAP to kill a session.
+  *
+  * protocol    (ot_u8) Unused by DASH7, but it is possible to use 'protocol'
+  *             together with 'dialog_id' to hold a 16 bit ID value.  This can
+  *             allow transparent integration of the session module into app
+  *             protocol layers like CoAP.
+  *
   * dialog_id   (ot_u8) Each session has a one-byte Dialog ID used for basic
   *             matching of request & response in a dialog sequence.  It should
   *             be assigned different values from one session to the next.  The
   *             Session Module uses an incrementer to do this.
-  *
-  * protocol    (ot_u8) Deprecated, but kept for alignment purposes.
-  *
-  * netstate    (ot_u8) Control code for Mode 2 network behavior.  Applets can
-  *             usually ignore this, except for setting SCRAP to kill a session.
   *
   * subnet      (ot_u8) For network-generated sessions, this gets set in the
   *             Network Module.  For system & user-generated sessions, this 
@@ -148,9 +151,9 @@ typedef struct m2session {
 	void    (*applet)(struct m2session*);
     ot_u16  counter;
     ot_u8   channel;
-    ot_u8   dialog_id;
-    ot_u8   protocol;
     ot_u8   netstate;
+    ot_u8   protocol;
+    ot_u8   dialog_id;
     ot_u8   subnet;
     ot_u8   flags;
 } m2session;
@@ -203,6 +206,7 @@ ot_bool session_refresh(ot_uint elapsed_ti);
 
 /** @brief  Adds a session element to the heap, pushes it to stack, and sorts
   *         the stack so the session at the top is the one happening soonest.
+  * @param  applet          (ot_app) applet bound to session
   * @param  new_counter     (ot_u16) new session initial counter value
   * @param  new_netstate    (ot_u8) new session netstate value
   * @param  new_channel     (ot_u8) new session channel id
@@ -212,7 +216,7 @@ ot_bool session_refresh(ot_uint elapsed_ti);
   * Additional session data not supplied as parameters to this function must be
   * loaded-in by the user, via the returned pointer.
   */
-m2session* session_new(ot_u16 new_counter, ot_u8 new_netstate, ot_u8 new_channel);
+m2session* session_new(ot_app applet, ot_u16 new_counter, ot_u8 new_netstate, ot_u8 new_channel);
 
 
 

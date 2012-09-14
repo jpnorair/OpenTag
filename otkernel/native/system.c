@@ -268,7 +268,7 @@ ot_uint sub_aind_nextslot();
   
 #define OTAPI_Q     rxq
 
-ot_u16 otapi_new_session(session_tmpl* s_tmpl) {
+ot_u16 otapi_new_session(session_tmpl* s_tmpl, void* applet) {
 #if (SYS_SESSION == ENABLED)
     m2session* session;
     
@@ -277,13 +277,14 @@ ot_u16 otapi_new_session(session_tmpl* s_tmpl) {
     
     /// Create an ad-hoc session at the top of the stack, and verfy that it was
     /// successfully added to the stack.  (session always begins with req tx)
-    session = session_new(0, (M2_NETSTATE_INIT | M2_NETSTATE_REQTX), s_tmpl->channel);
+    session = session_new(applet, 0, (M2_NETSTATE_INIT | M2_NETSTATE_REQTX), s_tmpl->channel);
     
     if (session == NULL) {
         //OT_LOGFAIL_SYS(-0x10-1); 
         return 0;
     }
     
+    session->applet         = (ot_app)applet;
     session->subnet         = (dll.netconf.subnet & ~s_tmpl->subnetmask) | \
                               (s_tmpl->subnet & s_tmpl->subnetmask);
     session->flags          = (dll.netconf.dd_flags & ~s_tmpl->flagmask) | \
@@ -302,9 +303,7 @@ ot_u16 otapi_new_session(session_tmpl* s_tmpl) {
     dll.comm.csmaca_params  = (M2_CSMACA_NA2P | M2_CSMACA_MACCA);
 
     /// return a session id of sorts
-    return *( ((ot_u16*)session)+1 );
-    
-    ///@note LLDP/DFVM/User will need to invoke the event manager
+    return *((ot_u16*)(&session->protocol));
 #else
     return 0;
     
@@ -542,7 +541,6 @@ void sys_goto_off() {
         sys.evt.BTS.event_no = 0;
 #   endif
 
-
 #   if (OT_FEATURE(EMBEACON) == ENABLED)
     ///@todo Emergency Beacon Event control
 #   endif    
@@ -749,7 +747,7 @@ OT_INLINE ot_int sys_get_mutex() {
 #ifndef EXTF_sys_clock_tasks
 OT_INLINE Task_Index sub_clock_tasks(ot_uint elapsed) {
 #if (OT_FEATURE(EXTERNAL_EVENT))
-#   define BASE_IDLE_TASK	TASK_external
+#   define BASE_IDLE_TASK   TASK_external
 #else
 #   define BASE_IDLE_TASK   TASK_hold
 #endif
@@ -793,9 +791,9 @@ OT_INLINE Task_Index sub_clock_tasks(ot_uint elapsed) {
 OT_INLINE void sub_next_event(ot_long* event_eta) {
 ///@todo there is potential to optimize this function, or put it inside sub_clock_tasks()
     static const ot_u8 isf_lut[] = {
-#		if (OT_FEATURE(EXTERNAL_EVENT))
-    		0xFF,
-#		endif
+#       if (OT_FEATURE(EXTERNAL_EVENT))
+            0xFF,
+#       endif
         ISF_ID(hold_scan_sequence),
 #       if (M2_FEATURE(ENDPOINT) == ENABLED)
             ISF_ID(sleep_scan_sequence),
@@ -824,7 +822,7 @@ OT_INLINE void sub_next_event(ot_long* event_eta) {
     for (i=(IDLE_EVENTS-1); i>=0; i--) {
         if (sys.evt.idle[i].event_no != 0) {
             if (sys.evt.idle[i].nextevent < *event_eta) {
-            	*event_eta = sys.evt.idle[i].nextevent;
+                *event_eta = sys.evt.idle[i].nextevent;
             }
         }
     }
@@ -836,8 +834,7 @@ OT_INLINE void sub_next_event(ot_long* event_eta) {
 
 #ifndef EXTF_sys_event_manager
 ot_uint sys_event_manager(ot_uint elapsed) {
-/// Check the event list, and act on them as necessary.  If an event succeeds,
-/// then the sys.evt.process will be put to some other function in the SYS.   
+/// Check the event list, and act on them as necessary.
     
     do {
         /// 1. Flush the timer.  The amount of time the task uses is clocked, 
@@ -900,7 +897,7 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                     dll.idle_state      = M2_MACIDLE_HOLD;
 
                     /// If the Listen flag is high, then clone the session to 
-                    /// a time in the future, when it will listen.
+                    /// a time in the future, when it will listen again.
                     /// <LI> dll.comm.tc has just been assigned by the request.
                     ///      It is the response contention period (Tc). </LI>
                     /// <LI> This device should listen again after Tc ends, so
@@ -916,11 +913,11 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                         //dll.comm.tc -= OFFSET VALUE ... TBD
                     
                         s_clone = session_new( \
+                                session->applet,
                                 (dll.comm.tc), 
                                 (M2_NETSTATE_REQRX | M2_NETSTATE_ASSOCIATED),
                                 (dll.comm.rx_chanlist[0])   );
                         
-                        s_clone->applet         = session->applet;
                         s_clone->dialog_id      = session->dialog_id;
                         s_clone->subnet         = session->subnet;
                         s_clone->channel        = session->channel;
@@ -977,7 +974,10 @@ ot_uint sys_event_manager(ot_uint elapsed) {
                 session         = session_top();
                 
                 if (session->applet != NULL) {
-                    session->applet(session);
+                    ot_app this_applet;
+                    this_applet     = session->applet;
+                    session->applet = NULL;
+                    this_applet(session);
                 }
                 if (session->netstate & M2_NETFLAG_SCRAP) {
                     session_pop();
@@ -1181,7 +1181,7 @@ void sub_scan_channel(idletime_event* idlevt, ot_u8 SS_ISF) {
                 (M2_NETSTATE_REQRX | M2_NETSTATE_INIT | M2_NETFLAG_FLOOD ) : \
                 (M2_NETSTATE_REQRX | M2_NETSTATE_INIT);
 
-    session_new(0, s_flags, s_channel);
+    session_new(NULL, 0, s_flags, s_channel);
 #endif
 }
 
@@ -1219,7 +1219,7 @@ void sysevt_beacon() {
     //   (ad hoc sessions never return NULL)
     // - Assure cmd code is always Broadcast & Announcement
     scratch.ushort          = vl_read(fp, sys.evt.BTS.cursor);
-    session                 = session_new(  0,
+    session                 = session_new(  NULL, 0,
                                             (M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX),
                                             scratch.ubyte[0]  );
     session->subnet         = dll.netconf.b_subnet;
@@ -1255,7 +1255,7 @@ void sysevt_beacon() {
     m2np_header(session, 0x40, 0);
     q_writebyte(&txq, 0x20 + (beacon_params & 1));
     if (beacon_params & 0x04) {
-    	q_writebyte(&txq, (beacon_params & 0x04));
+        q_writebyte(&txq, (beacon_params & 0x04));
     }
 
     /// Setup the comm parameters, if the channel is available
@@ -1665,8 +1665,8 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
         // Send redundant TX immediately, but only if no response window or if
         // this packet is a response.
         if ( (dll.comm.redundants != 0) && \
-        	 ((session->netstate & M2_NETSTATE_RESPTX) \
-        	 || ((ot_int)dll.comm.rx_timeout <= 0)) ) {
+             ((session->netstate & M2_NETSTATE_RESPTX) \
+             || ((ot_int)dll.comm.rx_timeout <= 0)) ) {
             dll.comm.csmaca_params = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
             rm2_prep_resend();
         }
