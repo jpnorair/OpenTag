@@ -101,13 +101,13 @@
 
 // Device Scheduler Settings
 #if (OT_FEATURE(RTC) == ENABLED)
-#   define OT_SUPPORTED_SCHEDULER   (((ot_u16)M2_FEATURE(RTCSLEEP) << 15)   | \
-                                    ((ot_u16)M2_FEATURE(RTCHOLD) << 14)     | \
+#   define OT_SUPPORTED_SCHEDULER   (((ot_u16)M2_FEATURE(RTCHOLD) << 15)    | \
+                                    ((ot_u16)M2_FEATURE(RTCSLEEP) << 14)    | \
                                     ((ot_u16)M2_FEATURE(RTCBEACON) << 13))
 #   if (M2_FEATURE(RTCSLEEP) == ENABLED) 
-#       define OT_ACTIVE_SCHEDULER  0x8000
-#   elif (M2_FEATURE(RTCHOLD) == ENABLED) 
 #       define OT_ACTIVE_SCHEDULER  0x4000
+#   elif (M2_FEATURE(RTCHOLD) == ENABLED)
+#       define OT_ACTIVE_SCHEDULER  0x8000
 #   elif (M2_FEATURE(RTCBEACON) == ENABLED) 
 #       define OT_ACTIVE_SCHEDULER  0x2000
 #   else
@@ -123,8 +123,7 @@
 // Device Class Settings
 #define OT_SUPPORTED_CLASSES   (((ot_u16)M2_FEATURE(GATEWAY) << 11)         | \
                                 ((ot_u16)M2_FEATURE(SUBCONTROLLER) << 10)   | \
-                                ((ot_u16)M2_FEATURE(ENDPOINT) << 9)         | \
-                                ((ot_u16)M2_FEATURE(BLINKER) << 11))
+                                ((ot_u16)M2_FEATURE(ENDPOINT) << 9))
 #if (M2_FEATURE(GATEWAY) == ENABLED) 
 #   define OT_ACTIVE_CLASS      0x0800
 #elif (M2_FEATURE(SUBCONTROLLER) == ENABLED) 

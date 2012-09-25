@@ -453,10 +453,10 @@ const ot_u8 isf_stock_files[] = {
     /* real time scheduler: id=0x03, len=12, alloc=12 */
     0x00, 0x0F,                                         /* HSS Sync Mask */
     0x00, 0x08,                                         /* HSS Sync Value */
-    0x00, 0x03,                                         /* SSS Sync Mask */
-    0x00, 0x02,                                         /* SSS Sync Value */
-    0x00, 0x03,                                         /* BTS Sync Mask */
-    0x00, 0x02,                                         /* BTS Sync Value */
+    0x00, 0x0F,                                         /* SSS Sync Mask */
+    0x00, 0x08,                                         /* SSS Sync Value */
+    0x00, 0x0F,                                         /* BTS Sync Mask */
+    0x00, 0x08,                                         /* BTS Sync Value */
     
     /* hold scan periods: id=0x04, len=12, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
@@ -471,7 +471,7 @@ const ot_u8 isf_stock_files[] = {
     
     /* sleep scan periods: id=0x05, len=12, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x07, 0x85, 0x04, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
+    0x07, 0x85, 0x44, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
     0xFF, 0xFF, 0xFF, 0xFF,                             /* NOTE: Scan Code should be less than     */
     0xFF, 0xFF, 0xFF, 0xFF,                             /*       Next Scan, or else you will be    */
     0xFF, 0xFF, 0xFF, 0xFF,                             /*       doing nothing except scanning!    */

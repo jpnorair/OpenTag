@@ -98,7 +98,7 @@
 #define OT_FEATURE_AUTOCOPY             NOT_AVAILABLE                       // A DMA method for moving batch data (experimental)
 #define OT_FEATURE_CRC_TXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
 #define OT_FEATURE_CRC_RXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
-#define OT_FEATURE_RTC                  DISABLED                            // Do you have a precise 32768 Hz clock?
+#define OT_FEATURE_RTC                  ENABLED                            // Do you have a precise 32768 Hz clock?
 #define OT_FEATURE_M1                   NOT_AVAILABLE                       // Mode 1 Featureset: Generally not implemented
 #define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
 #define OT_FEATURE_SESSION_DEPTH        OT_PARAM_SESSION_DEPTH
@@ -141,8 +141,8 @@
 /// can limit scope of the compilation if you are trying to optimize the build.
 #define M2_FEATURE(VAL)                 (M2_FEATURE_##VAL && M2_FEATURESET)
 #define M2_PARAM(VAL)                   M2_PARAM_##VAL
-#define M2_FEATURE_RTCSLEEP             DISABLED
 #define M2_FEATURE_RTCHOLD              DISABLED
+#define M2_FEATURE_RTCSLEEP             DISABLED
 #define M2_FEATURE_RTCBEACON            DISABLED
 #define M2_FEATURE_GATEWAY              DISABLED                            // Gateway device mode
 #define M2_FEATURE_SUBCONTROLLER        DISABLED                            // Subcontroller device mode

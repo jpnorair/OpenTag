@@ -219,7 +219,7 @@ OT_INTERRUPT void platform_usernmi_isr(void) {
     SYS->UNIV       = 0;        // Clear all User NMI flags
 
     if (sysuniv_reg != 0) {
-        sysuniv_reg   >>= 1;
+        sysuniv_reg >>= 1;
         sys_panic( error_code[sysuniv_reg] );
     }
 
@@ -364,19 +364,17 @@ OT_INTERRUPT void platform_rtc_isr() {
 /// more advanced RTC-based MAC features of OpenTag/DASH7, so I keep the RTC
 /// implementation as simple as possible.
     ot_int  i;
-    ot_u16  lowtime = (ot_u16)RTC_GetCounter();
     
-    for (i=RTC_ALAR
-    MS; i!=0; i--) {
-        if ( 0 == ( (ot_u16)otrtc.alarm[i].disabled \
-                  + lowtime & otrtc.alarm[i].mask \
-                  - otrtc.alarm[i].value & otrtc.alarm[i].mask ) ) {
-            
-            sys_synchronize(otrtc.alarm[i].taskid);
-            
-            //sys.evt.idle[].nextevent   = 0;
-            //sys.evt.idle[otrtc.alarm[i].taskid].event_no    = 1;
-        }
+    RTC->PS1CTL &= ~RT1PSIFG;
+
+    for (i=(RTC_ALARMS-1); i>=0; i--) {
+    	if (platform_ext.alarm[i].disabled == 0) {
+    		if ((RTC->TIM0 & platform_ext.alarm[i].mask) == platform_ext.alarm[i].value) {
+    			sys_synchronize(platform_ext.alarm[i].taskid);
+              //sys.evt.idle[].nextevent   = 0;
+              //sys.evt.idle[platform_ext.alarm[i].taskid].event_no    = 1;
+    		}
+    	}
     }
 }
 #endif  // ISR declaration stuff
@@ -749,16 +747,19 @@ void platform_init_rtc(ot_u32 value) {
 #   else
 #       define _1S_INC  (RT1PSDIV_6)
 #   endif
-    RTC->PS0CTL = RT0PSDIV_7;
-    RTC->PS1CTL = RT1SSEL_2 | _1S_INC;
+
+	platform_clear_rtc_alarms();
+
     RTC->CTL01  = 0x0800;		// clear RTC interrupts & flags, RT1PS prescaled clock select
     RTC->CTL23  = 0x0000;       // ignore calibration for now, no clock pin output
+    RTC->PS0CTL = RT0PSDIV_7;
+    RTC->PS1CTL = RT1SSEL_2 | _1S_INC;
 
     // Set RTC timer value from input.
     RTC->TIM0   = ((ot_u16*)value)[0];
     RTC->TIM1   = ((ot_u16*)value)[1];
 
-    platform_enable_rtc();
+    //platform_enable_rtc();
 #endif
 }
 
@@ -846,7 +847,7 @@ void platform_set_time(ot_u32 utc_time) {
 ot_u32 platform_get_time() {
 #if (OT_FEATURE(RTC) == ENABLED)
 #   if (RTC_OVERSAMPLE)
-    return otrtc.utc;
+    return platform_ext.utc;
     
 #   else
     ot_u32 output;
@@ -867,11 +868,11 @@ void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
 #   endif
     {
         vlFILE* fp                      = ISF_open_su( ISF_ID(real_time_scheduler) );
-        otrtc.alarm[alarm_id].disabled  = 0;
-        otrtc.alarm[alarm_id].taskid    = task_id;
-        otrtc.alarm[alarm_id].mask      = PLATFORM_ENDIAN16(ISF_read(fp, offset));
-        otrtc.alarm[alarm_id].value     = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
-        vl_close();
+        platform_ext.alarm[alarm_id].disabled  = 0;
+        platform_ext.alarm[alarm_id].taskid    = task_id;
+        platform_ext.alarm[alarm_id].mask      = PLATFORM_ENDIAN16(ISF_read(fp, offset));
+        platform_ext.alarm[alarm_id].value     = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
+        vl_close(fp);
         
         platform_enable_rtc();
     }
@@ -883,13 +884,13 @@ void platform_clear_rtc_alarms() {
     platform_disable_rtc();
 
 #   if (RTC_ALARMS > 0)
-        otrtc.alarm[0].disabled = 1;
+        platform_ext.alarm[0].disabled = 1;
 #   endif
 #   if (RTC_ALARMS > 1)
-        otrtc.alarm[1].disabled = 1;
+        platform_ext.alarm[1].disabled = 1;
 #   endif
 #   if (RTC_ALARMS > 2)
-        otrtc.alarm[2].disabled = 1;
+        platform_ext.alarm[2].disabled = 1;
 #   endif
 #   if (RTC_ALARMS > 3)
 #       warn "Currently, only three RTC ALARMS supported"

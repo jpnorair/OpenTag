@@ -573,9 +573,9 @@ void sys_goto_sleep() {
     
     /// Manage scheduler, if it is enabled and activated
 #   if (M2_FEATURE(RTC_SCHEDULER) == ENABLED)
-        if (sys.evt.SSS.sched_id != 0) {
-            sub_activate_scheduler( &sys.evt.SSS.sched_id );
-        }
+        //if (sys.evt.SSS.sched_id != 0) {
+        //    sub_activate_scheduler( &sys.evt.SSS.sched_id );
+        //}
 #   endif
       
     /// Event Management
@@ -626,9 +626,9 @@ void sys_goto_hold() {
 
     /// Manage scheduler, if it is enabled and activated
 #   if (M2_FEATURE(RTC_SCHEDULER) == ENABLED)
-        if (sys.evt.HSS.sched_id != 0) {
-            sub_activate_scheduler( &sys.evt.HSS.sched_id );
-        }
+        //if (sys.evt.HSS.sched_id != 0) {
+        //    sub_activate_scheduler( &sys.evt.HSS.sched_id );
+        //}
 #   endif    
     
     /// Manage Events:

@@ -394,9 +394,9 @@ typedef struct {
 typedef struct {
     vu16 CTL01;
     vu16 CTL23;
-    vu16 PS0CTL;
     vu16 Reserved04;
     vu16 Reserved06;
+    vu16 PS0CTL;
     vu16 PS1CTL;
     vu16 PS;
     vu16 IV;
@@ -417,7 +417,7 @@ typedef struct {
     vu8 CTL0;
     vu16 Reserved02;
     vu16 Reserved04;
-    //vu16 BRW;
+  //vu16 BRW;
     vu8  BR0;
     vu8  BR1;
     vu8  MCTL;
