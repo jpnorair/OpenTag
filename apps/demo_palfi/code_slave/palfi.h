@@ -60,6 +60,12 @@ palfi_CHAN;
 typedef ot_bool (*action_fn)(void);
 
 typedef struct {
+	float   slope_dC;
+	float   offset_dC;
+}
+tempmodel_struct;
+
+typedef struct {
     ot_uint count;
     ot_uint startcount;
     ot_uint endcount;
@@ -85,7 +91,7 @@ typedef struct {
     
     ot_u8       rxdata[8];
     
-    ot_u8       rssi_ok;
+    ot_u8       rssi_info;
     ot_u8       rssi1;
     ot_u8       rssi2;
     ot_u8       rssi3;

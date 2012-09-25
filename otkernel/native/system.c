@@ -524,7 +524,6 @@ void sys_change_settings(ot_u16 new_mask, ot_u16 new_settings) {
 
 
 
-
 #ifndef EXTF_sys_goto_off
 void sys_goto_off() {
 /// Off Routine: Kill everything and shut-down all events.  Use sys_init to

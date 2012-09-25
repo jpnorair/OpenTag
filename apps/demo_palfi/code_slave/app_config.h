@@ -416,8 +416,8 @@
 #define ISF_ID_device_features                  0x01
 #define ISF_ID_channel_configuration            0x02
 #define ISF_ID_real_time_scheduler              0x03
-#define ISF_ID_hold_scan_sequence               0x05
-#define ISF_ID_sleep_scan_sequence              0x04
+#define ISF_ID_hold_scan_sequence               0x04
+#define ISF_ID_sleep_scan_sequence              0x05
 #define ISF_ID_beacon_transmit_sequence         0x06
 #define ISF_ID_protocol_list                    0x07
 #define ISF_ID_isfs_list                        0x08
@@ -480,8 +480,8 @@
 #define ISF_MOD_device_features                 b00100100
 #define ISF_MOD_channel_configuration           ISF_MOD_file_standard
 #define ISF_MOD_real_time_scheduler             ISF_MOD_file_standard
-#define ISF_MOD_sleep_scan_sequence             ISF_MOD_file_standard
 #define ISF_MOD_hold_scan_sequence              ISF_MOD_file_standard
+#define ISF_MOD_sleep_scan_sequence             ISF_MOD_file_standard
 #define ISF_MOD_beacon_transmit_sequence        ISF_MOD_file_standard
 #define ISF_MOD_protocol_list                   b00100100
 #define ISF_MOD_isfs_list                       b00100100

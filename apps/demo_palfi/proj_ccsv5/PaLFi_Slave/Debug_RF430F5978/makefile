@@ -175,7 +175,7 @@ all: PaLFi_Slave.out
 PaLFi_Slave.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MSP430 Linker'
-	"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/bin/cl430" -vmspx --abi=coffabi --code_model=small --data_model=small -O1 --opt_for_speed=3 -g --define=__CCSv5__ --define=__CC430F6137__ --define=__LITTLE_ENDIAN__ --define=BOARD_FOB_RF430F5978 --define=DEBUG_ON --diag_warning=225 --display_error_number --silicon_errata=CPU18 --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU23 --silicon_errata=CPU40 --plain_char=unsigned --single_inline --printf_support=minimal -z -m"PaLFi_Slave.map" --stack_size=80 --heap_size=80 --use_hw_mpy=F5 -i"C:/ti/ccsv5/ccs_base/msp430/include" -i"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/lib" -i"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/include" --reread_libs --warn_sections --rom_model -o "PaLFi_Slave.out" $(ORDERED_OBJS)
+	"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/bin/cl430" -vmspx --abi=coffabi --code_model=small --data_model=small -O1 --opt_for_speed=3 -g --define=__CCSv5__ --define=__CC430F6137__ --define=__LITTLE_ENDIAN__ --define=BOARD_FOB_RF430F5978 --define=DEBUG_ON --diag_warning=225 --display_error_number --silicon_errata=CPU18 --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU23 --silicon_errata=CPU40 --plain_char=unsigned --single_inline --printf_support=minimal -z --stack_size=80 -m"PaLFi_Slave.map" --heap_size=80 --use_hw_mpy=F5 -i"C:/ti/ccsv5/ccs_base/msp430/include" -i"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/lib" -i"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/include" --reread_libs --warn_sections --rom_model -o "PaLFi_Slave.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

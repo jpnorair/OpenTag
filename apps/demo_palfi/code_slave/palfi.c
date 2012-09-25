@@ -81,8 +81,9 @@
 #endif
 
 
-palfi_struct palfi;
-palfiext_struct palfiext;
+tempmodel_struct    tmodel;
+palfi_struct        palfi;
+palfiext_struct     palfiext;
 
 
 
@@ -140,13 +141,15 @@ OT_INTERRUPT void palfi_port_isr(void) {
     PALFI_WAKE_PORT->IE  &= ~PALFI_WAKE_PIN;
     PALFI_WAKE_PORT->IFG &= ~PALFI_WAKE_PIN;
     
-    // if the SW2 is being held, then trimming will occur.  If not, then the
-    // normal routine will occur.  Both require an initial 15ms wait slot.
-    sys.evt.EXT.nextevent   = 15;
-    sys.evt.EXT.event_no    = \
-        ((BOARD_SW2_PORT->DIN & BOARD_SW2_PIN) == 0) + 1;
+    /// If the SW2 is being held, then trimming will occur.  If not, then the
+    /// normal routine will occur.  Both require an initial wait slot, because
+    /// there is some time needed for the PaLFI I/O subsystem to stabilize.
+    /// The exact wait slot is not documented, but it is less than 32 ticks and
+    /// more than 20 ticks.  Here, 32 ticks is used.
+    sys.evt.EXT.nextevent   = 32;
+    sys.evt.EXT.event_no    = 1 + ((BOARD_SW2_PORT->DIN & BOARD_SW2_PIN) == 0);
 
-    // Pre-empt the kernel, which will clock events and attach the 15ms slot
+    // Pre-empt the kernel, which will clock events and attach the wait slot
     platform_ot_preempt();
     
     LPM4_EXIT;
@@ -217,7 +220,7 @@ OT_INTERRUPT void palfi_tim_isr(void) {
 #endif
 
 void sys_sig_extprocess(void* data) {
-/// This function is a static callback that the kernel calls after the 15ms 
+/// This function is a static callback that the kernel calls after the EOF
 /// wait slot elapses.  It is defined in /OTlib/system.h.  This implementation
 /// checks the value of the event number, which indicates if there should be 
 /// the normal routine, the trimming routine, or nothing.
@@ -228,37 +231,41 @@ void sys_sig_extprocess(void* data) {
         case 1:     // no break
         
         // Trimming & Normal 0.1
-        case 2: {   platform_memset(palfi.status, 0, 4);
-        			platform_memset(&palfi.rssi_ok, 0xFF, 6);
-                    palfi_spi_startup();
+        case 2: {   palfi_spi_startup();
                     palfi_cmdstatus();
 
                     // Check for Wake A/B event on [0]:BIT0/BIT1, which we call event A/B
                     // Wake A and B cannot physically happen at the same time
                     palfi.wake_event = (palfi.status[0] & 3);
+
+                    // On PaLFI wakeup, return to the kernel and supply enough
+                    // time to RX the whole PaLFI packet (250ms is generic)
                     if (palfi.wake_event) {
-                        palfi.wake_event    += ('A'-1);
-                        sys.evt.EXT.event_no+= 2; // next state = 3 (normal), 4 (trimming)
+                        palfi.wake_event       += ('A'-1);
+                        sys.evt.EXT.event_no   += 2;
                         palfi_cmdrssi();
                     }
+
+                    // On a switch-press wakeup, set the event number to the
+                    // appropriate switch case (7-10) and go directly to it.
+                    // Also, wipe the RSSI buffer.
                     else {
-                        ot_u8 i;
-                        for (i=0; i<PALFI_SWITCHES; i++) {
-                            if (palfi.status[2] & (1<<i)) {
-                                palfi.wake_event = i+'1';
-                                break;
-                            }
-                        }
-                        // This sets the event number to the appropriate case
-                        // number below: range is 5 to 8
-                        sys.evt.EXT.event_no = (palfi.wake_event) ? \
-                                    sys.evt.EXT.event_no+4+(i<<1) : 0;
+                    	ot_u8 i;
+                    	for (i=0; i<PALFI_SWITCHES; i++) {
+                    		if (palfi.status[2] & (1<<i)) {
+                    			palfi.wake_event = i+'1';
+                    			break;
+                    		}
+                    	}
+                    	sys.evt.EXT.event_no = (palfi.wake_event) ? \
+                                             sys.evt.EXT.event_no+4+(i<<1) : 0;
+                    	platform_memset(&palfi.rssi_info, 0xFF, 6);
                     }
-                } 
+                }
                 goto sys_sig_extprocess_TOP;
         
-        // Normal Exit
-        case 3:     
+        // Normal Exit (no break, also includes Trimming exit)
+        case 3:
         sys_sig_extprocess_EXIT1:
                     // if transmitted LF data = 1/2, activate/deactivate TPS
                     if (palfi.status[3] == 1) {
@@ -266,15 +273,15 @@ void sys_sig_extprocess(void* data) {
                     }
                     else if (palfi.status[3] == 2) {
                         PALFI_BYPASS_PORT->DOUT |= PALFI_BYPASS_PIN;
-                    } // no break
+                    }
         
         // Trimming & Normal Exit
         // There was success, so start the UHF dialog task.  You can edit what
         // exactly the uhf task does in its implementation (also this file)
-        case 4:     
+        case 4:
         sys_sig_extprocess_EXIT2:
                     palfi_powerdown();
-                    sub_starttask_uhf();
+                    sub_starttask_uhf();    // Add new DASH7 comm task to kernel
                     break;
         
         // Normal Event 1: Bypass ON, VCL OFF
@@ -319,15 +326,20 @@ void applet_adcpacket(m2session* session) {
 /// This is an OpenTag session Applet.  It gets called by the kernel after it
 /// is bound to a session (sub_starttask_uhf()) and after the kernel determines
 /// it is the right time to run it.  The way this app is implemented, it will
-/// always get called almost immediately after the task starts.
+/// always get called immediately after the kernel creates the session via
+/// sub_starttask_uhf().
 ///
 /// It does two things:
 /// 1. Do an ADC capture
-/// 2. Build a DASH7 UDP packet (using a generic app protocol).
+/// 2. Build a DASH7 UDP packet that includes PaLFI data and the ADC values
+///    that were just captured.  The app protocol inside UDP is a generic TLV.
 ///
-/// The kernel detaches the applet from the session, automatically.  You can
-/// reattach it by setting session->applet = &applet_adcpacket, but this will
-/// cause problems for this particular application implementation.
+/// @note The kernel automatically detaches the applet from the session after
+/// it runs.  You can reattach in this function code by setting:
+/// session->applet = &applet_adcpacket;
+/// However, there is no reason to do so in this application, because the
+/// communication method is not a persistent stream or query.  It is just a
+/// single Push+ACK.  Retries are managed internally by the session.
 ///
     ot_int data_buffer[2];
     sub_adc_measurement(data_buffer);
@@ -336,10 +348,17 @@ void applet_adcpacket(m2session* session) {
 
 
 void sub_starttask_uhf() {
-/// Start a DASH7 session with some basic parameters
-/// The "applet" will run when the session opened by the kernel.
-/// The applet will only run once (unless you do some hacking)
+/// Define a DASH7 RF communication session (task) and attach it to the kernel.
+/// The API function that does the real work is otapi_new_session(), and like
+/// most OTAPI functions it takes arguments as a struct.  sub_starttask_uhf()
+/// is just a wrapper containing struct values for this application.
+///
+/// You can experiment with other values in s_tmpl (there are more, too, see
+/// OTAPI_tmpl.h).  Just make sure to leave the applet parameter the same, or
+/// else the kernel will not be able to call the packet-building code when it
+/// is time to build the packet.
 	session_tmpl s_tmpl;
+
 	s_tmpl.channel      = (palfi.wake_event & 1) ? ALERT_CHAN1 : ALERT_CHAN2;
     s_tmpl.subnetmask   = 0;        // Use default subnet
 	s_tmpl.flagmask     = 0;        // Use default app-flags
@@ -348,45 +367,55 @@ void sub_starttask_uhf() {
 }
 
 
+
+
 void sub_adc_measurement(ot_int* buffer) {
-/// This is a blocking ADC capture routine.  It should take about 1.6 ms.
-/// @todo change the algorithm to fixed-point.
-    float scratch;
+/// This is a blocking ADC capture routine.  It should run in 50us or less.
 
+    /// 1. Universal ADC config
+    ///    <LI> Reset REFMSTR, REFVSEL_1 = 2.0V </LI>
+    ///    <LI> Voltage Tsample > 1.2us, Temp Tsample > 30us, so use ADCCLK/32
+    ///         for Voltage, ADCCLK/768 for Temp.</LI>
+    ///    <LI> Also in ADCCTL0, use multisample mode, use REF=2.0V </LI>
+    ///    <LI> Use MEM7 (Temp) & MEM8 (Volt), Use internal sampling timer, use MODCLK </LI>
+    ///    <LI> Use 12 bit mode, use fast mode </LI>
+    ///    <LI> MEM7 is Temp, MEM8 is Volt </LI>
+    REFCTL0     = REFMSTR + REFON + REFVSEL_1;
     ADC12CTL0   = 0;
+    ADC12CTL0   = ADC12SHT1_3 + ADC12SHT0_7 + ADC12MSC + ADC12REFON + ADC12ON;
+    ADC12CTL1   = ADC12CSTARTADD_7 + ADC12SHP + ADC12CONSEQ_1;
+    ADC12CTL2   = ADC12RES_2;
+    ADC12MCTL7  = ADC12SREF_1 + ADC12INCH_10;
+    ADC12MCTL8  = ADC12SREF_1 + ADC12INCH_11 + ADC12EOS;
 
-    // Reset REFMSTR to hand over control to: REFVSEL_1 = 2.0V, ADC12_A ref control registers  
-    REFCTL0     = REFMSTR + REFON + REFVSEL_1;    
-    ADC12CTL0   = ADC12SHT1_12 + ADC12SHT0_12 + ADC12REFON + ADC12ON + ADC12MSC;                        
-    ADC12CTL1   = ADC12SHP + ADC12CONSEQ_1;     // enable sample timer
-    ADC12CTL2   = ADC12RES_2 + ADC12SR;         // 12-bit mode, 50ksps
-    ADC12MCTL0  = ADC12SREF_1 + ADC12INCH_10; 
-    ADC12MCTL1  = ADC12SREF_1 + ADC12INCH_11 + ADC12EOS;      
-
-    // REFO is supposed to startup in 25us...
-    platform_swdelay_us(25);
-    
-    // Start conversion
+    /// 2. Start ADC and Wait for ADC to finish.  Wait 75us for REF.
+    ///    Grab the data, then kill everything
+    platform_swdelay_us(75);
     ADC12CTL0  |= ADC12ENC;
-    ADC12CTL0  |= ADC12SC; 
-  
+    ADC12CTL0  |= ADC12SC;
     while ((ADC12CTL1 & ADC12BUSY) == ADC12BUSY);
-
-    ///@note I think floats are bad, but at the moment I don't care to untangle
-    ///      this knot into fixed-point (same goes for below)
-    scratch     = (float)ADC12MEM1;
-    scratch     = ((scratch * 2.0f / 4095) * 2 * 1000 - 100);
-    buffer[0]   = (ot_int)scratch;
     
-    scratch     = (float)ADC12MEM0;
-    scratch     = ((scratch * 2.0f / 4095) * 100);
-    scratch     = scratch*24.0f/725*100;
-    buffer[1]   = (ot_int)scratch;
-    
-    // Shut everything down
     ADC12CTL0  &= ~(ADC12ENC | ADC12SC);
     ADC12CTL0  &= ~(ADC12ON + ADC12REFON);
-    REFCTL0    &= ~(REFMSTR + REFVSEL_2 + REFON + REFGENACT); 
+    REFCTL0    &= ~(REFMSTR + REFON + REFGENACT);
+
+    /// 3. Convert Temperature:
+    ///@todo Build a Fixed-Point Model instead of this heavy floating point one.
+    ///
+    /// This temperature conversion method pulls device-specific calibration
+    /// data from the TLV space and uses it to produce a linear model to map
+    /// the acquired ADC value.
+    {
+        float val_dC;
+        val_dC      = tmodel.slope_dC*(float)ADC12MEM7 + tmodel.offset_dC;
+        buffer[0]   = (ot_int)val_dC;
+    }
+
+    /// 4. Convert Voltage:
+    /// Vdd is acquired as 12 bit number representing Vdd/2 in 1/4095V units.
+    /// x(V) = 4095*(Vdd/2)/1.93V; x(mV) = (4095/2*1930mV)Vdd ~= Vdd
+    //buffer[1]   = volt;	                        // Cheap way, not accurate
+    buffer[1]   = (ot_int)((float)ADC12MEM8 * (3860.f/4095.f));      // Higher accuracy method
 }
 
 
@@ -466,19 +495,32 @@ void sub_build_uhfmsg(ot_int* buffer) {
   *
   */
 void palfi_init() {
-    // init wakeup port
+	// Build Calibrated Model for Temperature Sensor
+    {
+    	float test_30C2V;
+    	float test_85C2V;
+    	test_30C2V          = (float)(*((ot_u16*)0x1A1E));
+    	test_85C2V          = (float)(*((ot_u16*)0x1A20));
+    	tmodel.slope_dC     = (850.f - 300.f) / (test_85C2V - test_30C2V);
+    	tmodel.offset_dC    = 300.f - (tmodel.slope_dC*test_30C2V);
+    }
+
+    // Clear Status buffer
+    platform_memset(palfi.status, 0, 4);
+
+    // init wakeup port (should be P1.0)
     PALFI_WAKE_PORT->DDIR  &= ~PALFI_WAKE_PIN;
     PALFI_WAKE_PORT->IFG   &= ~PALFI_WAKE_PIN;
     PALFI_WAKE_PORT->IES    = 0;
     PALFI_WAKE_PORT->IE    |= PALFI_WAKE_PIN;
     
-    // init EOB & BUSY ports (should both be on same port)
+    // init EOB & BUSY ports (should be P4.1, P4.2)
     PALFI_EOB_PORT->DDIR   &= ~(PALFI_EOB_PIN | PALFI_BUSY_PIN);
     
-    // init Clock Extern output
+    // init Clock Extern output (should be P2.5)
     PALFI_CLKEXT_PORT->DDIR |= PALFI_CLKEXT_PIN;
     
-    // init PaLFI Clock-out input onto PaLFi Timer
+    // init PaLFI Clock-out input onto PaLFi Timer (should be P3.5)
     PALFI_TIM_PORT->DDIR   &= ~(PALFI_CLKOUT_PIN);
     PALFI_TIM_PORT->SEL    |= PALFI_CLKOUT_PIN;
     
@@ -491,7 +533,7 @@ void palfi_init() {
     PALFI_LEDS_PORT->DDIR  |= PALFI_LEDS_PINS;
     //PALFI_LEDS_PORT->SEL    |= PALFI_LED_MCLK;   //LED2 on board
     
-    // init palfi Bypass output, set to OFF (enable TPS62730 to power device)
+    // init palfi Bypass output, set to OFF (enables TPS62730 to power device)
     PALFI_BYPASS_PORT->DDIR |= PALFI_BYPASS_PIN;
     PALFI_BYPASS_PORT->DOUT &= ~PALFI_BYPASS_PIN;
     
@@ -592,9 +634,9 @@ void palfi_cmdrssi() {
     
     palfi_writeout((ot_u8*)cmd_data);
     
-    palfi_readback(&palfi.rssi_ok, 6);
+    palfi_readback(&palfi.rssi_info, 6);
 //  This block does the same as the loop above, but is more descriptive
-//  palfi.rssi_ok   = sub_spi_trx(0x00);  // if EOBA=stable=RSSI OK 0x01
+//  palfi.rssi_info   = sub_spi_trx(0x00);  // if EOBA=stable=RSSI OK 0x01
 //  palfi.rssi1     = sub_spi_trx(0x00);  // RSSI value of RF1
 //  palfi.rssi2     = sub_spi_trx(0x00);  // RSSI value of RF2
 //  palfi.rssi3     = sub_spi_trx(0x00);  // RSSI value of RF3
