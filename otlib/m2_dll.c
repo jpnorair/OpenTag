@@ -424,39 +424,27 @@ void dll_goto_off() {
 void dll_idle() {
 /// Idle Routine: Disable radio and manipulate system tasks in order to go into
 /// the type of idle that is configured in dll.idle_state (OFF, SLEEP, HOLD)
+	static const ot_u8 scan_events[] = { 0,0, 0,5, 4,0 };
+	ot_u8* scan_evt_ptr;
 
     /// Make sure Radio is powered-down
 	radio_gag();
     radio_sleep();
     
-    /// Disable idle-time scanning tasks
-#   if (M2_FEATURE(BEACONS) == ENABLED)
-    sys.task_BTS.event = (dll.netconf.b_attempts != 0);
-#   endif    
+    /// Assure all DLL tasks are in IDLE
     sys.task_RFA.event = 0;
-    sys.task_HSS.event = 0;
-#   if (M2_FEATURE(ENDPOINT) == ENABLED)
-    sys.task_SSS.event = 0;
-#   endif
 
-    /// Goto OFF (special case) or re-enable one of the scanning tasks 
-    /// depending on the type of idle state that is set.
-    
-    if (dll.idle_state == M2_DLLIDLE_OFF) {
-        sys.task_BTS.event = 0;
-        session_init();
-    }
-    
-#   if (M2_FEATURE(ENDPOINT) == ENABLED)    
-    else if (dll.idle_state == M2_DLLIDLE_SLEEP) {
-        sys.task_SSS.event = 5;
-    }
+    scan_evt_ptr        = (ot_u8*)&scan_events[dll.idle_state<<1];
+    sys.task_HSS.event  = *scan_evt_ptr;
+#   if (M2_FEATURE(ENDPOINT) == ENABLED)
+    sys.task_SSS.event  = *(++scan_evt_ptr);
 #   endif
     
-    // HOLD
-    else {
-        sys.task_HSS.event = 4;
-    }
+#   if (M2_FEATURE(BEACONS) == ENABLED)
+    sys.task_BTS.event  = ((dll.netconf.b_attempts != 0) \
+    		            && (dll.idle_state != M2_DLLIDLE_OFF));
+#   endif
+    
 }
 #endif
 

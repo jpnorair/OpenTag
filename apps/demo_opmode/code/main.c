@@ -487,7 +487,7 @@ void ext_systask(ot_task task) {
 	// Log a message.  It is scheduled, and the RF task has higher priority,
 	// so if you are sending a DASH7 dialog this log message will usually
 	// come-out after the dialog finishes.
-	otapi_log_msg(MSG_utf8, 4, 14, (ot_u8*)"DEMO", (ot_u8*)msglist[app_select]);
+	//otapi_log_msg(MSG_utf8, 4, 14, (ot_u8*)"DEMO", (ot_u8*)msglist[app_select]);
 
 	// Load the session template: Only used for communication tasks
 	s_tmpl.channel      = 0x00;

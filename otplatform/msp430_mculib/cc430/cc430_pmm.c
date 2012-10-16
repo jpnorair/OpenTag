@@ -164,8 +164,8 @@ void PMM_EnterLPM3(void) {
     u8 saved_douts[6];
     u8 saved_ddirs[6];
     s16 i;
-    u16 svsmhctl;
-    u16 svsmlctl;
+    //u16 svsmhctl;
+    //u16 svsmlctl;
 
     WDTA->CTL   = WDTPW+WDTHOLD;            // Stop WDT
 
@@ -179,21 +179,21 @@ void PMM_EnterLPM3(void) {
     }
     
 //  Turn off SVSH, SVSM
-    PMMCTL0_H     = 0xA5;
-    svsmhctl      = SVSMHCTL;
-    svsmlctl      = SVSMLCTL;
-    SVSMHCTL   = 0;
-    SVSMLCTL   = 0;
-    PMMCTL0_H     = 0x00;
+    //PMMCTL0_H     = 0xA5;
+    //svsmhctl      = SVSMHCTL;
+    //svsmlctl      = SVSMLCTL;
+    //SVSMHCTL   = 0;
+    //SVSMLCTL   = 0;
+    //PMMCTL0_H     = 0x00;
 
     __bis_SR_register(LPM3_bits + GIE);             // Enter LPM3
     //__no_operation();
 
     // Restore SVSM, SVSM
-    PMMCTL0_H     = 0xA5;
-    SVSMHCTL   = svsmhctl;
-    SVSMLCTL   = svsmlctl;
-    PMMCTL0_H     = 0x00;
+    //PMMCTL0_H     = 0xA5;
+    //SVSMHCTL   = svsmhctl;
+    //SVSMLCTL   = svsmlctl;
+    //PMMCTL0_H     = 0x00;
 
     /// Restore GPIO
     for (i=(_GROUNDED_PORTS-1); i>0; i--) {
