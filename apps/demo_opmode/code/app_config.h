@@ -104,16 +104,13 @@
 #define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
 #define OT_FEATURE_SESSION_DEPTH        OT_PARAM_SESSION_DEPTH
 #define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE
-#define OT_FEATURE_EXTERNAL_EVENT       (OT_FEATURE_LF | OT_FEATURE_HF)
-#define OT_FEATURE_SYSKERN_CALLBACKS    ENABLED                             // Kernel callbacks from system layer
-#define OT_FEATURE_SYSRF_CALLBACKS      DISABLED                            // RF Process callbacks from system layer
-#define OT_FEATURE_SYSIDLE_CALLBACKS    DISABLED                            // Idle Process callbacks from system layer
+#define OT_FEATURE_EXT_TASK             ENABLED
+#define OT_FEATURE_SYSKERN_CALLBACKS    DISABLED                            // Dynamic Kernel Callbacks (panic, sleep, etc)
+#define OT_FEATURE_SYSTASK_CALLBACKS    DISABLED                            // Dynamic Task callbacks
+#define OT_FEATURE_DLLRF_CALLBACKS      DISABLED                            // Dynamic RF Init, Terminate Callbacks
+#define OT_FEATURE_MPIPE_CALLBACKS      DISABLED                            // Signal callbacks from MPIPE
 #define OT_FEATURE_M2NP_CALLBACKS       DISABLED                            // Signal callbacks from Network (M2NP) layer
 #define OT_FEATURE_M2QP_CALLBACKS       DISABLED                            // Signal callbacks from Transport (M2QP) layer
-#define OT_FEATURE_MPIPE_CALLBACKS      DISABLED                            // Signal callbacks from MPIPE
-#define OT_FEATURE_SW_WATCHDOG          DISABLED
-#define OT_FEATURE_HW_WATCHDOG          DISABLED
-#define OT_FEATURE_WATCHDOG_PERIOD      OT_PARAM_WATCHDOG_PERIOD                              
 
 
 

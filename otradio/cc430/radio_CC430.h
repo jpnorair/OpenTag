@@ -87,9 +87,18 @@
 #define BUFFER_ALLOC         0
 
 
-// Change these settings depending on your radio buffer
-#define RADIO_BUFFER_TXMIN      RADIO_BUFFER_TXMAX
-#define RADIO_BUFFER_RXMIN      RADIO_BUFFER_RXMAX
+/** Recasting of some radio attributes
+  * Most radios we use have internal FIFO.  But the buffer could also be a DMA
+  * on the MCU.  If you do not have a DMA on your micro, make sure you are using
+  * a radio with a FIFO because you need to have one or the other.
+  */
+#if (RF_FEATURE_FIFO == ENABLED)
+#   define RADIO_BUFFER_TXMAX        RF_FEATURE(TXFIFO_BYTES)
+#   define RADIO_BUFFER_RXMAX        RF_FEATURE(RXFIFO_BYTES)
+#else
+#   define RADIO_BUFFER_TXMAX        MCU_FEATURE(RADIODMA_TXBYTES)
+#   define RADIO_BUFFER_RXMAX        MCU_FEATURE(RADIODMA_RXBYTES)
+#endif
 
 
 
@@ -155,37 +164,32 @@
 
 
 
-/** Radio Module Data
+/** CC430 RF Module local Data
   * Data that is useful for the internal use of this module.  The list below is
   * comprehensive, and it may not be needed in entirety for all implementations.
   * For implementations that don't use the values, comment out.
   *
-  * state       Radio State, used with multi-call functions (RX/TX)
+  * state       Radio State, partially implementation-dependent
   * flags       A local store for usage flags
   * txlimit     An interrupt/event comes when tx buffer gets below this number of bytes
   * rxlimit     An interrupt/event comes when rx buffer gets above this number of bytes
-  * last_rssi   Experimental, used to buffer the last-read RSSI value
-  * evtdone     A callback that is used when RX or TX is completed (i.e. done)
   * txcursor    holds some data about tx buffer position (MCU-based buffer only)
   * rxcursor    holds some data about rx buffer position (MCU-based buffer only)
   * buffer[]    buffer data.  (MCU-based buffer only)
-  * last_rssi   The most recent value of the rss (not always needed)
   */
 typedef struct {
     ot_u8   state;
     ot_u8   flags;
     ot_int  txlimit;
     ot_int  rxlimit;
-    ot_int  last_rssi;
-    ot_sig2 evtdone;
 #   if (BUFFER_ALLOC > 0)
         ot_int  txcursor;
         ot_int  rxcursor;
         ot_u8   buffer[BUFFER_ALLOC];
 #   endif
-} radio_struct;
+} cc430_struct;
 
-extern radio_struct radio;
+extern cc430_struct rfcc430;
 
 
 

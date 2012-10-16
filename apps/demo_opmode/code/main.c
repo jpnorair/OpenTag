@@ -17,22 +17,35 @@
   * @file       /apps/demo_opmode/code/main.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       31 July 2012
+  * @date       10 Oct 2012
   * @brief      Opmode Switching Demo
   *
-  * This Demonstration Shows:
-  * <LI> Differences in Gateway and Endpoint idle-time behavior         </LI>
-  * <LI> How to switch Operational Modes during runtime                 </LI>
-  * <LI> How to use the sys.loadapp feature                             </LI>
-  * <LI> How to build basic commands using the OTAPI-C                  </LI>
-  * <LI> How to send log messages to an MPipe Client                    </LI>
+  * Functional purpose of this demo:
+  * <LI> Show differences in Gateway and Endpoint idle-time behavior </LI>
+  * <LI> Switching of Operational Modes during runtime </LI>
+  * <LI> Sending commands and enacting mode changes by button-press or by
+  *      reception of a custom MPipe-ALP protocol that instructs OpenTag
+  *      to send such commands or enact such mode-changes </LI>
   *
-  * Common Variations:
-  * <LI> Changes in the ISF file the query/beacon command uses          </LI>
-  * <LI> Compile-time changes to default scan & beacon cycle parameters </LI>
+  * OpenTag programming examples in this demo:
+  * <LI> How to put your application code into a task that gets invoked by two
+  *      means: 1. Asynchronous event (button press), 2. Another task (the
+  *      MPipe task, via a custom ALP command). </LI>
+  * <LI> Defining a custom ALP protocol using ID=0x90, 0<=CMD<=3, and putting
+  *      the custom protocol code in static callback otapi_alpext_proc() </LI>
+  * <LI> Basic usage of OTAPI for logging and DASH7 dialog creation </LI>
+  * <LI> Basic structuring of an OpenTag-based App & main.c </LI>
   *
-  * This Application Requires:
-  * <LI> A CC430/MSPF5: ~24KB Flash, ~1.5KB SRAM                        </LI>
+  * Elements of the Demo you can customize easily (or relatively easily):
+  * <LI> Easy: attach different applets to the signals by changing the applet
+  *      C files in your makefile (or IDE project, in "applets" folder) </LI>
+  * <LI> Pretty Easy: Change the ISF file that gets used by query or beacon,
+  *      command by altering applet_send_query() or applet_send_beacon() </LI>
+  * <LI> Medium: Change ISF parameters (in files 2-5) from data_default.c
+  *      in order to alter the behavior of Gateway and Endpoint modes. </LI>
+  *
+  * This Application Recommends:
+  * <LI> CC430/MSP430F5: ~24KB Flash, ~1.5KB SRAM                       </LI>
   * <LI> STM32: ~32KB Flash, ~2KB SRAM                                  </LI>
   * <LI> Minimum Two LEDs to show RX/TX activity                        </LI>
   * <LI> Two additional outputs for the application (optionally, LEDs)  </LI>
@@ -44,9 +57,9 @@
   * @note Different boards may support different methods of input and output.
   *
   * Stock Applets: <BR>
-  * Many of the stock applets from /otlibext/stdapplets/ are used as callbacks
-  * from the protocol layers.  You can look at extf_config.h to see which ones
-  * are enabled (or, to specify new ones).
+  * Many of the stock applets from /otlibext/stdapplets/ are used as signal
+  * callbacks from the protocol layers.  You can look at extf_config.h to see
+  * which ones are enabled (or, to specify new ones).
   *
   ******************************************************************************
   */
@@ -72,7 +85,7 @@
 
 /** Application Global Variables <BR>
   * ========================================================================<BR>
-  * It is safe to either keep app_devicemode volatile, since it is set in an
+  * It is safe to either keep opmode_devicemode volatile, since it is set in an
   * interrupt service routine.
   */
 #ifdef __BIG_ENDIAN__
@@ -87,7 +100,7 @@
 #   define SYSMODE_ENDPOINT    0x0002
 #endif
 
-volatile ot_u16 app_devicemode;
+volatile ot_u16 opmode_devicemode;
 //ot_bool (*app_task)(void);
 
 
@@ -98,18 +111,19 @@ volatile ot_u16 app_devicemode;
   * ========================================================================
   */
 // Main Application Functions
-void    app_init();
-void    app_manager();
-ot_bool app_task_null();
+void app_init();
+void app_invoke(ot_u8 call_type);
 
-// Applets that run on button input (or other external input)
-ot_bool app_send_query();
-ot_bool app_send_beacon();
-ot_bool app_goto_gateway();
-ot_bool app_goto_endpoint();
+/// Communication Task Applets
+void applet_send_query(m2session* session);
+void applet_send_beacon(m2session* session);
+
+/// Direct Control Applets
+void opmode_goto_gateway();
+void opmode_goto_endpoint();
 
 // Applets that run due to OpenTag callbacks
-void    app_packet_routing(ot_int code, ot_int type);
+//void    app_packet_routing(ot_int code, ot_int type);
 
 
 
@@ -175,7 +189,7 @@ static const ot_sub led_off[4] = {  &sub_trig4_low,
 
 void sub_led_cycle(ot_u8 i) {
     led_on[i&3]();
-    platform_swdelay_ms(20);
+    platform_block(600);	//600 sti ~= 18.3ms
     led_off[i&3]();
 }
 
@@ -185,7 +199,7 @@ void app_init() {
     ot_u8 i;
 
     ///Default Startup Mode: Gateway.  The button init may also alter this.
-    app_devicemode = SYSMODE_GATEWAY;
+    opmode_devicemode = SYSMODE_GATEWAY;
 
     ///Initialize Application Triggers (LEDs) and blink the LEDs
     ///(Go left-to-right then right-to-left, like on an old-timey Cylon helmet).
@@ -202,28 +216,46 @@ void app_init() {
 
 
 
-ot_bool app_task_null() {
-    return False;
+void app_invoke(ot_u8 call_type) {
+/// The "External Task" is the place where the kernel runs the main user app.
+/// Our app has 4 functions (call types).
+/// <LI> We give it a runtime reservation of 1 tick (it runs pretty fast).
+///      This is also short enough to pre-empt RX listening, but not RX data.
+///      Try changing to a higher number, and observing how the kernel
+///      manages this task. </LI>
+/// <LI> We give it a latency of 255.  Latency is unimportant for run-once
+///      tasks, so giving it the max latency will prevent it from blocking
+///      any other tasks. </LI>
+/// <LI> We tell it to start ASAP (next = 0) </LI>
+///
+/// @note The latency parameter is mostly useful for protocol management,
+/// for which you probably want to enforce a request-response turnaround time.
+/// for processing and basic, iterative tasks it is not important: set to 255.
+///
+	sys_task_setevent(TASK_external, call_type);
+    sys_task_setreserve(TASK_external, 1);
+    sys_task_setlatency(TASK_external, 255);
+    sys_task_setnext(TASK_external, 0);
+    sys_preempt();
 }
 
 
 
-void app_manager() {
-/// This is something you can play with.  I WOULD NOT recommend using it
-/// with the request generation applets, but it will work fine with the
-/// mode-switching applets.  (Note, if you change the conditional to
-/// "if (sys.mutex == 0)" it is basically identical to sys.loadapp, in
-/// which case it will also work with the request generating applets).
-
-//  if (sys.mutex <= 1) {
-//      app_task();
-//      app_task = &app_task_null;
-//  }
-}
 
 
 
-ot_bool app_send_query() {
+/** Communication Task Applets  <BR>
+  * ========================================================================<BR>
+  * Communication tasks in OpenTag are typically created by one of the OTAPI
+  * Tasker functions in /otlib/OTAPI_tasker.h.  The task is created here, and
+  * when it gets activated by the kernel, the applet that is attached to it
+  * will run.  The main job of the applet is to load prepare the communication.
+  * Usually, this means loading a request packet, but you could also make an
+  * applet that does any manner of state-based communication routines.  The
+  * Adaptive Search and CoAP demos are examples of sophisticated applets.
+  */
+
+void applet_send_query(m2session* session) {
 /// The C-API for building commands can be bypassed in favor of directly
 /// putting data to the queue.  That way is more efficient, but it also requires
 /// you to know more about DASH7 that just what order the templates should be.
@@ -231,19 +263,7 @@ ot_bool app_send_query() {
 /// The query that we build will collect sensor configuration data back from
 /// all devices that support the sensor protocol.  Much more interesting queries
 /// are possible.
-    ot_bool output = False;
 
-    if (app_devicemode == SYSMODE_GATEWAY) {
-    { //create a new session (it will get copied to session stack)
-        session_tmpl session;
-        session.channel     = 0x00;
-        session.flagmask    = 0;
-        session.flags       = 0;
-        session.subnet      = 0;
-        session.subnetmask  = 0;
-        session.timeout     = 16;
-        otapi_new_session(&session);
-    }
     { //open request for single hop anycast query
         routing_tmpl routing;
         routing.hop_code = 0;
@@ -293,28 +313,13 @@ ot_bool app_send_query() {
         otapi_put_isf_call(&status, &isfcall);
     }
 
-        //Done building command, close the request and send the dialog
-        otapi_close_request();
-        //otapi_start_dialog(); //don't need this, because using internal caller
-        output = True;
-    }
-    sys.loadapp = &sys_loadapp_null;
-    return output;
+    //Done building command, close the request and send the dialog
+    otapi_close_request();
 }
 
 
 
-ot_bool app_send_beacon() {
-    { //create a new session (it will get copied to session stack)
-        session_tmpl session;
-        session.channel     = 0x00;
-        session.flagmask    = 0;
-        session.flags       = 0;
-        session.subnet      = 0;
-        session.subnetmask  = 0;
-        session.timeout     = 16;
-        otapi_new_session(&session);
-    }
+void applet_send_beacon(m2session* session) {
     { //open request for broadcast
         otapi_open_request(ADDR_broadcast, NULL);
     }
@@ -345,17 +350,23 @@ ot_bool app_send_beacon() {
 
     //Done building command, close the request and send the dialog
     otapi_close_request();
-    //otapi_start_dialog();
-    sys.loadapp = &sys_loadapp_null;
-    return True;
 }
 
 
 
-ot_bool app_goto_gateway() {
-    if (app_devicemode != SYSMODE_GATEWAY) {
+
+
+
+/** Direct Control Applets  <BR>
+  * ========================================================================<BR>
+  * The applets below do not do any communication.  They can run directly from
+  * the User Task without creating a communication task (session).
+  */
+
+void opmode_goto_gateway() {
+    if (opmode_devicemode != SYSMODE_GATEWAY) {
         //vlFILE* fp;
-        app_devicemode = SYSMODE_GATEWAY;
+    	opmode_devicemode = SYSMODE_GATEWAY;
 
         /// Change the Beacon Period to a higher value (slower)
         /// The setting is 0x1000 = 4s
@@ -364,19 +375,16 @@ ot_bool app_goto_gateway() {
         //vl_write(fp, 6, 0x0010);
         //vl_close(fp);
 
-        sys_change_settings(SYSMODE_MASK, SYSMODE_GATEWAY);
-        //platform_ot_preempt();
+        dll_change_settings(SYSMODE_MASK, SYSMODE_GATEWAY);
         sub_trig4_high();
     }
-    sys.loadapp = &sys_loadapp_null;
-    return False;   //no new session
 }
 
 
-ot_bool app_goto_endpoint() {
-    if (app_devicemode != SYSMODE_ENDPOINT) {
+void opmode_goto_endpoint() {
+    if (opmode_devicemode != SYSMODE_ENDPOINT) {
         //vlFILE* fp;
-        app_devicemode = SYSMODE_ENDPOINT;
+    	opmode_devicemode = SYSMODE_ENDPOINT;
 
         /// Change the Beacon Period to a lower value (faster)
         /// The setting is 0x0200 = 500ms
@@ -386,12 +394,9 @@ ot_bool app_goto_endpoint() {
         //vl_close(fp);
 
         /// Use the built-in system function to change modes and restart
-        sys_change_settings(SYSMODE_MASK, SYSMODE_ENDPOINT);
-        //platform_ot_preempt();
+        dll_change_settings(SYSMODE_MASK, SYSMODE_ENDPOINT);
         sub_trig4_low();
     }
-    sys.loadapp = &sys_loadapp_null;
-    return False;   //no new session
 }
 
 
@@ -421,19 +426,86 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 /// For this example, the directive ID is 0x90 and the commands are 0-3.  You
 /// can change these values simply by changing the implementation of this 
 /// function.
+///
+/// Alternatively, instead of using the User Task (extprocess) you can use the
+/// sys.loadapi link to an app function: sys.loadapi = &opmode_goto_gateway;
+/// This is a simpler approach, but it can be blocked eternally in some setups.
+/// Using the User Task guarantees that your app/applet will run at some point
+/// in the future, as soon as the kernel is done with high-priority I/O tasks.
 
     if (alp->inrec.id == 0x90) {
-        switch (alp->inrec.cmd) {
-            case 0: sys.loadapp = &app_send_query;      break;
-            case 1: sys.loadapp = &app_send_beacon;     break;
-            case 2: sys.loadapp = &app_goto_gateway;    break;
-            case 3: sys.loadapp = &app_goto_endpoint;   break;
-           default: return;
-        }
-        
-        /// Write back success (1) if respond (CMD bit 7) is enabled
-        alp_load_retval(alp, 1);
+    	ot_u8 task_cmd = (alp->inrec.cmd & 0x7F);
+
+    	// Enable our command processing user task (task 0) to run the command
+    	// routine, but only if the cmd is known (0<=cmd<=3)
+    	if (task_cmd > 3)   task_cmd = 0;
+    	else                app_invoke(++task_cmd);
+
+        // Write back success (non-zero).
+        alp_load_retval(alp, task_cmd);
     }
+}
+
+
+
+
+
+/** User Task for ALP command processing  <BR>
+  * =======================================================================<BR>
+  * You can create a user task that does various different things -- basically
+  * it is just a function that does whatever you want.  This task is enabled
+  * when a valid "Opmode" ALP is received (see otapi_alpext_proc() above),
+  * and it runs the command routine specified by the ALP CMD value that was
+  * received and parsed by otapi_alpext_proc().
+  *
+  * It is important to use a task to do the work in cases where "the work"
+  * is involving the OpenTag core.  Otherwise, you are in danger of
+  * interrupting critical processes managed by the kernel.  In order to keep
+  * OpenTag lightweight, there are not formal mutexes that protect system
+  * resources.
+  *
+  * If "the work" has nothing to do with the OpenTag core, then you don't
+  * need a task.  For example, you could just run the code from
+  * otapi_alpext_proc().  The Built-in Filedata ALP is an example of an ALP
+  * that doesn't impact the core, and therefore is runs directly from ALP.
+  */
+
+void ext_systask(ot_task task) {
+    static const char msg0[] = "Sending Beacon";
+    static const char msg1[] = "Sending Query ";
+    static const char msg2[] = "Go to Gateway ";
+    static const char msg3[] = "Go to Endpoint";
+    static const char *msglist[] = { msg0, msg1, msg2, msg3 };
+
+	ot_int app_select;
+	session_tmpl s_tmpl;
+
+	// Disable this task after running, by setting event to 0
+	app_select  = task->event - 1;
+	task->event = 0;
+
+	// Log a message.  It is scheduled, and the RF task has higher priority,
+	// so if you are sending a DASH7 dialog this log message will usually
+	// come-out after the dialog finishes.
+	otapi_log_msg(MSG_utf8, 4, 14, (ot_u8*)"DEMO", (ot_u8*)msglist[app_select]);
+
+	// Load the session template: Only used for communication tasks
+	s_tmpl.channel      = 0x00;
+	s_tmpl.flagmask     = 0;
+	s_tmpl.subnetmask   = 0;
+
+	switch (app_select) {
+	// Communication Task Commands
+	///@todo Change Query command to use otapi_task_immediate_advertise()
+	///@note You can actually call otapi_task... functions directly from
+	/// the alp_extproc function without breaking anything.
+	case 0: otapi_task_immediate(&s_tmpl, &applet_send_beacon);   break;
+	case 1: otapi_task_immediate(&s_tmpl, &applet_send_query);   break;
+
+	// Direct System Control Commands
+	case 2: opmode_goto_gateway();  break;
+	case 3: opmode_goto_endpoint(); break;
+	}
 }
 
 
@@ -445,10 +517,10 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 
 
 
-
-
 /** Application Main <BR>
-  * ======================================================================
+  * ==================================================================<BR>
+  * Hint: you don't usually need to do anything to main.
+  *
   */
 void main(void) {
     ///1. Standard Power-on routine (Clocks, Timers, IRQ's, etc)
@@ -464,42 +536,24 @@ void main(void) {
     ///    Also, the kernel is officially unattached during the process.
 #   if (MCU_FEATURE_MPIPEVCOM)
         platform_flush_gptim();
-        while (app_devicemode == 0) {
+        while (opmode_devicemode == 0) {
             SLEEP_MCU();
         }
 #   endif
 
-    ///4b. Send a message to show that main startup has passed
-    otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
-    mpipe_wait(); //blocks until msg complete (optional)
+    ///4b. Load a message to show that main startup has passed
+    //otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
-    ///<LI> a. Pre-empt the kernel (first run)   </LI>
-    ///<LI> b. Go to sleep; OpenTag kernel will run automatically in
-    ///        the background  </LI>
-    ///<LI> c. The kernel has a built-in applet loader.  It is the best way
-    ///        to use applets that generate requests or manipulate the system.
-    ///        The applets only load during full-stop, so time slotting or
-    ///        any other type of MAC activity is not affected. </LI>
-    ///<LI> d. 99.99% (or more) of the time, the kernel is not actually
-    ///        running.  You can run parallel, local tasks alongside OpenTag
-    ///        as long as they operate above priority 1.  (I/O is usually
-    ///        priority 0 and kernel is always priority 1) </LI>
-    platform_ot_preempt();
+    ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
+    ///<LI> The kernel actually runs at the bottom of this loop.</LI>
+    ///<LI> You could put code before or after sys_runtime_manager, which will
+    ///     run before or after the (task + kernel).  If you do, keep the code
+    ///     very short or else you are risking timing glitches.</LI>
+    ///<LI> To run any significant amount of user code, use tasks. </LI>
     while(1) {
-        //app_manager();        //kernel pre-emptor demo
-        //local_task_manager();
-        SLEEP_MCU();
+    	platform_ot_run();
     }
-
-    ///6. Note on manually pre-empting the kernel for you own purposes:
-    ///   It can be done (many internal tasks do it), but be careful.
-    ///   It is recommended that you only do it when sys.mutex <= 1
-    ///   (i.e. no radio data transfer underway).  One adaptation of
-    ///   this demo is to have the mode-switching applets pre-empt the
-    ///   kernel (it works fine, but you need to make your own loader
-    ///   instead of using sys.loadapp).
-
 }
 
 

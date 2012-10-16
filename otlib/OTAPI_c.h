@@ -163,14 +163,12 @@ ot_u16 otapi_sysinit();
 
 
 
-/** @brief Manually creates a new ad-hoc session and prepares system.
+/** @brief Creates new ad-hoc session and prepares communication task
   * @param  s_tmpl      (session_tmpl*) Session parameters
   * @param  applet      (void*) Converted to a Session Applet Pointer
   * @retval ot_u16      The session number (see otapi_session_number)
   * @ingroup OTAPI_c
-  * @sa otapi_session_number()
-  * @sa otapi_new_request()
-  * @sa otapi_start_flood()
+  * @sa otapi_new_advdialog()
   *
   * Call this when some event occurs that makes you want to send a DASH7 packet.
   * A session needs to exist for the DASH7 engine to do its job.  All sessions
@@ -178,7 +176,19 @@ ot_u16 otapi_sysinit();
   * scheduled for some time in the future (they happen right away).  Scheduled
   * sessions are reserved for internal DASH7 usage.
   */
-ot_u16 otapi_new_session(session_tmpl* s_tmpl, void* applet);
+ot_u16 otapi_new_dialog(session_tmpl* s_tmpl, void* applet);
+
+
+/** @brief Creates new ad-hoc session and prepares communication task, with advertising
+  * @param  adv_tmpl    (advert_tmpl*) Advertising parameters
+  * @param  s_tmpl      (session_tmpl*) Session parameters
+  * @param  applet      (void*) Converted to a Session Applet Pointer
+  * @retval ot_u16      The session number (see otapi_session_number)
+  * @ingroup OTAPI_c
+  * @sa otapi_new_dialog()
+  *
+  */
+ot_u16 otapi_new_advdialog(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, void* applet);
 
 
 
@@ -255,23 +265,17 @@ ot_u16 otapi_start_flood(ot_u16 flood_duration);
 
 
 
-/** @brief  Begins a DASH7 dialog onto the top session, without a flood.
+/** @brief  Begins a DASH7 dialog from the immediate session
+  * @param  timeout         (ot_u16) Number of ticks to attempt TX or RX
   * @retval ot_u16          0/1 on failure/success of the dialog initialization
   * @ingroup OTAPI_c
   * @sa otapi_new_session()
   * @sa otapi_new_request()
   * @sa otapi_start_flood()
   *
-  * Call this when you want to kick-off a request that has been already built
-  * using the normal request-building process.
-  *
-  * If you are using a flood prior to the request, use otapi_start_flood() and 
-  * not this function.  It will automatically kick-off the request dialog when 
-  * the flood is complete.
-  *
-  * If you are not using a flood prior to the request, then use this function.
+  * Call this when you want to kick-off a dialog from an external application.
   */
-ot_u16 otapi_start_dialog();
+ot_u16 otapi_start_dialog(ot_u16 timeout);
 
 
 

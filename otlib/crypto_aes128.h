@@ -1,4 +1,4 @@
-/* Copyright 2008 STMicroelectronics
+/* Copyright 2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
   *
   */
 /**
-  * @file       /Platforms/.../aes128.h
-  * @author     STMicro MCD Application Team 
-  * @version    V1.0 (10 June 2008)
+  * @file       /otlib/crypto_aes128.h
+  * @author     JP Norair
+  * @version    V1.0
   * @date       17 November 2011
   * @brief      AES128 Driver
   * @defgroup   AES128

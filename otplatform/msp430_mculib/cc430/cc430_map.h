@@ -608,22 +608,22 @@ typedef struct {
     vu16 IFG;
     vu16 IE;
     vu16 IV;
-    vu8  MCTL1;
     vu8  MCTL0;
-    vu8  MCTL3;
+    vu8  MCTL1;
     vu8  MCTL2;
-    vu8  MCTL5;
+    vu8  MCTL3;
     vu8  MCTL4;
-    vu8  MCTL7;
+    vu8  MCTL5;
     vu8  MCTL6;
-    vu8  MCTL9;
+    vu8  MCTL7;
     vu8  MCTL8;
-    vu8  MCTL11;
+    vu8  MCTL9;
     vu8  MCTL10;
-    vu8  MCTL13;
+    vu8  MCTL11;
     vu8  MCTL12;
-    vu8  MCTL15;
+    vu8  MCTL13;
     vu8  MCTL14;
+    vu8  MCTL15;
     vu16 MEM0;
     vu16 MEM1;
     vu16 MEM2;
@@ -641,6 +641,32 @@ typedef struct {
     vu16 MEM14;
     vu16 MEM15;
 } ADC12_Type;
+
+
+
+
+/*------------------------ ADC10 ---------------------------------------------*/
+typedef struct {
+    vu16 CTL0;
+    vu16 CTL1;
+    vu16 CTL2;
+    vu16 LO;
+    vu16 HI;
+    vu8  MCTL0;
+    vu8  reserved0B;
+    vu16 reserved0C;
+    vu16 reserved0E;
+    vu16 reserved10;
+    vu16 MEM0;
+    vu16 reserved14;
+    vu16 reserved16;
+    vu16 reserved18;
+    vu16 IE;
+    vu16 IFG;
+    vu16 IV;
+} ADC10_Type;
+
+
 
 
 
@@ -714,6 +740,7 @@ typedef struct {
 #define USCIA0_BASE             (0x05C0)
 #define USCIB0_BASE             (0x05E0)
 #define ADC12_BASE              (0x0700)
+#define ADC10_BASE              (0x0740)
 #define CB_BASE                 (0x08C0)
 #define AES_BASE                (0x09C0)
 #define LCD_BASE                (0x0A00)
@@ -889,10 +916,14 @@ typedef struct {
 
 
 
-// 12 bit Analog to Digital Converter (ADC12)
-//#ifdef _ADC12
+// 10 or 12 bit Analog to Digital Converter (ADC10, ADC12)
+#if defined(_ADC12)
 #   define ADC12            ((ADC12_Type*)ADC12_BASE)
-//#endif
+#   define ADC              ADC12
+#elif defined(_ADC10)
+#   define ADC10            ((ADC10_Type*)ADC10_BASE)
+#   define ADC              ADC10
+#endif
 
 
 

@@ -37,7 +37,7 @@
 #include "session.h"
 
 //#include "OTAPI_c.h"
-
+#include "OT_platform.h"
 
 
 #define SESSION_STACK_DEPTH     OT_FEATURE(SESSION_DEPTH)
@@ -66,11 +66,9 @@ ot_bool session_refresh(ot_uint elapsed_ti) {
 
     for (i=session.top; (i>=0) /* && (session.heap[i].netstate != 0) */; i--) {
         ot_long scratch;
-        scratch = (ot_long)session.heap[i].counter - elapsed_ti;
-        if (scratch <= 0) {
-            session.heap[i].counter = 0;
-            test                    = True;
-        }
+        scratch                 = (ot_long)session.heap[i].counter - elapsed_ti;
+        session.heap[i].counter = (scratch < 0) ? 0 : (ot_uint)scratch;
+        test                   |= (session.heap[i].counter == 0);
     }
 
     return test;
@@ -180,6 +178,14 @@ void session_flush() {
 }
 #endif
 
+
+#ifndef EXTF_session_crop
+void session_crop(ot_u16 threshold) {
+    while ((Session0.counter <= threshold) && (session.top >= 0)) {
+        session_pop();
+    }
+}
+#endif
 
 
 #ifndef EXTF_session_drop

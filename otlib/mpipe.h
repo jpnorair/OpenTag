@@ -54,6 +54,7 @@
 #if (OT_FEATURE(MPIPE) == ENABLED)
 
 #include "alp.h"
+#include "system.h"
 
 
 
@@ -97,16 +98,164 @@ typedef enum {
 } mpipe_state;
 
 
-/** MPipe ALP allocation         <BR>
+
+
+/** MPipe data allocation         <BR>
   * ========================================================================<BR>
-  * This should be allocated in the MPipe driver if you are using an ALP-based
-  * data wrapper for MPipe.  NDEF is an ALP-based wrapper, and it is the only
-  * wrapper currently supported by Mainline MPipe implementations.
+  * The MPipe implementation requires an ALP template for input and output, and
+  * the framing of queued IO data is managed via the ALP Module.
+  *
+  * MPipe also includes a 16bit sequence number that is used typically in the
+  * footer of each message.
   */
-extern alp_tmpl mpipe_alp;
+
+typedef struct {
+    mpipe_state state;
+    alp_tmpl    alp;
+    
+#if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
+    ot_sigv sig_rxdone;
+    ot_sigv sig_txdone;
+    ot_sigv sig_rxdetect;
+#endif
+} mpipe_struct;
+
+extern mpipe_struct mpipe;
 
 
 
+
+
+/** Library Functions 
+  * ========================================================================<BR>
+  */
+/** @brief  Initializes Mpipe Module
+  * @param  port_id     (void*) Implementation-dependent port identifier 
+  * @retval None        
+  * @ingroup Mpipe
+  * @sa mpipe_init_driver()
+  *
+  * The user should call this function during system initialization, and the
+  * implementation must call mpipe_init_driver().
+  *
+  * About port_id: on POSIX systems this will be a string representing a file
+  * in the /dev/ directory somewhere (often /dev/tty...).  On embedded sytems,
+  * it might be a pointer to a peripheral configuration register bank.  Check
+  * with the Platform layer implementation -- in many cases it is unused and can
+  * be ignored (set to NULL).
+  */
+void mpipe_init(void* port_id);
+
+
+
+/** @brief  Returns the Mpipe state: merely a wrapper for mpipe.state
+  * @param  None
+  * @retval (mpipe_state)   State enum
+  * @ingroup Mpipe
+  *
+  * This is a wrapper for folks who like that sort of thing.
+  */
+mpipe_state mpipe_status();
+
+
+/** @brief  Opens the Mpipe for passive RX
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  * @sa mpipe_close()
+  *
+  * This function is usually called only once, by mpipe_init().  However, if
+  * mpipe is closed, then you will have to call it again to re-open mpipe.
+  */
+void mpipe_open();
+
+
+/** @brief  Closes the Mpipe, terminating any present usage
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  * @sa mpipe_open()
+  *
+  * You may call this function to close the Mpipe.  From a tasking perspective 
+  * this has the effect of blocking Mpipe.
+  */
+void mpipe_close();
+
+
+/** @brief  Sends the contents of the mpipe output queue over the MPipe
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  */
+void mpipe_send();
+
+
+
+/** @brief  Mpipe Task function
+  * @param  task    (task_marker*) Task pointer from the kernel
+  * @retval None
+  * @ingroup Mpipe
+  *
+  * The best policy is not to call this function, ever, unless you are working
+  * on the kernel.
+  */
+void mpipe_systask(ot_task task);
+
+
+
+
+
+/** Driver->Task Callbacks (Static) <BR>
+  * ========================================================================<BR>
+  */
+  
+/** @brief  Driver callback for RX Detect Event
+  * @param  code    (ot_int) Ticks (typ 0-255) the task should apply as timeout
+  * @retval None
+  * @ingroup Mpipe
+  *
+  * Once an mpipe driver detects an incoming packet, it will use this callback.
+  * The "code" value will be applied to a timeout measured by the task.  If the
+  * packet is not finished being received by this timeout, MPipe is flushed.
+  * 
+  * The timeout value itself is in Ticks, and in typical implementations it is
+  * just provided as a fixed value.  For example, on a 115200bps 8N1 UART, 256
+  * bytes require 22.7 ticks to receive.  So, for an implementation with a 256
+  * byte MPipe frame buffer, the timeout can be safely fixed to 23 ticks.
+  */
+void mpipeevt_rxdetect(ot_int code);
+
+
+
+/** @brief  Driver callback for RX Done Event
+  * @param  code    (ot_int) 0 if RX'ed packet is valid, non-zero otherwise
+  * @retval None
+  * @ingroup Mpipe
+  */
+void mpipeevt_rxdone(ot_int code);
+
+
+
+/** @brief  Driver callback for TX Done Event
+  * @param  code    (ot_int) Ticks (typ 0-255) the driver needs to page-out TX
+  * @retval None
+  * @ingroup Mpipe
+  * 
+  * Some MPipe driver implementations may deliver "DONE" interrupts before the 
+  * TX data has completely exited from the buffer.  The code value tells the
+  * MPipe Task to wait a number of ticks before re-opening the MPipe in RX.
+  * Most embedded devices using DMA will have a two byte delay (20 bits), so
+  * "code" will be 1 tick for baud rates 28.8kbps or higher.
+  */
+void mpipeevt_txdone(ot_int code);
+
+
+
+
+
+/** Driver Interface Functions 
+  * ========================================================================<BR>
+  */
 
 
 /** @brief  Returns the number of bytes the MPipe needs for its footer
@@ -122,22 +271,27 @@ ot_u8 mpipe_footerbytes();
 
 
 
-/** @brief  Initializes Mpipe module (run at boot time)
+/** @brief  Initializes Mpipe Driver
   * @param  port_id     (void*) Implementation-dependent port identifier 
-  * @retval ot_int      0 on success, negative on error
+  * @retval ot_int      Amount of latency to attribute to this driver
   * @ingroup Mpipe
+  * @sa mpipe_init()
   *
-  * About port_id: on POSIX systems this will be a string representing a file
-  * in the /dev/ directory somewhere (often /dev/tty...).  On embedded sytems,
-  * it might be a pointer to a peripheral configuration register bank.  Check
-  * with the Platform layer implementation -- in many cases it is unused and can
-  * be ignored (set to NULL).
+  * This function must be implemented in the MPipe driver.  It should be called
+  * from inside mpipe_init().
+  * 
+  * About port_id: this value is passed-in directly from mpipe_init().
+  *
+  * About returned latency: this is a value in ticks that is used by the native
+  * kernel, and perhaps others, that assists the management of task timing.
+  * This value should be 1-255 for the native kernel, but for other kernels it
+  * may have different outputs.
   */
-ot_int mpipe_init(void* port_id);
+ot_int mpipe_init_driver(void* port_id);
 
 
 
-/** @brief  Kills the Mpipe: not always implemented
+/** @brief  Kills the Mpipe connection
   * @param  None 
   * @retval None
   * @ingroup Mpipe
@@ -166,13 +320,10 @@ void mpipe_unblock();
 
 
 
-/** @brief  Provides manual blocking to MPIPE transfers
+/** @brief  Provides driver-level blocking to MPIPE transfers
   * @param  None 
   * @retval None
   * @ingroup Mpipe
-  *
-  * Puts the MCU to sleep until the transfer is complete.  This is most useful
-  * for preventing subsequent calls to MPIPE from interfering with each other.
   */
 void mpipe_wait();
 
@@ -191,82 +342,7 @@ void mpipe_setspeed(mpipe_speed speed);
 
 
 
-/** @brief  Returns the Mpipe state
-  * @param  None
-  * @retval (mpipe_state)   State enum
-  * @ingroup Mpipe
-  *
-  * This is similar to a call to a mutex flag.  In Mpipe implementations that 
-  * are blocking, this function will always return non-zero (because it can't be
-  * called while Mpipe is active).  In Non-blocking implementations of Mpipe, it 
-  * should be used to prevent usage of OpenTag features that depend on Mpipe 
-  * (e.g. basically everything)
-  */
-mpipe_state mpipe_status();
-
-
-#if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
-/** @brief  Attaches a callback for TX done
-  * @param  signal      (ot_sigv)  Signal handler callback
-  * @retval None
-  * @ingroup Mpipe
-  * 
-  * @note Only available when OT_FEATURE_MPIPE_CALLBACKS is ENABLED in OT_config.h
-  */
-void mpipe_setsig_txdone(ot_sigv signal);
-
-
-
-/** @brief  Attaches a callback for RX done
-  * @param  signal      (ot_sigv)  Signal handler callback
-  * @retval None
-  * @ingroup Mpipe
-  *
-  * @note Only available when OT_FEATURE_MPIPE_CALLBACKS is ENABLED in OT_config.h
-  */
-void mpipe_setsig_rxdone(ot_sigv signal);
-
-
-
-/** @brief  Attaches a callback for RX detect
-  * @param  signal      (ot_sigv)  Signal handler callback
-  * @retval None
-  * @ingroup Mpipe
-  * 
-  * @note Only available when OT_FEATURE_MPIPE_CALLBACKS is ENABLED in OT_config.h
-  */
-void mpipe_setsig_rxdetect(ot_sigv signal);
-
-#else
-
-/** @brief  Static Callback Functions
-  * @param  code      	(void*) pointer to some sort of template (extensible)
-  * @retval None
-  * @ingroup Mpipe
-  *
-  * <LI>mpipe_sig_txdone(ot_int code)</LI>
-  * <LI>mpipe_sig_rxdone(ot_int code)</LI>
-  * <LI>mpipe_sig_rxdetect(ot_int code)</LI>
-  *
-  * Static callbacks are not used through function pointers (callback pointers)
-  * they are used by direct implementation in the client app.  In other words,
-  * you would implement these functions in your app, and mpipe will call them
-  * as needed.  In order to have Mpipe call them, you need to define a constant
-  * like the following (for each static callback you use):
-  * #define EXTF_mpipe_sig_xxx
-  *
-  * "xxx" will be txdone, rxdone, or rxdetect.  Define one for each callback
-  * you want to implement.
-  */
-void mpipe_sig_txdone(void* tmpl);
-void mpipe_sig_rxdone(void* tmpl);
-void mpipe_sig_rxdetect(void* tmpl);
-
-#endif
-
-
 /** @brief  Transmits an NDEF structured datastream over the MPIPE
-  * @param  data        (ot_u8*) Pointer to start of NDEF stream
   * @param  blocking    (ot_bool) True/False for blocking/non-blocking call
   * @param  data_priority (mpipe_priority) Priority of the TX
   * @retval None
@@ -284,14 +360,13 @@ void mpipe_sig_rxdetect(void* tmpl);
   * underway if its own priority is higher.
   *
   */
-void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority);
+void mpipe_txndef(ot_bool blocking, mpipe_priority data_priority);
 
 
 
 
 
 /** @brief  Receives an NDEF structed datastream over the MPIPE
-  * @param  data        (ot_u8*) Byte array to place received data
   * @param  blocking    (ot_bool) True/False for blocking/non-blocking call
   * @param  data_priority (mpipe_priority) Priority of the TX
   * @retval None
@@ -301,7 +376,7 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority);
   * The blocking parameter and data_priority parameters are dealt-with in the 
   * same way as they are with mpipe_txndef()
   */
-void mpipe_rxndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority);
+void mpipe_rxndef(ot_bool blocking, mpipe_priority data_priority);
 
 
 

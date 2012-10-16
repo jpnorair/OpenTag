@@ -10,7 +10,9 @@ This supplement contains a POSIX C program called "ent" that runs on a POSIX
 shell.  This program is by John Walker of fourmilab.ch (and incidentally the 
 founder of AutoCAD), but I have added the part that takes-in hex files.  
 
-As I have found, the entropy of the least-significant 4 bits of a 12bit ADC capture of a floating pin is really high, and suitable as a random number generator.  The onchip temperature sensor is not really good enough.
+As I have found, the entropy of the least-significant 4 bits of a 12bit ADC 
+capture of a floating pin is really high, and suitable as a random number 
+generator.  The onchip temperature sensor is not really good enough.
 
 
 THE BASICS

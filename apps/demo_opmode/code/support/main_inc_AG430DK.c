@@ -111,8 +111,8 @@ void sub_button_init() {
 #   else
     if ((APP_BUTTON_PORT->DIN & APP_BUTTON_PIN) == 0) {
 #   endif
-        app_goto_endpoint();
-        app_devicemode = SYSMODE_ENDPOINT;
+        opmode_goto_endpoint();
+        opmode_devicemode = SYSMODE_ENDPOINT;
     }
 
     // Configure Button interrupt to happen when the button is released.
@@ -144,14 +144,8 @@ OT_INTERRUPT void app_buttons_isr(void) { //Make a GPIO interrupt for pin 2.0
     // Make sure the interrupt is the one we want, otherwise ignore
     // The input source (PG8) is active low
     if (exti_source) {
-    	sys.loadapp = (app_devicemode != SYSMODE_GATEWAY) ? \
-    					&app_goto_gateway : &app_goto_endpoint;
-
-        // No joystick on the board yet!
-        // Joystick LEFT:   sys.loadapp = &app_send_query;
-        // Joystick RIGHT:  sys.loadapp = &app_send_beacon;
-        // Joystick UP:     sys.loadapp = &app_goto_gateway;
-        // Joystick DOWN:   sys.loadapp = &app_goto_endpoint;
+    	exti_source = (opmode_devicemode == SYSMODE_GATEWAY) + 1;
+    	sys_task_enable(0, exti_source, 0);
     }
 }
 

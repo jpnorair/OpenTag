@@ -31,6 +31,7 @@ void otutils_null(void)                     { }
 void otutils_sig_null(ot_int a)             { }
 void otutils_sig2_null(ot_int a, ot_int b)  { }
 void otutils_sigv_null(void* a)             { }
+void otutils_applet_null(m2session* a)      { }
 
 
 

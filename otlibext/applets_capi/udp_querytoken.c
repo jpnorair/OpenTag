@@ -26,8 +26,9 @@
 
 
 
-ot_bool applet_udp_querytoken(  session_tmpl* session, 
-                                udp_tmpl* udp, 
+
+void applet_udp_querytoken( session_tmpl* session,
+                                udp_tmpl* udp,
                                 ot_u8 file, ot_u8 toklength, ot_u8* token   ) {
 /// The C-API for building commands can be bypassed in favor of directly
 /// putting data to the queue.  That way is more efficient, but it also requires
@@ -38,10 +39,6 @@ ot_bool applet_udp_querytoken(  session_tmpl* session,
 /// are possible.
     ot_u8 status;
 
-    { //create a new session (it will get copied to session stack)
-        otapi_new_session(session, NULL);
-    }
-    
     { //open request for single hop anycast query
         routing_tmpl routing;
         routing.hop_code = 0;
@@ -70,7 +67,7 @@ ot_bool applet_udp_querytoken(  session_tmpl* session,
         query.length    = toklength;                    // look for one byte (0x02)
         query.value     = token;                        // (query.value is a string)
         otapi_put_query_tmpl(&status, &query);
-    }   if (status) return False;
+    }   if (status) return;
     
     { //put in the information of the file to search (the protocol list)
         isfcomp_tmpl isfcomp;
@@ -82,11 +79,8 @@ ot_bool applet_udp_querytoken(  session_tmpl* session,
     
     { //put in the information of the file to search (the protocol list)
         otapi_put_udp_tmpl(&status, udp);
-    }   if (status) return False;
+    }   if (status) return;
 
     //Done building command, close the request and send the dialog
     otapi_close_request();
-    //otapi_start_dialog(); //don't need this, because using internal caller
-
-    return True;
 }

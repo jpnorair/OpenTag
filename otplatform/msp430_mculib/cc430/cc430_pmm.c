@@ -64,49 +64,82 @@ void PMM_SetStdSVSM(unsigned short svsmh_cfg, SVS_Von Von, SVSM_Voffon Voffon) {
     unsigned short svsmh_reg;
     unsigned short svsml_reg;
 
-    PMMCTL0_H    = 0xA5;
-    svsmh_reg       = svsmh_cfg | ((unsigned short)Von << 8) | (unsigned short)Voffon;
-    svsml_reg       = SVSMLCTL & 0x070F;
-    svsml_reg      |= svsmh_reg & 0x08C0;   // Always disable SVML (useless)
-    PMMIFG        = 0;
-    PMMRIE        = 0;
-    SVSMHCTL   = svsmh_reg;
-    SVSMLCTL   = svsml_reg;
+    PMMCTL0_H   = 0xA5;
+    svsmh_reg   = svsmh_cfg | ((unsigned short)Von << 8) | (unsigned short)Voffon;
+    svsml_reg   = SVSMLCTL & 0x070F;
+    svsml_reg  |= svsmh_reg & 0x08C0;   // Always disable SVML (useless)
+    PMMIFG      = 0;
+    PMMRIE      = 0;
+    SVSMHCTL    = svsmh_reg;
+    SVSMLCTL    = svsml_reg;
     while ((PMMIFG & (SVSMLDLYIFG+SVSMHDLYIFG)) != (SVSMLDLYIFG+SVSMHDLYIFG));
 
-    PMMIFG        = 0;
-    PMMRIE        = 0x0130;               //Always enable SVSL reset, SVMH interrupt, SVS/MH Delayed interrupt
-    PMMCTL0_H    = 0x00;
+    PMMIFG      = 0;
+    PMMRIE      = 0x0130;               //Always enable SVSL reset, SVMH interrupt, SVS/MH Delayed interrupt
+    PMMCTL0_H   = 0x00;
 }
-
 
 
 
 void PMM_EnterLPM0(void) {
-
-    WDTA->CTL = WDTPW+WDTHOLD;                   // Stop WDT
-
-    __bis_SR_register(LPM0_bits);             // Enter LPM1
-    __no_operation();                         // For debugger
+    WDTA->CTL = WDTPW+WDTHOLD;                  // Stop WDT
+    __bis_SR_register(LPM0_bits + GIE);         // Enter LPM0
+    __no_operation();                           // For debugger
 }
 
 
-
-
 void PMM_EnterLPM1(void) {
-    // Currently unimplemented
+/// In this implementation, LPM1 shuts off the following modules:
+/// <LI> MCLK & CPU </LI>
+/// <LI> FLL </LI>
+
+    WDTA->CTL = WDTPW+WDTHOLD;                  // Stop WDT
+    __bis_SR_register(LPM1_bits + GIE);         // Enter LPM1
+    __no_operation();                           // For debugger
 }
 
 
 void PMM_EnterLPM2(void) {
-    // Currently unimplemented
+/// In this implementation, LPM2 shuts off the following modules below.
+/// LPM2 will wake-up in <10us if the supply monitors are off or <110us
+/// if they are on.
+/// <LI> MCLK & CPU </LI>
+/// <LI> FLL </LI>
+/// <LI> Supply Voltage Monitors </LI>
+/// <LI> SMCLK </LI>
+
+    WDTA->CTL   = WDTPW+WDTHOLD;                // Stop WDT
+    UCS->CTL6  |= SMCLKOFF;                     // Kill SMCLK
+
+    __bis_SR_register(LPM2_bits + GIE);         // Enter LPM2
+    //__no_operation();                         // For debugger
+
+    // Resume SMCLK
+    UCS->CTL6  &= ~SMCLKOFF;
 }
 
 
 
 void PMM_EnterLPM3(void) {
-///@note it is probably best not to use this with JTAG connected (i.e. in 
-/// debugging builds) but it should actually work OK.
+#define _TOTAL_PORTS        6
+#ifdef __DEBUG__
+#define _GROUNDED_PORTS		(_TOTAL_PORTS-1)
+#else
+#define _GROUNDED_PORTS     _TOTAL_PORTS
+#endif
+
+/// In this implementation, LPM3 shuts off the following modules below.
+/// LPM3 will wake-up in <10us if the supply monitors are off or <110us
+/// if they are on.  This implementation of LPM3 will also ground all
+/// GPIO to save power.
+/// <LI> MCLK & CPU </LI>
+/// <LI> FLL </LI>
+/// <LI> Supply Voltage Monitors </LI>
+/// <LI> SMCLK </LI>
+/// <LI> All GPIO is floored to ground </LI>
+
+///@note This seems to work OK with JTAG connected.  I have not tested
+///      it with Spy-Bi-Wire
 
     static const u8* dout_table[] = {
         (u8*)0x0202,     //Port 1 DOUT
@@ -131,44 +164,41 @@ void PMM_EnterLPM3(void) {
     u8 saved_douts[6];
     u8 saved_ddirs[6];
     s16 i;
+    u16 svsmhctl;
+    u16 svsmlctl;
 
     WDTA->CTL   = WDTPW+WDTHOLD;            // Stop WDT
-    GPIO5->SEL |= BIT0 + BIT1;              // Assure Selection of XT1
-    UCS->CTL6  |= XCAP_3;                   // Internal load cap
-
-    // Loop until XT1,XT2 & DCO stabilizes
-    do {
-        UCS->CTL7 &= ~(XT1LFOFFG + DCOFFG); // Clear LFXT1,DCO fault flags
-        SFRIFG1 &= ~OFIFG;                  // Clear fault flags
-    } 
-    while (SFRIFG1 & OFIFG);                // Test oscillator fault flag
-    UCSCTL6 &= ~(XT1DRIVE_3);               // Xtal is now stable, reduce drive strength
 
     /// Save GPIO dout & ddir settings, and set to low-power running.
     /// GPIO5 is specials, because it drives the oscillators
-    for (i=5; i>0; i--) {
-        saved_douts[i]              = *dout_table[i];
-        saved_ddirs[i]              = *ddir_table[i];
-        *((u8*)dout_table[i])    = 0x00;
-        *((u8*)ddir_table[i])    = ddir_set[i];
+    for (i=(_GROUNDED_PORTS-1); i>0; i--) {
+        saved_douts[i]          = *dout_table[i];
+        saved_ddirs[i]          = *ddir_table[i];
+        *((u8*)dout_table[i])   = 0x00;
+        *((u8*)ddir_table[i])   = ddir_set[i];
     }
     
-    // Turn off SVSH, SVSM
-//    PMMCTL0_H = 0xA5;
-//    PMMSVSMHCTL = 0;
-//    PMMSVSMLCTL = 0;
-//    PMMCTL0_H = 0x00;
+//  Turn off SVSH, SVSM
+    PMMCTL0_H     = 0xA5;
+    svsmhctl      = SVSMHCTL;
+    svsmlctl      = SVSMLCTL;
+    SVSMHCTL   = 0;
+    SVSMLCTL   = 0;
+    PMMCTL0_H     = 0x00;
 
-    __bis_SR_register(LPM3_bits);             // Enter LPM3
-    __no_operation();
-    
-    /// wait for 3 Reference Clock cycles per erratum UCS7
-    __delay_cycles(3);
+    __bis_SR_register(LPM3_bits + GIE);             // Enter LPM3
+    //__no_operation();
+
+    // Restore SVSM, SVSM
+    PMMCTL0_H     = 0xA5;
+    SVSMHCTL   = svsmhctl;
+    SVSMLCTL   = svsmlctl;
+    PMMCTL0_H     = 0x00;
 
     /// Restore GPIO
-    for (i=5; i>0; i--) {
-        *((u8*)dout_table[i])    = saved_douts[i];
-        *((u8*)ddir_table[i])    = saved_ddirs[i];
+    for (i=(_GROUNDED_PORTS-1); i>0; i--) {
+        *((u8*)dout_table[i])   = saved_douts[i];
+        *((u8*)ddir_table[i])   = saved_ddirs[i];
     }
 }
 

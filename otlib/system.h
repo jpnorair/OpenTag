@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,21 +14,19 @@
   *
   */
 /**
-  * @file       /OTlib/system.h
+  * @file       /otlib/system.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       2 November 2011
-  * @brief      ISO 18000-7.4 Mode 2 System Framework
+  * @date       2 October 2012
+  * @brief      Kernel System Framework
   * @defgroup   System (System Module)
   * @ingroup    System
   *
-  * The System Module is the centerpiece of OpenTag, and it acts as an event
-  * manager.  In basic implementations of OpenTag, the only function that really
-  * needs to be called is ot_run(), which maps 1:1 with sys_run().
+  * The System Module is a universal front-end for some kernel actions.  The 
+  * system implementation (system.c) is usually kernel-dependent.  For the 
+  * Native Kernel (otkernel/native), the system front-end implementation and 
+  * the kernel itself are implemented together in otkernel/native/system.c
   *
-  * The System Module does some of the work of the Mode 2 MAC, and some of the
-  * work of the Session Layer.  Both of these layers need to handle events and
-  * states, so they are bundled together in the System Module.
   ******************************************************************************
   */
 
@@ -36,275 +34,29 @@
 #ifndef __SYSTEM_H
 #define __SYSTEM_H
 
-//#include "OTAPI.h"
 #include "OT_types.h"
 #include "OT_config.h"
-//#include "OT_utils.h"
-//#include "buffers.h"
-//#include "queue.h"
+#include "gulp/system_gulp.h"
 
 
-
-#define SYS_RECEIVE         ( (M2_FEATURE(GATEWAY) == ENABLED) \
-                            ||  (M2_FEATURE(SUBCONTROLLER) == ENABLED) \
-                            ||  (M2_FEATURE(ENDPOINT) == ENABLED) )
-                            
-#define SYS_FLOOD           ((M2_FEATURE(GATEWAY) == ENABLED) \
-                            ||  (M2_FEATURE(SUBCONTROLLER) == ENABLED) )
-
-#define SYS_SESSION         (OT_FEATURE(CAPI) == ENABLED)
-
-#define SYS_RFA_RECEIVE     ((RF_FEATURE(RXTIMER) == DISABLED) && SYS_RECEIVE)
-#define SYS_RFA_TRANSMIT    (RF_FEATURE(TXTIMER) == DISABLED)
-#define SYS_RFA_FLOOD       ((RF_FEATURE(TXTIMER) == DISABLED) && SYS_FLOOD)
-
-
-
-
-/** SYS Configuration
-  * This may at some point find its way into OT_config.h
-  * 
-  * SYS_EVENT_MAX       max duration in ticks that an event may be queued
-  * SYS_RUN_MAX         max duration in ticks that the sys_run can go between calls
-  * SYS_BEACON_THRESH   block beacons that are this many ticks away from a priority comm event
-  */
-#define SYS_EVENT_MAX               (ot_long)2147483647
-#define SYS_RUN_MAX                 65535
-#define SYS_BEACON_THRESH           (M2_FEATURE(BEACON_THRESH) * PLATFORM_GPTIM_TICKS_PER_TI)
-
-
-
-/** SYS Mutexes
-  * The SYS module is the centerpiece of OpenTag.  It manages access of platform
-  * resources within other OpenTag modules.  You can at any time check the 
-  * mutexes.  This can gate the runtime of your app.  There is plenty of room
-  * left for more mutexes.
-  */
-#define SYS_MUTEX_RADIO_LISTEN      0x01                                // bit 0
-#define SYS_MUTEX_RADIO_DATA        0x02                                // bit 1
-#define SYS_MUTEX_PROCESSING        0x04                                // bit 2
-
-
-
-
-
-/** Mode 2 Default Channel Guard Periods (Tgd)
-  * Default Channel Guard Period is derived by the Channel ID, measured in ti.
-  * (ti = 2^-10 sec).
-  */
-#define M2_TGD_55FULL       5
-#define M2_TGD_55HALF       10
-#define M2_TGD_200FULL      2
-#define M2_TGD_200HALF      3
-
-
-
-
-/** Mode 2 Advertising Slop
-  * The Advertising Protocol is supposed to be accurate to within 2 ti.  Thus,
-  * we need to consider that the event will occur possibly 2 ti before or after
-  * the event is scheduled to occur, plus some margin for timing slop on this
-  * device, which is clocking out the event.
-  *
-  * @todo Connect this to the configuration interface, not just the hardcoded
-  * values below.
-  */
-#define M2_ADV_OFFSET       (-3)
-#define M2_ADV_LISTEN       6
-#define M2_ADV_SLOP         (M2_ADV_OFFSET * -2)
-#define M2_ADV_ERRDIV       16384
-
-
-
-/** Beacon CSMA-CA waiting
-  * Right now this is just a constant.  It could be expanded to more than that.
-  */
-#define M2_BEACON_TCA       M2_FEATURE(BEACON_TCA)
-
-
-
-
-/** SYS Mode 2 Network Configuration
-  * This is a buffer for the data that, in its default states, is in the Network
-  * Configuration Settings File.  Since the data is stored as big endian, it
-  * needs to be mangled in order to work with little-endian systems.
-  */
-#ifdef __BIG_ENDIAN__
-#   define M2_SET_SCHEDMASK            0xE000
-#   define M2_SET_HOLDSCHED            0x8000
-#   define M2_SET_SLEEPSCHED           0x4000
-#   define M2_SET_BEACONSCHED          0x2000
-#   define M2_SET_CLASSMASK            0x0F00
-#   define M2_SET_GATEWAY              0x0800
-#   define M2_SET_SUBCONTROLLER        0x0400
-#   define M2_SET_ENDPOINT             0x0200
-#   define M2_SET_BLINKER              0x0100
-#   define M2_SET_DSTREAMMASK          0x00C0
-#   define M2_SET_345WAY               0x0080
-#   define M2_SET_2WAY                 0x0040
-#   define M2_SET_FECMASK              0x0030
-#   define M2_SET_FECTX                0x0020
-#   define M2_SET_FECRX                0x0010
-#   define M2_SET_CHANMASK             0x000F
-#   define M2_SET_BLINK                0x0008
-#   define M2_SET_TURBO                0x0004
-#   define M2_SET_STANDARD             0x0002
-#   define M2_SET_LEGACY               0x0001
-#else
-#   define M2_SET_SCHEDMASK            0x00E0
-#   define M2_SET_HOLDSCHED            0x0080
-#   define M2_SET_SLEEPSCHED           0x0040
-#   define M2_SET_BEACONSCHED          0x0020
-#   define M2_SET_CLASSMASK            0x000F
-#   define M2_SET_GATEWAY              0x0008
-#   define M2_SET_SUBCONTROLLER        0x0004
-#   define M2_SET_ENDPOINT             0x0002
-#   define M2_SET_BLINKER              0x0001
-#   define M2_SET_DSTREAMMASK          0xC000
-#   define M2_SET_345WAY               0x8000
-#   define M2_SET_2WAY                 0x4000
-#   define M2_SET_FECMASK              0x3000
-#   define M2_SET_FECTX                0x2000
-#   define M2_SET_FECRX                0x1000
-#   define M2_SET_CHANMASK             0x0F00
-#   define M2_SET_BLINK                0x0800
-#   define M2_SET_TURBO                0x0400
-#   define M2_SET_STANDARD             0x0200
-#   define M2_SET_LEGACY               0x0100
+#ifndef GPTIM_SHIFT
+#   define GPTIM_SHIFT 0
 #endif
 
-typedef struct {
-    ot_u8   subnet;             // Device Subnet from UDB 0
-    ot_u8   b_subnet;
-    ot_u8   dd_flags;           // Default Device flags (see M2DF's in protocol_M2.h)
-    ot_u8   b_attempts;         // Beacon Tries from UDB 0
-    ot_u16  active;             // Active settings from UDB 0
-    ot_u16  hold_limit;         // Hold limit from UDB 0
-} netconf_struct;
-
-
-
-/** Mode 2 MAC state management
-  * There are three Data Link Layer States, described by the Mode 2 spec: 
-  * Idle:   The idle time processes are running, and no rx/tx is occuring
-  * RX:     RX is actively occuring, and other events are blocked-out
-  * TX:     TX is actively occuring, and other events are blocked-out
-  *
-  * In addition, there are some state attributes that modify the way the Idle
-  * state runs.
-  * HSC:    Hold Scan Cycling -- used only on Endpoints, allowing an alternate
-  *         idle-time process to be used during dialog interactions.
-  *
-  * ON:     If not on, the idle-time processes won't run.  The MAC will only
-  *         create and manage wake-on events if ON.
-  */
-  
-#define M2_MACSTATE_NULL    0x00
-#define M2_MACSTATE_IDLE    0x01
-#define M2_MACSTATE_RX      0x02
-#define M2_MACSTATE_TX      0x03
-
-#define M2_MACATTR_HSC      0x04
-#define M2_MACATTR_ON       0x08
-
-#define M2_MACIDLE_OFF      0x00
-#define M2_MACIDLE_SLEEP    0x01
-#define M2_MACIDLE_HOLD     0x02
-#define M2_MACIDLE_LISTEN   0x03
+#if (GPTIM_SHIFT != 0)
+#   define CLK_UNIT         ot_long
+#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> GPTIM_SHIFT)
+#   define TI2CLK(TICKS)    ((ot_long)TICKS << GPTIM_SHIFT)
+#else
+#   define CLK_UNIT         ot_u16
+#   define CLK2TI(CLOCKS)   (CLOCKS)
+#   define TI2CLK(TICKS)    (TICKS)
+#endif
 
 
 
 
-/** Mode 2 Comm variables
-  * This is a data structure for controlling the way the radio module works. 
-  * The values are usually provided by other layers, especially the transport
-  * layer (M2QP).  While multiple sessions may overlap, only one comm dialog
-  * can happen at any given time.  The comm dialog may use multiple channels,
-  * although this is impossible in implementations where only one RF transceiver
-  * exists (a SISO host).  Implementations with multiple receivers (MISO) can
-  * use one channel for TX (at any given time) and multiple channels for RX
-  * (at any given time).
-  *
-  * m2comm_struct description
-  * 
-  * timeout         (ot_uint) MAC is half duplex, so only one timeout for TX or
-  *                 RX.  It is measured in units of Ti (2^-10 sec).  For TX, it
-  *                 is used to timeout the CA process.  For RX, it is used to 
-  *                 timeout the response window.
-  *
-  * tca             (ot_long) This is a parameter used in the feedback process 
-  *                 for CA.  The transport layer flow and congestion control
-  *                 functions manipulate its value.  The MAC layer uses the 
-  *                 value to plan events.
-  * 
-  * csmaca_params   (ot_u8) CSMA-CA is defined in the MAC layer but configured
-  *                 in the Transport layer.  Instead of using a bunch of memory 
-  *                 for function pointer callbacks, flags are used, so the MAC
-  *                 layer can make the right decision on how to call Transport
-  *                 layer functions and/or memory elements.
-  *
-  * tx_redundants   (ot_u8) Number of redundant times a transmission should be
-  *                 issues.  If a positive ACK is received before going through
-  *                 all the redundants, comm will stop at that point.
-  *
-  * tx_channels     (ot_u8) Number of channels that may be used to transmit a
-  *                 packet.  This is used with tx_chanlist (see that param if
-  *                 you are confused how multiple channels are used).
-  *
-  * rx_channels     (ot_u8) Number of channel that may be used to receive a
-  *                 packet.  This is used with rx_chanlist (see that param if
-  *                 you are confused how multiple channels are used).
-  *
-  * tx_chanlist     (ot_u8) The device will do CSMA on these channels until it
-  *                 finds one that passes the testing.  Transmission will take
-  *                 place only on one channel from the list (the first one that
-  *                 passes CSMA).
-  *
-  * rx_chanlist     (ot_u8) A MISO device can receive packets on multiple
-  *                 channels.  For these, rx_chanlist is the list of channels 
-  *                 that packets could be coming-in on.  For SISO devices, this
-  *                 is never going to be more than one channel in length.
-  *
-  * scratch[2]      (ot_u8) Implicit single channel transport protocols can 
-  *                 store the single channel RX & TX chanlists in this dump and
-  *                 point tx_chanlist & rx_chanlist to it, accordingly.  By
-  *                 convention, [1] is used for rx_chanlist and [0] for tx.
-  */
-
-// Parameters for csmaca_params
-#define M2_CSMACA_NA2P      0x00
-#define M2_CSMACA_A2P       0x40
-#define M2_CSMACA_ARBMASK   0x40
-#define M2_CSMACA_NOCSMA    0x04
-#define M2_CSMACA_CAMASK    0x38
-#define M2_CSMACA_RIGD      0x00
-#define M2_CSMACA_RAIND     0x08
-#define M2_CSMACA_AIND      0x10
-#define M2_CSMACA_MACCA     0x38
-
-typedef struct {
-    ot_long tc;                 // Contention Period (Tc, sometimes also called Tcp)
-    ot_long tca;                // Collision avoidance period (Tca)
-    ot_uint rx_timeout;
-    ot_u8   csmaca_params;      // (A2P | NA2P) + (RIGD | RAIND | AIND) + CSMA on/off
-    ot_u8   redundants;         // number of attempts
-    ot_u8   tx_channels;        // num channels on which the tx may be issued
-    ot_u8   rx_channels;        // num channels on which the rx may come from (usually 1)
-    ot_u8*  tx_chanlist;
-    ot_u8*  rx_chanlist;
-    ot_u8   scratch[2];         // intended for chanlist storage during ad-hoc single channel dialogs
-} m2comm_struct;
-
-
-typedef struct {
-    netconf_struct  netconf;
-    m2comm_struct   comm;
-    ot_u8           idle_state;
-} m2dll_struct;
-
-extern m2dll_struct dll;
-
-
+void SYS_WATCHDOG_RUN();
 
 
 /** @brief Null callback routine for the kernel app-loading feature
@@ -344,89 +96,12 @@ ot_bool sys_loadapp_null(void);
 void sys_init();
 
 
-/** @brief Refresh system settings, wipe sessions, and put system into idle
-  * @param none
-  * @retval none  
-  * @ingroup System
-  * @sa otapi_sysinit(), sys_init()
-  *
-  * sys_refresh() does two things.  First, it grabs the registry data from the
-  * Network Settings ISF (ISF 0) and applies it to the system object.  Then it
-  * puts OpenTag in a default idle state with no pending or ongoing sessions.
-  */
-void sys_refresh();
-
-
-/** @brief Changes the device settings (see Network Settings ISF)
-  * @param new_mask         (ot_u16) Bitmask for applying new settings
-  * @param new_settings     (ot_u16) Compared with supported settings, and set.
-  * @retval (none)  
-  * @ingroup System
-  *
-  * This will alter the active device settings.  If settings cannot be 
-  * supported (check supported settings), the value you input might be modified
-  * in order to meet supported settings.
-  */
-void sys_change_settings(ot_u16 new_mask, ot_u16 new_settings);
-
-
-/** @brief Puts device into idle state
-  * @param none
-  * @retval (none)  
-  * @ingroup System
-  *
-  * Puts device into idle, immediately.  Generally, this is only used by the 
-  * automated internal code.  You can use it to kill system tasks, though.  One
-  * example is to use sys_idle() in a USB suspend callback, to make sure that
-  * radio operation is shut off.
-  */
-void sys_idle();
-
-
-/** @brief An idle-state transformation to Off
-  * @param none
-  * @retval (none)  
-  * @ingroup System
-  *
-  * Generally, this doesn't need to be called from the outside.
-  */
-void sys_goto_off();
-
-
-/** @brief An idle-state transformation to Sleep
-  * @param none
-  * @retval (none)  
-  * @ingroup System
-  *
-  * Generally, this doesn't need to be called from the outside.
-  */
-void sys_goto_sleep();
-
-
-/** @brief An idle-state transformation to Hold
-  * @param none
-  * @retval (none)  
-  * @ingroup System
-  *
-  * Generally, this doesn't need to be called from the outside.
-  */
-void sys_goto_hold();
-
-
-/** @brief An idle-state transformation to Off
-  * @param none
-  * @retval (none)  
-  * @ingroup System
-  *
-  * Generally, this doesn't need to be called from the outside.
-  */
-void sys_goto_listen();
-
 
 /** @brief System Panic
   * @param err_code     (ot_u8) error code, similar to POSIX death signals
   * @retval None
   * @ingroup System
+  * @sa sys_sig_panic
   *
   * When called, sys_panic() will shut-down the OpenTag kernel and then invoke
   * the sys.panic system callback (if system callbacks are enabled), so that
@@ -445,12 +120,26 @@ void sys_panic(ot_u8 err_code);
 
 
 
-/** @brief Feed it a channel ID, it will tell you if CSMA is required
-  * @param none
-  * @retval (ot_u8)     This is either 0 or M2_CSMACA_NOCSMA  
+/** @brief System low-power routine ("sleep")
+  * @param None
+  * @retval None
   * @ingroup System
+  * @sa sys_sig_powerdown()
+  *
+  * When called, sys_powerdown() will prepare a signal code based on the state
+  * of the kernel and call the sys.powerdown system callback (if system
+  * callbacks are enabled), so that the user can implement an application-
+  * specific sleep routine if desired.  If system callbacks are disabled, the
+  * default sleep routine will be invoked.
+  *
+  * @note sys_powerdown() calls sys.powerdown(code) or sys_sig_powerdown(code)
+  * if system callbacks are enabled.  The value "code" it supplies is a number
+  * (0, 1, 2, 3) that is the system's recommendation of how deep to sleep.
+  * 0 means sleep with fastest wakeup, 1 means a sleep compatible with a wired
+  * IO process, 2 means a sleep compatible with RF, and 3 means the deepest
+  * sleep where the kernel timer and RAM are preserved.
   */
-ot_u8 sys_default_csma(ot_u8 chan_id);
+void sys_powerdown();
 
 
 
@@ -463,14 +152,6 @@ ot_u8 sys_default_csma(ot_u8 chan_id);
   * For example: on power up, on task activation (if running an OS), etc.
   */
 void sys_init();
-
-
-/** @brief Gracefully terminates the RF task managed by the kernel.
-  * @param none
-  * @retval none
-  * @ingroup System
-  */
-void sys_quit_rf();
 
 
 /** @brief Sets mutexes based on mask input
@@ -497,21 +178,83 @@ void sys_clear_mutex(ot_uint clear_mask);
 ot_int sys_get_mutex();
 
 
-
-/** @brief Event Management and Processing
-  * @param elapsed_ms   (ot_uint) Supply number of ticks since last call.
-  * @retval (ot_uint)   Number of ticks until you need to call it next
+/** @brief  Enables and modifies an idle-time task ("user space" task).
+  * @param  task_id     (ot_u8) 0-255, typically just 0
+  * @param  task_ctrl   (ot_u8) A task-specific state variable: 0 disables the task.
+  * @param  nextevent   (ot_long) number of ticks to sleep the task until it activates
+  * @retval None
   * @ingroup System
+  *
+  * In typical builds, there is only one user task.  It is given task_id 0.
+  * If more than one user task exist, they typically have 0<=task_id<n, where
+  * 'n' is the number of user tasks.
+  */
+void sys_task_enable(ot_u8 task_id, ot_u8 task_ctrl, ot_u16 sleep);
+
+
+/** @brief  Disables an idle-time task ("user space" task)
+  * @param  task_id     (ot_u8) 0-255, typically just 0
+  * @retval None
+  * @ingroup System
+  *
+  * In typical builds, there is only one user task.  It is given task_id 0.
+  * If more than one user task exist, they typically have 0<=task_id<n, where
+  * 'n' is the number of user tasks.
+  */
+void sys_task_disable(ot_u8 task_id);
+
+
+
+/** @brief Event Management and task clocking
+  * @retval (ot_uint)   Number of ticks until next event
+  * @ingroup System
+  * @sa sys_task_manager()
   * 
-  * This is the kernel task manager callable.  It is called by the kernel timer
-  * interrupt.  It should not be called anywhere else by any other function.
+  * This function should be called inside sys_task_manager().  You should never
+  * call it anywhere else unless you have some clever ideas.
   */  
-ot_uint sys_event_manager(ot_uint elapsed);
+ot_uint sys_event_manager();
+
+
+
+/** @brief Task runtime manager: Calls tasks
+  * @param None
+  * @retval None
+  * @ingroup System
+  *
+  * This function should be called in your main loop.  Ideally, there should be
+  * nothing else in your main loop except this function.  The kernel will
+  * automatically attach a sleep/powerdown task when no tasks need servicing.
+  */
+void sys_task_manager();
+
+
+
+/** @brief Pre-empt the kernel: call this from pre-emptive task event signals.
+  * @param None
+  * @retval None
+  * @ingroup System
+  */
+void sys_preempt();
+
+
+
+
+/** Task Control Wrappers
+  */
+void sys_task_setevent(Task_Index id, ot_u8 event);
+void sys_task_setcursor(Task_Index id, ot_u8 cursor);
+void sys_task_setreserve(Task_Index id, ot_u8 reserve);
+void sys_task_setlatency(Task_Index id, ot_u8 latency);
+void sys_task_setnext(Task_Index id, ot_u16 next);
+
+
+
 
 
 
 /** @brief  Synchronize a Kernel Task to an event (typically an RTC alarm)
-  * @param  task_id     (ot_u16) Kernel Task ID (kernel dependent)
+  * @param  task_id     (Task_Index) Kernel Task ID (kernel dependent)
   * @retval none
   * @ingroup System
   *
@@ -520,7 +263,7 @@ ot_uint sys_event_manager(ot_uint elapsed);
   * it will prepare the task (represented by Task ID) for entry and then call
   * platform_ot_preempt() so the task can run immediately afterwards.
   */
-void sys_synchronize(ot_u16 task_id);
+void sys_synchronize(Task_Index task_id);
 
 
 /** @brief  Refresh the Scheduler Parameters from the Active Settings
@@ -556,7 +299,7 @@ void sys_refresh_scheduler();
   * callback, the implementation is nicer looking when using the dynamic 
   * approach, and there is minimal difference (if any) in resource usage.
   */  
-ot_bool sys_sig_loadapp(void);
+ot_bool sys_sig_loadapi(void);
 
 
 
@@ -564,12 +307,39 @@ ot_bool sys_sig_loadapp(void);
   * @param code         (ot_int) a kernel error code (platform dependent)
   * @retval None
   * @ingroup System
+  * @sa sys_panic()
   *
   * This function is the static equivalent of the dynamic callback that is
   * typically implemented in the kernel as sys.panic().
   */
 void sys_sig_panic(ot_int code);
 
+
+
+/** @brief System Powerdown callback function
+  * @param code         (ot_int) a Sleep Recommendation, 0-3
+  * @retval None
+  * @ingroup System
+  * @sa sys_powerdown()
+  *
+  * This function is the static equivalent of the dynamic callback that is
+  * typically implemented in the kernel as sys.powerdown().
+  *
+  */
+void sys_sig_powerdown(ot_int code);
+
+
+
+/** @brief External process callback function
+  * @param event_data   (void*) pointer to kernel-dependent event datatype
+  * @retval None
+  * @ingroup System
+  *
+  * This function is the static equivalent of the dynamic callback that is
+  * typically implemented in the kernel as sys.evt.EXT.process().  It is
+  * called by the system module / kernel when an external data process begins.
+  */
+void sys_sig_extprocess(void* event_data);
 
 
 /** @brief RF-Active initialization callback function
@@ -584,11 +354,11 @@ void sys_sig_panic(ot_int code);
   * 
   * The radio process code is dependent on the kernel, but the OpenTag native 
   * kernel uses the settings below:
-  * <LI>1: background scan </LI>
-  * <LI>2: foreground scan </LI>
-  * <LI>3: CSMA (unused) </LI>
-  * <LI>4: foreground tx </LI>
-  * <LI>5: background tx </LI>
+  * <LI>2: background scan </LI>
+  * <LI>3: foreground scan </LI>
+  * <LI>4: CSMA (unused) </LI>
+  * <LI>5: foreground tx </LI>
+  * <LI>6: background tx </LI>
   */
 void sys_sig_rfainit(ot_int pcode);
 
@@ -606,11 +376,11 @@ void sys_sig_rfainit(ot_int pcode);
   * 
   * The radio process code is dependent on the kernel, but the OpenTag native 
   * kernel uses the settings below:
-  * <LI>1: background scan </LI>
-  * <LI>2: foreground scan </LI>
-  * <LI>3: CSMA </LI>
-  * <LI>4: foreground tx </LI>
-  * <LI>5: background tx </LI>
+  * <LI>2: background scan </LI>
+  * <LI>3: foreground scan </LI>
+  * <LI>4: CSMA </LI>
+  * <LI>5: foreground tx </LI>
+  * <LI>6: background tx </LI>
   *
   * The status code is >= 0 when the radio process terminated on account of
   * a successful transfer of a packet.
@@ -653,25 +423,6 @@ void sys_sig_hssprestart(void* event_data);
   * called by the system module / kernel when a sleep-scan data process begins.
   */
 void sys_sig_sssprestart(void* event_data);
-
-
-/** @brief External process callback function
-  * @param event_data   (void*) pointer to kernel-dependent event datatype
-  * @retval None
-  * @ingroup System
-  *
-  * This function is the static equivalent of the dynamic callback that is
-  * typically implemented in the kernel as sys.evt.EXT.process().  It is
-  * called by the system module / kernel when an external data process begins.
-  */
-void sys_sig_extprocess(void* event_data);
-
-
-
-
-
-
-
 
 
 

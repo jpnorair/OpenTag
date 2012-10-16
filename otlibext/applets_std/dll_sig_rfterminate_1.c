@@ -13,11 +13,11 @@
   * limitations under the License.
   */
 /**
-  * @file       /otlibext/applets_std/sys_sig_rfaterminate.c
+  * @file       /otlibext/applets_std/dll_sig_rfterminate.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       31 July 2011
-  * @brief      Standard RFA terminate routine
+  * @date       10 October 2012
+  * @brief      Informative RF terminate routine
   *
   * This applet implements a commonly used LED and logging routine that is used
   * when the System RFA Terminate callback is called.
@@ -31,13 +31,20 @@
 
 
 #include "OTAPI.h"
-#include "radio.h"
+#include "radio.h"  //to get "phymac" data
 
 
-#ifdef EXTF_sys_sig_rfaterminate
-void sys_sig_rfaterminate(ot_int pcode, ot_int scode) {
+#ifdef EXTF_dll_sig_rfterminate
+void dll_sig_rfterminate(ot_int pcode, ot_int scode) {
+/// DLL Task codes
+/// 1 = Packet Processing (rfterminate() not called here)
+/// 2 = Session invocation (rfterminate() not called here)
+/// 3 = RX termination (!)
+/// 4 = TX CSMA termination (!)
+/// 5 = TX termination (!)
+
 /// Hint: RFxRX_e1 label means the received frame has bad CRC.
-    ot_u8   loglabel[8] = {'R', 'F', 'F', 0, 'X', '_', 0, 0};
+    ot_u8   loglabel[7] = {'R', 'F', 0, 'X', '_', 0, 0};
     ot_u8*  logdata;
     ot_int  logdata_len;
 
@@ -46,17 +53,11 @@ void sys_sig_rfaterminate(ot_int pcode, ot_int scode) {
 
     /// Error Handler:
     /// <LI> If there is an error code, put the code in the log label.     </LI>
-    /// <LI> Else if the code is for RX termination, just return.  You can
-    ///      comment this and uncomment cases 1 & 2 from the switch block if
-    ///      you want to log on RX termination.  </LI>
     /// <LI> Else, the code is for TX or CCA.  Append the channel number to 
     ///      the log label (in hex) </LI> 
     if (scode < 0) {
-        loglabel[6] = 'e';
-        loglabel[7] = (ot_int)('0') - scode;
-    }
-    else if (pcode < 3) {
-    	return;
+        loglabel[5] = 'e';
+        loglabel[6] = (ot_int)('0') - scode;
     }
     else {
     	otutils_bin2hex(&(phymac[0].channel), &loglabel[6], 1);
@@ -64,27 +65,22 @@ void sys_sig_rfaterminate(ot_int pcode, ot_int scode) {
 
     /// Look at the control code an form the label to reflect the type
     switch (pcode) {
-        /// RX driver process termination:
-        /// (1) background scan ended, (2) or foreground scan ended
-        //case 1: loglabel[2] = 'B';
-        //case 2: loglabel[3] = 'R';
-        //        logdata_len = rxq.length;
-        //        logdata     = rxq.front;
-        //        break;
+        /// RX driver process termination: This can happen a lot, so a lot of
+        /// times it will be commented-out.
+        case 3: loglabel[2] = 'R';
+                logdata_len = rxq.length;
+                logdata     = rxq.front;
+                break;
 
-        /// TX CCA/CSMA driver process termination:
-        /// (3) TX CSMA process ended
-        case 3: loglabel[2] = 'C';
-                loglabel[3] = 'C';
-                loglabel[4] = 'A';
+        /// TX CSMA-CA driver process termination:
+        case 4: loglabel[2] = 'C';
+                loglabel[3] = 'A';
                 logdata_len = 0;
                 logdata     = NULL; // suppress compiler warning
                 break;
 
         /// TX driver process termination
-        /// Background Flood (4) or Foreground TX (5): turn-on green and log TX
-        case 4: loglabel[2] = 'B';
-        case 5: loglabel[3] = 'T';
+        case 5: loglabel[2] = 'T';
                 logdata_len = txq.length;
                 logdata     = txq.front;
                 break;
@@ -94,7 +90,7 @@ void sys_sig_rfaterminate(ot_int pcode, ot_int scode) {
     }
 
     /// Log in ASCII hex the prepared driver message
-    otapi_log_msg(MSG_raw, 8, logdata_len, loglabel, logdata);
+    otapi_log_msg(MSG_raw, 7, logdata_len, loglabel, logdata);
 }
 #endif
 

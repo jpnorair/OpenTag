@@ -315,9 +315,34 @@ void platform_init_prand(ot_u16 seed);
 ot_u16 platform_get_gptim();
 
 
-/** @brief Zeros GPTIM and sets it to interrupt when hitting the supplied value.
-  * @param value        (ot_u16)Number of ticks before timeout & interrupt
-  * @retval 
+/** @brief Returns the amount of timer clocks until the next interrupt
+  * @param None
+  * @retval ot_u16      timer clocks until next interrupt
+  * @ingroup Platform
+  */
+ot_u16 platform_next_gptim();
+
+
+
+void platform_pend_gptim();
+
+
+/** @brief Enables GPTIM interrupt
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  */
+void platform_enable_gptim();
+
+
+
+void platform_disable_gptim();
+
+
+
+/** @brief Zeros GPTIM and sets an upper limit
+  * @param value        (ot_u16)Number of ticks before next kernel event
+  * @retval None
   * @ingroup Platform
   */
 void platform_set_gptim(ot_u16 value);
@@ -451,8 +476,24 @@ ot_u16 platform_prand_u16();
   * @param  length      (ot_int) number of bytes to transfer/copy
   * @retval None
   * @ingroup Platform
+  * @sa platform_memcpy_2()
+  * @sa platform_memset()
   */
 void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length);
+
+
+
+/** @brief platform-specific half-word memcpy, in some cases wraps to OS-level memcpy
+  * @param  dest        (ot_u8*) destination memory address
+  * @param  src         (ot_u8*) source memory address
+  * @param  length      (ot_int) number of half-words to transfer/copy
+  * @retval None
+  * @ingroup Platform
+  * @sa platform_memcpy()
+  * @sa platform_memset()
+  */
+void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length);
+
 
 
 /** @brief platform-specific memset, in some cases wraps to OS-level memset
@@ -461,8 +502,37 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length);
   * @param  length      (ot_int) number of bytes to set
   * @retval None
   * @ingroup Platform
+  * @sa platform_memcpy()
+  * @sa platform_memcpy_2()
   */
 void platform_memset(ot_u8* dest, ot_u8 value, ot_int length);
+
+
+
+
+/** @brief Low Power Optimized Busywait function with 1 sti resolution
+  * @param  sti         (ot_u16) Number of sti to block
+  * @retval None
+  * @ingroup Platform
+  * @platform_swdelay_ms()
+  * @platform_swdelay_us()
+  * @platform_delay()
+  *
+  * platform_block() is a low-power optimizing blocking loop that does
+  * not engage a watchdog timer.  In platform implementations that include
+  * a programmable NMI timer, platform_block() will probably link to the
+  * same code as platform_delay().  In other implementations, platform_delay()
+  * might use a watchdog timer.  So, if you want to be certain that your
+  * delay process is not using a watchdog, use platform_block().
+  *
+  * The timing resolution is approximately 1 sti = 1/32768s.  In many
+  * implementations there is a minimum runtime of this function, due to
+  * some setup overhead.  For example, on an MSP430F5 core, if sti<=10
+  * the block loop will take about the same time (~300us).  Check the
+  * implementation for more information.
+  */
+void platform_block(ot_u16 sti);
+
 
 
 

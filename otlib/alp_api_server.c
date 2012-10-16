@@ -53,10 +53,10 @@
 typedef enum {
     sysindex_null           = 0,
     sysindex_sysinit        = 1,
-    sysindex_new_session    = 2,
-    sysindex_open_request   = 3,
-    sysindex_close_request  = 4,
-    sysindex_start_flood    = 5,
+    sysindex_new_dialog     = 2,
+    sysindex_new_advdialog  = 3,
+    sysindex_open_request   = 4,
+    sysindex_close_request  = 5,
     sysindex_start_dialog   = 6
 } sysindex;
 
@@ -83,10 +83,10 @@ ot_u16 icmd_session_flush(Queue* in_q);
 ot_u16 icmd_session_isblocked(Queue* in_q);
 
 ot_u16 icmd_sys_init(Queue* in_q);
-ot_u16 icmd_sys_newsession(Queue* in_q);
+ot_u16 icmd_sys_newdialog(Queue* in_q);
+ot_u16 icmd_sys_newadvdialog(Queue* in_q);
 ot_u16 icmd_sys_openrequest(Queue* in_q);
 ot_u16 icmd_sys_closerequest(Queue* in_q);
-ot_u16 icmd_sys_startflood(Queue* in_q);
 ot_u16 icmd_sys_startdialog(Queue* in_q);
 
 void sub_breakdown_u8(Queue* in_q, void* data_type);
@@ -94,6 +94,7 @@ void sub_breakdown_u16(Queue* in_q, void* data_type);
 void sub_breakdown_u32(Queue* in_q, void* data_type);
 void sub_breakdown_queue(Queue* in_q, void* data_type);
 void sub_breakdown_session_tmpl(Queue* in_q, void* data_type);
+void sub_breakdown_advert_tmpl(Queue* in_q, void* data_type);
 void sub_breakdown_command_tmpl(Queue* in_q, void* data_type);
 void sub_breakdown_id_tmpl(Queue* in_q, void* data_type);
 void sub_breakdown_routing_tmpl(Queue* in_q, void* data_type);
@@ -124,10 +125,18 @@ ot_u16 icmd_sys_init(Queue* in_q) {
     return otapi_sysinit();
 }
 
-ot_u16 icmd_sys_newsession(Queue* in_q) {
+ot_u16 icmd_sys_newdialog(Queue* in_q) {
     session_tmpl new_session;
     sub_breakdown_session_tmpl(in_q, &new_session);
-    return otapi_new_session(&new_session, NULL);
+    return otapi_new_dialog(&new_session, NULL);    ///@todo put in grabber applet (?)
+}
+
+ot_u16 icmd_sys_newadvdialog(Queue* in_q) {
+    session_tmpl    new_session;
+    advert_tmpl     new_adv;
+    sub_breakdown_session_tmpl(in_q, &new_session);
+    sub_breakdown_advert_tmpl(in_q, &new_adv);
+    return otapi_new_advdialog(&new_adv, &new_session, NULL); 
 }
 
 ot_u16 icmd_sys_openrequest(Queue* in_q) {
@@ -150,14 +159,10 @@ ot_u16 icmd_sys_closerequest(Queue* in_q) {
     return otapi_close_request();
 }
 
-ot_u16 icmd_sys_startflood(Queue* in_q) {
-    ot_u16 flood_duration;
-    sub_breakdown_u16(in_q, &flood_duration);
-    return otapi_start_flood(flood_duration);
-}
-
 ot_u16 icmd_sys_startdialog(Queue* in_q) {
-    return otapi_start_dialog();
+    ot_u16 timeout;
+    sub_breakdown_u16(in_q, (void*)&timeout);
+    return otapi_start_dialog(timeout);
 }
 
 
@@ -190,18 +195,25 @@ void sub_breakdown_queue(Queue* in_q, void* data_type) {
 }
 
 void sub_breakdown_session_tmpl(Queue* in_q, void* data_type) {
-    ((session_tmpl*)data_type)->channel     = q_readbyte(in_q);
-    ((session_tmpl*)data_type)->subnet      = q_readbyte(in_q);
-    ((session_tmpl*)data_type)->subnetmask  = q_readbyte(in_q);
-    ((session_tmpl*)data_type)->flags       = q_readbyte(in_q);
-    ((session_tmpl*)data_type)->flagmask    = q_readbyte(in_q);
-    ((session_tmpl*)data_type)->timeout     = q_readshort(in_q);
+    q_readstring(in_q, (ot_u8*)data_type, 6);
+    //((session_tmpl*)data_type)->reserved    = q_readbyte(in_q);
+    //((session_tmpl*)data_type)->channel     = q_readbyte(in_q);
+    //((session_tmpl*)data_type)->subnet      = q_readbyte(in_q);
+    //((session_tmpl*)data_type)->subnetmask  = q_readbyte(in_q);
+    //((session_tmpl*)data_type)->flags       = q_readbyte(in_q);
+    //((session_tmpl*)data_type)->flagmask    = q_readbyte(in_q);
+}
+
+void sub_breakdown_advert_tmpl(Queue* in_q, void* data_type) {
+    q_readstring(in_q, (ot_u8*)data_type, 4);
+    ((advert_tmpl*)data_type)->duration     = q_readshort(in_q);
 }
 
 void sub_breakdown_command_tmpl(Queue* in_q, void* data_type) {
-    ((command_tmpl*)data_type)->type        = q_readbyte(in_q);
-    ((command_tmpl*)data_type)->opcode      = q_readbyte(in_q);
-    ((command_tmpl*)data_type)->extension   = q_readbyte(in_q);
+    q_readstring(in_q, (ot_u8*)data_type, 3);
+    //((command_tmpl*)data_type)->type        = q_readbyte(in_q);
+    //((command_tmpl*)data_type)->opcode      = q_readbyte(in_q);
+    //((command_tmpl*)data_type)->extension   = q_readbyte(in_q);
 }
 
 void sub_breakdown_routing_tmpl(Queue* in_q, void* data_type) {
@@ -300,23 +312,25 @@ void sub_breakdown_isfcall_tmpl(Queue* in_q, void* data_type) {
 }
 
 
-
-static const sub_bdtmpl bdtmpl_cmd[15] = {
+///@todo This is only used by M2QP, so it could be truncated to only have tmpls
+///      that are included in M2QP API calls.
+static const sub_bdtmpl bdtmpl_cmd[16] = {
     &sub_breakdown_u8,            //0
     &sub_breakdown_u16,           //1
     &sub_breakdown_u32,           //2
     &sub_breakdown_queue,         //3
     &sub_breakdown_session_tmpl,  //4
-    &sub_breakdown_command_tmpl,  //5
-    &sub_breakdown_id_tmpl,       //6
-    &sub_breakdown_routing_tmpl,  //7
-    &sub_breakdown_dialog_tmpl,   //8
-    &sub_breakdown_query_tmpl,    //9
-    &sub_breakdown_ack_tmpl,      //10
-    &sub_breakdown_error_tmpl,    //11
-    &sub_breakdown_isfcomp_tmpl,  //12
-    &sub_breakdown_isfcall_tmpl,  //13
-    &sub_breakdown_udp_tmpl     //14
+    &sub_breakdown_advert_tmpl,   //5
+    &sub_breakdown_command_tmpl,  //6
+    &sub_breakdown_id_tmpl,       //7
+    &sub_breakdown_routing_tmpl,  //8
+    &sub_breakdown_dialog_tmpl,   //9
+    &sub_breakdown_query_tmpl,    //10
+    &sub_breakdown_ack_tmpl,      //11
+    &sub_breakdown_error_tmpl,    //12
+    &sub_breakdown_isfcomp_tmpl,  //13
+    &sub_breakdown_isfcall_tmpl,  //14
+    &sub_breakdown_udp_tmpl     //15
 };
 
 static const otapi_icmd session_cmd[3] = {
@@ -327,10 +341,10 @@ static const otapi_icmd session_cmd[3] = {
 
 static const otapi_icmd system_cmd[6] = {
 	(otapi_icmd)&icmd_sys_init,
-	(otapi_icmd)&icmd_sys_newsession,
+	(otapi_icmd)&icmd_sys_newdialog,
+	(otapi_icmd)&icmd_sys_newadvdialog,
 	(otapi_icmd)&icmd_sys_openrequest,
 	(otapi_icmd)&icmd_sys_closerequest,
-	(otapi_icmd)&icmd_sys_startflood,
 	(otapi_icmd)&icmd_sys_startdialog
 };
 
@@ -386,7 +400,7 @@ ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id ) {
 /// community prior to becoming official.
 /// The form is: ot_u16 otapi_function(ot_u8*, void*)
     static const ot_u8 argmap[OTAPI_M2QP_FUNCTIONS] = \
-        { 5, 8, 9, 10, 11, 12, 13, 13, 3, 3, 14 };
+        { 6, 9, 10, 11, 12, 13, 14, 14, 3, 3, 15 };
 
     //sub_bdtmpl  get_tmpl;
     ot_u8   dt_buf[24];   // 24 bytes is a safe amount, although less might suffice

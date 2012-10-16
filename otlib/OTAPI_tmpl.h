@@ -83,14 +83,14 @@ typedef struct {
 
 /// Session Template
 
-#define __SIZEOF_session_tmpl (1+1+1+1+1+2)
+#define __SIZEOF_session_tmpl (1+1+1+1+1+1)
 typedef struct {
+    ot_u8   reserved;
     ot_u8   channel;
     ot_u8   subnet;
     ot_u8   subnetmask;
     ot_u8   flags;
     ot_u8   flagmask;
-    ot_u16  timeout;
 } session_tmpl;
 
 
@@ -106,12 +106,14 @@ typedef enum {
 } addr_type;
 
 
-#define __SIZEOF_adv_tmpl (2+2+2)
+#define __SIZEOF_adv_tmpl (1+1+1+1+2)
 typedef struct {
-    ot_u16 count;
-    ot_u16 duty_on;
-    ot_u16 duty_off;
-} adv_tmpl;
+    ot_u8  duty_off;
+    ot_u8  duty_on;
+    ot_u8  reserved;
+    ot_u8  channel;
+    ot_u16 duration;
+} advert_tmpl;
 
 
 #define __SIZEOF_chanlist_tmpl (2+(1*PLATFORM_POINTER_SIZE))

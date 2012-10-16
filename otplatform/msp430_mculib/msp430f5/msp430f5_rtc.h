@@ -38,9 +38,9 @@
 typedef struct {
     vu16 CTL01;         // settings
     vu16 CTL23;         // settings
-    vu16 PS0CTL;        // settings
     vu16 Reserved04;    // 
     vu16 Reserved06;
+    vu16 PS0CTL;        // settings
     vu16 PS1CTL;        // settings
     vu16 PS;            // data
     vu16 IV;            // settings

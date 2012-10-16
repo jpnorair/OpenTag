@@ -28,6 +28,7 @@
 #define __CC430_interface_H
 
 #include "OT_types.h"
+#include "OT_platform.h"
 #include "CC430_registers.h"
 #include "CC430_defaults.h"
 
@@ -144,13 +145,8 @@ OT_INLINE_H void cc430_iocfg_txcsma() {
   */ 
 OT_INLINE_H void cc430_iocfg_txdata() {
     RFWord->IFG = 0;
-    RFWord->IE  = (ot_u16)((/*RF_CoreIT_TXUnderflow*/ 0 | \
-                            RF_CoreIT_TXBelowThresh | \
-                            /*RF_CoreIT_EndState*/ 0) >> 16);
-
-    RFWord->IES = (ot_u16)( /*RF_CoreIT_TXUnderflow*/ 0 | \
-                            RF_CoreIT_TXBelowThresh | \
-                            /*RF_CoreIT_EndState*/ 0     );
+    RFWord->IE  = (ot_u16)((RF_CoreIT_TXUnderflow | RF_CoreIT_TXBelowThresh /*| RF_CoreIT_EndState*/) >> 16);
+    RFWord->IES = (ot_u16)( RF_CoreIT_TXUnderflow | RF_CoreIT_TXBelowThresh /*| RF_CoreIT_EndState*/ );
 }
 
 
@@ -529,8 +525,8 @@ OT_INLINE_H void cc430_iocfg_txend() {
 
 
 /// Number of bytes until next buffer interrupt
-#define RFGET_RXFIFO_NEXTINT()  (radio.rxlimit - (ot_int)RF_GetRXBYTES())
-#define RFGET_TXFIFO_NEXTINT()  ((ot_int)RF_GetTXBYTES() - radio.txlimit)
+#define RFGET_RXFIFO_NEXTINT()  (cc430.rxlimit - (ot_int)RF_GetRXBYTES())
+#define RFGET_TXFIFO_NEXTINT()  ((ot_int)RF_GetTXBYTES() - cc430.txlimit)
 
 
 

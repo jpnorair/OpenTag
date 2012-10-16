@@ -3,15 +3,21 @@
   * @file       /apps/demo_opmode/code/extf_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    V1.0
-  * @date       31 July 2012
+  * @date       10 October 2012
   * @brief      Extension Function Configuration File for Opmode Demo
   *
   * Don't actually include this.  Include OTAPI.h or OT_config.h instead.
   *
   * This include file specifies all extension functions that should be compiled
-  * into the build.  Extension functions are replacements/patches for functions
-  * declared in OTlib, so if you define an Extension Function (EXTF), OpenTag
-  * will build and link your function instead of the regular OTlib version.
+  * into the build.  There are two kinds of Extension Functions (EXTFs):
+  * <LI> Static Callbacks -- these are used in most apps </LI>
+  * <LI> Patched Library Functions -- for really customized apps only </LI>
+  *
+  * Almost every function in otlib (and many in otplatform, otradio) can be
+  * patched.  Some functions in otlib are callbacks.  These depend on the user
+  * to implement them for a particular app.  You may have gotten this file by
+  * copying it from another app.  Most apps do not have patches, so the EXTF
+  * function definitions in this file are *most likely* for callbacks.
   ******************************************************************************
   */
 
@@ -40,6 +46,14 @@
 
 
 /// External Module EXTFs
+///@note EXTF_ext_systask is almost always used externally
+#define EXTF_ext_systask
+
+
+
+/// M2 DLL Module EXTFs
+#define EXTF_dll_sig_rfinit
+#define EXTF_dll_sig_rfterminate
 
 
 
@@ -59,8 +73,8 @@
 
 
 /// MPipe EXTFs
-#define EXTF_mpipe_sig_txdone
-#define EXTF_mpipe_sig_rxdone
+//#define EXTF_mpipe_sig_txdone
+//#define EXTF_mpipe_sig_rxdone
 
 
 /// NDEF module EXTFs
@@ -85,11 +99,9 @@
 /// Session EXTFs
 
 
-/// System EXTFs
-//#define EXTF_sys_sig_loadapp
-//#define EXTF_sys_sig_panic
-//#define EXTF_sys_sig_rfainit
-//#define EXTF_sys_sig_rfaterminate
+///  EXTFs
+#define EXTF_sys_sig_panic
+//#define EXTF_sys_sig_powerdown
 
 
 /// Veelite Core EXTFs

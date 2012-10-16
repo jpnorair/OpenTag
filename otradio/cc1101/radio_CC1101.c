@@ -17,7 +17,7 @@
   * @file       /otradio/cc1101/radio_CC1101.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       13 Oct 2011
+  * @date       27 Sept 2012
   * @brief      Radio Driver (RF transceiver) for CC1101
   * @defgroup   Radio (Radio Module)
   * @ingroup    Radio
@@ -779,6 +779,7 @@ void rm2_rxdata_isr() {
 
         /// RX State 3: RXDONE
         case (RADIO_STATE_RXDONE >> RADIO_STATE_RXSHIFT): {
+            rm2_rxpkt_DONE:
             subcc1101_finish(0, (ot_int)crc_check() - 1);
             return;
         }

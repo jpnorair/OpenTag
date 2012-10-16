@@ -45,25 +45,12 @@
 
 
 
-///@todo put peripheral confs into the list
-#if (defined(__CCSv5__) || defined(__CCSv4__) || defined(__GCC__) || defined(__GNUC__))
-#   if   defined(__MSP430F5509__)
-#       include "msp430f5509.h"
-#   elif defined(__MSP430F5510__)
-#       include "msp430f5510.h"
-#   elif defined(__MSP430F5529__)
-#       include "msp430f5529.h"
-#   else
-#       error "Chip has not been identified as a supported __MSP430F5xxx__"
-#   endif
-
-#else
-#   error "Compiler is not identified as CCSv5, CCSv4, or GCC."
-
+#if defined(_ADC12)
+#   include "msp430f5_adc12.h"          // 12 bit Analog to Digital Converter (ADC12)
+#elif defined(_ADC10)
+#   include "msp430f5_adc10.h"
 #endif
 
-
-//#include "msp430f5_adc12.h"             // 12 bit Analog to Digital Converter (ADC12)
 //#include "msp430f5_aes128.h"            // AES128 Calculation Peripheral (AES)
 //#include "msp430f5_cb.h"                // Comparator B (CB)
 #include "msp430f5_crc.h"               // CRC16 Calculation Peripheral (CRC)

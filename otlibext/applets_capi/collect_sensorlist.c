@@ -26,7 +26,7 @@
 
 
 
-ot_bool applet_collect_sensorlist() {
+void applet_collect_sensorlist(m2session* session) {
 /// The C-API for building commands can be bypassed in favor of directly
 /// putting data to the queue.  That way is more efficient, but it also requires
 /// you to know more about DASH7 that just what order the templates should be.
@@ -35,16 +35,6 @@ ot_bool applet_collect_sensorlist() {
 /// all devices that support the sensor protocol.  Much more interesting queries
 /// are possible.
 
-    { //create a new session (it will get copied to session stack)
-        session_tmpl session;
-        session.channel     = 0x00;
-        session.flagmask    = 0;
-        session.flags       = 0;
-        session.subnet      = 0;
-        session.subnetmask  = 0;
-        session.timeout     = 16;
-        otapi_new_session(&session, NULL);
-    }
     { //open request for single hop anycast query
         routing_tmpl routing;
         routing.hop_code = 0;
@@ -96,7 +86,4 @@ ot_bool applet_collect_sensorlist() {
 
     //Done building command, close the request and send the dialog
     otapi_close_request();
-    //otapi_start_dialog(); //don't need this, because using internal caller
-
-    return True;
 }

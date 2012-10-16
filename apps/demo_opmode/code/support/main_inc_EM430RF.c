@@ -108,8 +108,8 @@ void sub_button_init() {
 #   else
     if ((APP_BUTTON_PORT->DIN & APP_BUTTON_PIN) == 0) {
 #   endif
-        app_goto_endpoint();
-        app_devicemode = SYSMODE_ENDPOINT;
+        opmode_goto_endpoint();
+        opmode_devicemode = SYSMODE_ENDPOINT;
     }
 
     // Configure Button interrupt to happen when the button is released.
@@ -141,14 +141,13 @@ OT_INTERRUPT void app_buttons_isr(void) {
     // Make sure the interrupt is the one we want, otherwise ignore
     // The input source (PG8) is active low
     if (exti_source) {
-    	sys.loadapp = (app_devicemode != SYSMODE_GATEWAY) ? \
-    					&app_goto_gateway : &app_goto_endpoint;
-
-        // No joystick on the board yet!
-        // Joystick LEFT:   sys.loadapp = &app_send_query;
-        // Joystick RIGHT:  sys.loadapp = &app_send_beacon;
-        // Joystick UP:     sys.loadapp = &app_goto_gateway;
-        // Joystick DOWN:   sys.loadapp = &app_goto_endpoint;
+    	// Set the Parameter 2 (exti_source) to the Task command you want
+        // Command "1" is the send beacon routine
+        // Command "2" is the send query routine
+        // Command "3" is the goto-gateway routine
+        // Command "4" is the goto-endpoint routine
+    	exti_source = 3 + (opmode_devicemode == SYSMODE_GATEWAY);
+    	app_invoke(exti_source);
     }
 }
 

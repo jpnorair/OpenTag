@@ -38,6 +38,31 @@
 /******************************************************************************
  *                         Peripheral declaration                             *
  ******************************************************************************/
+///@todo put peripheral confs into the list
+#if (defined(__CCSv5__) || defined(__CCSv4__) || defined(__GCC__) || defined(__GNUC__))
+#   if   defined(__MSP430F5509__)
+#       include "msp430f5509.h"
+#       define _ADC10
+
+#   elif defined(__MSP430F5510__)
+#       include "msp430f5510.h"
+#       define _ADC10
+
+#   elif defined(__MSP430F5529__)
+#       include "msp430f5529.h"
+#       define _ADC12
+
+#   else
+#       error "Chip has not been identified as a supported __MSP430F5xxx__"
+#   endif
+
+#else
+#   error "Compiler is not identified as CCSv5, CCSv4, or GCC."
+
+#endif
+
+
+
 
 
 // Special Function Registers (SFR)
@@ -160,6 +185,9 @@
 //#define _CB
 
 
+
+// 10 bit Analog to Digital Converter (ADC10)
+#define _ADC10
 
 
 // 12 bit Analog to Digital Converter (ADC12)

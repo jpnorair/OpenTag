@@ -94,11 +94,7 @@
 #define __NDEF_H
 
 #include "OT_config.h"
-
 #include "OT_types.h"
-#include "OTAPI_tmpl.h"
-#include "alp.h"
-#include "queue.h"
 
 
 /** NDEF Record Control Bits 

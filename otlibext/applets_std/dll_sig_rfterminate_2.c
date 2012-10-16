@@ -13,24 +13,26 @@
   * limitations under the License.
   */
 /**
-  * @file       /otlibext/applets_std/sys_sig_rfainit.c
+  * @file       /otlibext/applets_std/dll_sig_rfterminate_2.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       31 July 2012
-  * @brief      Standard RFA Init routine
+  * @date       10 Oct 2012
+  * @brief      Non-Informative RF terminate routine
   *
-  * This is a callback the kernel uses when it is starting up a radio process.
-  * It is used here to turn-on activity LEDs.
+  * This applet turns off activity LEDs when RF is terminated.  To get feedback
+  * on MPipe when RF termination is occurring, try dll_sig_rfterminate_1.c
   */
+
+
 
 #include "OTAPI.h"
 
 
-
-#ifdef EXTF_sys_sig_rfainit
-void sys_sig_rfainit(ot_int pcode) {
-/// Assume that (1 <= code1 <= 5), which is the case in normal operation
-    if (pcode < 3)  otapi_led2_on();
-    else            otapi_led1_on();
+#ifdef EXTF_dll_sig_rfterminate
+void dll_sig_rfterminate(ot_int pcode, ot_int scode) {
+    otapi_led2_off();   //Orange LED off
+    otapi_led1_off();   //Green LED off
 }
 #endif
+
+

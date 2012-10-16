@@ -571,6 +571,32 @@ typedef struct {
 
 
 
+
+/*------------------------ ADC10 ---------------------------------------------*/
+typedef struct {
+    vu16 CTL0;
+    vu16 CTL1;
+    vu16 CTL2;
+    vu16 LO;
+    vu16 HI;
+    vu8  MCTL0;
+    vu8  reserved0B;
+    vu16 reserved0C;
+    vu16 reserved0E;
+    vu16 reserved10;
+    vu16 MEM0;
+    vu16 reserved14;
+    vu16 reserved16;
+    vu16 reserved18;
+    vu16 IE;
+    vu16 IFG;
+    vu16 IV;
+} ADC10_Type;
+
+
+
+
+
 /*------------------------ Comparator B --------------------------------------*/
 typedef struct {
     vu16 CTL0;
@@ -691,6 +717,7 @@ typedef struct {
 #define USCIB1_BASE             (0x0620)
 
 #define ADC12_BASE              (0x0700)
+#define ADC10_BASE              (0x0740)
 #define CB_BASE                 (0x08C0)
 #define USBCONF_BASE            (0x0900)
 #define USB_BASE                (0x0920)
@@ -973,10 +1000,15 @@ typedef struct {
 
 
 
-// 12 bit Analog to Digital Converter (ADC12)
-#ifdef _ADC12
+// 10 or 12 bit Analog to Digital Converter (ADC10, ADC12)
+#if defined(_ADC12)
 #   define ADC12            ((ADC12_Type*)ADC12_BASE)
+#   define ADC              ADC12
+#elif defined(_ADC10)
+#   define ADC10            ((ADC10_Type*)ADC10_BASE)
+#   define ADC              ADC10
 #endif
+
 
 
 

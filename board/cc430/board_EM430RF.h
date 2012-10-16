@@ -275,7 +275,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   
 #define OT_GPTIM            TIM1A3
 #define OT_GPTIM_IRQ        TIM1A3_IRQChannel
-#define OT_GPTIM_VECTOR     TIMER1_A1_VECTOR
+#define OT_GPTIM_VECTOR     TIMER1_A0_VECTOR
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
@@ -326,8 +326,8 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 // You could also put on a low voltage, reverse-biased zener on the board
 // to produce a pile of noise.  2.1V seems like a good value.
 #define OT_GWNADC_PORTNUM   2
-#define OT_GWNADC_PIN       GPIO_Pin_1
-#define OT_GWNADC_BITS      1
+#define OT_GWNADC_PINNUM    1
+#define OT_GWNADC_BITS      8
 //#define OT_GWNZENER_PORT    GPIO2
 //#define OT_GWNZENER_PIN     GPIO_Pin_2
 //#define OT_GWNZENER_HIDRIVE DISABLED

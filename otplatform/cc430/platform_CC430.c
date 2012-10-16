@@ -36,8 +36,8 @@
 #include "mpipe.h"
 #include "radio.h"
 
-//#include "auth.h"         //should be initialized via system (sys_init())
-//#include "session.h"      //should be initialized via system (sys_init())
+//#include "auth.h"         //should be initialized via DLL (dll_init())
+//#include "session.h"      //should be initialized via DLL (dll_init())
 
 
 //API wrappers
@@ -208,22 +208,20 @@ platform_ext_struct platform_ext;
 		OT_IRQPRAGMA(UNMI_VECTOR)
 #	endif
 OT_INTERRUPT void platform_usernmi_isr(void) {
-    static const ot_u8 error_code[] = {0, 11, 2, 7};
-    /// 11 - segmentation fault (Veelite error)
-    ///  2 - unknown error (Oscillator error)
-    ///  7 - vacant memory access (flash error)
-    /// 10 - bus error (hw bus problem, usually USB timeout)
+/// Error Codes
+/// 11 - Segmentation Fault (Veelite Error)
+///  2 - Oscillator error
+///  7 - Vacant memory access (flash error)
+/// 10 - Bus error (HW bus problem, typically USB timeout)
+    ot_int code = 0;
     
-    ot_u8 sysuniv_reg;
-    sysuniv_reg     = (ot_u8)SYS->UNIV;
-    SYS->UNIV       = 0;        // Clear all User NMI flags
-
-    if (sysuniv_reg != 0) {
-        sysuniv_reg >>= 1;
-        sys_panic( error_code[sysuniv_reg] );
+    switch (__even_in_range(SYS->UNIV, 6)) {
+    case 0: break;
+    case 2: code = 9;
+    case 4: code -= 5;
+    case 6: sys_panic( code+7 );
+    		break;
     }
-
-    //LPM4_EXIT;          // Don't Clear All Sleep Bits
 }
 #endif
 
@@ -335,7 +333,7 @@ __interrupt void Reset_ISR(void) {
     OT_IRQPRAGMA(OT_GPTIM_VECTOR)
 #	endif
 OT_INTERRUPT void platform_gptim_isr() {
-    platform_ot_run();
+    OT_GPTIM->CCTL0 &= ~1; //Clear CCIFG bit
 	LPM4_EXIT;
 }
 #endif
@@ -371,8 +369,6 @@ OT_INTERRUPT void platform_rtc_isr() {
     	if (platform_ext.alarm[i].disabled == 0) {
     		if ((RTC->TIM0 & platform_ext.alarm[i].mask) == platform_ext.alarm[i].value) {
     			sys_synchronize(platform_ext.alarm[i].taskid);
-              //sys.evt.idle[].nextevent   = 0;
-              //sys.evt.idle[platform_ext.alarm[i].taskid].event_no    = 1;
     		}
     	}
     }
@@ -404,39 +400,25 @@ void platform_enable_interrupts() {
 }
 
 void platform_ot_preempt() {
-/// Manually kick the GPTIM interrupt flag in order to pre-empt the kernel.
-/// Also, save the current value of the timer so that the kernel can subtract
-/// whatever time passed since the last event.
-    ot_u16 scratch = OT_GPTIM->R;
-    platform_set_gptim(scratch);
-    OT_GPTIM->CTL  |= 1;
+/// The kernel scheduler runs normally in co-operative mode, and it is invoked
+/// always after a task finishes running.  The kernel scheduler must also run
+/// in pre-emptive mode if the chip is asleep (otherwise it will run normally
+/// in co-operative mode after the task completes).  In this function, we just
+/// check if GPTIM is hot, which means the chip is asleep.  If so, it will
+/// invoke sys_event_manager() pre-emptively.
+	if (OT_GPTIM->CCTL0 & CCIE) {
+		OT_GPTIM->CCTL0 |= (sys_event_manager() == 0) | CCIE;
+	}
 }
 
-void platform_ot_pause() {
-    platform_ot_preempt();
-    platform_flush_gptim();
-}
+//void platform_ot_pause() {
+//    platform_ot_preempt();
+//    platform_flush_gptim();
+//}
 
 void platform_ot_run() {
-/// 1. Save the amount of time that just passed
-/// 2. Put the timer into free-running upcounter to time kernel process
-/// 3. Run System Kernel, which returns its next scheduled call
-/// 4. Put the next scheduled call into the timer, and turn it back on
-    ot_u16 next_event;
-    ot_u16 elapsed_time;
-    elapsed_time    = OT_GPTIM->CCR0;
-  //elapsed_time   += platform_get_gptim();  //experimental, for use with continuous timer
-    next_event      = sys_event_manager( elapsed_time );
-
-#   if (OT_PARAM(KERNEL_LIMIT) > 0)
-        if (next_event > OT_PARAM(KERNEL_LIMIT))
-            next_event = OT_PARAM(KERNEL_LIMIT);
-#   endif
-
-    platform_set_gptim( next_event );
+	sys_task_manager();   //invoke USER NMI, which runs kernel scheduler
 }
-
-
 
 
 
@@ -481,11 +463,6 @@ void platform_poweron() {
     /// 3. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
     vworm_init();
-
-    // Mpipe (message pipe) typically used for serial-line comm.
-#   if (OT_FEATURE(MPIPE) == ENABLED)
-        mpipe_init(NULL);
-#   endif
 }
 
 
@@ -508,18 +485,17 @@ void platform_init_OT() {
 	buffers_init();
 	vl_init();
 
-    /// 2. Initialize the RTC, if available.  RTC can be initialized outside of
-    ///    OTlib scope (e.g. in platform_poweron()), but doing it here allows
-    ///    filesystem to store a default value.  You can choose to implement
-    ///    that if you wish.  The default time is hard-coded in UTC to:
-    ///    15:00, 20 July 1981, GMT.
+    /// 2. Initialize the RTC, if available.  364489200 is a magic number.
+    ///    RTC can be initialized outside of OTlib scope (e.g. in 
+    ///    platform_poweron()), but doing it here allows filesystem to store a 
+    ///    default value if you choose.
 #   if (OT_FEATURE(RTC))
         platform_init_rtc(364489200);
 #   endif
 	
-	/// 3. Finally, the Radio and System Modules should be initialized.  Radio
-	///    should be initialized before System.
-	radio_init();
+	/// 3. Initialize the System (Kernel & more).  The System initializer must
+	///    initialize all modules that are built onto the kernel.  These include
+	///    the DLL and MPipe.
 	sys_init();
 	
 
@@ -672,9 +648,7 @@ void platform_init_gptim(ot_uint prescaler) {
 /// bits 9:8 - Clock select (TASSEL) -  {01 = ACLK, 10 = SMCLK}           <BR>
 /// bits 7:6 - Input Divider (ID) -     values {0,1,2,3} yield division by {1,2,4,8}  <BR>
 /// bits 2:0 - Input Divider 2 (IDEX) - values b000-b111 yield division by 1 to 8  <BR>
-
-	// Don't enable interrupt on init.  Call platform_ot_preempt to enable.
-    ot_u16 ctl      = (prescaler & 0x01E0) /* | TIMA_IT_Update */;
+    ot_u16 ctl      = (prescaler & 0x01E0);
     ot_u16 idex     = (prescaler & 0x0007);
 
     OT_GPTIM->CTL  |= TIMA_FLG_TACLR;   //Clear the timer before changing mode
@@ -795,19 +769,36 @@ ot_u16 platform_get_gptim() {
     return OT_GPTIM->R;
 }
 
+ot_u16 platform_next_gptim() {
+	return (OT_GPTIM->CCR0 - OT_GPTIM->R);
+}
+
+void platform_enable_gptim() {
+	OT_GPTIM->CCTL0 |= 0x0010;	//enable interrupt for CC0
+}
+
+void platform_disable_gptim() {
+	OT_GPTIM->CCTL0 &= ~0x0010;	//disable interrupt for CC0
+}
+
+void platform_pend_gptim() {
+	OT_GPTIM->CCTL0 |= 1; //Set CCIFG bit
+}
+
 void platform_set_gptim(ot_u16 value) {
+/// "value" input must never be 0
     OT_GPTIM->CTL  |= 0x0004;   //clear & stop timer
-    OT_GPTIM->CTL  &= ~0x0033;  //clear configuration
-    OT_GPTIM->CCR0  = value;    //set next interval
-    OT_GPTIM->CTL  |= 0x0012;   //restart in upmode, with interrupt
-    ///@todo continuous-up with interrupt is experimental
+  //OT_GPTIM->CTL  &= ~0x0033;  //clear configuration
+    OT_GPTIM->CCR0  = value;    //set next compare threshold
+    OT_GPTIM->CCTL0 = 0x0030;	//Put CC in SET mode, enable compare-SET interrupt
+    OT_GPTIM->CTL  |= 0x0020;   //restart in continuous-up, no interval interrupt
 }
 
 void platform_flush_gptim() {
-    OT_GPTIM->CTL  |= 0x0004;   //clear & stop timer
-    OT_GPTIM->CTL  &= ~0x0033;  //clear configuration
-    OT_GPTIM->CCR0  = 65535;    //workaround to a known CC430 erratum
-    OT_GPTIM->CTL  |= 0x0020;   //restart in continuous-up, without interrupt
+	OT_GPTIM->CTL  |= 0x0004;   //clear & stop timer
+	OT_GPTIM->CCTL0&= ~0x0010;	//disable interrupt for CC0
+	OT_GPTIM->CCR0  = 65535;    //workaround for erratum
+	OT_GPTIM->CTL  |= 0x0020;   //restart in continuous-up, no interval interrupt
 }
 
 
@@ -978,58 +969,62 @@ ot_u16 platform_crc_result() {
   */
 
 void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
-/// The CC430 ADC works fairly fast, so this function can be done in, ideally, 
-/// less than 200 us.  One thing you can do is buffer random numbers when the
-/// device is idle.
-    ot_uint adclsr;
-    ot_uint *adcmemory;
-    ot_u8   *adcmctl;
+/// This random number generator is quite fast.  A 128 bit number can be
+/// generated in less than 50us, typically.
 
-    /// 1. Turn-on ADC12_A
-    /// CTL0 - default sampling time = minimum (better for random numbers)
-    /// CTL1 - internal sample timer, drive by MCLK, repeat-single-channel mode
-    /// CTL2 - temp sensor off, use 12 bit precision
-    /// MEM0 - Set input to the board-defined source, or voltage monitor
-    ADC12CTL0   = ADC12ON;
-    ADC12CTL1   = ADC12SHP + ADC12SSEL_2 + ADC12CONSEQ_2;
-    ADC12CTL2   = ADC12TCOFF + ADC12RES_2;
-#   ifdef OT_GWNADC_PINNUM
-        ADC12MCTL0  = OT_GWNADC_PINNUM;
-#   else
-        ADC12MCTL0  = b1011;    // (AVcc - AVss) / 2
-#   endif
-    
-    /// 2. Open Floating pin, if enabled by board
-#   ifdef OT_GWNADC_PINNUM
-        OT_GWNADC_PORT->DDIR  &= ~OT_GWNADC_PIN;
-        OT_GWNADC_PORT->REN   &= ~OT_GWNADC_PIN;
-#   endif
+#ifndef OT_GWNADC_BITS
+#   define OT_GWNADC_BITS 8
+#endif
 
-    /// 3. Turn-on Zener noisemaker, if enabled by board
+#ifdef OT_GWNADC_PINNUM
+#   undef OT_GWNADC_PIN
+#else
+#   warn "OT_GWNADC_PINNUM is not defined in the board configuration header."
+#   define OT_GWNADC_PINNUM 0
+#   undef OT_GWNADC_PIN
+#endif
+
+    /// Open Floating Input pin
+#   define OT_GWNADC_PIN (1 << OT_GWNADC_PINNUM)
+    OT_GWNADC_PORT->DDIR  &= ~OT_GWNADC_PIN;
+    OT_GWNADC_PORT->REN   &= ~OT_GWNADC_PIN;
+
+    /// 1. Set-up ADC: The trick to this implementation is to drive the sampling
+    ///    timer MUCH faster than it is supposed to run, so that it just produces
+    ///    garbage data.  The garbage data turns-out to be quite random, even to
+    ///    the 8 LSBs of the 12 bit capture.  If you reduce the clock frequency,
+    ///    you might want to change the OT_GWNADC_BITS to a lower number.
+	ADC->CTL0   = 0;
+    ADC->CTL0   = ADC_CTL0_SHT0_4 | ADC_CTL0_MSC | ADC_CTL0_ON;
+    ADC->CTL1   = ADC_CTL1_START(0) | ADC_CTL1_SHP | ADC_CTL1_SSEL_MCLK | ADC_CTL1_CONSEQ_SINGLE;
+    ADC->CTL2   = ADC_CTL2_TCOFF + ADC_CTL2_RES_MAX;
+    ADC->MCTL0  = OT_GWNADC_PINNUM;
+    ADC->CTL0  |= ADC_CTL0_ENC;
+
+    /// 2. Turn-on Zener noisemaker, if enabled by board
 #   ifdef OT_GWNZENER_PORT
         OT_GWNZENER_PORT->DOUT |= OT_GWNZENER_PIN;
 #   endif
 
-    /// 4. Do Conversion!  Loop until the required number of bytes are produced.
+    /// 3. Do Conversion!  Loop until the required number of bytes are produced.
     ///    The random bytes are produced by shifting-in the least-significant
     ///    sections of each sample (exactly how many bits is board-defined).
     while (--bytes_out >= 0) {
         ot_u8 reg;
-        ADC12CTL0  |= (ADC12ENC | ADC12SC);  //start conversion
-            
 #       if (OT_GWNADC_BITS == 8)
             //Special case for direct synthesis of random bytes.
-            while (ADC12CTL1 & ADC12BUSY);
-            reg = (ot_u8)__ADCREG__;
+            ADC->CTL0  |= ADC_CTL0_SC;  //start conversion
+            while (ADC->CTL1 & ADC_CTL1_BUSY);
+            reg = (ot_u8)ADC->MEM0;
 
 #       else
-            ot_u8 shifts = ((8+(OT_GWNADC_BITS-1)) / OT_GWNADC_BITS);
-            
-            while (shifts != 0) {
-                shifts--;
-                while (ADC12CTL1 & ADC12BUSY);
+            ot_u8 shifts;
+            shifts = ((8+(OT_GWNADC_BITS-1)) / OT_GWNADC_BITS);
+            while (shifts-- != 0) {
+            	ADC->CTL0  |= ADC_CTL0_SC;  //start conversion
+                while (ADC->CTL1 & ADC_CTL1_BUSY);
                 reg   <<= OT_GWNADC_BITS;
-                reg    |= ((1<<OT_GWNADC_BITS)-1) & ADC12MEM0;
+                reg    |= ((1<<OT_GWNADC_BITS)-1) & ADC->MEM0;
             }
 #       endif
         
@@ -1037,16 +1032,13 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
     }
 
     ///5. Shut down ADC, turn-off Zener (if enabled), turn-off pin (if enabled)
-    ADC12CTL0 = 0;
+    ADC->CTL0              = 0;
+    OT_GWNADC_PORT->DDIR  |= OT_GWNADC_PIN;
+    OT_GWNADC_PORT->DOUT  &= ~OT_GWNADC_PIN;
 
 #   ifdef OT_GWNZENER_PORT
         OT_GWNZENER_PORT->DOUT &= ~OT_GWNZENER_PIN;
 #   endif
-#   ifdef OT_GWNADC_PINNUM
-        OT_GWNADC_PORT->DDIR  |= OT_GWNADC_PIN;
-        OT_GWNADC_PORT->DOUT  &= ~OT_GWNADC_PIN;
-#   endif
-
 }
 
 
@@ -1141,9 +1133,11 @@ void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length) {
                             DMA_SourceInc_Enable | \
                             DMA_DestinationDataSize_Word | \
                             DMA_SourceDataSize_Word | \
-                            DMA_TriggerLevel_RisingEdge | \
+                            DMA_TriggerLevel_High | \
                             0x11);
     //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
+    //DMA must be manually cleared on zero-length copy
+    MEMCPY_DMA->CTL    &= ~(0x10);
 
 #else
     platform_memcpy((ot_u8*)dest, (ot_u8*)src, length<<1);
@@ -1170,9 +1164,11 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
                             DMA_SourceInc_Disable | \
                             DMA_DestinationDataSize_Byte | \
                             DMA_SourceDataSize_Byte | \
-                            DMA_TriggerLevel_RisingEdge | \
+                            DMA_TriggerLevel_High | \
                             0x11);
     //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
+    //DMA must be manually cleared on zero-length copy
+    MEMCPY_DMA->CTL    &= ~(0x10);
 
 #else
 /// Uses the "Duff's Device" for loop unrolling.  If this is incredibly
@@ -1213,11 +1209,13 @@ void platform_block(ot_u16 sti) {
 /// Drop clock to a very low amount, then do a pointless DMA transfer.  The DMA
 /// transfer is well known as 2 clocks per transfer.  The input sti should be
 /// 10 or larger in order for it to be accurate (~300us).
-    ot_u8 a, b;
+    ot_u16 a, b;
+    ot_int cycles;
     
+    cycles              = (ot_int)((sti>>1)-5);
+    MEMCPY_DMA->SZ      = (cycles < 0) ? 0 : cycles;
     MEMCPY_DMA->SA_L    = (ot_u16)&a;
     MEMCPY_DMA->DA_L    = (ot_u16)&b;
-    MEMCPY_DMA->SZ      = (sti-6)>>1;
     
     //drop CPU clock to 32768Hz
     UCS->CTL4   = (CLKSRC_32768 << clockACLK) | \
@@ -1228,15 +1226,18 @@ void platform_block(ot_u16 sti) {
     MEMCPY_DMA->CTL     = ( DMA_Mode_Block | \
                             DMA_DestinationInc_Disable | \
                             DMA_SourceInc_Disable | \
-                            DMA_DestinationDataSize_Byte | \
-                            DMA_SourceDataSize_Byte | \
-                            DMA_TriggerLevel_RisingEdge | \
+                            DMA_DestinationDataSize_Word | \
+                            DMA_SourceDataSize_Word | \
+                            DMA_TriggerLevel_High | \
                             0x11);
-    
+
     //bring back clock to 20 MHz (or whatever)
     UCS->CTL4   = (CLKSRC_32768 << clockACLK) | \
     		      (sourceDCO << clockMCLK) | \
     		      (sourceDCO << clockSMCLK);
+
+    //DMA must be manually cleared on zero-length copy
+    MEMCPY_DMA->CTL &= ~(0x10);
 }
 
 

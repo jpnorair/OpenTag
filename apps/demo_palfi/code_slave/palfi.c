@@ -250,16 +250,16 @@ void sys_sig_extprocess(void* data) {
                     // appropriate switch case (7-10) and go directly to it.
                     // Also, wipe the RSSI buffer.
                     else {
-                    	ot_u8 i;
-                    	for (i=0; i<PALFI_SWITCHES; i++) {
-                    		if (palfi.status[2] & (1<<i)) {
-                    			palfi.wake_event = i+'1';
-                    			break;
-                    		}
-                    	}
-                    	sys.evt.EXT.event_no = (palfi.wake_event) ? \
+                        ot_u8 i;
+                        for (i=0; i<PALFI_SWITCHES; i++) {
+                            if (palfi.status[2] & (1<<i)) {
+                                palfi.wake_event = i+'1';
+                                break;
+                            }
+                        }
+                        sys.evt.EXT.event_no = (palfi.wake_event) ? \
                                              sys.evt.EXT.event_no+4+(i<<1) : 0;
-                    	platform_memset(&palfi.rssi_info, 0xFF, 6);
+                        platform_memset(&palfi.rssi_info, 0xFF, 6);
                     }
                 }
                 goto sys_sig_extprocess_TOP;
@@ -281,7 +281,14 @@ void sys_sig_extprocess(void* data) {
         case 4:
         sys_sig_extprocess_EXIT2:
                     palfi_powerdown();
-                    sub_starttask_uhf();    // Add new DASH7 comm task to kernel
+                    { // Add new DASH7 comm task to kernel, using most defaults.
+                        session_tmpl s_tmpl;
+                        s_tmpl.channel      = (palfi.wake_event & 1) ? \
+                                                ALERT_CHAN1 : ALERT_CHAN2;
+                        s_tmpl.subnetmask   = 0;
+                        s_tmpl.flagmask     = 0;
+                        otapi_task_immediate(&s_tmpl, &applet_adcpacket);
+                    }
                     break;
         
         // Normal Event 1: Bypass ON, VCL OFF
@@ -323,13 +330,15 @@ void sys_sig_extprocess(void* data) {
   *
   */
 void applet_adcpacket(m2session* session) {
-/// This is an OpenTag session Applet.  It gets called by the kernel after it
-/// is bound to a session (sub_starttask_uhf()) and after the kernel determines
-/// it is the right time to run it.  The way this app is implemented, it will
-/// always get called immediately after the kernel creates the session via
-/// sub_starttask_uhf().
+/// This is an OpenTag session Applet.  It gets called by the kernel when the
+/// communication task (session) that it is attached-to gets activated by the
+/// kernel.  The kernel will wait until a currently-running communication task
+/// is over before starting a new one.
 ///
-/// It does two things:
+/// In order to create a new communication task and bind this applet to it, use
+/// otapi_task_immediate() or one of the other tasker functions.
+///
+/// This applet does two things:
 /// 1. Do an ADC capture
 /// 2. Build a DASH7 UDP packet that includes PaLFI data and the ADC values
 ///    that were just captured.  The app protocol inside UDP is a generic TLV.
@@ -346,25 +355,6 @@ void applet_adcpacket(m2session* session) {
     sub_build_uhfmsg(data_buffer);
 }
 
-
-void sub_starttask_uhf() {
-/// Define a DASH7 RF communication session (task) and attach it to the kernel.
-/// The API function that does the real work is otapi_new_session(), and like
-/// most OTAPI functions it takes arguments as a struct.  sub_starttask_uhf()
-/// is just a wrapper containing struct values for this application.
-///
-/// You can experiment with other values in s_tmpl (there are more, too, see
-/// OTAPI_tmpl.h).  Just make sure to leave the applet parameter the same, or
-/// else the kernel will not be able to call the packet-building code when it
-/// is time to build the packet.
-	session_tmpl s_tmpl;
-
-	s_tmpl.channel      = (palfi.wake_event & 1) ? ALERT_CHAN1 : ALERT_CHAN2;
-    s_tmpl.subnetmask   = 0;        // Use default subnet
-	s_tmpl.flagmask     = 0;        // Use default app-flags
-	s_tmpl.timeout      = 10;       // Do CSMA for no more than 10 ticks (~10 ms)
-	otapi_new_session(&s_tmpl, &applet_adcpacket);
-}
 
 
 
@@ -414,7 +404,7 @@ void sub_adc_measurement(ot_int* buffer) {
     /// 4. Convert Voltage:
     /// Vdd is acquired as 12 bit number representing Vdd/2 in 1/4095V units.
     /// x(V) = 4095*(Vdd/2)/1.93V; x(mV) = (4095/2*1930mV)Vdd ~= Vdd
-    //buffer[1]   = volt;	                        // Cheap way, not accurate
+    //buffer[1]   = volt;                           // Cheap way, not accurate
     buffer[1]   = (ot_int)((float)ADC12MEM8 * (3860.f/4095.f));      // Higher accuracy method
 }
 
@@ -472,12 +462,12 @@ void sub_build_uhfmsg(ot_int* buffer) {
     // reporting by DASH7/OpenTag until it is updated next time.  The length of 
     // this information is always 23 bytes.
     {
-    	vlFILE* fp;
-    	fp = ISF_open_su(255);
-    	if (fp != NULL) {
-    		vl_store(fp, 23, data_start);
-    		vl_close(fp);
-    	}
+        vlFILE* fp;
+        fp = ISF_open_su(255);
+        if (fp != NULL) {
+            vl_store(fp, 23, data_start);
+            vl_close(fp);
+        }
     }
     
     // Finish Message
@@ -495,14 +485,14 @@ void sub_build_uhfmsg(ot_int* buffer) {
   *
   */
 void palfi_init() {
-	// Build Calibrated Model for Temperature Sensor
+    // Build Calibrated Model for Temperature Sensor
     {
-    	float test_30C2V;
-    	float test_85C2V;
-    	test_30C2V          = (float)(*((ot_u16*)0x1A1E));
-    	test_85C2V          = (float)(*((ot_u16*)0x1A20));
-    	tmodel.slope_dC     = (850.f - 300.f) / (test_85C2V - test_30C2V);
-    	tmodel.offset_dC    = 300.f - (tmodel.slope_dC*test_30C2V);
+        float test_30C2V;
+        float test_85C2V;
+        test_30C2V          = (float)(*((ot_u16*)0x1A1E));
+        test_85C2V          = (float)(*((ot_u16*)0x1A20));
+        tmodel.slope_dC     = (850.f - 300.f) / (test_85C2V - test_30C2V);
+        tmodel.offset_dC    = 300.f - (tmodel.slope_dC*test_30C2V);
     }
 
     // Clear Status buffer
@@ -647,7 +637,7 @@ void palfi_cmdrssi() {
 
 void palfi_cmdstatus() {
 /// Grab the command status from the PaLFi core
-	sub_spi_trx(0x00);
+    sub_spi_trx(0x00);
     palfi_readback(palfi.status, 4);
 
 //  This block does the same as the loop above, but is more descriptive
@@ -861,7 +851,7 @@ void sub_measurefreq_finish(float* t_pulse) {
         palfi_readback(palfi.rxdata, 8);
         
         num_periods     = palfi.trim.endcount - palfi.trim.startcount;
-        num_periods    *= (PLATFORM_HSCLOCK_HZ/PLATFORM_SMCLK_DIV);    			// Typ ~2.5 MHz
+        num_periods    *= (PLATFORM_HSCLOCK_HZ/PLATFORM_SMCLK_DIV);             // Typ ~2.5 MHz
         *t_pulse        = (float)(palfi.trim.endval - palfi.trim.startval);
         *t_pulse       /= num_periods;
         *t_pulse       *= 1000;

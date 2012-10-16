@@ -14,13 +14,16 @@
   *
   */
 /**
-  * @file       /Platforms/.../aes128_~.c
+  * @file       /otlib/crypto_aes128.c
   * @author     STMicro MCD Application Team 
   * @version    V1.0 (10 June 2008)
   * @date       17 November 2011
   * @brief      AES128 Driver
   * @ingroup    AES128
   *
+  * @todo This Module is just a placeholder.  This specific code must be 
+  * rewritten somewhat.
+  * 
   ******************************************************************************
   */
 

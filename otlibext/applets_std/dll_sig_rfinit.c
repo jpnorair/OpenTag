@@ -13,26 +13,30 @@
   * limitations under the License.
   */
 /**
-  * @file       /otlibext/applets_std/sys_sig_rfaterminate_2.c
+  * @file       /otlibext/applets_std/sys_sig_rfainit.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       31 July 2011
-  * @brief      Standard RFA terminate routine
+  * @date       31 July 2012
+  * @brief      Standard RFA Init routine
   *
-  * This applet implements a commonly used LED routine
+  * This is a callback the kernel uses when it is starting up a radio process.
+  * It is used here to turn-on activity LEDs.
   */
 
-
-
 #include "OTAPI.h"
-#include "radio.h"
 
 
-#ifdef EXTF_sys_sig_rfaterminate
-void sys_sig_rfaterminate(ot_int pcode, ot_int scode) {
-    otapi_led2_off();   //Orange LED off
-    otapi_led1_off();   //Green LED off
+
+#ifdef EXTF_dll_sig_rfinit
+void dll_sig_rfinit(ot_int pcode) {
+/// DLL Task codes
+/// 1 = Packet Processing (rfinit() not called here)
+/// 2 = Session invocation (rfinit() not called here)
+/// 3 = RX initialization (!)
+/// 4 = TX CSMA init (!)
+/// 5 = TX watchdog (rfinit() not called here)
+
+    if (pcode == 3) otapi_led2_on();    // Orange (preferred) / Yellow / Red lamp
+    else            otapi_led1_on();    // Green lamp
 }
 #endif
-
-

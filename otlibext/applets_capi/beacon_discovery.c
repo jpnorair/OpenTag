@@ -24,18 +24,7 @@
 #include "OTAPI.h"
 
 
-
-ot_bool applet_beacon_discovery() {
-    { //create a new session (it will get copied to session stack)
-        session_tmpl session;
-        session.channel     = 0x00;
-        session.flagmask    = 0;
-        session.flags       = 0;
-        session.subnet      = 0;
-        session.subnetmask  = 0;
-        session.timeout     = 16;
-        otapi_new_session(&session, NULL);
-    }
+void applet_beacon_discovery(m2session* session) {
     { //open request for broadcast
         otapi_open_request(ADDR_broadcast, NULL);
     }
@@ -66,9 +55,6 @@ ot_bool applet_beacon_discovery() {
 
     //Done building command, close the request and send the dialog
     otapi_close_request();
-    //otapi_start_dialog();
-
-    return True;
 }
 
 

@@ -37,16 +37,17 @@
 
 #include "buffers.h"            // Built-in buffers
 #include "queue.h"              // A buffer data-type module
-#include "system.h"             // Data Link Layer & Kernel
+#include "m2_dll.h"             // Data Link Layer
 #include "m2_network.h"         // Network Layer
 #include "m2_transport.h"       // Transport Layer
 #include "veelite.h"            // Filesystem (Also Presentation Layer)
+
 
 ///@todo Kernel-level stuff should be encapsulated in generic system-layer functions
 #if (OT_FEATURE(CUSTOM_KERNEL) == ENABLED)
     // no other kernels supported at the moment
 #else
-#   include "native/system_native.h"
+#   include "gulp/system_gulp.h"
 #endif
 
 
@@ -79,101 +80,6 @@
 #endif
 
 
-/*
-// Log all packets that are transmitted
-#   if (LOG_FEATURE(TX) == ENABLED)
-#       define OT_LOG_TX()      otapi_log_msg(3, txq.length, (ot_u8*)"TXP", txq.front)
-#   else
-#       define OT_LOG_TX()      while(0)
-#   endif
-
-// Log errors, even if they are not transmitted, or if LOG_TX is disabled.
-#   if (LOG_FEATURE(ERRORS) == ENABLED)
-#       define OT_LOG_ERROR()   otapi_log_msg(3, txq.length, (ot_u8*)"ERR", txq.front)
-#   else
-#       define OT_LOG_ERROR()   while(0)
-#   endif
-
-// Log the first recongnition of a advertising packet train
-#   if (LOG_FEATURE(RX_M2ADVP) == ENABLED)
-#       define OT_LOG_RXADV(ETA, SID)   do { \
-                                            Fourbytes logdata; \
-                                            logdata.ushort[0] = ETA; \
-                                            logdata.ushort[1] = SID; \
-                                            otapi_log_msg(3, 4, (ot_u8*)"ADV", &logdata.ubyte[0]); \
-                                        } while (0)
-#   else
-#       define OT_LOG_RXADV()           while(0)
-#   endif
-
-// Log any m2 foreground frame packet received
-#   if (LOG_FEATURE(RX_ANY) == ENABLED)
-#       define OT_LOG_RXANY()   otapi_log_msg(7, rxq.length, (ot_u8*)"RXP_ANY", rxq.front)
-#   else
-#       define OT_LOG_RXANY()   while(0)
-#   endif
-
-// Log all foreground frames/packets that pass DLL filtering (tx eirp & subnet)
-#   if (LOG_FEATURE(RX_DLLFILTER) == ENABLED)
-#       define OT_LOG_RXDLL()   otapi_log_msg(7, rxq.length, (ot_u8*)"RXP_DLL", rxq.front)
-#   else
-#       define OT_LOG_RXDLL()   while(0)
-#   endif
-
-// Log all foreground frames that pass MAC Filtering (addressing and authentication)
-#   if (LOG_FEATURE(RX_MACFILTER) == ENABLED)
-#       define OT_LOG_RXMAC()   otapi_log_msg(7, rxq.length, (ot_u8*)"RXP_MAC", rxq.front)
-#   else
-#       define OT_LOG_RXMAC()   while(0)
-#   endif
-
-// Log all foreground frames that pass Network layer & Transport Layer addressing
-#   if (LOG_FEATURE(RX_NETWORKED) == ENABLED)
-#       define OT_LOG_RXNET()   otapi_log_msg(7, rxq.length, (ot_u8*)"RXP_NET", rxq.front)
-#   else
-#       define OT_LOG_RXNET()   while(0)
-#   endif
-
-// Log a system fault
-#   if (LOG_FEATURE(FAULTS) == ENABLED)
-#       define OT_LOG_FAULT(FCODE)      otapi_log_code(5, (ot_u8*)"FAULT", FCODE)
-#   else
-#       define OT_LOG_FAULT(FCODE)      while(0)
-#   endif
-
-// Log system errors
-#   if (LOG_FEATURE(FAILS) == ENABLED)
-#       define OT_LOG_FAILVL(FCODE)     otapi_log_code(6, (ot_u8*)"VL_ERR", FCODE)
-#       define OT_LOG_FAILSYS(FCODE)    otapi_log_code(7, (ot_u8*)"SYS_ERR", FCODE-0x100)
-#       define OT_LOG_FAILNET(FCODE)    otapi_log_code(7, (ot_u8*)"NET_ERR", FCODE-0x200)
-#   else
-#       define OT_LOG_FAILVL(FCODE)     while(0)
-#       define OT_LOG_FAILSYS(FCODE)    while(0)
-#       define OT_LOG_FAILNET(FCODE)    while(0)
-#   endif
-*/
-
-
-
-
-
-
-
-
-#if ((OT_FEATURE(NDEF) == ENABLED) && (OT_FEATURE(MPIPE) == ENABLED))
-/** OTAPI functions within NDEF module      <BR>
-  * ========================================================================<BR>
-  * Use the MPipe to move NDEF packets in and out.  These functions should be
-  * attached to the MPipe TXDONE callback (otapi_ndef_idle) and the RXDONE 
-  * callback (otapi_ndef_proc) if you are building an NDEF server command pipe.
-  */
-
-void otapi_ndef_idle(void* tmpl);
-void otapi_ndef_proc(void* tmpl);
-#endif
-
-
-
 
 
 #if (OT_FEATURE(ALPEXT) == ENABLED)
@@ -199,6 +105,99 @@ void otapi_ndef_proc(void* tmpl);
 ot_bool otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id);
 #endif
 
+
+
+
+
+
+/** Comm-Tasker function definitions        <BR>
+  * ========================================================================<BR>
+  * These are implemented in OTAPI_tasker.c.  They are API functions used to
+  * create OpenTag communication (session) tasks of various formats.
+  */
+
+
+/** @brief  Creates a session task that is entered immediately
+  * @param  s_tmpl      (session_tmpl*) Session Template provided by caller
+  * @param  applet      (ot_app) Applet that gets called when Session activates
+  * @retval m2session*  Pointer to the session that was created
+  * @ingroup OTAPI
+  * @sa otapi_task_schedule(), otapi_task_flood()
+  *
+  * If you call this function somewhere in your application, it will create a
+  * new, ad hoc communication session and put it in the session stack.  The 
+  * kernel will process this session as soon as it is free.
+  *
+  * Like all session tasks, there is an attached applet.  The applet is a 
+  * callback function that the kernel calls when it activates the session.
+  * The applet needs to do whatever is required to build the request frame.
+  * See the applets that come with OpenTag (in /otlibext) for ideas.
+  *
+  * This is a good task function to use, because it is predictable.  Generally,
+  * if you application is able to call this function at all, it means the
+  * kernel is not blocking session creation in favor of some higher-priority
+  * task (e.g. I/O drivers).  So, when you call it, the chance that for some
+  * reason your session is blocked (and flushed) is effectively 0.
+  */
+m2session* otapi_task_immediate(session_tmpl* s_tmpl, ot_app applet);
+
+
+
+/** @brief  Creates a session task that is entered at a scheduled, later time
+  * @param  s_tmpl      (session_tmpl*) Session Template provided by caller
+  * @param  applet      (ot_app) Applet that gets called when Session activates
+  * @param  offset      (ot_u16) Time offset, in ticks, when session gets activated
+  * @retval m2session*  Pointer to the session that was created
+  * @ingroup OTAPI
+  * @sa otapi_task_immediate(), otapi_task_flood()
+  *
+  * This function is identical to otapi_task_immediate() but it also includes
+  * the "offset" parameter.  The value supplied into "offset" is the number of
+  * ticks (1/1024s) between the time of calling and when the kernel should 
+  * activate the session.
+  *
+  * The caveat of using this function is that the kernel might be engaged in a
+  * higher-priority I/O task at the time the scheduling occurs.  In this case,
+  * sometimes the kernel will try to run the session late and sometimes it will
+  * just flush the session.  The decision of late-run/flush is dependent on the
+  * kernel implementation.  Typically, tasks that run really fast (<=1 tick) 
+  * will not cause the sessions to be flushed, but longer tasks will.
+  */
+m2session* otapi_task_schedule(session_tmpl* s_tmpl, ot_app applet, ot_u16 offset);
+
+
+
+/** @brief  Creates a session task that includes advertising flooding
+  * @param  adv_tmpl    (advert_tmpl*) Advertising Template provided by caller
+  * @param  s_tmpl      (session_tmpl*) Session Template provided by caller
+  * @param  applet      (ot_app) Applet that gets called when Session activates
+  * @retval m2session*  Pointer to the session that was created
+  * @ingroup OTAPI
+  * @sa otapi_task_immediate(), otapi_task_schedule()
+  *
+  * This function is identical to otapi_task_immediate() but it also includes
+  * the "adv_tmpl" parameter for specifying the advertising method.  DASH7 M2
+  * can do "background advertising," a method of flooding tiny packets onto a
+  * channel for the purpose of synchronizing a group of unsynchronized devices. 
+  * A session (starting with request) always follows the advertising flood.
+  *
+  * Note on advertising: Advertising is a unique feature of DASH7.  Some other
+  * systems so similar things, but there is no system that has as powerful a
+  * method as DASH7 has.  Basic usage is to have duty = 100%.  In some regions
+  * (i.e. USA) you can set duty_on/duty_off to reduce average TX power, which
+  * makes long advertising durations practical even with oppressive FCC rules.
+  *
+  * <LI> advert_tmpl.duty_off: ticks to take a break from advertising, before
+  *      resuming.  Set to 0 to enable 100% duty. </LI>
+  * <LI> advert_tmpl.duty_on: ticks to advertise before taking a break.  It is
+  *      ignored if duty_off == 0. </LI>
+  * <LI> advert_tmpl.channel: Channel ID to do the advertising on.  The session
+  *      request channel may be the same channel or a different one. </LI>
+  * <LI> advert_tmpl.duration: ticks to run the entire flooding process.  After
+  *      this number of ticks the advertising will end, and the session request
+  *      will begin. </LI>
+  */
+m2session* otapi_task_advertise(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, ot_app applet);
 
 
 

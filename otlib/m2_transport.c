@@ -17,7 +17,7 @@
   * @file       /otlib/m2_transport.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       7 August 2012
+  * @date       2 October 2012
   * @brief      Mode 2 Query Protocol Implementation (Transport Layer)
   * @ingroup    M2QP
   ******************************************************************************
@@ -33,7 +33,7 @@
 #include "buffers.h"
 #include "external.h"
 #include "queue.h"
-#include "system.h"
+#include "m2_dll.h"
 #include "m2_network.h"
 #include "veelite.h"
 

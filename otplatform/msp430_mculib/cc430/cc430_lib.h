@@ -1,4 +1,4 @@
-/* Copyright 2009 JP Norair
+/* Copyright 2009-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 /** @file       /Platforms/CC430/cc430_lib/cc430_lib.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       1 Dec 2009
+  * @date       1 Oct 2012
   * @brief      Main header for CC430 abstraction layer
   * @ingroup    CC430 Library
   *
@@ -176,10 +176,11 @@
 
 
 
-// 12 bit Analog to Digital Converter (ADC12)
-#ifdef _ADC12
-// module not available yet
-//#   include "cc430_adc12.h"
+// 10 or 12 bit Analog to Digital Converter (ADC10, ADC12)
+#if defined(_ADC12)
+#   include "cc430_adc12.h"          // 12 bit Analog to Digital Converter (ADC12)
+#elif defined(_ADC10)
+#   include "cc430_adc10.h"
 #endif
 
 

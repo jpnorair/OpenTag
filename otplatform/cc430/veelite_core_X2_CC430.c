@@ -81,16 +81,7 @@
 
 /// Set Segmentation Fault (code 11) if trying to access an invalid virtual
 /// address.  Vector to User NMI (CC430 Specific)
-#if ((defined VLX2_DEBUG_ON) && (LOG_FEATURE(FAILS) == ENABLED))
-#   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
-        do { \
-            if (vas_check(ADDR) != BANK) { \
-                otapi_log_code(MSGLEN, (ot_u8*)MSG, 11); \
-                SFRIFG1 |= NMIIFG; \
-            } \
-        } while (0)
-
-#elif ((defined VLX2_DEBUG_ON) && (LOG_FEATURE(FAILS) == DISABLED))
+#if (defined VLX2_DEBUG_ON)
 #   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
         do { \
             if (vas_check(ADDR) != BANK) { \
@@ -106,16 +97,7 @@
 
 /// Set Bus Error (code 7) on physical flash access faults (X2table errors).
 /// Vector to Access Violation ISR (CC430 Specific)
-#if defined(VLX2_DEBUG_ON) && (LOG_FEATURE(FAULTS) == ENABLED)
-#   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
-        do { \
-            if (EXPR) { \
-                otapi_log_code(MSGLEN, (ot_u8*)MSG, 7); \
-                FLASH->CTL3 |= ACCVIFG; \
-            } \
-        } while (0)
-
-#elif defined(VLX2_DEBUG_ON)
+#if defined(VLX2_DEBUG_ON)
 #   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
         do { \
             if (EXPR) FLASH->CTL3 |= ACCVIFG; \

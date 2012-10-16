@@ -60,6 +60,7 @@
 #define M2_NETSTATE_TMASK           0x70
 #define M2_NETSTATE_REQTX           0x00
 #define M2_NETSTATE_REQRX           0x20            // set after valid request received
+#define M2_NETSTATE_RX              0x20
 #define M2_NETSTATE_RESP            0x10
 #define M2_NETSTATE_RESPTX          0x10
 #define M2_NETSTATE_RESPRX          0x30
@@ -197,7 +198,7 @@ void session_init();
 
 /** @brief  Reduces the session counters uniformly, and alerts if a session is beginning
   * @param  elapsed_ti      (ot_uint) ti to reduce all session counters by
-  * @retval ot_bool         True/False on session event timeout / no timeout
+  * @retval ot_bool         True when a session is ready
   * @ingroup Session
   */
 ot_bool session_refresh(ot_uint elapsed_ti);
@@ -220,18 +221,12 @@ m2session* session_new(ot_app applet, ot_u16 new_counter, ot_u8 new_netstate, ot
 
 
 
-/** @brief  Returns true if there is already a session scheduled on supplied channel
+/** @brief  Returns true if there is a session scheduled on supplied channel
   * @param  chan_id         (ot_u8) channel id to check for occupancy
   * @retval none
   * @ingroup Session
   *
-  * The Mode 2 Session Layer is not supposed to ever allow two sessions to be 
-  * _scheduled_ on a single channel, at any given time (the reason for this, by 
-  * the way, is to provide a way to avoid hitting the same background packets 
-  * multiple times).  The user can call this function before running a scan, in
-  * order to potentially cancel the scan before it starts.
-  * 
-  * Ad-hoc sessions (counter set initially to 0) are exempt from any such rules.
+  * This function is sort-of deprecated.
   */
 ot_bool session_occupied(ot_u8 chan_id);
 
@@ -252,6 +247,15 @@ void session_pop();
   * @ingroup Session
   */
 void session_flush();
+
+
+
+/** @brief  Pops sessions out of the stack that are below a scheduling threshold.
+  * @param  threshold       (ot_u16) scheduling threshold
+  * @retval none
+  * @ingroup Session
+  */
+void session_crop(ot_u16 threshold);
 
 
 

@@ -1069,18 +1069,18 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
     ot_uint *adcmemory;
     ot_u8   *adcmctl;
 
-    /// 1. Turn-on ADC10_A
+    /// 1. Turn-on ADC
     /// CTL0 - default sampling time = minimum (better for random numbers)
-    /// CTL1 - internal sample timer, drive by MCLK, repeat-single-channel mode
-    /// CTL2 - temp sensor off, use 12 bit precision
+    /// CTL1 - internal sample timer, drive by MODCLK, repeat-single-channel mode
+    /// CTL2 - temp sensor off, use Max bit precision (10 or 12 bit)
     /// MEM0 - Set input to the board-defined source, or voltage monitor
-    ADC10CTL0   = ADC10ON;
-    ADC10CTL1   = ADC10SHP + ADC10SSEL_2 + ADC10CONSEQ_2;
-    ADC10CTL2   = ADC10RES;
+    ADC->CTL0   = ADC_CTL0_ON;
+    ADC->CTL1   = ADC_CTL1_SHP + ADC_CTL1_SSEL_MODCLK + ADC_CTL1_CONSEQ_REPSINGLE;
+    ADC->CTL2   = ADC_CTL2_TCOFF + ADC_CTL2_RES_MAX;
 #   ifdef OT_GWNADC_PINNUM
-        ADC10MCTL0  = OT_GWNADC_PINNUM;
+        ADC->MCTL0  = OT_GWNADC_PINNUM;
 #   else
-        ADC10MCTL0  = b1011;    // (AVcc - AVss) / 2
+        ADC->MCTL0  = ADC_MCTL_INCH_HALFVCC;    // (AVcc - AVss) / 2
 #   endif
     
     /// 2. Open Floating pin, if enabled by board
@@ -1099,21 +1099,21 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
     ///    sections of each sample (exactly how many bits is board-defined).
     while (--bytes_out >= 0) {
         ot_u8 reg;
-        ADC10CTL0  |= (ADC10ENC | ADC10SC);  //start conversion
+        ADC->CTL0  |= (ADC_CTL0_ENC | ADC_CTL0_SC);  //start conversion
             
 #       if (OT_GWNADC_BITS == 8)
             //Special case for direct synthesis of random bytes.
-            while (ADC10CTL1 & ADC10BUSY);
-            reg = (ot_u8)__ADCREG__;
+            while (ADC->CTL1 & ADC_CTL1_BUSY);
+            reg = (ot_u8)ADC->MEM0;
 
 #       else
             ot_u8 shifts = ((8+(OT_GWNADC_BITS-1)) / OT_GWNADC_BITS);
             
             while (shifts != 0) {
                 shifts--;
-                while (ADC10CTL1 & ADC10BUSY);
+                while (ADC->CTL1 & ADC_CTL1_BUSY);
                 reg   <<= OT_GWNADC_BITS;
-                reg    |= ((1<<OT_GWNADC_BITS)-1) & ADC10MEM0;
+                reg    |= ((1<<OT_GWNADC_BITS)-1) & ADC->MEM0;
             }
 #       endif
         
@@ -1121,7 +1121,7 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
     }
 
     ///5. Shut down ADC, turn-off Zener (if enabled), turn-off pin (if enabled)
-    ADC10CTL0 = 0;
+    ADC->CTL0 = 0;
 
 #   ifdef OT_GWNZENER_PORT
         OT_GWNZENER_PORT->DOUT &= ~OT_GWNZENER_PIN;

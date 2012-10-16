@@ -460,7 +460,7 @@ const ot_u8 isf_stock_files[] = {
 
     /* hold scan periods: id=0x04, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x07, 0x52, 0x00, 0x01,                             /* Channel X scan, Scan Code, Next Scan ms */
+    0x07, 0x52, 0x00, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
     0x2A, 0x23, 0x00, 0xA0,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,

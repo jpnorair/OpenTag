@@ -35,7 +35,6 @@
 
 #include "OT_types.h"
 #include "session.h"
-//#include "system.h"
 #include "alp.h"
 
 /** M2NP Routing Parameters
@@ -303,32 +302,41 @@ ot_bool m2np_idcmp(ot_int length, void* id);
   * @sa m2advp_init_flood()
   *
   * This function is typically called by the Data Link Layer / System module
-  * in order to open an M2AdvP wake-up flood.  It will do some manipulation of 
-  * the TX Queue required for flooding.  When the flood shall be ended, you 
-  * MUST call m2advp_close() to allow normal behavior to resume.
+  * in order to begin an M2AdvP flood process.  It reconfigures the TX Queue
+  * to transmit background frames.
   */
 void m2advp_open(m2session* session);
 
 
 
-/** @brief  Ceases an M2AdvP flood
+/** @brief  Reverts the data framing from flood to normal mode
   * @param  none
   * @retval none
   * @ingroup Network
   * @sa m2advp_open()
   *
-  * When an M2AdvP Flood reaches its final frame, the Data Link Layer / System
-  * Module must call this function to discontinue the flood's usage of the 
-  * TX Queue.  Data you have loaded into the TX Queue prior to the flood will
-  * be returned to the TX Queue.  If you do not call this function after ending
-  * a flood, there will be a segmentation fault the next time you use the TX
-  * Queue for frame data.
+  * This function is typically called by the Data Link Layer / System module
+  * in order to end an M2AdvP flood process.  It reconfigures the TX Queue
+  * to transmit foreground frames (the normal configuration).
   */
 void m2advp_close();
 
 
 
-/** @brief  Initializes the M2AdvP Flood
+/** @brief  Updates an open flood process
+  * @param  countdown
+  * @retval none
+  * @ingroup Network
+  * @sa m2advp_open()
+  *
+  * The system / data link layer / kernel should supply the flood countdown to
+  * this function when the next flood packet is being loaded.
+  */
+void m2advp_update(ot_u16 countdown);
+
+
+
+/* @brief  Initializes the M2AdvP Flood
   * @param  session     (m2session*) Pointer to active session
   * @param  schedule    (ot_u16) number of ticks to run flood
   * @retval ot_int      -1 if there's an error preventing flood initialization
@@ -342,7 +350,7 @@ void m2advp_close();
   * safely assumed to be 32750.  Additionally, the return value is only 
   * relevant to Debug builds and builds in which flooding is unavailable.
   */
-ot_int m2advp_init_flood(m2session* session, ot_u16 schedule);
+//ot_int m2advp_init_flood(m2session* session, ot_u16 schedule);
 
 
 

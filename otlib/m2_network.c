@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /otlib/m2_network.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       2 November 2011
+  * @date       2 October 2012
   * @brief      Network Layer implementation for Mode 2
   * @ingroup    Network
   *
@@ -37,11 +37,11 @@
 #include "OT_utils.h"
 #include "OTAPI_tmpl.h"
 
+#include "m2_dll.h"
+#include "veelite.h"
 #include "auth.h"
 #include "buffers.h"
 #include "queue.h"
-#include "system.h"         //including system.h just for some constants
-#include "veelite.h"
 
 
 //#ifdef DEBUG_ON
@@ -436,20 +436,28 @@ ot_bool m2np_idcmp(ot_int length, void* id) {
   */
   
 #if (SYS_FLOOD == ENABLED)
-    Queue   advq;
-    ot_u8   txadv_buffer[10];
+    //Queue   advq;
+    //ot_u8   txadv_buffer[10];
 #endif
 
 
-//void network_make_m2advp(m2session* session) {
 #ifndef EXTF_m2advp_open
 void m2advp_open(m2session* session) {
     q_start(&txq, 1, 0);
     txq.front[0] = 7;
     q_writebyte(&txq, session->subnet);
-    q_writebyte(&txq, 0xF0);
+    q_writebyte(&txq, 0);   //Advertising protocol ID == 0
     q_writebyte(&txq, session->channel);
     q_writeshort(&txq, session->counter);
+}
+#endif
+
+
+#ifndef EXTF_m2advp_update
+void m2advp_update(ot_u16 countdown) {
+    txq.front[3]    = ((ot_u8*)&countdown)[UPPER];
+    txq.front[4]    = ((ot_u8*)&countdown)[LOWER];
+    txq.putcursor   = &txq.front[5];
 }
 #endif
 
@@ -458,18 +466,18 @@ void m2advp_open(m2session* session) {
 void m2advp_close() {
 #if (SYS_FLOOD == ENABLED)
     /// Restore original TXQ
-    q_copy(&txq, &advq);
+    //q_copy(&txq, &advq);
 #endif
 }
 #endif
 
 
-#ifndef EXTF_m2advp_init_flood
-ot_int m2advp_init_flood(m2session* session, ot_u16 schedule) {
+#if (0) //ifndef EXTF_m2advp_init_flood
+ot_int m2advp_init_flood(m2session* session, advert_tmpl* adv_tmpl) {
 #if (SYS_FLOOD == ENABLED) 
 #   ifdef DEBUG_ON
         // Bug catcher
-        if (session->counter > (32767 /* -RADIO_TURNON_LAG */ )) {
+        if (adv_tmpl->duration > (32767 /* -RADIO_TURNON_LAG */ )) {
             //OT_LOGFAIL();
             return -1;
         }
@@ -479,18 +487,18 @@ ot_int m2advp_init_flood(m2session* session, ot_u16 schedule) {
     session->netstate = (   M2_NETFLAG_FLOOD | M2_NETSTATE_REQTX | \
                             M2_NETSTATE_INIT /* | M2_NETSTATE_SYNCED */   );
 
-    /// Store existing TXQ (bit of a hack)
-    q_copy(&advq, &txq);
+    // Store existing TXQ (bit of a hack)
+    //q_copy(&advq, &txq);
     
     /// Reinit txq to the advertising buffer, and load data that will stay the
     /// same for all packets in the flood.
-    q_init(&txq, txadv_buffer, 10);
+    //q_init(&txq, txadv_buffer, 10);
     
     txq.front[0]    = session->subnet;
     txq.front[1]    = M2_PROTOCOL_M2ADVP;
     txq.front[2]    = session->channel;
-    txq.front[3]    = ((ot_u8*)&schedule)[UPPER];
-    txq.front[4]    = ((ot_u8*)&schedule)[LOWER];
+    txq.front[3]    = ((ot_u8*)&adv_tmpl->duration)[UPPER];
+    txq.front[4]    = ((ot_u8*)&adv_tmpl->duration)[LOWER];
  
     return 0;
 #else

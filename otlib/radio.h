@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/radio.h
+  * @file       /otlib/radio.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       1 Jan 2011
+  * @date       1 Oct 2011
   * @brief      Generic Radio (RF transceiver) interface
   * @defgroup   Radio (Radio Module)
   * @ingroup    Radio
@@ -26,9 +26,15 @@
   * it can probably only link to one, which has to be the Mode 2 version.  In
   * the future I might have to change this slightly, but possibly not.
   *
-  * There needs to be an implementation file, radio_xxx.c or whatever, in the
-  * platform directory.  It acts as the driver and encapsulates all of the HW
+  * There needs to be an implementation file, otradio/xxx/radio_xxx.c or 
+  * something like this. It acts as the driver and encapsulates all of the HW
   * management functions.
+  *
+  * There also needs to be an implementation of the data link layer you want to
+  * use with the radio driver.  As mentioned, the radio driver is designed for
+  * DASH7 Mode 2, but it also needs a link-layer taskset.  In OpenTag, this is
+  * already part of otlib: otlib/m2_dll.c
+  *
   ******************************************************************************
   */
 
@@ -39,7 +45,30 @@
 #include "OT_types.h"
 #include "OT_config.h"
 
-#include "system.h"
+
+
+typedef enum {
+    RADIO_Idle      = 0,
+    RADIO_Listening = 1,
+    RADIO_Csma      = 2,
+    RADIO_DataRX    = 5,
+    RADIO_DataTX    = 6
+} radio_state;
+
+
+/** Universal Radio Driver Control
+  * state       A high-level description of what is happening on the radio
+  * last_rssi   Used to buffer the last-read RSSI value -- not always implemented
+  * evtdone     A callback that is used when RX or TX is completed (i.e. done)
+  */
+typedef struct {
+    radio_state state;
+    ot_int      last_rssi;
+    ot_sig2     evtdone;
+} radio_struct;
+
+extern radio_struct radio;
+
 
 
 
@@ -95,7 +124,6 @@ typedef struct {
 phymac_struct;
 
 
-
 /** PHY-MAC Channel Data
   * The MAC/System level rx chanlist maps to this array.  Mode 2 only supports
   * single channel transmit, so transmit channel data is always phymac[0].  In
@@ -108,21 +136,6 @@ phymac_struct;
   
 extern phymac_struct   phymac[M2_PARAM_MI_CHANNELS];
 
-
-
-
-/** Recasting of some radio attributes
-  * Most radios we use have internal FIFO.  But the buffer could also be a DMA
-  * on the MCU.  If you do not have a DMA on your micro, make sure you are using
-  * a radio with a FIFO because you need to have one or the other.
-  */
-#if (RF_FEATURE_FIFO == ENABLED)
-#   define RADIO_BUFFER_TXMAX        RF_FEATURE(TXFIFO_BYTES)
-#   define RADIO_BUFFER_RXMAX        RF_FEATURE(RXFIFO_BYTES)
-#else
-#   define RADIO_BUFFER_TXMAX        MCU_FEATURE(RADIODMA_TXBYTES)
-#   define RADIO_BUFFER_RXMAX        MCU_FEATURE(RADIODMA_RXBYTES)
-#endif
 
 
 #define RADIO_ERROR_NDATA   
