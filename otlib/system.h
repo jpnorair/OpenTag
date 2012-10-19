@@ -230,12 +230,13 @@ void sys_task_manager();
 
 
 
-/** @brief Pre-empt the kernel: call this from pre-emptive task event signals.
-  * @param None
+/** @brief  Preempt the kernel: call this from preemptive task event signals.
+  * @param  task			(ot_task) Task causing the preemption
+  * @param  nextevent_ti	(ot_uint) Ticks (unit of time) until task wants servicing
   * @retval None
   * @ingroup System
   */
-void sys_preempt();
+void sys_preempt(ot_task task, ot_uint nextevent_ti);
 
 
 

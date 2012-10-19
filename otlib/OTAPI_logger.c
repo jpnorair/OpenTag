@@ -147,17 +147,11 @@ void otapi_log_direct() {
 
 #ifndef EXTF_otapi_log_code
 void otapi_log_code(ot_int label_len, ot_u8* label, ot_u16 code) {
-/// Emergency logging, with direct access to MPipe.
-/// Used for kernel panics or other such things.
-
-    code = PLATFORM_ENDIAN16(code);
-
-    mpipe_kill();
-    q_empty(mpipe.alp.outq);
-    otapi_log_header(MSG_raw, label_len+3);
-    sub_logmsg(label_len, 2, label, (ot_u8*)&code);
-
-    mpipe_txndef(False, MPIPE_High);
+/// Emergency logging: Used for kernel panics or other such things.
+    mpipedrv_kill();
+    
+    //code = PLATFORM_ENDIAN16(code);
+    otapi_log_msg(MSG_raw, label_len, 2, label, (ot_u8*)&code);
 }
 #endif
 

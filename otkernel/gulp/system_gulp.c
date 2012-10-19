@@ -14,24 +14,14 @@
   *
   */
 /**
-  * @file       /otkernel/~native/system.c
+  * @file       /otkernel/~native/system_gulp.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       2 May 2012
-  * @brief      Native OpenTag kernel
+  * @date       20 Oct 2012
+  * @brief      OpenTag GULP kernel
   * @ingroup    System
   *
-  * The Native Kernel is optimized for DASH7 Mode 2 usage with OpenTag.  It is
-  * not designed to do anything more than a WSN or IoT embedded use-case should
-  * require.  If you want to integrate a more complicated system, such as an
-  * Ethernet bridge, you may want to consider using something like ChibiOS 
-  * instead, which has proper context-switching and dynamic task management.
-  *
-  * On the other hand, the Native Kernel is incredibly small, tight, and fast.
-  * It is the best choice for Endpoint or Subcontroller devices.  It is also
-  * very suitable as a Gateway device, as long as the gateway device is using
-  * the MPipe as an API bridge.
-  *
+  * 
   ******************************************************************************
   */
 
@@ -163,7 +153,7 @@ void sys_init() {
     dll_init();
 
     // Flush GPTIM (Kernel Timer): unnecessary, b/c should done in platform init
-    //platform_flush_gptim();
+    //platform_flush_ktim();
 }
 #endif
 
@@ -175,7 +165,7 @@ void sys_panic(ot_u8 err_code) {
     dll.idle_state = 0;
     session_flush();
     dll_idle();
-    platform_disable_gptim();
+    platform_disable_ktim();
 
 #   if defined(EXTF_sys_sig_panic)
         sys_sig_panic(err_code);
@@ -190,7 +180,7 @@ void sys_panic(ot_u8 err_code) {
 #ifndef EXTF_sys_sleep
 void sys_powerdown() {
     ot_int code;
-    code    = 3; //(platform_next_gptim() <= 3) ? 0 : 3;
+    code    = 3; //(platform_next_ktim() <= 3) ? 0 : 3;
     code    = (sys.task_RFA.event) ? 2 : code;
 #   if (OT_FEATURE(MPIPE))
     code    = (sys.task_MPA.event > 0) ? 1 : code;
@@ -280,8 +270,8 @@ ot_uint sys_event_manager() {
     /// 1. On entry, we need to know the time that has passed since the last
     ///    run of this function, and then we can flush the timer and begin a
     ///    new loop of tasking.
-    elapsed = platform_get_gptim();
-    platform_flush_gptim();
+    elapsed = platform_get_ktim();
+    platform_flush_ktim();
 
     /// 2. Clock all the tasks, to find out which one to do next.
     /// <LI> Run DLL clocker.  DLL module manages some irregular tasks. </LI>
@@ -311,12 +301,16 @@ ot_uint sys_event_manager() {
         TASK_DECREMENT(task_i, i);
         task_i->nextevent -= elapsed;
         if (task_i->event != 0) {
-            if (task_i->nextevent <= 0) {
-                select = TASK_SELECT(task_i, i);
-            }
-            // Update nextevent marker in any case, if it's less than before
-            if (task_i->nextevent < nextevent) {
+        	// If task's nextevent is soonest, select this task to run, and
+        	// also update the "nextevent" marker.  "<=" is used for priority.
+        	if (task_i->nextevent <= nextevent) {
             	nextevent = task_i->nextevent;
+            	select    = TASK_SELECT(task_i, i);
+            }
+        	// Sometime nextevent can be negative, due to a long-waiting task.
+        	// higher priority tasks will always take precedent.
+        	else if (task_i->nextevent <= 0) {
+                select = TASK_SELECT(task_i, i);
             }
         }
     }
@@ -345,11 +339,11 @@ ot_uint sys_event_manager() {
     ///    event management loop from the nextevent time that was determined
     ///    in the loop.  return 0 if there is an event that should happen
     ///    immediately.
-    nextevent -= platform_get_gptim();
+    nextevent -= platform_get_ktim();
     if (nextevent > 0) {
-    	ot_u16 time = (ot_u16)nextevent;
-    	platform_set_gptim(time);
-    	return time;
+    	ot_u16 interval = (ot_u16)nextevent;
+    	platform_set_ktim(interval);
+    	return interval;
     }
     return 0;
 }
@@ -366,7 +360,7 @@ void sys_task_manager() {
 
 	// Enable interrupts for pre-emptive tasks during runtime of the
 	// cooperative task -- co-operative tasks are parent tasks, basically
-	platform_disable_gptim();
+	platform_disable_ktim();
 	platform_enable_interrupts();
 	TASK_CALL(sys.active);
 
@@ -382,11 +376,12 @@ void sys_task_manager() {
 
 
 
-void sys_preempt() {
+void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 /// Pre-empting will "pend" the timer.  In device terms, this is implemented
 /// by manually setting the timer interrupt flag.  If a task is running while
 /// this function is called (typical usage), first the task will finish and then
 /// enable the timer interrupt via sys_runtime_manager().
+	task->nextevent = (ot_long)platform_get_ktim() + TI2CLK(nextevent_ti);
 	platform_ot_preempt();
 }
 
@@ -395,13 +390,11 @@ void sys_preempt() {
 
 void sys_synchronize(Task_Index task_id) {
 #ifdef __DEBUG__
-    //if ((ot_int)task_id < IDLE_TASKS)
+    //if (((ot_int)task_id < IO_TASKS) || (ot_int)task_id >= (IO_TASKS+IDLE_TASKS))
+	//    return;
 #endif
-    {
-        sys.task[task_id].cursor    = 0;
-        sys.task[task_id].nextevent = 0;
-        sys_preempt();
-    }
+    sys.task[task_id].cursor    = 0;
+    sys_preempt(&sys.task[task_id], 0);
 }
 
 

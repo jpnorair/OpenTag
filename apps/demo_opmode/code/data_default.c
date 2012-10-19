@@ -60,11 +60,11 @@
 /// These overhead are the Veelite vl_header files. They are hard coded,
 /// and they must be in the endian of the platform. (Little endian here)
 
-#if (CC_SUPPORT == GCC)
-__attribute__((section(".vl_ov")))
-#elif (CC_SUPPORT == CL430)
+//#if (CC_SUPPORT == GCC)
+//__attribute__((section(".vl_ov")))
+//#elif (CC_SUPPORT == CL430)
 #pragma DATA_SECTION(overhead_files, ".vl_ov")
-#endif
+//#endif
 const ot_u8 overhead_files[] = {
     //0x00, 0x00, 0x00, 0x01,                 /* GFB ELements 0 - 3 */
     //0x00, GFB_MOD_standard,
@@ -326,11 +326,11 @@ const ot_u8 overhead_files[] = {
 
 
 /// This array contains stock codes for isfs.  They are ordered strings.
-#if (CC_SUPPORT == GCC)
-__attribute__((section(".vl_isfs")))
-#elif (CC_SUPPORT == CL430)
+//#if (CC_SUPPORT == GCC)
+//__attribute__((section(".vl_isfs")))
+//#elif (CC_SUPPORT == CL430)
 #pragma DATA_SECTION(isfs_stock_codes, ".vl_isfs")
-#endif
+//#endif
 const ot_u8 isfs_stock_codes[] = {
     0x10, 0x11, 0x18, 0xFF,
     0x12, 0x13, 0x14, 0xFF,
@@ -373,11 +373,11 @@ const ot_u8 gfb_stock_files[] = {0xFF, 0xFF};
 #define BC7     OT_BUILDCODE7
 
 /// This array contains the stock ISF data.  ISF data must be big endian!
-#if (CC_SUPPORT == GCC)
-__attribute__((section(".vl_isf")))
-#elif (CC_SUPPORT == CL430)
+//#if (CC_SUPPORT == GCC)
+//__attribute__((section(".vl_isf")))
+//#elif (CC_SUPPORT == CL430)
 #pragma DATA_SECTION(isf_stock_files, ".vl_isf")
-#endif
+//#endif
 const ot_u8 isf_stock_files[] = {
     /* network settings: id=0x00, len=8, alloc=8 */
     __VID,                                              /* VID */

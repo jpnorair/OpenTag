@@ -74,6 +74,12 @@
   * ========================================================================<BR>
   * Implemented capabilities of the CC430F5137/6137 variants.
   *
+  * @note On DMA: The MSP430 and CC430 do not have a sophisticated DMA, but it
+  * is still good to use if you can.  However, it is very important to make sure
+  * the DMA channels are assigned correctly.  Memcpy MUST have the highest
+  * priority (0).  MPipe can have the second highest priority.  If you are
+  * using the 3rd channel in your app, be aware that it can cause memory
+  * glitching if you don't use it properly.
   */
 #define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL       // FEATURE                  AVAILABILITY
 #define MCU_FEATURE_CRC                 ENABLED                 // CCITT CRC16              Low
@@ -83,8 +89,8 @@
 #define MCU_FEATURE_RADIODMA_TXBYTES    0
 #define MCU_FEATURE_RADIODMA_RXBYTES    0
 #define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPEDMA            ENABLED      // MPipe is only useful for debug mode
-#define MCU_FEATURE_MEMCPYDMA           ENABLED
+#define MCU_FEATURE_MPIPEDMA            ENABLED         // MPIPE typically requires DMA on this platform
+#define MCU_FEATURE_MEMCPYDMA           DISABLED         // MEMCPY DMA must be highest priority
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_POINTERSIZE           2
@@ -268,14 +274,16 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 /** Peripheral definitions for this platform <BR>
   * ========================================================================<BR>
-  * OT_GPTIM:   General Purpose Timer used by OpenTag kernel                <BR>
-  * OT_TRIG:    Optional test trigger usable in OpenTag apps (often LEDs)   <BR>
-  * MPIPE:      UART to use for the MPipe                                   <BR>
+  * <LI> OT_GPTIM:  General Purpose Timer used by OpenTag kernel and some other
+  *                   internal stuff (like Radio MAC timer). </LI>
+  * <LI> OT_TRIG:   Optional test trigger(s) usable in OpenTag apps.  Often the 
+  *                   triggers are implemented on LED pins </LI>   
+  * <LI> MPIPE:     The wireline interface, which on CC430 is often a UART </LI>
   */
   
 #define OT_GPTIM            TIM1A3
 #define OT_GPTIM_IRQ        TIM1A3_IRQChannel
-#define OT_GPTIM_VECTOR     TIMER1_A0_VECTOR
+#define OT_GPTIM_VECTOR     TIMER1_A1_VECTOR
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
@@ -291,7 +299,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   define OT_GPTIM_ERROR   PLATFORM_HSCLOCK_ERROR
 #endif
 
-#define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded, or else CCS shits in its pants
+#define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded, or else CCS has problems
 
 
 
@@ -301,14 +309,18 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 /** Basic GPIO Setup <BR>
   * ========================================================================<BR>
-  * <LI>MPipe is a UART-based serial interface.  It needs to be specified with
-  *     a UART peripheral number and RX/TX port & pin configurations. </LI>
-  * <LI>OT Triggers are test outputs, usually LEDs.  They should be configured
-  *     to ports & pins where there are LED or other trigger connections.</LI>
-  * <LI>The GWN feature is part of a true-random-number generator.  It is
-  *     optional.  It needs a port & pin for the ADC input (GWNADC) and also,
-  *     optionally, one for a Zener driving output port & pin.  Using a Zener
-  *     can greatly accelerate the random number generation process.</LI>
+  * <LI> MPipe is a UART-based serial interface.  It needs to be specified with
+  *      a UART peripheral number and RX/TX port & pin configurations. 
+  * </LI>
+  * <LI> OT Triggers are test outputs, usually LEDs.  They should be configured
+  *      to ports & pins where there are LED or other trigger connections.
+  * </LI>
+  * <LI> The GWN feature is part of a true-random-number generator.  It is
+  *      optional.  It needs a port & pin for the ADC input (GWNADC) and also,
+  *      optionally, one for a Zener driving output port & pin.  On the CC430,
+  *      the ADC can be hacked to produce the benefits of a Zener without 
+  *      actually having one, so don't worry about the Zener. 
+  * </LI>
   */
 #define MPIPE_UARTNUM       0           //0 or 1 (A or B)
 #define MPIPE_UART_PORTNUM  1
@@ -407,8 +419,8 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   error "MPIPE_UART is not defined to an available index (0)"
 #endif
 
+#define MPIPE_DMANUM    0
 #if (MCU_FEATURE_MPIPEDMA == ENABLED)
-#   define MPIPE_DMANUM    2
 #   if (MPIPE_DMANUM == 0)
 #       define MPIPE_DMA     DMA0
 #   elif (MPIPE_DMANUM == 1)
@@ -460,9 +472,8 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   endif
 
 
-
+#define MEMCPY_DMANUM      0 //(MPIPE_DMANUM + (MCU_FEATURE_MPIPEDMA == ENABLED))
 #if (MCU_FEATURE_MEMCPYDMA == ENABLED)
-#   define MEMCPY_DMANUM    1
 #   if (MEMCPY_DMANUM == 0)
 #       define MEMCPY_DMA     DMA0
 #   elif (MEMCPY_DMANUM == 1)

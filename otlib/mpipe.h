@@ -267,7 +267,7 @@ void mpipeevt_txdone(ot_int code);
   * from being used, and to allow different MPipe implementations to have 
   * different footer sizes.
   */
-ot_u8 mpipe_footerbytes();
+ot_u8 mpipedrv_footerbytes();
 
 
 
@@ -287,7 +287,7 @@ ot_u8 mpipe_footerbytes();
   * This value should be 1-255 for the native kernel, but for other kernels it
   * may have different outputs.
   */
-ot_int mpipe_init_driver(void* port_id);
+ot_int mpipedrv_init(void* port_id);
 
 
 
@@ -296,7 +296,7 @@ ot_int mpipe_init_driver(void* port_id);
   * @retval None
   * @ingroup Mpipe
   */
-void mpipe_kill();
+void mpipedrv_kill();
 
 
 
@@ -306,7 +306,7 @@ void mpipe_kill();
   * @ingroup Mpipe
   * @sa mpipe_unblock()
   */
-void mpipe_block();
+void mpipedrv_block();
 
 
 
@@ -316,7 +316,7 @@ void mpipe_block();
   * @ingroup Mpipe
   * @sa mpipe_block()
   */
-void mpipe_unblock();
+void mpipedrv_unblock();
 
 
 
@@ -325,7 +325,7 @@ void mpipe_unblock();
   * @retval None
   * @ingroup Mpipe
   */
-void mpipe_wait();
+void mpipedrv_wait();
 
 
 
@@ -338,7 +338,7 @@ void mpipe_wait();
   * In certain Mpipe implementations, data rate is irrelevant, and for these all
   * calls to mpipe_setspeed() will do the same thing.
   */
-void mpipe_setspeed(mpipe_speed speed);
+void mpipedrv_setspeed(mpipe_speed speed);
 
 
 
@@ -360,7 +360,7 @@ void mpipe_setspeed(mpipe_speed speed);
   * underway if its own priority is higher.
   *
   */
-void mpipe_txndef(ot_bool blocking, mpipe_priority data_priority);
+void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority);
 
 
 
@@ -376,7 +376,7 @@ void mpipe_txndef(ot_bool blocking, mpipe_priority data_priority);
   * The blocking parameter and data_priority parameters are dealt-with in the 
   * same way as they are with mpipe_txndef()
   */
-void mpipe_rxndef(ot_bool blocking, mpipe_priority data_priority);
+void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority);
 
 
 
@@ -396,7 +396,7 @@ void mpipe_rxndef(ot_bool blocking, mpipe_priority data_priority);
   * the Mpipe, your outsourced DMA ISR should call this function as part of the
   * servicing of the DMA channel chosen for Mpipe.
   */
-void mpipe_isr();
+void mpipedrv_isr();
 
 
 

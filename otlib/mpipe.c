@@ -37,7 +37,7 @@ mpipe_struct mpipe;
 
 
 void mpipe_init(void* port_id) {
-    sys.task_MPA.latency = mpipe_init_driver(port_id);
+    sys.task_MPA.latency = mpipedrv_init(port_id);
 }
 
 
@@ -48,29 +48,52 @@ mpipe_state mpipe_status() {
 #endif
 
 
-
-void sub_mpipe_actuate(ot_int event) {
-    sys.task_MPA.event      = event;
-    sys.task_MPA.reserve    = 1;
-    sys.task_MPA.nextevent  = 0;
-    sys_preempt();
-}
-
-
-void mpipe_open() { 
-    sub_mpipe_actuate(6);
+void mpipe_open() {
+	sys.task_MPA.event = 0;
+	mpipedrv_rxndef(False, MPIPE_High );
 }
 
 void mpipe_close() {
     sys.task_MPA.event = 0;
-    mpipe_kill();
+    mpipedrv_kill();
+}
+
+
+void sub_mpipe_actuate(ot_u8 new_event, ot_u8 new_reserve, ot_uint new_nextevent) {
+    sys.task_MPA.event      = new_event;
+    sys.task_MPA.reserve    = new_reserve;
+    sys_preempt(&sys.task_MPA, new_nextevent);
 }
 
 
 void mpipe_send() {
-    sub_mpipe_actuate(2);
+/// "32" is a magic number right now, which is probably longer than the largest packet
+/// that can be TXed or RXed.
+///@todo A session stack could be implemented for MPipe Task.  For now, Sending (TX)
+/// will just fall-through if mpipe is occupied
+	mpipedrv_txndef(False, MPIPE_High);
+	sub_mpipe_actuate(3, 1, 32);
 }
 
+
+void mpipeevt_txdone(ot_int code) {
+	sub_mpipe_actuate(4, 1, (ot_uint)code);
+}
+
+
+void mpipeevt_rxdetect(ot_int code) {
+    sub_mpipe_actuate(3, 1, (ot_uint)code);
+}
+
+
+void mpipeevt_rxdone(ot_int code) {
+/// "32" in the array is given as the maximum time for protocol parsing.  It might need
+/// to be more dynamic, depending on protocol and length of packet.  In the future, there
+/// might be a "guess runtime" function in ALP that inspects these things.
+    static const ot_u8 params[] = { 4, 1, 1, 32 };
+    code = (code == 0);
+    sub_mpipe_actuate(params[code], params[code+2], 0);
+}
 
 
 
@@ -89,34 +112,23 @@ void mpipe_systask(ot_task task) {
                 case MSG_Chunking_In:   goto systask_mpipe_RX;
     
                 //transmit next record/message (case fall-through)
-                case MSG_Chunking_Out:
-                case MSG_End:           //goto systask_mpipe_TX;
+                //case MSG_Chunking_Out:
+                //case MSG_End:           //goto systask_mpipe_TX;
             }
         } 
     
-        // Initialize TX (wait for rest of frame) -- Note case fall-through
-        case 2: 
-        //systask_mpipe_TX:
-        	sys.task_MPA.cursor = 32;
-            mpipe_txndef(False, MPIPE_High);
-        
-        // (3) Frame timeout for TX once initiated, or RX once detected
-        // (4) TX page-out bufferring
-        case 3:
-        case 4: sys.task_MPA.event      = 5;
-                sys.task_MPA.nextevent  = TI2CLK(sys.task_MPA.cursor);
+        // Initialize TX: mpipe_send is used.
+        case 2: mpipe_send();
                 break;
-        
+
         // TX/RX timeout -- note case fall-through
-        case 5: mpipe_kill();
+        case 3: mpipedrv_kill();
         
         // Return to idle (passive RX)
-        case 6: {
-        //systask_mpipe_IDLE:
+        case 4:
         systask_mpipe_RX:
-            sys.task_MPA.event = 0;
-            mpipe_rxndef(False, MPIPE_High );
-        } break;
+        		mpipe_open();
+        		break;
     }
 }
 
@@ -149,26 +161,8 @@ void mpipe_systask(ot_task task) {
 #endif
 
 
-void mpipeevt_rxdetect(ot_int code) {
-    sys.task_MPA.cursor = (ot_u8)code;
-    sub_mpipe_actuate(3);
-}
 
 
-void mpipeevt_rxdone(ot_int code) {
-/// 32 is an assumed maximum time to do the mpipe RX processing
-    static const ot_u8 params[] = { 6, 1, 1, 32 };
-
-    code                    = (code == 0);
-    sys.task_MPA.event      = params[code];
-    sys.task_MPA.reserve    = params[code+2];
-    sys.task_MPA.nextevent  = 0;
-    sys_preempt();
-    
-}
 
 
-void mpipeevt_txdone(ot_int code) {
-    sub_mpipe_actuate(6);
-}
 

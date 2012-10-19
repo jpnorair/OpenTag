@@ -90,8 +90,9 @@ void    subcc430_finish(ot_int main_err, ot_int frame_err);
 ot_bool subcc430_lowrssi_reenter();
 void    subcc430_reset_autocal();
 
-ot_bool subcc430_chan_scan( );
-ot_bool subcc430_cca_scan();
+ot_bool subcc430_chanscan( );
+void    subcc430_ccascan();
+void    subcc430_ccascan_isr();
 
 ot_bool subcc430_channel_lookup(ot_u8 chan_id, vlFILE* fp);
 void    subcc430_syncword_config(ot_u8 sync_class);
@@ -115,14 +116,13 @@ void    subcc430_set_txpwr(ot_u8 eirp_code);
 /** CC430 RF Core Interrupt Handler  <BR>
   * ========================================================================<BR>
   */
-
 #if (CC_SUPPORT == CL430)
 #   pragma vector=CC1101_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
     //unknown at this time
 #elif (CC_SUPPORT == GCC)
     OT_IRQPRAGMA(CC1101_VECTOR)
-#   endif
+#endif
 OT_INTERRUPT void radio_isr(void) {
     u16 core_edge;
     u16 core_vector;
@@ -192,10 +192,10 @@ OT_INTERRUPT void radio_isr(void) {
         case 0x00:  break;
         
 #       if (RF_FEATURE(RXTIMER) == ENABLED)
-        case 0x02:  rm2_rxtimeout_isr();    break;  //IOCFG0_ISR();
+        case 0x02:  rm2_rxtimeout_isr();    break;  //IOCFG0_ISR(); 
 #       endif
 
-        //case 0x04:  __no_operation();       break;  //IOCFG1_ISR();
+        case 0x04:  subcc430_ccascan_isr(); break;  //IOCFG1_ISR(); (Default: RSSI_Valid)
         //case 0x06:  __no_operation();       break;  //IOCFG2_ISR();
         case 0x08:  rm2_rxdata_isr();       break;  //RXFull_ISR();
         //case 0x0A:  rm2_rxdata_isr();       break;  //RXFullOrDone_ISR();
@@ -225,9 +225,9 @@ OT_INTERRUPT void radio_isr(void) {
         
         case 0x36:                                  //EndState_ISR();
             if (cc430.state & RADIO_STATE_TXMASK)
-            	subcc430_finish(0, 0); //rm2_txdata_isr();
+                subcc430_finish(0, 0); //rm2_txdata_isr();
             else
-            	rm2_rxend_isr();
+                rm2_rxend_isr();
             break;  
 
         //case 0x38:  __no_operation();       break;  //RXFirstByte_ISR();
@@ -249,6 +249,24 @@ OT_INTERRUPT void radio_isr(void) {
 
 
 
+
+void radio_mac_isr() {
+    switch (radio.state) {
+        //case RADIO_Idle:        
+        //case RADIO_Listening:   
+        
+        case RADIO_Csma:        rm2_txcsma_isr();   
+                                break;
+        //case RADIO_DataRX:
+        
+#       if (SYS_FLOOD)
+        case RADIO_DataTX:      dll.counter--;
+                                radio_set_mactimer(TI2CLK(1));
+                                break;
+#       endif
+    }
+}
+    
 
 
 
@@ -297,6 +315,13 @@ void radio_calibrate() {
 }
 #endif
 
+
+#ifndef EXTF_radio_set_mactimer
+void radio_set_mactimer(ot_u16 clocks) {
+/// Todo: apply board configuration
+    platform_set_gptim2(clocks);
+}
+#endif
 
 
 
@@ -649,7 +674,7 @@ void subcc430_launch_rx(ot_u8 channel, ot_u8 netstate) {
     subcc430_offset_rxtimeout();     // if timeout is 0, set it to a minimal amount
     
     /// 7.  Using rm2_reenter_rx() with "True" forces entry into rx, and sets states
-    rm2_reenter_rx(True);
+    rm2_reenter_rx(NULL);
 }
 #endif
 
@@ -695,7 +720,7 @@ ot_int rm2_pkt_duration(ot_int pkt_bytes) {
 /// Wrapper function for rm2_scale_codec that adds some slop overhead
 /// Slop = preamble bytes + sync bytes + ramp-up + ramp-down + padding
     pkt_bytes  += RADIO_PKT_OVERHEAD;
-    pkt_bytes  += ((phymac[0].channel & 0x60) != 0) << 1;
+    pkt_bytes  += ((phymac[0].channel & 0x20) >> 4);
 
     return rm2_scale_codec(pkt_bytes);
 }
@@ -711,7 +736,7 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
     /// Pursuant to DASH7 Mode 2 spec, b6:4 of channel ID corresponds to kS/s.
     /// 55.555 kS/s = 144us per buffer byte
     /// 200.00 kS/s = 40us per buffer bytes
-    buf_bytes *= (phymac[0].channel & 0x60) ? 40 : 144;
+    buf_bytes *= (phymac[0].channel & 0x20) ? 40 : 144;
 
     /// Divide us into Ticks
     /// (shift right 10 = divide by 1024)
@@ -721,17 +746,17 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
         buf_bytes >>= 10;
 #   endif
 
-    return buf_bytes;
+    return (buf_bytes+1);
 }
 #endif
 
 
 
 #ifndef rm2_reenter_rx
-void rm2_reenter_rx(ot_bool force_entry) {
+void rm2_reenter_rx(ot_sig2 callback) {
 /// If radio is in an inactive state, restart RX using the same settings that
-/// are presently in the radio core.  Always do this when forced.
-    if (force_entry) {
+/// are presently in the radio core.  Always do this when forced (callback == NULL).
+    if (callback == NULL) {
         radio_idle();
         goto rm2_reenter_rx_PROC;
     }
@@ -748,9 +773,12 @@ void rm2_reenter_rx(ot_bool force_entry) {
 #endif
 
 
-#ifndef EXTF_rm2_prep_resend
-void rm2_prep_resend() {
-    txq.options.ubyte[UPPER] = 255;
+#ifndef EXTF_rm2_resend
+void rm2_resend(ot_sig2 callback) {
+    radio.evtdone               = callback;
+    cc430.state                 = RADIO_STATE_TXSTART;
+    txq.options.ubyte[UPPER]    = 255;
+    rm2_txcsma_isr();
 }
 #endif
 
@@ -764,45 +792,30 @@ void rm2_kill() {
 
 
 
-#ifndef EXTF_rm2_rxinit_ff
-void rm2_rxinit_ff(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
+#ifndef EXTF_rm2_rxinit
+void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
 #if (SYS_RECEIVE == ENABLED)
     ot_u8 netstate;
     
     /// Setup the RX engine for Foreground Frame detection and RX.  Wipe-out
     /// the lower flags (non-persistent flags)
     radio.evtdone   = callback;
-    //cc430.state     = RADIO_STATE_RXINIT;
-    netstate        = session_netstate();
+    //cc430.state     = RADIO_STATE_RXINIT;   //foreground
+    //cc430.state     = RADIO_STATE_RXDONE;   //background
     cc430.flags    &= (RADIO_FLAG_SETPWR | RADIO_FLAG_AUTOCAL);
 
-#   if (M2_FEATURE(MULTIFRAME) == ENABLED)
+    if (psettings == 0) {
+        netstate    = (M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX);
+        cc430.flags|= RADIO_FLAG_FLOOD;
+    }
+    else {
+        netstate    = session_netstate();
+#       if (M2_FEATURE(MULTIFRAME) == ENABLED)
         cc430.flags |= ((netstate & M2_NETSTATE_DSDIALOG) != 0); //sets RADIO_FLAG_FRCONT
-#   endif
+#       endif
+    }
 
     subcc430_launch_rx(channel, netstate);
-
-#else
-    // BLINKER only (no RX)
-    callback(RM2_ERR_GENERIC, 0);
-#endif
-}
-#endif
-
-
-
-
-
-#ifndef EXTF_rm2_rxinit_bf
-void rm2_rxinit_bf(ot_u8 channel, ot_sig2 callback) {
-#if (SYS_RECEIVE == ENABLED)
-    /// 1. Open background method of RX (Burrow directly into Done state)
-    radio.evtdone   = callback;
-    //cc430.state     = RADIO_STATE_RXDONE;
-    cc430.flags    &= (RADIO_FLAG_SETPWR | RADIO_FLAG_AUTOCAL);
-    cc430.flags    |= RADIO_FLAG_FLOOD;
-
-    subcc430_launch_rx(channel, M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX);
 
 #else
     // BLINKER only (no RX)
@@ -952,32 +965,30 @@ void rm2_rxend_isr() {
 
 
 
-#ifndef EXTF_rm2_txinit_ff
-void rm2_txinit_ff(ot_u8 psettings, ot_sig2 callback) {
+#ifndef EXTF_rm2_txinit
+void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
 #   if (SYS_FLOOD == ENABLED)
-    cc430.flags    |= psettings;
+    cc430.flags    |= (psettings != 0) ? RADIO_FLAG_FLOOD : 0;
 #   endif
 #   if (M2_FEATURE(MULTIFRAME) == ENABLED)
     cc430.flags    |= ((session_netstate() & M2_NETSTATE_DSDIALOG) != 0); //sets RADIO_FLAG_FRCONT
 #   endif
     radio.evtdone   = callback;
     radio.state     = RADIO_Csma;
-    cc430.state     = RADIO_STATE_TXCCA1;
+    cc430.state     = RADIO_STATE_TXINIT;
     
     /// @note Flush TX FIFO and set buffer threshold to 5 bytes: the encoder 
     /// should be at least 20% faster than the max TX data speed (1 byte per 
     /// 40 µs).  On CC430, FEC encode is possible with 20 MHz CPU.
     radio_flush_tx();
     RF_WriteSingleReg(RFREG(FIFOTHR), DRF_FIFOTHR | _FIFO_TXTHR(5) );
+    
+    /// CSMA-CA interrupt based and fully pre-emptive.  This is
+    /// possible using CC1 on the GPTIM to clock the intervals.
+    radio_set_mactimer( (ot_uint)dll.comm.tca );
 }
 #endif
 
-
-#ifndef EXTF_rm2_txinit_bf
-void rm2_txinit_bf(ot_sig2 callback) {
-    rm2_txinit_ff(RADIO_FLAG_FLOOD, callback);
-}
-#endif
 
 
 
@@ -993,37 +1004,41 @@ void rm2_txstop_flood() {
 
 
 
-#ifndef EXTF_rm2_txcsma
-ot_int rm2_txcsma() {
-    ot_int retval;
-
+#ifndef EXTF_rm2_txcsma_isr
+void rm2_txcsma_isr() {
     // The shifting in the switch is so that the numbers are 0, 1, 2, 3...
     // It may seem silly, but it allows the switch to be compiled better.
     switch ( (cc430.state >> RADIO_STATE_TXSHIFT) & (RADIO_STATE_TXMASK >> RADIO_STATE_TXSHIFT) ) {
-
-        /// 1. First CCA
-        case (RADIO_STATE_TXCCA1 >> RADIO_STATE_TXSHIFT): {
-            if (subcc430_chan_scan() == False) {    //Get usable channel
-                retval = RM2_ERR_BADCHANNEL;
+        
+        /// 1. First CCA: Note case fall-through on CSMA activation
+        case (RADIO_STATE_TXINIT >> RADIO_STATE_TXSHIFT): {
+            if (subcc430_chanscan() == False) {    //Get usable channel
+                radio.evtdone(RM2_ERR_BADCHANNEL, 0);
                 break;
             }
             if (dll.comm.csmaca_params & M2_CSMACA_NOCSMA) {
                 goto rm2_txcsma_START;
             }
-            retval = phymac[0].tg;
         }
 
-        /// 2. Second CCA
-        /// Note: case fall-through on success
+        /// 2. Do First CCA check
+        ///    subcc430_ccascan_isr() must establish state upon CCA result.
+        ///    It can do this by doing cc430.state += (1<<RADIO_STATE_TXSHIFT), 
+        ///    which will put CCA from CCA1->CCA2 or CCA2->TXSTART
+        case (RADIO_STATE_TXCCA1 >> RADIO_STATE_TXSHIFT): {
+            cc430.state = RADIO_STATE_TXCCA1;
+            subcc430_ccascan();
+            break;
+        }
+        
+        /// 3. CCA1 succeeded: do second check after waiting the guard time
         case (RADIO_STATE_TXCCA2 >> RADIO_STATE_TXSHIFT): {
-            cc430.state += (1 << RADIO_STATE_TXSHIFT);
-            if (subcc430_cca_scan() == False) {
-                retval      = RM2_ERR_CCAFAIL;
-                cc430.state = RADIO_STATE_TXCCA1;
+            cc430.state = RADIO_STATE_TXCCA2;
+            if (phymac[0].tg > 2) {
+                radio_sleep();
             }
-            if (cc430.state != RADIO_STATE_TXSTART) {
-                break;
-            }
+            radio_set_mactimer( phymac[0].tg );
+            break;
         }
 
         /// 3. TX startup
@@ -1045,7 +1060,6 @@ ot_int rm2_txcsma() {
                 ot_u8       buffer_size = 255;
                 
                 if (cc430.flags & RADIO_FLAG_FLOOD) {
-                    radio.evtdone(1, 0);
                     sync_type   = SYNC_bg;
                     mcsm1       = (_CCA_MODE_ALWAYS | _RXOFF_MODE_IDLE | _TXOFF_MODE_TX);
                     buffer_mode = 0;
@@ -1055,11 +1069,13 @@ ot_int rm2_txcsma() {
                         buffer_size = 7;
 #                   endif
                 }
+                radio.evtdone(0, buffer_mode);  // arg2: 0 for background, 1 for foreground
                 subcc430_buffer_config(buffer_mode, buffer_size);
                 subcc430_syncword_config( sync_type );
                 RF_WriteSingleReg(RFREG(MCSM1), mcsm1);
             }
 #           else
+                radio.evtdone(0, 1);            // arg2: 0 for background, 1 for foreground
                 subcc430_buffer_config(1, 255);
                 subcc430_syncword_config( SYNC_fg );
                 //cc430_write(RFREG(MCSM1), b00000000 );   //should be persistent default
@@ -1085,15 +1101,9 @@ ot_int rm2_txcsma() {
             radio_idle();
             cc430_iocfg_txdata();
             RF_CmdStrobe( RF_CoreStrobe_TX );
-            return -1;
+            break;
         }
     }
-
-    /// On CSMA fail or between CCA1 and CCA2, process ends-up here
-    /// There could be more intelligence put here, to determine if CC430 should
-    /// go to sleep or just stay in IDLE.
-    radio_sleep();
-    return retval;
 }
 #endif
 
@@ -1188,17 +1198,20 @@ void subcc430_null(ot_int arg1, ot_int arg2) { }
 
 
 void subcc430_finish(ot_int main_err, ot_int frame_err) {
+    ot_sig2 callback;
+
     /// 1. Turn-off interrupts, reset autocalibration flag
     radio_gag();
     //radio_idle();
     subcc430_reset_autocal();
     
-    /// 2. Run Callback, then reset radio & callback to null state
-    radio.evtdone(main_err, frame_err);
-    radio.evtdone   = &otutils_sig2_null;
+    /// 2. Reset radio & callback to null state, then run saved callback
     radio.state     = RADIO_Idle;
     cc430.state     = 0;
     cc430.flags    &= RADIO_FLAG_SETPWR;    //clear all other flags
+    callback        = radio.evtdone;
+    radio.evtdone   = &otutils_sig2_null;
+    callback(main_err, frame_err);
 }
 
 
@@ -1206,7 +1219,7 @@ ot_bool subcc430_lowrssi_reenter() {
     ot_int min_rssi = ((phymac[0].cs_thr >> 1) & 0x3F) - 40;
     if (radio_rssi() < min_rssi) {
         subcc430_reset_autocal();  
-        rm2_reenter_rx(True);
+        rm2_reenter_rx(NULL);
         return True;
     }
     return False;
@@ -1222,7 +1235,7 @@ void subcc430_reset_autocal() {
 
 
 
-ot_bool subcc430_chan_scan( ) {
+ot_bool subcc430_chanscan( ) {
     vlFILE* fp;
     ot_int  i;
 
@@ -1247,7 +1260,7 @@ ot_bool subcc430_chan_scan( ) {
 
 
 
-ot_bool subcc430_cca_scan() {
+void subcc430_ccascan() {
 /// Called indirectly by other subroutines
 /// @todo this is the only blocking call.  It can cause problems, being
 /// blocking, so one day I would like to make it non-blocking.
@@ -1257,7 +1270,6 @@ ot_bool subcc430_cca_scan() {
 /// a bipolar setup of CS/CCA interrupts could be used if you are porting to
 /// CC1xxx and don't have the RSSI_Valid interrupt, but RSSI_Valid is more
 /// reliable.  Then we just compare returned RSSI's with the stored limits.
-    ot_bool cca_status = True;
 
     //send radio to idle mode: It is a known erratum that CC430 requires
     //transition from IDLE->RX/TX, rather than SLEEP->RX/TX (as written in
@@ -1268,27 +1280,35 @@ ot_bool subcc430_cca_scan() {
     /// @note: kernel will always be paused during this time
     cc430_iocfg_txcsma();
     RF_CmdStrobe( RF_CoreStrobe_RX );
+}
+
+
+void subcc430_ccascan_isr() {
+    ot_u8 cca_status;
     
-    platform_enable_interrupts();
-    MCU_SLEEP_WHILE_RF();               //wait here for RSSI_valid interrupt
-    platform_disable_interrupts();
-
-    //{
-    //  ot_u16 wait_period;
-    //  wait_period = (cc430.flags & RADIO_FLAG_AUTOCAL) ? (350+799) : (350);
-    //  platform_swdelay_us(wait_period);
-    //}
-
-    /// Turn-off CSMA mode, compare RSSI value, and go back to IDLE
+    /// Turn-off CSMA mode, compare RSSI value
+    /// See rm2_txcsma_isr() for info why cca_status is handled as such
     RFWord->IE  = 0;
-    cca_status  = radio_check_cca();
-    radio_idle();                       //send radio to idle mode
+    cca_status  = radio_check_cca() << (RADIO_STATE_TXSHIFT);
+    cc430.state+= cca_status;
     
-    /// This channel has been calibrated by virtue of going into CSMA,
-    /// therefore the Autocal flag (and other measures) can be reset
+    /// Go back to idle and remove calibration requirement, as the channel has
+    /// now been calibrated by virtue of going into CSMA.
+    radio_idle();
     subcc430_reset_autocal();
-
-    return cca_status;
+    
+    /// If cca failed, use the DLL callback to establish a back-off until CCA
+    /// Tries again.  It must set the radio mactimer accordingly, based on
+    /// whatever CSMA algorithm it is using.
+    if (cca_status == 0) {
+        cc430.state = RADIO_STATE_TXCCA1;
+        radio.evtdone(1, 0);
+    }
+    
+    /// If cca succeeds, call TXCSMA
+    else {
+        rm2_txcsma_isr();
+    }
 }
 
 

@@ -58,34 +58,38 @@
 /** Interrupt Nomenclature  <BR>
   * ========================================================================<BR>
   */
-#if (CC_SUPPORT == GCC)
-#   define OT_IRQPRAGMA(VAL)           __attribute__((interrupt(VAL)))
-#   define OT_INTERRUPT
-#   define __even_in_range(x, y)    x
-#   include <intrinsics.h>
-#   define __get_SR_register     __read_status_register
+//#if (CC_SUPPORT == GCC)
+//#   include <intrinsics.h>
+//#   define OT_IRQPRAGMA(VAL)            __attribute__((interrupt(VAL)))
+//#   define OT_INTERRUPT
+//#   define __get_SR_register            __read_status_register
+//#   define __even_in_range(x, y)        x
+//#   define __OT_INTERRUPT_VECTOR(VAL)   __attribute__((interrupt(VAL)))
+//#   define __OT_INTERRUPT_ISR(FN)     void ##FN (void)
 
-#elif (CC_SUPPORT == CL430)
-#   define OT_IRQPRAGMA(VAL)           _Pragma(#VAL)
-#   define OT_INTERRUPT                __interrupt
+//#elif (CC_SUPPORT == CL430)
+#   define OT_IRQPRAGMA(VAL)            _Pragma(#VAL)
+#   define OT_INTERRUPT                 __interrupt
+//#   define __OT_INTERRUPT_VECTOR(VAL)   _Pragma(#VAL)
+//#   define __OT_INTERRUPT_ISR(FN)       __interrupt void ##FN (void)
 
-#elif (CC_SUPPORT == IAR_V5)
+//#elif (CC_SUPPORT == IAR_V5)
 
-#endif
+//#endif
 
 
 
 /** Data section Nomenclature  <BR>
   * ========================================================================<BR>
   */
-#if (CC_SUPPORT == GCC)
-#   define OT_SECTION(VAR, SECTION)     __attribute__((section(##SECTION))
+//#if (CC_SUPPORT == GCC)
+//#   define OT_SECTION(VAR, SECTION)     __attribute__((section(##SECTION))
 
-#elif (CC_SUPPORT == CL430)
+//#elif (CC_SUPPORT == CL430)
 #   define OT_DATAPRAGMA(VAR, SECTION)  _Pragma(DATA_SECTION(##VAR, ##SECTION))
 
-#elif (CC_SUPPORT == IAR_V5)
-#endif
+//#elif (CC_SUPPORT == IAR_V5)
+//#endif
 
 
 

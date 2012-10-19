@@ -312,7 +312,7 @@ void platform_init_prand(ot_u16 seed);
   * @retval ot_u16      current timer value
   * @ingroup Platform
   */
-ot_u16 platform_get_gptim();
+ot_u16 platform_get_ktim();
 
 
 /** @brief Returns the amount of timer clocks until the next interrupt
@@ -320,11 +320,11 @@ ot_u16 platform_get_gptim();
   * @retval ot_u16      timer clocks until next interrupt
   * @ingroup Platform
   */
-ot_u16 platform_next_gptim();
+ot_u16 platform_next_ktim();
 
 
 
-void platform_pend_gptim();
+void platform_pend_ktim();
 
 
 /** @brief Enables GPTIM interrupt
@@ -332,11 +332,11 @@ void platform_pend_gptim();
   * @retval None
   * @ingroup Platform
   */
-void platform_enable_gptim();
+void platform_enable_ktim();
 
 
 
-void platform_disable_gptim();
+void platform_disable_ktim();
 
 
 
@@ -345,7 +345,12 @@ void platform_disable_gptim();
   * @retval None
   * @ingroup Platform
   */
-void platform_set_gptim(ot_u16 value);
+void platform_set_ktim(ot_u16 value);
+
+void platform_set_gptim2(ot_u16 value);
+void platform_set_gptim3(ot_u16 value);
+void platform_set_gptim4(ot_u16 value);
+void platform_set_gptim5(ot_u16 value);
 
 
 /** @brief Zeros GPTIM, turns off interrupt, and puts into free-running
@@ -353,7 +358,7 @@ void platform_set_gptim(ot_u16 value);
   * @retval None
   * @ingroup Platform
   */
-void platform_flush_gptim();
+void platform_flush_ktim();
 
 
 

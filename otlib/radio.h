@@ -230,6 +230,22 @@ void radio_init();
 
 
 
+/** @brief Invokes ISR subroutines that use the MAC timer
+  * @param None
+  * @retval None
+  * @ingroup Radio
+  *
+  * MAC timer functions include: CSMA control on radios without HW for it, 
+  * TX flooding counter management.
+  *
+  * In typical usage, the MAC timer is multiplexed with the GPTIM (kernel timer)
+  * and the HW ISR for GPTIM is in otplatform/xxx/platform_xxx.c.  The HW ISR
+  * should call radio_mactimer() if the mactimer channel is interrupting.
+  */
+void radio_mac_isr();
+
+
+
 /** @brief  Returns the RSSI value of the most recent reception.
   * @param None
   * @retval ot_int      RSSI of last reception in units of 0.5 dBm
@@ -331,6 +347,10 @@ void radio_sleep();
   * usually between 0.5mW and 5mW.
   */
 void radio_idle();
+
+
+
+void radio_set_mactimer(ot_u16 clocks);
 
 
 
@@ -478,7 +498,7 @@ ot_int rm2_scale_codec(ot_int buf_bytes);
 
 
 /** @brief  Instructs radio to re-enter RX mode immediately
-  * @param  force_entry     (ot_bool) resets RF state prior to re-entry
+  * @param  callback 	(ot_bool) re-supplied RX-done callback
   * @retval None
   * @ingroup Radio
   *
@@ -487,13 +507,16 @@ ot_int rm2_scale_codec(ot_int buf_bytes);
   * whatever settings are in the core get used for this re-entered RX.  Mode 2
   * relies on this function to re-enter RX in the response window or after an
   * erroneous request is detected.
+  *
+  * The function may be used internally, for code-reuse, with callback set to
+  * NULL.  Many implementations use this technique.
   */
-void rm2_reenter_rx(ot_bool force_entry);
+void rm2_reenter_rx(ot_sig2 callback);
 
 
 
 /** @brief  Prepares the radio chain to resend a packet
-  * @param  None
+  * @param  callback	(ot_sig2) re-supplied callback for TX-Done handler
   * @retval None
   * @ingroup Radio
   *
@@ -501,21 +524,29 @@ void rm2_reenter_rx(ot_bool force_entry);
   * variety of ways, depending on how the radio core is designed.  For radio
   * cores that have full low-level MAC support of DASH7, it does nothing.
   */
-void rm2_prep_resend();
+void rm2_resend(ot_sig2 callback);
 
 
 /** @brief  Initializes RX engine for "foreground" packet reception
   * @param  channel     (ot_u8) Mode 2 channel ID to look for packet
-  * @param  psettings   (ot_u8) Proprietary settings bits
+  * @param  psettings   (ot_u8) Packet settings bits
   * @param  callback    (ot_sig2) callback for when RX is done, on error or complete
   * @retval None
   * @ingroup Radio
-  * @sa rm2_rxinit_bf
   *
-  * Call this to listen for a foreground packet.  A foreground packet contains
-  * one or more foreground frames (usually 1), which have a certain format and
-  * are subject to a timeout -- if Sync Word is not found by the timeout, the
-  * RX is killed.  
+  * Call this to listen for a packet.  Using "psettings = 0" will look for a
+  * 0-frame packet, that is, a "background packet."  If psettings is non-zero,
+  * The radio will assume a packet of at least this many "foreground frames"
+  * is on the way.
+  *
+  * A foreground packet contains one or more foreground frames (usually 1)
+  * which have a certain format and are subject to a timeout -- if Sync Word
+  * is not found by the timeout, the RX is killed.
+  *
+  * Background flood packets follow very specific rules in the Mode 2 spec
+  * (they are used mostly for group synchronization).  Background RX terminates
+  * once a packet is received, it is killed, or if the channel energy detection
+  * (carrier sense) fails.  Background packets contain only one frame each.
   *
   * This is a non-blocking RX.  It starts an interrupt-driven process that runs
   * in the background until the packet is complete, the RX times-out, or the
@@ -529,64 +560,29 @@ void rm2_prep_resend();
   * arg1: negative on RX error, 0 on RX complete, positive on frame complete
   * arg2: 0 on frame received successfully, negative on error.
   */
-void rm2_rxinit_ff(ot_u8 channel, ot_u8 psettings, ot_sig2 callback);
+void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback);
 
-
-
-/** @brief  Initializes RX engine for "background" packet reception
-  * @param  channel     (ot_u8) Mode 2 channel ID to look for background flood
-  * @param  callback    (ot_sig2) callback for when RX is done, on error or complete
-  * @retval None
-  * @ingroup Radio
-  * @sa rm2_rxinit_ff
-  *
-  * Basically identical to rm2_rxinit_ff, except that it is used to detect
-  * background floods.  Background flood packets follow very specific rules in
-  * the Mode 2 specification (they are used mostly for group synchronization).
-  * 
-  * Background RX terminates once a packet is received, it is killed, or if the
-  * channel energy detection (carrier sense) fails.  Background packets contain
-  * only one frame each.
-  */
-void rm2_rxinit_bf(ot_u8 channel, ot_sig2 callback);
 
 
 
 /** @brief  Initializes TX engine for "foreground" packet transmission
-  * @param  psettings   (ot_u8) Proprietary settings bits
+  * @param  psettings   (ot_u8) Packet settings bits
   * @param  callback    (ot_sig2) callback for when TX is done, on error or complete
   * @retval None
   * @ingroup Radio
   * @sa rm2_txinit_bf, rm2_txcsma
   *
-  * Call to prepare the TX system and the TX callback for foreground packet.  
-  * This function does not actually start TX -- rm2_txcsma() must be called to
-  * run the csma-ca routine and kick off the packet.
+  * Call to prepare the TX system and the TX callback for foreground or background
+  * packet.  This function does not usually start TX -- on most hardware,
+  * rm2_txcsma() must be called to run the csma-ca routine and begin actual TX.
   *
   * the callback: void callback(ot_int arg1, ot_int arg2)
   * - called on TX termination and whenever a frame is completed
   * - arg 1 is negative on error, 0 on complete, positive if more frames to TX
   * - arg 2 is ignored
   */
-void rm2_txinit_ff(ot_u8 psettings, ot_sig2 callback);
+void rm2_txinit(ot_u8 psettings, ot_sig2 callback);
 
-
-
-/** @brief  Initializes TX engine for "background" packet flooding
-  * @param  channel     (ot_u8) Mode 2 channel ID to look for background flood
-  * @param  callback    (ot_sig2) callback for when RX is done, on error or complete
-  * @retval None
-  * @ingroup Radio
-  * @sa rm2_txinit_ff, rm2_txcsma, rm2_txstop_flood
-  * 
-  * Similar to rm2_txinit_ff()
-  *
-  * the callback: void callback(ot_int arg1, ot_int arg2)
-  * - called after flood is complete, or when terminated
-  * - arg 1 is negative on error, 0 on complete, positive if more frames to TX
-  * - arg 2 is ignored
-  */
-void rm2_txinit_bf(ot_sig2 callback);
 
 
 
@@ -602,26 +598,6 @@ void rm2_txstop_flood();
 
 
 
-/** @brief  Multi-call function for CSMA management and TX processing
-  * @param  none
-  * @retval ot_int      negative: error code/ positive: next event/ -1: TX started
-  * @ingroup Radio
-  * @sa rm2_txinit_ff, rm2_txinit_bf
-  * 
-  * Once the TX is queued-up from the init function, call this function to do
-  * the CSMA required before TX (CSMA can be disabled by the system module).
-  *
-  * This function is often implemented as a multi-call function, because there
-  * are incremental timeouts involved in the CSMA process.  The system module
-  * can manage these timeouts via the return value.  If a positive value is
-  * returned, this function must be called again by the system layer to do the
-  * next round of CSMA.  If your radio (or radio driver) implements built-in
-  * CSMA timing, you can just implement rm2_txcsma to return 0 immediately and
-  * then use the callback established in the rm2_txinit function to tell the 
-  * System module that there is an error related to CSMA.
-  */
-ot_int rm2_txcsma();
-
 
 /** @brief  Terminates RX or TX process (typically for internal use)
   * @param  None
@@ -629,6 +605,8 @@ ot_int rm2_txcsma();
   * @ingroup Radio
   */
 void rm2_kill();
+
+
 
 
 /** @brief  ISR that is called internally when a sync word is detected in RX
@@ -676,6 +654,17 @@ void rm2_rxdata_isr();
   * termination.
   */
 void rm2_rxend_isr();
+
+
+
+/** @brief  ISR that is called internally when CSMA process is going
+  * @param  none
+  * @retval none
+  * @ingroup Radio
+  * @sa rm2_txinit_ff, rm2_txinit_bf
+  *
+  */
+void rm2_txcsma_isr();
 
 
 

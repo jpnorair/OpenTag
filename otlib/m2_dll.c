@@ -21,7 +21,12 @@
   * @brief      Data Link Layer for DASH7
   * @ingroup    DLL
   *
-  * The Data Link Layer is big and ugly.  Proceed with caution.
+  * If you are searching for a brainfuck and you are coming up short, rest easy
+  * now, you have found one.  The Data Link Layer is big and ugly.  Proceed 
+  * with caution.  Working on DLL is about as esoteric as producing a ten year
+  * long catalog of prog metal albums that exclusively recount topics from the
+  * "Stargate" Sci-Fi franchise in the lyrics.  However, that task was also 
+  * proven to be possible, by some talented Norwegians (bonus points for ID).
   *
   * <PRE>
   * " In a trance-like possession I arose from sleep
@@ -90,6 +95,7 @@ void sub_dll_txcsma();
 
 void rfevt_bscan(ot_int scode, ot_int fcode);
 void rfevt_frx(ot_int pcode, ot_int fcode);
+void rfevt_txcsma(ot_int pcode, ot_int tcode);
 void rfevt_ftx(ot_int pcode, ot_int scratch);
 void rfevt_btx(ot_int flcode, ot_int scratch);
 
@@ -289,7 +295,8 @@ ot_u16 otapi_start_dialog(ot_u16 timeout) {
     if (radio.state != RADIO_Idle) {
     	rm2_kill();
     }
-    sys_preempt();
+    sys.task_RFA.event = 0;
+    sys_preempt(&sys.task_RFA, 0);
     return 1;
 }
 
@@ -467,7 +474,7 @@ void dll_block() {
 
 #ifndef EXTF_dll_clock
 void dll_clock(ot_uint clocks) {
-    dll.comm.tca   -= clocks;
+  //dll.comm.tca   -= clocks;
   //dll.comm.tc    -= clocks;
     clocks          = CLK2TI(clocks);
     session_refresh(clocks);
@@ -500,15 +507,10 @@ void dll_systask_rf(ot_task task) {
         case 3: sub_timeout_scan();     break;
              
         // CSMA Manager
-        case 4: sub_dll_txcsma();       break;
+        //case 4: sub_dll_txcsma();       break;
         
-        // TX Watchdog Unit: 1 tick nextevent until counter == 0
-        // rm2_kill() will invoke the rfevt_btx or rfevt_ftx callback, which
-        // will know what to do about the session and state management.
-       default: sys.task_RFA.nextevent = TI2CLK(1);
-                if (dll.counter-- == 0) {
-                	rm2_kill();
-                } break;
+        // TX & CSMA Timeout Unit
+       default: rm2_kill();             break;
     }
 }
 #endif
@@ -578,9 +580,6 @@ void dll_systask_holdscan(ot_task task) {
 /// the hold_cycle parameter, and if this is over the limit it will return into
 /// sleep mode.
 #if ((SYS_RECEIVE == ENABLED) && (M2_FEATURE(ENDPOINT) == ENABLED))
-    if (radio.state != RADIO_Idle)
-        return;
-        
     dll.counter += (sys.task_HSS.cursor == 0);
     
     // Do holdscan (top) or go back into sleep mode (bottom)
@@ -821,6 +820,11 @@ void sub_timeout_scan() {
 /// applications using very custom builds of OpenTag.
 
 #if (RF_FEATURE(RXTIMER) == DISABLED)
+	// Pad the nextevent for some time.  rm2_rxtimeout_isr() will preempt
+	// the kernel if it is called, and reset nextevent.  If packet is RX'ing,
+	// radio will also generate the RX-done interrupt, and preempt kernel.
+	sys.task_RFA.nextevent = TI2CLK(128);
+
     if ((radio.state != RADIO_DataRX) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) {
         rm2_rxtimeout_isr();
     }
@@ -828,57 +832,6 @@ void sub_timeout_scan() {
     // Add a little bit of time in case the radio timer is a bit slow.
     sys.task_RFA.nextevent  = TI2CLK(10);
     sys.task_RFA.event      = 0;
-#endif
-}
-
-
-
-void sub_dll_txcsma() {
-/// Run the TX CSMA-CA routine, which requires multiple calls if radio core does
-/// not have automated TX contention window handling.
-///
-/// @note When debugging, be VERY CAREFUL with breakpoints, or stepping, in this
-/// function.  As a rule, DO NOT step around rm2_txcsma()
-///
-#if (RF_FEATURE(TXTIMER) != ENABLED)
-    ot_int csma_code = -1;
-    
-    /// First, check Tca to make sure we are within timing requirements
-    if (dll.comm.tca < 0) {
-    	goto sub_dll_txcsma_fail;
-    }
-
-    /// CSMA process continues immediately
-    csma_code 				= rm2_txcsma();
-    sys.task_RFA.nextevent 	= csma_code;
-
-    switch (0-csma_code) {
-     	/// TX CSMA complete: begin data transfer
-        /// <LI> Using latency at 0 to block other tasks while transmitting     </LI>
-        /// <LI> For flooding, use a 1 tick recurring task to clock dll.counter </LI>
-        /// <LI> For normal TX, use a timeout slightly longer than the packet   </LI>
-        ///@todo pull non-flood nextevent (watchdog) from MAX PACKET SIZE
-        case 1:
-#           if (SYS_FLOOD != ENABLED)
-            sys.task_RFA.nextevent  = TI2CLK(256);
-#           else
-            sys.task_RFA.nextevent  = (dll.counter == 0) ? TI2CLK(128) : TI2CLK(1);
-#           endif
-            sys.task_RFA.latency    = 0;
-            sys.task_RFA.event++;
-            break;
-
-        case (0-RM2_ERR_CCAFAIL):
-            sys.task_RFA.nextevent = sub_fcloop();
-            break;
-
-        case (0-RM2_ERR_BADCHANNEL):
-        sub_dll_txcsma_fail:
-            DLL_SIG_RFTERMINATE(sys.task_RFA.event, csma_code);
-        	session_pop();
-        	dll_idle();
-        	break;
-    }
 #endif
 }
 
@@ -904,10 +857,13 @@ void sub_init_rx(ot_u8 is_brx) {
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
 #if (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER) || M2_FEATURE(ENDPOINT))
-    if (is_brx) rm2_rxinit_bf(session.heap[session.top].channel, &rfevt_bscan);
-    else        rm2_rxinit_ff(session.heap[session.top].channel, 0, &rfevt_frx);
+    {   // is_brx is inverted to 0=brx, 1=frx
+    	static const ot_sig2 rfevt_cb[2] = { &rfevt_bscan, &rfevt_frx };
+    	is_brx = (is_brx == 0);
+    	rm2_rxinit(session.heap[session.top].channel, is_brx, rfevt_cb[is_brx]);
+    }
 #else
-    rm2_rxinit_ff(session.heap[session.top].channel, 0, &rfevt_frx);
+    rm2_rxinit(session.heap[session.top].channel, 1, &rfevt_frx);
 #endif
 }
 
@@ -917,32 +873,20 @@ void sub_init_rx(ot_u8 is_brx) {
 void sub_init_tx(ot_u8 is_btx) {
 /// Initialize background or foreground packet TX.  Often this includes CSMA
 /// initialization as well.
-
-#if (RF_FEATURE(TXTIMER) != ENABLED)
-    sys.task_RFA.nextevent  = sub_fcinit();         //SW TX CSMA process
-    sys.task_RFA.latency    = 1;                    
-    dll.comm.tca            = dll.comm.tc;
-#else
-#   warn "TX Timer implementation is not known to be working"
-    sys.task_RFA.nextevent  = dll.comm.tc;          //HW TX CSMA
-#endif
+    sys.task_RFA.nextevent  = dll.comm.tc;
+    dll.comm.tca            = sub_fcinit();
+    sys.task_RFA.latency    = 1; 
     sys.task_RFA.event      = 4;
-    
+
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
-#if (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER))
-    if (is_btx) {
-        dll.counter = session.heap[session.top+1].counter;
-        rm2_txinit_bf(&rfevt_btx);
-    }
-    else {
-        dll.counter = 0;
-        rm2_txinit_ff(0, &rfevt_ftx);
-    }
-#   else
+#if (SYS_FLOOD)
+    dll.counter = (is_btx != 0) ? session.heap[session.top+1].counter : 0;
+    rm2_txinit(is_btx, &rfevt_txcsma);
+#else
     dll.counter = 0;
-    rm2_txinit_ff(0, &rfevt_ftx);
-#   endif
+    rm2_txinit(0, &rfevt_txcsma);
+#endif
 }
 
 
@@ -964,21 +908,23 @@ void rfevt_bscan(ot_int scode, ot_int fcode) {
 
     // CRC Failure (or init), retry
     if ((scode == -1) && (dll.comm.redundants != 0)) {
-        rm2_rxinit_bf(dll.comm.rx_chanlist[0], &rfevt_bscan);    //non-blocking
+        rm2_rxinit(dll.comm.rx_chanlist[0], 0, &rfevt_bscan);    //non-blocking
     }
     
     // Do not retry (success on (scode >= 0) or radio-core-failure otherwise)
     else {
         radio_sleep();
         session_pop();
-        sys.task_RFA.event = 0;
         
         // network_parse_bf() must create a new session if the packet is good.
         if ((scode >= 0) && (sub_mac_filter() == True)) {
             network_parse_bf(); 
         }
-        DLL_SIG_RFTERMINATE(3, scode);
-        sys_preempt();
+
+        DLL_SIG_RFTERMINATE(sys.task_RFA.event, scode);
+
+        sys.task_RFA.event = 0;
+        sys_preempt(&sys.task_RFA, 0);
     }
 }
 
@@ -996,11 +942,6 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
     /// Response scanning window expires.  In certain cases, after a timeout,
     /// the session persists.  These cases are implemented below.
     if (pcode < 0) {
-#   if (RF_FEATURE(RXTIMER) == ENABLED)
-        // For RF Core-based RX timer, set pcode = 0 to pre-empt kernel
-        // For MCU-based RX timer, kernel already manages timeout event
-        //pcode = 0;
-#   endif
         sys.task_RFA.event  = 0;
       //frx_code            = -1;
         if (dll.comm.redundants) {
@@ -1014,21 +955,23 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
         }
     }
     
-    // pcode: When non-negative, the number of frames remaining.
+    // Multiframe packet RX frame check
+#   if (M2_FEATURE(M2DP) == ENABLED)
+    else if (pcode > 0) {
+    	if (fcode != 0) {
+    		m2dp_mark_frame();
+    	}
+    	return;
+    }
+#	endif
+
+    // pcode == 0 on last frame
     else {
         /// Handle damaged frames (bad CRC)
-        /// <LI> Multiframe datastreams: mark the packet as bad, and continue </LI>
-        /// <LI> Normal data packets (single frame): ignore the packet </LI>
-        if (fcode != 0) {
-#       if (M2_FEATURE(M2DP) == ENABLED)
-            frx_code -= ((session->netstate & M2_NETSTATE_DSDIALOG) == 0);
-            network_mark_ff();
-#       else
-            frx_code = -1;
-#       endif
-        }
-        
-        /// Run subnet filtering on frames with good CRC
+    	/// Run subnet filtering on frames with good CRC
+    	if (fcode != 0) {
+    		frx_code--;
+    	}
         else if (sub_mac_filter() == False) {
             frx_code = -4;
         }
@@ -1042,10 +985,10 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
         if (pcode == 0) {
             fcode = (session->netstate & M2_NETSTATE_RESP);  // repurpose fcode
             if (frx_code | fcode) {
-                pcode = frx_code;       //don't return to kernel for bad frames
-                rm2_reenter_rx(False);
+                rm2_reenter_rx(&rfevt_frx);
+                return; 					//don't return to kernel for bad frames
             }
-            else if (fcode == 0) {
+            if (fcode == 0) {
             	sys.task_RFA.reserve = 20;  ///@todo Could have quick evaluator here
                 sys.task_RFA.event   = 1;   ///Process the packet!!!
                 radio_sleep();
@@ -1053,20 +996,64 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
         }
     }
 
-    /// If the RF event is < 2, it is finished and the termination
-    /// callback should be used.  "3" is the code for RX
-    if (sys.task_RFA.event < 2) {
-        DLL_SIG_RFTERMINATE(3, frx_code);
+    /// The RX Termination Callback always uses code = "3"
+    DLL_SIG_RFTERMINATE(3, frx_code);
+
+    /// Pre-empt the Kernel Scheduler on successful packet download or timeout
+    sys_preempt(&sys.task_RFA, 0);
+}
+
+
+
+
+void rfevt_txcsma(ot_int pcode, ot_int tcode) {
+    ot_uint event_time;
+
+    /// ON CSMA SUCCESS: pcode == 0, tcode == 0/1 for BG/FG
+    if (pcode == 0) {
+        sys.task_RFA.latency    = 0;
+        sys.task_RFA.event      = 5;
+#       if (SYS_FLOOD == ENABLED)
+        if (tcode == 0) {
+            radio.evtdone   = &rfevt_btx;
+            event_time      = dll.counter;
+        }
+        else
+#       endif
+        {
+            radio.evtdone   = &rfevt_ftx;
+            event_time      = (ot_uint)(rm2_pkt_duration(txq.length) + TI2CLK(4));
+        }
     }
 
-    /// Pre-empt the Kernel.  Note that this sys_prempt should have a clause
-    /// to prevent this pre-emption from interfering with the timeout task, 
-    /// which may call rm2_timeout(), which in turn will invoke this callback.
-    /// If you are using a fully pre-emptive kernel, you can uncomment the if.
-    //if (pcode == 0) {
-        sys_preempt();
-    //}
+    /// ON CSMA LOOP: calculate the next slot time and set mactimer accordingly
+    /// Do not Preempt the kernel.
+    /// @todo replace the "2" in the idle vs. sleep check with a per-radio constant
+    else if (pcode > 0) {
+        ot_uint nextcsma;
+        nextcsma                    = (ot_uint)sub_fcloop();
+        if (nextcsma < TI2CLK(2))   radio_idle();
+        else                        radio_sleep();
+    
+        radio_set_mactimer( nextcsma );
+        return;
+    }
+    
+    /// ON FAIL: Flag this session for scrap.  As with all sessions, if you 
+    /// have an applet attached to it, the applet can adjust the netstate and 
+    /// try again if it chooses.
+    else {
+        sub_dll_txcsma_fail:
+        DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
+        
+        session.heap[session.top].netstate |= M2_NETFLAG_SCRAP;
+        sys.task_RFA.event                  = 0;
+        event_time                          = 0;
+    }
+    
+    sys_preempt(&sys.task_RFA, event_time);
 }
+
 
 
 
@@ -1083,17 +1070,16 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
     /// <LI> Allow scheduling of redundant TX on responses, or request with no response. </LI>
     /// <LI> End session if no redundant, and no listening required. </LI>
     else {
-        sys.task_RFA.event  = 0;
-        session             = session_top();
-        scratch             = ((session->netstate & M2_NETSTATE_RESPTX) \
-        		            || ((ot_int)dll.comm.rx_timeout <= 0));
-        dll.comm.redundants-= 1;
+        session = session_top();
+        scratch = ((session->netstate & M2_NETSTATE_RESPTX) \
+        		|| ((ot_int)dll.comm.rx_timeout <= 0));
         
         /// Send redundant TX immediately, but only if no response window or if
         /// this packet is a response.
+        dll.comm.redundants--;
         if ((dll.comm.redundants != 0) && scratch) {
             dll.comm.csmaca_params = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
-            rm2_prep_resend();
+            rm2_resend(&rfevt_txcsma);
         }
         
         /// Scrap (End) Session if:
@@ -1107,10 +1093,11 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
             session->netstate  |= (ot_u8)(((pcode != 0) | scratch) << 7);
             session->netstate  &= ~M2_NETSTATE_TMASK;
             session->netstate  |= M2_NETSTATE_RESPRX;
+
+            DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
+            sys.task_RFA.event = 0;
+        	sys_preempt(&sys.task_RFA, 0);
         }
-    
-        DLL_SIG_RFTERMINATE(5, pcode);
-        sys_preempt();
     }
 }
 
@@ -1125,8 +1112,6 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         /// <LI> Pre-empt the kernel to start on the request session.  The 
         ///      kernel will clock other tasks over the flood duration.  </LI>
         case 0: {
-            DLL_SIG_RFTERMINATE(5, 0);
-
             // assure request hits NOW & assure it doesn't init dll.comm
             // Tweak dll.comm for request (2 ti is a token, small amount)
             sys.task_RFA.event                      = 0;
@@ -1165,7 +1150,7 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
             }
         } return; // skip termination section
     
-        /// Error: kill everything, pop the flood and the request
+        /// Error: kill everything, pop the flood (here) and the request (below)
         default: {
             dll_idle();
             session_pop();
@@ -1175,11 +1160,14 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         
     /// Termination on error or on flood-over: 
     /// Always pop the flood session when the flood is over.  On error, 
-    /// the flood will already be popped (default case above), so this will 
+    /// the flood will already be popped (switch-default above), so this will
     /// pop the following request.  That is exactly the behavior required.
-    DLL_SIG_RFTERMINATE(5, flcode);
     session_pop();
-    sys_preempt();
+
+    DLL_SIG_RFTERMINATE(sys.task_RFA.event, flcode);
+
+    sys.task_RFA.event = 0;
+    sys_preempt(&sys.task_RFA, 0);
 #endif
 }
 
@@ -1334,12 +1322,14 @@ CLK_UNIT sub_fcinit() {
     if (dll.comm.csmaca_params & M2_CSMACA_AIND) {
         return 0;
     }
+    
     if (dll.comm.csmaca_params & M2_CSMACA_RAIND) {
         CLK_UNIT random;
         random  = TI2CLK(platform_prand_u16());
-        random %= (dll.comm.tca - rm2_pkt_duration(txq.front[0]) );
+        random %= (dll.comm.tc - rm2_pkt_duration(txq.front[0]) );
         return random;
     }
+    
     return sub_rigd_newslot();
 }
 
@@ -1362,27 +1352,33 @@ CLK_UNIT sub_fcloop() {
     if (dll.comm.csmaca_params & 0x20) {    //NO CA
         return TI2CLK(phymac[0].tg);
     }
+    
+    // AIND & RAIND Loop
     if (dll.comm.csmaca_params & 0x18) {    //RAIND, AIND
-        return sub_aind_nextslot();
+        return rm2_pkt_duration(txq.front[0]);
     }
-    return sub_rigd_nextslot() + sub_rigd_newslot();
+    
+    // RIGD loop
+    {   
+        ot_long wait;
+        wait    = (dll.comm.tc - dll.comm.tca);
+        wait   += sub_rigd_newslot();
+        
+        return (wait < 0) ? 0 : (CLK_UNIT)wait;
+    }
 }
-
 
 
 
 CLK_UNIT sub_rigd_newslot() {
 /// halve tc from previous value and offset a random within that duration
-    CLK_UNIT random;
-    random          = TI2CLK(platform_prand_u16());
-    dll.comm.tc   >>= 1;
-    dll.comm.tca    = dll.comm.tc;
-    return          (random % (CLK_UNIT)dll.comm.tc);
+    dll.comm.tc >>= 1;
+    return (TI2CLK(platform_prand_u16()) % (CLK_UNIT)dll.comm.tc);
 }
 
 
 
-
+/*
 CLK_UNIT sub_rigd_nextslot() {
     ot_long wait;
     wait = (dll.comm.tc - dll.comm.tca);
@@ -1397,6 +1393,6 @@ CLK_UNIT sub_aind_nextslot() {
 /// Works for RAIND or AIND next slot
     return rm2_pkt_duration(txq.front[0]);
 }
-
+*/
 
 

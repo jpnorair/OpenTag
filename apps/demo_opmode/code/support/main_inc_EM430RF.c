@@ -135,7 +135,7 @@ void sub_button_init() {
 
 OT_INTERRUPT void app_buttons_isr(void) {
     ot_u8 exti_source;
-    exti_source				= APP_BUTTON_PORT->DIN & APP_BUTTON_PIN;
+    exti_source				= APP_BUTTON_PORT->IFG & APP_BUTTON_PIN;
     APP_BUTTON_PORT->IFG	= 0;
 
     // Make sure the interrupt is the one we want, otherwise ignore

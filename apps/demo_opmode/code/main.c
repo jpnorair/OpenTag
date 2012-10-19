@@ -235,8 +235,7 @@ void app_invoke(ot_u8 call_type) {
 	sys_task_setevent(TASK_external, call_type);
     sys_task_setreserve(TASK_external, 1);
     sys_task_setlatency(TASK_external, 255);
-    sys_task_setnext(TASK_external, 0);
-    sys_preempt();
+    sys_preempt(&sys.task[TASK_external], 0);
 }
 
 
@@ -487,7 +486,7 @@ void ext_systask(ot_task task) {
 	// Log a message.  It is scheduled, and the RF task has higher priority,
 	// so if you are sending a DASH7 dialog this log message will usually
 	// come-out after the dialog finishes.
-	//otapi_log_msg(MSG_utf8, 4, 14, (ot_u8*)"DEMO", (ot_u8*)msglist[app_select]);
+	otapi_log_msg(MSG_utf8, 3, 14, (ot_u8*)"CMD", (ot_u8*)msglist[app_select]);
 
 	// Load the session template: Only used for communication tasks
 	s_tmpl.channel      = 0x00;
@@ -542,7 +541,7 @@ void main(void) {
 #   endif
 
     ///4b. Load a message to show that main startup has passed
-    //otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+    otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
