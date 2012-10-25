@@ -16,8 +16,8 @@
 /**
   * @file       /apps/demo_opmode/code/main_inc_EM430RF.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R100
+  * @date       10 October 2012
   * @brief      Opmode Switching Demo for EM430RF board: included app components
   *
   * This file is included into main.c.

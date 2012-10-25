@@ -79,25 +79,43 @@
   * ========================================================================<BR>
   * Implemented capabilities of the CC430F5137/6137 variants.
   *
+  * @note On DMA: The MSP430 and CC430 do not have a sophisticated DMA, but it
+  * is still good to use if you can.  However, it is very important to make sure
+  * the DMA channels are assigned correctly.  Memcpy MUST have the highest
+  * priority (0).  MPipe can have the second highest priority.  If you are
+  * using the 3rd channel in your app, be aware that it can cause memory
+  * glitching if you don't use it properly.
+  *
   * @note In debug builds, MPipe is made available as a UART on GPIO2.0, 2.1.
   * These pins are routed to the 2x4 header on the board.  In release builds,
   * there is probably no reason to use MPipe on this board.  If you wish, you
   * can change the setup.
   */
-#define MCU_FEATURE(VAL)                 MCU_FEATURE_##VAL       // FEATURE                  AVAILABILITY
-#define MCU_FEATURE_CRC                  ENABLED                 // CCITT CRC16              Low
-#define MCU_FEATURE_AES128               ENABLED                 // AES128 engine            Moderate
-#define MCU_FEATURE_ECC                  DISABLED                // ECC engine               Low
-#define MCU_FEATURE_ALGE                 DISABLED                // Algebraic Eraser engine  Rare/None yet
-#define MCU_FEATURE_RADIODMA             DISABLED
-#define MCU_FEATURE_RADIODMA_TXBYTES     0
-#define MCU_FEATURE_RADIODMA_RXBYTES     0
-#define MCU_FEATURE_MAPEEPROM            DISABLED
-#define MCU_FEATURE_MPIPEDMA             (DISABLED || MPIPE_FOR_DEBUGGING)      // MPipe is only useful for debug mode
-#define MCU_FEATURE_MEMCPYDMA            (ENABLED && !MCU_FEATURE_MPIPEDMA)      // Must be disabled if MPIPEDMA is enabled
+#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL       // FEATURE                  AVAILABILITY
+#define MCU_FEATURE_CRC                 ENABLED                 // CCITT CRC16              Low
+#define MCU_FEATURE_AES128              ENABLED                 // AES128 engine            Moderate
+#define MCU_FEATURE_ECC                 DISABLED                // ECC engine               Low
+#define MCU_FEATURE_ALGE                DISABLED                // Algebraic Eraser engine  Rare/None yet
+#define MCU_FEATURE_RADIODMA            DISABLED
+#define MCU_FEATURE_RADIODMA_TXBYTES    0
+#define MCU_FEATURE_RADIODMA_RXBYTES    0
+#define MCU_FEATURE_MAPEEPROM           DISABLED
+#define MCU_FEATURE_MPIPEDMA            ENABLED         // MPIPE typically requires DMA on this platform
+#define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_POINTERSIZE           2
+
+#define PLATFORM_FEATURE_USBCONVERTER   ENABLED
+
+OT_INLINE_H BOARD_DMA_COMMON_INIT() {
+    DMA->CTL4 = (   DMA_Options_RMWDisable | \
+                    DMA_Options_RoundRobinDisable | \
+                    DMA_Options_ENMIEnable  );
+}
+
+
+
 
 
 
@@ -152,25 +170,27 @@
 #endif
 
 
+
+
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
-    P1DIR = ~(BOARD_SW2_PIN);
-    P2DIR = 0xFF;
-    P3DIR = 0xFF;
-    P4DIR = 0xFF;
-    
-#   if (defined(DEBUG_ON) || defined(__DEBUG__))
+    u8 i;
+
+#if (defined(DEBUG_ON) || defined(__DEBUG__))
+#   define _DEBUG_ON_PORTJ  1
     PJDIR = 0x00;
-#   else
-    PJDIR = 0xFF;
-#   endif    
+#else
+#   define _DEBUG_ON_PORTJ  0
+#endif
+
+    for (i=(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ); i!=0; i--) {
+    	*((u8*)cc430_pdir_list[i])  = 0x00;
+    	*((u8*)cc430_pout_list[i])  = 0x00;
+    }
     
-    P1OUT = 0x00;
-    P2OUT = 0x00;
-    P3OUT = 0x00;
-    P4OUT = 0x00;
-    PJOUT = 0x00;
+#undef _DEBUG_ON_PORTJ
 }
+
 
 // LFXT1 Preconfiguration, using values local to the board design
 // ALL CC430 Boards MUST HAVE SOME VARIANT OF THIS
@@ -388,12 +408,20 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 // Pin that can be used for ADC-based random number (usually floating pin)
 // You could also put on a low voltage, reverse-biased zener on the board
 // to produce a pile of noise.  2.1V seems like a good value.
-#define OT_GWNADC_PORT      GPIO2
-#define OT_GWNADC_PIN       GPIO_Pin_2
-#define OT_GWNADC_BITS      1
+#define OT_GWNADC_PORTNUM   2
+#define OT_GWNADC_PINNUM    2
+#define OT_GWNADC_BITS      8
 //#define OT_GWNZENER_PORT    GPIO2
-//#define OT_GWNZENER_PIN     GPIO_Pin_4
+//#define OT_GWNZENER_PIN     GPIO_Pin_2
 //#define OT_GWNZENER_HIDRIVE DISABLED
+
+#ifdef OT_GWNADC_PORTNUM
+#   if (OT_GWNADC_PORTNUM == 2)
+#       define OT_GWNADC_PORT      GPIO2
+#   else
+#       error "GWNADC (White Noise ADC Input Pin) must be on port 2"
+#   endif
+#endif
 
 
 
@@ -409,7 +437,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define MPIPE_I2C_SELF		0x01
 #define MPIPE_I2C_TARGET	0x02
 
-#define MPIPE_DMANUM        2
+
 
 #define MPIPE_I2C_PORT      GPIO2
 #define MPIPE_I2C_PORTMAP   P2M
@@ -424,6 +452,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define MPIPE_I2C_VECTOR    USCI_B0_VECTOR
 
 #if (MCU_FEATURE_MPIPEDMA == ENABLED)
+#define MPIPE_DMANUM        0
 #   if (MPIPE_DMANUM == 0)
 #       define MPIPE_DMA     DMA0
 #   elif (MPIPE_DMANUM == 1)
@@ -443,7 +472,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 #if (MCU_FEATURE_MEMCPYDMA == ENABLED)
-#   define MEMCPY_DMANUM    1
+#   define MEMCPY_DMANUM      (MPIPE_DMANUM + (MCU_FEATURE_MPIPEDMA == ENABLED))
 #   if (MEMCPY_DMANUM == 0)
 #       define MEMCPY_DMA     DMA0
 #   elif (MEMCPY_DMANUM == 1)

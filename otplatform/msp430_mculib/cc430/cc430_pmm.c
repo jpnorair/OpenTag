@@ -82,7 +82,7 @@ void PMM_SetStdSVSM(unsigned short svsmh_cfg, SVS_Von Von, SVSM_Voffon Voffon) {
 
 
 void PMM_EnterLPM0(void) {
-    WDTA->CTL = WDTPW+WDTHOLD;                  // Stop WDT
+    //WDTA->CTL = WDTPW+WDTHOLD;                  // Stop WDT
     __bis_SR_register(LPM0_bits + GIE);         // Enter LPM0
     __no_operation();                           // For debugger
 }
@@ -93,7 +93,7 @@ void PMM_EnterLPM1(void) {
 /// <LI> MCLK & CPU </LI>
 /// <LI> FLL </LI>
 
-    WDTA->CTL = WDTPW+WDTHOLD;                  // Stop WDT
+    //WDTA->CTL = WDTPW+WDTHOLD;                  // Stop WDT
     __bis_SR_register(LPM1_bits + GIE);         // Enter LPM1
     __no_operation();                           // For debugger
 }
@@ -108,7 +108,7 @@ void PMM_EnterLPM2(void) {
 /// <LI> Supply Voltage Monitors </LI>
 /// <LI> SMCLK </LI>
 
-    WDTA->CTL   = WDTPW+WDTHOLD;                // Stop WDT
+    //WDTA->CTL   = WDTPW+WDTHOLD;                // Stop WDT
     UCS->CTL6  |= SMCLKOFF;                     // Kill SMCLK
 
     __bis_SR_register(LPM2_bits + GIE);         // Enter LPM2
@@ -121,13 +121,6 @@ void PMM_EnterLPM2(void) {
 
 
 void PMM_EnterLPM3(void) {
-#define _TOTAL_PORTS        6
-#ifdef __DEBUG__
-#define _GROUNDED_PORTS		(_TOTAL_PORTS-1)
-#else
-#define _GROUNDED_PORTS     _TOTAL_PORTS
-#endif
-
 /// In this implementation, LPM3 shuts off the following modules below.
 /// LPM3 will wake-up in <10us if the supply monitors are off or <110us
 /// if they are on.  This implementation of LPM3 will also ground all
@@ -141,65 +134,38 @@ void PMM_EnterLPM3(void) {
 ///@note This seems to work OK with JTAG connected.  I have not tested
 ///      it with Spy-Bi-Wire
 
-    static const u8* dout_table[] = {
-        (u8*)0x0202,     //Port 1 DOUT
-        (u8*)0x0223,     //Port 2 DOUT
-        (u8*)0x0222,     //Port 3 DOUT
-        (u8*)0x0223,     //Port 4 DOUT
-        (u8*)0x0242,     //Port 5 DOUT
-        (u8*)0x0322      //Port J DOUT
-    };
-    
-    static const u8* ddir_table[] = {
-    	(u8*)0x0204,     //Port 1 DOUT
-    	(u8*)0x0225,     //Port 2 DOUT
-    	(u8*)0x0224,     //Port 3 DOUT
-    	(u8*)0x0225,     //Port 4 DOUT
-    	(u8*)0x0244,     //Port 5 DOUT
-    	(u8*)0x0324      //Port J DOUT
-    };
-    
-    static const u8 ddir_set[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFC, 0xFF };
-    
-    u8 saved_douts[6];
-    u8 saved_ddirs[6];
-    s16 i;
-    //u16 svsmhctl;
-    //u16 svsmlctl;
+#if ( defined(DEBUG_ON) || defined(__DEBUG__) )
+#   define _DEBUG_ON_PORTJ  1
+#else
+#   define _DEBUG_ON_PORTJ  0
+#endif
 
-    WDTA->CTL   = WDTPW+WDTHOLD;            // Stop WDT
+    //u8 saved_douts[(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ)];
+    //u8 saved_ddirs[(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ)];
+    //u8 i;
 
-    /// Save GPIO dout & ddir settings, and set to low-power running.
-    /// GPIO5 is specials, because it drives the oscillators
-    for (i=(_GROUNDED_PORTS-1); i>0; i--) {
-        saved_douts[i]          = *dout_table[i];
-        saved_ddirs[i]          = *ddir_table[i];
-        *((u8*)dout_table[i])   = 0x00;
-        *((u8*)ddir_table[i])   = ddir_set[i];
-    }
-    
-//  Turn off SVSH, SVSM
-    //PMMCTL0_H     = 0xA5;
-    //svsmhctl      = SVSMHCTL;
-    //svsmlctl      = SVSMLCTL;
-    //SVSMHCTL   = 0;
-    //SVSMLCTL   = 0;
-    //PMMCTL0_H     = 0x00;
+    /// HOLD Watchdog: optional, could be removed
+    //WDTA->CTL = WDTPW+WDTHOLD;
+
+    /// Save GPIO dout & ddir settings, and set pins to ground during LPM3.
+    ///@todo make sure setting P5 to FF doesn't mess clock.
+    //for (i=(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ); i!=0; i--) {
+    //    saved_douts[i]              = *cc430_pout_list[i];
+    //    *((u8*)cc430_pout_list[i])  = 0x00;
+    //    saved_ddirs[i]              = *cc430_pdir_list[i];
+    //    *((u8*)cc430_pdir_list[i])  = 0xFF;
+    //}
 
     __bis_SR_register(LPM3_bits + GIE);             // Enter LPM3
-    //__no_operation();
+    __no_operation();
 
-    // Restore SVSM, SVSM
-    //PMMCTL0_H     = 0xA5;
-    //SVSMHCTL   = svsmhctl;
-    //SVSMLCTL   = svsmlctl;
-    //PMMCTL0_H     = 0x00;
-
-    /// Restore GPIO
-    for (i=(_GROUNDED_PORTS-1); i>0; i--) {
-        *((u8*)dout_table[i])   = saved_douts[i];
-        *((u8*)ddir_table[i])   = saved_ddirs[i];
-    }
+    /// Restore GPIO to known saved values
+    //for (i=(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ); i!=0; i--) {
+    //    *((volatile u8*)cc430_pout_list[i])  = saved_douts[i];
+    //    *((volatile u8*)cc430_pdir_list[i])  = saved_ddirs[i];
+    //}
+    
+#undef _DEBUG_ON_PORTJ
 }
 
 

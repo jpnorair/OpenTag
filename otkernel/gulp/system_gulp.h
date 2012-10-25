@@ -38,8 +38,8 @@
   */
 
 
-#ifndef __SYSTEM_NATIVE_H
-#define __SYSTEM_NATIVE_H
+#ifndef __SYSTEM_GULP_H
+#define __SYSTEM_GULP_H
 
 #include "OT_types.h"
 #include "OT_config.h"

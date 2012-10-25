@@ -95,8 +95,8 @@
 
 
 
-
 /** Low Power Mode Macros:
+  * ========================================================================<BR>
   * Within OpenTag, only SLEEP_MCU is used.  The other low power modes may
   * be used outside OpenTag, especially during idle periods in the MAC sequence.
   * STANDBY is not normally useful because it shuts off the RTC.
@@ -104,14 +104,14 @@
   * SLEEP_MCU():        LPM1 - Core off, SRAM on                        (~50 uA)
   * SLEEP_WHILE_UHF():  LPM2 - Core off, SMCLK off, FLL off, SRAM on    (~10 uA)
   * STOP_MCU():         LPM3 - Core off, ACLK on (RTC), SRAM on         (~2 uA)
-  * STANDBY_MCU():      LPM5 - Core off, clocks off, SRAM off           (<0.3 uA)
+  * STANDBY_MCU():      LPM5 - Core off, clocks off, SRAM on            (~1 uA)
   */
   
-#define MCU_SLEEP               PMM_EnterLPM0
-#define MCU_SLEEP_WHILE_IO      PMM_EnterLPM0
-#define MCU_SLEEP_WHILE_RF      PMM_EnterLPM0
+#define MCU_SLEEP               PMM_EnterLPM1
+#define MCU_SLEEP_WHILE_IO      PMM_EnterLPM1
+#define MCU_SLEEP_WHILE_RF      PMM_EnterLPM2
 #define MCU_STOP                PMM_EnterLPM3
-#define MCU_STANDBY             PMM_EnterLPM5
+#define MCU_STANDBY             PMM_EnterLPM4
 
 //legacy deprecated
 #define SLEEP_MCU()             MCU_SLEEP()

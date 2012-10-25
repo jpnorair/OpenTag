@@ -15,8 +15,8 @@
 /**
   * @file       /apps/demo_palfi/code_slave/palfi.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       16 April 2012
+  * @version    R100
+  * @date       10 October 2012
   * @brief      PaLFi Demo Slave Features
   *
   * This application for OpenTag would qualify as an intermediate example (OK, 
@@ -57,7 +57,7 @@ typedef enum {
 } 
 palfi_CHAN;
 
-typedef ot_bool (*action_fn)(void);
+typedef ot_int (*action_fn)(void);
 
 typedef struct {
 	float   slope_dC;

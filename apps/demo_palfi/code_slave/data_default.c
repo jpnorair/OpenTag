@@ -471,7 +471,7 @@ const ot_u8 isf_stock_files[] = {
     
     /* sleep scan periods: id=0x05, len=12, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x07, 0x85, 0x44, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
+    0x07, 0x85, 0x14, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
     0xFF, 0xFF, 0xFF, 0xFF,                             /* NOTE: Scan Code should be less than     */
     0xFF, 0xFF, 0xFF, 0xFF,                             /*       Next Scan, or else you will be    */
     0xFF, 0xFF, 0xFF, 0xFF,                             /*       doing nothing except scanning!    */
@@ -482,8 +482,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240
-    0x07, 0x07, 0x30, 0x18, 0x00, 0x00, 0x10, 0x00,     /* Chan 07, Option 07, loc. series, next in 4096 ticks */
-    0x2A, 0x07, 0x30, 0x18, 0x00, 0x00, 0x10, 0x00,     /* Chan 2A, Option 07, loc. series, next in 4096 ticks */
+    0x07, 0x07, 0x30, 0x18, 0x00, 0x00, 0x01, 0x00,     /* Chan 07, Option 07, loc. series, next in 256 ticks */
+    0x2A, 0x07, 0x30, 0x18, 0x00, 0x00, 0x30, 0x00,     /* Chan 2A, Option 07, loc. series, next in 12228 ticks */
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* App Protocol List: id=0x07, len=4, alloc=16 */

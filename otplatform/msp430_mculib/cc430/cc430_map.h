@@ -749,6 +749,29 @@ typedef struct {
 
 
 
+
+
+
+/******************************************************************************/
+/*                 Port Lists for Init and Port Grounding                     */
+/******************************************************************************/
+
+#ifdef _GPIO4
+#   define CC430_TOTAL_PORTS    6
+#else
+#   define CC430_TOTAL_PORTS    5
+#endif
+
+extern const u8* cc430_pout_list[CC430_TOTAL_PORTS];
+
+extern const u8* cc430_pdir_list[CC430_TOTAL_PORTS];
+
+
+
+
+
+
+
 /******************************************************************************/
 /*                         Peripheral declaration                             */
 /******************************************************************************/

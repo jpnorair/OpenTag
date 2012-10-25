@@ -22,10 +22,6 @@
   * @ingroup    Platform
   *
   * Do not include this file, include OT_platform.h
-  *
-  * Specifically, this board is from the Rev1 Agaidi Dev Kit.  It is the one
-  * that has the FTDI USB connector built-in.  Other than that, it is actually 
-  * identical to the non-USB board that is also in the kit.
   ******************************************************************************
   */
   
@@ -165,13 +161,13 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
     P2DIR = 0xFF;
     P3DIR = 0xFF;
     P4DIR = 0xFF;
-    
+
 #   if (defined(DEBUG_ON) || defined(__DEBUG__))
     PJDIR = 0x00;
 #   else
     PJDIR = 0xFF;
-#   endif    
-    
+#   endif
+
     P1REN = BOARD_SW2_PIN;
     
     P1OUT = BOARD_SW2_PIN;
@@ -180,6 +176,8 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
     P4OUT = 0x00;
     PJOUT = 0x00;
 }
+
+
 
 // LFXT1 Preconfiguration, using values local to the board design
 // ALL CC430 Boards MUST HAVE SOME VARIANT OF THIS
@@ -312,7 +310,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 
-/** PaLFi Slave interface<BR>
+/** PaLFi Slave interface   <BR>
   * ========================================================================<BR>
   * LEDS:
   * On the PALFI FOB board, all the LEDs appear to be 574nm Green LEDs.  This
@@ -401,14 +399,36 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 
-/** Standard OpenTag triggers<BR>
+
+
+
+/** Basic GPIO Setup <BR>
   * ========================================================================<BR>
-  * On the PALFI FOB board, all the LEDs appear to be 574nm Green LEDs.  This
-  * is unfortunate!  I have made a comment to TI, and hopefully future versions
-  * will have the following model.
-  * Trigger 1 = Green LED
-  * Trigger 2 = Yellow or Orange LED
+  * <LI> MPipe is a serial-based serial interface.  It needs to be specified 
+  *      with a serial peripheral number and RX/TX port & pin configurations. 
+  *      On the RF430, I2C and SPI are available for MPipe on USART1.  USART0
+  *      is occupied by the PaLFI interface SPI.
+  * </LI>
+  * <LI> OT Triggers are test outputs, usually LEDs.  They should be configured
+  *      to ports & pins where there are LED or other trigger connections.
+  * </LI>
+  * <LI> The GWN feature is part of a true-random-number generator.  It is
+  *      optional.  It needs a port & pin for the ADC input (GWNADC) and also,
+  *      optionally, one for a Zener driving output port & pin.  On the CC430,
+  *      the ADC can be hacked to produce the benefits of a Zener without 
+  *      actually having one, so don't worry about the Zener. 
+  * </LI>
+  *
+  * @note On the PALFI FOB board, all the LEDs appear to be 574nm Green LEDs.  
+  * This is unfortunate!  I have made a comment to TI, and hopefully future 
+  * versions will have Green on TRIG1 and Orange on TRIG2.
   */
+  
+#define MPIPE_DMANUM        0
+#define MPIPE_I2C           I2CB0
+#define MPIPE_I2C_SELF		0x01
+#define MPIPE_I2C_TARGET	0x02
+
 #define OT_TRIG1_PORTNUM    1
 #define OT_TRIG1_PORT       PALFI_LED1_PORT
 #define OT_TRIG1_PIN        PALFI_LED1_PIN
@@ -419,47 +439,24 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define OT_TRIG2_HIDRIVE    DISABLED
 
 
-
-
-
-
 // Pin that can be used for ADC-based random number (usually floating pin)
 // You could also put on a low voltage, reverse-biased zener on the board
 // to produce a pile of noise.  2.1V seems like a good value.
-#define OT_GWNADC_PORT      GPIO2
-#define OT_GWNADC_PIN       GPIO_Pin_5
-#define OT_GWNADC_BITS      1
+#define OT_GWNADC_PORTNUM   2
+#define OT_GWNADC_PINNUM    1
+#define OT_GWNADC_BITS      8
 //#define OT_GWNZENER_PORT    GPIO2
 //#define OT_GWNZENER_PIN     GPIO_Pin_4
 //#define OT_GWNZENER_HIDRIVE DISABLED
 
+#ifdef OT_GWNADC_PORTNUM
+#   if (OT_GWNADC_PORTNUM == 2)
+#       define OT_GWNADC_PORT      GPIO2
+#   else
+#       error "GWNADC (White Noise ADC Input Pin) must be on port 2"
+#   endif
+#endif
 
-
-
-/** MPipe (usually just for debugging on this board)
-  * ========================================================================<BR>
-  * MPipe must use I2C, because there is only a two-pin external connection,
-  * and the UCA0 is tied to the PaLFi core.  UCA0 supports UART.  UCB0 supports
-  * only SPI and I2C.
-  */
-
-#define MPIPE_I2C           I2CB0
-#define MPIPE_I2C_SELF		0x01
-#define MPIPE_I2C_TARGET	0x02
-
-#define MPIPE_DMANUM        2
-
-#define MPIPE_I2C_PORT      GPIO2
-#define MPIPE_I2C_PORTMAP   P2M
-#define MPIPE_I2C_SDAPIN    GPIO_Pin_1
-#define MPIPE_I2C_SCLPIN    GPIO_Pin_0
-#define MPIPE_I2C_PINS   	(MPIPE_I2C_SDAPIN | MPIPE_I2C_SCLPIN)
-
-#define MPIPE_I2C_SCLSIG    PM_UCB0SCL
-#define MPIPE_I2C_SDASIG    PM_UCB0SDA
-#define MPIPE_I2C_RXTRIG	DMA_Trigger_UCB0RXIFG
-#define MPIPE_I2C_TXTRIG	DMA_Trigger_UCB0TXIFG
-#define MPIPE_I2C_VECTOR    USCI_B0_VECTOR
 
 #if (MCU_FEATURE_MPIPEDMA == ENABLED)
 #   if (MPIPE_DMANUM == 0)
@@ -473,15 +470,26 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   endif
 #endif
 
+#define MPIPE_I2C_PORT      GPIO2
+#define MPIPE_I2C_PORTMAP   P2M
+#define MPIPE_I2C_SDAPIN    GPIO_Pin_1
+#define MPIPE_I2C_SCLPIN    GPIO_Pin_0
+#define MPIPE_I2C_PINS   	(MPIPE_I2C_SDAPIN | MPIPE_I2C_SCLPIN)
+
+#define MPIPE_I2C_SCLSIG    PM_UCB0SCL
+#define MPIPE_I2C_SDASIG    PM_UCB0SDA
+#define MPIPE_I2C_RXTRIG	DMA_Trigger_UCB0RXIFG
+#define MPIPE_I2C_TXTRIG	DMA_Trigger_UCB0TXIFG
+#define MPIPE_I2C_VECTOR    USCI_B0_VECTOR
+
+//todo?
 #define MPIPE_I2C_SCLMAP	MPIPE_I2C_PORTMAP->MAP0
 #define MPIPE_I2C_SDAMAP	MPIPE_I2C_PORTMAP->MAP1
 
 
 
-
-
 #if (MCU_FEATURE_MEMCPYDMA == ENABLED)
-#   define MEMCPY_DMANUM    1
+#define MEMCPY_DMANUM      (MPIPE_DMANUM + (MCU_FEATURE_MPIPEDMA == ENABLED))
 #   if (MEMCPY_DMANUM == 0)
 #       define MEMCPY_DMA     DMA0
 #   elif (MEMCPY_DMANUM == 1)

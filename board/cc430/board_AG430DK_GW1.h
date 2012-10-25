@@ -74,18 +74,25 @@
 /** MCU Feature settings      <BR>
   * ========================================================================<BR>
   * Implemented capabilities of the CC430F5137/6137 variants
+  *
+  * @note On DMA: The MSP430 and CC430 do not have a sophisticated DMA, but it
+  * is still good to use if you can.  However, it is very important to make sure
+  * the DMA channels are assigned correctly.  Memcpy MUST have the highest
+  * priority (0).  MPipe can have the second highest priority.  If you are
+  * using the 3rd channel in your app, be aware that it can cause memory
+  * glitching if you don't use it properly.
   */
-#define MCU_FEATURE(VAL)                 MCU_FEATURE_##VAL       // FEATURE                  AVAILABILITY
-#define MCU_FEATURE_CRC                  ENABLED                 // CCITT CRC16              Low
-#define MCU_FEATURE_AES128               ENABLED                 // AES128 engine            Moderate
-#define MCU_FEATURE_ECC                  DISABLED                // ECC engine               Low
-#define MCU_FEATURE_ALGE                 DISABLED                // Algebraic Eraser engine  Rare/None yet
-#define MCU_FEATURE_RADIODMA             DISABLED
-#define MCU_FEATURE_RADIODMA_TXBYTES     0
-#define MCU_FEATURE_RADIODMA_RXBYTES     0
+#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL       // FEATURE                  AVAILABILITY
+#define MCU_FEATURE_CRC                 ENABLED                 // CCITT CRC16              Low
+#define MCU_FEATURE_AES128              ENABLED                 // AES128 engine            Moderate
+#define MCU_FEATURE_ECC                 DISABLED                // ECC engine               Low
+#define MCU_FEATURE_ALGE                DISABLED                // Algebraic Eraser engine  Rare/None yet
+#define MCU_FEATURE_RADIODMA            DISABLED
+#define MCU_FEATURE_RADIODMA_TXBYTES    0
+#define MCU_FEATURE_RADIODMA_RXBYTES    0
 #define MCU_FEATURE_MAPEEPROM            DISABLED
-#define MCU_FEATURE_MPIPEDMA             ENABLED
-#define MCU_FEATURE_MEMCPYDMA            ENABLED
+#define MCU_FEATURE_MPIPEDMA            ENABLED         // MPIPE typically requires DMA on this platform
+#define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_POINTERSIZE           2
@@ -147,23 +154,28 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 #endif
 
 
+
+
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
-    P1DIR = 0xFF;
-    P2DIR = 0xFF;
-    P3DIR = 0xFF;
-    
-#   if (defined(DEBUG_ON) || defined(__DEBUG__))
+    u8 i;
+
+#if (defined(DEBUG_ON) || defined(__DEBUG__))
+#   define _DEBUG_ON_PORTJ  1
     PJDIR = 0x00;
-#   else
-    PJDIR = 0xFF;
-#   endif    
+#else
+#   define _DEBUG_ON_PORTJ  0
+#endif
+
+    for (i=(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ); i!=0; i--) {
+    	*((u8*)cc430_pdir_list[i])  = 0x00;
+    	*((u8*)cc430_pout_list[i])  = 0x00;
+    }
     
-    P1OUT = 0x00;
-    P2OUT = 0x00;
-    P3OUT = 0x00;
-    PJOUT = 0x00;
+#undef _DEBUG_ON_PORTJ
 }
+
+
 
 // LFXT1 Preconfiguration, using values local to the board design
 // ALL CC430 Boards MUST HAVE SOME VARIANT OF THIS
@@ -273,15 +285,16 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 /** Peripheral definitions for this platform <BR>
   * ========================================================================<BR>
-  * OT_GPTIM:   General Purpose Timer used by OpenTag kernel                <BR>
-  * OT_TRIG:    Optional test trigger usable in OpenTag apps (often LEDs)   <BR>
-  * MPIPE:      UART to use for the MPipe                                   <BR>
+  * <LI> OT_GPTIM:  General Purpose Timer used by OpenTag kernel and some other
+  *                   internal stuff (like Radio MAC timer). </LI>
+  * <LI> OT_TRIG:   Optional test trigger(s) usable in OpenTag apps.  Often the 
+  *                   triggers are implemented on LED pins </LI>   
+  * <LI> MPIPE:     The wireline interface, which on CC430 is often a UART </LI>
   */
-
-
-#define OT_GPTIM            TIM0A5
-#define OT_GPTIM_IRQ        TIM0A5_IRQChannel
-#define OT_GPTIM_VECTOR     TIMER0_A1_VECTOR
+  
+#define OT_GPTIM            TIM1A3
+#define OT_GPTIM_IRQ        TIM1A3_IRQChannel
+#define OT_GPTIM_VECTOR     TIMER1_A1_VECTOR
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
@@ -297,10 +310,31 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   define OT_GPTIM_ERROR   PLATFORM_HSCLOCK_ERROR
 #endif
 
-#define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded, or else CCS shits in its pants
+#define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded, or else CCS has problems
 
 
 
+
+/** Basic GPIO Setup <BR>
+  * ========================================================================<BR>
+  * <LI> MPipe is a UART-based serial interface.  It needs to be specified with
+  *      a UART peripheral number and RX/TX port & pin configurations. 
+  * </LI>
+  * <LI> OT Triggers are test outputs, usually LEDs.  They should be configured
+  *      to ports & pins where there are LED or other trigger connections.
+  * </LI>
+  * <LI> The GWN feature is part of a true-random-number generator.  It is
+  *      optional.  It needs a port & pin for the ADC input (GWNADC) and also,
+  *      optionally, one for a Zener driving output port & pin.  On the CC430,
+  *      the ADC can be hacked to produce the benefits of a Zener without 
+  *      actually having one, so don't worry about the Zener. 
+  * </LI>
+  */
+#define MPIPE_DMANUM        0
+#define MPIPE_UART_PORT     GPIO1
+#define MPIPE_UART_PORTMAP  P1M
+#define MPIPE_UART_RXPIN    GPIO_Pin_5
+#define MPIPE_UART_TXPIN    GPIO_Pin_6
 
 // Trigger 1 = Green LED
 // Trigger 2 = Yellow LED
@@ -317,42 +351,32 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 // Pin that can be used for ADC-based random number (usually floating pin)
 // You could also put on a low voltage, reverse-biased zener on the board
 // to produce a pile of noise.  2.1V seems like a good value.
-#define OT_GWNADC_PORT      GPIO2
-#define OT_GWNADC_PIN       GPIO_Pin_1
-#define OT_GWNADC_BITS      1
+#define OT_GWNADC_PORTNUM   2
+#define OT_GWNADC_PINNUM    1
+#define OT_GWNADC_BITS      8
 //#define OT_GWNZENER_PORT    GPIO2
 //#define OT_GWNZENER_PIN     GPIO_Pin_2
 //#define OT_GWNZENER_HIDRIVE DISABLED
 
-
-#define MPIPE_UARTNUM       0
-#define MPIPE_UART_PORTNUM  1
-#define MPIPE_UART_PORT     GPIO1
-#define MPIPE_UART_PORTMAP  P2M
-#define MPIPE_UART_RXPIN    GPIO_Pin_5
-#define MPIPE_UART_TXPIN    GPIO_Pin_6
-#define MPIPE_UART_PINS     (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
-
-#if (MPIPE_UARTNUM == 0)
-#   define MPIPE_UART           UARTA0
-#   define MPIPE_UART_RXSIG     PM_UCA0RXD
-#   define MPIPE_UART_TXSIG     PM_UCA0TXD
-#	define MPIPE_UART_RXTRIG	DMA_Trigger_UCA0RXIFG
-#	define MPIPE_UART_TXTRIG	DMA_Trigger_UCA0TXIFG
-#   define MPIPE_UART_VECTOR    USCI_A0_VECTOR
-#elif (MPIPE_UARTNUM == 1)
-#   define MPIPE_UART           UARTB0
-#   define MPIPE_UART_RXSIG     PM_UCB0RXD
-#   define MPIPE_UART_TXSIG     PM_UCB0TXD
-#	define MPIPE_UART_RXTRIG	DMA_Trigger_UCB0RXIFG
-#	define MPIPE_UART_TXTRIG	DMA_Trigger_UCB0TXIFG
-#   define MPIPE_UART_VECTOR    USCI_B0_VECTOR
-#else
-#   error "MPIPE_UART is not defined to an available index (0-1)"
+#ifdef OT_GWNADC_PORTNUM
+#   if (OT_GWNADC_PORTNUM == 2)
+#       define OT_GWNADC_PORT      GPIO2
+#   else
+#       error "GWNADC (White Noise ADC Input Pin) must be on port 2"
+#   endif
 #endif
 
+
+
+#define MPIPE_UART_PINS     (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
+#define MPIPE_UART          UARTA0
+#define MPIPE_UART_RXSIG    PM_UCA0RXD
+#define MPIPE_UART_TXSIG    PM_UCA0TXD
+#define MPIPE_UART_RXTRIG   DMA_Trigger_UCA0RXIFG
+#define MPIPE_UART_TXTRIG   DMA_Trigger_UCA0TXIFG
+#define MPIPE_UART_VECTOR   USCI_A0_VECTOR
+
 #if (MCU_FEATURE_MPIPEDMA == ENABLED)
-#   define MPIPE_DMANUM    2
 #   if (MPIPE_DMANUM == 0)
 #       define MPIPE_DMA     DMA0
 #   elif (MPIPE_DMANUM == 1)
@@ -406,7 +430,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 #if (MCU_FEATURE_MEMCPYDMA == ENABLED)
-#   define MEMCPY_DMANUM    1
+#   define MEMCPY_DMANUM      (MPIPE_DMANUM + (MCU_FEATURE_MPIPEDMA == ENABLED))
 #   if (MEMCPY_DMANUM == 0)
 #       define MEMCPY_DMA     DMA0
 #   elif (MEMCPY_DMANUM == 1)
@@ -417,6 +441,8 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #       error "MEMCPY_DMANUM is not defined to an available index (0-2)"
 #   endif
 #endif
+
+
 
 
 

@@ -15,8 +15,8 @@
 /**
   * @file       /apps/demo_palfi/code_slave/main.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2011
+  * @version    R100
+  * @date       10 October 2011
   * @brief      PaLFi Demo Main
   *
   * This Demonstration Intends to Show:
@@ -77,9 +77,7 @@
   * ========================================================================
   */
 // Main Application Functions
-void    app_init();
-void    app_manager();
-ot_bool app_task_null();
+void app_init();
 
 
 
@@ -87,6 +85,7 @@ ot_bool app_task_null();
   * ============================================================================
   */
 void sub_button_init();
+
 
 
 /** Application Triggers & Button(s) <BR>
@@ -135,83 +134,39 @@ void sub_button_init() {
   *
   */
 void sub_led_cycle(ot_u8 i) {
-    switch (i & 3) {
-        case 0: PALFI_LED4_ON();        break;
-        case 1: PALFI_LED3_ON();        break;
-        case 2: otapi_led2_on();   		break;
-        case 3: otapi_led1_on();   		break;
-    }
+	i &= 3;
+	switch (i) {
+	case 0: PALFI_LED4_ON();	break;
+	case 1: PALFI_LED3_ON();	break;
+	case 2: otapi_led2_on();	break;
+	case 3: otapi_led1_on();	break;
+	}
 
     platform_swdelay_ms(33);
 
-    switch (i & 3) {
-        case 0: PALFI_LED4_OFF();       break;
-        case 1: PALFI_LED3_OFF();       break;
-        case 2: otapi_led2_off();       break;
-        case 3: otapi_led1_off();       break;
+    switch (i) {
+    case 0: PALFI_LED4_OFF();	break;
+    case 1: PALFI_LED3_OFF();	break;
+    case 2: otapi_led2_off();	break;
+    case 3: otapi_led1_off();	break;
     }
 }
+
 
 void app_init() {
     ot_u8 i;
 
     /// blink the LEDs
     i = 255;
-    do {
-        i++;
-        sub_led_cycle(i);
-    } while (i != 3);
-    do {
-        i--;
-        sub_led_cycle(i);
-    } while (i != 0);
+    do { sub_led_cycle(++i); } while (i != 3);
+    do { sub_led_cycle(--i); } while (i != 0);
 
     ///Initialize the input buttons
     sub_button_init();
-    
-    //app_task = &app_task_null;
 }
 
 
 
-
-ot_bool app_task_null() {
-    return False;
-}
-
-
-
-void app_manager() {
-/// This is something you can play with.  I WOULD NOT recommend using it
-/// with the request generation applets, but it will work fine with the
-/// mode-switching applets.  (Note, if you change the conditional to
-/// "if (sys.mutex == 0)" it is basically identical to sys.loadapp, in
-/// which case it will also work with the request generating applets).
-
-//  if (sys.mutex <= 1) {
-//      app_task();
-//      app_task = &app_task_null;
-//  }
-}
-
-
-
-void app_sleep() {
-#if (!defined(DEBUG_ON) && !defined(__DEBUG__))
-    if ((sys.evt.EXT.eventno != 0) || (sys.mutex != 0)) {
-        // LPM0/1 if there's MPipe, LPM0/1/2 if not
-        SLEEP_MCU();    
-    }
-    else {
-        // You could do LPM4 if you want the system to wake-up only through
-        // PalFi wake-ups or button presses.  LPM3 allows RTC and Kernel timer
-        // to stay enabled.
-        PMM_EnterLPM3();
-    }
-#else
-    SLEEP_MCU();
-#endif
-}
 
 
 
@@ -223,11 +178,6 @@ void app_sleep() {
   * The applets used are selected in extf_config.h.  They are implemented in
   * other C files, shown below.  The idea is that you pick the applet you want
   * in your makefile (or project), but they are all stored in the same folder.
-  *
-  * Typical Applets Used
-  * sys_sig_rfainit()           /otlibext/applets_std/sys_sig_rfainit.c
-  * sys_sig_rfaterminate()      /otlibext/applets_std/sys_sig_rfaterminate_2.c
-  *
   */
 
 
@@ -255,29 +205,7 @@ void app_sleep() {
   * the example in the API Quickstart Guide:
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
   */ 
-/*
-void otapi_alpext_proc(alp_record* in_rec, alp_record* out_rec, Queue* in_q, 
-                        Queue* out_q, id_tmpl* user_id) {
-/// For this example, the directive ID is 0x90 and the commands are 0-3.  You
-/// can change these values simply by changing the implementation of this 
-/// function.
 
-    if (in_rec->dir_id == 0x90) {
-        switch (in_rec->dir_cmd) {
-            case 0: sys.loadapp = &app_send_query;      break;
-            case 1: sys.loadapp = &app_send_beacon;     break;
-            case 2: sys.loadapp = &app_goto_gateway;    break;
-            case 3: sys.loadapp = &app_goto_endpoint;   break;
-           default: return;
-        }
-        
-        /// Write back success (1) if respond (CMD bit 7) is enabled
-        alp_load_retval(    (in_rec->dir_cmd & 0x80), 
-                            (in_rec->dir_cmd | 0x40), 
-                            1, out_rec, out_q           );
-    }
-}
-*/
 
 
 
@@ -306,33 +234,19 @@ void main(void) {
     ///   In this demo, the top-level application does very little.
     app_init();
 
+    ///4b. Load a message to show that main startup has passed
     OTAPI_LOG_MSG(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
-    ///<LI> a. Pre-empt the kernel (first run)   </LI>
-    ///<LI> b. Go to sleep; OpenTag kernel will run automatically in
-    ///        the background  </LI>
-    ///<LI> c. The kernel has a built-in applet loader.  It is the best way
-    ///        to use applets that generate requests or manipulate the system.
-    ///        The applets only load during full-idle, so time slotting or
-    ///        any other type of MAC activity is not affected. </LI>
-    ///<LI> d. 99.99% (or more) of the time, the kernel is not actually
-    ///        running.  You can run parallel, local tasks alongside OpenTag
-    ///        as long as they operate above priority 1.  (I/O is usually
-    ///        priority 0 and kernel is always priority 1) </LI>
-    otapi_preempt();
+    ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
+    ///<LI> The kernel actually runs at the bottom of this loop.</LI>
+    ///<LI> You could put code before or after sys_runtime_manager, which will
+    ///     run before or after the (task + kernel).  If you do, keep the code
+    ///     very short or else you are risking timing glitches.</LI>
+    ///<LI> To run any significant amount of user code, use tasks. </LI>
     while(1) {
-        app_manager();
-        app_sleep();
+    	platform_ot_run();
     }
-
-    ///6. Note on manually pre-empting the kernel for you own purposes:
-    ///   It can be done (many internal tasks do it), but be careful.
-    ///   It is recommended that you only do it when sys.mutex <= 1
-    ///   (i.e. no radio data transfer underway).  One adaptation of
-    ///   this demo is to have the mode-switching applets pre-empt the
-    ///   kernel (it works fine, but you need to make your own loader
-    ///   instead of using sys.loadapp).
 }
 
 

@@ -27,6 +27,9 @@
 
 
 #include "mpipe.h"
+
+#if (OT_FEATURE(MPIPE) == ENABLED)
+
 #include "OTAPI.h"
 #include "OT_platform.h"
 
@@ -161,7 +164,7 @@ void mpipe_systask(ot_task task) {
 #endif
 
 
-
+#endif
 
 
 

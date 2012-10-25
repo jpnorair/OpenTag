@@ -15,8 +15,8 @@
 /**
   * @file       /apps/demo_palfi/code_slave/extf_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R100
+  * @date       10 October 2012
   * @brief      Extension Function Configuration File for PaLFi Demo
   *
   * Don't actually include this.  Include OTAPI.h or OT_config.h instead.
@@ -34,13 +34,17 @@
 /// ALP Module EXTFs
 
 
+
 /// Auth Module EXTFs
+
 
 
 /// Buffer Module EXTFs
 
 
+
 /// CRC16 Module EXTFs
+
 
 
 /// Encode Module EXTFs
@@ -48,6 +52,15 @@
 
 
 /// External Module EXTFs
+///@note EXTF_ext_systask is almost always used externally
+#define EXTF_ext_systask
+
+
+
+/// M2 DLL Module EXTFs
+#define EXTF_dll_sig_rfinit
+#define EXTF_dll_sig_rfterminate
+
 
 
 /// M2 Network Module EXTFs
@@ -56,17 +69,17 @@
 
 
 /// M2QP Module EXTFs
+//#define EXTF_m2qp_sig_errresp
+//#define EXTF_m2qp_sig_stdresp
+//#define EXTF_m2qp_sig_a2presp
+//#define EXTF_m2qp_sig_dsresp
+//#define EXTF_m2qp_sig_dsack
+//#define EXTF_m2qp_sig_udpreq
 
 
 
 /// MPipe EXTFs
-//#define EXTF_mpipe_sig_txdone
-//#define EXTF_mpipe_sig_rxdone
-//#define EXTF_mpipe_sig_rxdetect
 
-
-
-/// NDEF module EXTFs
 
 
 /// OT Utils EXTFs
@@ -94,9 +107,7 @@
 
 /// System EXTFs
 //#define EXTF_sys_sig_panic
-#define EXTF_sys_sig_rfainit
-#define EXTF_sys_sig_rfaterminate
-#define EXTF_sys_sig_extprocess
+#define EXTF_sys_sig_powerdown
 
 
 

@@ -16,7 +16,7 @@
 /**
   * @file       /apps/demo_opmode/code/main.c
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       10 Oct 2012
   * @brief      Opmode Switching Demo
   *
@@ -85,8 +85,8 @@
 
 /** Application Global Variables <BR>
   * ========================================================================<BR>
-  * It is safe to either keep opmode_devicemode volatile, since it is set in an
-  * interrupt service routine.
+  * opmode_devicemode must be volatile, since it is set in an interrupt service 
+  * routine.
   */
 #ifdef __BIG_ENDIAN__
 #   define SYSMODE_OFF         0x0000
@@ -131,7 +131,6 @@ void opmode_goto_endpoint();
   * ============================================================================
   */
 void sub_button_init();
-void sub_trig_init();
 void sub_trig3_high();
 void sub_trig3_low();
 void sub_trig3_toggle();
@@ -189,10 +188,9 @@ static const ot_sub led_off[4] = {  &sub_trig4_low,
 
 void sub_led_cycle(ot_u8 i) {
     led_on[i&3]();
-    platform_block(600);	//600 sti ~= 18.3ms
+    platform_swdelay_ms(33);
     led_off[i&3]();
 }
-
 
 
 void app_init() {
@@ -201,17 +199,12 @@ void app_init() {
     ///Default Startup Mode: Gateway.  The button init may also alter this.
     opmode_devicemode = SYSMODE_GATEWAY;
 
-    ///Initialize Application Triggers (LEDs) and blink the LEDs
-    ///(Go left-to-right then right-to-left, like on an old-timey Cylon helmet).
-    sub_trig_init();
-
     i = 255;
     do { sub_led_cycle(++i); } while (i != 3);
     do { sub_led_cycle(--i); } while (i != 0);
 
     ///Initialize the input buttons
     sub_button_init();
-    //app_trig4_high();
 }
 
 
@@ -530,14 +523,10 @@ void main(void) {
     ///3. Initialize the User Applet & interrupts
     app_init();
 
-    ///4a. If USB is used for MPipe, we need to wait for the driver on
-    ///    the host to be ready.  Push the "Key" to exit sleep & resume.
-    ///    Also, the kernel is officially unattached during the process.
+    ///4a. The device will wait (and block anything else) until you connect
+    ///    it to a valid console app.
 #   if (MCU_FEATURE_MPIPEVCOM)
-        platform_flush_gptim();
-        while (opmode_devicemode == 0) {
-            SLEEP_MCU();
-        }
+    mpipe_wait();
 #   endif
 
     ///4b. Load a message to show that main startup has passed

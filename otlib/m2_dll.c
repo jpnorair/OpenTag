@@ -484,7 +484,7 @@ void dll_clock(ot_uint clocks) {
     }
     else if (session_count() >= 0) {
         sys.task_RFA.event      = 2;
-        sys.task_RFA.nextevent  = session.heap[session.top].counter;
+        sys.task_RFA.nextevent  = TI2CLK(session.heap[session.top].counter);
     }
 }
 #endif
@@ -602,8 +602,6 @@ void dll_systask_holdscan(ot_task task) {
 
 
 
-
-
 void dll_systask_sleepscan(ot_task task) {
 /// The Sleep Scan process runs as an independent task.  It is very similar
 /// to the Hold Scan process, which actually calls this same routine.  They
@@ -617,7 +615,6 @@ void dll_systask_sleepscan(ot_task task) {
     ot_uni16  scratch;
     vlFILE* fp;
 
-    /// Load scan data from the config file (Hold scan or Sleep scan)
     fp = ISF_open_su( task->event );
     ///@todo assert fp
 
@@ -625,16 +622,17 @@ void dll_systask_sleepscan(ot_task task) {
     scratch.ushort  = vl_read(fp, task->cursor);
     s_channel       = scratch.ubyte[0];
     s_flags         = scratch.ubyte[1];
-    
+
     /// Set the next idle event from the two-byte Next Scan field.  
     /// The DASH7 registry is big-endian.
 #   ifdef __BIG_ENDIAN__
-    task->nextevent = TI2CLK(vl_read(fp, (task->cursor)+=2 ));
+    scratch.ushort  = TI2CLK(vl_read(fp, (task->cursor)+=2 ));
 #   else
     scratch.ushort  = vl_read(fp, (task->cursor)+=2 );
-    task->nextevent = TI2CLK(PLATFORM_ENDIAN16(scratch.ushort));
+    scratch.ushort  = PLATFORM_ENDIAN16(scratch.ushort);
 #   endif
-        
+    sys_task_setnext(task, scratch.ushort);
+
     /// Advance cursor to next datum, go back to 0 if end of sequence
     /// (still works in special case where cursor = 254)
     task->cursor   += 2;
@@ -677,7 +675,7 @@ void dll_systask_beacon(ot_task task) {
     fp = ISF_open_su( ISF_ID(beacon_transmit_sequence) );
     if ((dll.netconf.b_attempts == 0) || (fp->length == 0)) {
         vl_close(fp);
-        sys.task_BTS.nextevent = 65000;  ///@todo make this an app-config parameter
+        sys_task_setnext(task, 65000);  ///@todo make this an app-config parameter
         return;
     }
     
@@ -685,7 +683,7 @@ void dll_systask_beacon(ot_task task) {
     // - Setup beacon ad-hoc session, on specified channel
     //   (ad hoc sessions never return NULL)
     // - Assure cmd code is always Broadcast & Announcement
-    scratch.ushort      = vl_read(fp, sys.task_BTS.cursor);
+    scratch.ushort      = vl_read(fp, task->cursor);
     session             = session_new(  NULL, 0,
                                         (M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX),
                                         scratch.ubyte[0]  );
@@ -693,29 +691,29 @@ void dll_systask_beacon(ot_task task) {
     beacon_params       = scratch.ubyte[1];
     session->flags      = (dll.netconf.dd_flags & ~0x30);
     session->flags     |= (beacon_params & 0x30);
-        
+
     // Second & Third 2 bytes: ISF Call Template
     q_init(&beacon_queue, &bq_data.ubyte[0], 4);
-    bq_data.ushort[0]   = vl_read(fp, sys.task_BTS.cursor+=2);
-    bq_data.ushort[1]   = vl_read(fp, sys.task_BTS.cursor+=2);
-        
+    bq_data.ushort[0]   = vl_read(fp, task->cursor+=2);
+    bq_data.ushort[1]   = vl_read(fp, task->cursor+=2);
+
     // Last 2 bytes: Next Scan ticks
 #   ifdef __BIG_ENDIAN__
-        sys.task_BTS.nextevent  = TI2CLK( vl_read(fp, sys.task_BTS.cursor+=2) );
+        scratch.ushort = TI2CLK( vl_read(fp, task->cursor+=2) );
 #   else
-        scratch.ushort          = vl_read(fp, sys.task_BTS.cursor+=2);
-        scratch.ushort          = PLATFORM_ENDIAN16(scratch.ushort);
-        sys.task_BTS.nextevent  = TI2CLK(scratch.ushort);
+        scratch.ushort = vl_read(fp, task->cursor+=2);
+        scratch.ushort = PLATFORM_ENDIAN16(scratch.ushort);
 #   endif
-        
+    sys_task_setnext(task, scratch.ushort);
+
     /// Beacon List Management:
     /// <LI> Move cursor onto next beacon period </LI>
     /// <LI> Loop cursor if it is past the length of the list </LI>
     /// <LI> In special case where cursor = 254, everything still works! </LI>
-    sys.task_BTS.cursor += 2;
-    sys.task_BTS.cursor  = (sys.task_BTS.cursor >= fp->length) ? 0 : sys.task_BTS.cursor;
+    task->cursor += 2;
+    task->cursor  = (task->cursor >= fp->length) ? 0 : task->cursor;
     vl_close(fp);
-    
+
     /// Start building the beacon packet:
     /// <LI> Calling m2np_header() will write most of the front of the frame </LI>
     /// <LI> Add the command byte and optional command-extension byte </LI>
@@ -823,15 +821,15 @@ void sub_timeout_scan() {
 	// Pad the nextevent for some time.  rm2_rxtimeout_isr() will preempt
 	// the kernel if it is called, and reset nextevent.  If packet is RX'ing,
 	// radio will also generate the RX-done interrupt, and preempt kernel.
-	sys.task_RFA.nextevent = TI2CLK(128);
+    sys_task_setnext(&sys.task[TASK_radio], 128);
 
     if ((radio.state != RADIO_DataRX) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) {
         rm2_rxtimeout_isr();
     }
 #else
     // Add a little bit of time in case the radio timer is a bit slow.
-    sys.task_RFA.nextevent  = TI2CLK(10);
-    sys.task_RFA.event      = 0;
+    sys_task_setnext(&sys.task[TASK_radio]->nextevent, 10);
+    sys.task[TASK_radio].event = 0;
 #endif
 }
 
@@ -849,9 +847,10 @@ void sub_init_rx(ot_u8 is_brx) {
 /// @todo A more adaptive method for scanning is planned, in which the latency 
 /// drops to 1 only after a sync word is detected.
 
+	sys_task_setnext(&sys.task[TASK_radio], dll.comm.rx_timeout);
+
     sys.task_RFA.latency    = 1;     // Could be as higher in the future
   //sys.task_RFA.reserved   = 10;    //un-necessary, RFA is max priority
-    sys.task_RFA.nextevent  = TI2CLK(dll.comm.rx_timeout);
     sys.task_RFA.event      = 3;
     
     DLL_SIG_RFINIT(sys.task_RFA.event);
@@ -873,14 +872,14 @@ void sub_init_rx(ot_u8 is_brx) {
 void sub_init_tx(ot_u8 is_btx) {
 /// Initialize background or foreground packet TX.  Often this includes CSMA
 /// initialization as well.
-    sys.task_RFA.nextevent  = dll.comm.tc;
+    sys_task_setnext_clocks(&sys.task[TASK_radio], dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
     sys.task_RFA.latency    = 1; 
     sys.task_RFA.event      = 4;
 
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
-#if (SYS_FLOOD)
+#if (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER))
     dll.counter = (is_btx != 0) ? session.heap[session.top+1].counter : 0;
     rm2_txinit(is_btx, &rfevt_txcsma);
 #else
@@ -909,23 +908,28 @@ void rfevt_bscan(ot_int scode, ot_int fcode) {
     // CRC Failure (or init), retry
     if ((scode == -1) && (dll.comm.redundants != 0)) {
         rm2_rxinit(dll.comm.rx_chanlist[0], 0, &rfevt_bscan);    //non-blocking
+        return;
     }
     
-    // Do not retry (success on (scode >= 0) or radio-core-failure otherwise)
-    else {
-        radio_sleep();
-        session_pop();
-        
-        // network_parse_bf() must create a new session if the packet is good.
-        if ((scode >= 0) && (sub_mac_filter() == True)) {
-            network_parse_bf(); 
-        }
-
-        DLL_SIG_RFTERMINATE(sys.task_RFA.event, scode);
-
-        sys.task_RFA.event = 0;
-        sys_preempt(&sys.task_RFA, 0);
+    // A valid packet was received:
+    // network_parse_bf() must update the top session
+    if (scode >= 0) {
+    	scode = sub_mac_filter() - 1;
+    	if (scode == 0) {
+    		network_parse_bf();
+    	}
     }
+
+    // Either a timeout or a background packet sent to a different subnet
+    if (scode < 0) {
+    	session_pop();
+    	dll_idle();
+    }
+
+    DLL_SIG_RFTERMINATE(3, scode);
+
+    sys.task_RFA.event = 0;
+    sys_preempt(&sys.task_RFA, 0);
 }
 
 
@@ -1043,7 +1047,6 @@ void rfevt_txcsma(ot_int pcode, ot_int tcode) {
     /// have an applet attached to it, the applet can adjust the netstate and 
     /// try again if it chooses.
     else {
-        sub_dll_txcsma_fail:
         DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
         
         session.heap[session.top].netstate |= M2_NETFLAG_SCRAP;

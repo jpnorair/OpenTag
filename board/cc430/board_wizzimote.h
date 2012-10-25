@@ -31,7 +31,6 @@
 
 #include "build_config.h"
 #include "platform_CC430.h"
-#include "radio_CC430.h"
 
 #ifdef __NULL_RADIO__
 #   include "radio_null.h"
@@ -83,8 +82,8 @@
 #define MCU_FEATURE_RADIODMA_TXBYTES    0
 #define MCU_FEATURE_RADIODMA_RXBYTES    0
 #define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPEDMA            ENABLED
-#define MCU_FEATURE_MEMCPYDMA           ENABLED
+#define MCU_FEATURE_MPIPEDMA            ENABLED     // MPIPE typically requires DMA on this platform
+#define MCU_FEATURE_MEMCPYDMA           ENABLED     // MEMCPY DMA should be lower priority than MPIPE DMA
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_POINTERSIZE           2
@@ -105,10 +104,7 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
   * ========================================================================<BR>
   * Notes apart from the obvious:  
   *
-  * 1. There is a general purpose button attached to P1.5.  The other two 
-  * buttons are hooked directly into the PaLFi core.  In the board schematic 
-  * and documentation, this button is defined as "SW2".  This button is active-
-  * low and it requires you to pull-up the input pin.
+  * 1. There is a general purpose button attached to P1.5.
   * 
   * 2. The 2 LEDs (TRIGS 1-2) are normal-biased.
   */
@@ -199,23 +195,28 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 #endif
 
 
+
+
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
-    P1DIR = 0xFF;
-    P2DIR = 0xFF;
-    P3DIR = 0xFF;
-    
-#   if (defined(DEBUG_ON) || defined(__DEBUG__))
+    u8 i;
+
+#if (defined(DEBUG_ON) || defined(__DEBUG__))
+#   define _DEBUG_ON_PORTJ  1
     PJDIR = 0x00;
-#   else
-    PJDIR = 0xFF;
-#   endif    
+#else
+#   define _DEBUG_ON_PORTJ  0
+#endif
+
+    for (i=(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ); i!=0; i--) {
+    	*((u8*)cc430_pdir_list[i])  = 0x00;
+    	*((u8*)cc430_pout_list[i])  = 0x00;
+    }
     
-    P1OUT = 0x00;
-    P2OUT = 0x00;
-    P3OUT = 0x00;
-    PJOUT = 0x00;
+#undef _DEBUG_ON_PORTJ
 }
+
+
 
 // LFXT1 Preconfiguration, using values local to the board design
 // ALL CC430 Boards MUST HAVE SOME VARIANT OF THIS
@@ -350,16 +351,20 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 /** Basic GPIO Setup <BR>
   * ========================================================================<BR>
-  * <LI>MPipe is a UART-based serial interface.  It needs to be specified with
-  *     a UART peripheral number and RX/TX port & pin configurations. </LI>
-  * <LI>OT Triggers are test outputs, usually LEDs.  They should be configured
-  *     to ports & pins where there are LED or other trigger connections.</LI>
-  * <LI>The GWN feature is part of a true-random-number generator.  It is
-  *     optional.  It needs a port & pin for the ADC input (GWNADC) and also,
-  *     optionally, one for a Zener driving output port & pin.  Using a Zener
-  *     can greatly accelerate the random number generation process.</LI>
+  * <LI> MPipe is a UART-based serial interface.  It needs to be specified with
+  *      a UART peripheral number and RX/TX port & pin configurations. 
+  * </LI>
+  * <LI> OT Triggers are test outputs, usually LEDs.  They should be configured
+  *      to ports & pins where there are LED or other trigger connections.
+  * </LI>
+  * <LI> The GWN feature is part of a true-random-number generator.  It is
+  *      optional.  It needs a port & pin for the ADC input (GWNADC) and also,
+  *      optionally, one for a Zener driving output port & pin.  On the CC430,
+  *      the ADC can be hacked to produce the benefits of a Zener without 
+  *      actually having one, so don't worry about the Zener. 
+  * </LI>
   */
-#define MPIPE_DMANUM        2
+#define MPIPE_DMANUM        0
 #define MPIPE_UART_PORT     GPIO2
 #define MPIPE_UART_PORTMAP  P2M
 #define MPIPE_UART_RXPIN    GPIO_Pin_0
@@ -450,7 +455,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 #if (MCU_FEATURE_MEMCPYDMA == ENABLED)
-#   define MEMCPY_DMANUM    1
+#   define MEMCPY_DMANUM      (MPIPE_DMANUM + (MCU_FEATURE_MPIPEDMA == ENABLED))
 #   if (MEMCPY_DMANUM == 0)
 #       define MEMCPY_DMA     DMA0
 #   elif (MEMCPY_DMANUM == 1)

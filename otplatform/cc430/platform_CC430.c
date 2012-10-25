@@ -131,7 +131,7 @@ typedef struct {
 #   if (RTC_OVERSAMPLE)
 #   endif
 #   if (RTC_ALARMS > 0)
-        rtcalarm alarm[RTC_ALARMS]
+        rtcalarm alarm[RTC_ALARMS];
 #   endif
 
 } platform_ext_struct;
@@ -853,8 +853,8 @@ void platform_disable_rtc() {
 void platform_set_time(ot_u32 utc_time) {
 #if (RTC_OVERSAMPLE)
 #else
-    RTC->TIM0   = ((ot_u16*)utc_time)[0];
-    RTC->TIM1   = ((ot_u16*)utc_time)[1];
+    RTC->TIM0   = ((ot_u16*)&utc_time)[LOWER];
+    RTC->TIM1   = ((ot_u16*)&utc_time)[UPPER];
 #endif
 }
 
@@ -864,10 +864,11 @@ ot_u32 platform_get_time() {
     return platform_ext.utc;
     
 #   else
-    ot_u32 output;
-    ((ot_u16*)output)[0]    = RTC->TIM0;
-    ((ot_u16*)output)[1]    = RTC->TIM1;
-    return output;
+    ot_uni32 output;
+    output.ushort[LOWER]	= RTC->TIM0;
+    output.ushort[UPPER]	= RTC->TIM1;
+
+    return output.ulong;
 #   endif
 
 #else

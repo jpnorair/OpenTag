@@ -2,7 +2,7 @@
 /**
   * @file       /apps/demo_opmode/code/extf_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
+  * @version    R100
   * @date       10 October 2012
   * @brief      Extension Function Configuration File for Opmode Demo
   *
@@ -73,17 +73,15 @@
 
 
 /// MPipe EXTFs
-//#define EXTF_mpipe_sig_txdone
-//#define EXTF_mpipe_sig_rxdone
 
-
-/// NDEF module EXTFs
 
 
 /// OT Utils EXTFs
 
 
+
 /// OTAPI C EXTFs
+
 
 
 /// OTAPI EXTFs
@@ -99,7 +97,7 @@
 /// Session EXTFs
 
 
-///  EXTFs
+/// System EXTFs
 #define EXTF_sys_sig_panic
 //#define EXTF_sys_sig_powerdown
 

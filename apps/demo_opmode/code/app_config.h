@@ -71,7 +71,6 @@
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
 #define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    
-#define OT_PARAM_WATCHDOG_PERIOD        16                                  // Number of ticks before exception, following expected event return time
 #define OT_PARAM_KERNEL_LIMIT           -1                                  // Maximum ticks between kernel calls (if<=0, no limit)
 
 #define OT_FEATURE(VAL)                 OT_FEATURE_##VAL

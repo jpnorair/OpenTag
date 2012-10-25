@@ -15,8 +15,8 @@
 /**
   * @file       /apps/demo_palfi/code_master/extf_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
-  * @date       16 April 2012
+  * @version    R100
+  * @date       10 October 2012
   * @brief      Extension Function Configuration File for PaLFi Demo
   *
   * Don't actually include this.  Include OTAPI.h or OT_config.h instead.
@@ -31,6 +31,7 @@
 #ifndef __EXTF_CONFIG_H
 #define __EXTF_CONFIG_H
 
+// Special Inclusion, as this app can use two very different boards
 #include "platform_config.h"
 
 
@@ -43,6 +44,7 @@
 /// Auth Module EXTFs
 
 
+
 /// Buffer Module EXTFs
 
 
@@ -51,16 +53,24 @@
 
 
 
-
 /// Encode Module EXTFs
 
 
+
 /// External Module EXTFs
+///@note EXTF_ext_systask is almost always used externally
+#define EXTF_ext_systask
+
+
+
+/// M2 DLL Module EXTFs
+#define EXTF_dll_sig_rfinit
+#define EXTF_dll_sig_rfterminate
+
 
 
 /// M2 Network Module EXTFs
 //#define EXTF_network_sig_route
-
 
 
 
@@ -75,18 +85,10 @@
 
 
 /// MPipe EXTFs
-#define EXTF_mpipe_sig_txdone
-#define EXTF_mpipe_sig_rxdone
-//#define EXTF_mpipe_sig_rxdetect
-
-
-
-/// NDEF module EXTFs
 
 
 
 /// OT Utils EXTFs
-
 
 
 
@@ -105,7 +107,6 @@
 
 
 
-
 /// Queue EXTFs
 
 
@@ -118,8 +119,7 @@
 
 /// System EXTFs
 #define EXTF_sys_sig_panic
-#define EXTF_sys_sig_rfainit
-#define EXTF_sys_sig_rfaterminate
+//#define EXTF_sys_sig_powerdown
 
 
 

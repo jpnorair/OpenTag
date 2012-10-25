@@ -15,8 +15,8 @@
 /**
   * @file       /apps/demo_palfi/code_slave/palfi.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       16 April 2012
+  * @version    R100
+  * @date       10 October 2012
   * @brief      PaLFi Demo Slave Features
   *
   * This application for OpenTag would qualify as an intermediate example (OK, 
@@ -49,6 +49,9 @@
 #include "OTAPI.h"
 #include "OT_platform.h"
 #include "palfi.h"
+
+
+#define PALFI_TASK (&sys.task[TASK_external])
 
 
 /** Number of switches (physical buttons) on your board that are attached to
@@ -90,7 +93,7 @@ palfiext_struct     palfiext;
 
 void sub_program_channels(palfi_CHAN channel, ot_u8 trim_val, ot_u8 base_val);
 void sub_prog_trimswitch(ot_s8 trim_val);
-void sub_measurefreq_init(ot_u8 trim_val);
+ot_int sub_measurefreq_init(ot_u8 trim_val);
 void sub_measurefreq_finish(float* t_pulse);
 void sub_calculate_trim();
 
@@ -104,14 +107,14 @@ void sub_build_uhfmsg(ot_int* buffer);
 // Palfi Actions are non-blocking states in the application.  Simple features 
 // of the application execute in a single state.  More complex features (e.g.
 // trimming) require a multi-state approach.
-ot_bool palfi_action_spitrim_0(void);
-ot_bool palfi_action_spitrim_1(void);
-ot_bool palfi_action_spitrim_2(void);
-ot_bool palfi_action_spitrim_3(void);
-ot_bool palfi_action_spitrim_4(void);
-ot_bool palfi_action_spitrim_5(void);
-ot_bool palfi_action_swtrim_0(void);
-ot_bool palfi_action_swtrim_1(void);
+ot_int palfi_action_spitrim_0(void);
+ot_int palfi_action_spitrim_1(void);
+ot_int palfi_action_spitrim_2(void);
+ot_int palfi_action_spitrim_3(void);
+ot_int palfi_action_spitrim_4(void);
+ot_int palfi_action_spitrim_5(void);
+ot_int palfi_action_swtrim_0(void);
+ot_int palfi_action_swtrim_1(void);
 
 
 
@@ -136,6 +139,7 @@ OT_INTERRUPT void palfi_port_isr(void) {
 /// Disable and clear the LF wakeup interrupt bit.  It will need to be
 /// re-enabled after the application runs, but with it off it will not get in
 /// the way of non-blocking process.
+    ot_u8 event_call;
 
     // disable & clear P1.0 interrupt 
     PALFI_WAKE_PORT->IE  &= ~PALFI_WAKE_PIN;
@@ -146,13 +150,13 @@ OT_INTERRUPT void palfi_port_isr(void) {
     /// there is some time needed for the PaLFI I/O subsystem to stabilize.
     /// The exact wait slot is not documented, but it is less than 32 ticks and
     /// more than 20 ticks.  Here, 32 ticks is used.
-    sys.evt.EXT.nextevent   = 32;
-    sys.evt.EXT.event_no    = 1 + ((BOARD_SW2_PORT->DIN & BOARD_SW2_PIN) == 0);
+    event_call = 1 + ((BOARD_SW2_PORT->DIN & BOARD_SW2_PIN) == 0);
 
     // Pre-empt the kernel, which will clock events and attach the wait slot
-    platform_ot_preempt();
-    
-    LPM4_EXIT;
+    sys_task_setevent(PALFI_TASK, event_call);
+    sys_task_setreserve(PALFI_TASK, 64);
+    sys_task_setlatency(PALFI_TASK, 1);
+    sys_preempt(PALFI_TASK, 32);
 }
 
 
@@ -185,11 +189,9 @@ OT_INTERRUPT void palfi_tim_isr(void) {
     if (palfi.trim.count == palfi.trim.endcount) {
         palfi.trim.endval       = PALFI_TIM->CCR0;
         PALFI_TIM->CCTL0       &= ~CCIE;
-        sys.evt.EXT.nextevent   = 0;
-        platform_ot_preempt();
+        
+        ///@todo Need to loop back to the trimming
     }
-    
-    LPM4_EXIT;
 }
 
 
@@ -215,108 +217,122 @@ OT_INTERRUPT void palfi_tim_isr(void) {
   * positive value (roughly milliseconds)
   */
 
-#ifndef EXTF_sys_sig_extprocess
-#   error "EXTF_sys_sig_extprocess must be defined in extf_config.h for this app to work"
+#ifndef EXTF_ext_systask
+#   error "EXTF_ext_systask must be defined in extf_config.h for this app to work"
 #endif
 
-void sys_sig_extprocess(void* data) {
+void ext_systask(ot_task task) {
 /// This function is a static callback that the kernel calls after the EOF
 /// wait slot elapses.  It is defined in /OTlib/system.h.  This implementation
 /// checks the value of the event number, which indicates if there should be 
 /// the normal routine, the trimming routine, or nothing.
 
     sys_sig_extprocess_TOP:
-    switch (sys.evt.EXT.event_no) {
+    switch (task->event) {
         // Normal 0.1
         case 1:     // no break
         
         // Trimming & Normal 0.1
-        case 2: {   palfi_spi_startup();
-                    palfi_cmdstatus();
+        case 2: {   
+            palfi_spi_startup();
+            palfi_cmdstatus();
 
-                    // Check for Wake A/B event on [0]:BIT0/BIT1, which we call event A/B
-                    // Wake A and B cannot physically happen at the same time
-                    palfi.wake_event = (palfi.status[0] & 3);
+            // Check for Wake A/B event on [0]:BIT0/BIT1, which we call event A/B
+            // Wake A and B cannot physically happen at the same time
+            palfi.wake_event = (palfi.status[0] & 3);
 
-                    // On PaLFI wakeup, return to the kernel and supply enough
-                    // time to RX the whole PaLFI packet (250ms is generic)
-                    if (palfi.wake_event) {
-                        palfi.wake_event       += ('A'-1);
-                        sys.evt.EXT.event_no   += 2;
-                        palfi_cmdrssi();
-                    }
+            // On PaLFI wakeup, return to the kernel and supply enough
+            // time to RX the whole PaLFI packet (250ms is generic)
+            if (palfi.wake_event) {
+                palfi.wake_event   += ('A'-1);
+                task->event        += 2;
+                palfi_cmdrssi();
+            }
 
-                    // On a switch-press wakeup, set the event number to the
-                    // appropriate switch case (7-10) and go directly to it.
-                    // Also, wipe the RSSI buffer.
-                    else {
-                        ot_u8 i;
-                        for (i=0; i<PALFI_SWITCHES; i++) {
-                            if (palfi.status[2] & (1<<i)) {
-                                palfi.wake_event = i+'1';
-                                break;
-                            }
-                        }
-                        sys.evt.EXT.event_no = (palfi.wake_event) ? \
-                                             sys.evt.EXT.event_no+4+(i<<1) : 0;
-                        platform_memset(&palfi.rssi_info, 0xFF, 6);
+            // On a switch-press wakeup, set the event number to the
+            // appropriate switch case (7-10) and go directly to it.
+            // Also, wipe the RSSI buffer.
+            else {
+                ot_u8 i;
+                for (i=0; i<PALFI_SWITCHES; i++) {
+                    if (palfi.status[2] & (1<<i)) {
+                        palfi.wake_event = i+'1';
+                        break;
                     }
                 }
-                goto sys_sig_extprocess_TOP;
+                task->event = (palfi.wake_event) ? task->event+4+(i<<1) : 0;
+                platform_memset(&palfi.rssi_info, 0xFF, 6);
+            }
+        }
+        goto sys_sig_extprocess_TOP;
         
         // Normal Exit (no break, also includes Trimming exit)
         case 3:
         sys_sig_extprocess_EXIT1:
-                    // if transmitted LF data = 1/2, activate/deactivate TPS
-                    if (palfi.status[3] == 1) {
-                        PALFI_BYPASS_PORT->DOUT &= ~PALFI_BYPASS_PIN;
-                    }
-                    else if (palfi.status[3] == 2) {
-                        PALFI_BYPASS_PORT->DOUT |= PALFI_BYPASS_PIN;
-                    }
+            // if transmitted LF data = 1/2, activate/deactivate TPS
+            if (palfi.status[3] == 1) {
+                PALFI_BYPASS_PORT->DOUT &= ~PALFI_BYPASS_PIN;
+            }
+            else if (palfi.status[3] == 2) {
+                PALFI_BYPASS_PORT->DOUT |= PALFI_BYPASS_PIN;
+            }
         
         // Trimming & Normal Exit
         // There was success, so start the UHF dialog task.  You can edit what
         // exactly the uhf task does in its implementation (also this file)
         case 4:
         sys_sig_extprocess_EXIT2:
-                    palfi_powerdown();
-                    { // Add new DASH7 comm task to kernel, using most defaults.
-                        session_tmpl s_tmpl;
-                        s_tmpl.channel      = (palfi.wake_event & 1) ? \
-                                                ALERT_CHAN1 : ALERT_CHAN2;
-                        s_tmpl.subnetmask   = 0;
-                        s_tmpl.flagmask     = 0;
-                        otapi_task_immediate(&s_tmpl, &applet_adcpacket);
-                    }
-                    break;
+            palfi_powerdown();
+            { // Add new DASH7 comm task to kernel, using most defaults.
+                session_tmpl s_tmpl;
+                s_tmpl.channel      = (palfi.wake_event & 1) ? \
+                                        ALERT_CHAN1 : ALERT_CHAN2;
+                s_tmpl.subnetmask   = 0;
+                s_tmpl.flagmask     = 0;
+                otapi_task_immediate(&s_tmpl, &applet_adcpacket);
+            }
+            return;
         
         // Normal Event 1: Bypass ON, VCL OFF
-        case 5:     PALFI_BYPASS_PORT->DOUT    |= PALFI_BYPASS_PIN;
-                    PALFI_VCLD_PORT->DOUT      &= ~PALFI_VCLD_PIN;
-                    goto sys_sig_extprocess_EXIT1;
+        case 5:     
+            PALFI_BYPASS_PORT->DOUT    |= PALFI_BYPASS_PIN;
+            PALFI_VCLD_PORT->DOUT      &= ~PALFI_VCLD_PIN;
+            goto sys_sig_extprocess_EXIT1;
         
         // Trimming Event 1: SPI Trimming (multi-state process)
-        case 6:     palfi.action = &palfi_action_spitrim_0;
-                    if (palfi.action()) {
-                        goto sys_sig_extprocess_EXIT2;
-                    }
-                    break;
+        case 6:     
+            palfi.action = &palfi_action_spitrim_0;
+            break;
         
         // Normal Event 2: Bypass OFF
-        case 7:     PALFI_BYPASS_PORT->DOUT    &= ~PALFI_BYPASS_PIN;
-                    goto sys_sig_extprocess_EXIT1;
+        case 7:     
+            PALFI_BYPASS_PORT->DOUT &= ~PALFI_BYPASS_PIN;
+            goto sys_sig_extprocess_EXIT1;
         
         // Trimming Event 2: Switch Trimming (multi-state process)
-        case 8:     palfi.action = &palfi_action_swtrim_0;
-                    if (palfi.action()) {
-                        goto sys_sig_extprocess_EXIT2;
-                    }
-                    break;
+        case 8:     
+            palfi.action = &palfi_action_swtrim_0;
+            break;
         
         // Some type of error
         default:    palfi_powerdown();
-                    break;
+                    return;
+    }
+
+    // PaLFI action manager
+    // If Action returns 0, the process has completed.
+    // If Action returns <0, the process is interrupt-driven and the kernel
+    //   task should ignore.
+    // If Action returns >0, the process is timed via the task.
+    {
+    	ot_int task_next;
+    	task_next = palfi.action();
+    	if (task_next == 0) {
+    		goto sys_sig_extprocess_EXIT2;
+    	}
+    	if (task_next > 0) {
+    		sys_task_setnext(task, (ot_uint)task_next);
+    	}
     }
 }
 
@@ -559,8 +575,8 @@ void palfi_powerdown() {
     PALFI_SPI->CTL1        |= UCSWRST;
     PALFI_WAKE_PORT->IFG   &= ~PALFI_WAKE_PIN;
     PALFI_WAKE_PORT->IE    |= PALFI_WAKE_PIN;
-    palfi.wake_event    = 0;
-    sys.evt.EXT.event_no= 0;
+    palfi.wake_event        = 0;
+    sys_task_setevent(PALFI_TASK, 0);
 }
 
 
@@ -705,7 +721,7 @@ ot_u8 sub_spi_trx(ot_u8 write) {
   * ========================================================================
   */
 
-ot_bool palfi_action_spitrim_0(void) {
+ot_int palfi_action_spitrim_0(void) {
     PALFI_BYPASS_PORT->DOUT    |= PALFI_BYPASS_PIN;
     PALFI_VCLD_PORT->DOUT      |= PALFI_VCLD_PIN;
     palfi.channel               = 1;
@@ -713,39 +729,35 @@ ot_bool palfi_action_spitrim_0(void) {
 }
 
 
-ot_bool palfi_action_spitrim_1(void) {
+ot_int palfi_action_spitrim_1(void) {
+	palfi.action = &palfi_action_spitrim_2;
     sub_prog_trimswitch(0);
-    sys.evt.EXT.nextevent   = 4;    // wait ~4 ms
-    palfi.action            = &palfi_action_spitrim_2;
-    return False;
+    return 5;  //wait ~4 ms
 }
 
 
-ot_bool palfi_action_spitrim_2(void) {
+ot_int palfi_action_spitrim_2(void) {
 /// init frequency measurement with trim switches all programmed to off
-    sub_measurefreq_init(0);
-    palfi.action  = &palfi_action_spitrim_3;
-    return False;
+	palfi.action = &palfi_action_spitrim_3;
+    return sub_measurefreq_init(0);
 }
 
 
-ot_bool palfi_action_spitrim_3(void) {
+ot_int palfi_action_spitrim_3(void) {
+	palfi.action = &palfi_action_spitrim_4;
     sub_measurefreq_finish(&palfi.trim.tlow[palfi.channel]);
-    sys.evt.EXT.nextevent   = 5;        // wait ~5 ms
-    palfi.action            = &palfi_action_spitrim_4;
-    return False;
+    return 5;  // wait ~4 ms
 }
 
 
-ot_bool palfi_action_spitrim_4(void) {
+ot_int palfi_action_spitrim_4(void) {
 /// measure frequency with trim switches all programmed to on
-    sub_measurefreq_init(0x7f);
-    palfi.action  = &palfi_action_spitrim_5;
-    return False;
+	palfi.action = &palfi_action_spitrim_5;
+    return sub_measurefreq_init(0x7f);
 }
 
 
-ot_bool palfi_action_spitrim_5(void) {
+ot_int palfi_action_spitrim_5(void) {
     sub_measurefreq_finish(&palfi.trim.thigh[palfi.channel]);
     sub_calculate_trim();
     sub_prog_trimswitch(palfi.trimval[palfi.channel]);
@@ -754,12 +766,12 @@ ot_bool palfi_action_spitrim_5(void) {
     if (palfi.channel == 3) {
         PALFI_VCLD_PORT->DOUT      &= ~PALFI_VCLD_PIN;      // disable VCL charging
         PALFI_BYPASS_PORT->DOUT    &= ~PALFI_BYPASS_PIN;    // enable DC/DC converter   
-        return True;
+        return 0;
     }
     
     palfi.channel++;
     palfi.action  = &palfi_action_spitrim_1;
-    return False;
+    return -1;
 }
 
 
@@ -771,7 +783,9 @@ ot_bool palfi_action_spitrim_5(void) {
 /** Switch Trimming Action sequence  <BR>
   * ========================================================================
   */
-ot_bool palfi_action_swtrim_0(void) {
+ot_int palfi_action_swtrim_0(void) {
+	palfi.action = &palfi_action_swtrim_1;
+
     PALFI_BYPASS_PORT->DOUT    |= PALFI_BYPASS_PIN;
     PALFI_VCLD_PORT->DOUT      |= PALFI_VCLD_PIN;
     
@@ -781,17 +795,16 @@ ot_bool palfi_action_swtrim_0(void) {
     }
     
     PALFI_LED3_ON();
-    sys.evt.EXT.nextevent   = 50;
-    palfi.action            = &palfi_action_swtrim_1;
-    return False;
+
+    return 52;  // wait ~50 ms
 }
 
 
-ot_bool palfi_action_swtrim_1(void) {
+ot_int palfi_action_swtrim_1(void) {
     PALFI_LED3_OFF();
     PALFI_VCLD_PORT->DOUT      &= ~PALFI_VCLD_PIN;      // disable VCL charging
     PALFI_BYPASS_PORT->DOUT    &= ~PALFI_BYPASS_PIN;    // enable DC/DC converter   
-    return False;
+    return -1;
 }
 
 
@@ -821,7 +834,7 @@ void sub_prog_trimswitch(ot_s8 trim_val) {
 }
 
 
-void sub_measurefreq_init(ot_u8 trim_val) {
+ot_int sub_measurefreq_init(ot_u8 trim_val) {
     /// Prepare the measurement timer
     PALFI_TIM->CTL      = TACLR;                // reset Timer 0
     PALFI_TIM->CTL      = TASSEL_2 + MC_2;      // SMCLK, continuous
@@ -835,16 +848,16 @@ void sub_measurefreq_init(ot_u8 trim_val) {
     
     /// Set this up as a non-blocking external process.  The timer interrupt  
     /// will pre-empt the kernel and cancel the timeout, if everything goes well  
-    sys.evt.EXT.nextevent   = 1024;      // kernel watchdog timeout ~1000ms
+    return 1024;  // task-timeout watchdog = ~1000ms
 }
 
 
 void sub_measurefreq_finish(float* t_pulse) {
     PALFI_TIM->CTL = TACLR;
 
-    if (sys.evt.EXT.nextevent <= 0) {
+    if (PALFI_TASK->nextevent <= 0) {
         //Watchdog Timeout, cancel the process
-        sys.evt.EXT.event_no= 0;
+    	sys_task_setevent(PALFI_TASK, 0);
     }
     else {
         ot_uint num_periods;

@@ -181,9 +181,9 @@ void sys_panic(ot_u8 err_code) {
 void sys_powerdown() {
     ot_int code;
     code    = 3; //(platform_next_ktim() <= 3) ? 0 : 3;
-    code    = (sys.task_RFA.event) ? 2 : code;
+    code   -= (sys.task_RFA.event != 0);
 #   if (OT_FEATURE(MPIPE))
-    code    = (sys.task_MPA.event > 0) ? 1 : code;
+    code    = (mpipe_status() <= 0) ? 1 : code;
 #   endif
 
 #   if defined(EXTF_sys_sig_powerdown)
@@ -207,24 +207,28 @@ void sys_powerdown() {
 
 
 
-void sys_task_setevent(Task_Index id, ot_u8 event) {
-    sys.task[id].event = event;
+void sys_task_setevent(ot_task task, ot_u8 event) {
+    task->event = event;
 }
 
-void sys_task_setcursor(Task_Index id, ot_u8 cursor) {
-    sys.task[id].cursor = cursor;
+void sys_task_setcursor(ot_task task, ot_u8 cursor) {
+    task->cursor = cursor;
 }
 
-void sys_task_setreserve(Task_Index id, ot_u8 reserve) {
-    sys.task[id].reserve = reserve;
+void sys_task_setreserve(ot_task task, ot_u8 reserve) {
+	task->reserve = reserve;
 }
 
-void sys_task_setlatency(Task_Index id, ot_u8 latency) {
-    sys.task[id].cursor = latency;
+void sys_task_setlatency(ot_task task, ot_u8 latency) {
+	task->latency = latency;
 }
 
-void sys_task_setnext(Task_Index id, ot_u16 next) {
-    sys.task[id].nextevent = TI2CLK(next);
+void sys_task_setnext(ot_task task, ot_u16 nextevent_ti) {
+	sys_task_setnext_clocks(task, TI2CLK(nextevent_ti));
+}
+
+void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
+	task->nextevent = (ot_long)platform_get_ktim() + nextevent_clocks;
 }
 
 
@@ -381,7 +385,7 @@ void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 /// by manually setting the timer interrupt flag.  If a task is running while
 /// this function is called (typical usage), first the task will finish and then
 /// enable the timer interrupt via sys_runtime_manager().
-	task->nextevent = (ot_long)platform_get_ktim() + TI2CLK(nextevent_ti);
+	sys_task_setnext(task, nextevent_ti);
 	platform_ot_preempt();
 }
 

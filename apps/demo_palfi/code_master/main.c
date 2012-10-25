@@ -15,8 +15,8 @@
 /**
   * @file       /apps/demo_palfi/code_master/main.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R100
+  * @date       10 October 2012
   * @brief      PaLFi Demo Main
   *
   * This Demonstration Intends to Show:
@@ -46,7 +46,7 @@
 
 #include "OTAPI.h"
 #include "OT_platform.h"
-#include "radio.h"
+//#include "radio.h"
 
 
 
@@ -55,8 +55,8 @@
 
 /** Application Global Variables <BR>
   * ========================================================================<BR>
-  * It is safe to either keep app_devicemode volatile, since it is set in an
-  * interrupt service routine.
+  * app_usbhold must be volatile, or else the ISR code that should set it 
+  * might get optimized-out during compilation.
   */
 
 #if (MCU_FEATURE(MPIPECDC) == ENABLED)
@@ -72,19 +72,15 @@
   * ========================================================================
   */
 // Main Application Functions
-void    app_init();
-void    app_manager();
-ot_bool app_task_null();
+void app_init();
+void app_invoke(ot_u8 call_type) 
 
-// Applets that run on button input (or other external input)
-ot_bool app_send_query();
 
 
 
 /** Application local subroutines (platform & board dependent) <BR>
   * ============================================================================
   */
-void sub_button_init();
 void sub_trig_init();
 void sub_trig3_high();
 void sub_trig3_low();
@@ -142,74 +138,19 @@ void sub_trig4_high() {    APP_TRIG4_PORT->DOUT |= APP_TRIG4_PIN; }
 void sub_trig4_low() {     APP_TRIG4_PORT->DOUT &= ~APP_TRIG4_PIN; }
 void sub_trig4_toggle() {  APP_TRIG4_PORT->DOUT ^= APP_TRIG4_PIN; }
 
+
+
 void sub_trig_init() {
 #if (APP_TRIG3_PORTNUM == APP_TRIG4_PORTNUM)
     APP_TRIG3_PORT->DDIR    |= (APP_TRIG3_PIN | APP_TRIG4_PIN);
     APP_TRIG3_PORT->DS      |= (APP_TRIG3_PIN | APP_TRIG4_PIN);
-
 #else
     APP_TRIG3_PORT->DDIR    |= APP_TRIG3_PIN;
     APP_TRIG3_PORT->DS      |= APP_TRIG3_PIN;
     APP_TRIG4_PORT->DDIR    |= APP_TRIG4_PIN;
     APP_TRIG4_PORT->DS      |= APP_TRIG4_PIN;
-
 #endif
 }
-
-void sub_button_init() {
-    // Pin 1.7  = "S1" button, the interrupt source
-    // Apply pull-up/down resistor.  The MSP430 method to do this is strange.
-    // The DOUT needs to be set to 1/0 for pull-up/pull-down.  Lines of code
-    // that are startup default are commented-out for optimization.
-  //APP_BUTTON_PORT->DDIR  &= ~APP_BUTTON_PIN;
-    APP_BUTTON_PORT->REN   |= APP_BUTTON_PIN;
-#   if (APP_BUTTON_POL == 1)
-      //APP_BUTTON_PORT->DOUT  &= ~APP_BUTTON_PIN;
-#   else
-        APP_BUTTON_PORT->DOUT  |= APP_BUTTON_PIN;
-#   endif
-
-    // Check if button is hard-wired or depressed at startup
-#   if (APP_BUTTON_POL == 1)
-    if (APP_BUTTON_PORT->DIN & APP_BUTTON_PIN)
-#   else
-    if ((APP_BUTTON_PORT->DIN & APP_BUTTON_PIN) == 0)
-#   endif
-    {
-#       if (MCU_FEATURE_MPIPECDC == ENABLED)
-            app_usbhold = 1;
-#       endif
-    }
-
-    // Configure Button interrupt to happen when the button is released.
-    // Positive/Negative polarity means Falling/Rising Edge detection.
-#   if (APP_BUTTON_POL == 1)
-        APP_BUTTON_PORT->IES   |= APP_BUTTON_PIN;
-#   else
-      //APP_BUTTON_PORT->IES   &= ~APP_BUTTON_PIN;
-#   endif
-    APP_BUTTON_PORT->IFG    = 0;
-    APP_BUTTON_PORT->IE    |= APP_BUTTON_PIN;
-}
-
-#if (CC_SUPPORT == CL430)
-#   pragma vector=APP_BUTTON_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-    // don't know yet
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(APP_BUTTON_VECTOR)
-#endif
-OT_INTERRUPT void app_buttons_isr(void) {
-    APP_BUTTON_PORT->IFG    = 0;
-
-#   if (MCU_FEATURE_MPIPECDC == ENABLED)
-    app_usbhold             = 1;
-#   endif
-
-    LPM4_EXIT;
-}
-
-
 
 
 
@@ -250,12 +191,21 @@ void sub_button_init()  { }
 
 /** User Applet and Button Management Routines <BR>
   * ===========================================================================<BR>
-  * The User applet is primarily activated by callbacks from the kernel.  However,
-  * in this system some features are also activated by button presses.
-  *
+  * The User applet is primarily activated by callbacks from the kernel.  
+  * However, in this system some features are also activated by button presses.
   */
+static const ot_sub led_on[2] = {   &platform_trig2_high,
+                                    &platform_trig1_high    };
+
+static const ot_sub led_off[2] = {  &platform_trig2_low,
+                                    &platform_trig1_low     };
+
 void sub_led_cycle(ot_u8 i) {
+    led_on[i&1]();
+    platform_swdelay_ms(33);
+    led_off[i&1]();
 }
+
 
 void app_init() {
     ot_u8 i;
@@ -263,56 +213,9 @@ void app_init() {
     ///Initialize Application Triggers (LEDs) and blink the LEDs
     sub_trig_init();
 
-    i = 4;
-    while (--i != 0) {
-        otapi_led2_on();
-        platform_swdelay_ms(33);
-        otapi_led2_off();
-        otapi_led1_on();
-        platform_swdelay_ms(33);
-        otapi_led1_off();
-    }
-
-    ///Initialize the input buttons
-    sub_button_init();
-    //app_trig4_high();
-
-   
-    ///Dynamic Mpipe Callbacks: Set MPipe to go back to listen after TX.
-#   if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
-        mpipe_setsig_txdone(&otapi_ndef_idle);
-        mpipe_setsig_rxdone(&otapi_ndef_proc);
-        otapi_ndef_idle(0);
-#   endif
-
-    //app_task = &app_task_null;
+    i = 255;
+    do { sub_led_cycle(++i); } while (i != 3);
 }
-
-
-
-
-
-
-
-ot_bool app_task_null() {
-    return False;
-}
-
-
-
-void app_manager() {
-/// This is something you can play with.  I WOULD NOT recommend using it
-/// with the request generation applets, but it will work fine with the
-/// mode-switching applets.  (Note, if you change the conditional to
-/// "if (sys.mutex == 0)" it is basically identical to sys.loadapp, in
-/// which case it will also work with the request generating applets).
-
-//  if (sys.mutex <= 1) {
-//      app_task();
-//      app_task = &app_task_null;
-//  }
-}
-
 
 
 
@@ -422,13 +325,76 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 
 
 
-/** User ALP Processor  <BR>
+/** User ALP Processor & User Task <BR>
   * =======================================================================<BR>
   * If using proprietary/custom ALPs, the processor should be implemented here.
   * There is an example implementation below, which can be uncommented to match
   * the example in the API Quickstart Guide:
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
   */ 
+
+//void app_invoke(ot_u8 call_type) {
+/// The "External Task" is the place where the kernel runs the main user app.
+/// Our app has 4 functions (call types).
+/// <LI> We give it a runtime reservation of 1 tick (it runs pretty fast).
+///      This is also short enough to pre-empt RX listening, but not RX data.
+///      Try changing to a higher number, and observing how the kernel
+///      manages this task. </LI>
+/// <LI> We give it a latency of 255.  Latency is unimportant for run-once
+///      tasks, so giving it the max latency will prevent it from blocking
+///      any other tasks. </LI>
+/// <LI> We tell it to start ASAP (next = 0) </LI>
+///
+/// @note The latency parameter is mostly useful for protocol management,
+/// for which you probably want to enforce a request-response turnaround time.
+/// for processing and basic, iterative tasks it is not important: set to 255.
+///
+//	sys_task_setevent(TASK_external, call_type);
+//    sys_task_setreserve(TASK_external, 1);
+//    sys_task_setlatency(TASK_external, 255);
+//    sys_preempt(&sys.task[TASK_external], 0);
+//}
+
+
+//void ext_systask(ot_task task) {
+//Do application stuff in here
+//    switch (task->event) {
+//        case 0: break;  //empty process, also used for destructor
+//        
+//        case 1: //Task state 1 
+//                break;
+//        
+//        case 2: //Task state 2
+//                break;
+//    }
+//}
+
+
+//void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
+/// For this example, the directive ID is 0x90 and the commands are 0-3.  You
+/// can change these values simply by changing the implementation of this 
+/// function.
+/// Alternatively, instead of using the User Task (extprocess) you can use the
+/// sys.loadapi link to an app function: sys.loadapi = &opmode_goto_gateway;
+/// This is a simpler approach, but it can be blocked eternally in some setups.
+/// Using the User Task guarantees that your app/applet will run at some point
+/// in the future, as soon as the kernel is done with high-priority I/O tasks.
+//
+//    if (alp->inrec.id == 0x90) {
+//        ot_u8 task_cmd = (alp->inrec.cmd & 0x7F);
+//
+//        // Enable our command processing user task (task 0) to run the command
+//        // routine, but only if the cmd is known (0<=cmd<=3)
+//        if (task_cmd > 3)   task_cmd = 0;
+//        else                app_invoke(++task_cmd);
+//
+//        // Write back success (non-zero).
+//        alp_load_retval(alp, task_cmd);
+//    }
+//}
+
+
+
 
 
 
@@ -438,7 +404,9 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 
 
 /** Application Main <BR>
-  * ======================================================================
+  * ==================================================================<BR>
+  * Hint: you don't usually need to do anything to main.
+  *
   */
 void main(void) {
     ///1. Standard Power-on routine (Clocks, Timers, IRQ's, etc)
@@ -448,48 +416,26 @@ void main(void) {
 
     ///3. Initialize the User Applet & interrupts
     app_init();
-
     
+    ///4a. The device will wait (and block anything else) until you connect
+    ///    it to a valid console app.
 #   if (MCU_FEATURE_MPIPECDC)
-        ///4a. The device will wait (and block anything else) until you connect
-        ///    it to a valid console app.
-        mpipe_wait();
+    mpipe_wait();
 #   endif
 
-
-    ///4b. Send a message to show that main startup has passed.  You can use a
-    ///    transmission like this to start-up the Mpipe NDEF console, or you
-    ///    can alternatively call otapi_ndef_idle(0)
+    ///4b. Load a message to show that main startup has passed
     otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
-    mpipe_wait(); //blocks until msg complete (optional)
 
     ///5. MAIN RUNTIME (post-init)  <BR>
-    ///<LI> a. Pre-empt the kernel (first run)   </LI>
-    ///<LI> b. Go to sleep; OpenTag kernel will run automatically in
-    ///        the background  </LI>
-    ///<LI> c. The kernel has a built-in applet loader.  It is the best way
-    ///        to use applets that generate requests or manipulate the system.
-    ///        The applets only load during full-stop, so time slotting or
-    ///        any other type of MAC activity is not affected. </LI>
-    ///<LI> d. 99.99% (or more) of the time, the kernel is not actually
-    ///        running.  You can run parallel, local tasks alongside OpenTag
-    ///        as long as they operate above priority 1.  (I/O is usually
-    ///        priority 0 and kernel is always priority 1) </LI>
-    platform_ot_preempt();
+    ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
+    ///<LI> The kernel actually runs at the bottom of this loop.</LI>
+    ///<LI> You could put code before or after sys_runtime_manager, which will
+    ///     run before or after the (task + kernel).  If you do, keep the code
+    ///     very short or else you are risking timing glitches.</LI>
+    ///<LI> To run any significant amount of user code, use tasks. </LI>
     while(1) {
-        //app_manager();        //kernel pre-emptor demo
-        //local_task_manager();
-        SLEEP_MCU();
+    	platform_ot_run();
     }
-
-    ///6. Note on manually pre-empting the kernel for you own purposes:
-    ///   It can be done (many internal tasks do it), but be careful.
-    ///   It is recommended that you only do it when sys.mutex <= 1
-    ///   (i.e. no radio data transfer underway).  One adaptation of
-    ///   this demo is to have the mode-switching applets pre-empt the
-    ///   kernel (it works fine, but you need to make your own loader
-    ///   instead of using sys.loadapp).
-
 }
 
 

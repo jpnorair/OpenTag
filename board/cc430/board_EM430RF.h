@@ -31,7 +31,6 @@
 
 #include "build_config.h"
 #include "platform_CC430.h"
-#include "radio_CC430.h"
 
 #ifdef __NULL_RADIO__
 #   include "radio_null.h"
@@ -90,7 +89,7 @@
 #define MCU_FEATURE_RADIODMA_RXBYTES    0
 #define MCU_FEATURE_MAPEEPROM           DISABLED
 #define MCU_FEATURE_MPIPEDMA            ENABLED         // MPIPE typically requires DMA on this platform
-#define MCU_FEATURE_MEMCPYDMA           DISABLED         // MEMCPY DMA must be highest priority
+#define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_POINTERSIZE           2
@@ -118,7 +117,7 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
 #define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
-#define BOARD_FEATURE_MPIPE_QMGMT		ENABLED
+#define BOARD_FEATURE_MPIPE_QMGMT       ENABLED
 #define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL used as Clock source
 #define BOARD_FEATURE_HFXTAL            DISABLED                // HF XTAL used as Clock source
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
@@ -154,25 +153,38 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 #endif
 
 
+/*
+const u8 board_lpm3_pdir_conf[CC430_TOTAL_PORTS] = { 
+    0xFF, 
+    0xFF, 
+    0xFF, 
+    0xFF, 
+    0xFC,   // Don't change XT1 clock pins
+    0xFF    // JTAG will not be changed when debugging
+};
+*/
+
+
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
-    P1DIR = 0xFF;
-    P2DIR = 0xFF;
-    P3DIR = 0xFF;
-    P4DIR = 0xFF;
-    
-#   if (defined(DEBUG_ON) || defined(__DEBUG__))
+    u8 i;
+
+#if (defined(DEBUG_ON) || defined(__DEBUG__))
+#   define _DEBUG_ON_PORTJ  1
     PJDIR = 0x00;
-#   else
-    PJDIR = 0xFF;
-#   endif    
+#else
+#   define _DEBUG_ON_PORTJ  0
+#endif
+
+    for (i=(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ); i!=0; i--) {
+    	*((u8*)cc430_pdir_list[i])  = 0xFF;
+    	*((u8*)cc430_pout_list[i])  = 0x00;
+    }
     
-    P1OUT = 0x00;
-    P2OUT = 0x00;
-    P3OUT = 0x00;
-    P4OUT = 0x00;
-    PJOUT = 0x00;
+#undef _DEBUG_ON_PORTJ
 }
+
+
 
 // LFXT1 Preconfiguration, using values local to the board design
 // ALL CC430 Boards MUST HAVE SOME VARIANT OF THIS
@@ -322,17 +334,19 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   *      actually having one, so don't worry about the Zener. 
   * </LI>
   */
-#define MPIPE_UARTNUM       0           //0 or 1 (A or B)
-#define MPIPE_UART_PORTNUM  1
+#define MPIPE_DMANUM        0
+#define MPIPE_UART_PORT     GPIO1
+#define MPIPE_UART_PORTMAP  P1M
 #define MPIPE_UART_RXPIN    GPIO_Pin_5
 #define MPIPE_UART_TXPIN    GPIO_Pin_6
 
-#define OT_TRIG1_PORTNUM    1
+#define OT_TRIG1_PORT       GPIO1
 #define OT_TRIG1_PIN        GPIO_Pin_0
 #define OT_TRIG1_HIDRIVE    ENABLED
-#define OT_TRIG2_PORTNUM    3
+#define OT_TRIG1_PORT       GPIO3
 #define OT_TRIG2_PIN        GPIO_Pin_6
 #define OT_TRIG2_HIDRIVE    ENABLED
+
 
 // Pin that can be used for ADC-based random number (usually floating pin)
 // You could also put on a low voltage, reverse-biased zener on the board
@@ -344,29 +358,6 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 //#define OT_GWNZENER_PIN     GPIO_Pin_2
 //#define OT_GWNZENER_HIDRIVE DISABLED
 
-
-
-#if (OT_TRIG1_PORTNUM == 1)
-#   define OT_TRIG1_PORT    GPIO1
-#elif (OT_TRIG1_PORTNUM == 2)
-#   define OT_TRIG1_PORT    GPIO2
-#elif (OT_TRIG1_PORTNUM == 3)
-#   define OT_TRIG1_PORT    GPIO3
-#elif (OT_TRIG1_PORTNUM == 4)
-#   define OT_TRIG1_PORT    GPIO4
-#endif
-
-#if (OT_TRIG2_PORTNUM == 1)
-#   define OT_TRIG2_PORT    GPIO1
-#elif (OT_TRIG2_PORTNUM == 2)
-#   define OT_TRIG2_PORT    GPIO2
-#elif (OT_TRIG2_PORTNUM == 3)
-#   define OT_TRIG2_PORT    GPIO3
-#elif (OT_TRIG2_PORTNUM == 4)
-#   define OT_TRIG2_PORT    GPIO4
-#endif
-
-
 #ifdef OT_GWNADC_PORTNUM
 #   if (OT_GWNADC_PORTNUM == 2)
 #       define OT_GWNADC_PORT      GPIO2
@@ -375,51 +366,15 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   endif
 #endif
 
-#ifdef OT_GWNZENER_PORTNUM
-#   if (OT_GWNZENER_PORTNUM == 1)
-#       define OT_GWNZENER_PORT    GPIO1
-#   elif (OT_GWNZENER_PORTNUM == 2)
-#       define OT_GWNZENER_PORT    GPIO2
-#   elif (OT_GWNZENER_PORTNUM == 3)
-#       define OT_GWNZENER_PORT    GPIO3
-#   elif (OT_GWNZENER_PORTNUM == 4)
-#       define OT_GWNZENER_PORT    GPIO4
-#   else
-#       error "GWNZENER (White Noise Zener Diode Output) must be on port 1, 2, 3, or 4"
-#   endif
-#endif
-
-
-#if (MPIPE_UART_PORTNUM == 1)
-#   define MPIPE_UART_PORTMAP  P1M
-#   define MPIPE_UART_PORT     GPIO1
-#elif (MPIPE_UART_PORTNUM == 2)
-#   define MPIPE_UART_PORTMAP  P2M
-#   define MPIPE_UART_PORT     GPIO2
-#elif (MPIPE_UART_PORTNUM == 3)
-#   define MPIPE_UART_PORTMAP  P3M
-#   define MPIPE_UART_PORT     GPIO3
-#elif (MPIPE_UART_PORTNUM == 4)
-#   define MPIPE_UART_PORTMAP  P4M
-#   define MPIPE_UART_PORT     GPIO4
-#else
-#   error "MPipe UART needs to be on GPIO1, 2, 3, or 4"
-#endif
 
 #define MPIPE_UART_PINS     (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
+#define MPIPE_UART          UARTA0
+#define MPIPE_UART_RXSIG    PM_UCA0RXD
+#define MPIPE_UART_TXSIG    PM_UCA0TXD
+#define MPIPE_UART_RXTRIG   DMA_Trigger_UCA0RXIFG
+#define MPIPE_UART_TXTRIG   DMA_Trigger_UCA0TXIFG
+#define MPIPE_UART_VECTOR   USCI_A0_VECTOR
 
-#if (MPIPE_UARTNUM == 0)
-#   define MPIPE_UART           UARTA0
-#   define MPIPE_UART_RXSIG     PM_UCA0RXD
-#   define MPIPE_UART_TXSIG     PM_UCA0TXD
-#	define MPIPE_UART_RXTRIG	DMA_Trigger_UCA0RXIFG
-#	define MPIPE_UART_TXTRIG	DMA_Trigger_UCA0TXIFG
-#   define MPIPE_UART_VECTOR    USCI_A0_VECTOR
-#else
-#   error "MPIPE_UART is not defined to an available index (0)"
-#endif
-
-#define MPIPE_DMANUM    0
 #if (MCU_FEATURE_MPIPEDMA == ENABLED)
 #   if (MPIPE_DMANUM == 0)
 #       define MPIPE_DMA     DMA0
@@ -472,8 +427,10 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   endif
 
 
-#define MEMCPY_DMANUM      0 //(MPIPE_DMANUM + (MCU_FEATURE_MPIPEDMA == ENABLED))
+
+
 #if (MCU_FEATURE_MEMCPYDMA == ENABLED)
+#   define MEMCPY_DMANUM      (MPIPE_DMANUM + (MCU_FEATURE_MPIPEDMA == ENABLED))
 #   if (MEMCPY_DMANUM == 0)
 #       define MEMCPY_DMA     DMA0
 #   elif (MEMCPY_DMANUM == 1)

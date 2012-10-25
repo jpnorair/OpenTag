@@ -17,14 +17,15 @@ $(GEN_CMDS__FLAG) \
 "./applets/mpipe_sig_done.obj" \
 "./applets/collect_sensorlist.obj" \
 "./applets/beacon_discovery.obj" \
-"./otkernel/native/system.obj" \
+"./otkernel/gulp/system_gulp.obj" \
 "./otlib/veelite.obj" \
 "./otlib/session.obj" \
 "./otlib/queue.obj" \
-"./otlib/ndef.obj" \
+"./otlib/mpipe.obj" \
 "./otlib/m2_transport.obj" \
 "./otlib/m2_network.obj" \
 "./otlib/m2_encode.obj" \
+"./otlib/m2_dll.obj" \
 "./otlib/external.obj" \
 "./otlib/crypto_aes128.obj" \
 "./otlib/crc16.obj" \
@@ -39,6 +40,7 @@ $(GEN_CMDS__FLAG) \
 "./otlib/alp_api_server.obj" \
 "./otlib/alp_api_client.obj" \
 "./otlib/OT_utils.obj" \
+"./otlib/OTAPI_tasker.obj" \
 "./otlib/OTAPI_logger.obj" \
 "./otplatform/msp430f5/usb_cdc_driver/usb_main.obj" \
 "./otplatform/msp430f5/usb_cdc_driver/usb_isr.obj" \
@@ -71,7 +73,7 @@ RMDIR := RMDIR /S/Q
 -include otplatform/msp430f5/subdir_vars.mk
 -include otplatform/msp430f5/usb_cdc_driver/subdir_vars.mk
 -include otlib/subdir_vars.mk
--include otkernel/native/subdir_vars.mk
+-include otkernel/gulp/subdir_vars.mk
 -include applets/subdir_vars.mk
 -include app_code/subdir_vars.mk
 -include subdir_rules.mk
@@ -80,7 +82,7 @@ RMDIR := RMDIR /S/Q
 -include otplatform/msp430f5/subdir_rules.mk
 -include otplatform/msp430f5/usb_cdc_driver/subdir_rules.mk
 -include otlib/subdir_rules.mk
--include otkernel/native/subdir_rules.mk
+-include otkernel/gulp/subdir_rules.mk
 -include applets/subdir_rules.mk
 -include app_code/subdir_rules.mk
 -include objects.mk
@@ -184,10 +186,10 @@ PaLFi_Master.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(MSP430_EXECUTABLE_OUTPUTS__QUOTED) "PaLFi_Master.out"
-	-$(RM) "otradio\cc1101\CC1101_MSP430F5.pp" "otradio\cc1101\CC1101_STM32F10x.pp" "otradio\cc1101\radio_CC1101.pp" "otplatform\msp430f5_lib\msp430f5_flash.pp" "otplatform\msp430f5_lib\msp430f5_pmm.pp" "otplatform\msp430f5_lib\msp430f5_tlv.pp" "otplatform\msp430f5_lib\msp430f5_ucs.pp" "otplatform\msp430f5\mpipe_uart_MSP430F5.pp" "otplatform\msp430f5\mpipe_usbcdc_MSP430F55xx.pp" "otplatform\msp430f5\platform_MSP430F5.pp" "otplatform\msp430f5\veelite_core_X2_MSP430F5.pp" "otplatform\msp430f5\usb_cdc_driver\usb_cdc_backend.pp" "otplatform\msp430f5\usb_cdc_driver\usb_descriptors.pp" "otplatform\msp430f5\usb_cdc_driver\usb_isr.pp" "otplatform\msp430f5\usb_cdc_driver\usb_main.pp" "otlib\OTAPI_logger.pp" "otlib\OT_utils.pp" "otlib\alp_api_client.pp" "otlib\alp_api_server.pp" "otlib\alp_dashforth.pp" "otlib\alp_filedata.pp" "otlib\alp_logger.pp" "otlib\alp_main.pp" "otlib\alp_security.pp" "otlib\alp_sensor.pp" "otlib\auth.pp" "otlib\buffers.pp" "otlib\crc16.pp" "otlib\crypto_aes128.pp" "otlib\external.pp" 
-	-$(RM) "otlib\m2_encode.pp" "otlib\m2_network.pp" "otlib\m2_transport.pp" "otlib\ndef.pp" "otlib\queue.pp" "otlib\session.pp" "otlib\veelite.pp" "otkernel\native\system.pp" "applets\beacon_discovery.pp" "applets\collect_sensorlist.pp" "applets\mpipe_sig_done.pp" "applets\network_sig_route.pp" "applets\sys_sig_panic.pp" "applets\sys_sig_rfainit.pp" "applets\sys_sig_rfaterminate_2.pp" "applets\udp_querytoken.pp" "app_code\main.pp" 
-	-$(RM) "otradio\cc1101\CC1101_MSP430F5.obj" "otradio\cc1101\CC1101_STM32F10x.obj" "otradio\cc1101\radio_CC1101.obj" "otplatform\msp430f5_lib\msp430f5_flash.obj" "otplatform\msp430f5_lib\msp430f5_pmm.obj" "otplatform\msp430f5_lib\msp430f5_tlv.obj" "otplatform\msp430f5_lib\msp430f5_ucs.obj" "otplatform\msp430f5\mpipe_uart_MSP430F5.obj" "otplatform\msp430f5\mpipe_usbcdc_MSP430F55xx.obj" "otplatform\msp430f5\platform_MSP430F5.obj" "otplatform\msp430f5\veelite_core_X2_MSP430F5.obj" "otplatform\msp430f5\usb_cdc_driver\usb_cdc_backend.obj" "otplatform\msp430f5\usb_cdc_driver\usb_descriptors.obj" "otplatform\msp430f5\usb_cdc_driver\usb_isr.obj" "otplatform\msp430f5\usb_cdc_driver\usb_main.obj" "otlib\OTAPI_logger.obj" "otlib\OT_utils.obj" "otlib\alp_api_client.obj" "otlib\alp_api_server.obj" "otlib\alp_dashforth.obj" "otlib\alp_filedata.obj" "otlib\alp_logger.obj" "otlib\alp_main.obj" "otlib\alp_security.obj" "otlib\alp_sensor.obj" "otlib\auth.obj" "otlib\buffers.obj" "otlib\crc16.obj" "otlib\crypto_aes128.obj" 
-	-$(RM) "otlib\external.obj" "otlib\m2_encode.obj" "otlib\m2_network.obj" "otlib\m2_transport.obj" "otlib\ndef.obj" "otlib\queue.obj" "otlib\session.obj" "otlib\veelite.obj" "otkernel\native\system.obj" "applets\beacon_discovery.obj" "applets\collect_sensorlist.obj" "applets\mpipe_sig_done.obj" "applets\network_sig_route.obj" "applets\sys_sig_panic.obj" "applets\sys_sig_rfainit.obj" "applets\sys_sig_rfaterminate_2.obj" "applets\udp_querytoken.obj" "app_code\main.obj" 
+	-$(RM) "otradio\cc1101\CC1101_MSP430F5.pp" "otradio\cc1101\CC1101_STM32F10x.pp" "otradio\cc1101\radio_CC1101.pp" "otplatform\msp430f5_lib\msp430f5_flash.pp" "otplatform\msp430f5_lib\msp430f5_pmm.pp" "otplatform\msp430f5_lib\msp430f5_tlv.pp" "otplatform\msp430f5_lib\msp430f5_ucs.pp" "otplatform\msp430f5\mpipe_uart_MSP430F5.pp" "otplatform\msp430f5\mpipe_usbcdc_MSP430F55xx.pp" "otplatform\msp430f5\platform_MSP430F5.pp" "otplatform\msp430f5\veelite_core_X2_MSP430F5.pp" "otplatform\msp430f5\usb_cdc_driver\usb_cdc_backend.pp" "otplatform\msp430f5\usb_cdc_driver\usb_descriptors.pp" "otplatform\msp430f5\usb_cdc_driver\usb_isr.pp" "otplatform\msp430f5\usb_cdc_driver\usb_main.pp" "otlib\OTAPI_logger.pp" "otlib\OTAPI_tasker.pp" "otlib\OT_utils.pp" "otlib\alp_api_client.pp" "otlib\alp_api_server.pp" "otlib\alp_dashforth.pp" "otlib\alp_filedata.pp" "otlib\alp_logger.pp" "otlib\alp_main.pp" "otlib\alp_security.pp" "otlib\alp_sensor.pp" "otlib\auth.pp" "otlib\buffers.pp" "otlib\crc16.pp" "otlib\crypto_aes128.pp" 
+	-$(RM) "otlib\external.pp" "otlib\m2_dll.pp" "otlib\m2_encode.pp" "otlib\m2_network.pp" "otlib\m2_transport.pp" "otlib\mpipe.pp" "otlib\queue.pp" "otlib\session.pp" "otlib\veelite.pp" "otkernel\gulp\system_gulp.pp" "applets\beacon_discovery.pp" "applets\collect_sensorlist.pp" "applets\mpipe_sig_done.pp" "applets\network_sig_route.pp" "applets\sys_sig_panic.pp" "applets\sys_sig_rfainit.pp" "applets\sys_sig_rfaterminate_2.pp" "applets\udp_querytoken.pp" "app_code\main.pp" 
+	-$(RM) "otradio\cc1101\CC1101_MSP430F5.obj" "otradio\cc1101\CC1101_STM32F10x.obj" "otradio\cc1101\radio_CC1101.obj" "otplatform\msp430f5_lib\msp430f5_flash.obj" "otplatform\msp430f5_lib\msp430f5_pmm.obj" "otplatform\msp430f5_lib\msp430f5_tlv.obj" "otplatform\msp430f5_lib\msp430f5_ucs.obj" "otplatform\msp430f5\mpipe_uart_MSP430F5.obj" "otplatform\msp430f5\mpipe_usbcdc_MSP430F55xx.obj" "otplatform\msp430f5\platform_MSP430F5.obj" "otplatform\msp430f5\veelite_core_X2_MSP430F5.obj" "otplatform\msp430f5\usb_cdc_driver\usb_cdc_backend.obj" "otplatform\msp430f5\usb_cdc_driver\usb_descriptors.obj" "otplatform\msp430f5\usb_cdc_driver\usb_isr.obj" "otplatform\msp430f5\usb_cdc_driver\usb_main.obj" "otlib\OTAPI_logger.obj" "otlib\OTAPI_tasker.obj" "otlib\OT_utils.obj" "otlib\alp_api_client.obj" "otlib\alp_api_server.obj" "otlib\alp_dashforth.obj" "otlib\alp_filedata.obj" "otlib\alp_logger.obj" "otlib\alp_main.obj" "otlib\alp_security.obj" "otlib\alp_sensor.obj" "otlib\auth.obj" "otlib\buffers.obj" "otlib\crc16.obj" 
+	-$(RM) "otlib\crypto_aes128.obj" "otlib\external.obj" "otlib\m2_dll.obj" "otlib\m2_encode.obj" "otlib\m2_network.obj" "otlib\m2_transport.obj" "otlib\mpipe.obj" "otlib\queue.obj" "otlib\session.obj" "otlib\veelite.obj" "otkernel\gulp\system_gulp.obj" "applets\beacon_discovery.obj" "applets\collect_sensorlist.obj" "applets\mpipe_sig_done.obj" "applets\network_sig_route.obj" "applets\sys_sig_panic.obj" "applets\sys_sig_rfainit.obj" "applets\sys_sig_rfaterminate_2.obj" "applets\udp_querytoken.obj" "app_code\main.obj" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
