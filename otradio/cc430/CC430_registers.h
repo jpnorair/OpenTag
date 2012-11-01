@@ -16,7 +16,7 @@
 /**
   * @file       /otradio/cc430/CC430_registers.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       1 April 2012
   * @brief      Register Addressing Constants for CC430 family
   * @ingroup    CC430

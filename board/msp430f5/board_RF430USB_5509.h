@@ -1,4 +1,4 @@
-/*  Copyright 2010-2011, JP Norair
+/*  Copyright 2010-2012, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 /**
   * @file       /board/MSP430F5/board_RF430USB_5509.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       5 February 2012
   * @brief      Board Configuration for RF430USB stick kit with MSP430F5509 and CC1101
   * @ingroup    Platform
@@ -294,9 +294,13 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   * OT_TRIG:    Optional test trigger usable in OpenTag apps (often LEDs)   <BR>
   * MPIPE:      UART to use for the MPipe                                   <BR>
   */
-#define OT_GPTIM            TIM1A3
-#define OT_GPTIM_IRQ        TIM1A3_IRQChannel
-#define OT_GPTIM_VECTOR     TIMER1_A1_VECTOR
+#define OT_GPTIM            TIM0A5
+#define OT_GPTIM_ISR_ID     __ISR_T0A1_ID
+#ifdef __ISR_T0A1
+#   error "ISR T0A1 is already allocated.  It must be used for GPTIM."
+#else
+#   define __ISR_T0A1
+#endif
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
@@ -356,7 +360,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 // - SPI1 is USCIB0, wired on the board as shown below
 // - 1 GDO is available as IRQs (GDO0), GD02 is for XT2 clocking (unique board feature)
 // - GDO1 is tied to the MISO pin, for asynchronous modulation (unused)
-#define RADIO_SPINUM            1
+#define RADIO_SPI_ID            0xB1
 #define RADIO_SPI               SPIB1
 #define RADIO_SPI_HWCS          DISABLED
 #define RADIO_SPI_VECTOR        USCI_B1_VECTOR
@@ -420,6 +424,7 @@ OT_INLINE_H void BOARD_RADIO_SPI_ATTACH() {
 //#define RADIO_DMA_TXVECTOR  
 //#define RADIO_DMA_TXINT  	
 
+#define RADIO_IRQ_PORT_ID   2 
 #define RADIO_IRQ_PORT      GPIO2 
 #define RADIO_IRQ_SRC()     GPIO2->P2IV
 #define RADIO_IRQ_VECTOR    PORT2_VECTOR
@@ -428,10 +433,12 @@ OT_INLINE_H void BOARD_RADIO_SPI_ATTACH() {
 //#define RADIO_IRQ2_SRCLINE  4
 //#define RADIO_IRQ2_PIN      (1 << RADIO_IRQ2_SRCLINE)
 
-
-
-
-
+#define RADIO_ISR_ID        __ISR_P2_ID
+#ifdef __ISR_P2
+#   error "__ISR_P2 is already allocated.  It must be used for GPTIM."
+#else
+#   define __ISR_P2
+#endif
 
 
 
@@ -440,12 +447,17 @@ OT_INLINE_H void BOARD_RADIO_SPI_ATTACH() {
 // If using the USB for MPipe, it must be on the specialized PORT U.  There is
 // no other mapping option.
 #if (MCU_FEATURE_MPIPECDC == ENABLED)
-#   define MPIPE_USBNUM         0
+#   define MPIPE_USB
+#   define MPIPE_USB_ISR_ID     __ISR_USB_ID
+#ifdef __ISR_USB
+#   error "__ISR_USB is already allocated.  It must be used for MPipe."
+#else
+#   define __ISR_USB
+#endif
+
 #   define MPIPE_USBDP_PIN      GPIO_Pin_0
 #   define MPIPE_USBDM_PIN      GPIO_Pin_1
-#   define MPIPE_USB_VECTOR     USB_UBM_VECTOR
-
-#   define MPIPE_USB_REMWAKE    0x00        // Set to 0x20 to enable remote wakeup (not generally supported by MPipe)
+#   define MPIPE_USB_REMWAKE    0x00        // Set to 0x20 to enable remote wakeup
 #   define MPIPE_USB_POWERING   0x80        // Set to 0x40 to enable self-powering, or 0x80 for bus-powering
 #   define MPIPE_USB_MAXPOWER   100         // Max mA that can be sourced from the bus (up to 500)
 #   define MPIPE_USB_XTSUSPEND  0           // Set to non-zero to disable USB XTAL when usb is suspended

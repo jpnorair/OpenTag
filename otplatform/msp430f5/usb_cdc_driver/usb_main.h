@@ -1,28 +1,63 @@
-//(c)2009 by Texas Instruments Incorporated, All Rights Reserved.
-/*----------------------------------------------------------------------------+
- |                                                                             |
- |                              Texas Instruments                              |
- |                                                                             |
- |                          MSP430 USB-Example (CDC/HID/MSC Driver)            |
- |                                                                             |
- +-----------------------------------------------------------------------------+
- |  Source: Usb.h, File Version 1.04 2010/10/30                                |
- |  Author: RSTO                                                               |
- |                                                                             |
- |  WHO          WHEN         WHAT                                             |
- |  ---          ----------   ------------------------------------------------ |
- |  RSTO         2008/09/03   born                                             |
- |  RSTO         2008/12/23   enhancements of CDC API                          |
- |  RSTO         2009/05/15   changed USB_connectionStatus()                   |
- |                            to USB_connectionInfo()                          |
- |  RSTO         2009/05/26   remove kUSB_failedEnumEvent                      |
- |  RSTO         2009/07/17   added __data16 qualifier for USB buffers         |
- |  MSP,Biju     2009/10/20   Composite support changes                        |
- |  RSTO         2009/11/05   added event ST_NOENUM_SUSPENDED                  |
- |  MSP,Biju     2009/12/28   macros DESC_TYPE_IAD added due to IAD            |
- |                            support                                          |
- |  RSTO         2010/10/30   added kUSB_allXXXEvents                          |
- +----------------------------------------------------------------------------*/
+/*  Copyright (c) 2010, Texas Instruments Incorporated
+  * All rights reserved.
+  * 
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions are met:
+  *  * Redistributions of source code must retain the above copyright notice,
+  *    this list of conditions, and the following disclaimer.
+  *  * Redistributions in binary form must reproduce the above copyright 
+  *    notice, this list of conditions and the following disclaimer in the
+  *    documentation and/or other materials provided with the distribution.
+  *  * Neither the name of the organization, Texas Instruments, nor the names 
+  *    of its contributors may be used to endorse or promote products derived 
+  *    from this software without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+  * ARE DISCLAIMED. IN NO EVENT SHALL TEXAS INSTRUMENTS BE LIABLE FOR ANY 
+  * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
+  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+/**
+  * @file       /otplatform/msp430f5/usb_cdc_driver/usb_main.h
+  * @author     RSTO, JP Norair
+  * @version    R100
+  * @date       1 Nov 2012
+  * @brief      USB Device Main Header
+  * @defgroup   MSP430F5 USB CDC
+  * @ingroup    MSP430F5 USB CDC
+  *
+  * This module is a derivative work of TI's USB library file, Usb.h.  
+  * JP has integrated it into OpenTag.  This file provides an interface to USB
+  * driver-calls, in addition to an assortment of constants, macros, and 
+  * control flags specific to the USB driver and MSP430 USB HW.
+  * 
+  * <PRE>
+  * Author: RSTO
+  * Source: Usb.h, File Version 1.04 2010/10/30  
+  *
+  * WHO         WHEN        WHAT                                          
+  * ---         ----------  --------------------------------------------- 
+  * RSTO        2008/09/03  born
+  * RSTO        2008/12/23  enhancements of CDC API
+  * RSTO        2009/05/15  changed USB_connectionStatus() to USB_connectionInfo()
+  * RSTO        2009/05/26  remove kUSB_failedEnumEvent 
+  * RSTO        2009/07/17  added __data16 qualifier for USB buffers 
+  * MSP,Biju    2009/10/20  Composite support changes
+  * RSTO        2009/11/05  added event ST_NOENUM_SUSPENDED
+  * MSP,Biju    2009/12/28  macros DESC_TYPE_IAD added due to IAD support
+  * RSTO        2010/10/30  added kUSB_allXXXEvents
+  * ---         ----------  --------------------------------------------
+  * JPN         2012/05/01  Integrated with OpenTag 0.3
+  * JPN         2012/11/01  Integrated with OpenTag 0.4
+  * </PRE>                           
+  *****************************************************************************/
+
 
 #ifndef _USB_H_
 #define _USB_H_
@@ -203,7 +238,7 @@ extern __no_init ot_u8 __data16 pbYBufferAddressEp7[];
 extern __no_init ot_u8 __data16 pbXBufferAddressEp87[];
 extern __no_init ot_u8 __data16 pbYBufferAddressEp87[];
 
-#else // Unretarded version of the above
+#else // More direct (and more compatible) version of the above
 */
 #   define tSetupPacket                     (*((tDEVICE_REQUEST*)0x2380))
 #   define tEndPoint0DescriptorBlock        (*((tEDB0*)0x0920))
@@ -381,50 +416,54 @@ ot_u8 USB_switchInterface(ot_u8 interfaceIndex);
  * Event-Handling routines
  */
 
+
+#define HANDLE_RETURN	void
+
+
 /*
  * If this function gets executed, it's a sign that the output of the USB PLL has failed.
  * returns TRUE to keep CPU awake
  */
-ot_u8 USB_handleClockEvent ();
+HANDLE_RETURN USB_handleClockEvent ();
 
 /*
  * If this function gets executed, it indicates that a valid voltage has just been applied to the VBUS pin.
  * returns TRUE to keep CPU awake
  */
-ot_u8 USB_handleVbusOnEvent ();
+HANDLE_RETURN USB_handleVbusOnEvent ();
 
 /*
  * If this function gets executed, it indicates that a valid voltage has just been removed from the VBUS pin.
  * returns TRUE to keep CPU awake
  */
-ot_u8 USB_handleVbusOffEvent ();
+HANDLE_RETURN USB_handleVbusOffEvent ();
 
 /*
  * If this function gets executed, it indicates that the USB host has issued a USB reset event to the device.
  * returns TRUE to keep CPU awake
  */
-ot_u8 USB_handleResetEvent ();
+HANDLE_RETURN USB_handleResetEvent ();
 
 /*
  * If this function gets executed, it indicates that the USB host has chosen to suspend this device after a period of active
  * operation.
  * returns TRUE to keep CPU awake
  */
-ot_u8 USB_handleSuspendEvent ();
+HANDLE_RETURN USB_handleSuspendEvent ();
 
 /*
  * If this function gets executed, it indicates that the USB host has chosen to resume this device after a period of suspended
  * operation.
  * returns TRUE to keep CPU awake
  */
-ot_u8 USB_handleResumeEvent ();
+HANDLE_RETURN USB_handleResumeEvent ();
 
 /*
  * If this function gets executed, it indicates that the USB host has enumerated this device :
  * after host assigned the address to the device.
  * returns TRUE to keep CPU awake
  */
-ot_u8 USB_handleEnumCompleteEvent ();
+HANDLE_RETURN USB_handleEnumCompleteEvent ();
 
 /**
  * Send stall handshake for in- and out-endpoint0 (control pipe)

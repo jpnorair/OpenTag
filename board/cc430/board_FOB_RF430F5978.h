@@ -288,8 +288,12 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   */
   
 #define OT_GPTIM            TIM0A5
-#define OT_GPTIM_IRQ        TIM0A5_IRQChannel
-#define OT_GPTIM_VECTOR     TIMER0_A1_VECTOR
+#define OT_GPTIM_ISR_ID     __ISR_T0A1_ID
+#define OT_GPTIM_ISR        platform_isr_tim0a1
+#ifndef __ISR_T0A1
+#define __ISR_T0A1
+#endif
+
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
@@ -323,7 +327,11 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   */
 #define PALFI_WAKE_PORT     GPIO1
 #define PALFI_WAKE_PIN      GPIO_Pin_0
-#define PALFI_WAKE_VECTOR	PORT1_VECTOR
+#define PALFI_WAKE_ISR_ID	__ISR_P1_ID
+#define PALFI_WAKE_ISR      platform_isr_p1
+#ifndef __ISR_P1
+#define __ISR_P1
+#endif
 
 #define PALFI_EOB_PORT      GPIO4
 #define PALFI_EOB_PIN       GPIO_Pin_1
@@ -335,7 +343,12 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define PALFI_CLKEXT_PIN    GPIO_Pin_5
   
 #define PALFI_TIM           TIM1A3
-#define PALFI_TIM_VECTOR    TIMER1_A0_VECTOR
+#define PALFI_TIM_ISR_ID    __ISR_T1A0_ID
+#define PALFI_TIM_ISR       platform_isr_tim1a0
+#ifndef __ISR_T1A0
+#define __ISR_T1A0
+#endif
+
 #define PALFI_TIM_PORT      GPIO3
 #define PALFI_TIM_Px        P3M
 #define PALFI_TIM_SIG       PM_TA0CCR0A

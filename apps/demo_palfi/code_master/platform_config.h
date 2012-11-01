@@ -15,8 +15,8 @@
 /**
   * @file       /apps/demo_paLFi/code/platform_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
-  * @date       16 April 2012
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Board & Platform Selection for Demo PaLFI app
   *
   * Don't actually include this.  Include OT_platform.h instead.

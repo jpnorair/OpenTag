@@ -16,8 +16,8 @@
 /**
   * @file       /apps/demo_palfi/code_master/data.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       16 April 2011
+  * @version    R100
+  * @date       1 Nov 2011
   * @brief      PaLFi Demo Main Default Data
   * 
   ******************************************************************************

@@ -147,6 +147,16 @@
 			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_capi/collect_sensorlist.c</locationURI>
 		</link>
 		<link>
+			<name>applets/dll_sig_rfinit.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/dll_sig_rfinit.c</locationURI>
+		</link>
+		<link>
+			<name>applets/dll_sig_rfterminate_2.c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/dll_sig_rfterminate_2.c</locationURI>
+		</link>
+		<link>
 			<name>applets/mpipe_sig_done.c</name>
 			<type>1</type>
 			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/mpipe_sig_done.c</locationURI>
@@ -160,16 +170,6 @@
 			<name>applets/sys_sig_panic.c</name>
 			<type>1</type>
 			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_panic.c</locationURI>
-		</link>
-		<link>
-			<name>applets/sys_sig_rfainit.c</name>
-			<type>1</type>
-			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_rfainit.c</locationURI>
-		</link>
-		<link>
-			<name>applets/sys_sig_rfaterminate_2.c</name>
-			<type>1</type>
-			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_rfaterminate_2.c</locationURI>
 		</link>
 		<link>
 			<name>applets/udp_querytoken.c</name>

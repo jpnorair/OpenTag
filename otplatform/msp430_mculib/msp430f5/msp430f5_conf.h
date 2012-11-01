@@ -1,4 +1,4 @@
-/* Copyright 2009 JP Norair
+/* Copyright 2009-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
   * limitations under the License.
   *
   */
-/** @file       /OTplatform/~MCU_MSP430/MSP430F5/msp430f5_conf.h
+/** @file       /otplatform/msp430_mculib/msp430f5/msp430f5_conf.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Dec 2009
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Peripheral Configuration for MSP430F5
   * @ingroup    MSP430F5 Library
   *
@@ -32,39 +32,8 @@
 /* Device define */
 
 
-
-
-
-/******************************************************************************
- *                         Peripheral declaration                             *
- ******************************************************************************/
-///@todo put peripheral confs into the list
-#if (defined(__CCSv5__) || defined(__CCSv4__) || defined(__GCC__) || defined(__GNUC__))
-#   if   defined(__MSP430F5509__)
-#       include "msp430f5509.h"
-#       define _ADC10
-
-#   elif defined(__MSP430F5510__)
-#       include "msp430f5510.h"
-#       define _ADC10
-
-#   elif defined(__MSP430F5529__)
-#       include "msp430f5529.h"
-#       define _ADC12
-
-#   else
-#       error "Chip has not been identified as a supported __MSP430F5xxx__"
-#   endif
-
-#else
-#   error "Compiler is not identified as CCSv5, CCSv4, or GCC."
-
-#endif
-
-
-
-
-
+/** Peripherals consistent across all MSP430F5 parts
+  */
 // Special Function Registers (SFR)
 #define _SFR
 
@@ -106,14 +75,12 @@
 #   define _GPIO4
 #   define _GPIO5
 #   define _GPIO6
-#   define _GPIO7
-#   define _GPIO8
 #   define _GPIOJ
-#   define _GPIOU
 #   define _GPIO12
 #   define _GPIO34
 #   define _GPIO56
-#   define _GPIO78
+
+
 
 
 
@@ -123,8 +90,6 @@
 #   define _DMA0
 #   define _DMA1
 #   define _DMA2
-
-
 
 
 
@@ -143,57 +108,21 @@
 
 // Timer A peripherals
 #define _TIMA
-#   define _TIM0A5
-#   define _TIM1A3
-#   define _TIM2A3
-#   define _TIM0B7
-
-
 
 
 // Real Time Clock (RTC)
 #define _RTC
 
-
-
 // Universal Serial Controller Interface (USCI)
 #define _USCI
-#   define _UART0
-#   define _SPI0
-#   define _I2C0
-#   define _UART1
-#   define _SPI1
-#   define _I2C1
-#   define _UART2
-#   define _SPI2
-#   define _I2C2
-#   define _UART3
-#   define _SPI3
-#   define _I2C3
-
-
 
 
 // Reference Module (REF)
 //#define _REF
 
 
-
-
-
 // Comparator B (CB)
 //#define _CB
-
-
-
-// 10 bit Analog to Digital Converter (ADC10)
-#define _ADC10
-
-
-// 12 bit Analog to Digital Converter (ADC12)
-#define _ADC12
-
-
 
 
 // Liquid Crystal Display Bus Controller (LCD)
@@ -201,8 +130,106 @@
 
 
 
-// USB Device Controller
-#define _USB
+
+
+
+
+
+
+/******************************************************************************
+ *                         Peripheral declaration                             *
+ ******************************************************************************/
+///@todo put peripheral confs into the list
+
+#if (defined(__CCSv5__) || defined(__CCSv4__) || defined(__GCC__) || defined(__GNUC__))
+#   if  defined(__MSP430F5503__)
+#       include "msp430f5503.h"
+#       define _GPIOU
+#       define _TIM0A5
+#       define _TIM1A3
+#       define _TIM2A3
+#       define _TIM0B7
+#       define _USB
+#       define _UARTA0
+#       define _SPIA0
+#       define _UARTA1
+#       define _SPIA1
+#       define _SPIB0
+#       define _I2CB0
+#       define _SPIB1
+#       define _I2CB1
+
+#   elif  defined(__MSP430F5509__)
+#       include "msp430f5509.h"
+#       define _GPIOU
+#       define _ADC10
+#       define _USB
+#       define _UARTA0
+#       define _SPIA0
+#       define _UARTA1
+#       define _SPIA1
+#       define _SPIB0
+#       define _I2CB0
+#       define _SPIB1
+#       define _I2CB1
+#       define _TIM0A5
+#       define _TIM1A3
+#       define _TIM2A3
+#       define _TIM0B7
+
+#   elif defined(__MSP430F5510__)
+#       include "msp430f5510.h"
+#       define _GPIOU
+#       define _ADC10
+#       define _TIM0A5
+#       define _TIM1A3
+#       define _TIM2A3
+#       define _TIM0B7
+#       define _USB
+#       define _UARTA0
+#       define _SPIA0
+#       define _UARTA1
+#       define _SPIA1
+#       define _SPIB0
+#       define _I2CB0
+#       define _SPIB1
+#       define _I2CB1
+
+#   elif defined(__MSP430F5529__)
+#       include "msp430f5529.h"
+#       define _GPIOU
+#       define _GPIO7
+#       define _GPIO8
+#       define _GPIO78
+#       define _ADC12
+#       define _TIM0A5
+#       define _TIM1A3
+#       define _TIM2A3
+#       define _TIM0B7
+#       define _USB
+#       define _UARTA0
+#       define _SPIA0
+#       define _UARTA1
+#       define _SPIA1
+#       define _SPIB0
+#       define _I2CB0
+#       define _SPIB1
+#       define _I2CB1
+
+
+#   else
+#       error "Chip has not been identified as a supported __MSP430F5xxx__ in msp430f5_conf.h"
+#   endif
+
+#else
+#   error "Compiler is not identified as CCSv5, CCSv4, or GCC."
+
+#endif
+
+
+
+
+
 
 
 

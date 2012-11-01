@@ -69,7 +69,7 @@
 #define OT_PARAM(VAL)                   OT_PARAM_##VAL
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
-#define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    
+#define OT_PARAM_BUFFER_SIZE            (512 + 512*(MPIPE_FOR_DEBUGGING!=0))  // Typically, must be at least 512 bytes
 #define OT_PARAM_KERNEL_LIMIT           -1                                  // Maximum ticks between kernel calls (if<=0, no limit)
 
 #define OT_FEATURE(VAL)                 OT_FEATURE_##VAL
@@ -81,7 +81,7 @@
 #define OT_FEATURE_MPIPE                MPIPE_FOR_DEBUGGING					// Tied to "DEBUG_ON"
 #define OT_FEATURE_NDEF                 OT_FEATURE_MPIPE                    // NDEF wrapper for Messaging API
 #define OT_FEATURE_LOGGER               OT_FEATURE_MPIPE                    // Mpipe-based data logging & printing
-#define OT_FEATURE_ALP                  (ENABLED || OT_FEATURE_CLIENT)      // Application Layer Protocol Support
+#define OT_FEATURE_ALP                  (OT_FEATURE_MPIPE)      // Application Layer Protocol Support
 #define OT_FEATURE_ALPAPI               (OT_FEATURE_MPIPE && OT_FEATURE_ALP) // Application Layer Protocol callable API's
 #define OT_FEATURE_VEELITE              ENABLED                             // Veelite DASH7 File System
 #define OT_FEATURE_VLFPS                OT_PARAM_VLFPS

@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/cc430/mpipe_CC430_uart.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2011
+  * @version    R101
+  * @date       1 Nov 2012
   * @brief      Message Pipe (MPIPE) implementation(s) for CC430
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
@@ -60,17 +60,16 @@
   ******************************************************************************
   */
 
-
 #include "OT_config.h"
 
-#if (OT_FEATURE(MPIPE) == ENABLED)
+#if ((OT_FEATURE(MPIPE) == ENABLED) && defined(MPIPE_UART))
 
 #include "buffers.h"
 #include "mpipe.h"
 #include "OT_platform.h"
 
-#if ((MPIPE_UARTNUM != 0) && (MPIPE_UARTNUM != 1))
-#   error "MPIPE_UARTNUM not defined to an available UART"
+#if (MPIPE_UART_ID != 0xA0)
+#   error "MPIPE_UART_ID not defined to A0, the only UART available on CC430"
 #endif
 
 
@@ -158,7 +157,7 @@
 
 
 
-/** Mpipe Module Data (used by all Mpipe implementations)   <BR>
+/** Mpipe Driver Data  <BR>
   * ========================================================================<BR>
   */
   
@@ -212,17 +211,7 @@ void sub_uart_portsetup() {
   * ========================================================================
   */
 
-#if (ISR_EMBED(MPIPE) == ENABLED)
-
-#if (CC_SUPPORT == CL430)
-#   pragma vector=DMA_VECTOR
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(DMA_VECTOR)
-#elif (CC_SUPPORT == IAR_V5)
-#else
-#   error "A known compiler has not been defined"
-#endif
-OT_INTERRUPT void mpipedrv_dma_isr(void) {
+OT_INLINE void platform_isr_dma(void) {
 #   if (MPIPE_DMANUM == 0)
         if (DMA->IV == 2) mpipedrv_isr();
 #   elif (MPIPE_DMANUM == 1)
@@ -235,15 +224,7 @@ OT_INTERRUPT void mpipedrv_dma_isr(void) {
 }
 
 /*
-#if (CC_SUPPORT == CL430)
-#   pragma vector=MPIPE_UART_VECTOR
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(MPIPE_UART_VECTOR)
-#elif (CC_SUPPORT == IAR_V5)
-#else
-#   error "A known compiler has not been defined"
-#endif
-OT_INTERRUPT void mpipedrv_uart_isr(void) {
+void platform_isr_uscia0(void) {
     //MPIPE_UART->IFG = 0;
     if ((mpipe.state == MPIPE_Tx_Wait) || (mpipe.state == MPIPE_TxAck_Wait)) {
         mpipe.state++;
@@ -253,7 +234,7 @@ OT_INTERRUPT void mpipedrv_uart_isr(void) {
     }
 }
 */
-#endif
+
 
 
 
@@ -273,8 +254,7 @@ ot_u8 mpipedrv_footerbytes() {
 
 #ifndef EXTF_mpipedrv_init
 ot_int mpipedrv_init(void* port_id) {
-/// 0. "port_id" is unused in this impl, and it may be NULL
-/// 1. Set all signal callbacks to NULL, and initialize other variables.
+/// 1. "port_id" is unused in this impl, and it may be NULL
 /// 2. Prepare the HW, which in this case is a UART
 /// 3. Set default speed, which in this case is 115200 bps
 
@@ -282,11 +262,6 @@ ot_int mpipedrv_init(void* port_id) {
     BOARD_DMA_COMMON_INIT();
 #endif
 
-#if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
-    mpipe.sig_rxdone    = &otutils_sigv_null;
-    mpipe.sig_txdone    = &otutils_sigv_null;
-    mpipe.sig_rxdetect  = &otutils_sigv_null;
-#endif
 #if (MPIPE_USE_ACKS)
     tty.priority    = MPIPE_Low;
 #endif
@@ -301,6 +276,14 @@ ot_int mpipedrv_init(void* port_id) {
     mpipedrv_setspeed(MPIPE_115200bps);     //default baud rate
 
     return 255;
+}
+#endif
+
+
+
+#ifndef EXTF_mpipedrv_detach
+void mpipedrv_detach(void* port_id) {
+    mpipe.state = MPIPE_Null;
 }
 #endif
 
@@ -335,9 +318,7 @@ void mpipedrv_kill() {
 
 #ifndef EXTF_mpipedrv_wait
 void mpipedrv_wait() {
-    while (mpipe.state != MPIPE_Idle) {
-        SLEEP_MCU();
-    }
+    while (mpipe.state != MPIPE_Idle);
 }
 #endif
 
@@ -448,7 +429,6 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
         mpipedrv_wait();
     }
     if (mpipe.state == MPIPE_Idle) {
-        //mpipe.state     = MPIPE_Idle;
         mpipedrv_rxndef_SETUP:
         MPIPE_DMAEN(OFF);
         UART_CLOSE();
@@ -489,23 +469,25 @@ void mpipedrv_isr() {
 
     switch (mpipe.state) {
         case MPIPE_Idle: //note, case doesn't break!
-
-        case MPIPE_RxHeader: 
-        	///@note DMA doesn't seem to need intermediate disabling here
+        
+        case MPIPE_RxHeader: {
+            ot_u8* payload_front;
+            ot_int payload_len;
             mpipe.state             = MPIPE_RxPayload;
-            mpipe.alp.inq->length   = mpipe.alp.inq->front[2] + 10;
-            mpipe.alp.inq->back     = (mpipe.alp.inq->front+6) + mpipe.alp.inq->front[2];
-            MPIPE_DMA_RXCONFIG( (mpipe.alp.inq->front+6), \
-            		            mpipe.alp.inq->front[2]+4, \
-            		            ON);
+            payload_len             = mpipe.alp.inq->front[2];
+            payload_front           = mpipe.alp.inq->front + 6;
+            mpipe.alp.inq->back     = payload_front + payload_len;
+            payload_len            += MPIPE_FOOTER_BYTES;
+            mpipe.alp.inq->length   = payload_len + 6;
+            MPIPE_DMA_RXCONFIG(payload_front, payload_len, ON);
             mpipeevt_rxdetect(30);      ///@todo make dynamic: this is relevant for 115200bps
-            return;
+        }   return;
 
         case MPIPE_RxPayload: {
             ot_u8* footer;
-            footer = mpipe.alp.inq->front + mpipe.alp.inq->length - MPIPE_FOOTERBYTES;
-            tty.seq.ubyte[UPPER] = *footer++;
-            tty.seq.ubyte[UPPER] = *footer;
+            footer                  = mpipe.alp.inq->back;
+            tty.seq.ubyte[UPPER]    = *footer++;
+            tty.seq.ubyte[LOWER]    = *footer;
             
             // CRC is Good (==0) or bad (!=0) Discard the packet if bad
             crc_result = platform_crc_block(mpipe.alp.inq->front, mpipe.alp.inq->length);

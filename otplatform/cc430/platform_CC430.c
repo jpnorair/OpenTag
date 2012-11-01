@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/cc430/platform_CC430.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R101
+  * @date       31 October 2012
   * @brief      ISRs and hardware services abstracted by the platform module
   * @ingroup    Platform
   *
@@ -115,27 +115,6 @@ void otapi_led2_off() {
 /** Platform Data <BR>
   * ============================================================================
   */
-#define RTC_ALARMS          (1 * OT_FEATURE(RTC))       // Max=3
-#define RTC_OVERSAMPLE      0                           // unsupported on CC430
-
-typedef struct {
-    ot_u8   disabled;
-    ot_u8   taskid;
-    ot_u16  mask;
-    ot_u16  value;
-} rtcalarm;
-
-typedef struct {
-    ot_u16 prand_reg;
-    
-#   if (RTC_OVERSAMPLE)
-#   endif
-#   if (RTC_ALARMS > 0)
-        rtcalarm alarm[RTC_ALARMS];
-#   endif
-
-} platform_ext_struct;
-
 
 platform_struct     platform;       //defined in OT_platform.h
 platform_ext_struct platform_ext;
@@ -199,48 +178,30 @@ platform_ext_struct platform_ext;
   */
 
 // 1. User NMI Interrupt (segmentation faults, i.e. firmware faults)
-#if (ISR_EMBED(POWER) == ENABLED)
-#   if (CC_SUPPORT == CL430)
-#       pragma vector=UNMI_VECTOR
-#   elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#   elif (CC_SUPPORT == GCC)
-        OT_IRQPRAGMA(UNMI_VECTOR)
-#   endif
-OT_INTERRUPT void platform_usernmi_isr(void) {
+#ifndef EXTF_platform_isr_usernmi
+void platform_isr_usernmi(void) {
 /// Error Codes
-/// 11 - Segmentation Fault (Veelite Error)
-///  2 - Oscillator error
-///  7 - Vacant memory access (flash error)
-/// 10 - Bus error (HW bus problem, typically USB timeout)
+/// <LI> 2 / 11: Virtual addressing Segmentation Fault (USER NMI)   </LI>
+/// <LI> 4 / 01: HW failure (Oscillator Error)                      </LI>
+/// <LI> 6 / 10: HW Data Error (Flash Access Violation)             </LI>
+/// <LI> 8 / 12: MPipe Bus Error (not used on CC430)                </LI>
     ot_int code = 0;
     
     switch (__even_in_range(SYS->UNIV, 6)) {
     case 0: break;
-    case 2: code = 9;
-    case 4: code -= 5;
-    case 6: sys_panic( code+7 );
+    case 2: code    = 10;           //11
+    case 4: code   -= 9;            //1
+    case 6: sys_panic( code+10 );   //10
             break;
     }
 }
 #endif
 
 
-
 // 2. System NMI Interrupt (bus errors and other more serious faults)
-#if (ISR_EMBED(POWER) == ENABLED)
-#   if (CC_SUPPORT == CL430)
-#       pragma vector=SYSNMI_VECTOR
-#   elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#   elif (CC_SUPPORT == GCC)
-        OT_IRQPRAGMA(SYSNMI_VECTOR)
-#   endif
-OT_INTERRUPT void platform_sysnmi_isr(void) {
-    ot_u8 syssniv_reg = SYS->SNIV;
-    SYS->SNIV = 0;        // Clear all System NMI flags
-
-    switch (__even_in_range(syssniv_reg, 12)) {
+#ifndef EXTF_platform_isr_sysnmi
+void platform_isr_sysnmi(void) {
+    switch (__even_in_range(SYS->SNIV, 18)) {
         case 0x00:  break;
 
         // Supply Voltage Supervisor/Monitor level-low Interrupts
@@ -253,7 +214,7 @@ OT_INTERRUPT void platform_sysnmi_isr(void) {
                     break;
 
         // Vacant Memory Access (HW Bus Error): SFRIE1.VMAIE,
-        case 0x0A:  sys_panic(4);
+        case 0x0A:  sys_panic(7);
                     break;
 
         // JTAG Mailbox in/out (0C/0E): SFRIE1.JMB~IE
@@ -264,28 +225,23 @@ OT_INTERRUPT void platform_sysnmi_isr(void) {
         case 0x10:                          //SVMLVLR
         case 0x12:  break;                  //SVMHVLR
     }
-
-    //LPM4_EXIT;          // Don't Clear All Sleep Bits
 }
 #endif
 
 
-
-
 /// 3.  Reset Interrupt
 ///     If specificed, this gets called after reset, during startup
-#ifdef DEBUG_ON
-/*
-#pragma vector=RESET_VECTOR
-__interrupt void Reset_ISR(void) {
-    ot_u8 sysrstiv_reg = SYS->RSTIV;
-    SYS->RSTIV = 0;       // Clear all reset source flags
-
-    if (sysrstiv_reg != 0) {
-        // Set Breakpoint Here
-        __no_operation();
-    }
-
+#ifndef EXTF_platform_isr_reset
+void platform_isr_reset(void) {
+#   ifdef __DEBUG__
+//    ot_u8 sysrstiv_reg = SYS->RSTIV;
+//    SYS->RSTIV = 0;       // Clear all reset source flags
+//
+//    if (sysrstiv_reg != 0) {
+//        // Set Breakpoint Here
+//        __no_operation();
+//    }
+//
 //    //Fully dressed reset vector implementation
 //    switch (__even_in_range(sysrstiv_reg, 0x20)) {
 //        case 0x00:  //No reset source condition
@@ -306,58 +262,34 @@ __interrupt void Reset_ISR(void) {
 //        case 0x1E:  //PUC PERF Peripheral/configuration area fetch
 //        case 0x20:  //PUC PMM passsword violation
 //    }
-}
-*/
-#endif
-
-
-
-
-// 4. Watchdog Interrupt
-//#pragma vector=WDT_VECTOR
-//__interrupt void Watchdog_ISR(void) {
-//    LPM4_EXIT;  // Clear All Sleep Bits
-//}
-
-
-
-// 5. Kernel Timer Interrupt: This must be the "A1" interrupt
-#if (ISR_EMBED(GPTIM) == ENABLED)
-#   if (CC_SUPPORT == CL430)
-#       pragma vector=OT_GPTIM_VECTOR
-#   elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#   elif (CC_SUPPORT == GCC)
-        OT_IRQPRAGMA(OT_GPTIM_VECTOR)
 #   endif
-OT_INTERRUPT void platform_gptim_isr() {
-    switch (__even_in_range(OT_GPTIM->IV, 16)) {
-        case 0: break;
-        case 2: LPM4_EXIT;              break;  //Kernel Timer
-        case 4: radio_mac_isr();        break;
-    }
 }
 #endif
 
 
-// 6. RTC Interrupt
+
+/// 4. Watchdog Interrupt
+#ifndef EXTF_platform_isr_wdti
+void platform_isr_wdti(void) {
+}
+#endif
+
+
+
+/// 5. Kernel Timer Interrupt
+///    Implemented as a special interrupt in platform_isr_CC430.c
+
+
+
+/// 6. RTC Interrupt
 #if (OT_FEATURE(RTC) == ENABLED)
 
 #if (RTC_OVERSAMPLE != 0)
 #   error "RTC Oversampling is not supported on CC430"   
 #endif
 
-
-#if (RTC_ALARMS > 0)
-#if (ISR_EMBED(RTC) == ENABLED)
-#   if (CC_SUPPORT == CL430)
-#       pragma vector=RTC_VECTOR
-#   elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#   elif (CC_SUPPORT == GCC)
-        OT_IRQPRAGMA(RTC_VECTOR)
-#   endif
-OT_INTERRUPT void platform_rtc_isr() {
+#if (!defined(EXTF_platform_isr_rtca))
+void platform_isr_rtca(void) {
 /// The only supported interrupt for CC430 is the 1 second interval interrupt.
 /// CC430 (and MSP430) do not have an RTC that is well-suited to some of the 
 /// more advanced RTC-based MAC features of OpenTag/DASH7, so I keep the RTC
@@ -369,16 +301,14 @@ OT_INTERRUPT void platform_rtc_isr() {
     for (i=(RTC_ALARMS-1); i>=0; i--) {
         if (platform_ext.alarm[i].disabled == 0) {
             if ((RTC->TIM0 & platform_ext.alarm[i].mask) == platform_ext.alarm[i].value) {
-                sys_synchronize(platform_ext.alarm[i].taskid);
+                sys_synchronize( platform_ext.alarm[i].taskid );
             }
         }
     }
 }
-#endif  // ISR declaration stuff
-#endif  // RTC_ALARM > 0
+#endif
 
-
-#endif // End of RTC stuff
+#endif
 
 
 
@@ -390,16 +320,50 @@ OT_INTERRUPT void platform_rtc_isr() {
 /** Platform Interrupt & Event Management Routines <BR>
   * ========================================================================<BR>
   */
+#ifndef EXTF_platform_disable_interrupts
 void platform_disable_interrupts() {
     __bic_SR_register(GIE);
     __no_operation();
 }
+#endif
 
+
+#ifndef EXTF_platform_enable_interrupts
 void platform_enable_interrupts() {
     __bis_SR_register(GIE);
     __no_operation();
 }
+#endif
 
+
+
+#ifndef EXTF_platform_drop_context
+void platform_drop_context(ot_uint i) {
+///@note Since CC430 only supports GULP right now, the usage of GULP is  
+///      implicit with this implementation.
+///
+/// The function here works together with the custom interrupt entry hook, 
+/// which stores the pointer in the stack where it puts Return-from-interrupt 
+/// PC in the persistent variable: platform_ext.reti_pc.  It should only change
+/// the RETI PC if the ISR that called sys_kill_active() or sys_kill_all()
+/// occurred during an active task runtime, though, or else things will get
+/// totally fucked up.
+
+    if (platform_ext.task_entry != NULL) {
+#   if (CC_SUPPORT == GCC)
+        asm volatile("MOV.W  #RETURN_FROM_TASK, 0(%0") : : "m"(platform_ext.reti) );
+                    
+#   elif (CC_SUPPORT == CL430)    
+        _set_R4_register( (ot_u16)platform_ext.reti_pc );
+        asm ("  MOV.W  #RETURN_FROM_TASK, 0(R4)");
+        
+#   endif    
+    } 
+}
+#endif
+
+
+#ifndef EXTF_platform_ot_preempt
 void platform_ot_preempt() {
 /// The kernel scheduler runs normally in co-operative mode, and it is invoked
 /// always after a task finishes running.  The kernel scheduler must also run
@@ -411,15 +375,58 @@ void platform_ot_preempt() {
         OT_GPTIM->CCTL1 |= (sys_event_manager() == 0) | CCIE;
     }
 }
+#endif
 
+
+#ifndef EXTF_platform_pause
 //void platform_ot_pause() {
 //    platform_ot_preempt();
 //    platform_flush_gptim();
 //}
+#endif
 
+
+#ifndef EXTF_platform_ot_run
 void platform_ot_run() {
-    sys_task_manager();   //invoke USER NMI, which runs kernel scheduler
+/// If the active task is NULL/Idle, this means the powerdown routine should
+/// run, and that the timer needs to be hot before the powerdown.  Otherwise,
+/// there is a task to run, and the timer should not be hot until after the
+/// task is complete.
+
+	// Enable interrupts for pre-emptive tasks during runtime of the
+	// cooperative task -- co-operative tasks are parent tasks, basically
+	platform_disable_ktim();
+	platform_enable_interrupts();
+    
+#   if (CC_SUPPORT == GCC)
+        asm volatile("MOV.W   SP,%0" : "=m"(platform_ext.task_entry)  );     
+#   elif (CC_SUPPORT == CL430)  
+        platform_ext.task_entry = (ot_u16*)_get_SP_register();
+#   endif
+    
+	sys_run_task();
+	
+#   if (CC_SUPPORT == GCC)
+	RETURN_FROM_TASK:
+        asm ("MOV.W   %0,SP" : : "m"(platform_ext.task_entry)  );  
+#   elif (CC_SUPPORT == CL430)
+        asm ("RETURN_FROM_TASK:");
+        _set_SP_register((ot_u16)platform_ext.task_entry);
+#   endif
+    
+	platform_ext.task_entry = NULL;
+
+	// Disable interrupts during event management routine
+	// Powerdown mode initiation MUST enable interrupts, by the way.
+	// If event manager returns 0, there is a task immediately pending,
+	// so no point in powering down.
+	platform_disable_interrupts();
+	if (sys_event_manager()) {
+		sys_powerdown();
+	}
 }
+#endif
+
 
 
 
@@ -428,7 +435,7 @@ void platform_ot_run() {
 /** Platform Startup and Shutdown Routines <BR>
   * ========================================================================<BR>
   */
-
+#ifndef EXTF_platform_poweron
 void platform_poweron() {
     /// 1. CC430-specific Initial Power-On Routine
     /// <LI> Hold Watchdog timer through the power-on routine           </LI>
@@ -465,8 +472,10 @@ void platform_poweron() {
     // Restore vworm (following save on shutdown)
     vworm_init();
 }
+#endif
 
 
+#ifndef EXTF_platform_poweroff
 void platform_poweroff() {
 /// 1. Disable all NMI interrupts that can break flash writes. <BR>
 /// 2. Put any mirror data into the flash <BR>
@@ -477,8 +486,10 @@ void platform_poweroff() {
     vworm_save();
     SFRIE1 = old_sfrie1;
 }
+#endif
 
 
+#ifndef EXTF_platform_init_OT
 void platform_init_OT() {
     /// 1. Initialize Data sources required by basically all OT features
     ///    - Buffers module allocates the data queues, used by all I/O
@@ -498,7 +509,6 @@ void platform_init_OT() {
     ///    initialize all modules that are built onto the kernel.  These include
     ///    the DLL and MPipe.
     sys_init();
-    
 
     /// 4. If debugging, find the Chip ID and use 6 out of 8 bytes of it to
     ///    yield the UID.  This ID might not be entirely unique -- technically, 
@@ -529,15 +539,17 @@ void platform_init_OT() {
     }
 #   endif
 }
+#endif
 
 
-
+#ifndef EXTF_fastinit_OT
 void platform_fastinit_OT() {
     platform_init_OT();
 }
+#endif
 
 
-
+#ifndef EXTF_platform_init_busclk
 void platform_init_busclk() {
     /// 1. Board Specific XTAL startup routine
     ///    (Must be defined in Board Support Header)
@@ -591,22 +603,27 @@ void platform_init_busclk() {
                   (div1 << clockMCLK) | \
                   (_SMCLK_DIV << clockSMCLK);
 }
+#endif
 
 
+#ifndef EXTF_platform_init_periphclk
 void platform_init_periphclk() {
 /// MSP430 Clocks are system wide.  No AHB/APB setup like on ARMs
 }
+#endif
 
 
+#ifndef EXTF_platform_init_interruptor
 void platform_init_interruptor() {
 /// MSP430 does not have a Nested-Vector Interrupt controller like the Cortex M
 /// chips have.  To enable the interrupt controller, there is just one bit to
 /// enable.  Peripheral interrupts are managed independently by the peripherals.
     platform_enable_interrupts();
 }
+#endif
 
 
-
+#ifndef EXTF_platform_init_gpio
 void platform_init_gpio() {
 /// Initialize ports/pins exclusively used within this platform module.
 /// A. Trigger Pins
@@ -638,11 +655,11 @@ void platform_init_gpio() {
     //OT_GWNZENER_PORT->DOUT &= ~OT_GWNZENER_PIN;
     OT_GWNZENER_PORT->DDIR |= OT_GWNZENER_PIN;
 #endif
-
 }
+#endif
 
 
-
+#ifndef EXTF_platform_init_gptim
 void platform_init_gptim(ot_uint prescaler) {
 /// With the CC430, the timer prescaler input is a code, since the MSP430 core
 /// doesn't have a conventional prescaler.  The breakdown is:  <BR>
@@ -659,9 +676,10 @@ void platform_init_gptim(ot_uint prescaler) {
     //OT_GPTIM->CCTL0 = 0;
     OT_GPTIM->CTL  |= 0x0020;       //continuous-up counting, no update interrupt
 }
+#endif
 
 
-
+#ifndef EXTF_platform_init_watchdog
 void platform_init_watchdog() {
 /// Watchdog is generally unused in OpenTag, which has a kernel to administer
 /// timeouts to I/O task processes.  The Watchdog is free to the user in stable
@@ -670,17 +688,19 @@ void platform_init_watchdog() {
 /// @todo Implement a more usable watchdog.  Right now it is not tested.
     platform_reset_watchdog(64);
 }
+#endif
 
 
-
+#ifndef EXTF_platform_init_resetswitch
 void platform_init_resetswitch() {
 /// On the CC430, you could configure the reset switch to perform an NMI
 /// interrupt instead of a hard reset.  We don't do that, because it can cause
 /// JTAG debugging to fail.
 }
+#endif
 
 
-
+#ifndef EXTF_platform_init_systick
 void platform_init_systick(ot_uint period) {
 /// Use the Watchdog Timer in "interval mode" as the SysTick (not required).
 ///
@@ -701,9 +721,10 @@ void platform_init_systick(ot_uint period) {
     // Comment out if you don't want the SysTick to generate interrupts
     SFRIE1 |= WDTIE;
 }
+#endif
 
 
-
+#ifndef EXTF_platform_init_rtc
 void platform_init_rtc(ot_u32 value) {
 #if (OT_FEATURE(RTC) || defined(OT_GPTIM_USERTC))
 
@@ -740,8 +761,11 @@ void platform_init_rtc(ot_u32 value) {
     //platform_enable_rtc();
 #endif
 }
+#endif
 
 
+
+#ifndef EXTF_platform_init_rtc
 void platform_init_memcpy() {
 #if (MCU_FEATURE(MEMCPYDMA) == ENABLED)
     BOARD_DMA_COMMON_INIT();
@@ -757,7 +781,7 @@ void platform_init_memcpy() {
 #   endif
 #endif
 }
-
+#endif
 
 
 
@@ -841,15 +865,20 @@ void platform_resume_watchdog() {
 
 
 
-
+#ifndef EXTF_platform_enable_rtc
 void platform_enable_rtc() {
     RTC->PS1CTL |= RT1PSIE;
 }
+#endif
 
+#ifndef EXTF_platform_disable_rtc
 void platform_disable_rtc() {
     RTC->PS1CTL &= ~RT1PSIE;
 }
+#endif
 
+
+#ifndef EXTF_platform_set_time
 void platform_set_time(ot_u32 utc_time) {
 #if (RTC_OVERSAMPLE)
 #else
@@ -857,7 +886,10 @@ void platform_set_time(ot_u32 utc_time) {
     RTC->TIM1   = ((ot_u16*)&utc_time)[UPPER];
 #endif
 }
+#endif
 
+
+#ifndef EXTF_platform_get_time
 ot_u32 platform_get_time() {
 #if (OT_FEATURE(RTC) == ENABLED)
 #   if (RTC_OVERSAMPLE)
@@ -875,25 +907,31 @@ ot_u32 platform_get_time() {
     return 0;
 #endif
 }
+#endif
 
+
+#ifndef EXTF_platform_set_rtc_alarm
 void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
 #if (OT_FEATURE(RTC) == ENABLED)
 #   ifdef __DEBUG__
     if (alarm_id < RTC_ALARMS)
 #   endif
     {
-        vlFILE* fp                      = ISF_open_su( ISF_ID(real_time_scheduler) );
-        platform_ext.alarm[alarm_id].disabled  = 0;
-        platform_ext.alarm[alarm_id].taskid    = task_id;
-        platform_ext.alarm[alarm_id].mask      = PLATFORM_ENDIAN16(ISF_read(fp, offset));
-        platform_ext.alarm[alarm_id].value     = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
+        vlFILE* fp                              = ISF_open_su( ISF_ID(real_time_scheduler) );
+        platform_ext.alarm[alarm_id].disabled   = 0;
+        platform_ext.alarm[alarm_id].taskid     = task_id;
+        platform_ext.alarm[alarm_id].mask       = PLATFORM_ENDIAN16(ISF_read(fp, offset));
+        platform_ext.alarm[alarm_id].value      = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
         vl_close(fp);
         
         platform_enable_rtc();
     }
 #endif
 }
+#endif
 
+
+#ifndef EXTF_platform_clear_rtc_alarm
 void platform_clear_rtc_alarms() {
 #if (OT_FEATURE(RTC) == ENABLED)
     platform_disable_rtc();
@@ -912,7 +950,7 @@ void platform_clear_rtc_alarms() {
 #   endif
 #endif
 }
-
+#endif
 
 
 
@@ -958,11 +996,14 @@ void platform_trig2_toggle() { }
   * string "123456789" produce 0x29B1.
   */
 
+#ifndef EXTF_platform_crc_init
 ot_u16 platform_crc_init() {
-    CRC->INIRES = 0xFFFF;
+	CRC->INIRES = 0xFFFF;
     return CRC->INIRES;
 }
+#endif
 
+#ifndef EXTF_platform_crc_block
 ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
     ot_u8* data = block_addr;
     CRC->INIRES = 0xFFFF;
@@ -973,14 +1014,19 @@ ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
 
     return CRC->INIRES;
 }
+#endif
 
+#ifndef EXTF_platform_crc_byte
 void platform_crc_byte(ot_u8 databyte) {
-    CRCb->DIRB_L = databyte;
+	CRCb->DIRB_L = databyte;
 }
+#endif
 
+#ifndef EXTF_platform_crc_result
 ot_u16 platform_crc_result() {
     return CRC->INIRES;
 }
+#endif
 
 
 
@@ -991,7 +1037,7 @@ ot_u16 platform_crc_result() {
   * The platform must be able to compute a strong random number (via function
   * platform_rand()) and a "pseudo" random number (via platform_prand_u8()).
   */
-
+#ifndef EXTF_platform_rand
 void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
 /// This random number generator is quite fast.  A 128 bit number can be
 /// generated in less than 50us, typically.
@@ -1064,16 +1110,25 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
         OT_GWNZENER_PORT->DOUT &= ~OT_GWNZENER_PIN;
 #   endif
 }
+#endif
 
 
+
+#ifndef EXTF_platform_init_prand
 void platform_init_prand(ot_u16 seed) {
     platform_ext.prand_reg = seed;
 }
+#endif
 
+
+#ifndef EXTF_platform_prand_u8
 ot_u8 platform_prand_u8() {
     return (ot_u8)platform_prand_u16();
 }
+#endif
 
+
+#ifndef EXTF_platform_prand_u16
 ot_u16 platform_prand_u16() {
 /// Run the HW CRC on the prand register stored value.  Always save the value in
 /// the CRC HW and return it when the process is done.  prand_reg should be
@@ -1086,6 +1141,7 @@ ot_u16 platform_prand_u16() {
 
     return platform_ext.prand_reg;
 }
+#endif
 
 
 
@@ -1104,8 +1160,6 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 #elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
 /// DMA driven method: CC430 DMA Block Transfer is blocking, and the CPU is
 /// stopped during the data movement.  Thus the while loop is not needed.
-/// If using DMA for memcpy in addition to MPipe, the throughput of MPipe is
-/// limited to (in practice) about 39000 BYTES/SEC (so, 390kbaud for UART)
     MEMCPY_DMA->SA_L    = (ot_u16)src;
     MEMCPY_DMA->DA_L    = (ot_u16)dest;
     MEMCPY_DMA->SZ      = length;
@@ -1117,6 +1171,8 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
                             DMA_TriggerLevel_RisingEdge | \
                             0x11);
     //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
+    //DMA must be manually cleared on zero-length copy
+    MEMCPY_DMA->CTL    &= ~(0x10);
     
 #else
 /// Uses the "Duff's Device" for loop unrolling.  If this is incredibly

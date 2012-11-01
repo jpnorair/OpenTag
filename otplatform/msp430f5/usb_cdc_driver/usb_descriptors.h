@@ -1,15 +1,40 @@
-// (c)2010 by Texas Instruments Incorporated, All Rights Reserved.
-/*-----------------------------------------------------------------------------+
-|                                                                              |
-|                              Texas Instruments                               |
-|                                                                              |
-|    This is an automatically generated script by MSP430 USB Descriptor Tool   |
-|                                                                              |
-|    Descriptor Tool Version: 3.0.10                                           |
-|    Date: 2012/03/08 21:59:34                                                 |
-|                                                                              |
-|                                Descriptor.h                                  |
-|-----------------------------------------------------------------------------*/
+/*  Copyright (c) 2010, Texas Instruments Incorporated
+  * All rights reserved.
+  * 
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions are met:
+  *  * Redistributions of source code must retain the above copyright notice,
+  *    this list of conditions, and the following disclaimer.
+  *  * Redistributions in binary form must reproduce the above copyright 
+  *    notice, this list of conditions and the following disclaimer in the
+  *    documentation and/or other materials provided with the distribution.
+  *  * Neither the name of the organization, Texas Instruments, nor the names 
+  *    of its contributors may be used to endorse or promote products derived 
+  *    from this software without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+  * ARE DISCLAIMED. IN NO EVENT SHALL TEXAS INSTRUMENTS BE LIABLE FOR ANY 
+  * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
+  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+/** @file       /otplatform/msp430f5/usb_cdc_driver/usb_descriptors.c
+  * @author     auto-generation, JP Norair
+  * @version    R100
+  * @date       27 Oct 2012
+  * @brief      USB CDC descriptor definitions
+  * @ingroup    MSP430F5_USB_CDC
+  *
+  * This file was generated automatically by the MSP430 USB Descriptor Tool 
+  * from Texas Instruments, then modified by JP Norair to work with OpenTag.
+  *****************************************************************************
+  */
+
 
 #ifndef _DESCRIPTORS_H_
 #define _DESCRIPTORS_H_
@@ -21,7 +46,7 @@
 
 
 // Needed for CDC inteface
-#if (MCU_FEATURE_MPIPEVCOM == ENABLED)
+#if (MCU_FEATURE_MPIPECDC == ENABLED)
 #define _CDC_
 #endif
 
@@ -43,15 +68,16 @@
 
 ///@note You should edit this line below to control which events will be
 ///      handled in firmware.
-#define USBEVT_MASK      (   USBEVT_VBUSON        | \
-                             USBEVT_VBUSOFF       | \
-                             USBEVT_RESET         | \
-                             USBEVT_SUSPEND      | \
-                             USBEVT_RESUME       | \
-                            /* USBEVT_RXBUFFERED   | */ \
-                             USBEVT_TXCOMPLETE   | \
-                             USBEVT_RXCOMPLETE   | \
-                             0 )
+#define USBEVT_MASK      (/*USBEVT_CLOCKFAULT   |*/ \
+                            USBEVT_VBUSON       |   \
+                            USBEVT_VBUSOFF      |   \
+                          /*USBEVT_RESET        |*/ \
+                            USBEVT_SUSPEND      |   \
+                            USBEVT_RESUME       |   \
+                          /*USBEVT_RXBUFFERED   |*/ \
+                            USBEVT_TXCOMPLETE   |   \
+                            USBEVT_RXCOMPLETE   |   \
+                            0   )
 
 
 
@@ -81,7 +107,7 @@
 #define CDC0_INTFNUM            0
 #define MSC_MAX_LUN_NUMBER      1           // Maximum number of LUNs supported
 
-#define PUTot_u16(x)              ((x)&0xFF),((x)>>8)
+#define PUTot_u16(x)            ((x)&0xFF),((x)>>8)
 
 #define USB_OUTEP_INT_EN        (BIT0 | BIT2) 
 #define USB_INEP_INT_EN         (BIT0 | BIT1 | BIT2) 

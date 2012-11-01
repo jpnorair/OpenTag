@@ -13,10 +13,10 @@
   * limitations under the License.
   *
   */
-/** @file       /OTplatform/~MSP430/CC430/cc430_map.h
+/** @file       /otplatform/msp430_mculib/cc430/cc430_map.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 May 2012
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Resource & Peripheral Mappings for CC430
   * @ingroup    CC430 Library
   *
@@ -951,7 +951,7 @@ extern const u8* cc430_pdir_list[CC430_TOTAL_PORTS];
 
 
 // Liquid Crystal Display Bus Controller (LCD)
-//#ifdef _LCD
+//#ifdef _LCDB
 #   define LCD              ((LCD_Type*)LCD_BASE)
 //#endif
 

@@ -16,7 +16,7 @@
 /**
   * @file       /otradio/cc1101/CC1101_STM32F10x.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       2 April 2012
   * @brief      CC1101 transceiver interface implementation for STM32F10x
   * @ingroup    CC1101

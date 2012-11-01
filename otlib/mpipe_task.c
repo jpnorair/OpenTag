@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/mpipe.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       30 September 2012
+  * @version    R100
+  * @date       24 Oct 2012
   * @brief      Message Pipe (MPIPE) Task Interface
   * @ingroup    MPipe
   *
@@ -39,8 +39,13 @@ mpipe_struct mpipe;
 
 
 
-void mpipe_init(void* port_id) {
+void mpipe_connect(void* port_id) {
     sys.task_MPA.latency = mpipedrv_init(port_id);
+}
+
+void mpipe_disconnect(void* port_id) {
+    mpipe_close();
+    mpipedrv_detach(port_id);
 }
 
 
@@ -93,17 +98,22 @@ void mpipeevt_rxdone(ot_int code) {
 /// "32" in the array is given as the maximum time for protocol parsing.  It might need
 /// to be more dynamic, depending on protocol and length of packet.  In the future, there
 /// might be a "guess runtime" function in ALP that inspects these things.
+#if (defined(MPIPE_USB) || (BOARD_FEATURE_USBCONVERTER == ENABLED))
+	sub_mpipe_actuate(1, 32, 0);
+#else
     static const ot_u8 params[] = { 4, 1, 1, 32 };
     code = (code == 0);
     sub_mpipe_actuate(params[code], params[code+2], 0);
+#endif
 }
 
 
 
 void mpipe_systask(ot_task task) {
     switch (sys.task_MPA.event) {
-        //Do Nothing
-        case 0: break;
+        //Task destructor: close mpipe
+        case 0: mpipedrv_kill();
+                break;
     
         // RX successful: process the new frames -- note case fall through
         case 1: {

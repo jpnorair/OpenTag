@@ -68,6 +68,12 @@
   * DASH7 gateway can figure out exactly what capabilities this device has.
   */
 #define OT_PARAM(VAL)                   OT_PARAM_##VAL
+
+// User/App task lists: comment-out if none.  
+// Use comma separated with TASK_xxx nomenclature (e.g. TASK_0, TASK_1, TASK_2)
+//#define OT_PARAM_USER_EXOTASKS
+#define OT_PARAM_USER_KERNELTASKS       TASK_external
+
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
 #define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    

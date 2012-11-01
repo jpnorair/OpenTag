@@ -37,6 +37,7 @@
 
 
 #if defined(BOARD_FOB_RF430F5978)
+#   include "isr_config_CC430.h"
 #   include "cc430/board_FOB_RF430F5978.h"
 
 #else

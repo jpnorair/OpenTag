@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/system.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       2 October 2012
+  * @version    R101
+  * @date       26 October 2012
   * @brief      Kernel System Framework
   * @defgroup   System (System Module)
   * @ingroup    System
@@ -56,19 +56,135 @@
 
 
 
-void SYS_WATCHDOG_RUN();
+typedef enum {
+    TASK_idle = -1,
+#if (1)
+    TASK_radio = 0,
+#endif
+#if (OT_FEATURE(MPIPE))
+    TASK_mpipe,
+#endif
+#if defined(OT_PARAM_USER_EXOTASKS)
+    OT_PARAM_USER_EXOTASKS,
+#endif
+#if (1)
+    TASK_hold,
+#endif
+#if (M2_FEATURE(ENDPOINT))
+    TASK_sleep,
+#endif
+#if (M2_FEATURE(BEACONS))
+    TASK_beacon,
+#endif
+#if defined(OT_PARAM_USER_KERNELTASKS)
+    OT_PARAM_USER_KERNELTASKS,
+#elif (OT_FEATURE(EXT_TASK))
+    TASK_external,
+#endif
+    // More user processing tasks would go here
+    TASK_terminus
+} Task_Index;
 
 
-/** @brief Null callback routine for the kernel app-loading feature
-  * @param none
-  * @retval ot_bool     sys_loadapp_null() always returns False
-  * @ingroup System
-  * 
-  * The System Kernel can load a user "applet" during idle time.  The
-  * user applet must return True if creating a new session.  The user
-  * can manage the app that gets loaded however he (or she) wants.
+typedef enum {
+    HALT_off = 0,   // force to device off
+    HALT_standby,   // force to device standby
+    HALT_nopower,   // suggest that primary power supply is disconnected
+    HALT_lowpower,  // suggest that primary power supply is low
+    HALT_terminus
+} Halt_Request;
+
+
+
+
+
+/** System main structure  <BR>
+  * ========================================================================<BR>
+  * Primarily, the System structure is used to store task data.  Additionally,
+  * it will store any kernel callback signals that are enabled.  At present,
+  * there are two available: panic and powerdown.
   */
-ot_bool sys_loadapp_null(void);
+
+#if (OT_FEATURE(SYSTASK_CALLBACKS))
+#	define ACTIVE_TASK	ot_task
+#else
+#	define ACTIVE_TASK	Task_Index
+#endif
+
+typedef ACTIVE_TASK		ot_task_handle;
+
+
+
+
+typedef struct {
+#if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED)
+#if !defined(EXTF_sys_sig_panic)
+    ot_sig  panic;
+#endif
+#if !defined(EXTF_sys_sig_powerdown)
+    ot_sig  powerdown;
+#endif
+#endif
+    ot_task_handle  active;
+    ot_task_struct  task[TASK_terminus];
+} sys_struct;
+
+extern sys_struct sys;
+
+
+
+
+
+/** Tasking & Event Mechanism   <BR>
+  * ========================================================================<BR>
+  * The Native Kernel is an pre-emptive multitasking, reservation-based,
+  * externally contexted design.  It supports pre-emptive context switching
+  * via external mechanisms, namely the platform module or actual HW.
+  *
+  * External context switchng:
+  * For example, the MSP430 has a global interrupt system, so it would require
+  * a software-based context-switcher to be implemented in platform_ot_run()
+  * and platform_ot_preempt().  You can also NOT implement them if your app
+  * does not need them, which is probably the case if you are using a
+  * lightweight chip like the MSP430.
+  *
+  * On something like a Cortex M3, such as STM32, there is a sophisticated
+  * NVIC interruptor that can do up to 8 priorities of context switching in HW.
+  * So, you would only need a software context switch if you had more than 7
+  * interrupt-driven tasks.
+  */
+#ifndef OT_FEATURE_EXTERNAL_EVENT
+#define OT_FEATURE_EXTERNAL_EVENT	ENABLED
+#endif
+
+#if (OT_FEATURE(EXTERNAL_EVENT))
+#define EXTERNAL_TASKS	1
+#endif
+
+#define RFA_INDEX       TASK_radio
+#define MPA_INDEX       (RFA_INDEX+OT_FEATURE(MPIPE))
+#define task_RFA        task[RFA_INDEX]
+#define task_MPA        task[MPA_INDEX]
+
+#define HSS_INDEX       TASK_hold
+#define SSS_INDEX       (HSS_INDEX+(M2_FEATURE(ENDPOINT) == ENABLED))
+#define BTS_INDEX       (SSS_INDEX+(M2_FEATURE(BEACONS) == ENABLED))
+#define EXT_INDEX       (BTS_INDEX+(OT_FEATURE(EXT_TASK) == ENABLED))
+#define IDLE_TASKS      ((EXT_INDEX-HSS_INDEX)+1)
+#define task_idle(x)    task[IO_TASKS+x]
+#define task_HSS        task[HSS_INDEX]
+#define task_SSS        task[SSS_INDEX]
+#define task_BTS        task[BTS_INDEX]
+#define task_EXT        task[EXT_INDEX]
+
+#define SYS_TASKS       TASK_terminus
+
+
+
+
+
+
+
 
 
 
@@ -97,40 +213,39 @@ void sys_init();
 
 
 
-/** @brief System Panic
-  * @param err_code     (ot_u8) error code, similar to POSIX death signals
+/** @brief System Call to instantiate "Kernel Panic"
+  * @param err_code     (ot_u8) error code, similar to some LINUX signals
   * @retval None
   * @ingroup System
   * @sa sys_sig_panic
   *
   * When called, sys_panic() will shut-down the OpenTag kernel and then invoke
-  * the sys.panic system callback (if system callbacks are enabled), so that
-  * the user can do whatever he wants to do in response to the panic.  Usually
-  * the best policy is to shut things down, but for less serious errors (such as
-  * Bus Error and Seg fault), the user could initiate some form of emergency
-  * beacon that runs from static memory.
+  * the panic applet, so that the user can do whatever he wants to do in 
+  * response to the panic.  Usually the best policy is to restart the device 
+  * and log the error somewhere (up to the application).  There is a DASH7 M1
+  * ISF that logs HW faults, and generally it should be used by sys_panic().
   *
-  * Known (Official) Panic error codes <BR>
-  * 1   Power failure (compare SIGHUP)                  <BR>
-  * 4   Physical Memory Violation (compare to SIGKILL)  <BR>
-  * 7   Virtual addressing Bus Error                    <BR>
-  * 11  Virtual addressing Segmentation Fault           <BR>
+  * Official Panic error codes:
+  * <LI> 01: HW or power failure (compare SIGHUP)                       </LI>
+  * <LI> 07: Physical Memory Violation (compare SIGBUS)                 </LI>
+  * <LI> 10: HW Data Error, typ Flash (compare SIGUSR1)                 </LI>
+  * <LI> 11: Virtual addressing Segmentation Fault (compare SIGSEGV)    </LI>
+  * <LI> 12: MPipe Bus Error, typ USB (compare SIGSUSR2)                </LI>
   */
 void sys_panic(ot_u8 err_code);
 
 
 
-/** @brief System low-power routine ("sleep")
+/** @brief System Call to enact low-power routine ("sleep")
   * @param None
   * @retval None
   * @ingroup System
   * @sa sys_sig_powerdown()
   *
   * When called, sys_powerdown() will prepare a signal code based on the state
-  * of the kernel and call the sys.powerdown system callback (if system
-  * callbacks are enabled), so that the user can implement an application-
-  * specific sleep routine if desired.  If system callbacks are disabled, the
-  * default sleep routine will be invoked.
+  * of the kernel and invoke the powerdown applet, so that the user can 
+  * implement an application-specific sleep routine if desired.  If system 
+  * callbacks are disabled, the default sleep routine will be invoked.
   *
   * @note sys_powerdown() calls sys.powerdown(code) or sys_sig_powerdown(code)
   * if system callbacks are enabled.  The value "code" it supplies is a number
@@ -143,39 +258,44 @@ void sys_powerdown();
 
 
 
-/** @brief Initializes sys features from settings stored in UDB elements
+
+/** @brief A System Call that tells system it might need to halt
   * @param none
   * @retval (none)  
   * @ingroup System
+  * @sa platform_check_halt()
+  * @sa sys_powerdown()
+  * @sa sys_resume()
   *
-  * Run this when the sys module parameter RAM needs to be refreshed.
-  * For example: on power up, on task activation (if running an OS), etc.
+  * Device drivers can call this function if they have reason to believe the 
+  * system might need to be halted.  For example, a USB driver should call this
+  * function as sys_halt(HALT_lowpower) if it gets a "Suspend" command from the
+  * host, or sys_halt(HALT_nopower) if it detects a disconnection.
+  *
+  * sys_halt() is implemented as a wrapper to sys_sig_halt(), or sys.halt(),
+  * either of which the user should implement as an applet.  If there is no
+  * static signal or dynamic signal configured, sys_halt() will implement the
+  * default behavior, which assumes there is no secondary power supply.
+  *
+  * Generally, 
   */
-void sys_init();
+void sys_halt(Halt_Request halt_request);
 
 
-/** @brief Sets mutexes based on mask input
-  * @param set_mask         (ot_uint) The mutex value to set
-  * @retval none
-  * @ingroup System
-  */
-void sys_set_mutex(ot_uint set_mask);
 
-
-/** @brief Clears mutexes based on mask input
-  * @param clear_mask       (ot_uint) a bitmask -- 0 for each bit to clear
-  * @retval none
-  * @ingroup System
-  */
-void sys_clear_mutex(ot_uint clear_mask);
-
-
-/** @brief Returns the mutex value
+/** @brief A System Call to resume after halt condition
   * @param none
-  * @retval ot_int          The mutex value
+  * @retval (none)  
   * @ingroup System
+  * @sa sys_halt()
+  *
+  * Device drivers can call this function if they need the system to be resumed
+  * after a halt they might have signalled, previously.
+  *
+  * If the system is not actually halted, this function will do nothing.
   */
-ot_int sys_get_mutex();
+void sys_resume();
+
 
 
 /** @brief  Enables and modifies an idle-time task ("user space" task).
@@ -208,25 +328,75 @@ void sys_task_disable(ot_u8 task_id);
 /** @brief Event Management and task clocking
   * @retval (ot_uint)   Number of ticks until next event
   * @ingroup System
-  * @sa sys_task_manager()
-  * 
-  * This function should be called inside sys_task_manager().  You should never
-  * call it anywhere else unless you have some clever ideas.
+  * @sa sys_preempt()
+  * @sa platform_ot_run()
+  * @sa platform_ot_preempt()
+  *
+  * sys_event_manager() only should be called by platform_ot_run() or via the
+  * pre-emption process, which necessarily includes functions sys_preempt() and
+  * platform_ot_preempt().
+  *
+  * In OpenTag, all tasks are clocked by the kernel timer.  When a task is
+  * scheduled to run, it will be run.  When a task is being blocked by a higher
+  * priority task, it will be blocked.  When an exotask pre-empts the kernel,
+  * it may cause task changes or spawning of new tasks.  sys_event_manager()
+  * handles all these things.  It is the main task scheduling algorithm and
+  * custodian.
   */  
 ot_uint sys_event_manager();
 
 
 
-/** @brief Task runtime manager: Calls tasks
+/** @brief Task runtime management algorithm and routine
   * @param None
   * @retval None
   * @ingroup System
+  * @sa sys_run_task()
+  * @sa platform_ot_run()
   *
-  * This function should be called in your main loop.  Ideally, there should be
-  * nothing else in your main loop except this function.  The kernel will
-  * automatically attach a sleep/powerdown task when no tasks need servicing.
+  * sys_task_manager() should be called somewhere in the platform module and
+  * nowhere else.  Typically, it is called in a timeout interrupt that gets
+  * triggered the active task runs too long.  The length of the timeout should
+  * be obtained from task->reserve, and activated immediately before calling
+  * sys_run_task().
+  *
+  * If a task overruns its allocated runtime (generally it is self-allocated),
+  * the kernel can do various things.  What exactly gets done is up to the 
+  * kernel.  The kernel may do nothing at all, it may kill the task, it may
+  * de-prioritize the task, etc.
   */
 void sys_task_manager();
+
+
+
+
+/** @brief Run the active task
+  * @param None
+  * @retval None
+  * @ingroup System
+  * @sa platform_ot_run()
+  *
+  * sys_run_task() only should be called by platform_ot_run().
+  *
+  * This function must be inline, in order for the task killing procedure to
+  * work correctly, as it often requires stack manipulations by the platform
+  * module.  All it does is wrap the task calling routine, which might be 
+  * different depending on the kernel and the configuration.
+  */
+//OT_INLINE_H
+void sys_run_task();
+
+
+
+
+
+void sys_kill_all();
+
+
+void sys_kill_active();
+
+
+
 
 
 
@@ -286,23 +456,6 @@ void sys_refresh_scheduler();
   */  
 
 
-/** @brief Loadapp callback function
-  * @param none
-  * @retval ot_bool     True if your app created a session for the kernel
-  * @ingroup System
-  * 
-  * Return True if your implementation of this function creates a session that
-  * you want the kernel to manage.  Otherwise, return False.
-  *
-  * This function is the static equivalent of the dynamic callback that is
-  * typically implemented in the kernel as sys.loadapp().  Often, for this 
-  * callback, the implementation is nicer looking when using the dynamic 
-  * approach, and there is minimal difference (if any) in resource usage.
-  */  
-ot_bool sys_sig_loadapi(void);
-
-
-
 /** @brief System Panic callback function
   * @param code         (ot_int) a kernel error code (platform dependent)
   * @retval None
@@ -360,7 +513,7 @@ void sys_sig_extprocess(void* event_data);
   * <LI>5: foreground tx </LI>
   * <LI>6: background tx </LI>
   */
-void sys_sig_rfainit(ot_int pcode);
+//void sys_sig_rfainit(ot_int pcode);
 
 
 /** @brief RF-Active initialization callback function
@@ -385,46 +538,7 @@ void sys_sig_rfainit(ot_int pcode);
   * The status code is >= 0 when the radio process terminated on account of
   * a successful transfer of a packet.
   */
-void sys_sig_rfaterminate(ot_int pcode, ot_int scode);
-
-
-
-/** @brief Beacon process prestart callback function
-  * @param event_data   (void*) pointer to kernel-dependent event datatype
-  * @retval None
-  * @ingroup System
-  *
-  * This function is the static equivalent of the dynamic callback that is
-  * typically implemented in the kernel as sys.evt.BTS.prestart().  It is
-  * called by the system module / kernel when a beacon data process begins.
-  */
-void sys_sig_btsprestart(void* event_data);
-
-
-/** @brief Hold-scan process prestart callback function
-  * @param event_data   (void*) pointer to kernel-dependent event datatype
-  * @retval None
-  * @ingroup System
-  *
-  * This function is the static equivalent of the dynamic callback that is
-  * typically implemented in the kernel as sys.evt.HSS.prestart().  It is
-  * called by the system module / kernel when a hold-scan data process begins.
-  */
-void sys_sig_hssprestart(void* event_data);
-
-
-/** @brief Sleep-scan process prestart callback function
-  * @param event_data   (void*) pointer to kernel-dependent event datatype
-  * @retval None
-  * @ingroup System
-  *
-  * This function is the static equivalent of the dynamic callback that is
-  * typically implemented in the kernel as sys.evt.SSS.prestart().  It is
-  * called by the system module / kernel when a sleep-scan data process begins.
-  */
-void sys_sig_sssprestart(void* event_data);
-
-
+//void sys_sig_rfaterminate(ot_int pcode, ot_int scode);
 
 
 

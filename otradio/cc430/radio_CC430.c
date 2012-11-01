@@ -90,7 +90,7 @@ void    subcc430_finish(ot_int main_err, ot_int frame_err);
 ot_bool subcc430_lowrssi_reenter();
 void    subcc430_reset_autocal();
 
-ot_bool subcc430_chanscan( );
+ot_bool subcc430_chanscan();
 void    subcc430_ccascan();
 void    subcc430_ccascan_isr();
 
@@ -116,14 +116,7 @@ void    subcc430_set_txpwr(ot_u8 eirp_code);
 /** CC430 RF Core Interrupt Handler  <BR>
   * ========================================================================<BR>
   */
-#if (CC_SUPPORT == CL430)
-#   pragma vector=CC1101_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-    //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(CC1101_VECTOR)
-#endif
-OT_INTERRUPT void radio_isr(void) {
+OT_INLINE void platform_isr_rf1a(void) {
     u16 core_edge;
     u16 core_vector;
 
@@ -259,7 +252,7 @@ void radio_mac_isr() {
                                 break;
         //case RADIO_DataRX:
         
-#       if (SYS_FLOOD)
+#       if (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER))
         case RADIO_DataTX:      dll.counter--;
                                 radio_set_mactimer(TI2CLK(1));
                                 break;
@@ -291,10 +284,13 @@ void radio_gag() {
 
 #ifndef EXTF_radio_sleep
 void radio_sleep() {
+/// Only go to sleep if the device is not already asleep
     radio.state = RADIO_Idle;
-    cc430.flags |= RADIO_FLAG_ASLEEP;
-    RF_CmdStrobe(RF_CoreStrobe_IDLE);
-    RF_CmdStrobe(RF_CoreStrobe_PWD);
+    if ((cc430.flags & RADIO_FLAG_ASLEEP) == 0) {
+        cc430.flags |= RADIO_FLAG_ASLEEP;
+        RF_CmdStrobe(RF_CoreStrobe_IDLE);
+        RF_CmdStrobe(RF_CoreStrobe_PWD);
+    }
 }
 #endif
 
@@ -673,7 +669,7 @@ void subcc430_launch_rx(ot_u8 channel, ot_u8 netstate) {
     em2_decode_newframe();
     subcc430_offset_rxtimeout();     // if timeout is 0, set it to a minimal amount
     
-    /// 7.  Using rm2_reenter_rx() with "True" forces entry into rx, and sets states
+    /// 7.  Using rm2_reenter_rx() with NULL forces entry into rx, and sets states
     rm2_reenter_rx(NULL);
 }
 #endif
@@ -720,8 +716,7 @@ ot_int rm2_pkt_duration(ot_int pkt_bytes) {
 /// Wrapper function for rm2_scale_codec that adds some slop overhead
 /// Slop = preamble bytes + sync bytes + ramp-up + ramp-down + padding
     pkt_bytes  += RADIO_PKT_OVERHEAD;
-    pkt_bytes  += ((phymac[0].channel & 0x20) >> 4);
-
+    pkt_bytes  += (phymac[0].channel >> 4) & 2;
     return rm2_scale_codec(pkt_bytes);
 }
 #endif
@@ -800,8 +795,6 @@ void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     /// Setup the RX engine for Foreground Frame detection and RX.  Wipe-out
     /// the lower flags (non-persistent flags)
     radio.evtdone   = callback;
-    //cc430.state     = RADIO_STATE_RXINIT;   //foreground
-    //cc430.state     = RADIO_STATE_RXDONE;   //background
     cc430.flags    &= (RADIO_FLAG_SETPWR | RADIO_FLAG_AUTOCAL);
 
     if (psettings == 0) {
@@ -967,19 +960,19 @@ void rm2_rxend_isr() {
 
 #ifndef EXTF_rm2_txinit
 void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
-#   if (SYS_FLOOD == ENABLED)
+#if (SYS_FLOOD == ENABLED)
     cc430.flags    |= (psettings != 0) ? RADIO_FLAG_FLOOD : 0;
-#   endif
-#   if (M2_FEATURE(MULTIFRAME) == ENABLED)
+#endif
+#if (M2_FEATURE(MULTIFRAME) == ENABLED)
     cc430.flags    |= ((session_netstate() & M2_NETSTATE_DSDIALOG) != 0); //sets RADIO_FLAG_FRCONT
-#   endif
+#endif
     radio.evtdone   = callback;
     radio.state     = RADIO_Csma;
     cc430.state     = RADIO_STATE_TXINIT;
     
     /// @note Flush TX FIFO and set buffer threshold to 5 bytes: the encoder 
     /// should be at least 20% faster than the max TX data speed (1 byte per 
-    /// 40 µs).  On CC430, FEC encode is possible with 20 MHz CPU.
+    /// 40 ï¿½s).  On CC430, FEC encode is possible with 20 MHz CPU.
     radio_flush_tx();
     RF_WriteSingleReg(RFREG(FIFOTHR), DRF_FIFOTHR | _FIFO_TXTHR(5) );
     
@@ -1053,7 +1046,7 @@ void rm2_txcsma_isr() {
                 subcc430_set_txpwr( phymac[0].tx_eirp );
             }
 
-#           if (SYS_FLOOD == ENABLED)
+#           if (M2_FEATURE(SUBCONTROLLER) || M2_FEATURE(GATEWAY))
             {   sync_enum   sync_type   = SYNC_fg;
                 ot_u8       mcsm1       = (_CCA_MODE_ALWAYS | _RXOFF_MODE_IDLE | _TXOFF_MODE_IDLE);
                 ot_u8       buffer_mode = 1;
@@ -1216,7 +1209,9 @@ void subcc430_finish(ot_int main_err, ot_int frame_err) {
 
 
 ot_bool subcc430_lowrssi_reenter() {
-    ot_int min_rssi = ((phymac[0].cs_thr >> 1) & 0x3F) - 40;
+    ot_int  min_rssi;
+    min_rssi = ((phymac[0].cs_thr >> 1) & 0x3F) - 40;
+    
     if (radio_rssi() < min_rssi) {
         subcc430_reset_autocal();  
         rm2_reenter_rx(NULL);

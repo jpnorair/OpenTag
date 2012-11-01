@@ -73,7 +73,7 @@
   */
 // Main Application Functions
 void app_init();
-void app_invoke(ot_u8 call_type) 
+void app_invoke(ot_u8 call_type);
 
 
 
@@ -166,14 +166,14 @@ void sub_trig4_low()    { }
 void sub_trig4_toggle() { }
 
 void sub_trig_init() {
-/// Configure Timer0 Pin to generate small duty cycle on LED pin.  Amazingly,
+/// Configure Timer1 Pin to generate small duty cycle on LED pin.  Amazingly,
 /// just 1/32 duty cycle gives enough light and offers good lo/hi contrast.
-    TIM0A5->CTL   = TIMA_FLG_TACLR | 0x01C0 | 0x0010;  //up mode
-    TIM0A5->EX0   = 0;
-    TIM0A5->CCTL1 = OUTMOD_3;
-    TIM0A5->CCR1  = 31;
-    TIM0A5->CCR0  = 32;
-    TIM0A5->CTL  &= ~TIMA_FLG_TACLR;
+    TIM1A3->CTL   = TIMA_FLG_TACLR | 0x01C0 | 0x0010;  //up mode
+    TIM1A3->EX0   = 0;
+    TIM1A3->CCTL1 = OUTMOD_3;
+    TIM1A3->CCR1  = 31;
+    TIM1A3->CCR0  = 32;
+    TIM1A3->CTL  &= ~TIMA_FLG_TACLR;
 }
 
 void sub_button_init()  { }
@@ -291,14 +291,14 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
     input_data  = user_id->value;
 
     while (rxq.getcursor <= rxq.back) {
-    	scratch                     = slistf(   mpipe_alp.outq->putcursor,
+    	scratch                     = slistf(   mpipe.alp.outq->putcursor,
                                                 label[index],
                                                 type[index],
                                                 input_len,
                                                 input_data      );
-        mpipe_alp.outq->putcursor  += scratch;
-        mpipe_alp.outq->length     += scratch;
-        q_writebyte(mpipe_alp.outq, '\n');
+        mpipe.alp.outq->putcursor  += scratch;
+        mpipe.alp.outq->length     += scratch;
+        q_writebyte(mpipe.alp.outq, '\n');
 
         index = q_readbyte(&rxq);               // Get next index
 
@@ -418,9 +418,9 @@ void main(void) {
     app_init();
     
     ///4a. The device will wait (and block anything else) until you connect
-    ///    it to a valid console app.
+    ///    it to a valid console that will "enumerate" this USB device
 #   if (MCU_FEATURE_MPIPECDC)
-    mpipe_wait();
+    mpipedrv_wait();
 #   endif
 
     ///4b. Load a message to show that main startup has passed
@@ -429,7 +429,7 @@ void main(void) {
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
     ///<LI> The kernel actually runs at the bottom of this loop.</LI>
-    ///<LI> You could put code before or after sys_runtime_manager, which will
+    ///<LI> You could put code before or after platform_ot_run(), which will
     ///     run before or after the (task + kernel).  If you do, keep the code
     ///     very short or else you are risking timing glitches.</LI>
     ///<LI> To run any significant amount of user code, use tasks. </LI>

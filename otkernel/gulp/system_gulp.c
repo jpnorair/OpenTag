@@ -16,8 +16,8 @@
 /**
   * @file       /otkernel/~native/system_gulp.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       20 Oct 2012
+  * @version    R103
+  * @date       25 Oct 2012
   * @brief      OpenTag GULP kernel
   * @ingroup    System
   *
@@ -52,23 +52,25 @@ typedef void (*fnvv)(void);
 
 
 #if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
-#   define TASK_HANDLE(ID)              &sys.task[ID]
+#   define TASK_HANDLE(INDEX)           &sys.task[INDEX]
+#   define TASK_INDEX(HANDLE)           ((HANDLE - &sys.task[0]) >> 3)
 #   define TASK_DECREMENT(TASK, INDEX)  TASK--
 #   define TASK_INCREMENT(TASK, INDEX)  TASK++
 #   define TASK_SELECT(TASK, INDEX)     TASK
 #   define TASK(SELECT)                 SELECT
 #   define TASK_CALL(SELECT)            SELECT->call(SELECT)
 #	define TASK_MAX                     &sys.task[0]
-#   define TASK_IS_IDLE(SELECT)        (SELECT == NULL)
+#   define TASK_IS_IDLE(SELECT)         (SELECT == NULL)
 #else
-#   define TASK_HANDLE(ID)              ID
+#   define TASK_HANDLE(INDEX)           INDEX
+#   define TASK_INDEX(HANDLE)           HANDLE
 #   define TASK_DECREMENT(TASK, INDEX)  do { TASK--; INDEX--; } while(0)
 #   define TASK_INCREMENT(TASK, INDEX)  do { TASK++; INDEX++; } while(0)
 #   define TASK_SELECT(TASK, INDEX)     INDEX
 #   define TASK(SELECT)                 (&sys.task[SELECT])
 #   define TASK_CALL(SELECT)            systask_call[SELECT]( TASK(SELECT) )
 #   define TASK_MAX                     0
-#   define TASK_IS_IDLE(SELECT)        (SELECT < 0)
+#   define TASK_IS_IDLE(SELECT)         (SELECT < 0)
 #endif
 
 
@@ -144,14 +146,15 @@ void sys_init() {
         ext_init();
 #   endif
     
+    /// Initialize DLL, which also initializes the rest of the protocol stack.
+    /// In some HW, the radio must be initialized before MPipe.
+    dll_init();
+    
     /// Initialize MPipe if enabled
 #   if (OT_FEATURE(MPIPE) == ENABLED)
-        mpipe_init(NULL);
+        mpipe_connect(NULL);
 #   endif
-
-    /// Initialize DLL, which also initializes the rest of the protocol stack
-    dll_init();
-
+    
     // Flush GPTIM (Kernel Timer): unnecessary, b/c should done in platform init
     //platform_flush_ktim();
 }
@@ -177,11 +180,13 @@ void sys_panic(ot_u8 err_code) {
 
 
 
-#ifndef EXTF_sys_sleep
+#ifndef EXTF_sys_powerdown
 void sys_powerdown() {
     ot_int code;
     code    = 3; //(platform_next_ktim() <= 3) ? 0 : 3;
+#   if (1)
     code   -= (sys.task_RFA.event != 0);
+#   endif
 #   if (OT_FEATURE(MPIPE))
     code    = (mpipe_status() <= 0) ? 1 : code;
 #   endif
@@ -202,6 +207,101 @@ void sys_powerdown() {
 #   endif
 }
 #endif
+
+
+
+#ifndef EXTF_sys_halt
+void sys_halt(Halt_Request halt_request) {
+/// sys_halt() is implemented as a wrapper to sys_sig_halt(), or sys.halt(),
+/// either of which the user should implement as an applet.  If there is no
+/// static signal or dynamic signal configured, sys_halt() will implement the
+/// default behavior, which assumes there is no secondary power supply.
+
+#   if defined(EXTF_sys_sig_halt)
+    sys_sig_halt((ot_int)halt_request);
+    
+#   elif (OT_FEATURE(SYSKERN_CALLBACKS))
+    sys.halt((ot_int)halt_request);
+    
+#   else
+    sys_kill_all();
+    platform_disable_ktim();
+    sys_powerdown();
+
+#   endif
+}
+#endif
+
+
+#ifndef EXTF_sys_halt
+void sys_resume() {
+#   if (1)
+    dll_refresh();
+#   endif
+
+#   if defined(EXTF_sys_sig_resume)
+    sys_sig_resume();
+#   elif (OT_FEATURE(SYSKERN_CALLBACKS))
+    sys.resume();
+#   endif
+
+    platform_ot_preempt();
+}
+#endif
+
+
+
+void sys_kill(Task_Index i) {
+/// Kill the indexed task
+
+    /// Set event to 0 and call the task with (task->event == 0).  
+    /// Tasks should implement their kill functions on event == 0.
+    sys.task[i].event   = 0;
+#   if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
+    sys.task[i].call(&sys.task[i]);
+#   else
+    systask_call[i](&sys.task[i]);
+#   endif
+}
+
+
+
+#ifndef EXTF_sys_kill_active
+void sys_kill_active() {
+	Task_Index i;
+	i = TASK_INDEX(sys.active);
+
+    /// There is a possibility that sys_kill_active() was called by a task or
+    /// some interrupt that occured during task runtime.  So, we will use the
+    /// platform_drop_context() function.  The Task Index determines which 
+    /// context the task is in, although this typically means nothing to a
+    /// platform that is using GULP.
+    sys_kill(i);
+    platform_drop_context(i);
+}
+#endif
+
+
+
+#ifndef EXTF_sys_kill_all
+void sys_kill_all() {
+    Task_Index  i = TASK_terminus;
+
+    while (i-- != 0) {
+        sys_kill(TASK_HANDLE(i));
+    }
+    
+    /// See notes from sys_kill_active();
+    platform_drop_context(i);
+    
+    /// There are no tasks active.  The kernel will revise is scheduling and
+    /// then go to sleep for a maximal unit of time.
+    platform_ot_preempt();
+}
+#endif
+
+
+
 
 
 
@@ -356,27 +456,25 @@ ot_uint sys_event_manager() {
 
 
 
+
+#ifndef EXTF_sys_task_manager
 void sys_task_manager() {
-/// If the active task is NULL/Idle, this means the powerdown routine should
-/// run, and that the timer needs to be hot before the powerdown.  Otherwise,
-/// there is a task to run, and the timer should not be hot until after the
-/// task is complete.
-
-	// Enable interrupts for pre-emptive tasks during runtime of the
-	// cooperative task -- co-operative tasks are parent tasks, basically
-	platform_disable_ktim();
-	platform_enable_interrupts();
-	TASK_CALL(sys.active);
-
-	// Disable interrupts during event management routine
-	// Powerdown mode initiation MUST enable interrupts, by the way.
-	// If event manager returns 0, there is a task immediately pending,
-	// so no point in powering down.
-	platform_disable_interrupts();
-	if (sys_event_manager()) {
-		sys_powerdown();
-	}
+/// Not implemented in GULP... will be implemented in "Big GULP"
 }
+#endif
+
+
+
+#ifndef EXTF_sys_run_task
+OT_INLINE void sys_run_task() {
+/// Must be inline
+	TASK_CALL(sys.active);
+}
+#endif
+
+
+
+
 
 
 

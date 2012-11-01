@@ -1,4 +1,4 @@
-/* Copyright 2009 JP Norair
+/* Copyright 2009-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
   * limitations under the License.
   *
   */
-/** @file       /OTplatform/~MSP430/CC430/cc430_conf.h
+/** @file       /otplatform/msp430_mculib/cc430/cc430_conf.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 May 2012
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Peripheral Configuration for CC430
   * @ingroup    CC430 Library
   *
@@ -41,7 +41,6 @@
 #define _RAM        // RAM Controller (RAM)
 #define _CRC        // CRC16 Calculation Peripheral (CRC)
 #define _AES        // AES128 Calculation Peripheral (AES)
-#define _RTC        // Real Time Clock (RTC)
 #define _RF         // CC1101 Radio (RF)
 #define _REF        // Reference Module (REF)
 #define _CB         // Comparator B (CB)
@@ -82,61 +81,74 @@
 #if (defined(__CCSv5__) || defined(__CCSv4__) || defined(__GCC__) || defined(__GNUC__))
 #   if   defined(__CC430F5125__)
 #       include "cc430f5125.h"
+#       define _RTCA
 
 #   elif defined(__CC430F5127__)
 #       include "cc430f5127.h"
+#       define _RTCA
 
 #   elif defined(__CC430F5135__)
 #       include "cc430f5135.h"
 #       define _ADC12           // 12 bit Analog to Digital Converter (ADC12)
+#       define _RTCA
 
 #   elif defined(__CC430F5137__)
 #       include "cc430f5137.h"
 #       define _ADC12           // 12 bit Analog to Digital Converter (ADC12)
+#       define _RTCA
 
 #   elif defined(__CC430F5145__)
 #       include "cc430f5145.h"
 #       define _ADC12           // 12 bit Analog to Digital Converter (ADC12)
+#       define _RTCD
 
 #   elif defined(__CC430F5147__)
 #       include "cc430f5147.h"
 #       define _ADC12           // 12 bit Analog to Digital Converter (ADC12)
+#       define _RTCD
 
 #   elif defined(__CC430F6125__)
 #       include "cc430f6125.h"
-#       define _LCD             // Liquid Crystal Display Bus Controller (LCD)
+#       define _LCDB             // Liquid Crystal Display Bus Controller (LCD)
+#       define _RTCA
 
 #   elif defined(__CC430F6126__)
 #       include "cc430f6126.h"
-#       define _LCD             // Liquid Crystal Display Bus Controller (LCD)
+#       define _LCDB             // Liquid Crystal Display Bus Controller (LCD)
+#       define _RTCA
 
 #   elif defined(__CC430F6127__)
 #       include "cc430f6127.h"
-#       define _LCD             // Liquid Crystal Display Bus Controller (LCD)
+#       define _LCDB             // Liquid Crystal Display Bus Controller (LCD)
+#       define _RTCA
 
 #   elif defined(__CC430F6135__)
 #       include "cc430f6135.h"
 #       define _ADC12           // 12 bit Analog to Digital Converter (ADC12)
-#       define _LCD             // Liquid Crystal Display Bus Controller (LCD)
+#       define _LCDB             // Liquid Crystal Display Bus Controller (LCD)
 #       define _GPIO4
+#       define _RTCA
 
 #   elif defined(__CC430F6137__)
 #       include "cc430f6137.h"
 #       define _ADC12           // 12 bit Analog to Digital Converter (ADC12)
-#       define _LCD             // Liquid Crystal Display Bus Controller (LCD)
+#       define _LCDB             // Liquid Crystal Display Bus Controller (LCD)
 #       define _GPIO4
+#       define _RTCA
 
 #   elif defined(__CC430F6145__)
 #       include "cc430f6145.h"
 #       define _ADC12           // 12 bit Analog to Digital Converter (ADC12)
-#       define _LCD             // Liquid Crystal Display Bus Controller (LCD)
+#       define _LCDB             // Liquid Crystal Display Bus Controller (LCD)
 #       define _GPIO4
+#       define _RTCD
 
 #   elif defined(__CC430F6147__)
 #       include "cc430f6147.h"
 #       define _ADC12           // 12 bit Analog to Digital Converter (ADC12)
-#       define _LCD             // Liquid Crystal Display Bus Controller (LCD)
+#       define _LCDB             // Liquid Crystal Display Bus Controller (LCD)
 #       define _GPIO4
+#       define _RTCD
 
 #   else
 #       error "Chip has not been identified as a supported __CC430Fxxxx__"

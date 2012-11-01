@@ -48,11 +48,11 @@
 /** Debugging Configuration  <BR>
   * ========================================================================<BR>
   * Comment-out if you don't want the debug build additions, or if you are
-  * defining DEBUG_ON as a built-in via the compiler (preferred)
+  * defining __DEBUG__ as a built-in via the compiler (preferred)
   */
-#ifndef DEBUG_ON
-#   define DEBUG_ON
-#endif
+//#ifndef __DEBUG__
+//#   define __DEBUG__
+//#endif
 
 
 
@@ -71,7 +71,7 @@
 
 
 
-//Experimental
+//Deprecated
 #define ISR_EMBED(VAL)                  ISR_EMBED_##VAL
 #define ISR_EMBED_GPTIM                 ENABLED
 #define ISR_EMBED_MPIPE                 ENABLED

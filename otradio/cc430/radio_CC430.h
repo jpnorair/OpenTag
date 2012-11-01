@@ -16,7 +16,7 @@
 /**
   * @file       /otradio/cc430/radio_CC430.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       2 Feb 2012
   * @brief      Radio configuration file for CC430
   * @ingroup    Platform
@@ -189,7 +189,7 @@ typedef struct {
 #   endif
 } cc430_struct;
 
-extern cc430_struct rfcc430;
+extern cc430_struct cc430;
 
 
 

@@ -1,4 +1,4 @@
-/* Copyright 2009 JP Norair
+/* Copyright 2009-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
   * limitations under the License.
   *
   */
-/** @file       /OTplatform/~MCU_MSP430/MSP430F5/msp430f5_map.h
+/** @file       /otplatform/msp430_mculib/msp430f5/msp430f5_map.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Dec 2009
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Resource & Peripheral Mappings for MSP430F5
   * @ingroup    MSP430F5 Library
   *
@@ -533,22 +533,22 @@ typedef struct {
     vu16 IFG;
     vu16 IE;
     vu16 IV;
-    vu8  MCTL1;
     vu8  MCTL0;
-    vu8  MCTL3;
+    vu8  MCTL1;
     vu8  MCTL2;
-    vu8  MCTL5;
+    vu8  MCTL3;
     vu8  MCTL4;
-    vu8  MCTL7;
+    vu8  MCTL5;
     vu8  MCTL6;
-    vu8  MCTL9;
+    vu8  MCTL7;
     vu8  MCTL8;
-    vu8  MCTL11;
+    vu8  MCTL9;
     vu8  MCTL10;
-    vu8  MCTL13;
+    vu8  MCTL11;
     vu8  MCTL12;
-    vu8  MCTL15;
+    vu8  MCTL13;
     vu8  MCTL14;
+    vu8  MCTL15;
     vu16 MEM0;
     vu16 MEM1;
     vu16 MEM2;
@@ -742,69 +742,69 @@ typedef struct {
 
 
 // System Configuration Registers (SYS)
-#ifdef _SYS
+//#ifdef _SYS
 #   define SYS              ((SYS_Type*)SYS_BASE)
-#endif
+//#endif
 
 
 
 // Watchdog Timer(s) (WDT)
-#ifdef _WDT
+//#ifdef _WDT
 #   ifdef _WDTA
 #       define WDTA         ((WDT_Type*)WDTA_BASE)
 #       define WDTAb        ((WDTb_Type*)WDTA_BASE)
 #   endif
-#endif
+//#endif
 
 
 
 // Universal Clock System (UCS)
-#ifdef _UCS
+//#ifdef _UCS
 #   define UCS              ((UCS_Type*)UCS_BASE)
 #   define UCSb             ((UCSb_Type*)UCS_BASE)
-#endif
+//#endif
 
 
 
 // Power Management Module (PMM)
-#ifdef _PMM
+//#ifdef _PMM
 #   define PMM              ((PMM_Type*)PMM_BASE)
 #   define PMMb             ((PMMb_Type*)PMM_BASE)
-#endif
+//#endif
 
 
 
 // Flash Controller (FLASH)
-#ifdef _FLASH
+//#ifdef _FLASH
 #   define FLASH            ((FLASH_Type*)FLASH_BASE)
 #   define FLASHb           ((FLASHb_Type*)FLASH_BASE)
-#endif
+//#endif
 
 
 
 // RAM Controller (RAM)
-#ifdef _RAM
+//#ifdef _RAM
 #   define RAM              ((RAM_Type*)RAM_BASE)
-#endif
+//#endif
 
 
 
 
 // Port Management (PM)
-#ifdef _PM
+//#ifdef _PM
 #   define PM               ((PM_Type*)PM_BASE)
 #   define P1M              ((PXM_Type*)P1M_BASE)
 #   define P2M              ((PXM_Type*)P2M_BASE)
 #   define P3M              ((PXM_Type*)P3M_BASE)
 #   define P4M              ((PXM_Type*)P4M_BASE)
 
-#endif
+//#endif
 
 
 
 
 // GPIO peripherals (GPIO)
-#ifdef _GPIO
+//#ifdef _GPIO
 
 #   ifdef _GPIO1
 #       define GPIO1        ((GPIO_EvenAccess*)GPIO1_BASE)
@@ -858,7 +858,7 @@ typedef struct {
 #       define GPIO78       ((GPIO_WordAccess*)GPIO78_BASE)
 #   endif
 
-#endif
+//#endif
 
 
 
@@ -931,43 +931,31 @@ typedef struct {
 // Universal Serial Controller Interface (USCI)
 #ifdef _USCI
 
-#   ifdef _UART0
+#   ifdef _UARTA0
 #       define UARTA0        ((UART_Type*)USCIA0_BASE)
 #   endif
-#   ifdef _SPI0
+#   ifdef _SPIA0
 #       define SPIA0         ((SPI_Type*)USCIA0_BASE)
 #   endif
-#   ifdef _I2C0
-#       define I2CA0         ((I2C_Type*)USCIA0_BASE)
-#   endif
 
-#   ifdef _UART1
-#       define UARTB0        ((UART_Type*)USCIB0_BASE)
-#   endif
-#   ifdef _SPI1
+#   ifdef _SPIB0
 #       define SPIB0         ((SPI_Type*)USCIB0_BASE)
 #   endif
-#   ifdef _I2C1
+#   ifdef _I2CB0
 #       define I2CB0         ((I2C_Type*)USCIB0_BASE)
 #   endif
 
-#   ifdef _UART2
+#   ifdef _UARTA1
 #       define UARTA1        ((UART_Type*)USCIA1_BASE)
 #   endif
-#   ifdef _SPI2
+#   ifdef _SPIA1
 #       define SPIA1         ((SPI_Type*)USCIA1_BASE)
 #   endif
-#   ifdef _I2C2
-#       define I2CA1         ((I2C_Type*)USCIA1_BASE)
-#   endif
 
-#   ifdef _UART3
-#       define UARTB1        ((UART_Type*)USCIB1_BASE)
-#   endif
-#   ifdef _SPI3
+#   ifdef _SPIB1
 #       define SPIB1         ((SPI_Type*)USCIB1_BASE)
 #   endif
-#   ifdef _I2C3
+#   ifdef _I2CB1
 #       define I2CB1         ((I2C_Type*)USCIB1_BASE)
 #   endif
 

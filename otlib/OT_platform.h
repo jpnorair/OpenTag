@@ -47,10 +47,8 @@ typedef struct {
 extern platform_struct platform;
 
 
-
-
-
 void platform_rtc_isr();
+
 
 
 
@@ -68,6 +66,41 @@ void platform_disable_interrupts();
   * @ingroup Platform
   */
 void platform_enable_interrupts();
+
+
+
+
+/** @brief Drop a context (task) from the primary stack
+  * @param task_id		(ot_uint) Correlated to Task_Index
+  * @retval None
+  * @ingroup Platform
+  * @sa sys_kill_active()
+  * @sa sys_kill_all()
+  *
+  * Do not use this function unless you know exactly what you are doing.  It
+  * will perform stack manipulations that could break shit in a serious way.
+  *
+  * The function itself must perform platform-specific stack manipulations in
+  * order to flush the stack of an active task.  Normally, this will only occur
+  * when a task is being killed via calls sys_kill_active() or sys_kill_all().
+  * Otherwise, the task will exit cleanly.
+  *
+  * The argument "task_id" matters for systems with multiple contexts.  Many
+  * systems have only a single context, and in these platform_drop_context()
+  * will ignore task_id.  For systems with multiple contexts, the function will
+  * be more sophisticated, related to the number of simultaneous contexts
+  * (program stacks) allocated by the hardware (MSP430 allows 1, Cortex M3
+  * allows up to 8, etc).
+  *
+  * When the function is called, it must have some knowledge of the context
+  * states -- this is up to the platform module code.  On a single core chip,
+  * the only truly important context is the active context.  The rest can be
+  * flushed rather simply.  Typically, the interrupt entry hook needs to be
+  * customized to meet these requirements, such that the address where the arch
+  * stores the RETI PC is saved so that it might be altered by this function.
+  */
+void platform_drop_context(ot_uint task_id);
+
 
 
 /** @brief The function that pauses OpenTag
@@ -115,7 +148,6 @@ void platform_ot_preempt();
 
 
 
-
 /** Initialization functions 
   */
 
@@ -154,7 +186,6 @@ void platform_poweroff();
   * refreshed.
   */
 void platform_init_OT();
-
 
 
 

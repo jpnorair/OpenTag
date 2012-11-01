@@ -1,13 +1,35 @@
-//(c)2010 by Texas Instruments Incorporated, All Rights Reserved.
-
+/*  Copyright (c) 2010, Texas Instruments Incorporated
+  * All rights reserved.
+  * 
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions are met:
+  *  * Redistributions of source code must retain the above copyright notice,
+  *    this list of conditions, and the following disclaimer.
+  *  * Redistributions in binary form must reproduce the above copyright 
+  *    notice, this list of conditions and the following disclaimer in the
+  *    documentation and/or other materials provided with the distribution.
+  *  * Neither the name of the organization, Texas Instruments, nor the names 
+  *    of its contributors may be used to endorse or promote products derived 
+  *    from this software without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+  * ARE DISCLAIMED. IN NO EVENT SHALL TEXAS INSTRUMENTS BE LIABLE FOR ANY 
+  * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
+  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
 /**
   * @file       /otplatform/msp430f5/usb_cdc_driver/usb_main.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       4 Jun 2012
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Main driver/MAC for USB  implementation
-  * @defgroup   USB CDC Driver
-  * @ingroup    USB CDC Driver
+  * @ingroup    MSP430F5 USB CDC
   *
   * This module is a derivative work of TI's USB library file, usb.c.  JP has
   * optimized it to compile into less code by streamlining data alignment and 
@@ -15,26 +37,31 @@
   * is no longer supported.  The module is especially optimized to be a CDC
   * endpoint with 1 control endpoint, 1 bulk-in, and 1 bulk-out.
   * 
-  * The revision history from the original TI codebase is shown below.      <BR>
-  * Source: usb.c, File Version 1.02 2010/06/17                             <BR>
-  * Author: RSTO
   * <PRE>
-  * WHO          WHEN         WHAT                                          
-  * ---          ----------   --------------------------------------------- 
-  * RSTO         2008/09/03   born                                          
-  * RSTO         2008/12/23   enhancements of CDC API                       
-  * RSTO         2009/01/12   enhancements for USB serial number            
-  * RSTO         2009/05/15   added USB_connectionState()                   
-  * RSTO         2009/07/17   added __data16 qualifier for USB buffers      
-  * RSTO         2009/08/04   workaround for PLL start up problem           
-  * MSP,Biju     2009/10/20   Changes for composite support                 
-  * RSTO         2009/10/21   updated USB_InitSerialStringDescriptor()      
-  * RSTO         2009/11/05   updated USB_connectionState()                 
-  * MSP,Biju     2010/07/15   Updated for MSC
+  * The revision history from the original TI codebase is shown below.
+  * Source: usb.c, File Version 1.02 2010/06/17
+  * Author: RSTO
+  *
+  * WHO         WHEN        WHAT                                          
+  * ---         ----------  --------------------------------------------- 
+  * RSTO        2008/09/03  born                                          
+  * RSTO        2008/12/23  enhancements of CDC API                       
+  * RSTO        2009/01/12  enhancements for USB serial number            
+  * RSTO        2009/05/15  added USB_connectionState()                   
+  * RSTO        2009/07/17  added __data16 qualifier for USB buffers      
+  * RSTO        2009/08/04  workaround for PLL start up problem           
+  * MSP,Biju    2009/10/20  Changes for composite support                 
+  * RSTO        2009/10/21  updated USB_InitSerialStringDescriptor()      
+  * RSTO        2009/11/05  updated USB_connectionState()                 
+  * MSP,Biju    2010/07/15  Updated for MSC
+  * ---         ----------  --------------------------------------------
+  * JPN         2012/05/01  Integrated with OpenTag 0.3
+  * JPN         2012/11/01  Integrated with OpenTag 0.4
   * </PRE>                           
   *****************************************************************************/
 
 #include "OT_config.h"
+#include "veelite.h"	//for getting device id
 
 #include "msp430f5_lib.h"
 
@@ -273,25 +300,32 @@ const tEDB* dbselect[] = { tInputEndPointDescriptorBlock,
                           
                           
 
-void CdcResetData ();
+void CdcResetData();
 
-void USB_InitSerialStringDescriptor (void);
+void USB_InitSerialStringDescriptor(void);
+
+
+//Replaced with platform_memcpy(), which already has a DMA vs. Non-DMA select.
 //void USB_initMemcpy (void);
 
-//----------------------------------------------------------------------------
+
+
 ot_u8 USB_init (void) {
     ot_u16 bGIE  = __get_SR_register() & GIE;  	//save interrupt status
 
     //atomic operation - disable interrupts
     __disable_interrupt();
 
-    //configuration of USB module
+    // configuration of USB module
+    // To fix USB9 enumeration issue seen by Matrox
     USBKEYPID   = 0x9628;
-    /* To fix USB9 enumeration issue seen by Matrox*/
     USBPWRCTL	= 0;
     USBPHYCTL   = PUSEL;				//use DP + DM as USB pins (not needed with external PHY on P9)
     USBPWRCTL   = VUSBEN + SLDOAON;		//enable primary and secondary LDO (3.3 and 1.8V)
-    platform_swdelay_ms(5);				//wait some time for LDOs (5ms delay)
+    
+    //wait some time for LDOs (5ms delay)
+    platform_swdelay_ms(5);				
+    
     USBPWRCTL   = VUSBEN + SLDOAON + VBONIE; 	//enable interrupt VBUSon
     USBKEYPID   = 0x9600;                       //access to configuration registers disabled
 
@@ -309,44 +343,63 @@ ot_u8 USB_init (void) {
     return (kUSB_succeed);
 }
 
-//----------------------------------------------------------------------------
-//This function will be compiled only if
+
+
+
+
 #if (USB_STR_INDEX_SERNUM != 0)
-void USB_InitSerialStringDescriptor (void)
-{
-    ot_u8* pbSerNum;
-    ot_u8 bBytes;
-    ot_u8 j;
+void USB_InitSerialStringDescriptor (void) {
+    //ot_u8* pbSerNum;
+    //ot_u8 bBytes;
+    //ot_u8 j;
 
     //pbSerNum = 0;
     *((ot_u16*)&abramSerialStringDescriptor[0]) = (4 | (DESC_TYPE_STRING<<8));
     *((ot_u16*)&abramSerialStringDescriptor[2]) = 0;
 
-    //TLV access Function Call
-    TLV_Get_Info(TLV_DIERECORD, 0, (u8*)&bBytes, (u16**)&pbSerNum); //The die record used for serial number
-
-    if (bBytes != 0) {
-    	if (bBytes > 8)
-    		bBytes = 8;
-
-        for (j=1; bBytes!=0; ++pbSerNum, --bBytes) {
-        	ot_u8 hex1  = *pbSerNum & 0x0F;
-        	ot_u8 hex0	= (*pbSerNum >> 4) & 0x0F;
-            hex0	   += (hex0 >= 10) ? ('a'-10) : '0';
-            hex1	   += (hex1 >= 10) ? ('a'-10) : '0';
-
-            abramSerialStringDescriptor[++j] = hex0;
-            abramSerialStringDescriptor[++j] = 0x00;		//unicode extension
-            abramSerialStringDescriptor[++j] = hex1;
-            abramSerialStringDescriptor[++j] = 0x00;		//unicode extension
-        }
-        abramSerialStringDescriptor[0] = ++j;      	//calculate the length
+    //Get Hex enumeration string from lower 16bits of device ID
+    {
+        vlFILE* fp;
+        ot_u16  uid16;
+        ot_u8   enumid[4];
+        
+        fp      = ISF_open_su(1);
+        uid16   = vl_read(fp, 6);   // Device UID takes first 8 bytes of ISF 1
+        vl_close(fp);
+        
+        abramSerialStringDescriptor[0] = \
+            2 + otutils_bin2hex((ot_u8*)&uid16, enumid, 2);
+        
     }
+    
+    
+//    TLV_Get_Info(TLV_DIERECORD, 0, (u8*)&bBytes, (u16**)&pbSerNum); //The die record used for serial number
+//
+//    if (bBytes != 0) {
+//    	if (bBytes > 8)
+//    		bBytes = 8;
+//
+//        for (j=1; bBytes!=0; ++pbSerNum, --bBytes) {
+//        	ot_u8 hex1  = *pbSerNum & 0x0F;
+//        	ot_u8 hex0	= (*pbSerNum >> 4) & 0x0F;
+//            hex0	   += (hex0 >= 10) ? ('a'-10) : '0';
+//            hex1	   += (hex1 >= 10) ? ('a'-10) : '0';
+//
+//            abramSerialStringDescriptor[++j] = hex0;
+//            abramSerialStringDescriptor[++j] = 0x00;		//unicode extension
+//            abramSerialStringDescriptor[++j] = hex1;
+//            abramSerialStringDescriptor[++j] = 0x00;		//unicode extension
+//        }
+//        abramSerialStringDescriptor[0] = ++j;      	//calculate the length
+//    }
 }
 
 #endif
 
-//----------------------------------------------------------------------------
+
+
+
+
 
 ot_u8 USB_enable () {
     //volatile unsigned int i;
@@ -354,22 +407,13 @@ ot_u8 USB_enable () {
     ot_int j = 0;
 	ot_u16 pll_unsettled;
 
-    //check USB Bandgap and VBUS valid
-    if (!(USBPWRCTL & USBBGVBV)){
-        return (kUSB_generalError);
-    }
-
-    //exit if PLL is already enabled
-    if ((USBCNF & USB_EN) && (USBPLLCTL & UPLLEN)){
-        return (kUSB_succeed);
-    }
+    // exit if USB Bandgap and VBUS not valid (error) --or--
+    // exit if PLL is already enabled (success)
+    if (!(USBPWRCTL & USBBGVBV))                    return kUSB_generalError;
+    if ((USBCNF & USB_EN) && (USBPLLCTL & UPLLEN))  return kUSB_succeed;
 
     ///@todo Make sure that this function only gets called at power-on (seems like the case).
     ///      At power-on, OpenTag already configures XT2
-#	ifdef BOARD_RF430USB_5509
-    //XT2_Start(XT2DRIVE_3);
-    
-#	endif
     USBKEYPID	= 0x9628;
     USBPLLDIVB 	= USB_XT_FREQ;					//Settings desired frequency
 
@@ -403,8 +447,10 @@ ot_u8 USB_enable () {
     return pll_unsettled;	//kUSB_succeed = 0, kUSB_generalError = 1
 }
 
-/*
- * Disables the USB module and PLL.
+
+
+
+/* Disables the USB module and PLL.
  */
 ot_u8 USB_disable (void) {
     USBKEYPID			= 0x9628;
@@ -416,23 +462,29 @@ ot_u8 USB_disable (void) {
     return (kUSB_succeed);
 }
 
-/*
- * Enables/disables various USB events.
+
+
+
+/* Enables/disables various USB events.
  */
 //ot_u8 USB_setEnabledEvents (ot_u16 events) {
 //    wUsbEventMask = events;
 //    return (kUSB_succeed);
 //}
 
-/*
- * Returns which events are enabled and which are disabled.
+
+
+
+/* Returns which events are enabled and which are disabled.
  */
 //ot_u16 USB_getEnabledEvents () {
 //    return (wUsbEventMask);
 //}
 
-/*
- * Reset USB-SIE and global variables.
+
+
+
+/* Reset USB-SIE and global variables.
  */
 ot_u8 USB_reset () {
 	ot_u8 edbIndex;
@@ -520,11 +572,13 @@ ot_u8 USB_reset () {
     USBIE 		= SETUPIE | RSTRIE | SUSRIE;    //enable USB specific interrupts (setup, reset, suspend)
     USBKEYPID 	= 0x9600;
 
-    return (kUSB_succeed);
+    return kUSB_succeed;
 }
 
-/*
- * Instruct USB module to make itself available to the PC for connection, by pulling PUR high.
+
+
+
+/* Instruct USB module to make itself available to the PC for connection, by pulling PUR high.
  */
 ot_u8 USB_connect () {
     USBKEYPID	= 0x9628;
@@ -536,8 +590,10 @@ ot_u8 USB_connect () {
     return (kUSB_succeed);
 }
 
-/*
- * Force a disconnect from the PC by pulling PUR low.
+
+
+
+/* Force a disconnect from the PC by pulling PUR low.
  */
 ot_u8 USB_disconnect () {
     USBKEYPID	        = 0x9628;
@@ -553,8 +609,7 @@ ot_u8 USB_disconnect () {
 
 
 
-/*
- * Force a remote wakeup of the USB host.
+/* Force a remote wakeup of the USB host.
  */
 ot_u8 USB_forceRemoteWakeup () {
     if (bFunctionSuspended == FALSE) {   //device is not suspended
@@ -570,25 +625,34 @@ ot_u8 USB_forceRemoteWakeup () {
 
 
 
-/*
- * Returns the status of the USB connection.
+
+/* Returns the status of the USB connection.
  */
 ot_u8 USB_connectionInfo () {
-    ot_u8 retVal = 0;
+    ot_u8 retval;
 
-    if (USBPWRCTL & USBBGVBV)			retVal |= kUSB_vbusPresent;
-    if (USBCNF & PUR_EN)				retVal |= kUSB_purHigh;
-    if (bEnumerationStatus != 0)		retVal |= kUSB_Enumerated;
-    if (bFunctionSuspended != FALSE)	retVal |= kUSB_suspended;
-    else 								retVal |= kUSB_NotSuspended;
+    //ot_u8 retval = 0;
+    //if (USBPWRCTL & USBBGVBV)			retval |= kUSB_vbusPresent;
+    //if (USBCNF & PUR_EN)				retval |= kUSB_purHigh;
+    //if (bEnumerationStatus != 0)		retval |= kUSB_Enumerated;
+    //if (bFunctionSuspended != FALSE)	retval |= kUSB_suspended;
+    //else 								retval |= kUSB_NotSuspended;
+    
+    // JP's version below: compiles smaller, runs faster
+    retval  = kUSB_suspended;                   //kUSB_suspended == 0x08
+    retval<<= (bFunctionSuspended == FALSE);    //kUSB_NotSuspended == 0x10
+    
+    retval |= ((USBPWRCTL & USBBGVBV) != 0);    //USBBGVBV is 0x08: 1 == kUSB_vbusPresent
+    retval |= (USBCNF & PUR_EN) << 5;           //PUR_EN is 0x02:  2<<5 == kUSB_purHigh
+    retval |= (bEnumerationStatus != 0)	<< 5;   //1<<5 == kUSB_Enumerated
 
-    return (retVal);
+    return retval;
 }
 
 
 
-/*
- * Returns the state of the USB connection.
+
+/* Returns the state of the USB connection.
  */
 ot_u8 USB_connectionState () {
 
@@ -1140,7 +1204,8 @@ ot_u8 usbDecodeAndProcessUsbRequest (void) {
     //this check is not necessary but still kept here to reduce response(or simulation) time
 
     if ((USBIFG & STPOWIFG) != 0x00){
-        return (bWakeUp);
+        //return (bWakeUp);
+    	return False;
     }
 
     //now we found the match and jump to the function accordingly.
@@ -1152,9 +1217,11 @@ ot_u8 usbDecodeAndProcessUsbRequest (void) {
     //perform enumeration complete event:
     //when SetAddress was called and USBADDR is not zero
     if ((lAddrOfFunction == &usbSetAddress) && (USBFUNADR != 0)){
-        bWakeUp = USB_handleEnumCompleteEvent();
+        //bWakeUp = USB_handleEnumCompleteEvent();
+    	USB_handleEnumCompleteEvent();
     }
-    return (bWakeUp);
+    //return (bWakeUp);
+    return False;
 }
 
 

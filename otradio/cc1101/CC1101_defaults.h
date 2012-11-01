@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTradio/CC1101/CC1101_defaults.h
+  * @file       /otradio/cc1101/CC1101_defaults.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       29 Aug 2011
+  * @version    R100
+  * @date       29 Oct 2012
   * @brief      CC1101 Radio register default definitions & macros.
   * @ingroup    CC1101
   *
@@ -29,6 +29,7 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
+#include "CC1101_registers.h"
 
 
 // Some radio register settings constants

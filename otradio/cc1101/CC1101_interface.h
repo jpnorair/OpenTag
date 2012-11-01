@@ -16,7 +16,7 @@
 /**
   * @file       /otradio/cc1101/CC1101_interface.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       5 April 2012
   * @brief      Functions for the CC1101 transceiver interface
   * @defgroup   CC1101 (CC1101 family support)

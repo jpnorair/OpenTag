@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /otlib/m2_dll.c
+  * @file       /otlib/m2_dll_task.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Oct 2012
-  * @brief      Data Link Layer for DASH7
+  * @version    R101
+  * @date       30 Oct 2012
+  * @brief      Data Link Layer Task for DASH7
   * @ingroup    DLL
   *
   * If you are searching for a brainfuck and you are coming up short, rest easy
@@ -1196,7 +1196,7 @@ ot_u8 dll_default_csma(ot_u8 chan_id) {
 
 
 #ifndef EXTF_dll_quit_rf
-OT_INLINE void dll_quit_rf() {
+void dll_quit_rf() {
     sys.task_RFA.event = 0;
 }
 #endif

@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/mpipe.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R100
+  * @date       24 Oct 2012
   * @brief      Message Pipe (MPIPE) interface
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
@@ -129,14 +129,15 @@ extern mpipe_struct mpipe;
 /** Library Functions 
   * ========================================================================<BR>
   */
-/** @brief  Initializes Mpipe Module
+/** @brief  Initializes & connects Mpipe Module
   * @param  port_id     (void*) Implementation-dependent port identifier 
   * @retval None        
   * @ingroup Mpipe
-  * @sa mpipe_init_driver()
+  * @sa mpipe_disconnect()
+  * @sa mpipedrv_init()
   *
   * The user should call this function during system initialization, and the
-  * implementation must call mpipe_init_driver().
+  * implementation must call mpipedrv_init().
   *
   * About port_id: on POSIX systems this will be a string representing a file
   * in the /dev/ directory somewhere (often /dev/tty...).  On embedded sytems,
@@ -144,7 +145,25 @@ extern mpipe_struct mpipe;
   * with the Platform layer implementation -- in many cases it is unused and can
   * be ignored (set to NULL).
   */
-void mpipe_init(void* port_id);
+void mpipe_connect(void* port_id);
+
+
+
+/** @brief  Disconnects Mpipe Module
+  * @param  port_id     (void*) Implementation-dependent port identifier 
+  * @retval None        
+  * @ingroup Mpipe
+  * @sa mpipe_connect()
+  * @sa mpipedrv_detach()
+  *
+  * The user should call this function during system initialization, and the
+  * implementation must call mpipedrv_detach().
+  *
+  * Some drivers may be essentially connectionless -- e.g. an embedded UART.
+  * USB Mpipes usually need to be disconnected, though, when in fact they are
+  * disconnected.
+  */
+void mpipe_disconnect(void* port_id);
 
 
 
@@ -275,12 +294,13 @@ ot_u8 mpipedrv_footerbytes();
   * @param  port_id     (void*) Implementation-dependent port identifier 
   * @retval ot_int      Amount of latency to attribute to this driver
   * @ingroup Mpipe
-  * @sa mpipe_init()
+  * @sa mpipe_connect()
+  * @sa mpipedrv_detach()
   *
   * This function must be implemented in the MPipe driver.  It should be called
-  * from inside mpipe_init().
+  * from inside mpipe_connect().
   * 
-  * About port_id: this value is passed-in directly from mpipe_init().
+  * About port_id: this value is passed-in directly from mpipe_connect().
   *
   * About returned latency: this is a value in ticks that is used by the native
   * kernel, and perhaps others, that assists the management of task timing.
@@ -288,6 +308,21 @@ ot_u8 mpipedrv_footerbytes();
   * may have different outputs.
   */
 ot_int mpipedrv_init(void* port_id);
+
+
+/** @brief  De-Initializes Mpipe Driver upon disconnection
+  * @param  port_id     (void*) Implementation-dependent port identifier 
+  * @retval void
+  * @ingroup Mpipe
+  * @sa mpipe_disconnect()
+  * @sa mpipedrv_init()
+  *
+  * This function must be implemented in the MPipe driver.  It should be called
+  * from inside mpipe_disconnect().
+  * 
+  * About port_id: this value is passed-in directly from mpipe_disconnect().
+  */
+void mpipedrv_detach(void* port_id);
 
 
 

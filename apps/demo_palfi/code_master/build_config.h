@@ -15,8 +15,8 @@
 /**
   * @file       /apps/demo_palfi/code/build_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
-  * @date       16 April 2012
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Most basic list of constants needed to configure build
   *
   * Do not include this file.  Include OTAPI.h (or OT_config.h + OT_types.h)

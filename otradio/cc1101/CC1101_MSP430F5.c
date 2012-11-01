@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTradio/CC1101/CC1101_MSP430F5.h
+  * @file       /otradio/cc1101/CC1101_MSP430F5.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       2 April 2012
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      CC1101 transceiver interface implementation for MSP430F5
   * @ingroup    CC1101
   *
@@ -52,7 +52,6 @@ cc1101_struct cc1101;
 
 
 /// Embedded ISR for GDOs
-#if (ISR_EMBED(RADIO) == ENABLED)
 
 #if (RADIO_IRQ0_SRCLINE > RADIO_IRQ2_SRCLINE)
 #   define _LINE_LIMIT  ((RADIO_IRQ0_SRCLINE+1)*2)
@@ -60,14 +59,17 @@ cc1101_struct cc1101;
 #   define _LINE_LIMIT  ((RADIO_IRQ2_SRCLINE+1)*2)
 #endif
 
-#if (CC_SUPPORT == CL430)
-#   pragma vector=RADIO_IRQ_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-    //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(RADIO_IRQ_VECTOR)
+
+#if (RADIO_IRQ_PORT_ID == 1)
+#   define _RADIO_GDO_ISR   platform_isr_p1
+#elif (RADIO_IRQ_PORT_ID == 2)
+#   define _RADIO_GDO_ISR   platform_isr_p2
+#else
+#   error "RADIO_IRQ_PORT_ID (and RADIO_IRQ_PORT) not set to port 1 or 2"
 #endif
-OT_INTERRUPT void radio_gdo_isr(void) {
+
+
+OT_INLINE void _RADIO_GDO_ISR(void) {
 #ifdef RADIO_IRQ2_PIN
     switch ( __even_in_range(RADIO_IRQ_SRC(), _LINE_LIMIT) ) {
         case ((RADIO_IRQ0_SRCLINE+1)*2): cc1101_irq0_isr(); break;
@@ -79,11 +81,8 @@ OT_INTERRUPT void radio_gdo_isr(void) {
     }
     RADIO_IRQ_PORT->IFG = 0;
 #endif
-    
-    LPM4_EXIT;
 }
 
-#endif
 
 
 

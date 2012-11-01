@@ -33,11 +33,16 @@
 
 ot_u8 led_mask = 0;
 
+
+//Some additonal EXTFs are using the normal applets from otlibext
+
+
 void otapi_led1_on() {
     led_mask               |= 1;
     OT_TRIG2_PORT->SEL     &= ~OT_TRIG2_PIN;
     OT_TRIG1_PORT->DOUT    |= OT_TRIG1_PIN;
 }
+
 
 void otapi_led2_on() {
     led_mask               |= 2;
@@ -45,11 +50,13 @@ void otapi_led2_on() {
     OT_TRIG2_PORT->SEL     |= OT_TRIG2_PIN;
 }
 
+
 void otapi_led1_off() {
     led_mask &= ~1;
     if (led_mask & 2)   OT_TRIG2_PORT->SEL     |= OT_TRIG2_PIN;
     else                OT_TRIG1_PORT->DOUT    &= ~OT_TRIG1_PIN;
 }
+
 
 void otapi_led2_off() {
     OT_TRIG2_PORT->SEL &= ~OT_TRIG2_PIN;
@@ -58,6 +65,14 @@ void otapi_led2_off() {
         OT_TRIG1_PORT->DOUT &= ~OT_TRIG1_PIN;
     }
 }
+
+
+void sys_sig_powerdown(ot_int code) {
+///LPM0 Always with USB on this device
+    __bis_SR_register(0x18);
+    __no_operation();
+}
+
 
 
 #endif 

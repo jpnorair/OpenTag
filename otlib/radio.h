@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/radio.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Oct 2011
+  * @version    R100
+  * @date       20 Oct 2012
   * @brief      Generic Radio (RF transceiver) interface
   * @defgroup   Radio (Radio Module)
   * @ingroup    Radio

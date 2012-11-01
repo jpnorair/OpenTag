@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTplatform/MSP430F5/platform_MSP430F5.h
+  * @file       /otplatform/MSP430F5/platform_MSP430F5.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       2 Feb 2012
+  * @version    R100
+  * @date       31 Oct 2012
   * @brief      Platform Library Macros and Functions for MSP430F5
   * @ingroup    Platform
   *
@@ -28,9 +28,8 @@
 #ifndef __PLATFORM_MSP430F5_H
 #define __PLATFORM_MSP430F5_H
 
-#include "OT_support.h"
 #include "build_config.h"
-#include "msp430f5_map.h"
+#include "OT_support.h"
 #include "msp430f5_lib.h"
 
 
@@ -63,14 +62,18 @@
   */
 #if (CC_SUPPORT == GCC)
 #   include <intrinsics.h>
-#   define OT_IRQPRAGMA(VAL)        __attribute__((interrupt(VAL)))
+#   define OT_IRQPRAGMA(VAL)            __attribute__((interrupt(VAL)))
 #   define OT_INTERRUPT
-#   define __even_in_range(x, y)    x
-#   define __get_SR_register        __read_status_register
+#   define __get_SR_register            __read_status_register
+#   define __even_in_range(x, y)        x
+#   define __OT_INTERRUPT_VECTOR(VAL)   __attribute__((interrupt(VAL)))
+#   define __OT_INTERRUPT_ISR(FN)     void ##FN (void)
 
 #elif (CC_SUPPORT == CL430)
-#   define OT_IRQPRAGMA(VAL)        _Pragma(#VAL)
-#   define OT_INTERRUPT             __interrupt
+#   define OT_IRQPRAGMA(VAL)            _Pragma(#VAL)
+#   define OT_INTERRUPT                 __interrupt
+#   define __OT_INTERRUPT_VECTOR(VAL)   _Pragma(#VAL)
+#   define __OT_INTERRUPT_ISR(FN)       __interrupt void ##FN (void)
 
 #elif (CC_SUPPORT == IAR_V5)
 
@@ -96,21 +99,27 @@
 
 
 /** Low Power Mode Macros:
+  * ========================================================================<BR>
   * Within OpenTag, only SLEEP_MCU is used.  The other low power modes may
   * be used outside OpenTag, especially during idle periods in the MAC sequence.
   * STANDBY is not normally useful because it shuts off the RTC.
   *
-  * SLEEP_MCU():        LPM0 - Core off, DMA on, SRAM on                (~70 uA)
-  * SLEEP_WHILE_UHF():  LPM0 - Same as SLEEP_MCU()                      (~70 uA)
+  * SLEEP_MCU():        LPM1 - Core off, SRAM on                        (~50 uA)
+  * (unused):           LPM2 - Core off, SMCLK off, FLL off, SRAM on    (~10 uA)
   * STOP_MCU():         LPM3 - Core off, ACLK on (RTC), SRAM on         (~2 uA)
-  * STANDBY_MCU():      LPM5 - Core off, clocks off, SRAM off           (<0.3 uA)
+  * STANDBY_MCU():      LPM4 - Core off, clocks off, SRAM on            (~1 uA)
   */
-#define SLEEP_MCU()         PMM_EnterLPM0()
-#define SLEEP_WHILE_UHF()   PMM_EnterLPM0()
-#define STOP_MCU()          PMM_EnterLPM3()
-#define STANDBY_MCU()       PMM_EnterLPM5()
+#define MCU_SLEEP               PMM_EnterLPM1
+#define MCU_SLEEP_WHILE_IO      PMM_EnterLPM1
+#define MCU_SLEEP_WHILE_RF      PMM_EnterLPM1
+#define MCU_STOP                PMM_EnterLPM3
+#define MCU_STANDBY             PMM_EnterLPM4
 
-#define MCU_SLEEP_WHILE_RF() SLEEP_WHILE_UHF()
+//legacy deprecated
+#define SLEEP_MCU()             MCU_SLEEP()
+#define SLEEP_WHILE_UHF()       MCU_SLEEP_WHILE_RF()
+#define STOP_MCU()              MCU_STOP()
+#define STANDBY_MCU()           MCU_STANDBY()
 
 
 
@@ -119,6 +128,160 @@
   */
 #define OT_RADIODMA_RX_BYTE     (ot_u16)(OT_RADIODMA_RX->SZ)
 #define OT_RADIODMA_TX_BYTE     (ot_u16)(OT_RADIODMA_TX->SZ)
+
+
+
+
+
+
+
+/** MSP430 Platform Data  <BR>
+  * ========================================================================<BR>
+  * platform_ext stores data that is required for OpenTag to work properly on
+  * the MSP430, and the data is not platform-independent.
+  */
+#if (OT_FEATURE_RTC == ENABLED)
+#define RTC_ALARMS          1        // Max=3
+#else
+#define RTC_ALARMS          0
+#endif
+
+#define RTC_OVERSAMPLE      0                           // unsupported on MSP430
+
+typedef struct {
+    u8   disabled;
+    u8   taskid;
+    u16  mask;
+    u16  value;
+} rtcalarm;
+
+typedef struct {
+    u16* task_entry;
+    u16* reti_pc;
+    
+    u16  prand_reg;
+    
+#   if (RTC_OVERSAMPLE)
+#   endif
+#   if (RTC_ALARMS > 0)
+        rtcalarm alarm[RTC_ALARMS];
+#   endif
+
+} platform_ext_struct;
+
+
+extern platform_ext_struct  platform_ext;
+
+
+
+/**
+  * The COFFABI and CL430 compiler used by CCS have serious problems with
+  * inline function definitions.  Inline functions are necessary for any ISRs
+  * that must bring the MCU out of sleep (via LPM4_EXIT macro).
+  *
+  * The only interrupt in OpenTag that normally uses LPM4_EXIT, on MSP430, is
+  * the kernel timer interrupt.  It will be either Tim0A1 or Tim1A1.  CL430's
+  * preprocessor is below the GCC standard, so it takes some wrangling to get
+  * board configuration to dynamically inline the correct timer.
+  * get
+  */
+
+#define __ISR_VECTOR(ID)	(0xFF80 + (ID*2))
+
+// This list works for all known F55xx devices
+#define __ISR_RESET_ID		63
+#define __ISR_SYSNMI_ID    	62
+#define __ISR_USERNMI_ID   	61
+#define __ISR_CB_ID         60
+#define __ISR_T0B0_ID       59
+#define __ISR_T0B1_ID       58
+#define __ISR_WDTI_ID       57
+#define __ISR_USCIA0_ID     56
+#define __ISR_USCIB0_ID     55
+
+#if defined(_ADC10)
+#   define __ISR_ADC10A_ID  54
+#elif defined(_ADC12)
+#   define __ISR_ADC12A_ID  54
+#endif
+
+#define __ISR_T0A0_ID       53
+#define __ISR_T0A1_ID       52
+#define __ISR_USB_ID        51
+#define __ISR_DMA_ID        50
+#define __ISR_T1A0_ID       49
+#define __ISR_T1A1_ID       48
+#define __ISR_P1_ID         47
+#define __ISR_USCIA1_ID     46
+#define __ISR_USCIB1_ID     45
+#define __ISR_T2A0_ID       44
+#define __ISR_T2A1_ID       43
+#define __ISR_P2_ID         42
+#define __ISR_RTCA_ID       41
+
+
+
+
+
+
+void platform_isr_reset(void);
+
+void platform_isr_sysnmi(void);
+
+void platform_isr_usernmi(void);
+
+void platform_isr_cb(void);
+
+void platform_isr_tim0b0(void);
+void platform_isr_tim0b1(void);
+
+void platform_isr_wdti(void);
+
+void platform_isr_uscia0(void);
+void platform_isr_uscib0(void);
+
+#if defined(_ADC10)
+void platform_isr_adc10a(void);
+#elif defined(_ADC12)
+void platform_isr_adc12a(void);
+#endif
+
+void platform_isr_tim0a0(void);
+void platform_isr_tim0a1(void);
+
+#ifdef _USB
+void platform_isr_usb(void);
+#endif
+
+void platform_isr_dma(void);
+
+void platform_isr_tim1a0(void);
+void platform_isr_tim1a1(void);
+
+void platform_isr_p1(void);
+
+void platform_isr_uscia1(void);
+void platform_isr_uscib1(void);
+
+void platform_isr_tim2a0(void);
+void platform_isr_tim2a1(void);
+
+void platform_isr_p2(void);
+
+void platform_isr_rtca(void);
+
+
+
+
+#ifdef _LCD
+void platform_isr_lcdb(void);
+#endif
+
+#ifdef _AES
+void platform_isr_aes(void);
+#endif
+
+
 
 
 

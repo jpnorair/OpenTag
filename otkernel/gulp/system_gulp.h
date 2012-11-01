@@ -65,84 +65,13 @@
   * is commented-out).
   *
   */
-typedef ot_int (*ot_sysevt)();
+//typedef ot_int (*ot_sysevt)();
 
-void sys_set_extevent(ot_u8 event_no, ot_long nextevent);
-void sys_set_extprocess(ot_sigv process);
-
-
-
-/** Tasking & Event Mechanism   <BR>
-  * ========================================================================<BR>
-  * The Native Kernel is an pre-emptive multitasking, reservation-based,
-  * externally contexted design.  It supports pre-emptive context switching
-  * via external mechanisms, namely the platform module or actual HW.  
-  *
-  * External context switchng:
-  * For example, the MSP430 has a global interrupt system, so it would require
-  * a software-based context-switcher to be implemented in platform_ot_run() 
-  * and platform_ot_preempt().  You can also NOT implement them if your app 
-  * does not need them, which is probably the case if you are using a 
-  * lightweight chip like the MSP430.
-  *
-  * On something like a Cortex M3, such as STM32, there is a sophisticated
-  * NVIC interruptor that can do up to 8 priorities of context switching in HW.
-  * So, you would only need a software context switch if you had more than 7
-  * interrupt-driven tasks.
-  */
-#ifndef OT_FEATURE_EXTERNAL_EVENT
-#define OT_FEATURE_EXTERNAL_EVENT	ENABLED
-#endif
-
-#if (OT_FEATURE(EXTERNAL_EVENT))
-#define EXTERNAL_TASKS	1
-#endif
-
-#define RFA_INDEX       0
-#define MPA_INDEX       (RFA_INDEX+(OT_FEATURE(MPIPE) == ENABLED))
-#define IO_TASKS        ((MPA_INDEX-RFA_INDEX)+1)
-#define task_RFA        task[RFA_INDEX]
-#define task_MPA        task[MPA_INDEX]
-
-#define HSS_INDEX       IO_TASKS
-#define SSS_INDEX       (HSS_INDEX+(M2_FEATURE(ENDPOINT) == ENABLED))
-#define BTS_INDEX       (SSS_INDEX+(M2_FEATURE(BEACONS) == ENABLED))
-#define EXT_INDEX       (BTS_INDEX+(OT_FEATURE(EXT_TASK) == ENABLED))
-#define IDLE_TASKS      ((EXT_INDEX-HSS_INDEX)+1)
-#define task_idle(x)    task[IO_TASKS+x]
-#define task_HSS        task[HSS_INDEX]
-#define task_SSS        task[SSS_INDEX]
-#define task_BTS        task[BTS_INDEX]
-#define task_EXT        task[EXT_INDEX]
-
-#define SYS_TASKS       (IDLE_TASKS+IO_TASKS)
+//void sys_set_extevent(ot_u8 event_no, ot_long nextevent);
+//void sys_set_extprocess(ot_sigv process);
 
 
 
-
-typedef enum {
-    TASK_idle = -1,
-#if (1)
-    TASK_radio = 0,
-#endif
-#if (OT_FEATURE(MPIPE))
-    TASK_mpipe,
-#endif
-#if (1)
-    TASK_hold,
-#endif
-#if (M2_FEATURE(ENDPOINT))
-    TASK_sleep,
-#endif
-#if (M2_FEATURE(BEACONS))
-    TASK_beacon,
-#endif
-#if (OT_FEATURE(EXT_TASK))
-    TASK_external,
-#endif
-    // More user processing tasks would go here
-    TASK_terminus
-} Task_Index;
 
 
 
@@ -184,39 +113,11 @@ typedef struct task_marker_struct {
 #   endif
 } task_marker;
 
-typedef task_marker* ot_task;
 
+typedef task_marker*    ot_task;
+typedef task_marker     ot_task_struct;
 
-typedef void (*systask_fn)(task_marker*);
-
-
-/** System main structure  <BR>
-  * ========================================================================<BR>
-  * Primarily, the System structure is used to store task data.  Additionally,
-  * it will store any kernel callback signals that are enabled.  At present,
-  * there are two available: panic and powerdown.
-  */
-#if (OT_FEATURE(SYSTASK_CALLBACKS))
-#	define ACTIVE_TASK	ot_task
-#else
-#	define ACTIVE_TASK	Task_Index
-#endif
-
-typedef struct {
-#if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED)
-#if !defined(EXTF_sys_sig_panic)
-    ot_sig  panic;
-#endif
-#if !defined(EXTF_sys_sig_powerdown)
-    ot_sig  powerdown;
-#endif
-#endif
-    ACTIVE_TASK	active;
-    task_marker task[SYS_TASKS];
-} sys_struct;
-
-extern sys_struct sys;
-
+typedef void (*systask_fn)(ot_task);
 
 
 

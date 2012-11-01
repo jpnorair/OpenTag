@@ -14,9 +14,9 @@
   *
   */
 /**
-  * @file       /OTradio/CC1101/CC1101_registers.h
+  * @file       /otradio/cc1101/CC1101_registers.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       1 April 2012
   * @brief      Register Addressing Constants for CC1101 family
   * @ingroup    CC1101

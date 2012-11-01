@@ -13,10 +13,10 @@
   * limitations under the License.
   *
   */
-/** @file       /Platforms/CC430/cc430_lib/cc430_lib.h
+/** @file       /otplatform/msp430_mculib/cc430/cc430_lib.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Oct 2012
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Main header for CC430 abstraction layer
   * @ingroup    CC430 Library
   *
@@ -39,6 +39,7 @@
 #include "platform_CC430.h"
 
 
+//Needed for GCC
 #define __mov_SR_register(x) \
     asm __volatile__("mov   %0, r2" : : "r" ((unsigned short)x) )
 
@@ -137,7 +138,7 @@
 
 
 // Real Time Clock (RTC)
-#ifdef _RTC
+#if (defined(_RTCA) || defined(_RTCD))
 #   include "cc430_rtc.h"
 #endif
 
@@ -186,7 +187,7 @@
 
 
 // Liquid Crystal Display Bus Controller (LCD)
-#ifdef _LCD
+#ifdef _LCDB
 // module not available yet
 //#   include "cc430_lcd.h"
 #endif

@@ -119,7 +119,7 @@
 
 /// System EXTFs
 #define EXTF_sys_sig_panic
-//#define EXTF_sys_sig_powerdown
+#define EXTF_sys_sig_powerdown
 
 
 

@@ -128,14 +128,8 @@ ot_int palfi_action_swtrim_1(void);
   * processes.
   */
 
-#if (CC_SUPPORT == CL430)
-#   pragma vector=PALFI_WAKE_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-    // don't know yet
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(PALFI_WAKE_VECTOR)
-#endif
-OT_INTERRUPT void palfi_port_isr(void) {
+// PALFI_WAKE_ISR should be defined in the board config file.
+OT_INLINE void PALFI_WAKE_ISR(void) {
 /// Disable and clear the LF wakeup interrupt bit.  It will need to be
 /// re-enabled after the application runs, but with it off it will not get in
 /// the way of non-blocking process.
@@ -168,14 +162,9 @@ OT_INTERRUPT void palfi_port_isr(void) {
   * determine the necessary adjustment.  This interrupt is used during the 
   * SPI Trimming process, and it is transparent to the application.
   */
-#if (CC_SUPPORT == CL430)
-#   pragma vector=PALFI_TIM_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-    // don't know yet
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(PALFI_TIM_VECTOR)
-#endif
-OT_INTERRUPT void palfi_tim_isr(void) {
+
+//PALFI_TIM_ISR should be defined in the board config file...
+OT_INLINE void PALFI_TIM_ISR(void) {
 /// When the pulse counter passes the 1st interval, log the pulse width.
 /// When the pulse counter passes the 2nd interval, log the pulse width and
 /// terminate the pulse measuring subprocess.

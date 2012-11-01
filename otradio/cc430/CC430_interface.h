@@ -16,7 +16,7 @@
 /**
   * @file       /otradio/cc430/CC430_interface.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       5 April 2012
   * @brief      Functions for the CC430 transceiver interface
   * @defgroup   CC430 (CC430 family support)

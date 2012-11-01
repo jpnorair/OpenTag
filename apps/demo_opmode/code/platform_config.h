@@ -59,19 +59,25 @@
 /// <LI> BOARD_eZ430Chronos (CC430)         </LI>
 
 #if defined(BOARD_MLX73Proto_E)
+#   include "isr_config_STM32F10x.h"
 #   include "stm32f10x/board_MLX73Proto_E.h"
 
 #elif defined(BOARD_SX1231Proto_H152)
+#   include "isr_config_STM32L1xx.h"
 #   include "stm32l1xx/board_SX1231Proto_H152.h"
 
 #elif defined(BOARD_AG430DK_GW1) || defined(BOARD_AG430DK_EP1)
+#   include "isr_config_CC430.h"
 #   include "cc430/board_AG430DK_GW1.h"
 
 #elif defined(BOARD_EM430RF)
+#   include "isr_config_CC430.h"
 #   include "cc430/board_EM430RF.h"
 
 #elif defined(BOARD_eZ430Chronos)
+#   include "isr_config_CC430.h"
 #   include "cc430/board_ez430chronos.h"
+
 
 #else
 #   error "No support BOARD is defined"

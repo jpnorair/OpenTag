@@ -15,8 +15,8 @@
 /**
   * @file       /apps/demo_palfi/code/app_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
-  * @date       16 April 2012
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Application Configuration File for PaLFi Demo: USB STICK VERSION
   *
   * Don't actually include this.  Include OTAPI.h or (OT_config.h + OT_types.h)

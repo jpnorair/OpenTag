@@ -86,7 +86,6 @@ ot_int otutils_bin2hex(ot_u8* src, ot_u8* dst, ot_int size) {
     
     while (src != src_end) {
         ot_u8 scratch;
-        //*dst++      = ' ';          ///@todo Don't use this space after OTcom gets updated
         scratch     = *src >> 4;
         scratch    += (scratch >= 10) ? ('A'-10) : '0';
         *dst++      = scratch;

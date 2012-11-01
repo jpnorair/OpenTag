@@ -1,4 +1,4 @@
-/* Copyright 2009 JP Norair
+/* Copyright 2009-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
   * limitations under the License.
   *
   */
-/** @file       /OTplatforms/~MCU_MSP430/msp430f5_lib.h
+/** @file       /otplatform/msp430_mculib/msp430f5//msp430f5_lib.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Dec 2009
+  * @version    R100
+  * @date       1 Nov 2012
   * @brief      Main header for MSP430F5 abstraction layer
   * @ingroup    MSP430F5 Library
   *
@@ -40,6 +40,7 @@
 #include "platform_MSP430F5.h"      //might not be necessary
 
 
+// Needed for GCC
 #define __mov_SR_register(x) \
     asm __volatile__("mov   %0, r2" : : "r" ((unsigned short)x) )
 
@@ -67,7 +68,11 @@
 #include "msp430f5_tim.h"               // Timer peripherals
 #include "msp430f5_tlv.h"               //TLV
 #include "msp430f5_ucs.h"               // Clock Control
-#include "msp430f5_usb.h"               // USB Device
+
+#if defined(_USB)
+#   include "msp430f5_usb.h"               // USB Device
+#endif
+
 #include "msp430f5_usci.h"              // Universal Serial Controller Interface (USCI)
 //#include "msp430f5_wdt.h"               // Watchdog Timer(s) (WDT)
 

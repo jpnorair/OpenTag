@@ -16,7 +16,7 @@
 /**
   * @file       /otplatform/msp430f5/veelite_core_X2_MSP430F5.c
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       31 July 2012
   * @brief      X2 Method for Veelite Core Functions
   * @ingroup    Veelite
@@ -81,41 +81,21 @@
 
 /// Set Segmentation Fault (code 11) if trying to access an invalid virtual
 /// address.  Vector to User NMI (CC430 Specific)
-#if ((defined VLX2_DEBUG_ON) && (LOG_FEATURE(FAILS) == ENABLED))
-#   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
-        do { \
-            if (vas_check(ADDR) != BANK) { \
-                otapi_log_code(MSGLEN, (ot_u8*)MSG, 11); \
-                SFRIFG1 |= NMIIFG; \
-            } \
-        } while (0)
-
-#elif ((defined VLX2_DEBUG_ON) && (LOG_FEATURE(FAILS) == DISABLED))
+#if (defined VLX2_DEBUG_ON)
 #   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
         do { \
             if (vas_check(ADDR) != BANK) { \
                 SFRIFG1 |= NMIIFG; \
             } \
         } while (0)
-
 #else
-#   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG);
-
+#   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG); 
 #endif
 
 
 /// Set Bus Error (code 7) on physical flash access faults (X2table errors).
 /// Vector to Access Violation ISR (CC430 Specific)
-#if defined(VLX2_DEBUG_ON) && (LOG_FEATURE(FAULTS) == ENABLED)
-#   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
-        do { \
-            if (EXPR) { \
-                otapi_log_code(MSGLEN, (ot_u8*)MSG, 7); \
-                FLASH->CTL3 |= ACCVIFG; \
-            } \
-        } while (0)
-
-#elif defined(VLX2_DEBUG_ON)
+#if defined(VLX2_DEBUG_ON)
 #   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
         do { \
             if (EXPR) FLASH->CTL3 |= ACCVIFG; \
@@ -315,24 +295,6 @@ ot_u8 vworm_init( ) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE(VLNVWRITE) == ENABLED))
     ot_u8   test    = 0;
     ot_u16* s_ptr;
-  
-#   ifdef _TOUCH_FILEDATA
-        if (overhead_files != (ot_u8 *)(FLASH_FS_ADDR + OVERHEAD_START_VADDR)) {
-            return 1;
-        }
-        if (isfs_stock_codes != (ot_u8 *)(FLASH_FS_ADDR + ISFS_START_VADDR) ) {
-            for (;;) __nop();
-        }
-#       if (GFB_TOTAL_BYTES > 0)
-            if (gfb_stock_files != (ot_u8 *)(FLASH_FS_ADDR + GFB_START_VADDR) ) {
-                for (;;) __nop();
-            }
-#       endif 
-
-        if (isf_stock_files != (ot_u8 *)(FLASH_FS_ADDR + ISF_START_VADDR) ) {
-            for (;;) __nop();
-        }
-#   endif
 
     s_ptr = (ot_u16*)(VWORM_BASE_PHYSICAL + (VWORM_PAGESIZE*(VWORM_NUM_PAGES-1)));
 
@@ -495,7 +457,7 @@ ot_u8 vworm_write(vaddr addr, ot_u16 data) {
     ot_u16* p_ptr;
     ot_u16* a_ptr;
 
-    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_498");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_460");   //__LINE__
 
     /// 1.  Resolve the vaddr directly
     offset  = addr & (VWORM_PAGESIZE-1);
@@ -565,7 +527,7 @@ ot_u8 vworm_mark(vaddr addr, ot_u16 value) {
 ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
     BUSERROR_CHECK( (((ot_u16)addr < VWORM_BASE_PHYSICAL) || \
-                    ((ot_u16)addr >= (VWORM_BASE_PHYSICAL+VWORM_ALLOC))), 7, "VLC_568");    //__LINE__
+                    ((ot_u16)addr >= (VWORM_BASE_PHYSICAL+VWORM_ALLOC))), 7, "VLC_530");    //__LINE__
 
     return NAND_write_short(addr, value);
 #else
@@ -604,7 +566,7 @@ ot_u16 vsram_read(vaddr addr) {
 #if (VSRAM_SIZE <= 0)
     return 0;
 #else
-    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_607");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_569");   //__LINE__
     addr -= VSRAM_BASE_VADDR;
     addr >>= 1;
     return vsram[addr];
@@ -619,7 +581,7 @@ ot_u8 vsram_mark(vaddr addr, ot_u16 value) {
 #if (VSRAM_SIZE <= 0)
     return ~0;
 #else
-    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_622");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_584");   //__LINE__
     addr 		   -= VSRAM_BASE_VADDR;
     vsram[addr>>1]  = value;
     return 0;
@@ -647,7 +609,7 @@ ot_u8* vsram_get(vaddr addr) {
     return NULL;
 #else
     ot_u8* output;
-    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_650");   //__LINE__
+    SEGFAULT_CHECK(addr, in_vsram, 7, "VLC_612");   //__LINE__
     addr   -= VSRAM_BASE_VADDR;
     output  = (ot_u8*)vsram + addr;
     return output;

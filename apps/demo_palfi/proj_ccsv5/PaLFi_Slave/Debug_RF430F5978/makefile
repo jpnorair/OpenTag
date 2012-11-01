@@ -22,12 +22,13 @@ $(GEN_CMDS__FLAG) \
 "./otkernel/gulp/system_gulp.obj" \
 "./otlib/veelite.obj" \
 "./otlib/session.obj" \
+"./otlib/radio_task.obj" \
 "./otlib/queue.obj" \
-"./otlib/mpipe.obj" \
+"./otlib/mpipe_task.obj" \
 "./otlib/m2_transport.obj" \
 "./otlib/m2_network.obj" \
 "./otlib/m2_encode.obj" \
-"./otlib/m2_dll.obj" \
+"./otlib/m2_dll_task.obj" \
 "./otlib/external.obj" \
 "./otlib/crypto_aes128.obj" \
 "./otlib/crc16.obj" \
@@ -45,7 +46,9 @@ $(GEN_CMDS__FLAG) \
 "./otlib/OTAPI_tasker.obj" \
 "./otlib/OTAPI_logger.obj" \
 "./otplatform/cc430/veelite_core_X2_CC430.obj" \
+"./otplatform/cc430/platform_isr_CC430.obj" \
 "./otplatform/cc430/platform_CC430.obj" \
+"./otplatform/cc430/palfi_CC430_spi.obj" \
 "./otplatform/cc430/mpipe_CC430_uart.obj" \
 "./otplatform/cc430_lib/cc430_ucs.obj" \
 "./otplatform/cc430_lib/cc430_tim.obj" \
@@ -178,17 +181,17 @@ all: PaLFi_Slave.out
 PaLFi_Slave.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MSP430 Linker'
-	"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/bin/cl430" -vmspx --abi=coffabi --code_model=small --data_model=small -O1 --opt_for_speed=3 -g --define=__CCSv5__ --define=__CC430F6137__ --define=__LITTLE_ENDIAN__ --define=BOARD_FOB_RF430F5978 --define=DEBUG_ON --diag_warning=225 --display_error_number --silicon_errata=CPU18 --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU23 --silicon_errata=CPU40 --plain_char=unsigned --single_inline --printf_support=minimal -z --stack_size=80 -m"PaLFi_Slave.map" --heap_size=80 --use_hw_mpy=F5 -i"C:/ti/ccsv5/ccs_base/msp430/include" -i"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/lib" -i"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/include" --reread_libs --warn_sections --rom_model -o "PaLFi_Slave.out" $(ORDERED_OBJS)
+	"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/bin/cl430" -vmspx --abi=coffabi --code_model=small --data_model=small -O1 --opt_for_speed=0 -g --define=__CCSv5__ --define=__CC430F6137__ --define=__LITTLE_ENDIAN__ --define=BOARD_FOB_RF430F5978 --define=DEBUG_ON --diag_warning=225 --display_error_number --silicon_errata=CPU18 --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU23 --silicon_errata=CPU40 --plain_char=unsigned --single_inline --printf_support=minimal -z --stack_size=160 -m"PaLFi_Slave.map" --heap_size=0 --use_hw_mpy=F5 -i"C:/ti/ccsv5/ccs_base/msp430/include" -i"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/lib" -i"C:/ti/ccsv5/tools/compiler/msp430_4.1.2/include" --reread_libs --warn_sections --rom_model -o "PaLFi_Slave.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(MSP430_EXECUTABLE_OUTPUTS__QUOTED) "PaLFi_Slave.out"
-	-$(RM) "otradio\cc430\radio_CC430.pp" "otplatform\cc430_lib\cc430_crc.pp" "otplatform\cc430_lib\cc430_dma.pp" "otplatform\cc430_lib\cc430_flash.pp" "otplatform\cc430_lib\cc430_gpio.pp" "otplatform\cc430_lib\cc430_map.pp" "otplatform\cc430_lib\cc430_pmm.pp" "otplatform\cc430_lib\cc430_rf.pp" "otplatform\cc430_lib\cc430_rtc.pp" "otplatform\cc430_lib\cc430_tim.pp" "otplatform\cc430_lib\cc430_ucs.pp" "otplatform\cc430\mpipe_CC430_uart.pp" "otplatform\cc430\platform_CC430.pp" "otplatform\cc430\veelite_core_X2_CC430.pp" "otlib\OTAPI_logger.pp" "otlib\OTAPI_tasker.pp" "otlib\OT_utils.pp" "otlib\alp_api_client.pp" "otlib\alp_api_server.pp" "otlib\alp_dashforth.pp" "otlib\alp_filedata.pp" "otlib\alp_logger.pp" "otlib\alp_main.pp" "otlib\alp_security.pp" "otlib\alp_sensor.pp" "otlib\auth.pp" "otlib\buffers.pp" "otlib\crc16.pp" "otlib\crypto_aes128.pp" "otlib\external.pp" "otlib\m2_dll.pp" "otlib\m2_encode.pp" "otlib\m2_network.pp" "otlib\m2_transport.pp" "otlib\mpipe.pp" "otlib\queue.pp" "otlib\session.pp" 
-	-$(RM) "otlib\veelite.pp" "otkernel\gulp\system_gulp.pp" "applets\beacon_discovery.pp" "applets\collect_sensorlist.pp" "applets\dll_sig_rfinit.pp" "applets\dll_sig_rfterminate_2.pp" "applets\mpipe_sig_done.pp" "applets\network_sig_route.pp" "applets\sys_sig_panic.pp" "applets\sys_sig_powerdown_[msp430slow].pp" "applets\udp_querytoken.pp" "app_code\main.pp" "app_code\palfi.pp" 
-	-$(RM) "otradio\cc430\radio_CC430.obj" "otplatform\cc430_lib\cc430_crc.obj" "otplatform\cc430_lib\cc430_dma.obj" "otplatform\cc430_lib\cc430_flash.obj" "otplatform\cc430_lib\cc430_gpio.obj" "otplatform\cc430_lib\cc430_map.obj" "otplatform\cc430_lib\cc430_pmm.obj" "otplatform\cc430_lib\cc430_rf.obj" "otplatform\cc430_lib\cc430_rtc.obj" "otplatform\cc430_lib\cc430_tim.obj" "otplatform\cc430_lib\cc430_ucs.obj" "otplatform\cc430\mpipe_CC430_uart.obj" "otplatform\cc430\platform_CC430.obj" "otplatform\cc430\veelite_core_X2_CC430.obj" "otlib\OTAPI_logger.obj" "otlib\OTAPI_tasker.obj" "otlib\OT_utils.obj" "otlib\alp_api_client.obj" "otlib\alp_api_server.obj" "otlib\alp_dashforth.obj" "otlib\alp_filedata.obj" "otlib\alp_logger.obj" "otlib\alp_main.obj" "otlib\alp_security.obj" "otlib\alp_sensor.obj" "otlib\auth.obj" "otlib\buffers.obj" "otlib\crc16.obj" "otlib\crypto_aes128.obj" "otlib\external.obj" "otlib\m2_dll.obj" "otlib\m2_encode.obj" "otlib\m2_network.obj" "otlib\m2_transport.obj" "otlib\mpipe.obj" 
-	-$(RM) "otlib\queue.obj" "otlib\session.obj" "otlib\veelite.obj" "otkernel\gulp\system_gulp.obj" "applets\beacon_discovery.obj" "applets\collect_sensorlist.obj" "applets\dll_sig_rfinit.obj" "applets\dll_sig_rfterminate_2.obj" "applets\mpipe_sig_done.obj" "applets\network_sig_route.obj" "applets\sys_sig_panic.obj" "applets\sys_sig_powerdown_[msp430slow].obj" "applets\udp_querytoken.obj" "app_code\main.obj" "app_code\palfi.obj" 
+	-$(RM) "otradio\cc430\radio_CC430.pp" "otplatform\cc430_lib\cc430_crc.pp" "otplatform\cc430_lib\cc430_dma.pp" "otplatform\cc430_lib\cc430_flash.pp" "otplatform\cc430_lib\cc430_gpio.pp" "otplatform\cc430_lib\cc430_map.pp" "otplatform\cc430_lib\cc430_pmm.pp" "otplatform\cc430_lib\cc430_rf.pp" "otplatform\cc430_lib\cc430_rtc.pp" "otplatform\cc430_lib\cc430_tim.pp" "otplatform\cc430_lib\cc430_ucs.pp" "otplatform\cc430\mpipe_CC430_uart.pp" "otplatform\cc430\palfi_CC430_spi.pp" "otplatform\cc430\platform_CC430.pp" "otplatform\cc430\platform_isr_CC430.pp" "otplatform\cc430\veelite_core_X2_CC430.pp" "otlib\OTAPI_logger.pp" "otlib\OTAPI_tasker.pp" "otlib\OT_utils.pp" "otlib\alp_api_client.pp" "otlib\alp_api_server.pp" "otlib\alp_dashforth.pp" "otlib\alp_filedata.pp" "otlib\alp_logger.pp" "otlib\alp_main.pp" "otlib\alp_security.pp" "otlib\alp_sensor.pp" "otlib\auth.pp" "otlib\buffers.pp" "otlib\crc16.pp" "otlib\crypto_aes128.pp" "otlib\external.pp" "otlib\m2_dll_task.pp" "otlib\m2_encode.pp" "otlib\m2_network.pp" 
+	-$(RM) "otlib\m2_transport.pp" "otlib\mpipe_task.pp" "otlib\queue.pp" "otlib\radio_task.pp" "otlib\session.pp" "otlib\veelite.pp" "otkernel\gulp\system_gulp.pp" "applets\beacon_discovery.pp" "applets\collect_sensorlist.pp" "applets\dll_sig_rfinit.pp" "applets\dll_sig_rfterminate_2.pp" "applets\mpipe_sig_done.pp" "applets\network_sig_route.pp" "applets\sys_sig_panic.pp" "applets\sys_sig_powerdown_[msp430slow].pp" "applets\udp_querytoken.pp" "app_code\main.pp" "app_code\palfi.pp" 
+	-$(RM) "otradio\cc430\radio_CC430.obj" "otplatform\cc430_lib\cc430_crc.obj" "otplatform\cc430_lib\cc430_dma.obj" "otplatform\cc430_lib\cc430_flash.obj" "otplatform\cc430_lib\cc430_gpio.obj" "otplatform\cc430_lib\cc430_map.obj" "otplatform\cc430_lib\cc430_pmm.obj" "otplatform\cc430_lib\cc430_rf.obj" "otplatform\cc430_lib\cc430_rtc.obj" "otplatform\cc430_lib\cc430_tim.obj" "otplatform\cc430_lib\cc430_ucs.obj" "otplatform\cc430\mpipe_CC430_uart.obj" "otplatform\cc430\palfi_CC430_spi.obj" "otplatform\cc430\platform_CC430.obj" "otplatform\cc430\platform_isr_CC430.obj" "otplatform\cc430\veelite_core_X2_CC430.obj" "otlib\OTAPI_logger.obj" "otlib\OTAPI_tasker.obj" "otlib\OT_utils.obj" "otlib\alp_api_client.obj" "otlib\alp_api_server.obj" "otlib\alp_dashforth.obj" "otlib\alp_filedata.obj" "otlib\alp_logger.obj" "otlib\alp_main.obj" "otlib\alp_security.obj" "otlib\alp_sensor.obj" "otlib\auth.obj" "otlib\buffers.obj" "otlib\crc16.obj" "otlib\crypto_aes128.obj" "otlib\external.obj" "otlib\m2_dll_task.obj" 
+	-$(RM) "otlib\m2_encode.obj" "otlib\m2_network.obj" "otlib\m2_transport.obj" "otlib\mpipe_task.obj" "otlib\queue.obj" "otlib\radio_task.obj" "otlib\session.obj" "otlib\veelite.obj" "otkernel\gulp\system_gulp.obj" "applets\beacon_discovery.obj" "applets\collect_sensorlist.obj" "applets\dll_sig_rfinit.obj" "applets\dll_sig_rfterminate_2.obj" "applets\mpipe_sig_done.obj" "applets\network_sig_route.obj" "applets\sys_sig_panic.obj" "applets\sys_sig_powerdown_[msp430slow].obj" "applets\udp_querytoken.obj" "app_code\main.obj" "app_code\palfi.obj" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
