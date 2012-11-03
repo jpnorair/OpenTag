@@ -72,7 +72,7 @@
 #include "usb_cdc_driver/usb_cdc_backend.h"
 #include "usb_cdc_driver/usb_descriptors.h"
 
-#if defined(_CDC_)
+#ifdef _CDC_
 
 //#include "HAL_UCS.h"
 //#include "HAL_TLV.h"

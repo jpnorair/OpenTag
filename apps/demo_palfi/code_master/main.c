@@ -168,12 +168,12 @@ void sub_trig4_toggle() { }
 void sub_trig_init() {
 /// Configure Timer1 Pin to generate small duty cycle on LED pin.  Amazingly,
 /// just 1/32 duty cycle gives enough light and offers good lo/hi contrast.
-    TIM1A3->CTL   = TIMA_FLG_TACLR | 0x01C0 | 0x0010;  //up mode
-    TIM1A3->EX0   = 0;
-    TIM1A3->CCTL1 = OUTMOD_3;
-    TIM1A3->CCR1  = 31;
-    TIM1A3->CCR0  = 32;
-    TIM1A3->CTL  &= ~TIMA_FLG_TACLR;
+    TIM0A5->CTL   = TIMA_FLG_TACLR | 0x01C0;
+    TIM0A5->EX0   = 0;
+    TIM0A5->CCTL1 = OUTMOD_3;
+    TIM0A5->CCR1  = 31;
+    TIM0A5->CCR0  = 32;
+    TIM0A5->CTL  |= 0x0010; //Up mode
 }
 
 void sub_button_init()  { }
@@ -194,27 +194,22 @@ void sub_button_init()  { }
   * The User applet is primarily activated by callbacks from the kernel.  
   * However, in this system some features are also activated by button presses.
   */
-static const ot_sub led_on[2] = {   &platform_trig2_high,
-                                    &platform_trig1_high    };
-
-static const ot_sub led_off[2] = {  &platform_trig2_low,
-                                    &platform_trig1_low     };
-
-void sub_led_cycle(ot_u8 i) {
-    led_on[i&1]();
-    platform_swdelay_ms(33);
-    led_off[i&1]();
-}
-
-
 void app_init() {
     ot_u8 i;
 
     ///Initialize Application Triggers (LEDs) and blink the LEDs
     sub_trig_init();
 
-    i = 255;
-    do { sub_led_cycle(++i); } while (i != 3);
+    i=4;
+    while (i != 0) {
+        if (i&1)    otapi_led1_on();
+        else        otapi_led2_on();
+
+        platform_swdelay_ms(30);
+        otapi_led2_off();
+        otapi_led1_off();
+        i--;
+    }
 }
 
 
@@ -265,6 +260,7 @@ ot_bool m2qp_sig_error(ot_u8 code, ot_u8 subcode, id_tmpl* user_id) {
 
 #ifdef EXTF_m2qp_sig_udp
 ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
+#if (OT_FEATURE(MPIPE))
 /// Transport Layer calls this when a UDP-class request has been received.
     static const char* label[] = { "ID:", "Data:", "Event:", "RSSI:", "Temp:", "Volt:" };
     static const char type[]   = {  'x' ,   'x'  ,   't'   ,   'b'  ,   's'  ,   's'   };
@@ -317,6 +313,10 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
     // Close the log file, send it out, return success
     otapi_log_direct();
     return True;
+#else
+
+    return False;
+#endif
 }
 #endif
 

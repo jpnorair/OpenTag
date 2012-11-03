@@ -33,44 +33,7 @@
 #include "OTAPI.h"
 
 
-
 #if (1) //Using GULP
-
-inline void isr_entry_hook(void) {
-/// ISR Entry hook needs to save the pointer of the stack where the interrupt
-/// controller (Hardware) puts the Program Counter (PC) of the place to reenter
-/// when the interrupt is over.  If the task running underneath is killed 
-/// during this interrupt (i.e. by code in this interrupt), then this position
-/// on the stack gets overwritten with a different PC.  The stack used by this
-/// 
-    //platform_ext.reti   = POINTER ON STACK WHERE HW PUTS PC FROM ISR-ENTRY
-    
-#if (CC_SUPPORT == GCC)
-    ot_u16* scratch;
-    asm volatile (  "MOV.W   SP, %[scr]         \n\t"
-                    "ADD.W   #26, %[scr]        \n\t"
-                    "MOV.W   %[scr], %[out]     \n\t"
-                    : [scr] "r"(scratch) \
-                    : [out] "m"(platform_ext.reti_pc) );
-                    
-#elif (CC_SUPPORT == CL430)
-    // Doing this in CCS requires an intrinsic
-    // 26 is the number of bytes that get loaded to the stack by the 
-    // compiler's built-in interrupt entry hook!
-    platform_ext.reti_pc = (ot_u16*)(26 + _get_SP_register());
-    
-
-#else
-#   error "Compiler unsupported"
-#endif
-}
-
-
-inline void isr_exit_hook(void) {
-}
-
-
-
 
 /** @note MSP430 compilers do not allow the LPM4_EXIT macro to be called
   * outside the scope of an ISR function.  Syntactically intelligent compilers
@@ -169,7 +132,15 @@ inline void isr_exit_hook(void) {
 
 
 
-///     If specificed, this gets called after reset, during startup
+
+
+
+
+
+
+
+
+///If specificed, this gets called after reset, during startup
 #ifdef __ISR_RESET
 #if (CC_SUPPORT == CL430)
 #   pragma vector=RESET_VECTOR
@@ -215,6 +186,40 @@ OT_INTERRUPT void isr_usernmi(void) {
 
 
 
+#ifdef __ISR_T0B0
+#if (CC_SUPPORT == CL430)
+#   pragma vector=TIMER0_B0_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(TIMER0_B0_VECTOR)
+#endif
+OT_INTERRUPT void isr_tim0b0(void) {
+    platform_isr_tim0a0();
+}
+#endif
+
+
+
+#ifdef __ISR_T0B1
+#if (CC_SUPPORT == CL430)
+#   pragma vector=TIMER0_B1_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(TIMER0_B1_VECTOR)
+#endif
+OT_INTERRUPT void isr_tim0b1(void) {
+#   if (OT_GPTIM_ISR_ID == __ISR_T0B1_ID)
+    __SPECIAL_ISR_GPTIM__
+#	else
+    platform_isr_tim0b1();
+#   endif
+}
+#endif
+
+
+
 
 #ifdef __ISR_CB
 #if (CC_SUPPORT == CL430)
@@ -225,9 +230,7 @@ OT_INTERRUPT void isr_usernmi(void) {
     OT_IRQPRAGMA(COMP_B_VECTOR)
 #endif
 OT_INTERRUPT void isr_cb(void) {
-    isr_entry_hook();
     platform_isr_cb();
-    isr_exit_hook();
 }
 #endif
 
@@ -243,9 +246,7 @@ OT_INTERRUPT void isr_cb(void) {
     OT_IRQPRAGMA(WDT_VECTOR)
 #endif
 OT_INTERRUPT void isr_wdti(void) {
-    isr_entry_hook();
     platform_isr_wdti();
-    isr_exit_hook();
 }
 #endif
 
@@ -261,9 +262,7 @@ OT_INTERRUPT void isr_wdti(void) {
     OT_IRQPRAGMA(USCI_A0_VECTOR)
 #endif
 OT_INTERRUPT void isr_uscia0(void) {
-    isr_entry_hook();
     platform_isr_uscia0();
-    isr_exit_hook();
 }
 #endif
 
@@ -278,9 +277,147 @@ OT_INTERRUPT void isr_uscia0(void) {
     OT_IRQPRAGMA(USCI_B0_VECTOR)
 #endif
 OT_INTERRUPT void isr_uscib0(void) {
-    isr_entry_hook();
     platform_isr_uscib0();
-    isr_exit_hook();
+}
+#endif
+
+
+
+
+#ifdef __ISR_ADC12A
+#if (CC_SUPPORT == CL430)
+#   pragma vector=ADC12_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(ADC12_VECTOR)
+#endif
+OT_INTERRUPT void isr_adc12a(void) {
+    platform_isr_adc12a();
+}
+#endif
+
+
+#ifdef __ISR_ADC10A
+#if (CC_SUPPORT == CL430)
+#   pragma vector=ADC10_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(ADC10_VECTOR)
+#endif
+OT_INTERRUPT void isr_adc10a(void) {
+    platform_isr_adc10a();
+}
+#endif
+
+
+
+#ifdef __ISR_T0A0
+#if (CC_SUPPORT == CL430)
+#   pragma vector=TIMER0_A0_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(TIMER0_A0_VECTOR)
+#endif
+OT_INTERRUPT void isr_tim0a0(void) {
+    platform_isr_tim0a0();
+}
+#endif
+
+
+
+#ifdef __ISR_T0A1
+#if (CC_SUPPORT == CL430)
+#   pragma vector=TIMER0_A1_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(TIMER0_A1_VECTOR)
+#endif
+OT_INTERRUPT void isr_tim0a1(void) {
+#   if (OT_GPTIM_ISR_ID == __ISR_T0A1_ID)
+    __SPECIAL_ISR_GPTIM__
+#	else
+    platform_isr_tim0a1();
+#   endif
+}
+#endif
+
+
+#ifdef __ISR_USB
+#if (CC_SUPPORT == CL430)
+#   pragma vector=USB_UBM_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(USB_UBM_VECTOR)
+#endif
+OT_INTERRUPT void isr_usb(void) {
+    platform_isr_usb();
+}
+#endif
+
+
+#ifdef __ISR_DMA
+#if (CC_SUPPORT == CL430)
+#   pragma vector=DMA_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(DMA_VECTOR)
+#endif
+OT_INTERRUPT void isr_dma(void) {
+    platform_isr_dma();
+}
+#endif
+
+
+#ifdef __ISR_T1A0
+#if (CC_SUPPORT == CL430)
+#   pragma vector=TIMER1_A0_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(TIMER1_A0_VECTOR)
+#endif
+OT_INTERRUPT void isr_tim1a0(void) {
+    platform_isr_tim1a0();
+}
+#endif
+
+
+
+#ifdef __ISR_T1A1
+#if (CC_SUPPORT == CL430)
+#   pragma vector=TIMER1_A1_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(TIMER1_A1_VECTOR)
+#endif
+OT_INTERRUPT void isr_tim1a1(void) {
+#   if (OT_GPTIM_ISR_ID == __ISR_T1A1_ID)
+    __SPECIAL_ISR_GPTIM__
+#	else
+    platform_isr_tim1a1();
+#   endif
+}
+#endif
+
+
+
+#ifdef __ISR_P1
+#if (CC_SUPPORT == CL430)
+#   pragma vector=PORT1_VECTOR
+#elif (CC_SUPPORT == IAR_V5)
+        //unknown at this time
+#elif (CC_SUPPORT == GCC)
+    OT_IRQPRAGMA(PORT1_VECTOR)
+#endif
+OT_INTERRUPT void isr_p1(void) {
+    platform_isr_p1();
 }
 #endif
 
@@ -296,9 +433,7 @@ OT_INTERRUPT void isr_uscib0(void) {
     OT_IRQPRAGMA(USCI_A1_VECTOR)
 #endif
 OT_INTERRUPT void isr_uscia1(void) {
-    isr_entry_hook();
     platform_isr_uscia1();
-    isr_exit_hook();
 }
 #endif
 
@@ -313,177 +448,7 @@ OT_INTERRUPT void isr_uscia1(void) {
     OT_IRQPRAGMA(USCI_B1_VECTOR)
 #endif
 OT_INTERRUPT void isr_uscib1(void) {
-    isr_entry_hook();
     platform_isr_uscib1();
-    isr_exit_hook();
-}
-#endif
-
-
-
-
-
-#ifdef __ISR_ADC12A
-#if (CC_SUPPORT == CL430)
-#   pragma vector=ADC12_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(ADC12_VECTOR)
-#endif
-OT_INTERRUPT void isr_adc12a(void) {
-    isr_entry_hook();
-    platform_isr_adc12a();
-    isr_exit_hook();
-}
-#endif
-
-
-
-
-//#define __ISR_T0A0      55
-#ifdef __ISR_T0A0
-#if (CC_SUPPORT == CL430)
-#   pragma vector=TIMER0_A0_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(TIMER0_A0_VECTOR)
-#endif
-OT_INTERRUPT void isr_tim0a0(void) {
-    isr_entry_hook();
-#   if (OT_GPTIM_ISR_ID == __ISR_T0A0_ID)
-    __SPECIAL_ISR_GPTIM__
-#	else
-    platform_isr_tim0a0();
-#   endif
-    isr_exit_hook();
-}
-#endif
-
-
-
-#ifdef __ISR_T0A1
-#if (CC_SUPPORT == CL430)
-#   pragma vector=TIMER0_A1_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(TIMER0_A1_VECTOR)
-#endif
-OT_INTERRUPT void isr_tim0a1(void) {
-    isr_entry_hook();
-#   if (OT_GPTIM_ISR_ID == __ISR_T0A1_ID)
-    __SPECIAL_ISR_GPTIM__
-#	else
-    platform_isr_tim0a1();
-#   endif
-    isr_exit_hook();
-}
-#endif
-
-
-
-
-
-#ifdef __ISR_T0B0
-#if (CC_SUPPORT == CL430)
-#   pragma vector=TIMER0_B0_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(TIMER0_B0_VECTOR)
-#endif
-OT_INTERRUPT void isr_tim0b0(void) {
-    isr_entry_hook();
-#   if (OT_GPTIM_ISR_ID == __ISR_T0B0_ID)
-    __SPECIAL_ISR_GPTIM__
-#	else
-    platform_isr_tim0a0();
-#   endif
-    isr_exit_hook();
-}
-#endif
-
-
-
-#ifdef __ISR_T0B1
-#if (CC_SUPPORT == CL430)
-#   pragma vector=TIMER0_B1_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(TIMER0_B1_VECTOR)
-#endif
-OT_INTERRUPT void isr_tim0b1(void) {
-    isr_entry_hook();
-#   if (OT_GPTIM_ISR_ID == __ISR_T0B1_ID)
-    __SPECIAL_ISR_GPTIM__
-#	else
-    platform_isr_tim0b1();
-#   endif
-    isr_exit_hook();
-}
-#endif
-
-
-
-
-
-
-#ifdef __ISR_DMA
-#if (CC_SUPPORT == CL430)
-#   pragma vector=DMA_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(DMA_VECTOR)
-#endif
-OT_INTERRUPT void isr_dma(void) {
-    isr_entry_hook();
-    platform_isr_dma();
-    isr_exit_hook();
-}
-#endif
-
-
-#ifdef __ISR_T1A0
-#if (CC_SUPPORT == CL430)
-#   pragma vector=TIMER1_A0_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(TIMER1_A0_VECTOR)
-#endif
-OT_INTERRUPT void isr_tim1a0(void) {
-    isr_entry_hook();
-#   if (OT_GPTIM_ISR_ID == __ISR_T1A0_ID)
-    __SPECIAL_ISR_GPTIM__
-#	else
-    platform_isr_tim1a0();
-#   endif
-    isr_exit_hook();
-}
-#endif
-
-
-
-#ifdef __ISR_T1A1
-#if (CC_SUPPORT == CL430)
-#   pragma vector=TIMER1_A1_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(TIMER1_A1_VECTOR)
-#endif
-OT_INTERRUPT void isr_tim1a1(void) {
-    isr_entry_hook();
-#   if (OT_GPTIM_ISR_ID == __ISR_T1A1_ID)
-    __SPECIAL_ISR_GPTIM__
-#	else
-    platform_isr_tim1a1();
-#   endif
-    isr_exit_hook();
 }
 #endif
 
@@ -498,13 +463,7 @@ OT_INTERRUPT void isr_tim1a1(void) {
     OT_IRQPRAGMA(TIMER2_A0_VECTOR)
 #endif
 OT_INTERRUPT void isr_tim2a0(void) {
-    isr_entry_hook();
-#   if (OT_GPTIM_ISR_ID == __ISR_T2A0_ID)
-    __SPECIAL_ISR_GPTIM__
-#	else
     platform_isr_tim2a0();
-#   endif
-    isr_exit_hook();
 }
 #endif
 
@@ -519,34 +478,14 @@ OT_INTERRUPT void isr_tim2a0(void) {
     OT_IRQPRAGMA(TIMER2_A1_VECTOR)
 #endif
 OT_INTERRUPT void isr_tim2a1(void) {
-    isr_entry_hook();
 #   if (OT_GPTIM_ISR_ID == __ISR_T2A1_ID)
     __SPECIAL_ISR_GPTIM__
 #	else
     platform_isr_tim2a1();
 #   endif
-    isr_exit_hook();
 }
 #endif
 
-
-
-
-
-#ifdef __ISR_P1
-#if (CC_SUPPORT == CL430)
-#   pragma vector=PORT1_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-        //unknown at this time
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(PORT1_VECTOR)
-#endif
-OT_INTERRUPT void isr_p1(void) {
-    isr_entry_hook();
-    platform_isr_p1();
-    isr_exit_hook();
-}
-#endif
 
 
 #ifdef __ISR_P2
@@ -558,9 +497,7 @@ OT_INTERRUPT void isr_p1(void) {
     OT_IRQPRAGMA(PORT2_VECTOR)
 #endif
 OT_INTERRUPT void isr_p2(void) {
-    isr_entry_hook();
     platform_isr_p2();
-    isr_exit_hook();
 }
 #endif
 
@@ -575,9 +512,7 @@ OT_INTERRUPT void isr_p2(void) {
     OT_IRQPRAGMA(LCD_B_VECTOR)
 #endif
 OT_INTERRUPT void isr_lcdb(void) {
-    isr_entry_hook();
     platform_isr_lcdb();
-    isr_exit_hook();
 }
 #endif
 
@@ -592,9 +527,7 @@ OT_INTERRUPT void isr_lcdb(void) {
     OT_IRQPRAGMA(RTC_A_VECTOR)
 #endif
 OT_INTERRUPT void isr_rtca(void) {
-    isr_entry_hook();
     platform_isr_rtca();
-    isr_exit_hook();
 }
 #endif
 
@@ -609,9 +542,7 @@ OT_INTERRUPT void isr_rtca(void) {
     OT_IRQPRAGMA(AES_VECTOR)
 #endif
 OT_INTERRUPT void isr_aes(void) {
-    isr_entry_hook();
     platform_isr_aes();
-    isr_exit_hook();
 }
 #endif
 

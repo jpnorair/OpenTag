@@ -46,6 +46,8 @@
 #include "usb_cdc_driver/usb_main.h"
 
 
+#ifdef _CDC_
+
 /** USB Descriptors   <BR>
   * ========================================================================<BR>
   * Descriptors are just data elements used by USB.  Feel free to modify them
@@ -376,4 +378,6 @@ const tDEVICE_REQUEST_COMPARE tUsbRequestList[] =  {
     0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff, 
     0x00,&usbInvalidRequest     // end of list
 };
+
+#endif
 

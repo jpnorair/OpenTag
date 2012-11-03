@@ -83,7 +83,7 @@
 #define MCU_FEATURE_RADIODMA_RXBYTES    0
 #define MCU_FEATURE_MAPEEPROM           DISABLED
 #define MCU_FEATURE_MPIPEDMA            DISABLED //ENABLED    // Only for UART DMA
-#define MCU_FEATURE_MEMCPYDMA           ENABLED     // Must be disabled if MPIPEDMA is enabled
+#define MCU_FEATURE_MEMCPYDMA           ENABLED
 #define MCU_FEATURE_MPIPECDC            ENABLED     // USB uses memcpy
 #define MCU_FEATURE_MPIPEUSB			MCU_FEATURE_MPIPECDC
 #define MCU_FEATURE_MPIPEVCOM			MCU_FEATURE_MPIPECDC   //legacy
@@ -136,8 +136,10 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 
 
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
-/// Configure all ports to grounded outputs in order to minimize current.
-    GPIO12->DDIR    = 0xFFFF;
+/// Configure all ports to grounded outputs in order to minimize current, but
+/// leave P1.0 P1.1, P1.3, P1.4 as floating inputs: on this board P1.0-P1.4
+/// are tied together, and P1.2 is used to drive a PWM to the LED
+    GPIO12->DDIR    = 0xFFE4;
     GPIO34->DDIR    = 0xFFFF;
     GPIO56->DDIR    = 0xFFFF; //^ (BOARD_LFXT_PINS | BOARD_HFXT_PINS);
     
@@ -294,12 +296,12 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   * OT_TRIG:    Optional test trigger usable in OpenTag apps (often LEDs)   <BR>
   * MPIPE:      UART to use for the MPipe                                   <BR>
   */
-#define OT_GPTIM            TIM0A5
-#define OT_GPTIM_ISR_ID     __ISR_T0A1_ID
-#ifdef __ISR_T0A1
-#   error "ISR T0A1 is already allocated.  It must be used for GPTIM."
+#define OT_GPTIM            TIM1A3
+#define OT_GPTIM_ISR_ID     __ISR_T1A1_ID
+#ifdef __ISR_T1A1
+#   error "ISR T1A1 is already allocated.  It must be used for GPTIM."
 #else
-#   define __ISR_T0A1
+#   define __ISR_T1A1
 #endif
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
@@ -334,7 +336,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define OT_TRIG1_PORTNUM    1
 #define OT_TRIG1_PORT       GPIO1
 #define OT_TRIG1_PIN        GPIO_Pin_2
-#define OT_TRIG1_HIDRIVE    DISABLED         // Use high-current option
+#define OT_TRIG1_HIDRIVE    DISABLED
 #define OT_TRIG2_PORTNUM    1
 #define OT_TRIG2_PORT       GPIO1
 #define OT_TRIG2_PIN        GPIO_Pin_2
@@ -357,7 +359,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 // Radio pin interface (CC1101).  
-// - SPI1 is USCIB0, wired on the board as shown below
+// - SPI1 is USCIB1, wired on the board as shown below
 // - 1 GDO is available as IRQs (GDO0), GD02 is for XT2 clocking (unique board feature)
 // - GDO1 is tied to the MISO pin, for asynchronous modulation (unused)
 #define RADIO_SPI_ID            0xB1
@@ -408,7 +410,7 @@ OT_INLINE_H void BOARD_RADIO_SPI_ATTACH() {
     
 
 #if (RADIO_SPI_CLKSRC > 6500000)
-#	warn "Radio clock might be too fast.  CC1101 can only do 6.5 MHz without special tricks"
+#	warn "Radio clock might be too fast: make sure to prescale SPI to below 6.5Mbps"
 #endif
 
 // DMA is generally deprecated with MSP430, because it is so limited, it is
@@ -468,63 +470,52 @@ OT_INLINE_H void BOARD_RADIO_SPI_ATTACH() {
 
 
 
-// If using the normal UART, it is wired to {rx,tx} = {4.4,4.5}.  CTS/RTS could
-// hypothetically be implemented on 4.6/4.7, which are unused.  All other USCIs
-// on the EXP430F5529 board are utilized by other features.
+// On the USB Stick, there isn't really an exposed UART/SPI/I2C, but you can
+// map one onto P4.4-P4.7.
 #if (MCU_FEATURE_MPIPECDC != ENABLED)
-#   define MPIPE_UARTNUM        2
+#   define MPIPE_UART_ID        0xA1
 #   define MPIPE_UART_PORTNUM   4
 #   define MPIPE_UART_PORT      GPIO4
-#   define MPIPE_UART_PORTMAP   NULL //P4M
-#   define MPIPE_UART_RXPIN     GPIO_Pin_5
-#   define MPIPE_UART_TXPIN     GPIO_Pin_4
+#   define MPIPE_UART_PORTMAP   P4M
+#   define MPIPE_UART_RXPIN     GPIO_Pin_7
+#   define MPIPE_UART_TXPIN     GPIO_Pin_6
 #   define MPIPE_UART_PINS      (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
-//#   define MPIPE_RTS_PORT       GPIO2
-//#   define MPIPE_CTS_PORT       GPIO2
-//#   define MPIPE_RTS_PIN        GPIO_Pin_6
-//#   define MPIPE_CTS_PIN        GPIO_Pin_7
+//#   define MPIPE_RTS_PORT       GPIO4
+//#   define MPIPE_CTS_PORT       GPIO4
+//#   define MPIPE_RTS_PIN        GPIO_Pin_4
+//#   define MPIPE_CTS_PIN        GPIO_Pin_5
 
-#   if (MPIPE_UARTNUM == 2)
+#   if (MPIPE_UART_ID == 0xA1)
 #       define MPIPE_UART           UARTA1
 #       define MPIPE_UART_RXSIG     PM_UCA1RXD
 #       define MPIPE_UART_TXSIG     PM_UCA1TXD
 #	    define MPIPE_UART_RXTRIG    20 //DMA_Trigger_UCA1RXIFG
 #	    define MPIPE_UART_TXTRIG    21 //DMA_Trigger_UCA1TXIFG
-#       define MPIPE_UART_VECTOR    USCI_A1_VECTOR
 #   else
 #       error "MPIPE_UART is not defined to an available index (2, i.e. USCIA1)"
 #   endif
 
 #   if (MCU_FEATURE_MPIPEDMA == ENABLED)
-#       define MPIPE_DMANUM    2
-#       if (MPIPE_DMANUM == 0)
-#           define MPIPE_DMA     DMA0
-#       elif (MPIPE_DMANUM == 1)
-#           define MPIPE_DMA     DMA1
-#       elif (MPIPE_DMANUM == 2)
-#           define MPIPE_DMA     DMA2
-#       else
-#           error "MPIPE_DMANUM is not defined to an available index (0-2)"
-#       endif
+#       define MPIPE_DMANUM 0
+#       define MPIPE_DMA    DMA0
 #   endif
 
-#   if (MPIPE_UART_RXPIN == GPIO_Pin_5)
-#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP5
+#   if (MPIPE_UART_RXPIN == GPIO_Pin_7)
+#       define MPIPE_UART_RXMAP    MPIPE_UART_PORTMAP->MAP7
 #   else
 #       error "MPIPE_UART_RXPIN out of bounds"
 #   endif
 
-#   if (MPIPE_UART_TXPIN == GPIO_Pin_4)
-#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP4
+#   if (MPIPE_UART_TXPIN == GPIO_Pin_6)
+#       define MPIPE_UART_TXMAP    MPIPE_UART_PORTMAP->MAP6
 #   else
 #       error "MPIPE_UART_TXPIN out of bounds"
 #   endif
-
 #endif
 
 
 #if (MCU_FEATURE_MEMCPYDMA == ENABLED)
-#   define MEMCPY_DMANUM    1
+#   define MEMCPY_DMANUM    (0+(MCU_FEATURE_MPIPEDMA == ENABLED))
 #   if (MEMCPY_DMANUM == 0)
 #       define MEMCPY_DMA     DMA0
 #   elif (MEMCPY_DMANUM == 1)

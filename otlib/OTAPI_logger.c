@@ -44,7 +44,7 @@
 
 #include "OT_config.h"
 
-#if ((LOG_FEATURE(ANY) == ENABLED) && (LOG_METHOD == LOG_METHOD_DEFAULT))
+#if (OT_FEATURE(MPIPE))
 
 //#include "OT_types.h"
 //#include "OT_utils.h"

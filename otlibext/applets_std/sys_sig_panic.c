@@ -30,6 +30,8 @@
 
 #ifdef EXTF_sys_sig_panic
 void sys_sig_panic(ot_int code) {
+#   if (OT_FEATURE(MPIPE))
 	otapi_log_msg(MSG_raw, 3, 2, (ot_u8*)"WTF", (ot_u8*)&code);
+#   endif
 }
 #endif

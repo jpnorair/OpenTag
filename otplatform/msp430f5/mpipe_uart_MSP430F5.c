@@ -66,7 +66,7 @@
 #include "buffers.h"
 #include "mpipe.h"
 
-#if ((MPIPE_UART_ID != 0xA0) || (MPIPE_UART_ID != 0xB0))
+#if ((MPIPE_UART_ID != 0xA0) && (MPIPE_UART_ID != 0xA1))
 #   error "MPIPE_UART_ID not defined to an available UART on this MSP430"
 #endif
 
@@ -187,10 +187,16 @@ void sub_txack_header() {
   
 void sub_uart_portsetup() {
     // Get write-access to port mapping regs, update, re-lock
-    //PM->PWD          = 0x2D52;
-    //MPIPE_UART_TXMAP = MPIPE_UART_TXSIG;
-    //MPIPE_UART_RXMAP = MPIPE_UART_RXSIG;
-    //PM->PWD          = 0;
+#   if (defined(MPIPE_UART_TXMAP) || defined(MPIPE_UART_RXMAP))
+    PM->PWD = 0x2D52;
+#       if defined(MPIPE_UART_TXMAP)
+        MPIPE_UART_TXMAP = MPIPE_UART_TXSIG;
+#       endif
+#       if defined(MPIPE_UART_RXMAP)
+        MPIPE_UART_RXMAP = MPIPE_UART_RXSIG;
+#       endif
+    PM->PWD = 0;
+#   endif
 
     MPIPE_UART_PORT->SEL   |= MPIPE_UART_PINS;      // Set pins to alternate function
   //MPIPE_UART_PORT->IE    &= ~MPIPE_UART_PINS;     // disable any interrupts on TX/RX pins
@@ -490,7 +496,7 @@ void mpipedrv_isr() {
             payload_len             = mpipe.alp.inq->front[2];
             payload_front           = mpipe.alp.inq->front + 6;
             mpipe.alp.inq->back     = payload_front + payload_len;
-            payload_len            += MPIPE_FOOTER_BYTES;
+            payload_len            += MPIPE_FOOTERBYTES;
             mpipe.alp.inq->length   = payload_len + 6;
             MPIPE_DMA_RXCONFIG(payload_front, payload_len, ON);
             mpipeevt_rxdetect(30);      ///@todo make dynamic: this is relevant for 115200bps

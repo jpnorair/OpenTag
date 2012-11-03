@@ -31,6 +31,7 @@
 #include "build_config.h"
 #include "OT_support.h"
 #include "msp430f5_lib.h"
+#include "msp430f5_conf.h"
 
 
 /** Platform Support settings
@@ -70,6 +71,7 @@
 #   define __OT_INTERRUPT_ISR(FN)     void ##FN (void)
 
 #elif (CC_SUPPORT == CL430)
+#	define OT_FNPRAGMA(VAL)             _Pragma(#VAL)
 #   define OT_IRQPRAGMA(VAL)            _Pragma(#VAL)
 #   define OT_INTERRUPT                 __interrupt
 #   define __OT_INTERRUPT_VECTOR(VAL)   _Pragma(#VAL)
@@ -156,8 +158,8 @@ typedef struct {
 } rtcalarm;
 
 typedef struct {
+  //u16* reti_pc;
     u16* task_entry;
-    u16* reti_pc;
     
     u16  prand_reg;
     

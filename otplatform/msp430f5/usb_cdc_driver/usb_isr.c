@@ -66,7 +66,7 @@
 #include "usb_cdc_driver/usb_main.h"
 #include "usb_cdc_driver/usb_cdc_backend.h"
 
-
+#ifdef _CDC_
 
 /** USB Interrupt Service Routines (ISRs)   <BR>
   * ========================================================================<BR>
@@ -283,3 +283,4 @@ void platform_isr_usb (void) {
     //}
 }
 
+#endif
