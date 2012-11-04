@@ -310,6 +310,25 @@ ot_u8 mpipedrv_footerbytes();
 ot_int mpipedrv_init(void* port_id);
 
 
+
+/** @brief  Holds the runtime until MPipe is up and running
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  *
+  * This function is useful only for MPipes that require a connection.  USB is
+  * an example of one of these.  Basic serial comms have no imperative
+  * connection, so for UART, SPI, I2C, etc this function can be empty.
+  *
+  * This function should be called only when the MPipe connection is required
+  * before proceeding.  For example, its intended usage is in the power-on
+  * section of the main function (before the loop), where a USB connection
+  * needs some time to be detected and enumerated.
+  */
+void mpipedrv_standby();
+
+
+
 /** @brief  De-Initializes Mpipe Driver upon disconnection
   * @param  port_id     (void*) Implementation-dependent port identifier 
   * @retval void

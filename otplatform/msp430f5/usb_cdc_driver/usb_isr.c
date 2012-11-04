@@ -136,30 +136,37 @@ void OEP0InterruptHandler(void) {
 
 
 
-void SetupPacketInterruptHandler(void) {
+ot_u8 SetupPacketInterruptHandler(void) {
     ot_u8 bTemp;
-    //ot_u8 bWakeUp = False;
+    ot_u8 bWakeUp = False;
     USBCTL |= FRSTE;      // Function Reset Connection Enable - set enable after first setup packet was received
 
     //usbProcessNewSetupPacket:
     SetupPacketInterruptHandler_newpacket:
     
     // copy the MSB of bmRequestType to DIR bit of USBCTL
-    if ((tSetupPacket.bmRequestType & USB_REQ_TYPE_INPUT) == USB_REQ_TYPE_INPUT) {
+    if ((tSetupPacket.bmRequestType & USB_REQ_TYPE_INPUT)) {
     	USBCTL |= DIR;
     }
     else {
     	USBCTL &= ~DIR;
     }
+
+    //{
+    //	ot_u16 dir_bit;
+    //	dir_bit = (tSetupPacket.bmRequestType & USB_REQ_TYPE_INPUT) >> 7;
+    //	USBCTL |= dir_bit;
+    //	USBCTL &= (dir_bit-2);
+    //}
     
+
     bStatusAction = STATUS_ACTION_NOTHING;
     // clear out return data buffer
     for (bTemp=0; bTemp<USB_RETURN_DATA_LENGTH; bTemp++) {
     	abUsbRequestReturnData[bTemp] = 0x00;
     }
     // decode and process the request
-    //bWakeUp = usbDecodeAndProcessUsbRequest();
-    usbDecodeAndProcessUsbRequest();
+    bWakeUp = usbDecodeAndProcessUsbRequest();
     
     // check if there is another setup packet pending
     // if it is, abandon current one by NAKing both data endpoint 0
@@ -168,7 +175,7 @@ void SetupPacketInterruptHandler(void) {
     	goto SetupPacketInterruptHandler_newpacket;
     }
     
-    //return bWakeUp;
+    return bWakeUp;
 }
 
 
@@ -176,16 +183,15 @@ void SetupPacketInterruptHandler(void) {
 
 
 
-void platform_isr_usb (void) {
+ot_u8 platform_isr_usb (void) {
 /// Check if the setup interrupt is pending.  We need to check it before other 
 /// interrupts, to work around that the Setup Int has lower priority then Input 
 /// Endpoint 0
 
-    //BYTE bWakeUp = FALSE;
+    ot_u8 bWakeUp = FALSE;
     
     if (USBIFG & SETUPIFG) {
-        //bWakeUp = SetupPacketInterruptHandler();
-    	SetupPacketInterruptHandler();
+        bWakeUp = SetupPacketInterruptHandler();
         USBIFG &= ~SETUPIFG;    // clear the interrupt bit
     }
     
@@ -245,7 +251,7 @@ void platform_isr_usb (void) {
         case USBVECINT_SETUP_PACKET_RECEIVED:   // NAK both IEP and OEP enpoints
                                     tEndPoint0DescriptorBlock.bIEPBCNT = EPBCNT_NAK;
                                     tEndPoint0DescriptorBlock.bOEPBCNT = EPBCNT_NAK;
-                                    SetupPacketInterruptHandler();
+                                    bWakeUp = SetupPacketInterruptHandler();
                                     break;
         
         case USBVECINT_STPOW_PACKET_RECEIVED: break;
@@ -277,10 +283,7 @@ void platform_isr_usb (void) {
         default: break;
     }
     
-    //if (bWakeUp) {
-    //	 __bic_SR_register_on_exit(LPM3_bits);   // Exit LPM0-3
-    //	 __no_operation();                       // Required for debugger
-    //}
+    return bWakeUp;
 }
 
 #endif

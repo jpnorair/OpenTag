@@ -300,8 +300,6 @@ const tEDB* dbselect[] = { tInputEndPointDescriptorBlock,
                           
                           
 
-void CdcResetData();
-
 void USB_InitSerialStringDescriptor(void);
 
 
@@ -430,11 +428,9 @@ ot_u8 USB_enable () {
     do {
         USBPLLIR    = 0x0000;
 #		ifdef __MSP430F6638
-        	platform_swdelay_us(1000);
-        	//for (i = 0; i < USB_MCLK_FREQ / 1000 * 1 / 10; i++);  //1ms
+        	platform_swdelay_us(1000); //1ms
 #		else
-        	platform_swdelay_us(500);
-        	//for (i = 0; i < USB_MCLK_FREQ / 1000 * 1 / 2 / 10; i++);	//0.5ms
+        	platform_swdelay_us(500);  //0.5ms
 #		endif
 
         pll_unsettled = (USBPLLIR != 0);
@@ -627,7 +623,7 @@ ot_u8 USB_forceRemoteWakeup () {
 
 
 /* Returns the status of the USB connection.
- */
+ */  /*
 ot_u8 USB_connectionInfo () {
     ot_u8 retval;
 
@@ -648,7 +644,7 @@ ot_u8 USB_connectionInfo () {
 
     return retval;
 }
-
+*/
 
 
 
@@ -1153,7 +1149,7 @@ typedef ot_u8 (*tpF)(void);
 ot_u8 usbDecodeAndProcessUsbRequest (void) {
     ot_u8 bMask,bResult,bTemp;
     const ot_u8* pbUsbRequestList;
-    ot_u8 bWakeUp = FALSE;
+    //ot_u8 bWakeUp = FALSE;
     ptDEVICE_REQUEST ptSetupPacket = &tSetupPacket;
     ot_u8 bRequestType,bRequest;
     tpF lAddrOfFunction;
@@ -1212,15 +1208,17 @@ ot_u8 usbDecodeAndProcessUsbRequest (void) {
     lAddrOfFunction = ((tDEVICE_REQUEST_COMPARE*)pbUsbRequestList)->pUsbFunction;
 
     //call function
-    bWakeUp = (*lAddrOfFunction)();
+    //bWakeUp = (*lAddrOfFunction)();
+    (*lAddrOfFunction)();
 
     //perform enumeration complete event:
     //when SetAddress was called and USBADDR is not zero
     if ((lAddrOfFunction == &usbSetAddress) && (USBFUNADR != 0)){
         //bWakeUp = USB_handleEnumCompleteEvent();
-    	USB_handleEnumCompleteEvent();
+    	return USB_handleEnumCompleteEvent();
     }
-    //return (bWakeUp);
+
+    //return bWakeUp;
     return False;
 }
 

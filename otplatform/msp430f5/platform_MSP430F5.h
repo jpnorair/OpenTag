@@ -252,7 +252,8 @@ void platform_isr_tim0a0(void);
 void platform_isr_tim0a1(void);
 
 #ifdef _USB
-void platform_isr_usb(void);
+// Returns 0/1 to cause wakeup from LPM
+u8 platform_isr_usb(void);
 #endif
 
 void platform_isr_dma(void);

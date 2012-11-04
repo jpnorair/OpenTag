@@ -233,7 +233,7 @@ void sys_halt(Halt_Request halt_request) {
 #endif
 
 
-#ifndef EXTF_sys_halt
+#ifndef EXTF_sys_resume
 void sys_resume() {
 #   if (1)
     dll_refresh();

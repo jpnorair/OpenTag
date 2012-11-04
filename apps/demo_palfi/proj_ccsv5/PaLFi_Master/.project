@@ -122,6 +122,16 @@
 			<location>B:/apps/demo_palfi/code_master/build_config.h</location>
 		</link>
 		<link>
+			<name>app_code/data_5509.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/code_master/_patch_5509stick/data_5509.c</locationURI>
+		</link>
+		<link>
+			<name>app_code/extf_code.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/code_master/_patch_5509stick/extf_code.c</locationURI>
+		</link>
+		<link>
 			<name>app_code/extf_config.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/code_master/extf_config.h</locationURI>

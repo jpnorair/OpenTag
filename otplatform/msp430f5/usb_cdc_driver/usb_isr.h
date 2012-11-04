@@ -74,9 +74,9 @@ extern ot_u8 bStatusAction;
 
 
 /** Handle incoming setup packet.
-  * returns TRUE to keep CPU awake
+  * returns TRUE to wakeup CPU
   */
-void SetupPacketInterruptHandler(void);
+ot_u8 SetupPacketInterruptHandler(void);
 
 
 

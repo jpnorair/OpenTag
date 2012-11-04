@@ -397,7 +397,7 @@ ot_u8 USB_forceRemoteWakeup ();
 /*
  * Returns the status of the USB connection.
  */
-ot_u8 USB_connectionInfo ();
+//ot_u8 USB_connectionInfo ();
 
 /*
  * Returns the state of the USB connection.
@@ -463,7 +463,7 @@ HANDLE_RETURN USB_handleResumeEvent ();
  * after host assigned the address to the device.
  * returns TRUE to keep CPU awake
  */
-HANDLE_RETURN USB_handleEnumCompleteEvent ();
+ot_u8 USB_handleEnumCompleteEvent ();
 
 /**
  * Send stall handshake for in- and out-endpoint0 (control pipe)

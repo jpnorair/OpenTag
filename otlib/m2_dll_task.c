@@ -615,6 +615,8 @@ void dll_systask_sleepscan(ot_task task) {
     ot_uni16  scratch;
     vlFILE* fp;
 
+    if (task->event == 0) return;
+
     fp = ISF_open_su( task->event );
     ///@todo assert fp
 
@@ -667,6 +669,8 @@ void dll_systask_beacon(ot_task task) {
     Queue       beacon_queue;
     ot_uni32    bq_data;
     ot_uni16    scratch;
+
+    if (task->event == 0) return;
 
     /// Open BTS ISF Element and read the beacon sequence.  Make sure there is
     /// a beacon file of non-zero length and that beacons are presently enabled.

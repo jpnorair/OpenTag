@@ -105,7 +105,9 @@ void USB_handleVbusOnEvent () {
         USB_reset();
         USB_connect();
     }
-    sys_resume();
+    if (mpipe.state == MPIPE_Null) {
+        sys_resume();
+    }
 }
 
 
@@ -119,8 +121,10 @@ void USB_handleVbusOffEvent (){
 /// certain MPipe must be disconnected.  sys_halt() is not a sure-thing: some 
 /// devices might have batteries, and the non-MPipe part of the application 
 /// might not want or need to halt.
-    sys_halt(HALT_nopower);
-    mpipe_disconnect(NULL);
+	//if (mpipe.state >= MPIPE_Idle) {
+        sys_halt(HALT_nopower);
+        mpipe_disconnect(NULL);
+	//}
 }
 
 
@@ -150,9 +154,11 @@ void USB_handleSuspendEvent () {
 /// the fact that we are certain MPipe must be suspended.  sys_halt() is not a 
 /// sure-thing: some devices might have batteries, and the non-MPipe part of 
 /// the application might not want or need to halt.
-    sys_halt(HALT_lowpower);
-    mpipe_close();
-    mpipe.state = MPIPE_Null;
+    if (mpipe.state >= MPIPE_Idle) {
+        sys_halt(HALT_lowpower);
+        mpipe_close();
+        mpipe.state = MPIPE_Null;
+    }
 }
 
 
@@ -165,9 +171,11 @@ void USB_handleSuspendEvent () {
   * which gets everything back on-line, and in startup configuration.
   */
 void USB_handleResumeEvent () {
-    mpipe.state = MPIPE_Idle;
-    mpipe_open();
-    sys_resume();
+	if (mpipe.state == MPIPE_Null) {
+		mpipe.state = MPIPE_Idle;
+		mpipe_open();
+		sys_resume();
+	}
 }
 
 
@@ -176,9 +184,10 @@ void USB_handleResumeEvent () {
   * enumerated this device.  platform_wakeup() is called in case there is some
   * blocking process that's sleeping, waiting for enumeration (typical).
   */
-void USB_handleEnumCompleteEvent () {
+ot_u8 USB_handleEnumCompleteEvent () {
     mpipe.state = MPIPE_Idle;
     mpipe_open();
+    return True;
 }
 
 
@@ -257,25 +266,38 @@ ot_int mpipedrv_init(void* port_id) {
 /// <LI> USB is disconnected at startup in order to clear the host USB driver,
 ///        which will get stuck during debugging or other sleeping processes.   </LI>
 
-    tty.seq.ushort          = 0;            //not actually necessary
-    mpipe.state             = MPIPE_Null;
+    tty.seq.ushort          = 0;                //not actually necessary
+    mpipe.state             = (MPIPE_Null-1);	    // Disconnected
 
 	alp_init(&mpipe.alp, &dir_in, &dir_out);
 	mpipe.alp.inq->back    -= 10;
     mpipe.alp.outq->back   -= 10;
     
     USB_init();
-    USB_disconnect();	//disconnect USB first
+    //USB_disconnect();	//disconnect USB first
 
     //See if we're already attached physically to USB, and if so, connect to it
     //Normally applications don't invoke the event handlers, but this is an exception.
-    if (USB_connectionInfo() & kUSB_vbusPresent){
+    if (USBPWRCTL & USBBGVBV){
         USB_handleVbusOnEvent();
     }
 
     return 255;
 }
 #endif
+
+
+#ifndef EXTF_mpipedrv_standby
+void mpipedrv_standby() {
+/// Hold in LPM0 until startup complete.
+	mpipe.state = (MPIPE_Null-1);
+	__bis_SR_register(0x18);
+	__no_operation();
+}
+#endif
+
+
+
 
 
 
@@ -316,6 +338,7 @@ void mpipedrv_wait() {
     while (mpipe.state != MPIPE_Idle);
 }
 #endif
+
 
 
 #ifndef EXTF_mpipedrv_setspeed

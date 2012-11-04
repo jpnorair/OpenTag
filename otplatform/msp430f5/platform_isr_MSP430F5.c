@@ -355,7 +355,9 @@ OT_INTERRUPT void isr_tim0a1(void) {
     OT_IRQPRAGMA(USB_UBM_VECTOR)
 #endif
 OT_INTERRUPT void isr_usb(void) {
-    platform_isr_usb();
+    if ( platform_isr_usb() ) {
+    	LPM4_EXIT;
+    }
 }
 #endif
 

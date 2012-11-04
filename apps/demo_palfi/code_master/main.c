@@ -419,9 +419,7 @@ void main(void) {
     
     ///4a. The device will wait (and block anything else) until you connect
     ///    it to a valid console that will "enumerate" this USB device
-#   if (MCU_FEATURE_MPIPECDC)
-    mpipedrv_wait();
-#   endif
+    mpipedrv_standby();
 
     ///4b. Load a message to show that main startup has passed
     otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");

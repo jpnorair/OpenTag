@@ -124,6 +124,9 @@ extern cdc_struct   cdc;
  * These functions can be used in application
  +----------------------------------------------------------------------------*/
 
+void CdcResetData();
+
+
 /** Sends data over interface intfNum, of size size and starting at address data.
   * Returns:  kUSBCDC_sendStarted, kUSBCDC_sendComplete, kUSBCDC_intfBusyError
   */
