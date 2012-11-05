@@ -16,7 +16,7 @@
 /**
   * @file       /apps/demo_opmode/code/isr_config_CC430.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
+  * @version    R100
   * @date       31 October 2012
   * @brief      CC430 ISR Configuration for Opmode Demo app
   *

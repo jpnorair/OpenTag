@@ -36,10 +36,6 @@
 #ifndef __ISR_CONFIG_MSP430F5_H
 #define __ISR_CONFIG_MSP430F5_H
 
-// The PaLFI pin I/F is on P1
-// The PaLFI trimming routine usually uses Timer 1 (check board cfg)
-// Both __ISR_P1 and __ISR_T1A0 get defined in the board cfg file of RF430
-
 //#define __ISR_RESET_ID
 //#define __ISR_SYSNMI_ID
 //#define __ISR_USERNMI_ID

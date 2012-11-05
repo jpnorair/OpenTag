@@ -129,7 +129,7 @@ ot_int palfi_action_swtrim_1(void);
   */
 
 // PALFI_WAKE_ISR should be defined in the board config file.
-OT_INLINE void PALFI_WAKE_ISR(void) {
+void PALFI_WAKE_ISR(void) {
 /// Disable and clear the LF wakeup interrupt bit.  It will need to be
 /// re-enabled after the application runs, but with it off it will not get in
 /// the way of non-blocking process.
@@ -164,7 +164,7 @@ OT_INLINE void PALFI_WAKE_ISR(void) {
   */
 
 //PALFI_TIM_ISR should be defined in the board config file...
-OT_INLINE void PALFI_TIM_ISR(void) {
+void PALFI_TIM_ISR(void) {
 /// When the pulse counter passes the 1st interval, log the pulse width.
 /// When the pulse counter passes the 2nd interval, log the pulse width and
 /// terminate the pulse measuring subprocess.

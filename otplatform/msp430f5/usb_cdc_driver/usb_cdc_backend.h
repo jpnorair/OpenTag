@@ -228,8 +228,8 @@ void USBCDC_setCTS(ot_u8 state);
 /* This event indicates that a SetLineCoding request was received from the host and new values
  * for line coding paramters are available.
  */
-//ot_u8 USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate);
-void USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate);
+ot_u8 USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate);
+//void USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate);
 
 
 /* This event indicates that a SetControlLineState request was received from the host. 
@@ -262,8 +262,8 @@ ot_u8 usbSetControlLineState(void);
 
 /** Readout the settings (send from usb host) for the second uart
   */
-//ot_u8 Handler_SetLineCoding(void);
-void Handler_SetLineCoding(void);
+ot_u8 Handler_SetLineCoding(void);
+//void Handler_SetLineCoding(void);
 
 
 

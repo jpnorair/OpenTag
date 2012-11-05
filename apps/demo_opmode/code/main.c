@@ -525,16 +525,13 @@ void main(void) {
 
     ///4a. The device will wait (and block anything else) until you connect
     ///    it to a valid console app.
-#   if (MCU_FEATURE_MPIPEVCOM)
-    mpipe_wait();
-#   endif
+    mpipedrv_standby();
 
     ///4b. Load a message to show that main startup has passed
     otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
-    ///<LI> The kernel actually runs at the bottom of this loop.</LI>
     ///<LI> You could put code before or after sys_runtime_manager, which will
     ///     run before or after the (task + kernel).  If you do, keep the code
     ///     very short or else you are risking timing glitches.</LI>

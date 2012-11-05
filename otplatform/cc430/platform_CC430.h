@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/CC430/platform_CC430.h
   * @author     JP Norair
-  * @version    R100
-  * @date       24 Oct 2012
+  * @version    R102
+  * @date       4 Nov 2012
   * @brief      Platform Library Macros and Functions for CC430
   * @ingroup    Platform
   *
@@ -154,8 +154,6 @@ typedef struct {
 
 typedef struct {
     u16* task_entry;
-    u16* reti_pc;
-    
     u16  prand_reg;
     
 #   if (RTC_OVERSAMPLE)

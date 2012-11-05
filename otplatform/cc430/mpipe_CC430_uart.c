@@ -16,7 +16,7 @@
 /**
   * @file       /otplatform/cc430/mpipe_CC430_uart.c
   * @author     JP Norair
-  * @version    R101
+  * @version    R102
   * @date       1 Nov 2012
   * @brief      Message Pipe (MPIPE) implementation(s) for CC430
   * @defgroup   MPipe (Message Pipe)
@@ -41,22 +41,29 @@
   * Connection:             RS-232, DTE-DTE (use a null-modem connector)
   *
   * Design Assumptions:
-  * - Using SMCLK at 2.49625 MHz Clock (19.97 MHz / 8)
-  * - Using UART0
-  * - If changing the input frequency, changes need to be made to implementation
-  *   of setspeed function.
-  * - If changing to another UART, changes to platform_config_CC430.h and to
-  *   some macros in this file will be needed
+  * <LI> Using SMCLK at 2.49625 MHz Clock (19.97 MHz / 8) </LI>
+  * <LI> If changing the input frequency, changes need to be made to 
+  *         implementation of setspeed function. </LI>
+  * <LI> If changing to another UART, changes to platform_config_CC430.h and to
+  *         some macros in this file will be needed </LI>
   *
-  * Implemented Mpipe Protocol:
-  * The Mpipe protocol is a simple wrapper to NDEF.
+  * Implemented Mpipe Protocol: The Mpipe protocol is a simple wrapper to NDEF.
+  * <PRE>
   * Legend: [ NDEF Header ] [ NDEF Payload ] [ Seq. Number ] [ CRC16 ]
-  * Bytes:        6             <= 255             2             2
+  * Bytes:        6             <= 255             2             2 
+  * </PRE>
   *
-  * The protocol includes an ACK/NACK feature.  After receiving a message, the
-  * Mpipe send an ACK/NACK.  The "YY" byte is 0 for ACK and non-zero for ACK.
-  * Presently, 0x7F is used as the YY NACK value.
+  * The protocol includes an ACK/NACK feature, although this is only of any
+  * importance if you have a lossy link between client and server.  If you are
+  * using a USB->UART converter, USB has a reliable MAC implementation that 
+  * eliminates the need for MPipe ACKing.  
+  * 
+  * Anyway, after receiving a message, the Mpipe send an ACK/NACK.  The "YY" 
+  * byte is 0 for ACK and non-zero for ACK.  Presently, 0x7F is used as the YY 
+  * NACK value.
+  * <PRE>
   * [ Seq ID ] 0xDD 0x00 0x00 0x02 0x00 0xYY  [ CRC16 ]
+  * </PRE>
   ******************************************************************************
   */
 

@@ -16,7 +16,7 @@
 /**
   * @file       /otplatform/cc430/platform_CC430.c
   * @author     JP Norair
-  * @version    R101
+  * @version    R102
   * @date       31 October 2012
   * @brief      ISRs and hardware services abstracted by the platform module
   * @ingroup    Platform
@@ -122,8 +122,67 @@ platform_ext_struct platform_ext;
 
 
 
+/** Kill Signal ISR   <BR>
+  * ========================================================================<BR>
+  * Most ISR's are wrapped in platform_isr_MSP430F5.c, and the body function is
+  * implemented wherever.  The Kill function is special, and it is implemented
+  * here.
+  */
+#if (OT_GPTIM_ISR_ID == __ISR_T0B1_ID)
+#   ifdef __ISR_T0B0
+#       error "GPTIM is set to Timer B0, so you can't use channel 0."
+#   else
+#       define KILL_VECTOR	TIMER0_B0_VECTOR
+#   endif
+
+#elif (OT_GPTIM_ISR_ID == __ISR_T0A1_ID)
+#   ifdef __ISR_T0A0
+#       error "GPTIM is set to Timer A0, so you can't use channel 0."
+#   else
+#       define KILL_VECTOR	TIMER0_A0_VECTOR
+#   endif
+
+#else
+#   error "You have not setup GPTIM to a TxA1 interrupt.  It must have one."
+#endif
 
 
+
+/** I am the kill function.
+  * Killing is my business... and business is good!
+  */
+#if (CC_SUPPORT == CL430)
+#pragma vector=KILL_VECTOR
+OT_INTERRUPT void isr_kill(void) {
+/// The interrupt hardware puts 2 byte Return PC and 2 byte Status Reg (SR) on
+/// the program stack.  Now SP' = SP-4.  Usually the compiler also saves
+/// registers on the stack that are used in the ISR,  but CL430 does no
+/// inspection of inline ASM, so it will not do that.  This code replaces the
+/// return PC (SP'+4) with the special address for the task return.
+	OT_GPTIM->CCR0 = 0;
+
+	asm("  MOV.W    SP, r15");
+	asm("  ADD.W    #4, r15");
+	asm("  MOV.W    #RETURN_FROM_TASK, 0(r15)");
+}
+
+#elif (CC_SUPPORT == GCC)
+OT_IRQPRAGMA(KILL_VECTOR)
+OT_INTERRUPT void isr_kill(void) {
+///@todo UNTESTED: inspect the generated ASM to make sure +4 offset is correct.
+/// Also, see if MSPGCC supports the NAKED pragma, which will ensure that +4 is
+/// correct.
+	OT_GPTIM->CCR0 = 0;
+
+	asm ("MOV.W   SP, r15                   \n\t"
+	     "ADD.W   #4, r15                   \n\t"
+	     "MOV.W   #RETURN_FROM_TASK, 0(r15) \n\t"  );
+}
+
+#elif (CC_SUPPORT == IAR_V5)
+//unknown at this time
+
+#endif
 
 
 
@@ -339,25 +398,19 @@ void platform_enable_interrupts() {
 
 #ifndef EXTF_platform_drop_context
 void platform_drop_context(ot_uint i) {
-///@note Since CC430 only supports GULP right now, the usage of GULP is  
-///      implicit with this implementation.
+/// Send the kill signal to the special kill ISR.  On MSP430 & CC430, this is
+/// always the CCR0 of the GPTIM, which has a special interrupt of its own,
+/// above the other GPTIM interrupts.  The kill signal is only sent if there is
+/// an active kernel task running.  Thus exotasks can only be killed if there
+/// is a custodial kernel task associated with the exotask (as typical).
 ///
-/// The function here works together with the custom interrupt entry hook, 
-/// which stores the pointer in the stack where it puts Return-from-interrupt 
-/// PC in the persistent variable: platform_ext.reti_pc.  It should only change
-/// the RETI PC if the ISR that called sys_kill_active() or sys_kill_all()
-/// occurred during an active task runtime, though, or else things will get
-/// totally fucked up.
-
+/// @note Since MSP430 only supports GULP right now, the usage of GULP is
+/// implicit with this implementation.  If multiple context stacks become
+/// supported in a later, enhanced version (I will call it "Big GULP"), this
+/// function can also flush that stack.
+///
     if (platform_ext.task_entry != NULL) {
-#   if (CC_SUPPORT == GCC)
-        asm volatile("MOV.W  #RETURN_FROM_TASK, 0(%0") : : "m"(platform_ext.reti) );
-                    
-#   elif (CC_SUPPORT == CL430)    
-        _set_R4_register( (ot_u16)platform_ext.reti_pc );
-        asm ("  MOV.W  #RETURN_FROM_TASK, 0(R4)");
-        
-#   endif    
+    	OT_GPTIM->CCR0 |= 0x0011;
     } 
 }
 #endif
@@ -388,24 +441,32 @@ void platform_ot_preempt() {
 
 #ifndef EXTF_platform_ot_run
 void platform_ot_run() {
-/// If the active task is NULL/Idle, this means the powerdown routine should
-/// run, and that the timer needs to be hot before the powerdown.  Otherwise,
-/// there is a task to run, and the timer should not be hot until after the
-/// task is complete.
+/// This function must be run in a while(1) loop from main.
 
-	// Enable interrupts for pre-emptive tasks during runtime of the
-	// cooperative task -- co-operative tasks are parent tasks, basically
+	/// 1. Interrupt Management:
+	/// The kernel timer should not cause an interrupt during the runtime of
+	/// the kernel task (disable ktim).  Exotask interrupts (interrupts that
+	/// are not ktim) must be enabled, though, so exotasks can run.
 	platform_disable_ktim();
 	platform_enable_interrupts();
     
+	/// 2. Program Stack Shenanigans, Part 1:
+	/// Save the present address of the program stack.  The task has not been
+	/// started yet, so the stack offset should be 0, but we save it anyway
+	/// in case of future changes to the system structure by me or you.
 #   if (CC_SUPPORT == GCC)
         asm volatile("MOV.W   SP,%0" : "=m"(platform_ext.task_entry)  );     
 #   elif (CC_SUPPORT == CL430)  
         platform_ext.task_entry = (ot_u16*)_get_SP_register();
 #   endif
     
+    /// 3. Invoke the kernel task!
 	sys_run_task();
-	
+
+	/// 4. Program Stack Shenanigans, Part 2:
+	/// Manually refresh the stack from the saved value.  If the task exited
+	/// cleanly, this code basically makes 0 = 0.  If the task was killed, then
+	/// it will clobber whatever task data is left on the stack.
 #   if (CC_SUPPORT == GCC)
 	RETURN_FROM_TASK:
         asm ("MOV.W   %0,SP" : : "m"(platform_ext.task_entry)  );  
@@ -413,13 +474,14 @@ void platform_ot_run() {
         asm ("RETURN_FROM_TASK:");
         _set_SP_register((ot_u16)platform_ext.task_entry);
 #   endif
-    
 	platform_ext.task_entry = NULL;
 
-	// Disable interrupts during event management routine
-	// Powerdown mode initiation MUST enable interrupts, by the way.
-	// If event manager returns 0, there is a task immediately pending,
-	// so no point in powering down.
+	/// 5. Run Kernel Scheduler:
+	/// Disable interrupts while the scheduler (event manager) runs.  It runs
+	/// reasonably fast, probably never more than 1000 cycles (~50us) and
+	/// often much less.  If it returns 0, it means there is a task to do right
+	/// away.  If it returns non-zero (unsigned), there is a task to do later,
+	/// so go to low-power-mode in the meantime.
 	platform_disable_interrupts();
 	if (sys_event_manager()) {
 		sys_powerdown();
@@ -439,23 +501,12 @@ void platform_ot_run() {
 void platform_poweron() {
     /// 1. CC430-specific Initial Power-On Routine
     /// <LI> Hold Watchdog timer through the power-on routine           </LI>
-    /// <LI> Set Core Voltage to 2.2V, as needed by 20 MHz mode         </LI>
-    /// <LI> Enable High Side (Vcc) NMI, and low side (Vcore) Reset     </LI>
-    /// <LI> Clear Power Manager Flags and reset the Voltage Monitor    </LI>
-    /// <LI> Enable User NMI's (SW NMI, Osc Fault, Flash Violation)     </LI>
+    /// <LI> Run Board-specific Inline Function Power Routine           </LI>
 
     WDTA->CTL = WDTPW + WDTHOLD;
 
-    ///@note On SVSM Config Flags: (1) It is advised in all cases to include
-    ///      SVSM_EventDelay.  (2) If using line-power (not battery), it is
-    ///      advised to enable FullPerformance and ActiveDuringLPM.  (3) Change
-    ///      The SVSM_Voffon_ parameter to one that matches your requirements.
-    ///      I recommend putting it as high as you can, to give the most time
-    ///      for the power-down routine to work.
-    PMM_SetVCore(PMM_Vcore_22);
-    PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay),
-                    SVS_Von_20, SVSM_Voffon_235);
-
+    BOARD_POWER_STARTUP();
+    
     /// 2. Initialize OpenTag platform peripherals
     platform_init_busclk();
     platform_init_interruptor();
@@ -485,6 +536,10 @@ void platform_poweroff() {
     ISF_syncmirror();
     vworm_save();
     SFRIE1 = old_sfrie1;
+    
+#   if (OT_FEATURE(MPIPE) && MCU_FEATURE_MPIPECDC)
+    	mpipe_disconnect(NULL);
+#   endif
 }
 #endif
 
@@ -497,10 +552,7 @@ void platform_init_OT() {
     buffers_init();
     vl_init();
 
-    /// 2. Initialize the RTC, if available.  364489200 is a magic number.
-    ///    RTC can be initialized outside of OTlib scope (e.g. in 
-    ///    platform_poweron()), but doing it here allows filesystem to store a 
-    ///    default value if you choose.
+    /// 2. Initialize the RTC, if available.
 #   if (OT_FEATURE(RTC))
         platform_init_rtc(364489200);
 #   endif
@@ -899,8 +951,8 @@ ot_u32 platform_get_time() {
     ot_uni32 output;
     output.ushort[LOWER]	= RTC->TIM0;
     output.ushort[UPPER]	= RTC->TIM1;
-
     return output.ulong;
+     
 #   endif
 
 #else
@@ -1320,6 +1372,8 @@ void platform_block(ot_u16 sti) {
 }
 
 
+
+#ifndef EXTF_platform_delay
 void platform_delay(ot_u16 n) {
     ot_u16 reg;
 
@@ -1332,6 +1386,7 @@ void platform_delay(ot_u16 n) {
 
     WDTA->CTL   = (WDTPW | WDTHOLD | reg);      // hold WDT after completion
 }
+#endif
 
 
 
@@ -1348,19 +1403,22 @@ void platform_delay(ot_u16 n) {
 #define CNT1us_20MHz    (20/2)
 #define CNT1ms_20MHz    (CNT1us_20MHz*1000)
 
+#ifndef EXTF_platform_swdelay_ms
 void platform_swdelay_ms(ot_u16 n) {
     while (n-- != 0) {
         __delay_cycles(20000);
     }
 }
+#endif
 
 
+#ifndef EXTF_platform_swdelay_us
 void platform_swdelay_us(ot_u16 n) {
     while (n-- != 0) {
         __delay_cycles(20);
     }
 }
-
+#endif
 
 
 

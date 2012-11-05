@@ -16,8 +16,8 @@
 /**
   * @file       /board/cc430/board_FOB_RF430F5978.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       5 May 2012
+  * @version    R100
+  * @date       5 Nov 2012
   * @brief      Board Configuration for TI RF430F5978 Fob board
   * @ingroup    Platform
   *
@@ -157,26 +157,31 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
-    P1DIR = ~(BOARD_SW2_PIN);
-    P2DIR = 0xFF;
-    P3DIR = 0xFF;
-    P4DIR = 0xFF;
-
 #   if (defined(DEBUG_ON) || defined(__DEBUG__))
-    PJDIR = 0x00;
 #   else
     PJDIR = 0xFF;
-#   endif
-
-    P1REN = BOARD_SW2_PIN;
-    
-    P1OUT = BOARD_SW2_PIN;
-    P2OUT = 0x00;
-    P3OUT = 0x00;
-    P4OUT = 0x00;
     PJOUT = 0x00;
+#   endif 
+
+    GPIO12->DDIR    = 0xFFFF ^ BOARD_SW2_PIN;
+    GPIO34->DDIR    = 0xFFFF;
+    GPIO1->REN      = BOARD_SW2_PIN;
+    GPIO12->DOUT    = BOARD_SW2_PIN;
+    GPIO34->DOUT    = 0x0000;
 }
 
+
+OT_INLINE_H void BOARD_POWER_STARTUP(void) {
+///@note On SVSM Config Flags: (1) It is advised in all cases to include
+    ///      SVSM_EventDelay.  (2) If using line-power (not battery), it is
+    ///      advised to enable FullPerformance and ActiveDuringLPM.  (3) Change
+    ///      The SVSM_Voffon_ parameter to one that matches your requirements.
+    ///      I recommend putting it as high as you can, to give the most time
+    ///      for the power-down routine to work.
+    PMM_SetVCore(PMM_Vcore_22);
+    PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay),
+                    SVS_Von_20, SVSM_Voffon_235);
+}
 
 
 // LFXT1 Preconfiguration, using values local to the board design
@@ -199,14 +204,12 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 
-
-
 /** Platform Memory Configuration <BR>
   * ========================================================================<BR>
   * OpenTag needs to know where it can put Nonvolatile memory (file system) and
   * how much space it can allocate for filesystem.
   */
-#define SRAM_START_ADDR             0x0000
+#define SRAM_START_ADDR             0x1C00
 #define SRAM_SIZE                   (4*1024)
 #define EEPROM_START_ADDR           0
 #define EEPROM_SIZE                 0
@@ -226,21 +229,32 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
 
 
-
-
 // MSP430 only ... Information Flash
-// Info Page A usage is riddled with glitches, hence limiting to 3 pages
-// instead of 4.  Page A is addresses 1980 - 19FF
 #   define INFO_START_ADDR          0x1800
 #   define INFO_START_PAGE          0
 #   define INFO_PAGE_SIZE           128
-#   define INFO_NUM_PAGES           3
+#   define INFO_NUM_PAGES           4
 #   define INFO_PAGE_ADDR(VAL)      (INFO_START_ADDR + (INFO_PAGE_SIZE*VAL))
 #   define INFO_D_ADDR              INFO_PAGE_ADDR(0)
 #   define INFO_C_ADDR              INFO_PAGE_ADDR(1)
 #   define INFO_B_ADDR              INFO_PAGE_ADDR(2)
 #   define INFO_A_ADDR              INFO_PAGE_ADDR(3)
 
+
+// MSP430 only ... Boot Strap Loader
+// BSL is not presently used with OpenTag, although at some point it might be.
+// In that case, we would probably reserve Bank A for the USB driver and the
+// filesystem, and not overwrite Bank A.  The 2KB BSL space is not big enough
+// for the USB driver, but it is big enough for UART Mpipe.
+#define BSL_START_ADDR          0x1000
+#define BSL_START_PAGE          0
+#define BSL_PAGE_SIZE           512
+#define BSL_NUM_PAGES           4
+#define BSL_PAGE_ADDR(VAL)      (BSL_START_ADDR + (BSL_PAGE_SIZE*VAL))
+#define BSL_D_ADDR              BSL_PAGE_ADDR(0)
+#define BSL_C_ADDR              BSL_PAGE_ADDR(1)
+#define BSL_B_ADDR              BSL_PAGE_ADDR(2)
+#define BSL_A_ADDR              BSL_PAGE_ADDR(3)
 
 
 
@@ -289,11 +303,11 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   
 #define OT_GPTIM            TIM0A5
 #define OT_GPTIM_ISR_ID     __ISR_T0A1_ID
-#define OT_GPTIM_ISR        platform_isr_tim0a1
-#ifndef __ISR_T0A1
-#define __ISR_T0A1
+#ifdef __ISR_T0A1
+#   error "ISR T0A1 is already allocated.  It must be used for GPTIM."
+#else
+#   define __ISR_T0A1
 #endif
-
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
@@ -329,8 +343,10 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define PALFI_WAKE_PIN      GPIO_Pin_0
 #define PALFI_WAKE_ISR_ID	__ISR_P1_ID
 #define PALFI_WAKE_ISR      platform_isr_p1
-#ifndef __ISR_P1
-#define __ISR_P1
+#ifdef __ISR_P1
+#   error "ISR P1 is already allocated.  It must be used for PALFI Wakeup."
+#else
+#   define __ISR_P1
 #endif
 
 #define PALFI_EOB_PORT      GPIO4
@@ -345,8 +361,10 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define PALFI_TIM           TIM1A3
 #define PALFI_TIM_ISR_ID    __ISR_T1A0_ID
 #define PALFI_TIM_ISR       platform_isr_tim1a0
-#ifndef __ISR_T1A0
-#define __ISR_T1A0
+#ifdef __ISR_T1A0
+#   error "ISR T1A0 is already allocated.  It must be used for PALFI Trimming Timer."
+#else
+#   define __ISR_T1A0
 #endif
 
 #define PALFI_TIM_PORT      GPIO3
@@ -438,9 +456,14 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   */
   
 #define MPIPE_DMANUM        0
-#define MPIPE_I2C           I2CB0
+#define MPIPE_I2C_PORTNUM   2
+#define MPIPE_I2C_PORT      GPIO2
+#define MPIPE_I2C_PORTMAP   P2M
+#define MPIPE_I2C_SDAPIN    GPIO_Pin_1
+#define MPIPE_I2C_SCLPIN    GPIO_Pin_0
 #define MPIPE_I2C_SELF		0x01
 #define MPIPE_I2C_TARGET	0x02
+
 
 #define OT_TRIG1_PORTNUM    1
 #define OT_TRIG1_PORT       PALFI_LED1_PORT
@@ -470,7 +493,6 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   endif
 #endif
 
-
 #if (MCU_FEATURE_MPIPEDMA == ENABLED)
 #   if (MPIPE_DMANUM == 0)
 #       define MPIPE_DMA     DMA0
@@ -483,17 +505,13 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   endif
 #endif
 
-#define MPIPE_I2C_PORT      GPIO2
-#define MPIPE_I2C_PORTMAP   P2M
-#define MPIPE_I2C_SDAPIN    GPIO_Pin_1
-#define MPIPE_I2C_SCLPIN    GPIO_Pin_0
 #define MPIPE_I2C_PINS   	(MPIPE_I2C_SDAPIN | MPIPE_I2C_SCLPIN)
-
+#define MPIPE_I2C_ID   	    0xB0
+#define MPIPE_I2C           I2CB0
 #define MPIPE_I2C_SCLSIG    PM_UCB0SCL
 #define MPIPE_I2C_SDASIG    PM_UCB0SDA
 #define MPIPE_I2C_RXTRIG	DMA_Trigger_UCB0RXIFG
 #define MPIPE_I2C_TXTRIG	DMA_Trigger_UCB0TXIFG
-#define MPIPE_I2C_VECTOR    USCI_B0_VECTOR
 
 //todo?
 #define MPIPE_I2C_SCLMAP	MPIPE_I2C_PORTMAP->MAP0

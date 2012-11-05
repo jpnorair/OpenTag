@@ -112,8 +112,8 @@ void IEP0InterruptHandler(void) {
 
 
 
-void OEP0InterruptHandler(void) {
-//ot_u8 OEP0InterruptHandler(void) {
+//void OEP0InterruptHandler(void) {
+ot_u8 OEP0InterruptHandler(void) {
     //ot_u8 bWakeUp = False;
     USBCTL |= FRSTE;                              // Function Reset Connection Enable
     tEndPoint0DescriptorBlock.bIEPBCNT = 0x00;    
@@ -121,8 +121,7 @@ void OEP0InterruptHandler(void) {
         usbReceiveNextPacketOnOEP0();
         if (bStatusAction == STATUS_ACTION_NOTHING) {
             if (tSetupPacket.bRequest == USB_CDC_SET_LINE_CODING) {
-                //bWakeUp = Handler_SetLineCoding();
-                Handler_SetLineCoding();
+                return Handler_SetLineCoding();
             }
       	}
     }
@@ -130,6 +129,7 @@ void OEP0InterruptHandler(void) {
 	    tEndPoint0DescriptorBlock.bOEPCNFG |= EPCNF_STALL; // no more data
     }
     //return (bWakeUp);
+    return False;
 }
 
 
@@ -226,7 +226,7 @@ ot_u8 platform_isr_usb (void) {
         case USBVECINT_INPUT_ENDPOINT0: IEP0InterruptHandler();
                                         break;
                                         
-        case USBVECINT_OUTPUT_ENDPOINT0: OEP0InterruptHandler();
+        case USBVECINT_OUTPUT_ENDPOINT0: bWakeUp = OEP0InterruptHandler();
                                         break;
         
         case USBVECINT_RSTR:        USB_reset();

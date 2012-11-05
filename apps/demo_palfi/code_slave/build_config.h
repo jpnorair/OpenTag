@@ -15,7 +15,7 @@
 /**
   * @file       /apps/demo_palfi/code_slave/build_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
+  * @version    R100
   * @date       16 April 2012
   * @brief      Most basic list of constants needed to configure build
   *

@@ -35,13 +35,9 @@
 #ifndef __ISR_CONFIG_CC430_H
 #define __ISR_CONFIG_CC430_H
 
-// The PaLFI pin I/F is on P1
-// The PaLFI trimming routine usually uses Timer 1 (check board cfg)
-// Both __ISR_P1 and __ISR_T1A0 get defined in the board cfg file of RF430
-
 //#define __ISR_RESET
-#define __ISR_SYSNMI
-#define __ISR_USERNMI
+//#define __ISR_SYSNMI
+//#define __ISR_USERNMI
 //#define __ISR_CB
 //#define __ISR_WDTI
 //#define __ISR_USCIA0

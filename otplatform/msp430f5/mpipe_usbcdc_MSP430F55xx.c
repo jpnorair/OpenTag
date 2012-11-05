@@ -16,17 +16,17 @@
 /**
   * @file       /otplatform/msp430f5/mpipe_usbcdc_MSP430F55xx.c
   * @author     JP Norair
-  * @version    R101
+  * @version    R102
   * @date       1 Nov 2012
   * @brief      Message Pipe (MPIPE) USB Virtual COM implementation for MSP430F55xx
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
   *
-  * Implemented Mpipe Protocol:                                                 <BR>
-  * The Mpipe protocol is a simple wrapper to NDEF.                             <BR>
-  * Legend: [ NDEF Header ] [ NDEF Payload ] [ Seq. Number ] [ CRC16 ]          <BR>
-  * Bytes:        6             <= 255             2             2              <BR><BR>
-  *
+  * Implemented Mpipe Protocol: The Mpipe protocol is a simple wrapper to NDEF.
+  * <PRE>
+  * Legend: [ NDEF Header ] [ NDEF Payload ] [ Seq. Number ] [ CRC16 ]
+  * Bytes:        6             <= 255             2             2 
+  * </PRE>
   ******************************************************************************
   */
 
@@ -154,11 +154,16 @@ void USB_handleSuspendEvent () {
 /// the fact that we are certain MPipe must be suspended.  sys_halt() is not a 
 /// sure-thing: some devices might have batteries, and the non-MPipe part of 
 /// the application might not want or need to halt.
+#if (MPIPE_USB_REMWAKE)
     if (mpipe.state >= MPIPE_Idle) {
         sys_halt(HALT_lowpower);
         mpipe_close();
         mpipe.state = MPIPE_Null;
     }
+#else
+    mpipe_close();
+    mpipe.state = MPIPE_Null;
+#endif
 }
 
 
@@ -171,11 +176,15 @@ void USB_handleSuspendEvent () {
   * which gets everything back on-line, and in startup configuration.
   */
 void USB_handleResumeEvent () {
+#if (MPIPE_USB_REMWAKE)
 	if (mpipe.state == MPIPE_Null) {
 		mpipe.state = MPIPE_Idle;
 		mpipe_open();
 		sys_resume();
 	}
+#else
+	mpipe.state = MPIPE_Idle;
+#endif
 }
 
 
@@ -185,9 +194,13 @@ void USB_handleResumeEvent () {
   * blocking process that's sleeping, waiting for enumeration (typical).
   */
 ot_u8 USB_handleEnumCompleteEvent () {
+#if (MPIPE_USB_MANUAL_STANDBY == 0)
     mpipe.state = MPIPE_Idle;
     mpipe_open();
     return True;
+#else
+    return False;
+#endif
 }
 
 
@@ -225,8 +238,19 @@ void USBCDC_handleReceiveCompleted (ot_u8 intfNum){
   * the host.  Line coding means baud rate, considering the TTY baud rate that
   * is being simulated by the USB CDC.
   */
-void USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate) {
-    //return False;
+ot_u8 USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate) {
+#if (MPIPE_USB_MANUAL_STANDBY == 0)
+    return False;
+
+#else
+#   if (CDC_NUM_INTERFACES > 1)
+    if (intfNum != 0) return False;
+#   endif
+
+    mpipe.state = MPIPE_Idle;
+    mpipe_open();
+    return True;
+#endif
 }
 
 
@@ -295,10 +319,6 @@ void mpipedrv_standby() {
 	__no_operation();
 }
 #endif
-
-
-
-
 
 
 #ifndef EXTF_mpipedrv_detach

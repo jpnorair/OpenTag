@@ -15,7 +15,7 @@
 /**
   * @file       /apps/demo_palfi/code_slave/data_default.c
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       16 April 2011
   * @brief      Default Filesystem Data for PaLFi Slave
   *

@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/msp430f5/platform_isr_MSP430F5.c
   * @author     JP Norair
-  * @version    R101
-  * @date       31 October 2012
+  * @version    R102
+  * @date       4 Nov 2012
   * @brief      ISRs abstracted by the platform module
   * @ingroup    Platform
   *

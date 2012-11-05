@@ -15,7 +15,7 @@
 /**
   * @file       /apps/demo_palfi/code_slave/app_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
+  * @version    R100
   * @date       16 April 2012
   * @brief      Application Configuration File for PaLFi Slave Demo
   *

@@ -84,7 +84,7 @@
 // Configuration Constants that can change
 // #define that relates to Device Descriptor
 #define USB_VID_CDC             0x2047              // Vendor ID (VID)
-#define USB_PID_CDC             0x1                 // Product ID (PID)
+#define USB_PID_CDC             0x01                // Product ID (PID)
 #define VER_FW_H                0x02                // Device release number, in binary-coded decimal
 #define VER_FW_L                0x00                // Device release number, in binary-coded decimal
 

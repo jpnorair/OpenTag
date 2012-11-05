@@ -100,7 +100,7 @@ void IEP0InterruptHandler(void);
 
 /** Handle Out-requests from control pipe.
   */
-void OEP0InterruptHandler(void);
+ot_u8 OEP0InterruptHandler(void);
 
 
 

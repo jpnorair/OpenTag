@@ -53,9 +53,11 @@
   * ========================================================================<BR>
   */
 #if (MPIPE_FOR_DEBUGGING)
+#   define WAIT_FOR_MPIPE() while(0)
 #	define OTAPI_LOG_MSG(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA) \
 		otapi_log_msg(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA)
 #else
+#   define WAIT_FOR_MPIPE() while(0)
 #	define OTAPI_LOG_MSG(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA) while(0)
 #endif
 
@@ -234,12 +236,13 @@ void main(void) {
     ///   In this demo, the top-level application does very little.
     app_init();
 
+    WAIT_FOR_MPIPE();
+
     ///4b. Load a message to show that main startup has passed
     OTAPI_LOG_MSG(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
-    ///<LI> The kernel actually runs at the bottom of this loop.</LI>
     ///<LI> You could put code before or after sys_runtime_manager, which will
     ///     run before or after the (task + kernel).  If you do, keep the code
     ///     very short or else you are risking timing glitches.</LI>

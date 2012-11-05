@@ -16,7 +16,7 @@
 /**
   * @file       /otplatform/MSP430F5/platform_MSP430F5.c
   * @author     JP Norair
-  * @version    R101
+  * @version    R102
   * @date       1 Nov 2012
   * @brief      ISRs and hardware services abstracted by the platform module
   * @ingroup    Platform
@@ -159,7 +159,7 @@ platform_ext_struct platform_ext;
 
 
 #else
-#   error "You have not setup GPTIM to a TxA1 interrupt.  It must have one."
+#   error "You have not setup GPTIM to a TxA1 or TxB1 interrupt.  It must have one."
 #endif
 
 
@@ -198,9 +198,6 @@ OT_INTERRUPT void isr_kill(void) {
 //unknown at this time
 
 #endif
-
-
-
 
 
 
@@ -426,7 +423,7 @@ void platform_drop_context(ot_uint i) {
 /// an active kernel task running.  Thus exotasks can only be killed if there
 /// is a custodial kernel task associated with the exotask (as typical).
 ///
-/// @note Since CC430 only supports GULP right now, the usage of GULP is
+/// @note Since MSP430 only supports GULP right now, the usage of GULP is
 /// implicit with this implementation.  If multiple context stacks become
 /// supported in a later, enhanced version (I will call it "Big GULP"), this
 /// function can also flush that stack.
@@ -579,10 +576,7 @@ void platform_init_OT() {
 	buffers_init();
 	vl_init();
 
-    /// 2. Initialize the RTC, if available.  RTC can be initialized outside of
-    ///    OTlib scope (e.g. in platform_poweron()), but doing it here allows
-    ///    filesystem to store a default value.  You can choose to implement
-    ///    that if you wish.
+    /// 2. Initialize the RTC, if available.
 #   if (OT_FEATURE(RTC))
         platform_init_rtc(364489200);
 #   endif
@@ -619,7 +613,7 @@ void platform_init_OT() {
         }
         vl_close(fpid);
     }
-#endif
+#   endif
 }
 #endif
 
@@ -985,8 +979,8 @@ ot_u32 platform_get_time() {
     ot_uni32 output;
     output.ushort[LOWER]	= RTC->TIM0;
     output.ushort[UPPER]	= RTC->TIM1;
-
     return output.ulong;
+    
 #   endif
 
 #else
@@ -1003,11 +997,11 @@ void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
     if (alarm_id < RTC_ALARMS)
 #   endif
     {
-        vlFILE* fp                      = ISF_open_su( ISF_ID(real_time_scheduler) );
-        platform_ext.alarm[alarm_id].disabled  = 0;
-        platform_ext.alarm[alarm_id].taskid    = task_id;
-        platform_ext.alarm[alarm_id].mask      = PLATFORM_ENDIAN16(ISF_read(fp, offset));
-        platform_ext.alarm[alarm_id].value     = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
+        vlFILE* fp                              = ISF_open_su( ISF_ID(real_time_scheduler) );
+        platform_ext.alarm[alarm_id].disabled   = 0;
+        platform_ext.alarm[alarm_id].taskid     = task_id;
+        platform_ext.alarm[alarm_id].mask       = PLATFORM_ENDIAN16(ISF_read(fp, offset));
+        platform_ext.alarm[alarm_id].value      = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
         vl_close(fp);
         
         platform_enable_rtc();
@@ -1018,7 +1012,7 @@ void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
 
 
 #ifndef EXTF_platform_enable_rtc_alarm
-void platform_enable_rtc_alarm(ot_u8 alarm_id, ot_bool enable) {
+void platform_enable_rtc_alarm() {
 #if (OT_FEATURE(RTC) == ENABLED)
     platform_disable_rtc();
 
@@ -1272,6 +1266,8 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
                             DMA_TriggerLevel_RisingEdge | \
                             0x11);
     //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
+    //DMA must be manually cleared on zero-length copy
+    MEMCPY_DMA->CTL    &= ~(0x10);
     
 #else
 /// Uses the "Duff's Device" for loop unrolling.  If this is incredibly

@@ -857,25 +857,21 @@ ot_u8 USBCDC_bytesInUSBBuffer (ot_u8 intfNum) {
 //bDataBits     | 1 | Data bits (5,6,7,8,16)
 //----------------------------------------------------------------------------
 ot_u8 usbGetLineCoding (void) {
-///@todo validate that this works, and then look into combining as a single
-///      memcpy call.
+/// Copy the seven bytes from the CDC Control Field to the Return Data Buffer.
+/// The CDC Control field is aligned to match the USB spec, here.
 
-    platform_memcpy(&abUsbRequestReturnData[0],
-                        (ot_u8*)&cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate,
-                        4   );
-    //abUsbRequestReturnData[3] = cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate >> 24;
-    //abUsbRequestReturnData[2] = cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate >> 16;
-    //abUsbRequestReturnData[1] = cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate >> 8;
-    //abUsbRequestReturnData[0] = cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate;
+	platform_memcpy(abUsbRequestReturnData,
+                    (ot_u8*)&cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)], 7 );
 
-    platform_memcpy(&abUsbRequestReturnData[4], 
-                    &cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].bStopBits,
-                    3   );
-    //abUsbRequestReturnData[6] = cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].bDataBits;          //Data bits = 8
-    //abUsbRequestReturnData[5] = cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].bParity;            //No Parity
+    //abUsbRequestReturnData[0] = CdcControl[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate;
+    //abUsbRequestReturnData[1] = CdcControl[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate >> 8;
+    //abUsbRequestReturnData[2] = CdcControl[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate >> 16;
+    //abUsbRequestReturnData[3] = CdcControl[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate >> 24;
     //abUsbRequestReturnData[4] = cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].bStopBits;          //Stop bits = 1
+    //abUsbRequestReturnData[5] = cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].bParity;            //No Parity
+    //abUsbRequestReturnData[6] = cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].bDataBits;          //Data bits = 8
 
-    wBytesRemainingOnIEP0   = 0x07;               //amount of data to be send over EP0 to host
+    wBytesRemainingOnIEP0   = 7;               //amount of data to be send over EP0 to host
     usbSendDataPacketOnEP0((ot_u8*)&abUsbRequestReturnData[0]);              //send data to host
 
     return (FALSE);
@@ -894,8 +890,6 @@ ot_u8 usbSetLineCoding (void) {
 
 
 ot_u8 usbSetControlLineState (void) {
-	//ot_u8 output;
-    //output = 
     USBCDC_handleSetControlLineState((ot_u8)tSetupPacket.wIndex, (ot_u8)tSetupPacket.wValue);
     
     //Send Zero Length Packet for status stage
@@ -908,28 +902,12 @@ ot_u8 usbSetControlLineState (void) {
 
 
 
-void Handler_SetLineCoding (void) {
-    //ot_u8 bWakeUp;
-    Fourbytes scratch;
-    ot_u8* coded_value;
+ot_u8 Handler_SetLineCoding (void) {
+    cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate = \
+            *(ot_u32*)abUsbRequestIncomingData;
 
-    //Baudrate Settings
-    //cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate = \
-                        PLATFORM_ENDIAN32(*(ot_u32*)abUsbRequestIncomingData);
-
-    coded_value			= (ot_u8*)&abUsbRequestIncomingData[3];
-    scratch.ubyte[B3]   = *coded_value--;
-    scratch.ubyte[B2]   = *coded_value--;
-    scratch.ubyte[B1]   = *coded_value--;
-    scratch.ubyte[B0]   = *coded_value;
-
-    cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate = scratch.ulong;
-
-    //bWakeUp = 
-    USBCDC_handleSetLineCoding(tSetupPacket.wIndex,
+    return USBCDC_handleSetLineCoding(	tSetupPacket.wIndex,
                     cdc.ctrler[INTFNUM_OFFSET(tSetupPacket.wIndex)].lBaudrate);
-
-    //return (bWakeUp);
 }
 
 

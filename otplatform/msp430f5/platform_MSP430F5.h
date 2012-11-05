@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/MSP430F5/platform_MSP430F5.h
   * @author     JP Norair
-  * @version    R100
-  * @date       31 Oct 2012
+  * @version    R102
+  * @date       4 Nov 2012
   * @brief      Platform Library Macros and Functions for MSP430F5
   * @ingroup    Platform
   *
@@ -158,9 +158,7 @@ typedef struct {
 } rtcalarm;
 
 typedef struct {
-  //u16* reti_pc;
     u16* task_entry;
-    
     u16  prand_reg;
     
 #   if (RTC_OVERSAMPLE)

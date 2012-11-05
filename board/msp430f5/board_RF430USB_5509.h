@@ -217,7 +217,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 // MSP430 only ... Information Flash
-// Info Blocks are not really used with OT.  You can use for your own purposes
+// Info Blocks are used on this board/platform for storing default FS data
 #define INFO_START_ADDR         0x1800
 #define INFO_START_PAGE         0
 #define INFO_PAGE_SIZE          128
@@ -451,21 +451,40 @@ OT_INLINE_H void BOARD_RADIO_SPI_ATTACH() {
 #if (MCU_FEATURE_MPIPECDC == ENABLED)
 #   define MPIPE_USB
 #   define MPIPE_USB_ISR_ID     __ISR_USB_ID
-#ifdef __ISR_USB
-#   error "__ISR_USB is already allocated.  It must be used for MPipe."
-#else
-#   define __ISR_USB
-#endif
-
+#   ifdef __ISR_USB
+#       error "__ISR_USB is already allocated.  It must be used for MPipe."
+#   else
+#       define __ISR_USB
+#   endif
 #   define MPIPE_USBDP_PIN      GPIO_Pin_0
 #   define MPIPE_USBDM_PIN      GPIO_Pin_1
-#   define MPIPE_USB_REMWAKE    0x00        // Set to 0x20 to enable remote wakeup
-#   define MPIPE_USB_POWERING   0x80        // Set to 0x40 to enable self-powering, or 0x80 for bus-powering
-#   define MPIPE_USB_MAXPOWER   100         // Max mA that can be sourced from the bus (up to 500)
-#   define MPIPE_USB_XTSUSPEND  0           // Set to non-zero to disable USB XTAL when usb is suspended
-#   define MPIPE_USB_XTAL       2           // Almost always XTAL2 (2)
-#   define MPIPE_USB_XTFREQ     USBPLL_SETCLK_26_0
 
+    // MPIPE_USB_MANUAL_STANDBY: if you set it to 0, the function
+    // mpipedrv_standby() will be cleared upon enumeration.  This is good for
+    // automated systems.  Set it to non-zero, and mpipedrv_standby() will be
+    // cleared upon reception of line-coding parameters from the host.
+#   define MPIPE_USB_MANUAL_STANDBY 1
+
+    // MPIPE_USB_POWERING: Set to 0x40 for self-powering, 0x80 for bus-powering
+#   define MPIPE_USB_POWERING       0x80
+
+    //MPIPE_USB_MAXPOWER: Max mA that can be sourced from the bus (up to 500)
+#   define MPIPE_USB_MAXPOWER       100
+
+    // MPIPE_USB_REMWAKE: 0 disables remote wakeup (canonical suspend & resume).
+    // On this board, it may not be possible to allow suspend due to power
+    // requirements of the crystal.
+#   define MPIPE_USB_REMWAKE        0x00
+
+    // MPIPE_USB_XTSUSPEND: Set to non-zero to disable USB XTAL when usb is
+    // suspended.  On this board, it is superfluous.
+#   define MPIPE_USB_XTSUSPEND      0
+
+    // MPIPE_USB_XTAL: For this board, it must be 2
+#   define MPIPE_USB_XTAL           2
+
+    // MPIPE_USB_XTFREQ: For this board, it must be "USBPLL_SETCLK_26_0"
+#   define MPIPE_USB_XTFREQ         USBPLL_SETCLK_26_0
 #endif
 
 
