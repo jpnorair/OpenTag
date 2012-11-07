@@ -69,7 +69,7 @@
 
 #include "OT_platform.h"
 
-#if ((OT_FEATURE(MPIPE) == ENABLED) && defined(MPIPE_UART))
+#if (defined(__MSP430F5__) && OT_FEATURE(MPIPE) && defined(MPIPE_UART))
 
 #include "buffers.h"
 #include "mpipe.h"

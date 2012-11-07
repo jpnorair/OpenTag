@@ -36,21 +36,22 @@
 
 #ifdef EXTF_sys_sig_powerdown
 void sys_sig_powerdown(ot_int code) {
-    static const ot_u8 sleep_index[4] = { 0x18, 0x58, 0x98, 0xD8 };    //0, 1, 2, 3
-    ot_u16 sleep_bits;
+    //static const ot_u8 sleep_index[4] = { 0x18, 0x58, 0x98, 0xD8 };    //0, 1, 2, 3
+    //ot_u16 sleep_bits;
     
-    code       &= 3;
-    sleep_bits  = sleep_index[code];
+    //code       &= 3;
+    //sleep_bits  = sleep_index[code];
     
     // SMCLK_OFF setting is bit 1 (0x0002)
     // code will be 2 on Radio sleep.
-    code       &= 2;        
-    UCS->CTL6  |= code;     
+    //code       &= 2;
+    //UCS->CTL6  |= code;
 
     // Put in LPM1 or 3
-    __bis_SR_register(sleep_bits);
+    __bis_SR_register(0x58);
+    __no_operation();
 
     // On wakeup, restore SMCLK
-    UCS->CTL6  &= ~code; 
+    //UCS->CTL6  &= ~code;
 }
 #endif

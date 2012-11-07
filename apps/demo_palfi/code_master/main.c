@@ -263,23 +263,24 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 #if (OT_FEATURE(MPIPE))
 /// Transport Layer calls this when a UDP-class request has been received.
     static const char* label[] = { "ID:", "Data:", "Event:", "RSSI:", "Temp:", "Volt:" };
-    static const char type[]   = {  'x' ,   'x'  ,   't'   ,   'b'  ,   's'  ,   's'   };
-    static const ot_int len[]  = {   8  ,    8   ,    1    ,    3   ,    2   ,    2    };
+    static const char type[]   = {  'x' ,   'x'  ,   't'   ,   's'  ,   's'  ,   's'   };
+    static const ot_u8 len[]   = {   8  ,    8   ,    1    ,    1   ,    1   ,    1    };
+    static const ot_u8 size[]  = {   8  ,    8   ,    1    ,    2   ,    2   ,    2    };
     ot_int scratch;
     ot_u8  index;
     ot_u8  input_len;
     ot_u8* input_data;
 
     // Check Source & Destination Ports of UDP message.
-    // In this example, source == FE and DST == FF.  Only requests are logged 
-    // (responses will have source == FF and DST == FE).
-    if ((dstport != 0xFF) || (srcport != 0xFE)) {
-        return False;
-    }
+    // In this example, source == FF and DST == FE.  Only requests are logged
+    // (responses will have source == FE and DST == FF).
+    //if ((dstport != 0xFE) || (srcport != 0xFF)) {
+    //    return False;
+    //}
 
     // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
     otapi_log_header(1, 0);
-    
+
     // Grab application protocol Type-Length-Value block and convert it into
     // human readable data, which added to the log.
     index       = 0;
@@ -305,16 +306,15 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
         else if (index == 'V')  index = 5;      // Voltage (2 bytes)
         else    break;
         
-        input_len	    = len[index];
         input_data      = rxq.getcursor;
-        rxq.getcursor  += input_len;
+        rxq.getcursor  += size[index];
+        input_len	    = len[index];
     }
     
     // Close the log file, send it out, return success
     otapi_log_direct();
     return True;
 #else
-
     return False;
 #endif
 }
@@ -422,7 +422,7 @@ void main(void) {
     mpipedrv_standby();
 
     ///4b. Load a message to show that main startup has passed
-    otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+    //otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>

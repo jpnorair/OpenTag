@@ -28,8 +28,10 @@
   ******************************************************************************
   */
 
-#include "OTAPI.h"
 #include "OT_platform.h"
+#if defined(__MSP430F5__)
+
+#include "OTAPI.h"
 
 // OT low-level modules that need initialization
 #include "veelite_core.h"
@@ -264,8 +266,8 @@ void platform_isr_usernmi(void) {
     switch (__even_in_range(SYS->UNIV, 6)) {
     case 0: break;
     case 2: code    = 10;           //11
-    case 4: code   -= 9;            //1
-    case 6: sys_panic( code+10 );   //10
+    case 4: code   -= 11;            //1
+    case 6: sys_panic( code+12 );   //12
             break;
     }
 }
@@ -1460,5 +1462,5 @@ void platform_swdelay_us(ot_u16 n) {
 #endif
 
 
-
+#endif
 

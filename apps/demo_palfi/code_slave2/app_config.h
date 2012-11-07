@@ -13,17 +13,14 @@
   * limitations under the License.
   */
 /**
-  * @file       /apps/demo_palfi/code/app_config.h
+  * @file       /apps/demo_palfi/code_slave2/app_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    R100
-  * @date       1 Nov 2012
-  * @brief      Application Configuration File for PaLFi Demo: USB STICK VERSION
+  * @date       16 April 2012
+  * @brief      Application Configuration File for PaLFi Slave Demo
   *
   * Don't actually include this.  Include OTAPI.h or (OT_config.h + OT_types.h)
   * instead.
-  *
-  * ++++ USB STICK VERSION ++++ USB STICK VERSION ++++ USB STICK VERSION ++++
-  *
   ******************************************************************************
   */
 
@@ -31,6 +28,8 @@
 #define __APP_CONFIG_H
 
 #include "build_config.h"
+
+
 
 /// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
 #ifdef ENABLED
@@ -70,8 +69,7 @@
 #define OT_PARAM(VAL)                   OT_PARAM_##VAL
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
-#define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    
-#define OT_PARAM_WATCHDOG_PERIOD        16                                  // Number of ticks before exception, following expected event return time
+#define OT_PARAM_BUFFER_SIZE            (512 + 512*(MPIPE_FOR_DEBUGGING!=0))  // Typically, must be at least 512 bytes
 #define OT_PARAM_KERNEL_LIMIT           -1                                  // Maximum ticks between kernel calls (if<=0, no limit)
 
 #define OT_FEATURE(VAL)                 OT_FEATURE_##VAL
@@ -80,21 +78,21 @@
 #define OT_FEATURE_CAPI                 ENABLED                             // "otapi" C function usage in server-side apps
 #define OT_FEATURE_C_SERVER             (OT_FEATURE_CAPI)                   // "otapi" C function usage in server-side apps
 #define OT_FEATURE_DASHFORTH            NOT_AVAILABLE                       // DASHFORTH Applet VM (server-side), or JIT (client-side)
-#define OT_FEATURE_LOGGER               ENABLED                             // Mpipe-based data logging & printing
-#define OT_FEATURE_ALP                  (ENABLED || (OT_FEATURE_CLIENT))    // Application Layer Protocol Support
-#define OT_FEATURE_ALPAPI               (ENABLED && (OT_FEATURE_ALP))       // Application Layer Protocol callable API's
-#define OT_FEATURE_MPIPE                ENABLED
-#define OT_FEATURE_NDEF                 (OT_FEATURE_MPIPE)                  // NDEF wrapper for Messaging API
+#define OT_FEATURE_MPIPE                MPIPE_FOR_DEBUGGING					// Tied to "DEBUG_ON"
+#define OT_FEATURE_NDEF                 OT_FEATURE_MPIPE                    // NDEF wrapper for Messaging API
+#define OT_FEATURE_LOGGER               OT_FEATURE_MPIPE                    // Mpipe-based data logging & printing
+#define OT_FEATURE_ALP                  (OT_FEATURE_MPIPE)      // Application Layer Protocol Support
+#define OT_FEATURE_ALPAPI               (OT_FEATURE_MPIPE && OT_FEATURE_ALP) // Application Layer Protocol callable API's
 #define OT_FEATURE_VEELITE              ENABLED                             // Veelite DASH7 File System
 #define OT_FEATURE_VLFPS                OT_PARAM_VLFPS
-#define OT_FEATURE_VLNVWRITE            DISABLED                            // File writes in Veelite
+#define OT_FEATURE_VLNVWRITE            DISABLED                             // File writes in Veelite
 #define OT_FEATURE_VLNEW                DISABLED                            // File create/delete in Veelite
 #define OT_FEATURE_VLRESTORE            DISABLED                            // File restore in Veelite
 #define OT_FEATURE_VL_SECURITY          NOT_AVAILABLE                       // AES128 on pre-shared key, for stored files
 #define OT_FEATURE_DLL_SECURITY         DISABLED                            // AES128 on pre-shared key, for data-link
 #define OT_FEATURE_NL_SECURITY          NOT_AVAILABLE                       // Network Layer Security & key exchange
 #define OT_FEATURE_SENSORS              NOT_AVAILABLE                       // (formal, spec-based sensor config)
-#define OT_FEATURE_LF                   NOT_AVAILABLE                       // Optional LF interface for event generation
+#define OT_FEATURE_LF                   ENABLED                             // Optional LF interface for event generation
 #define OT_FEATURE_HF                   NOT_AVAILABLE                       // Optional HF interface for event generation
 #define OT_FEATURE_AUTOCOPY             NOT_AVAILABLE                       // A DMA method for moving batch data (experimental)
 #define OT_FEATURE_CRC_TXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
@@ -102,18 +100,15 @@
 #define OT_FEATURE_RTC                  DISABLED                            // Do you have a precise 32768 Hz clock?
 #define OT_FEATURE_M1                   NOT_AVAILABLE                       // Mode 1 Featureset: Generally not implemented
 #define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
-#define OT_FEATURE_EXTERNAL_EVENT       DISABLED
 #define OT_FEATURE_SESSION_DEPTH        OT_PARAM_SESSION_DEPTH
-#define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE    
-#define OT_FEATURE_SYSKERN_CALLBACKS    DISABLED                             // Kernel callbacks from system layer
-#define OT_FEATURE_SYSRF_CALLBACKS      DISABLED                             // RF Process callbacks from system layer
-#define OT_FEATURE_SYSIDLE_CALLBACKS    DISABLED                            // Idle Process callbacks from system layer
-#define OT_FEATURE_M2NP_CALLBACKS       DISABLED                             // Dynamic callbacks from Network (M2NP) layer
-#define OT_FEATURE_M2QP_CALLBACKS       DISABLED                             // Dynamic callbacks from Transport (M2QP) layer
-#define OT_FEATURE_MPIPE_CALLBACKS      DISABLED                            // Dynamic callbacks from MPIPE
-#define OT_FEATURE_SW_WATCHDOG          DISABLED
-#define OT_FEATURE_HW_WATCHDOG          DISABLED
-#define OT_FEATURE_WATCHDOG_PERIOD      OT_PARAM_WATCHDOG_PERIOD                              
+#define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE  
+#define OT_FEATURE_EXT_TASK             (OT_FEATURE_LF | OT_FEATURE_HF)
+#define OT_FEATURE_SYSKERN_CALLBACKS    DISABLED                            // Dynamic Kernel Callbacks (panic, sleep, etc)
+#define OT_FEATURE_SYSTASK_CALLBACKS    DISABLED                            // Dynamic Task callbacks
+#define OT_FEATURE_DLLRF_CALLBACKS      DISABLED                            // Dynamic RF Init, Terminate Callbacks
+#define OT_FEATURE_MPIPE_CALLBACKS      DISABLED                            // Signal callbacks from MPIPE
+#define OT_FEATURE_M2NP_CALLBACKS       DISABLED                            // Signal callbacks from Network (M2NP) layer
+#define OT_FEATURE_M2QP_CALLBACKS       DISABLED                            // Signal callbacks from Transport (M2QP) layer
 
 
 
@@ -140,24 +135,22 @@
 /// Mode 2 Features:    
 /// These are generally handled by the ISF settings files, but these defines 
 /// can limit scope of the compilation if you are trying to optimize the build.
-#define M2_FEATURE(VAL)                 ((M2_FEATURE_##VAL) && (M2_FEATURESET))
-#define M2_PARAM(VAL)                   (M2_PARAM_##VAL)
-#define M2_FEATURE_RTCSLEEP             DISABLED
+#define M2_FEATURE(VAL)                 (M2_FEATURE_##VAL && M2_FEATURESET)
+#define M2_PARAM(VAL)                   M2_PARAM_##VAL
 #define M2_FEATURE_RTCHOLD              DISABLED
+#define M2_FEATURE_RTCSLEEP             DISABLED
 #define M2_FEATURE_RTCBEACON            DISABLED
-#define M2_FEATURE_GATEWAY              ENABLED                             // Gateway device mode
+#define M2_FEATURE_GATEWAY              DISABLED                            // Gateway device mode
 #define M2_FEATURE_SUBCONTROLLER        DISABLED                            // Subcontroller device mode
-#define M2_FEATURE_ENDPOINT             DISABLED                            // Endpoint device mode
+#define M2_FEATURE_ENDPOINT             ENABLED                             // Endpoint device mode
 #define M2_FEATURE_BLINKER              DISABLED                            // Blinker device mode
 #define M2_FEATURE_M2DP                 DISABLED                            // Datastreams & associated commands
 #define M2_FEATURE_DATASTREAM           M2_FEATURE_M2DP
-#define M2_FEATURE_FECTX                DISABLED  /* test */                          // FEC support for transmissions
+#define M2_FEATURE_FECTX                ENABLED   /* test */                          // FEC support for transmissions
 #define M2_FEATURE_FECRX                DISABLED  /* test */                          // FEC support for receptions
-#define M2_FEATURE_BASE                 ENABLED                             // Base channels (ch 00, 80)
-#define M2_FEATURE_LEGACY               NOT_AVAILABLE                       // Legacy (Mode 1) channel (ch 01)
+#define M2_FEATURE_BASE                 ENABLED                             // Base channels (ch 07, 87)
 #define M2_FEATURE_NORMAL               ENABLED                             // Low-speed channels (ch 1x, 9x)
 #define M2_FEATURE_TURBO                ENABLED                             // High-speed channels (ch 2x, Ax)
-#define M2_FEATURE_BLINK                DISABLED                            // Blink channels (ch 3x, Bx)
 #define M2_FEATURE_AUTOSCALE            DISABLED                            // Adaptive TX power fall-off algorithm
 #define M2_FEATURE_BEACONS              ENABLED                             // Automated Beacon transmissions
 #define M2_PARAM_BEACON_TCA             12                                  // Ticks to do CSMA for Beacons
@@ -239,11 +232,6 @@
 #define _MIRALLOC_OFFSET    _ALLOC_OFFSET
 #define _MIRALLOC_SHIFT     _ALLOC_SHIFT
   
-#define IN_VWORM    0x01
-#define IN_VEEPROM  0x02        // VEEPROM doesn't actually exist anymore!
-#define IN_VSRAM    0x04
-#define IN_MIRROR   0x80
-
 
 
 
@@ -266,7 +254,7 @@
   * TOTAL_BYTES you allocate to the ISFSB bank corresponds to the amount set in
   * the linker file.
   */
-#define ISFS_TOTAL_BYTES        			32
+#define ISFS_TOTAL_BYTES                     32
 #define ISFS_NUM_M1_LISTS                    4
 #define ISFS_NUM_M2_LISTS                    4
 #define ISFS_NUM_EXT_LISTS                   0
@@ -306,7 +294,7 @@
 #define ISFS_MAX_query_results               2
 #define ISFS_MAX_hardware_fault              2
 #define ISFS_MAX_device_discovery            2
-#define ISFS_MAX_device_capability           3
+#define ISFS_MAX_device_capability           4
 #define ISFS_MAX_device_channel_utilization  4
 #define ISFS_MAX_location_data               2
 
@@ -336,6 +324,7 @@
                                     ISFS_ALLOC(location_data) )
 
 #define ISFS_HEAP_BYTES         (ISFS_STOCK_HEAP_BYTES)
+
 
 
 
@@ -376,14 +365,16 @@
   * 1.5KB is not a lot of space, but it is enough for the complete registry
   * plus at least two additional user ISFs.
   */
+
 #define ISF_NUM_M1_FILES                        7
 #define ISF_NUM_M2_FILES                        16
-#define ISF_NUM_EXT_FILES                       2   // Usually at least 1
+#define ISF_NUM_EXT_FILES                       1   // Usually at least 1 (app ext)
 #define ISF_NUM_USER_FILES                      0  //max allowed user files
 
 ///@todo define this after mirror is alloc'ed
 #define ISF_MIRROR_VADDR                        0x0000
-#define ISF_TOTAL_BYTES         				480
+#define ISF_TOTAL_BYTES                         480
+
 #define ISF_START_VADDR                         (GFB_START_VADDR + GFB_TOTAL_BYTES)
 #define ISF_NUM_STOCK_FILES                     (ISF_NUM_M1_FILES + ISF_NUM_M2_FILES + ISF_NUM_EXT_FILES)
 #define ISF_NUM_FILES                           (ISF_NUM_STOCK_FILES + ISF_NUM_USER_FILES)
@@ -441,7 +432,6 @@
 #define ISF_ID_table_query_size                 0x14
 #define ISF_ID_table_query_results              0x15
 #define ISF_ID_hardware_fault_status            0x16
-#define ISF_ID_port_254                         0xFE
 #define ISF_ID_application_extension            0xFF
 
 /// ISF Mirror Enabling: <BR>
@@ -471,7 +461,6 @@
 #define ISF_ENMIRROR_table_query_size           1
 #define ISF_ENMIRROR_table_query_results        1
 #define ISF_ENMIRROR_hardware_fault_status      1
-#define ISF_ENMIRROR_port_254                   1
 #define ISF_ENMIRROR_application_extension      1
 
 
@@ -507,7 +496,6 @@
 #define ISF_MOD_table_query_size                b00100100
 #define ISF_MOD_table_query_results             b00100100
 #define ISF_MOD_hardware_fault_status           b00100100
-#define ISF_MOD_port_254                        b00100100
 #define ISF_MOD_application_extension           b00100100
 
 /// ISF file default length: 
@@ -518,9 +506,9 @@
 #define ISF_LEN_channel_configuration           32
 #define ISF_LEN_real_time_scheduler             12
 #define ISF_LEN_hold_scan_sequence              4
-#define ISF_LEN_sleep_scan_sequence             0
+#define ISF_LEN_sleep_scan_sequence             4
 #define ISF_LEN_beacon_transmit_sequence        16
-#define ISF_LEN_protocol_list                   7
+#define ISF_LEN_protocol_list                   4
 #define ISF_LEN_isfs_list                       12
 #define ISF_LEN_gfb_file_list                   GFB_NUM_FILES
 #define ISF_LEN_location_data_list              0
@@ -536,7 +524,6 @@
 #define ISF_LEN_table_query_size                1
 #define ISF_LEN_table_query_results             7
 #define ISF_LEN_hardware_fault_status           3
-#define ISF_LEN_port_254                        0
 #define ISF_LEN_application_extension           0
 
 /// Stock ISF file max data lengths (not aligned, just max)
@@ -546,13 +533,13 @@
 #define ISF_MAX_device_features                 48
 #define ISF_MAX_channel_configuration           64
 #define ISF_MAX_real_time_scheduler             12
-#define ISF_MAX_hold_scan_sequence              32  //8 scans
-#define ISF_MAX_sleep_scan_sequence             0   //Not used by gateway
+#define ISF_MAX_hold_scan_sequence              16  //4 scans
+#define ISF_MAX_sleep_scan_sequence             16  //4 scans
 #define ISF_MAX_beacon_transmit_sequence        24  //3 beacons
 #define ISF_MAX_protocol_list                   16  //16 protocols
-#define ISF_MAX_isfs_list                       24  //24 isfs indices
-#define ISF_MAX_gfb_file_list                   0   //8 gfb files
-#define ISF_MAX_location_data_list              96  //8 location vertices (or 16 if using VIDs)
+#define ISF_MAX_isfs_list                       16  //16 isfs indices
+#define ISF_MAX_gfb_file_list                   0   //0 gfb files
+#define ISF_MAX_location_data_list              96   //8 location vertices (or 16 if using VIDs)
 #define ISF_MAX_ipv6_addresses                  48
 #define ISF_MAX_sensor_list                     16  //1 sensor
 #define ISF_MAX_sensor_alarms                   2   //1 sensor
@@ -565,7 +552,6 @@
 #define ISF_MAX_table_query_size                1
 #define ISF_MAX_table_query_results             7
 #define ISF_MAX_hardware_fault_status           3
-#define ISF_MAX_port_254                        256
 #define ISF_MAX_application_extension           256
 
 
@@ -600,7 +586,6 @@
 #define ISF_BASE_table_query_size               (ISF_BASE_memory_size+ISF_ALLOC(memory_size))
 #define ISF_BASE_table_query_results            (ISF_BASE_table_query_size+ISF_ALLOC(table_query_size))
 #define ISF_BASE_hardware_fault_status          (ISF_BASE_table_query_results+ISF_ALLOC(table_query_results))
-#define ISF_BASE_port_254                       (0xFFFF)
 #define ISF_BASE_application_extension          (0xFFFF)
 #define ISF_BASE_NEXT                           (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
 
@@ -629,8 +614,7 @@
 #define ISF_MIRROR_table_query_size             (ISF_MIRROR_memory_size+ISF_MIRALLOC(memory_size))
 #define ISF_MIRROR_table_query_results          (ISF_MIRROR_table_query_size+ISF_MIRALLOC(table_query_size))
 #define ISF_MIRROR_hardware_fault_status        (ISF_MIRROR_table_query_results+ISF_MIRALLOC(table_query_results))
-#define ISF_MIRROR_port_254                     (ISF_MIRROR_hardware_fault_status+ISF_MIRALLOC(hardware_fault_status))
-#define ISF_MIRROR_application_extension        (ISF_MIRROR_port_254+ISF_MIRALLOC(port_254))
+#define ISF_MIRROR_application_extension        (ISF_MIRROR_hardware_fault_status+ISF_MIRALLOC(hardware_fault_status))
 #define ISF_MIRROR_NEXT                         (ISF_MIRROR_application_extension+ISF_MIRALLOC(application_extension))
 
 /// Total amount of stock ISF data stored in ROM
@@ -662,8 +646,10 @@
 //#define ISF_VWORM_USER_BYTES   (ISF_ALLOC(USER_FILE) * ISF_NUM_USER_FILES)
 
 
+
 /// Total amount of allocation to the Mirror
 #define ISF_MIRROR_HEAP_BYTES   ((ISF_MIRROR_NEXT) - (ISF_MIRROR_VADDR))
+
 
 /// END OF AUTOMATIC ISF STUFF 
 

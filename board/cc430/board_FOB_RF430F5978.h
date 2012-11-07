@@ -126,6 +126,7 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 #define BOARD_FEATURE_INVERT_TRIG4      ENABLED
 
 #define BOARD_SW2_PORT                  GPIO1
+#define BOARD_SW2_PINNUM                5
 #define BOARD_SW2_PIN                   GPIO_Pin_5
 #define BOARD_SW2_POLARITY              0
 
@@ -157,16 +158,16 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
-#   if (defined(DEBUG_ON) || defined(__DEBUG__))
+#   if (defined(__DEBUG__))
 #   else
     PJDIR = 0xFF;
     PJOUT = 0x00;
 #   endif 
 
-    GPIO12->DDIR    = 0xFFFF ^ BOARD_SW2_PIN;
+    GPIO12->DDIR    = 0xFFFF & ~BOARD_SW2_PIN;
     GPIO34->DDIR    = 0xFFFF;
-    GPIO1->REN      = BOARD_SW2_PIN;
-    GPIO12->DOUT    = BOARD_SW2_PIN;
+    GPIO1->REN      = BOARD_SW2_PIN;    //Pullup
+    GPIO12->DOUT    = BOARD_SW2_PIN;    //Pullup
     GPIO34->DOUT    = 0x0000;
 }
 
@@ -179,8 +180,8 @@ OT_INLINE_H void BOARD_POWER_STARTUP(void) {
     ///      I recommend putting it as high as you can, to give the most time
     ///      for the power-down routine to work.
     PMM_SetVCore(PMM_Vcore_22);
-    PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay),
-                    SVS_Von_20, SVSM_Voffon_235);
+    //PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay),
+    //                SVS_Von_20, SVSM_Voffon_235);
 }
 
 
@@ -414,7 +415,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define PALFI_LED2_TOG()    do { PALFI_LED2_PORT->DOUT ^= PALFI_LED2_PIN; } while(0)
 #define PALFI_LED3_TOG()    do { PALFI_LED3_PORT->DOUT ^= PALFI_LED3_PIN; } while(0)
 #define PALFI_LED4_TOG()    do { PALFI_LED4_PORT->DOUT ^= PALFI_LED4_PIN; } while(0)
-#define PALFI_LEDS_OFF()    do { PALFI_LEDS_PORT->DOUT &= ~PALFI_LEDS_PINS; } while(0)
+#define PALFI_LEDS_OFF()    do { PALFI_LEDS_PORT->DOUT |= PALFI_LEDS_PINS; } while(0)
 
 #define PALFI_BYPASS_PORT   GPIO2
 #define PALFI_BYPASS_PIN    GPIO_Pin_2

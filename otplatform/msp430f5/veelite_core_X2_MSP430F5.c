@@ -54,8 +54,10 @@
   ******************************************************************************
   */
 
-#include "OTAPI.h"              // for logging faults
 #include "OT_platform.h"
+#if defined(__MSP430F5__)
+
+#include "OTAPI.h"              // for logging faults
 #include "veelite_core.h"
 
 #ifndef OT_FEATURE_VLNVWRITE
@@ -720,3 +722,5 @@ void sub_attach_fallow(block_ptr* block_in) {
 
 #endif
 
+
+#endif

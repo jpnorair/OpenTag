@@ -139,6 +139,7 @@ void otapi_log_hexmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* da
 void otapi_log_direct() {
 /// Use this if you have already created a valid MPipe ALP/NDEF frame in the
 /// MPipe output queue and all you want to do is log it.
+    mpipe.alp.outq->getcursor[2] = (mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor - 6);
     mpipe_send();
 }
 #endif

@@ -63,7 +63,7 @@ void mpipe_open() {
 
 void mpipe_close() {
     sys.task_MPA.event = 0;
-    mpipedrv_kill();
+    //mpipedrv_kill();
 }
 
 
@@ -85,7 +85,7 @@ void mpipe_send() {
 
 
 void mpipeevt_txdone(ot_int code) {
-	sub_mpipe_actuate(4, 1, (ot_uint)code);
+	sub_mpipe_actuate(3, 1, (ot_uint)code);
 }
 
 
@@ -136,6 +136,7 @@ void mpipe_systask(ot_task task) {
 
         // TX/RX timeout -- note case fall-through
         case 3: mpipedrv_kill();
+                //mpipe.state = MPIPE_Idle;
         
         // Return to idle (passive RX)
         case 4:

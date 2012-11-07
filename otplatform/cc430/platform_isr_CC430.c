@@ -30,9 +30,9 @@
 
 
 #include "OT_platform.h"
+#if defined(__CC430__)
+
 #include "OTAPI.h"
-
-
 
 
 #if (1) //Using GULP
@@ -80,6 +80,10 @@
   * are almost always going to be needed.
   */
 
+// Always enable RESET
+//#undef  __ISR_REEST
+//#define __ISR_RESET
+
 
 // Always enable SYSNMI
 #undef  __ISR_SYSNMI
@@ -109,7 +113,7 @@
 
 #if (OT_FEATURE(MPIPE))
 // DMA-driven serial MPipe: only DMA interrupt needed
-#   elif (MCU_FEATURE_MPIPEDMA == ENABLED)
+#   if (MCU_FEATURE_MPIPEDMA == ENABLED)
 #       undef   __ISR_DMA
 #       define  __ISR_DMA
 
@@ -128,17 +132,18 @@
 
 
 
-///If specificed, this gets called after reset, during startup
+///If specified, this gets called after reset, during startup
 #ifdef __ISR_RESET
 #if (CC_SUPPORT == CL430)
-#   pragma vector=RESET_VECTOR
+#pragma vector=RESET_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
         //unknown at this time
 #elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(UNMI_VECTOR)
+    OT_IRQPRAGMA(RESET_VECTOR)
 #endif
 OT_INTERRUPT void isr_reset(void) {
     platform_isr_reset();
+    LPM4_EXIT;
 }
 #endif
 
@@ -150,7 +155,7 @@ OT_INTERRUPT void isr_reset(void) {
 #elif (CC_SUPPORT == IAR_V5)
         //unknown at this time
 #elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(UNMI_VECTOR)
+    OT_IRQPRAGMA(SYSNMI_VECTOR)
 #endif
 OT_INTERRUPT void isr_sysnmi(void) {
     platform_isr_sysnmi();
@@ -426,7 +431,7 @@ OT_INTERRUPT void isr_aes(void) {
 #endif
 
 
-
+#endif
 
 
 

@@ -337,7 +337,29 @@ void radio_getfourbytes(ot_u8* data) {
 
 #ifndef EXTF_radio_flush_rx
 void radio_flush_rx() {
+    /// 1. Flush the Data in the RX FIFO
     cc1101_strobe( STROBE(SFRX) );
+
+    /// 2. Flush Queue and set decoder
+    /// Queue options are set by subcc1101_prep_q, which decoder uses as params
+    q_empty(&rxq);
+    subcc1101_prep_q(&rxq);
+    em2_decode_newpacket();
+    em2_decode_newframe();
+
+    /// 3. Configure RX FIFO Limit.
+#   ifdef RADIO_IRQ2_PIN
+    rfctl.rxlimit = 48;
+#   else
+    rfctl.rxlimit   = 8;
+#   endif
+
+    cc1101_write(RFREG(FIFOTHR), (ot_u8)((rfctl.rxlimit >> 2) - 1));
+
+#   ifndef RADIO_IRQ2_PIN
+        rfctl.rxlimit  = 52;
+        rfctl.flags   |= RADIO_FLAG_RESIZE;
+#   endif
 }
 #endif
 
@@ -435,25 +457,16 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate) {
     ot_u8       mcsm210[4];
     sync_enum   sync_type;
 
-    /// 1.  Prepare RX queue by flushing it
-#   ifdef RADIO_IRQ2_PIN
-    rfctl.rxlimit = 48;
-#   else
-    rfctl.rxlimit   = 8;
-#   endif
-    q_empty(&rxq);
-    subcc1101_prep_q(&rxq);
-
-    /// 2. Prepare MCSM settings
+    /// 1. Prepare MCSM settings
     /// -  Prepare modem state-machine to do RX-Idle or RX-RX
-    ///    RX-RX happens duing Response listening, unless FIRSTRX is high
+    ///    RX-RX happens during Response listening, unless FIRSTRX is high
     netstate   &= (M2_NETFLAG_FIRSTRX | M2_NETSTATE_RESP);
     mcsm210[0]  = (RFREG(MCSM2) | 0x40);
     mcsm210[1]  = 7;
     mcsm210[2]  = (netstate ^ M2_NETSTATE_RESP) ? DRF_MCSM1 : (DRF_MCSM1 | _RXOFF_MODE_RX);
     mcsm210[3]  = (rfctl.flags & RADIO_FLAG_AUTOCAL) ? DRF_MCSM0 : (DRF_MCSM0&0xCF) | _FS_AUTOCAL_FROMIDLE;
     
-    /// 3. Go to IDLE.  CC1101 must be in IDLE before writing data.
+    /// 2. Go to IDLE.  CC1101 must be in IDLE before writing data.
     radio_idle();
 
     /// 4.  Fetch the RX channel, exit if the specified channel is not available
@@ -501,19 +514,11 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate) {
     ///     For single GDO device, setup buffer resizing after first RX page
     subcc1101_buffer_config(buffer_mode, pktlen);
     subcc1101_syncword_config(sync_type);
-    cc1101_write(RFREG(FIFOTHR), (ot_u8)((rfctl.rxlimit >> 2) - 1));
-#   ifndef RADIO_IRQ2_PIN
-        rfctl.rxlimit  = 52;
-        rfctl.flags   |= RADIO_FLAG_RESIZE;
-#   endif
-    
+
     /// 7.  Configure CS threshold and MCSM settings
     cc1101_write(RFREG(AGCCTRL2), phymac[0].cs_thr);
     cc1101_spibus_io(4, 0, mcsm210, NULL);
 
-    /// 8.  Prepare Decoder to receive
-    em2_decode_newpacket();
-    em2_decode_newframe();
     subcc1101_offset_rxtimeout();     // if timeout is 0, set it to a minimal amount
     
     /// 9.  Using rm2_reenter_rx() with NULL forces entry into rx, and sets states
@@ -609,7 +614,7 @@ void rm2_reenter_rx(ot_sig2 callback) {
         cc1101_strobe( STROBE(SRX) );
         cc1101_int_turnon(RFI_SYNC | RFI_RXIDLE);
         radio.state = RADIO_Listening;
-        rfctl.state = RADIO_STATE_RXINIT;
+        rfctl.state &= RADIO_STATE_RXMFP; //wipe all states except MFP
     }
 }
 #endif
@@ -710,99 +715,79 @@ void rm2_rxdata_isr() {
     //RFGET_RXDATA();         // Only needed w/ internal DMA usage to set buffer params
     em2_decode_data();      // Contains logic to prevent over-run
 
-    /// 2. Handle each RX type, and transitions
-    switch ((rfctl.state >> RADIO_STATE_RXSHIFT) & (RADIO_STATE_RXMASK >> RADIO_STATE_RXSHIFT)) {
-
-        /// RX State 0:
-        /// Multiframe packets (only compiled when MFPs are supported)
-#       if (M2_FEATURE(MULTIFRAME) == ENABLED)
-        case (RADIO_STATE_RXMFP >> RADIO_STATE_RXSHIFT): {
-            ot_int frames_left;
-            rm2_rxpkt_MFP:
-            frames_left = em2_remaining_frames();
-
-            // If this is the last frame, move to single-frame packet mode
-            // Else if more frames, but current frame is done, page it out.
-            // Else, RX is in the middle of a frame (do nothing)
-            if (frames_left == 0) {
-                rfctl.state = RADIO_STATE_RXPAGE;
-                // goes to next case statement from here
-            }
-            else if (em2_remaining_bytes() == 0) {
-                /// @todo: I might require in the future that queue rebasing is
-                ///        done in the evtdone callback (gives more flexibility).
-                radio.evtdone(frames_left, (ot_int)crc_check() - 1);            // argument 2 is negative on bad Frame CRC
-
-                // Prepare the next frame by moving the "front" pointer and
-                // re-initializing the decoder engine
-                q_rebase(&rxq, rxq.putcursor);
-                em2_decode_newframe();
-
-                // Clear out what's leftover in the FIFO, from the new frame,
-                // and re-do boundary checks on this new frame.
-                goto rm2_rxdata_isr_TOP;
-            }
-            else {
-            
-                break;
-            }
-        }
-
-        /// RX State 1:
-        /// Continuous RX'ing of a packet that is buffered without HW control
-        /// The code is only compiled if multiframe packets are enabled
-        /// @note re-checking live FIFO bytes accounts for any processing lag
-        case (RADIO_STATE_RXPAGE >> RADIO_STATE_RXSHIFT): {
-            if (em2_remaining_bytes() <= rfctl.rxlimit) {
-                // Put into DONE state
-                rfctl.state     = RADIO_STATE_RXDONE;
-                rfctl.flags    &= ~RADIO_FLAG_RESIZE;
-                
-                // transition to fixed length mode
-                rfctl.rxlimit   = em2_remaining_bytes();
-                subcc1101_buffer_config(0, rfctl.rxlimit);
-                
-                // Final byte cannot be read unless in DONE mode.  It might be
-                // in the buffer now, though, so try to get it
-                //if (em2_remaining_bytes() == 1) {
-                //    goto rm2_rxdata_isr_TOP;
-                //}
-            }
-            break;
-        }
-#       endif
-
-        /// RX State 2:
-        /// Continuous RX'ing of a packet that is maintained by HW control
-        case (RADIO_STATE_RXAUTO >> RADIO_STATE_RXSHIFT): {
-            ot_int remaining_bytes;
-            remaining_bytes = em2_remaining_bytes();
-            if (remaining_bytes <= rfctl.rxlimit) {
-#               ifdef RADIO_IRQ2_PIN
-                if (remaining_bytes == 0) {
-                    goto rm2_rxpkt_DONE;
-                }
-                cc1101_int_turnoff(RFI_RXFIFOTHR);
-#               else
-                cc1101_iocfg_rxend();
-#               endif
-                rfctl.state = RADIO_STATE_RXDONE;
-            }
-            break;
-        }
-
-        /// RX State 3: RXDONE
-        case (RADIO_STATE_RXDONE >> RADIO_STATE_RXSHIFT): {
-            rm2_rxpkt_DONE:
-            subcc1101_finish(0, (ot_int)crc_check() - 1);
-            return;
-        }
-
-        /// Bug Trap
-        default:
-            rm2_kill();
-            return;
+    if (rfctl.state & RADIO_STATE_RXDONE) {
+    rm2_rxpkt_DONE:
+        subcc1101_finish(0, (ot_int)crc_check() - 1);
+        return;
     }
+
+#   if (M2_FEATURE(MULTIFRAME) == ENABLED)
+    if (rfctl.state & RADIO_STATE_PAGE) {
+    rm2_rxpkt_PAGE:
+        if (em2_remaining_bytes() <= rfctl.rxlimit) {
+            // Put into DONE state
+            rfctl.state    |= RADIO_STATE_RXDONE;
+            rfctl.flags    &= ~RADIO_FLAG_RESIZE;
+
+            // transition to fixed length mode
+            rfctl.rxlimit   = em2_remaining_bytes();
+            subcc1101_buffer_config(0, rfctl.rxlimit);
+
+            // Final byte cannot be read unless in DONE mode.  It might be
+            // in the buffer now, though, so try to get it
+            //if (em2_remaining_bytes() == 1) {
+            //    goto rm2_rxdata_isr_TOP;
+            //}
+        }
+    }
+
+    else if (rfctl.state & RADIO_STATE_MFP) {
+        ot_int frames_left;
+        rm2_rxpkt_MFP:
+        frames_left = em2_remaining_frames();
+
+        // If this is the last frame, move to single-frame packet mode
+        // Else if more frames, but current frame is done, page it out.
+        // Else, RX is in the middle of a frame (do nothing)
+        if (frames_left == 0) {
+            rfctl.state |= RADIO_STATE_RXPAGE;
+            goto rm2_rxpkt_PAGE;
+        }
+        else if (em2_remaining_bytes() == 0) {
+            /// @todo: I might require in the future that queue rebasing is
+            ///        done in the evtdone callback (gives more flexibility).
+            radio.evtdone(frames_left, (ot_int)crc_check() - 1);            // argument 2 is negative on bad Frame CRC
+            // Prepare the next frame by moving the "front" pointer and
+            // re-initializing the decoder engine
+            q_rebase(&rxq, rxq.putcursor);
+            em2_decode_newframe();
+
+            // Clear out what's leftover in the FIFO, from the new frame,
+            // and re-do boundary checks on this new frame.
+            goto rm2_rxdata_isr_TOP;
+        }
+        else {
+        }
+    }
+#   endif
+
+    /// AUTO
+    else {
+        ot_int remaining_bytes;
+        remaining_bytes = em2_remaining_bytes();
+        if (remaining_bytes <= rfctl.rxlimit) {
+#           ifdef RADIO_IRQ2_PIN
+            if (remaining_bytes == 0) {
+                goto rm2_rxpkt_DONE;
+            }
+            cc1101_int_turnoff(RFI_RXFIFOTHR);
+#           else
+            cc1101_iocfg_rxend();
+#           endif
+            rfctl.state |= RADIO_STATE_RXDONE;
+        }
+    }
+
 
     /// 3. Change the size of the RX buffer to default, if required
 #   if ((M2_FEATURE(MULTIFRAME) == ENABLED) || !defined(RADIO_IRQ2_PIN))
@@ -1113,12 +1098,12 @@ ot_bool subcc1101_lowrssi_reenter() {
     ot_int  min_rssi;
     min_rssi = ((phymac[0].cs_thr >> 1) & 0x3F) - 40;
     
-    if (radio_rssi() < min_rssi) {
-        subcc1101_reset_autocal();
-        radio_idle();               //for CC1101 version, idle must be called ahead of rm2_reenter_rx(NULL)
-        rm2_reenter_rx(NULL);
-        return True;
-    }
+    //if (radio_rssi() < min_rssi) {
+    //    subcc1101_reset_autocal();
+    //    radio_idle();               //for CC1101 version, idle must be called ahead of rm2_reenter_rx(NULL)
+    //    rm2_reenter_rx(NULL);
+    //    return True;
+    //}
     return False;
 }
 

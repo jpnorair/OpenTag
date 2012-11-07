@@ -1,7 +1,8 @@
 About Demo_PaLFi:
 Demo_PaLFi is an OpenTag demo application including a PaLFi Master and Slave.  
 The Master and Slave are two independent applications, and they are compiled 
-onto different devices (Master and Slave).
+onto different devices (Master and Slave).  Additionally, there is a project
+called "Slave2" that can be used for DASH7 (UHF) link testing.
 
 Master: 
 - MSP430F55xx + CC1101 (e.g. MSP-EXP430F5529 board + CC1101EMK)
@@ -10,9 +11,13 @@ Master:
 - Future variants may include TMS3705 driver as well
 
 Slave:
-- CC430+PalFi SiP (part number not known)
+- CC430+PalFi SiP (RF430F5978)
 - used as DASH7 endpoint, with PaLFi transponder interface
 - Not connected to PC client over wireline
+
+Slave2:
+- Same as normal slave, except PaLFI interface is not implemented
+- Instead of PaLFI, button push sends a sensor reading.
 
 The Project folder (CCSv5_proj, in future also CCSv4_proj and GCC) contains a
 project file for master and one for slave.  The code for the Master is in the

@@ -27,7 +27,7 @@
 #ifndef __CC430_CONF_H
 #define __CC430_CONF_H
 
-
+#define __CC430__
 
 /** Peripherals consistent across all CC430 parts
   */

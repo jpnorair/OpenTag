@@ -435,12 +435,12 @@ ot_int m2qp_parse_frame(m2session* session) {
     cmd_type = (*rxq.getcursor >> 4) & 0x07;
     
     // Map requests to request parser
-    if (cmd_type > 1)
-        cmd_type = 2;
-    
     // Deal with case where M2QP command type mismatches the Netstate
-    if ((cmd_type > 1) ^ ((session->netstate & M2_NETSTATE_RESP) != 0)) {
-        return -1;
+    if (cmd_type > 1) {
+        cmd_type = 2;
+        if (session->netstate & M2_NETSTATE_RESP) {
+            return -1;
+        }
     }
     
     return parse_fn[cmd_type](session);

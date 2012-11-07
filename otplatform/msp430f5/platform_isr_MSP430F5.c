@@ -30,6 +30,8 @@
 
 
 #include "OT_platform.h"
+#if defined(__MSP430F5__)
+
 #include "OTAPI.h"
 
 
@@ -102,8 +104,8 @@
 
 #if (OT_FEATURE(MPIPE))
 // USB MPipe
+#   undef   __ISR_USB
 #   if (defined(MPIPE_USB))
-#       undef   __ISR_USB
 #       define  __ISR_USB
 
 // DMA-driven serial MPipe: only DMA interrupt needed
@@ -134,7 +136,7 @@
 
 
 
-
+#endif
 
 
 

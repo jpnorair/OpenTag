@@ -28,16 +28,12 @@
   */
 
 
-#include "OT_config.h"
+#include "OT_platform.h"
 
-#if (OT_FEATURE(PALFI) == ENABLED)
+#if (defined(__CC430__) && OT_FEATURE(PALFI) == ENABLED))
 
 #include "buffers.h"
 #include "palfi.h"
-#include "OT_platform.h"
-
-
-
 
 
 

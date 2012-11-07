@@ -27,6 +27,7 @@
 #ifndef __MSP430F5_CONF_H
 #define __MSP430F5_CONF_H
 
+#define __MSP430F5__
 
 
 /* Device define */
@@ -143,6 +144,7 @@
 
 #if (defined(__CCSv5__) || defined(__CCSv4__) || defined(__GCC__) || defined(__GNUC__))
 #   if  defined(__MSP430F5503__)
+#       define __MSP430F55xx__
 #       include "msp430f5503.h"
 #       define _GPIOU
 #       define _TIM0A5
@@ -160,6 +162,7 @@
 #       define _I2CB1
 
 #   elif  defined(__MSP430F5509__)
+#       define __MSP430F55xx__
 #       include "msp430f5509.h"
 #       define _GPIOU
 #       define _ADC10
@@ -178,6 +181,7 @@
 #       define _TIM0B7
 
 #   elif defined(__MSP430F5510__)
+#       define __MSP430F55xx__
 #       include "msp430f5510.h"
 #       define _GPIOU
 #       define _ADC10
@@ -196,6 +200,7 @@
 #       define _I2CB1
 
 #   elif defined(__MSP430F5529__)
+#       define __MSP430F55xx__
 #       include "msp430f5529.h"
 #       define _GPIOU
 #       define _GPIO7

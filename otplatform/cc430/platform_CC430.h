@@ -31,7 +31,7 @@
 #include "build_config.h"
 #include "OT_support.h"
 #include "cc430_lib.h"
-
+#include "cc430_conf.h"
 
 
 /** Platform Support settings

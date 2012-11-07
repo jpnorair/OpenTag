@@ -90,7 +90,7 @@
 #define MCU_FEATURE_RADIODMA            DISABLED
 #define MCU_FEATURE_RADIODMA_TXBYTES    0
 #define MCU_FEATURE_RADIODMA_RXBYTES    0
-#define MCU_FEATURE_MAPEEPROM            DISABLED
+#define MCU_FEATURE_MAPEEPROM           DISABLED
 #define MCU_FEATURE_MPIPEDMA            ENABLED         // MPIPE typically requires DMA on this platform
 #define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 
@@ -128,6 +128,12 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG2      DISABLED
 
+#define BOARD_SW2_PORTNUM               2
+#define BOARD_SW2_PINNUM                0
+#define BOARD_SW2_PORT                  GPIO2
+#define BOARD_SW2_PIN                   GPIO_Pin_0
+#define BOARD_SW2_POLARITY              0
+
 #define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
 #define BOARD_PARAM_LFHz                32768
 #define BOARD_PARAM_LFtol               0.00002
@@ -155,26 +161,33 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 
 
 
-
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
-    u8 i;
+#   if (defined(__DEBUG__))
+#   else
+    PJDIR = 0xFF;
+    PJOUT = 0x00;
+#   endif 
 
-#if (defined(DEBUG_ON) || defined(__DEBUG__))
-#   define _DEBUG_ON_PORTJ  1
-    PJDIR = 0x00;
-#else
-#   define _DEBUG_ON_PORTJ  0
-#endif
-
-    for (i=(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ); i!=0; i--) {
-    	*((u8*)cc430_pdir_list[i])  = 0x00;
-    	*((u8*)cc430_pout_list[i])  = 0x00;
-    }
-    
-#undef _DEBUG_ON_PORTJ
+    GPIO12->DDIR    = 0xFFFF & ~(BOARD_SW2_PIN << 8);
+    GPIO34->DDIR    = 0xFFFF;
+    GPIO2->REN      = BOARD_SW2_PIN;            //Pullup
+    GPIO12->DOUT    = (BOARD_SW2_PIN << 8);    //Pullup
+    GPIO34->DOUT    = 0x0000;
 }
 
+
+OT_INLINE_H void BOARD_POWER_STARTUP(void) {
+///@note On SVSM Config Flags: (1) It is advised in all cases to include
+    ///      SVSM_EventDelay.  (2) If using line-power (not battery), it is
+    ///      advised to enable FullPerformance and ActiveDuringLPM.  (3) Change
+    ///      The SVSM_Voffon_ parameter to one that matches your requirements.
+    ///      I recommend putting it as high as you can, to give the most time
+    ///      for the power-down routine to work.
+    PMM_SetVCore(PMM_Vcore_22);
+    //PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay),
+    //                SVS_Von_20, SVSM_Voffon_235);
+}
 
 
 // LFXT1 Preconfiguration, using values local to the board design
@@ -204,7 +217,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   * OpenTag needs to know where it can put Nonvolatile memory (file system) and
   * how much space it can allocate for filesystem.
   */
-#define SRAM_START_ADDR             0x0000
+#define SRAM_START_ADDR             0x1C00
 #define SRAM_SIZE                   (4*1024)
 #define EEPROM_START_ADDR           0
 #define EEPROM_SIZE                 0
@@ -225,15 +238,11 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 
-
-
 // MSP430 only ... Information Flash
-// Info Page A usage is riddled with glitches, hence limiting to 3 pages
-// instead of 4.  Page A is addresses 1980 - 19FF
 #   define INFO_START_ADDR          0x1800
 #   define INFO_START_PAGE          0
 #   define INFO_PAGE_SIZE           128
-#   define INFO_NUM_PAGES           3
+#   define INFO_NUM_PAGES           4
 #   define INFO_PAGE_ADDR(VAL)      (INFO_START_ADDR + (INFO_PAGE_SIZE*VAL))
 #   define INFO_D_ADDR              INFO_PAGE_ADDR(0)
 #   define INFO_C_ADDR              INFO_PAGE_ADDR(1)
@@ -241,7 +250,20 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   define INFO_A_ADDR              INFO_PAGE_ADDR(3)
 
 
-
+// MSP430 only ... Boot Strap Loader
+// BSL is not presently used with OpenTag, although at some point it might be.
+// In that case, we would probably reserve Bank A for the USB driver and the
+// filesystem, and not overwrite Bank A.  The 2KB BSL space is not big enough
+// for the USB driver, but it is big enough for UART Mpipe.
+#define BSL_START_ADDR          0x1000
+#define BSL_START_PAGE          0
+#define BSL_PAGE_SIZE           512
+#define BSL_NUM_PAGES           4
+#define BSL_PAGE_ADDR(VAL)      (BSL_START_ADDR + (BSL_PAGE_SIZE*VAL))
+#define BSL_D_ADDR              BSL_PAGE_ADDR(0)
+#define BSL_C_ADDR              BSL_PAGE_ADDR(1)
+#define BSL_B_ADDR              BSL_PAGE_ADDR(2)
+#define BSL_A_ADDR              BSL_PAGE_ADDR(3)
 
 
 
@@ -291,10 +313,13 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   *                   triggers are implemented on LED pins </LI>   
   * <LI> MPIPE:     The wireline interface, which on CC430 is often a UART </LI>
   */
-  
 #define OT_GPTIM            TIM1A3
-#define OT_GPTIM_IRQ        TIM1A3_IRQChannel
-#define OT_GPTIM_VECTOR     TIMER1_A1_VECTOR
+#define OT_GPTIM_ISR_ID     __ISR_T1A1_ID
+#ifdef __ISR_T1A1
+#   error "ISR T1A1 is already allocated.  It must be used for GPTIM."
+#else
+#   define __ISR_T1A1
+#endif
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
@@ -331,6 +356,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   * </LI>
   */
 #define MPIPE_DMANUM        0
+#define MPIPE_UART_PORTNUM  1
 #define MPIPE_UART_PORT     GPIO1
 #define MPIPE_UART_PORTMAP  P1M
 #define MPIPE_UART_RXPIN    GPIO_Pin_5
@@ -341,11 +367,11 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define OT_TRIG1_PORTNUM    3
 #define OT_TRIG1_PORT       GPIO3
 #define OT_TRIG1_PIN        GPIO_Pin_3  
-#define OT_TRIG1_HIDRIVE    ENABLED         // Use high-current option
+#define OT_TRIG1_HIDRIVE    DISABLED         // Use high-current option
 #define OT_TRIG2_PORTNUM    3
 #define OT_TRIG2_PORT       GPIO3
 #define OT_TRIG2_PIN        GPIO_Pin_5
-#define OT_TRIG2_HIDRIVE    ENABLED
+#define OT_TRIG2_HIDRIVE    DISABLED
 
 
 // Pin that can be used for ADC-based random number (usually floating pin)
@@ -369,12 +395,12 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 
 #define MPIPE_UART_PINS     (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
+#define MPIPE_UART_ID       0xA0
 #define MPIPE_UART          UARTA0
 #define MPIPE_UART_RXSIG    PM_UCA0RXD
 #define MPIPE_UART_TXSIG    PM_UCA0TXD
 #define MPIPE_UART_RXTRIG   DMA_Trigger_UCA0RXIFG
 #define MPIPE_UART_TXTRIG   DMA_Trigger_UCA0TXIFG
-#define MPIPE_UART_VECTOR   USCI_A0_VECTOR
 
 #if (MCU_FEATURE_MPIPEDMA == ENABLED)
 #   if (MPIPE_DMANUM == 0)

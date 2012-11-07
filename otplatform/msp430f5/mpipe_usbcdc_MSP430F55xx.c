@@ -33,7 +33,7 @@
 #include "OT_platform.h"
 
 /// Do not compile if MPIPE is disabled, or MPIPE does not use USB CDC
-#if ((OT_FEATURE(MPIPE) == ENABLED) && defined(MPIPE_USB))
+#if (defined(__MSP430F5__) && OT_FEATURE(MPIPE) && defined(MPIPE_USB))
 
 #include "OTAPI.h"
 
@@ -182,7 +182,7 @@ void USB_handleResumeEvent () {
 		mpipe_open();
 		sys_resume();
 	}
-#else
+#elif (MPIPE_USB_MANUAL_STANDBY == 0)
 	mpipe.state = MPIPE_Idle;
 #endif
 }
@@ -194,7 +194,7 @@ void USB_handleResumeEvent () {
   * blocking process that's sleeping, waiting for enumeration (typical).
   */
 ot_u8 USB_handleEnumCompleteEvent () {
-#if (MPIPE_USB_MANUAL_STANDBY == 0)
+#if 1 //(MPIPE_USB_MANUAL_STANDBY == 0)
     mpipe.state = MPIPE_Idle;
     mpipe_open();
     return True;
@@ -239,17 +239,22 @@ void USBCDC_handleReceiveCompleted (ot_u8 intfNum){
   * is being simulated by the USB CDC.
   */
 ot_u8 USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate) {
-#if (MPIPE_USB_MANUAL_STANDBY == 0)
+#if 1 //(MPIPE_USB_MANUAL_STANDBY == 0)
     return False;
 
 #else
+    ot_u8 retval = False;;
+
 #   if (CDC_NUM_INTERFACES > 1)
     if (intfNum != 0) return False;
 #   endif
 
+    if (mpipe.state == (MPIPE_Null-1)) {
+        mpipe_open();
+        retval = True;
+    }
     mpipe.state = MPIPE_Idle;
-    mpipe_open();
-    return True;
+    return retval;
 #endif
 }
 
@@ -473,7 +478,8 @@ void mpipedrv_isr() {
         /// on an MSP430F5 @ 24 MHz.
         case MPIPE_Tx_Done: 
             tty.seq.ushort++;
-            mpipe.state = MPIPE_Idle;
+            //mpipe.state = MPIPE_Idle;
+            //mpipedrv_kill();
             mpipeevt_txdone(1);
             break;
     }

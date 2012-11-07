@@ -28,8 +28,11 @@
   ******************************************************************************
   */
 
-#include "OTAPI.h"
 #include "OT_platform.h"
+#if defined(__CC430__)
+
+
+#include "OTAPI.h"
 
 // OT low-level modules that need initialization
 #include "veelite_core.h"
@@ -292,7 +295,9 @@ void platform_isr_sysnmi(void) {
 ///     If specificed, this gets called after reset, during startup
 #ifndef EXTF_platform_isr_reset
 void platform_isr_reset(void) {
-#   ifdef __DEBUG__
+    SYS->RSTIV = 0; // Clear all reset source flags
+
+#   if (0)
 //    ot_u8 sysrstiv_reg = SYS->RSTIV;
 //    SYS->RSTIV = 0;       // Clear all reset source flags
 //
@@ -570,7 +575,7 @@ void platform_init_OT() {
     ///
     /// @note the ID is inserted via Veelite, so it is abstracted from the 
     /// file memory configuration of your board and/or app. 
-#   if (defined(__DEBUG__) || defined(DEBUG_ON))
+#   if (defined(__DEBUG__) || defined(__PROTO__) || defined(DEBUG_ON))
     {
         vlFILE* fpid;
         ot_u16* hwid;
@@ -1421,5 +1426,5 @@ void platform_swdelay_us(ot_u16 n) {
 #endif
 
 
-
+#endif
 

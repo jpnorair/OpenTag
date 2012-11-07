@@ -1,4 +1,4 @@
-/*  Copyright 2010-2012, JP Norair
+/* Copyright 2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -13,24 +13,25 @@
   * limitations under the License.
   */
 /**
-  * @file       /apps/demo_palfi/code_master/_patch_5509stick/data_5509.c
+  * @file       /apps/demo_palfi/code_slave2/data_default.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
-  * @brief      PaLFi Demo Main Default Data
-  * 
+  * @version    R100
+  * @date       4 Nov 2012
+  * @brief      Default Filesystem Data for PaLFi Slave2
+  *
   ******************************************************************************
   */
 
-#ifndef _DATA_C
-#define _DATA_C
 
-
-
-#ifdef DEBUG_ON
+#if (defined(__DEBUG__) || defined(__PROTO__))
+/// The ID's are written as FFF... so that the OpenTag startup routine can write
+/// a derived ID to them without any kind of flash wear-leveling
 #   define __VID    0xFF, 0xFF
 #   define __UID    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 #endif
+
+
+
 
 
 
@@ -62,19 +63,6 @@ __attribute__((section(".vl_ov")))
 #pragma DATA_SECTION(overhead_files, ".vl_ov")
 #endif
 const ot_u8 overhead_files[] = {
-    //0x00, 0x00, 0x00, 0x01,                 /* GFB ELements 0 - 3 */
-    //0x00, GFB_MOD_standard,
-    //0x00, 0x14, 0xFF, 0xFF,
-    //0x00, 0x00, 0x00, 0x01,
-    //0x01, GFB_MOD_standard,
-    //0x00, 0x15, 0xFF, 0xFF,
-    //0x00, 0x00, 0x00, 0x01,
-    //0x02, GFB_MOD_standard,
-    //0x00, 0x16, 0xFF, 0xFF,
-    //0x00, 0x00, 0x00, 0x01,
-    //0x03, GFB_MOD_standard,
-    //0x00, 0x17, 0xFF, 0xFF,
-
     ISFS_LEN(transit_data), 0x00,
     ISFS_ALLOC(transit_data), 0x00,
     ISFS_ID(transit_data),
@@ -131,11 +119,14 @@ const ot_u8 overhead_files[] = {
     SPLIT_SHORT_LE(ISFS_BASE(location_data)),
     0xFF, 0xFF,
 
-    /* Mode 2 ISFs, written as little endian */
+    /** Mode 2 ISFs, written as little endian for MSP430
+      * @note If your compiler gives you "change of sign" warnings on the
+      * mirror addressing lines, this is normal.
+      */
     ISF_LEN(network_settings), 0x00,                /* Length, little endian */
     SPLIT_SHORT_LE(ISF_ALLOC(network_settings)),    /* Alloc, little endian */
     ISF_ID(network_settings),                       /* ID */
-    ISF_MOD(network_settings),                      /* Perms */
+    ISF_MOD(network_settings),                      /* Permissions */
     SPLIT_SHORT_LE(ISF_BASE(network_settings)),
     SPLIT_SHORT_LE(ISF_MIRROR(network_settings)),
 
@@ -159,14 +150,14 @@ const ot_u8 overhead_files[] = {
     ISF_MOD(real_time_scheduler),
     SPLIT_SHORT_LE(ISF_BASE(real_time_scheduler)),
     SPLIT_SHORT_LE(ISF_MIRROR(real_time_scheduler)),
-    
+
     ISF_LEN(hold_scan_sequence), 0x00,
     SPLIT_SHORT_LE(ISF_ALLOC(hold_scan_sequence)),
     ISF_ID(hold_scan_sequence),
     ISF_MOD(hold_scan_sequence),
     SPLIT_SHORT_LE(ISF_BASE(hold_scan_sequence)),
     SPLIT_SHORT_LE(ISF_MIRROR(hold_scan_sequence)),
-
+    
     ISF_LEN(sleep_scan_sequence), 0x00,
     SPLIT_SHORT_LE(ISF_ALLOC(sleep_scan_sequence)),
     ISF_ID(sleep_scan_sequence),
@@ -293,19 +284,12 @@ const ot_u8 overhead_files[] = {
     SPLIT_SHORT_LE(ISF_BASE(hardware_fault_status)),
     SPLIT_SHORT_LE(ISF_MIRROR(hardware_fault_status)),
 
-    ISF_LEN(port_254), 0x00,
-    SPLIT_SHORT_LE(ISF_ALLOC(port_254)),
-    ISF_ID(port_254),
-    ISF_MOD(port_254),
-    SPLIT_SHORT_LE(ISF_BASE(port_254)),
-    SPLIT_SHORT_LE(ISF_MIRROR(port_254)),
-
     ISF_LEN(application_extension), 0x00,
     SPLIT_SHORT_LE(ISF_ALLOC(application_extension)),
     ISF_ID(application_extension),
     ISF_MOD(application_extension),
     SPLIT_SHORT_LE(ISF_BASE(application_extension)),
-    SPLIT_SHORT_LE(ISF_MIRROR(application_extension)),
+    SPLIT_SHORT_LE(ISF_MIRROR(application_extension))
 };
 
 
@@ -325,7 +309,7 @@ const ot_u8 isfs_stock_codes[] = {
     0x00, 0x01,
     0x01, 0x06, 0x07, 0xFF,
     0x02, 0x03, 0x04, 0x05,
-    0x11, 0xFF
+    0x0A, 0xFF,
 };
 
 
@@ -439,43 +423,43 @@ const ot_u8 isf_stock_files[] = {
     /* real time scheduler: id=0x03, len=12, alloc=12 */
     0x00, 0x0F,                                         /* HSS Sync Mask */
     0x00, 0x08,                                         /* HSS Sync Value */
-    0x00, 0x03,                                         /* SSS Sync Mask */
-    0x00, 0x02,                                         /* SSS Sync Value */
-    0x00, 0x03,                                         /* BTS Sync Mask */
-    0x00, 0x02,                                         /* BTS Sync Value */
-
-    /* hold scan periods: id=0x04, len=8, alloc=32 */
+    0x00, 0x0F,                                         /* SSS Sync Mask */
+    0x00, 0x08,                                         /* SSS Sync Value */
+    0x00, 0x0F,                                         /* BTS Sync Mask */
+    0x00, 0x08,                                         /* BTS Sync Value */
+    
+    /* hold scan periods: id=0x04, len=12, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x07, 0x51, 0x08, 0x04,                             /* Channel X scan, Scan Code, Next Scan ms */
-    0x2A, 0x51, 0x08, 0x04,
-    0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF,
+    0x7F, 0x0F, 0x00, 0x80,                             /* Channel X scan, Scan Code, Next Scan ms */
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
     
-    /* sleep scan periods: id=0x05, len=0, alloc=0 */
+    /* sleep scan periods: id=0x05, len=12, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
+    0x07, 0x85, 0x14, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
+    0xFF, 0xFF, 0xFF, 0xFF,                             /* NOTE: Scan Code should be less than     */
+    0xFF, 0xFF, 0xFF, 0xFF,                             /*       Next Scan, or else you will be    */
+    0xFF, 0xFF, 0xFF, 0xFF,                             /*       doing nothing except scanning!    */
 
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240
-    0x07, 0x06, 0x20, 0x00, 0x00, 0x00, 0x28, 0x00,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
-    0x2A, 0x06, 0x20, 0x00, 0x00, 0x00, 0x28, 0x00,
+    0x07, 0x07, 0x30, 0x18, 0x00, 0x00, 0x01, 0x00,     /* Chan 07, Option 07, loc. series, next in 256 ticks */
+    0x2A, 0x07, 0x30, 0x18, 0x00, 0x00, 0x30, 0x00,     /* Chan 2A, Option 07, loc. series, next in 12228 ticks */
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
-    /* App Protocol List: id=0x07, len=7, alloc=16 */
-    0x00, 0x01, 0x02, 0x04, 0x71, 0xFE, 0xFF, 0xFF,     /* List of Protocols supported (Tentative)*/
+    /* App Protocol List: id=0x07, len=4, alloc=16 */
+    0x00, 0x01, 0x02, 0x04, 0x71, 0xFF, 0xFF, 0xFF,     /* List of Protocols supported (Tentative)*/
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* ISFS list: id=0x08, len=12, alloc=16 */
     0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x18,
     0x80, 0x81, 0x82, 0x83, 0xFF, 0xFF, 0xFF, 0xFF,
 
-    /* GFB File List: id=0x09, len=0, alloc=0 */
+    /* GFB File List: id=0x09, len=0, alloc=8 */
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* Location Data List: id=0x0A, len=0, alloc=96 */
-    /* Stored exclusively in Mirror */
 
     /* IPv6 Addresses: id=0x0B, len=0, alloc=48 */
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -532,12 +516,10 @@ const ot_u8 isf_stock_files[] = {
     /* HW Fault Status: id=0x16, len=3, alloc=4 */
     0x00, 0x00, 0x00, 0xFF,
 
-    /* Port 254: id=0xFE, len=0, alloc=256 */
-    /* Stored Exclusively in mirror */
-    
     /* Application Extension: id=0xFF, len=0, alloc=256 */
-    /* Stored Exclusively in mirror */
 };
 
 
-#endif
+
+//__attribute__((section(".vl_fallow")))
+//const ot_u8 vl_fallow_space[ (FLASH_PAGE_SIZE*OTF_VWORM_FALLOW_PAGES) ];

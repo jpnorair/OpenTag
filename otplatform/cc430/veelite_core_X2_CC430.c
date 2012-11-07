@@ -54,8 +54,11 @@
   ******************************************************************************
   */
 
-#include "OTAPI.h"              // for logging faults
+
 #include "OT_platform.h"
+#if defined(__CC430__)
+
+#include "OTAPI.h"              // for logging faults
 #include "veelite_core.h"
 
 #ifndef OT_FEATURE_VLNVWRITE
@@ -716,6 +719,10 @@ void sub_attach_fallow(block_ptr* block_in) {
     }
     X2table.fallow[0] = NULL;
 }
+
+
+#endif
+
 
 
 #endif

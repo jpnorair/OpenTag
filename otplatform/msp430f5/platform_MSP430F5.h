@@ -68,7 +68,7 @@
 #   define __get_SR_register            __read_status_register
 #   define __even_in_range(x, y)        x
 #   define __OT_INTERRUPT_VECTOR(VAL)   __attribute__((interrupt(VAL)))
-#   define __OT_INTERRUPT_ISR(FN)     void ##FN (void)
+#   define __OT_INTERRUPT_ISR(FN)       void ##FN (void)
 
 #elif (CC_SUPPORT == CL430)
 #	define OT_FNPRAGMA(VAL)             _Pragma(#VAL)
@@ -91,7 +91,7 @@
 
 #elif (CC_SUPPORT == CL430)
 #   define OT_DATAPRAGMA(VAR, SECTION)  _Pragma(DATA_SECTION(##VAR, ##SECTION))
-
+#   define OT_SECTION                   OT_DATAPRAGMA
 #elif (CC_SUPPORT == IAR_V5)
 #endif
 

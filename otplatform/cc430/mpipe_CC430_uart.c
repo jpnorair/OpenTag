@@ -67,13 +67,13 @@
   ******************************************************************************
   */
 
-#include "OT_config.h"
+#include "OT_platform.h"
 
-#if ((OT_FEATURE(MPIPE) == ENABLED) && defined(MPIPE_UART))
+#if (defined(__CC430__) && OT_FEATURE(MPIPE) && defined(MPIPE_UART))
 
 #include "buffers.h"
 #include "mpipe.h"
-#include "OT_platform.h"
+
 
 #if (MPIPE_UART_ID != 0xA0)
 #   error "MPIPE_UART_ID not defined to A0, the only UART available on CC430"
