@@ -27,7 +27,7 @@
 #define _DATA_C
 
 
-#ifdef (DEBUG_ON)
+#if (defined(__DEBUG__) || defined(__PROTO__))
 #   define __VID    0xFF, 0xFF
 #   define __UID    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 #endif

@@ -596,7 +596,7 @@ void platform_init_OT() {
     ///
     /// @note the ID is inserted via Veelite, so it is abstracted from the 
     /// file memory configuration of your board and/or app. 
-#   if (defined(__DEBUG__) || defined(DEBUG_ON))
+#   if (defined(__DEBUG__) || defined(__PROTO__))
     {
 		vlFILE* fpid;
 		ot_u16* hwid;

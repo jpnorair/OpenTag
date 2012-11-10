@@ -26,6 +26,7 @@
 
 #include "cc430_lib.h"
 
+#ifdef __CC430__
 
 /*
 MSP430F5 CRC Registers for HW computation of CRC16
@@ -78,4 +79,4 @@ u16 CRC_Result( u16 direction ) {
     return (u16)CRCRESR;
 }
 
-
+#endif

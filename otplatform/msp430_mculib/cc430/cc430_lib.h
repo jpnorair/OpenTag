@@ -27,16 +27,19 @@
 #ifndef __CC430_LIB_H
 #define __CC430_LIB_H
 
+#include "cc430_conf.h"
+
+#ifdef __CC430__
+
+#include "cc430_map.h"
+#include "platform_CC430.h"
+
 
 /*
  *  This macro is for use by other macros to form a fully valid C statement.
  */
 #define st(x)      do { x } while (__LINE__ == -1)
 
-
-#include "cc430_conf.h"
-#include "cc430_map.h"
-#include "platform_CC430.h"
 
 
 //Needed for GCC
@@ -193,6 +196,8 @@
 #endif
 
 
+
+#endif
 
 #endif
 

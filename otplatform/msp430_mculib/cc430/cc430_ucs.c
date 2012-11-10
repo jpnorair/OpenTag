@@ -25,7 +25,7 @@
 
 
 #include "cc430_lib.h"
-
+#ifdef __CC430__
 
 /** Startup routine for 32kHz Cristal on LFXT1
  * \param xtdrive: Bits defining the LFXT drive mode after startup
@@ -387,4 +387,4 @@ void Init_FLL(u16 fsystem, u16 ratio) {
 
 } // End of fll_init()
 
-
+#endif

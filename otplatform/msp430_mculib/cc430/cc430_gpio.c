@@ -30,7 +30,7 @@
 #include "cc430_conf.h"
 #include "cc430_lib.h"
 
-
+#ifdef __CC430__
 
 
 /*
@@ -263,4 +263,5 @@ void configure_ports(u8* port_mapping, u8* PxMAPy, u8 num_of_ports, u8 port_map_
 */
 
 
+#endif
 

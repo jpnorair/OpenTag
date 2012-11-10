@@ -20,6 +20,8 @@
   * @brief      Board Configuration for MSP-EXP430F5529 kit, using CC1101EMK attached
   * @ingroup    Platform
   *
+  * !!! UNTESTED !!! UNTESTED !!! UNTESTED !!! UNTESTED !!! UNTESTED !!!
+  *
   * Do not include this file, include OT_platform.h
   *
   * The Texas Instruments MSP-EXP430F5529 is a dev kit using the MSP430F5529.
@@ -146,7 +148,7 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
     GPIO56->DDIR    = 0xFFFF ^ (BOARD_LFXT_PINS | BOARD_HFXT_PINS);
     GPIO78->DDIR    = 0xFFFF;
     
-#   if (defined(DEBUG_ON) || defined(__DEBUG__))
+#   if (defined(__DEBUG__))
     PJDIR = 0x00;
     PJOUT = 0x00;
 #   else

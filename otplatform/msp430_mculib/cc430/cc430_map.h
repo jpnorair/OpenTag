@@ -31,7 +31,7 @@
 #include "cc430_conf.h"
 #include "cc430_types.h"
 
-
+#ifdef __CC430__
 
 
 // The peripheral register typedefs are in the order the peripherals are 
@@ -959,3 +959,4 @@ extern const u8* cc430_pdir_list[CC430_TOTAL_PORTS];
 
 #endif
 
+#endif

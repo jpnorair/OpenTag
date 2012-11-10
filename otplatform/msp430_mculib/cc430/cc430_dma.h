@@ -29,7 +29,7 @@
 
 #include "cc430_map.h"
 
-
+#ifdef __CC430__
 
 typedef struct {
     u16 SourceAddr;
@@ -127,4 +127,7 @@ void DMA_ClearFlag(DMAx_Type* DMAx, u16 DMA_flag);
 
 
 #endif
+
+#endif
+
 

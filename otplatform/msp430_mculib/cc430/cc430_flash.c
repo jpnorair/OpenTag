@@ -27,6 +27,7 @@
 
 #include "cc430_lib.h"
 
+#ifdef __CC430__
 
 /** @note
   * For writing and erasing Flash, the watchdog timer needs to be halted.  Each
@@ -384,3 +385,6 @@ u8 FLASH_CheckWrite() {
     
     return FLASH_GetStatus();
 }
+
+#endif
+

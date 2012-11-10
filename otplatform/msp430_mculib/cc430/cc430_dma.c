@@ -26,7 +26,7 @@
 
 #include "cc430_lib.h"
 
-
+#ifdef __CC430__
 
 
 
@@ -105,4 +105,4 @@ void DMA_ClearFlag(DMAx_Type* DMAx, u16 DMA_flag) {
 }
 
 
-
+#endif

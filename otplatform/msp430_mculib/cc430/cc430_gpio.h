@@ -32,6 +32,7 @@
 #include "cc430_types.h"
 #include "cc430_map.h"
 
+#ifdef __CC430__
 
 typedef enum {
     GPIO_Mode_In_Floating   = 0x00,
@@ -162,4 +163,7 @@ void GPIO_Remap(u8 Port_Number, u8 Pin_Number, u8 Remap_Index);
 
 
 #endif
+
+#endif
+
 

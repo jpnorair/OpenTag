@@ -55,7 +55,7 @@
   * ========================================================================<BR>
   * Constants that control the way the module compiles and behaves.
   */
-#define USBEVT_CLOCKFAULT    	0x0001
+#define USBEVT_CLOCKFAULT       0x0001
 #define USBEVT_VBUSON           0x0002
 #define USBEVT_VBUSOFF          0x0004
 #define USBEVT_RESET            0x0008
@@ -177,50 +177,50 @@
 #define EDB(addr)                           ((addr&0x07)-1)
 
 // Structure for generic part of configuration descriptor
-struct abromConfigurationDescriptorGenric {
-	ot_u8 sizeof_config_descriptor;            // bLength
- 	ot_u8 desc_type_config;                    // bDescriptorType: 2
-	ot_u8 sizeof_configuration_descriptor1;    // wTotalLength
-	ot_u8 sizeof_configuration_descriptor2;
-	ot_u8 usb_num_configurations;              // bNumInterfaces
-	ot_u8 bconfigurationvalue;                 // bConfigurationValue
-	ot_u8 config_string_index;                 // iConfiguration Description offset
- 	ot_u8 mattributes;                         // bmAttributes, bus power, remote wakeup
-	ot_u8 usb_max_power;                       // Max. Power Consumption at 2mA unit
+struct usbdesc_genericcfg_struct {
+    ot_u8 size0;        //sizeof_config_descriptor;            // bLength
+    ot_u8 type;         //desc_type_config;                    // bDescriptorType: 2
+    ot_u8 size1;        //sizeof_configuration_descriptor1;    // wTotalLength
+    ot_u8 size2;        //sizeof_configuration_descriptor2;
+    ot_u8 num_cfgs;     //usb_num_configurations;              // bNumInterfaces
+    ot_u8 cfg_val;      //bconfigurationvalue;                 // bConfigurationValue
+    ot_u8 cfg_str_i;    //config_string_index;                 // iConfiguration Description offset
+    ot_u8 attrs;        //mattributes;                         // bmAttributes, bus power, remote wakeup
+    ot_u8 max_power;    //usb_max_power;                       // Max. Power Consumption at 2mA unit
 };
 
 // CDC Descriptor
-struct abromConfigurationDescriptorCdc {
+struct usbdesc_cdccfg_struct {
     // interface descriptor (9 bytes)
-    ot_u8 blength_intf;	                      // blength: interface descriptor size
-    ot_u8 desc_type_interface;	              // bdescriptortype: interface
+    ot_u8 blength_intf;                       // blength: interface descriptor size
+    ot_u8 desc_type_interface;                // bdescriptortype: interface
     ot_u8 interface_number_cdc;                // binterfacenumber
     ot_u8 balternatesetting;                   // balternatesetting: alternate setting
     ot_u8 bnumendpoints;                       // bnumendpoints: three endpoints used
     ot_u8 binterfaceclass;                     // binterfaceclass: communication interface class
     ot_u8 binterfacesubclass;                  // binterfacesubclass: abstract control model
     ot_u8 binterfaceprotocol;                  // binterfaceprotocol: common at commands 
-    ot_u8 intf_string_index;	                  // interface:
+    ot_u8 intf_string_index;                      // interface:
     
     //header functional descriptor
-    ot_u8 blength_header;	                  // blength: endpoint descriptor size
-    ot_u8 bdescriptortype_header;	          // bdescriptortype: cs_interface
-    ot_u8 bdescriptorsubtype_header;	          // bdescriptorsubtype: header func desc
+    ot_u8 blength_header;                     // blength: endpoint descriptor size
+    ot_u8 bdescriptortype_header;             // bdescriptortype: cs_interface
+    ot_u8 bdescriptorsubtype_header;              // bdescriptorsubtype: header func desc
     ot_u8 bcdcdc1;
-    ot_u8 bcdcdc2;	                          // bcdcdc: spec release number
+    ot_u8 bcdcdc2;                            // bcdcdc: spec release number
 
     //call managment functional descriptor
-    ot_u8 bfunctionlength;	                  // bfunctionlength
-    ot_u8 bdescriptortype_c;	                  // bdescriptortype: cs_interface
-    ot_u8 bdescriptorsubtype_c;	              // bdescriptorsubtype: call management func desc
-    ot_u8 bmcapabilities;	                  // bmcapabilities: d0+d1
+    ot_u8 bfunctionlength;                    // bfunctionlength
+    ot_u8 bdescriptortype_c;                      // bdescriptortype: cs_interface
+    ot_u8 bdescriptorsubtype_c;               // bdescriptorsubtype: call management func desc
+    ot_u8 bmcapabilities;                     // bmcapabilities: d0+d1
     ot_u8 intf_number_cdc;                     // bdatainterface: 0
 
     //acm functional descriptor
-    ot_u8 bfunctionlength_acm;	              // bfunctionlength
-    ot_u8 bdescriptortype_acm;	              // bdescriptortype: cs_interface
-    ot_u8 bdescriptorsubtype_acm;	          // bdescriptorsubtype: abstract control management desc
-    ot_u8 bmcapabilities_acm;	              // bmcapabilities
+    ot_u8 bfunctionlength_acm;                // bfunctionlength
+    ot_u8 bdescriptortype_acm;                // bdescriptortype: cs_interface
+    ot_u8 bdescriptorsubtype_acm;             // bdescriptorsubtype: abstract control management desc
+    ot_u8 bmcapabilities_acm;                 // bmcapabilities
 
     // Union Functional Descriptor
     ot_u8 bLength_ufd;                         // Size, in bytes
@@ -231,153 +231,93 @@ struct abromConfigurationDescriptorCdc {
 
     //Interrupt end point related fields
     ot_u8 sizeof_epintep_descriptor;           // blength: endpoint descriptor size
-    ot_u8 desc_type_epintep;	                  // bdescriptortype: endpoint
-    ot_u8 cdc_intep_addr;	                  // bendpointaddress: (in2)
-    ot_u8 epintep_desc_attr_type_int;	      // bmattributes: interrupt
+    ot_u8 desc_type_epintep;                      // bdescriptortype: endpoint
+    ot_u8 cdc_intep_addr;                     // bendpointaddress: (in2)
+    ot_u8 epintep_desc_attr_type_int;         // bmattributes: interrupt
     ot_u8 epintep_wmaxpacketsize1;
-    ot_u8 epintep_wmaxpacketsize;   		      // wmaxpacketsize, 64 bytes
+    ot_u8 epintep_wmaxpacketsize;                 // wmaxpacketsize, 64 bytes
     ot_u8 epintep_binterval;                   // binterval
 
     // Data interface descriptor (9 bytes)
-    ot_u8 blength_slaveintf;	                  // blength: interface descriptor size
-    ot_u8 desc_type_slaveinterface;	          // bdescriptortype: interface
+    ot_u8 blength_slaveintf;                      // blength: interface descriptor size
+    ot_u8 desc_type_slaveinterface;           // bdescriptortype: interface
     ot_u8 interface_number_slavecdc;           // binterfacenumber
     ot_u8 balternatesetting_slave;             // balternatesetting: alternate setting
     ot_u8 bnumendpoints_slave;                 // bnumendpoints: three endpoints used
     ot_u8 binterfaceclass_slave;               // binterfaceclass: data interface class
     ot_u8 binterfacesubclass_slave;            // binterfacesubclass: abstract control model
     ot_u8 binterfaceprotocol_slave;            // binterfaceprotocol: common at commands
-    ot_u8 intf_string_index_slave;	          // interface:
+    ot_u8 intf_string_index_slave;            // interface:
 
     // Bulk out end point related fields
     ot_u8 sizeof_outep_descriptor;             // blength: endpoint descriptor size
-    ot_u8 desc_type_outep;	                  // bdescriptortype: endpoint
-    ot_u8 cdc_outep_addr;	                  // bendpointaddress: (out3)
-    ot_u8 outep_desc_attr_type_bulk;	          // bmattributes: bulk
+    ot_u8 desc_type_outep;                    // bdescriptortype: endpoint
+    ot_u8 cdc_outep_addr;                     // bendpointaddress: (out3)
+    ot_u8 outep_desc_attr_type_bulk;              // bmattributes: bulk
     ot_u8 outep_wmaxpacketsize1;
     ot_u8 outep_wmaxpacketsize2;               // wmaxpacketsize, 64 bytes
-    ot_u8 outep_binterval; 	                  // binterval: ignored for bulk transfer
+    ot_u8 outep_binterval;                    // binterval: ignored for bulk transfer
 
     // Bulk in related fields
     ot_u8 sizeof_inep_descriptor;              // blength: endpoint descriptor size
-    ot_u8 desc_type_inep;	                  // bdescriptortype: endpoint
-    ot_u8 cdc_inep_addr;	                      // bendpointaddress: (in3)
-    ot_u8 inep_desc_attr_type_bulk;	          // bmattributes: bulk
+    ot_u8 desc_type_inep;                     // bdescriptortype: endpoint
+    ot_u8 cdc_inep_addr;                          // bendpointaddress: (in3)
+    ot_u8 inep_desc_attr_type_bulk;           // bmattributes: bulk
     ot_u8 inep_wmaxpacketsize1;
-    ot_u8 inep_wmaxpacketsize2;  		      // wmaxpacketsize, 64 bytes
-    ot_u8 inep_binterval;	                  // binterval: ignored for bulk transfer
+    ot_u8 inep_wmaxpacketsize2;               // wmaxpacketsize, 64 bytes
+    ot_u8 inep_binterval;                     // binterval: ignored for bulk transfer
 };
 
 
-//HID descriptor structure 
-struct abromConfigurationDescriptorHid {
-    //INTERFACE DESCRIPTOR (9 bytes)
-    ot_u8 sizeof_interface_descriptor;        // Desc Length
-    ot_u8 desc_type_interface;                // DescriptorType
-    ot_u8 interface_number_hid;               // Interface number
-    ot_u8 balternatesetting;                  // Any alternate settings if supported
-    ot_u8 bnumendpoints;                      // Number of end points required
-    ot_u8 binterfaceclass;                    // Class ID
-    ot_u8 binterfacesubclass;                 // Sub class ID
-    ot_u8 binterfaceprotocol;                 // Protocol
-    ot_u8 intf_string_index;                  // String Index
 
-    //hid descriptor (9 bytes)
-    ot_u8 blength_hid_descriptor;             // HID Desc length
-    ot_u8 hid_descriptor_type;                // HID Desc Type
-    ot_u8 hidrevno1;                          // Rev no 
-    ot_u8 hidrevno2;                          // Rev no - 2nd part
-    ot_u8 tcountry;	    	                  // Country code 
-    ot_u8 numhidclasses;                      // Number of HID classes to follow	
-    ot_u8 report_descriptor_type;             // Report desc type 
-    ot_u8 tlength;                            // Total length of report descriptor
-    ot_u8 size_rep_desc;
 
-    //input end point descriptor (7 bytes)
-    ot_u8 size_inp_endpoint_descriptor;       // End point desc size
-    ot_u8 desc_type_inp_endpoint;             // Desc type
-    ot_u8 hid_inep_addr;                      // Input end point address
-    ot_u8 ep_desc_attr_type_inp_int;          // Type of end point
-    ot_u8 inp_wmaxpacketsize1;               // Max packet size
-    ot_u8 inp_wmaxpacketsize2;
-    ot_u8 inp_binterval;                      // bInterval in ms
 
-    // Output end point descriptor; (7 bytes)
-    ot_u8 size_out_endpoint_descriptor;       // Output endpoint desc size
-    ot_u8 desc_type_out_endpoint;             // Desc type
-    ot_u8 hid_outep_addr;                     // Output end point address
-    ot_u8 ep_desc_attr_type_out_int;          // End point type
-    ot_u8 out_wmaxpacketsize1;                // Max packet size
-    ot_u8 out_wmaxpacketsize2;
-    ot_u8 out_binterval;                      // bInterval in ms
-};
-
-//MSC descriptor structure 
-struct abromConfigurationDescriptorMsc {
-    // INTERFACE DESCRIPTOR (9 bytes)
-    ot_u8 sizeof_interface_descriptor;         // Desc Length
-    ot_u8 desc_type_interface;                 // DescriptorType
-    ot_u8 interface_number_hid;                // Interface number
-    ot_u8 balternatesetting;                   // Any alternate settings if supported
-    ot_u8 bnumendpoints;                       // Number of end points required
-    ot_u8 binterfaceclass;                     // Class ID
-    ot_u8 binterfacesubclass;                  // Sub class ID
-    ot_u8 binterfaceprotocol;                  // Protocol
-    ot_u8 intf_string_index;                   // String Index
-
-    // input end point descriptor (7 bytes)
-    ot_u8 size_inp_endpoint_descriptor;        // End point desc size
-    ot_u8 desc_type_inp_endpoint;              // Desc type
-    ot_u8 hid_inep_addr;                       // Input end point address
-    ot_u8 ep_desc_attr_type_inp_int;           // Type of end point
-    ot_u8 inp_wmaxpacketsize1;                // Max packet size
-    ot_u8 inp_wmaxpacketsize2;
-    ot_u8 inp_binterval;                       // bInterval in ms
-
-    // Output end point descriptor; (7 bytes)
-    ot_u8 size_out_endpoint_descriptor;        // Output endpoint desc size
-    ot_u8 desc_type_out_endpoint;              // Desc type
-    ot_u8 hid_outep_addr;                      // Output end point address
-    ot_u8 ep_desc_attr_type_out_int;           // End point type
-    ot_u8 out_wmaxpacketsize1;                 // Max packet size
-    ot_u8 out_wmaxpacketsize2;
-    ot_u8 out_binterval;                       // bInterval in ms
-};
-
-//struct  abromConfigurationDescriptorGroupCDC {
+//struct abromConfigurationDescriptorGroup {
     // Generic part of config descriptor
 //    const struct abromConfigurationDescriptorGenric abromConfigurationDescriptorGenricCDC;
 //    const struct abromConfigurationDescriptorCdc    stCdc[CDC_NUM_INTERFACES];
 //};
 
 // Global structure having Generic,CDC,HID, MSC structures 
-struct  abromConfigurationDescriptorGroup {
-    // Generic part of config descriptor
-    const struct abromConfigurationDescriptorGenric abromConfigurationDescriptorGenric;
-    const struct abromConfigurationDescriptorCdc    stCdc[CDC_NUM_INTERFACES];
-};
+typedef struct  {
+    const struct usbdesc_genericcfg_struct  generic;
+    const struct usbdesc_cdccfg_struct      cdc[CDC_NUM_INTERFACES];
+} usbdesc_cfg_struct;
 
-extern const struct abromConfigurationDescriptorGroup abromConfigurationDescriptorGroup;
-extern const ot_u8 abromDeviceDescriptor[SIZEOF_DEVICE_DESCRIPTOR];
-extern const ot_u8 abromStringDescriptor[];
+
+extern const usbdesc_cfg_struct usbdesc_cfg;
+extern const ot_u8              usbdesc_device[SIZEOF_DEVICE_DESCRIPTOR];     //abromDeviceDescriptor
+extern const ot_u8              usbdesc_string[];
 //extern const ot_u8 abromReportDescriptor[SIZEOF_REPORT_DESCRIPTOR];
 
-// Handle Structure - Will be populated in descriptors.c based on number of CDC,HID interfaces 
-struct tUsbHandle {
-    ot_u8 ep_In_Addr;               // Input EP Addr 
-    ot_u8 ep_Out_Addr;              // Output EP Addr 
-    ot_u8 edb_Index;                // The EDB index 
-    ot_u8 dev_Class;                // Device Class- 2 for CDC, 3 for HID 
-    ot_u16 intepEP_X_Buffer;         // Interupt X Buffer Addr 
-    ot_u16 intepEP_Y_Buffer;         // Interupt Y Buffer Addr 
-    ot_u16 oep_X_Buffer;             // Output X buffer Addr 
-    ot_u16 oep_Y_Buffer;             // Output Y buffer Addr 
-    ot_u16 iep_X_Buffer;             // Input X Buffer Addr 
-    ot_u16 iep_Y_Buffer;             // Input  Y Buffer Addr 
-};
 
-extern const struct tUsbHandle stUsbHandle[CDC_NUM_INTERFACES];
-extern const tDEVICE_REQUEST_COMPARE tUsbRequestList[];
+
+
+
+// Handle Structure - Will be populated in descriptors.c based on number of CDC,HID interfaces 
+typedef struct {
+    ot_u8 epin_addr;                // ep_In_Addr (Input EP Addr)
+    ot_u8 epout_addr;               // ep_Out_Addr (Output EP Addr)
+    ot_u8 edb_index;                // The EDB index 
+    ot_u8 class;                    // dev_Class (Device Class- 2 for CDC, 3 for HID)
+    ot_u16 irq_xbuf;                // intepEP_X_Buffer (Interupt X Buffer Addr)
+    ot_u16 irq_ybuf;                // intepEP_Y_Buffer (Interupt Y Buffer Addr)
+    ot_u16 out_xbuf;                // oep_X_Buffer (Output X buffer Addr)
+    ot_u16 in_xbuf;                 // iep_X_Buffer (Input X Buffer Addr)
+    ot_u16 out_ybuf;                // oep_Y_Buffer (Output Y buffer Addr)
+    ot_u16 in_ybuf;                 // iep_Y_Buffer (Input Y Buffer Addr)
+} usb_handle_struct;
+
+extern const usb_handle_struct  usb_handle[CDC_NUM_INTERFACES];  //stUsbHandle
+extern const usbcmd_struct      usbcmd_list[];
+
+
+
+
+/** @brief puts a serial number into the string descriptor.  Run on init.
+  */
+void usbdesc_set_serialnum();
+
 
 
 #endif

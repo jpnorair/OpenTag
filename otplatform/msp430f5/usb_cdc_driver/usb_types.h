@@ -98,7 +98,7 @@ typedef struct _tDEVICE_REQUEST {
     ot_u16 wValue;                //Meaning varies with request type
     ot_u16 wIndex;                //Meaning varies with request type
     ot_u16 wLength;               //Number of bytes of data to transfer
-} tDEVICE_REQUEST, *ptDEVICE_REQUEST;
+} usbreq_struct;    //tDEVICE_REQUEST, *ptDEVICE_REQUEST;
 
 typedef struct _tDEVICE_REQUEST_COMPARE {
     ot_u8 bmRequestType;         //See bit definitions below
@@ -110,19 +110,20 @@ typedef struct _tDEVICE_REQUEST_COMPARE {
     ot_u8 bLengthL;              //Number of bytes of data to transfer (LSByte)
     ot_u8 bLengthH;              //Number of bytes of data to transfer (MSByte)
     ot_u8 bCompareMask;          //MSB is bRequest, if set 1, bRequest should be matched
-    ot_u8 (*pUsbFunction)(VOID); //function pointer
-} 
-tDEVICE_REQUEST_COMPARE, *ptDEVICE_REQUEST_COMPARE;
+    void  (*pUsbFunction)(VOID); //function pointer
+} usbcmd_struct;
+//tDEVICE_REQUEST_COMPARE, *ptDEVICE_REQUEST_COMPARE;
 
 //----------------------------------------------------------------------------
 typedef enum {
-    STATUS_ACTION_NOTHING,
-    STATUS_ACTION_DATA_IN,
-    STATUS_ACTION_DATA_OUT
-} tSTATUS_ACTION_LIST;
+    ACTION_nothing  = 0,
+    ACTION_data_in  = 1,
+    ACTION_data_out = 2
+} ACTION_index;
 
 
 #define tSTATUS_EN_DISABLED		FunctionalState
 
+#define CMD_RETURN  void
 
 #endif

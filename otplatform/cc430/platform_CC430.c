@@ -131,18 +131,18 @@ platform_ext_struct platform_ext;
   * implemented wherever.  The Kill function is special, and it is implemented
   * here.
   */
-#if (OT_GPTIM_ISR_ID == __ISR_T0B1_ID)
+#if (OT_GPTIM_ISR_ID == __ISR_T0A1_ID)
 #   ifdef __ISR_T0B0
 #       error "GPTIM is set to Timer B0, so you can't use channel 0."
 #   else
-#       define KILL_VECTOR	TIMER0_B0_VECTOR
+#       define KILL_VECTOR	TIMER0_A0_VECTOR
 #   endif
 
-#elif (OT_GPTIM_ISR_ID == __ISR_T0A1_ID)
+#elif (OT_GPTIM_ISR_ID == __ISR_T1A1_ID)
 #   ifdef __ISR_T0A0
-#       error "GPTIM is set to Timer A0, so you can't use channel 0."
+#       error "GPTIM is set to Timer A1, so you can't use channel 0."
 #   else
-#       define KILL_VECTOR	TIMER0_A0_VECTOR
+#       define KILL_VECTOR	TIMER1_A0_VECTOR
 #   endif
 
 #else
@@ -575,7 +575,7 @@ void platform_init_OT() {
     ///
     /// @note the ID is inserted via Veelite, so it is abstracted from the 
     /// file memory configuration of your board and/or app. 
-#   if (defined(__DEBUG__) || defined(__PROTO__) || defined(DEBUG_ON))
+#   if (defined(__DEBUG__) || defined(__PROTO__))
     {
         vlFILE* fpid;
         ot_u16* hwid;

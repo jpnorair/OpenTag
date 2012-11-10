@@ -18,5 +18,4 @@ __BIG_ENDIAN__                      All MSP430F5 cores are __LITTLE_ENDIAN__
 __GCC__             (mandatory)     Compiler must be configured properly.
 __CLANG__                           
 
-__DEBUG__           (optional)      Two definitions that do the same thing, i.e.
-DEBUG_ON [legacy]                   enable some debugging features in the code
+__DEBUG__           (optional)      enable some debugging features in the code

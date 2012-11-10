@@ -207,7 +207,7 @@ void app_init() {
     sub_button_init();
 }
 
-
+#define OPMODE_TASK     &sys.task[TASK_external]
 
 void app_invoke(ot_u8 call_type) {
 /// The "External Task" is the place where the kernel runs the main user app.
@@ -225,10 +225,10 @@ void app_invoke(ot_u8 call_type) {
 /// for which you probably want to enforce a request-response turnaround time.
 /// for processing and basic, iterative tasks it is not important: set to 255.
 ///
-	sys_task_setevent(TASK_external, call_type);
-    sys_task_setreserve(TASK_external, 1);
-    sys_task_setlatency(TASK_external, 255);
-    sys_preempt(&sys.task[TASK_external], 0);
+	sys_task_setevent(OPMODE_TASK, call_type);
+    sys_task_setreserve(OPMODE_TASK, 1);
+    sys_task_setlatency(OPMODE_TASK, 255);
+    sys_preempt(OPMODE_TASK, 0);
 }
 
 

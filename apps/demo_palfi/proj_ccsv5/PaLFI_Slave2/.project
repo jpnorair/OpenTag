@@ -81,7 +81,7 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
 	<linkedResources>
-        <link>
+		<link>
 			<name>app_code</name>
 			<type>2</type>
 			<location>B:/apps/demo_palfi/code_slave2</location>
@@ -135,11 +135,6 @@
 			<name>applets/sys_sig_panic.c</name>
 			<type>1</type>
 			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_panic.c</locationURI>
-		</link>
-		<link>
-			<name>applets/sys_sig_powerdown_[msp430slow].c</name>
-			<type>1</type>
-			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_powerdown_%5Bmsp430slow%5D.c</locationURI>
 		</link>
 		<link>
 			<name>applets/udp_querytoken.c</name>

@@ -503,7 +503,7 @@ void platform_init_busclk() {
 
     //SystemInit();   // called automatically on device startup
 
-#   ifdef DEBUG_ON
+#   ifdef __DEBUG__
     // OT_DEBUG_PERIPHERALS is defined in the board_xxx.h file
     DBGMCU_Config(OT_DEBUG_PERIPHERALS, ENABLE);
 #   endif
@@ -586,7 +586,7 @@ void platform_init_interruptor() {
 
 void platform_init_gpio() { 
 /// The default GPIO is OT Test triggers only, for debugging
-#ifdef DEBUG_ON
+#ifdef __DEBUG__
     GPIO_InitTypeDef GPIOinit;
     
     GPIOinit.GPIO_Speed = GPIO_Speed_50MHz;

@@ -2,6 +2,9 @@
 #ifndef __CC430_TYPES_H
 #define __CC430_TYPES_H
 
+#include "cc430_conf.h"
+#ifdef __CC430__
+
 typedef signed long  s32;
 typedef signed short s16;
 typedef signed char  s8;
@@ -54,3 +57,5 @@ typedef enum {ERROR = 0, SUCCESS = !ERROR} ErrorStatus;
 #define S32_MIN    ((s32)-2147483648)
 
 #endif
+#endif
+

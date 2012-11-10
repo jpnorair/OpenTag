@@ -55,15 +55,15 @@
 #include "usb_cdc_driver/usb_types.h"
 
 
-extern ot_u8  bFunctionSuspended;
+//extern ot_u8  bFunctionSuspended;
 //extern __no_init tEDB0 __data16 tEndPoint0DescriptorBlock;
 //extern __no_init tEDB __data16 tInputEndPointDescriptorBlock[];
 //extern __no_init tEDB __data16 tOutputEndPointDescriptorBlock[];
-extern volatile ot_u8 bHostAsksUSBData;
-extern volatile ot_u8 bTransferInProgress;
-extern volatile ot_u8 bSecondUartTxDataCounter[];
-extern volatile ot_u8* pbSecondUartTxData;
-extern ot_u8 bStatusAction;
+//extern volatile ot_u8 bHostAsksUSBData;
+//extern volatile ot_u8 bTransferInProgress;
+//extern volatile ot_u8 bSecondUartTxDataCounter[];
+//extern volatile ot_u8* pbSecondUartTxData;
+//extern ot_u8 bStatusAction;
 //extern ot_u16 wUsbEventMask;
 //ot_bool CdcToHostFromBuffer(ot_u8);
 //ot_bool CdcToBufferFromHost(ot_u8);
@@ -76,32 +76,32 @@ extern ot_u8 bStatusAction;
 /** Handle incoming setup packet.
   * returns TRUE to wakeup CPU
   */
-ot_u8 SetupPacketInterruptHandler(void);
-
+//ot_u8 SetupPacketInterruptHandler(void);
+ot_u8 usbisr_setuppkt(void);
 
 
 /** Handle VBuss on signal.
   */
-void PWRVBUSonHandler(void);
-
+//void PWRVBUSonHandler(void);
+void usbisr_vbuson(void);
 
 
 /** Handle VBus off signal.
   */
-void PWRVBUSoffHandler(void);
-
+//void PWRVBUSoffHandler(void);
+void usbisr_vbusoff(void);
 
 
 /** Handle In-requests from control pipe.
   */
-void IEP0InterruptHandler(void);
-
+//void IEP0InterruptHandler(void);
+void usbisr_ep0in(void);
 
 
 /** Handle Out-requests from control pipe.
   */
-ot_u8 OEP0InterruptHandler(void);
-
+//ot_u8 OEP0InterruptHandler(void);
+ot_u8 usbisr_ep0out(void);
 
 
 #endif

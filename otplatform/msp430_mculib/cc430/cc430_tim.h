@@ -28,9 +28,8 @@
 #ifndef __CC430_LIB_TIMA_H
 #define __CC430_LIB_TIMA_H
 
-
 #include "cc430_map.h"
-
+#ifdef __CC430__
 
 /* TIM Time Base Init structure definition */
 typedef enum {
@@ -160,5 +159,5 @@ void TIMA_SetCCOUT(TIMA_Type *TIMAx, TIMA_CCChannelType Channelx, u16 value);
 
 
 
-
+#endif
 #endif

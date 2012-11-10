@@ -330,7 +330,7 @@ void platform_init_OT() {
 	radio_init();   //radio init third
 	sys_init();     //system init last
 	
-#   if (defined(__DEBUG__) || defined(DEBUG_ON))
+#   if (defined(__DEBUG__) || defined(__PROTO__))
     /// If debugging, find the Chip ID and use 6 out of 8 bytes of it to yield
     /// the UID.  This ID might not be entirely unique -- technically, there is
     /// 1/65536 chance of non-uniqueness, but practically the chance is much
@@ -523,7 +523,7 @@ void platform_enable_rtc_alarm(ot_u8 alarm_id, ot_bool enable) {
   * defined in the application code.
   */
 
-#ifdef DEBUG_ON
+#ifdef __DEBUG__
 void platform_trig1_high() { }
 void platform_trig1_low() { }
 void platform_trig1_toggle() { }

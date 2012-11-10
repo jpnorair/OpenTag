@@ -26,6 +26,7 @@
 
 
 #include "cc430_lib.h"
+#ifdef __CC430__
 
 
 
@@ -170,4 +171,7 @@ void TIMA_SetCCOUT(TIMA_Type *TIMAx, TIMA_CCChannelType Channelx, u16 value) {
         *CCTLn |= TIMA_FLG_CC_OUT;
     }
 }
+
+#endif
+
 

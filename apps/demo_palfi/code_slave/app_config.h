@@ -78,7 +78,7 @@
 #define OT_FEATURE_CAPI                 ENABLED                             // "otapi" C function usage in server-side apps
 #define OT_FEATURE_C_SERVER             (OT_FEATURE_CAPI)                   // "otapi" C function usage in server-side apps
 #define OT_FEATURE_DASHFORTH            NOT_AVAILABLE                       // DASHFORTH Applet VM (server-side), or JIT (client-side)
-#define OT_FEATURE_MPIPE                MPIPE_FOR_DEBUGGING					// Tied to "DEBUG_ON"
+#define OT_FEATURE_MPIPE                MPIPE_FOR_DEBUGGING					// Tied to "__DEBUG__"
 #define OT_FEATURE_NDEF                 OT_FEATURE_MPIPE                    // NDEF wrapper for Messaging API
 #define OT_FEATURE_LOGGER               OT_FEATURE_MPIPE                    // Mpipe-based data logging & printing
 #define OT_FEATURE_ALP                  (OT_FEATURE_MPIPE)      // Application Layer Protocol Support

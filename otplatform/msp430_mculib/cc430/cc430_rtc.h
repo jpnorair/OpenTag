@@ -33,6 +33,7 @@
 #define __CC430_LIB_RTC_H
 
 #include "cc430_map.h"
+#ifdef __CC430__
 
 /*
 typedef struct {
@@ -81,5 +82,6 @@ typedef struct {
 
 
 
+#endif
 #endif
 

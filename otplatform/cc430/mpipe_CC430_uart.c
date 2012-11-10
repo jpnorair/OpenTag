@@ -287,6 +287,11 @@ ot_int mpipedrv_init(void* port_id) {
 #endif
 
 
+#ifndef EXTF_mpipedrv_standby
+void mpipedrv_standby() {
+}
+#endif
+
 
 #ifndef EXTF_mpipedrv_detach
 void mpipedrv_detach(void* port_id) {
@@ -472,7 +477,9 @@ void mpipedrv_isr() {
 /// <LI> If MPipe does not have HW acks, then software can be used to manage
 ///      Acks.  In this case, a complete TX process also requires RX'ing an
 ///      Ack, and a complete RX process requires TX'ing an Ack. </LI>
+#if (BOARD_FEATURE_USBCONVERTER != ENABLED)
     ot_u16 crc_result;
+#endif
 
     switch (mpipe.state) {
         case MPIPE_Idle: //note, case doesn't break!
@@ -484,7 +491,7 @@ void mpipedrv_isr() {
             payload_len             = mpipe.alp.inq->front[2];
             payload_front           = mpipe.alp.inq->front + 6;
             mpipe.alp.inq->back     = payload_front + payload_len;
-            payload_len            += MPIPE_FOOTER_BYTES;
+            payload_len            += MPIPE_FOOTERBYTES;
             mpipe.alp.inq->length   = payload_len + 6;
             MPIPE_DMA_RXCONFIG(payload_front, payload_len, ON);
             mpipeevt_rxdetect(30);      ///@todo make dynamic: this is relevant for 115200bps
@@ -497,7 +504,9 @@ void mpipedrv_isr() {
             tty.seq.ubyte[LOWER]    = *footer;
             
             // CRC is Good (==0) or bad (!=0) Discard the packet if bad
+#           if (BOARD_FEATURE_USBCONVERTER != ENABLED)
             crc_result = platform_crc_block(mpipe.alp.inq->front, mpipe.alp.inq->length);
+#           endif
             
 #           if (MPIPE_USE_ACKS)
             // ACKs must be used when Broadcast mode is off
@@ -561,7 +570,11 @@ void mpipedrv_isr() {
     // Close UART, Close MPipe, Tell kernel to start processing
     mpipedrv_isr_RXDONE:
     mpipe.state = MPIPE_Idle;
+#   if (BOARD_FEATURE_USBCONVERTER != ENABLED)
     mpipeevt_rxdone((ot_int)crc_result);
+#   else
+    mpipeevt_rxdone(0);
+#   endif
     return;
     
     // This is a stack-less TX-Done subroutine

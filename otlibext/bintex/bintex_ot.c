@@ -88,7 +88,7 @@ int bintex_fs(FILE* file, unsigned char* stream_out, int size) {
         test = bintex_iter_fq(file, &local);
         if (test < 0) break;
         
-#       ifdef DEBUG_ON
+#       ifdef __DEBUG__
         {
             int i;
             uint8_t* s;
@@ -130,7 +130,7 @@ int bintex_ss(unsigned char **string, unsigned char* stream_out, int size) {
         size   -= test;
         if (test < 0) break;
         
-#       ifdef DEBUG_ON
+#       ifdef __DEBUG__
         {
             int i;
             uint8_t* s;
@@ -175,7 +175,7 @@ int bintex_iter_sq(unsigned char **string, ot_queue* msg, int size) {
 
 
 // Input Parser Tester
-#ifdef DEBUG_ON
+#ifdef __DEBUG__
 int parsefile_main(int argc, char** argv) {
     FILE*   fp;
     ot_queue    msg;

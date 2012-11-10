@@ -27,13 +27,11 @@
 #ifndef __CC430_LIB_USCI_H
 #define __CC430_LIB_USCI_H
 
-
 #include "cc430_lib.h"
-
-
+#ifdef __CC430__
 
 // Not yet implemented
 
 
 #endif
-
+#endif

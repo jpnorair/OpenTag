@@ -14,6 +14,7 @@
 #include "cc430_pmm.h"
 #include "cc430_lib.h"
 
+#ifdef __CC430__
 
 void SetVCoreUp (unsigned char level)        // Note: change level by one step only
 {
@@ -134,7 +135,7 @@ void PMM_EnterLPM3(void) {
 ///@note This seems to work OK with JTAG connected.  I have not tested
 ///      it with Spy-Bi-Wire
 
-#if ( defined(DEBUG_ON) || defined(__DEBUG__) )
+#if (defined(__DEBUG__) )
 #   define _DEBUG_ON_PORTJ  1
 #else
 #   define _DEBUG_ON_PORTJ  0
@@ -181,3 +182,4 @@ void PMM_EnterLPM5(void) {
 }
 */
 
+#endif

@@ -16,7 +16,7 @@
 /**
   * @file       /otplatform/msp430f5/mpipe_usbcdc_MSP430F55xx.c
   * @author     JP Norair
-  * @version    R102
+  * @version    R103
   * @date       1 Nov 2012
   * @brief      Message Pipe (MPIPE) USB Virtual COM implementation for MSP430F55xx
   * @defgroup   MPipe (Message Pipe)
@@ -88,7 +88,7 @@ tty_struct tty;
 /** If this function gets executed, it's a sign that the output of the USB PLL 
   * has failed.
   */
-void USB_handleClockEvent () {
+void usbevt_pllerror () {
 }
 
 
@@ -97,13 +97,13 @@ void USB_handleClockEvent () {
   * been applied to the VBUS pin.  It returns True in order to wake the CPU,
   * which is likely asleep while waiting for the USB cable to be attached.
   */
-void USB_handleVbusOnEvent () {
+void usbevt_vbuson () {
 /// The standard code turns-on the USB subsystem and generates a rising edge
 /// on DP (D+) via reset-connect, which causes the host to enumerate this 
 /// device as a 12 Mbps USB Full Speed Device.
-    if (USB_enable() == kUSB_succeed){
-        USB_reset();
-        USB_connect();
+    if (usb_enable() == kUSB_succeed){
+        usb_reset();
+        usb_connect();
     }
     if (mpipe.state == MPIPE_Null) {
         sys_resume();
@@ -115,7 +115,7 @@ void USB_handleVbusOnEvent () {
 /** If this function gets executed, it indicates that a valid voltage has just 
   * been removed from the VBUS pin.
   */
-void USB_handleVbusOffEvent (){
+void usbevt_vbusoff (){
 /// Call sys_halt() first and mpipe_disconnect() last, because this guarantees 
 /// that whatever happens in sys_halt() does not change the fact that we are 
 /// certain MPipe must be disconnected.  sys_halt() is not a sure-thing: some 
@@ -135,7 +135,7 @@ void USB_handleVbusOffEvent (){
   * useless, and unless you are a USB master with some kind of clever idea, 
   * just comment-it-out in usb_descriptors.h
   */
-void USB_handleResetEvent () {
+void usbevt_reset () {
 }
 
 
@@ -148,7 +148,7 @@ void USB_handleResetEvent () {
   * battery in which case you can keep going!).  The decision is up to your 
   * application code.
   */
-void USB_handleSuspendEvent () {
+void usbevt_suspend () {
 /// Call sys_halt() first and mpipe_close() & (mpipe.state = MPIPE_Null) last, 
 /// because this guarantees that whatever happens in sys_halt() does not change 
 /// the fact that we are certain MPipe must be suspended.  sys_halt() is not a 
@@ -175,7 +175,7 @@ void USB_handleSuspendEvent () {
   * For OpenTag, this routine calls sys_refresh() and platform_ot_preempt(), 
   * which gets everything back on-line, and in startup configuration.
   */
-void USB_handleResumeEvent () {
+void usbevt_resume () {
 #if (MPIPE_USB_REMWAKE)
 	if (mpipe.state == MPIPE_Null) {
 		mpipe.state = MPIPE_Idle;
@@ -193,7 +193,7 @@ void USB_handleResumeEvent () {
   * enumerated this device.  platform_wakeup() is called in case there is some
   * blocking process that's sleeping, waiting for enumeration (typical).
   */
-ot_u8 USB_handleEnumCompleteEvent () {
+ot_u8 usbevt_enumerate () {
 #if 1 //(MPIPE_USB_MANUAL_STANDBY == 0)
     mpipe.state = MPIPE_Idle;
     mpipe_open();
@@ -208,7 +208,7 @@ ot_u8 USB_handleEnumCompleteEvent () {
 /** This event indicates that data has been received for interface intfNum, but 
   * no data receive operation is underway.  This is typically unused.
   */
-void USBCDC_handleDataReceived (ot_u8 intfNum) {
+void usbcdcevt_rxdetect (ot_u8 intfNum) {
     //return True;
 }
 
@@ -217,7 +217,7 @@ void USBCDC_handleDataReceived (ot_u8 intfNum) {
 /** This event indicates that a send operation on interface intfNum has just 
   * been completed.  returns True to keep CPU awake
   */
-void USBCDC_handleSendCompleted (ot_u8 intfNum) {
+void usbcdcevt_txdone (ot_u8 intfNum) {
     mpipedrv_isr();
     //return True;
 }
@@ -227,7 +227,7 @@ void USBCDC_handleSendCompleted (ot_u8 intfNum) {
 /** This event indicates that a receive operation on interface intfNum has just 
   * been completed.
   */
-void USBCDC_handleReceiveCompleted (ot_u8 intfNum){
+void usbcdcevt_rxdone (ot_u8 intfNum){
     mpipedrv_isr();
     //return True;
 }
@@ -238,7 +238,7 @@ void USBCDC_handleReceiveCompleted (ot_u8 intfNum){
   * the host.  Line coding means baud rate, considering the TTY baud rate that
   * is being simulated by the USB CDC.
   */
-ot_u8 USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate) {
+ot_u8 usbcdcevt_set_linecoding (ot_u8 intfNum, ot_u32 lBaudrate) {
 #if 1 //(MPIPE_USB_MANUAL_STANDBY == 0)
     return False;
 
@@ -264,7 +264,7 @@ ot_u8 USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate) {
   * the host.  Line control is very similar to basic connection.  It has to do
   * with the pin voltage arrangement on connection.  It is not terribly useful.
   */
-void USBCDC_handleSetControlLineState (ot_u8 intfNum, ot_u8 lineState) {
+void usbcdcevt_set_ctlline (ot_u8 intfNum, ot_u8 lineState) {
 	//return False;
 }
 
@@ -302,13 +302,13 @@ ot_int mpipedrv_init(void* port_id) {
 	mpipe.alp.inq->back    -= 10;
     mpipe.alp.outq->back   -= 10;
     
-    USB_init();
-    //USB_disconnect();	//disconnect USB first
+    usb_init();
+    //usb_disconnect();	//disconnect USB first
 
     //See if we're already attached physically to USB, and if so, connect to it
     //Normally applications don't invoke the event handlers, but this is an exception.
     if (USBPWRCTL & USBBGVBV){
-        USB_handleVbusOnEvent();
+        usbevt_vbuson();
     }
 
     return 255;
@@ -329,7 +329,7 @@ void mpipedrv_standby() {
 #ifndef EXTF_mpipedrv_detach
 void mpipedrv_detach(void* port_id) {
     mpipe.state = MPIPE_Null;
-    USB_disconnect();
+    usb_disconnect();
 }
 #endif
 
@@ -397,7 +397,7 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
         data                        = mpipe.alp.outq->getcursor;            //data start
         mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;            //move queue past packet
         
-        USBCDC_sendData(data, scratch, CDC0_INTFNUM);
+        usbcdc_txdata(data, scratch, CDC0_INTFNUM);
 
         // Wait for the USB transmission to complete (optional).
         if (blocking) {
@@ -419,7 +419,7 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
     }
     if (mpipe.state == MPIPE_Idle) {
         q_empty(mpipe.alp.inq);
-        USBCDC_receiveData(mpipe.alp.inq->front, 6, CDC0_INTFNUM);
+        usbcdc_rxdata(mpipe.alp.inq->front, 6, CDC0_INTFNUM);
     }
 }
 #endif
@@ -441,7 +441,7 @@ void mpipedrv_isr() {
             payload_len            += MPIPE_FOOTERBYTES;
             mpipe.alp.inq->length   = payload_len + 6;
             
-            USBCDC_receiveData(payload_front, payload_len, CDC0_INTFNUM);
+            usbcdc_rxdata(payload_front, payload_len, CDC0_INTFNUM);
             mpipeevt_rxdetect(20);      // USB is fast: 20 ticks way more than enough
         }   break;
         

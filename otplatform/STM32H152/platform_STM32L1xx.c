@@ -334,7 +334,7 @@ platform_init_busclk()
 { 
     ///@todo enable RTC Clock
 
-#   ifdef DEBUG_ON
+#   ifdef __DEBUG__
     DBGMCU_Config(DBGMCU_SLEEP     |
                   DBGMCU_STOP      |
                   DBGMCU_STANDBY   |
@@ -679,7 +679,7 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
   * hooked up to LEDs, logic probes, etc.  There are 2 triggers defined
   * by default, but you could add more.
   */
-#ifdef DEBUG_ON
+#ifdef __DEBUG__
 void platform_trig1_high() {    }      //Green LED
 void platform_trig1_low() {     }
 void platform_trig1_toggle() {  }

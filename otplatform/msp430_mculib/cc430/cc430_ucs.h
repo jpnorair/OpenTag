@@ -27,9 +27,8 @@
 #ifndef __CC430_LIB_UCS_H
 #define __CC430_LIB_UCS_H
 
-
 #include "cc430_lib.h"
-
+#ifdef __CC430__
 
 //*************************************************************************
 //* MACROS
@@ -395,6 +394,6 @@ void UCS_ClearFlag(u16 FlagMask);
 
 
 
-
+#endif
 #endif
 

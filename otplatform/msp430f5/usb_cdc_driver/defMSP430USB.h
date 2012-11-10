@@ -171,12 +171,17 @@ typedef struct _tEDB {
     ot_u8 bEPSIZXY;                      //Endpoint XY Buffer Size
 } tEDB, *tpEDB;
 
+
+
 typedef struct _tEDB0 {
     ot_u8 bIEPCNFG;                      //Input Endpoint 0 Configuration Register
     ot_u8 bIEPBCNT;                      //Input Endpoint 0 Buffer Byte Count
     ot_u8 bOEPCNFG;                      //Output Endpoint 0 Configuration Register
     ot_u8 bOEPBCNT;                      //Output Endpoint 0 Buffer Byte Count
 } tEDB0, *tpEDB0;
+
+
+
 
 //EndPoint Desciptor Block Bits
 #define EPCNF_USBIE     0x04            //USB Interrupt on Transaction Completion. Set By MCU

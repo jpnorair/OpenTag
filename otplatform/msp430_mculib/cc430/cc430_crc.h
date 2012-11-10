@@ -29,7 +29,7 @@
 
 #include "cc430_map.h"
 
-
+#ifdef __CC430__
 
 #define CRC_DIR_FORWARD         ((u16)0x0000)
 #define CRC_DIR_REVERSE         ((u16)0xFFFF)
@@ -45,3 +45,4 @@ u16 CRC_Result( u16 direction );
 
 #endif
 
+#endif

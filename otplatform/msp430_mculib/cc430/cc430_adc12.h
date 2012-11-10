@@ -29,6 +29,8 @@
 
 #include "cc430_map.h"
 
+#ifdef __CC430__
+
 #define ADC_CTL0_SHT1_4     (0 << 12)
 #define ADC_CTL0_SHT1_8     (1 << 12)
 #define ADC_CTL0_SHT1_16    (2 << 12)
@@ -225,7 +227,7 @@
 
 
 
-
+#endif
 
 
 #endif

@@ -21,6 +21,8 @@
   * @brief      Board Configuration for WizziMote/WizziKit (CC430)
   * @ingroup    Platform
   *
+  * !!! UNTESTED !!! UNTESTED !!! UNTESTED !!! UNTESTED !!! UNTESTED !!!
+  *
   * Do not include this file, include OT_platform.h
   ******************************************************************************
   */
@@ -201,7 +203,7 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
     u8 i;
 
-#if (defined(DEBUG_ON) || defined(__DEBUG__))
+#if (defined(__DEBUG__))
 #   define _DEBUG_ON_PORTJ  1
     PJDIR = 0x00;
 #else

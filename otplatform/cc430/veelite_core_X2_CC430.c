@@ -77,14 +77,14 @@
 
 /// VLX2 Debugging
 /// This driver is quite stable, so debugging features are not implemented
-/// even when DEBUG_ON is active
-#ifdef DEBUG_ON
-//#   define VLX2_DEBUG_ON
+/// even when __DEBUG__ is active
+#ifdef __DEBUG__
+//#   define _VLX2_DEBUG
 #endif
 
 /// Set Segmentation Fault (code 11) if trying to access an invalid virtual
 /// address.  Vector to User NMI (CC430 Specific)
-#if (defined VLX2_DEBUG_ON)
+#if (defined _VLX2_DEBUG)
 #   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
         do { \
             if (vas_check(ADDR) != BANK) { \
@@ -98,7 +98,7 @@
 
 /// Set Bus Error (code 7) on physical flash access faults (X2table errors).
 /// Vector to Access Violation ISR (CC430 Specific)
-#if defined(VLX2_DEBUG_ON)
+#if defined(_VLX2_DEBUG)
 #   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
         do { \
             if (EXPR) FLASH->CTL3 |= ACCVIFG; \
@@ -346,7 +346,7 @@ ot_u8 vworm_init( ) {
 
 #ifndef EXTF_vworm_print_table
 void vworm_print_table() {
-#ifdef VLX2_DEBUG_ON
+#ifdef _VLX2_DEBUG
 //    ot_int i;
 //
 //    printf("VWORM X2table: Primaries\n");

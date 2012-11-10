@@ -102,7 +102,7 @@ extern "C" {
 #include <stdint.h>
 
 
-//#define DEBUG_ON
+//#define __DEBUG__
 
 
 
@@ -192,7 +192,7 @@ int bintex_iter_sq(unsigned char** string, ot_queue* msg, int size);
 
 
 // Input Parser Tester
-#ifdef DEBUG_ON
+#ifdef __DEBUG__
 int main(int argc, char** argv);
 #endif
 

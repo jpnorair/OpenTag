@@ -171,6 +171,19 @@ void app_init() {
 
 
 
+#ifdef EXTF_sys_sig_powerdown
+void sys_sig_powerdown(ot_int code) {
+///go into LPM1 and don't disable SMCLK: known safe
+    __bis_SR_register(0x58);
+    __no_operation();
+}
+
+#else
+#   warn "The early RF430 prototype chips have problems going into LPM2, 3, or 4."
+#endif
+
+
+
 
 
 

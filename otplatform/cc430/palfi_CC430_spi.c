@@ -30,7 +30,8 @@
 
 #include "OT_platform.h"
 
-#if (defined(__CC430__) && OT_FEATURE(PALFI) == ENABLED))
+#if (defined(__CC430__))
+#if (OT_FEATURE(PALFI))
 
 #include "buffers.h"
 #include "palfi.h"
@@ -227,5 +228,6 @@ void palfidrv_data_isr() {
 
 
 
+#endif
 #endif
 

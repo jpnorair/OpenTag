@@ -44,7 +44,7 @@
 #include "queue.h"
 
 
-//#ifdef DEBUG_ON
+//#ifdef __DEBUG__
 // Place for Debug stuff (not used currently)
 //#endif
 
@@ -475,7 +475,7 @@ void m2advp_close() {
 #if (0) //ifndef EXTF_m2advp_init_flood
 ot_int m2advp_init_flood(m2session* session, advert_tmpl* adv_tmpl) {
 #if (SYS_FLOOD == ENABLED) 
-#   ifdef DEBUG_ON
+#   ifdef _NETWORK_DEBUG
         // Bug catcher
         if (adv_tmpl->duration > (32767 /* -RADIO_TURNON_LAG */ )) {
             //OT_LOGFAIL();

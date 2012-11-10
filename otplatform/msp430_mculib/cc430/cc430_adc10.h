@@ -29,6 +29,7 @@
 
 #include "cc430_adc12.h"
 
+#ifdef __CC430__
 
 
 #undef ADC_CTL0_SHT1_4     
@@ -118,7 +119,7 @@
 
 
 
-
+#endif
 
 #endif
 

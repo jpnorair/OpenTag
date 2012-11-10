@@ -23,7 +23,7 @@
   */
 
 
-#ifdef DEBUG_ON
+#if (defined(__DEBUG__) || defined(__PROTO__))
 /// The ID's are written as FFF... so that the OpenTag startup routine can write
 /// a derived ID to them without any kind of flash wear-leveling
 #   define __VID    0xFF, 0xFF

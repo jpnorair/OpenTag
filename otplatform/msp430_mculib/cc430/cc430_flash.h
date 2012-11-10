@@ -47,8 +47,9 @@
 #ifndef __CC430_LIB_FLASH_H
 #define __CC430_LIB_FLASH_H
 
-
 #include "cc430_map.h"
+
+#ifdef __CC430__
 
 
 typedef enum {
@@ -356,4 +357,7 @@ u8 FLASH_ProgramBlock( u32* Address, u32* Data, u16 Length);
 
 
 #endif
+
+#endif
+
 

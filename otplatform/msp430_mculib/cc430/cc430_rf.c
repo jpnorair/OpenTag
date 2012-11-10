@@ -24,13 +24,12 @@
   ******************************************************************************
   */
 
+#include "cc430_lib.h"
+
+#ifdef __CC430__
 
 // Workaround for the delay slot: assumes 19.97 MHz (20 MHz)
-#define CLOCKS_PER_1us	20
-
-
-
-#include "cc430_lib.h"
+#define CLOCKS_PER_1us  20
 
 
 /* --------------- RF Private Function Prototypes ----------------- */
@@ -571,3 +570,7 @@ u8 RF_Instruction( u8 Instr, u8 ReadBytes, u8* InputByte, u8* OutputData ) {
     return status;
 }
 */
+
+#endif
+
+

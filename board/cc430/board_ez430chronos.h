@@ -21,6 +21,8 @@
   * @brief      Board Configuration for TI ez430 Chronos Watch board
   * @ingroup    Platform
   *
+  * !!! UNTESTED !!! UNTESTED !!! UNTESTED !!! UNTESTED !!! UNTESTED !!!
+  *
   * Do not include this file, include OT_platform.h
   *
   * Specifically, this board is from the TI ez430 Chronos Dev Kit.  It can be 
@@ -29,7 +31,7 @@
   * http://processors.wiki.ti.com/index.php?title=EZ430-Chronos
   ******************************************************************************
   */
-  
+
 
 #ifndef __board_chronos_H
 #define __board_chronos_H
@@ -176,7 +178,7 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
     u8 i;
 
-#if (defined(DEBUG_ON) || defined(__DEBUG__))
+#if (defined(__DEBUG__))
 #   define _DEBUG_ON_PORTJ  1
     PJDIR = 0x00;
 #else

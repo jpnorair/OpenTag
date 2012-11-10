@@ -182,6 +182,11 @@
 			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_panic.c</locationURI>
 		</link>
 		<link>
+			<name>applets/sys_sig_powerdown_[msp430slow].c</name>
+			<type>1</type>
+			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/sys_sig_powerdown_%5Bmsp430slow%5D.c</locationURI>
+		</link>
+		<link>
 			<name>applets/udp_querytoken.c</name>
 			<type>1</type>
 			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_capi/udp_querytoken.c</locationURI>
@@ -210,6 +215,11 @@
 			<name>otradio/cc1101</name>
 			<type>2</type>
 			<location>B:/otradio/cc1101</location>
+		</link>
+		<link>
+			<name>otradio/cc430</name>
+			<type>2</type>
+			<location>B:/otradio/cc430</location>
 		</link>
 	</linkedResources>
 	<variableList>

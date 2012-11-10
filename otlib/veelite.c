@@ -585,7 +585,7 @@ ot_u8 vl_close( vlFILE* fp ) {
 
 #ifndef EXTF_vl_checklength
 ot_uint vl_checklength( vlFILE* fp ) {
-#   ifdef DEBUG_ON
+#   ifdef _VL_DEBUG
         return (fp->read != NULL) ? fp->length : 0;
 #   else
         return fp->length;
@@ -597,7 +597,7 @@ ot_uint vl_checklength( vlFILE* fp ) {
 
 #ifndef EXTF_vl_checkalloc
 ot_uint vl_checkalloc( vlFILE* fp ) {
-#   ifdef DEBUG_ON
+#   ifdef _VL_DEBUG
         return (fp->read != NULL) ? fp->alloc : 0;
 #   else
         return fp->alloc;

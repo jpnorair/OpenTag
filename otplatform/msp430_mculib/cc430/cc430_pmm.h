@@ -29,6 +29,8 @@
 
 #include "cc430_map.h"
 
+#ifdef __CC430__
+
 #define PMM_VCore   PMM_Vcore
 
 typedef enum {
@@ -192,3 +194,7 @@ void PMM_EnterLPM4(void);
 
 
 #endif /* __PMM */
+
+#endif
+
+

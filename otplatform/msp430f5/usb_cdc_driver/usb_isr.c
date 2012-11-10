@@ -73,61 +73,76 @@
   */
 
 
-void PWRVBUSonHandler(void) {
-    volatile unsigned int i;
-    for (i =0; i < USB_MCLK_FREQ/1000*1/10; i++);          // waiting till voltage will be stable (1ms delay)
-    USBKEYPID =  0x9628;                // set KEY and PID to 0x9628 -> access to configuration registers enabled
-    USBPWRCTL |= VBOFFIE;               // enable interrupt VBUSoff
-    USBPWRCTL &= ~ (VBONIFG + VBOFFIFG);             // clean int flag (bouncing)
-    USBKEYPID =  0x9600;                // access to configuration registers disabled
+void usbisr_vbuson(void) {
+    //volatile unsigned int i;
+    // waiting till voltage will be stable (1ms delay)
+    //for (i=0; i < USB_MCLK_FREQ/1000*1/10; i++);          
+    platform_swdelay_ms(1);
+    
+    USBKEYPID   = 0x9628;                   // set KEY and PID to 0x9628 -> access to configuration registers enabled
+    USBPWRCTL  |= VBOFFIE;                  // enable interrupt VBUSoff
+    USBPWRCTL  &= ~(VBONIFG + VBOFFIFG);    // clean int flag (bouncing)
+    USBKEYPID   = 0x9600;                   // access to configuration registers disabled
 }
 
 
-void PWRVBUSoffHandler(void) {
-	volatile unsigned int i;
-    for (i =0; i < USB_MCLK_FREQ/1000*1/10; i++); // 1ms delay
+void usbisr_vbusoff(void) {
+    //volatile unsigned int i;
+    //for (i =0; i < USB_MCLK_FREQ/1000*1/10; i++); // 1ms delay
+    platform_swdelay_ms(1);
+    
     if (!(USBPWRCTL & USBBGVBV)) {
-    	USBKEYPID   =    0x9628;        // set KEY and PID to 0x9628 -> access to configuration registers enabled
-        bEnumerationStatus = 0x00;      // device is not enumerated
-    	bFunctionSuspended = False;     // device is not suspended
-    	USBCNF     =    0;              // disable USB module
-    	USBPLLCTL  &=  ~UPLLEN;         // disable PLL
-    	USBPWRCTL &= ~(VBOFFIE + VBOFFIFG + SLDOEN);          // disable interrupt VBUSoff
-    	USBKEYPID   =    0x9600;        // access to configuration registers disabled
+        USBKEYPID           = 0x9628;        // set KEY and PID to 0x9628 -> access to configuration registers enabled
+        usbctl.status       = 0;
+        USBCNF              = 0;              // disable USB module
+        USBPLLCTL          &= ~UPLLEN;         // disable PLL
+        USBPWRCTL          &= ~(VBOFFIE + VBOFFIFG + SLDOEN);          // disable interrupt VBUSoff
+        USBKEYPID           = 0x9600;        // access to configuration registers disabled
     }
 }
 
 
 
-void IEP0InterruptHandler(void) {
-    USBCTL |= FRSTE;                              // Function Reset Connection Enable
-    tEndPoint0DescriptorBlock.bOEPBCNT = 0x00;     
-    if(bStatusAction == STATUS_ACTION_DATA_IN) {
-	    usbSendNextPacketOnIEP0();
+void usbisr_ep0in(void) {
+    ot_u8 stall_flag;
+
+    // Function Reset Connection Enable
+    USBCTL                 |= FRSTE;
+    dblock_ep0.bOEPBCNT     = 0x00;
+    stall_flag              = (usbctl.action != ACTION_data_in) << 3;
+    dblock_ep0.bIEPCNFG    |= stall_flag;
+    
+    if (stall_flag == 0) {
+        usbcmd_txnext_ep0();
     }
-    else {
-        tEndPoint0DescriptorBlock.bIEPCNFG |= EPCNF_STALL; // no more data
-    }
+    //else {
+    //    dblock_ep0.bIEPCNFG |= EPCNF_STALL; // no more data
+    //}
 }
 
 
 
-//void OEP0InterruptHandler(void) {
-ot_u8 OEP0InterruptHandler(void) {
+ot_u8 usbisr_ep0out(void) {
     //ot_u8 bWakeUp = False;
-    USBCTL |= FRSTE;                              // Function Reset Connection Enable
-    tEndPoint0DescriptorBlock.bIEPBCNT = 0x00;    
-    if (bStatusAction == STATUS_ACTION_DATA_OUT) {
-        usbReceiveNextPacketOnOEP0();
-        if (bStatusAction == STATUS_ACTION_NOTHING) {
-            if (tSetupPacket.bRequest == USB_CDC_SET_LINE_CODING) {
-                return Handler_SetLineCoding();
-            }
-      	}
+    ot_u8 stall_flag;
+    
+    // Function Reset Connection Enable
+    USBCTL                 |= FRSTE;
+    dblock_ep0.bIEPBCNT     = 0x00;
+    stall_flag              = (usbctl.action != ACTION_data_out) << 3;
+    dblock_ep0.bOEPCNFG    |= stall_flag;
+    
+    if (stall_flag == 0) {
+        usbcmd_rxnext_ep0();
+        if ((usbctl.action == ACTION_nothing) \
+        && (dblock_setup.bRequest == USB_CDC_SET_LINE_CODING)) {
+            return usbcdc_activate_linecoding();
+        }
     }
-    else {
-	    tEndPoint0DescriptorBlock.bOEPCNFG |= EPCNF_STALL; // no more data
-    }
+    //else {
+    //     dblock_ep0.bOEPCNFG |= EPCNF_STALL; // no more data
+    //}
+    
     //return (bWakeUp);
     return False;
 }
@@ -136,43 +151,37 @@ ot_u8 OEP0InterruptHandler(void) {
 
 
 
-ot_u8 SetupPacketInterruptHandler(void) {
+ot_u8 usbisr_setuppkt(void) {
     ot_u8 bTemp;
     ot_u8 bWakeUp = False;
-    USBCTL |= FRSTE;      // Function Reset Connection Enable - set enable after first setup packet was received
+    
+    // Function Reset Connection Enable - set enable after first setup packet was received
+    USBCTL |= FRSTE;      
 
     //usbProcessNewSetupPacket:
-    SetupPacketInterruptHandler_newpacket:
+    usbisr_setuppkt_NEWPKT:
     
     // copy the MSB of bmRequestType to DIR bit of USBCTL
-    if ((tSetupPacket.bmRequestType & USB_REQ_TYPE_INPUT)) {
-    	USBCTL |= DIR;
-    }
-    else {
-    	USBCTL &= ~DIR;
-    }
-
-    //{
-    //	ot_u16 dir_bit;
-    //	dir_bit = (tSetupPacket.bmRequestType & USB_REQ_TYPE_INPUT) >> 7;
-    //	USBCTL |= dir_bit;
-    //	USBCTL &= (dir_bit-2);
-    //}
+    // bit 0 is the DIR: 1=IN, 0=OUT
+    // note that 1-2 = 0xFF in 8 bit logic, and 0-2 = 0xFE
+    bTemp   = ((dblock_setup.bmRequestType & USB_REQ_TYPE_INPUT) != 0);
+    USBCTL |= bTemp;
+    USBCTL &= (bTemp-2);
     
-
-    bStatusAction = STATUS_ACTION_NOTHING;
     // clear out return data buffer
+    usbctl.action = ACTION_nothing;
     for (bTemp=0; bTemp<USB_RETURN_DATA_LENGTH; bTemp++) {
-    	abUsbRequestReturnData[bTemp] = 0x00;
+        usbctl.response[bTemp] = 0x00;
     }
+    
     // decode and process the request
-    bWakeUp = usbDecodeAndProcessUsbRequest();
+    bWakeUp = usbproc_parse_request();
     
     // check if there is another setup packet pending
     // if it is, abandon current one by NAKing both data endpoint 0
     if((USBIFG & STPOWIFG) != 0x00) {
-    	USBIFG &= ~(STPOWIFG | SETUPIFG);
-    	goto SetupPacketInterruptHandler_newpacket;
+        USBIFG &= ~(STPOWIFG | SETUPIFG);
+        goto usbisr_setuppkt_NEWPKT;
     }
     
     return bWakeUp;
@@ -191,11 +200,11 @@ ot_u8 platform_isr_usb (void) {
     ot_u8 bWakeUp = FALSE;
     
     if (USBIFG & SETUPIFG) {
-        bWakeUp = SetupPacketInterruptHandler();
+        bWakeUp = usbisr_setuppkt();
         USBIFG &= ~SETUPIFG;    // clear the interrupt bit
     }
     
-    switch (__even_in_range(USBVECINT & 0x3f, USBVECINT_OUTPUT_ENDPOINT7)) {
+    switch (__even_in_range(USBVECINT, USBVECINT_OUTPUT_ENDPOINT7)) {
         case USBVECINT_NONE:        break;
 
         case USBVECINT_PWR_DROP:    //__no_operation();
@@ -204,63 +213,72 @@ ot_u8 platform_isr_usb (void) {
         case USBVECINT_PLL_LOCK:    break;
         case USBVECINT_PLL_SIGNAL:  break;
         
-#		if (USBEVT_MASK & USBEVT_CLOCKFAULT)
-        case USBVECINT_PLL_RANGE:   USB_handleClockEvent();
-                                    break;
-#		endif
+#       if (USBEVT_MASK & USBEVT_CLOCKFAULT)
+        case USBVECINT_PLL_RANGE:
+            usbevt_pllerror();
+            break;
+#       endif
         
-        case USBVECINT_PWR_VBUSOn:  PWRVBUSonHandler();
-#									if (USBEVT_MASK & USBEVT_VBUSON)
-                                    USB_handleVbusOnEvent();
-#									endif
-                                    break;
+        case USBVECINT_PWR_VBUSOn:  
+            usbisr_vbuson();
+#           if (USBEVT_MASK & USBEVT_VBUSON)
+                usbevt_vbuson();
+#           endif
+            break;
         
-        case USBVECINT_PWR_VBUSOff: PWRVBUSoffHandler();
-#									if (USBEVT_MASK & USBEVT_VBUSOFF)
-                                    USB_handleVbusOffEvent();
-#									endif
-                                    break;
+        case USBVECINT_PWR_VBUSOff: 
+            usbisr_vbusoff();
+#           if (USBEVT_MASK & USBEVT_VBUSOFF)
+                usbevt_vbusoff();
+#           endif
+            break;
         
         case USBVECINT_USB_TIMESTAMP: break;
         
-        case USBVECINT_INPUT_ENDPOINT0: IEP0InterruptHandler();
-                                        break;
+        case USBVECINT_INPUT_ENDPOINT0: 
+            usbisr_ep0in();
+            break;
                                         
-        case USBVECINT_OUTPUT_ENDPOINT0: bWakeUp = OEP0InterruptHandler();
-                                        break;
+        case USBVECINT_OUTPUT_ENDPOINT0: 
+            bWakeUp = usbisr_ep0out();
+            break;
         
-        case USBVECINT_RSTR:        USB_reset();
-#									if (USBEVT_MASK & USBEVT_RESET)
-                                    USB_handleResetEvent();
-#									endif
-                                    break;
+        case USBVECINT_RSTR:        
+            usb_reset();
+#           if (USBEVT_MASK & USBEVT_RESET)
+                usbevt_reset();
+#           endif
+            break;
         
-        case USBVECINT_SUSR:        USB_suspend();
-#									if (USBEVT_MASK & USBEVT_SUSPEND)
-                                    USB_handleSuspendEvent();
-#									endif
-                                    break;
+        case USBVECINT_SUSR:        
+            usb_suspend();
+#           if (USBEVT_MASK & USBEVT_SUSPEND)
+                usbevt_suspend();
+#           endif
+            break;
         
-        case USBVECINT_RESR:        USB_resume();
-#									if (USBEVT_MASK & USBEVT_RESUME)
-                                    USB_handleResumeEvent();
-#									endif
-                                    //bWakeUp = TRUE;		//Always wake on resume
-                                    break;
+        case USBVECINT_RESR:        
+            usb_resume();
+#           if (USBEVT_MASK & USBEVT_RESUME)
+                usbevt_resume();
+#           endif
+            //bWakeUp = TRUE;       //Always wake on resume
+            break;
         
-        case USBVECINT_SETUP_PACKET_RECEIVED:   // NAK both IEP and OEP enpoints
-                                    tEndPoint0DescriptorBlock.bIEPBCNT = EPBCNT_NAK;
-                                    tEndPoint0DescriptorBlock.bOEPBCNT = EPBCNT_NAK;
-                                    bWakeUp = SetupPacketInterruptHandler();
-                                    break;
+        case USBVECINT_SETUP_PACKET_RECEIVED:   
+            // NAK both IEP and OEP enpoints
+            dblock_ep0.bIEPBCNT = EPBCNT_NAK;
+            dblock_ep0.bOEPBCNT = EPBCNT_NAK;
+            bWakeUp             = usbisr_setuppkt();
+            break;
         
         case USBVECINT_STPOW_PACKET_RECEIVED: break;
         
         case USBVECINT_INPUT_ENDPOINT1: break;
-
-        case USBVECINT_INPUT_ENDPOINT2: //bWakeUp = CdcToHostFromBuffer(CDC0_INTFNUM);
-                                        CdcToHostFromBuffer(CDC0_INTFNUM);
-        	                            break;
+        case USBVECINT_INPUT_ENDPOINT2: 
+            //bWakeUp = CdcToHostFromBuffer(CDC0_INTFNUM);
+            usbcdc_transfer_buf2host(CDC0_INTFNUM);
+            break;
                                     
         case USBVECINT_INPUT_ENDPOINT3: break;
         case USBVECINT_INPUT_ENDPOINT4: break;
@@ -269,10 +287,10 @@ ot_u8 platform_isr_usb (void) {
         case USBVECINT_INPUT_ENDPOINT7: break;
 
         case USBVECINT_OUTPUT_ENDPOINT1: break;
-
-        case USBVECINT_OUTPUT_ENDPOINT2: //bWakeUp = CdcToBufferFromHost(CDC0_INTFNUM);
-                                        CdcToBufferFromHost(CDC0_INTFNUM);
-            						    break;
+        case USBVECINT_OUTPUT_ENDPOINT2: 
+            //bWakeUp = CdcToBufferFromHost(CDC0_INTFNUM);
+            usbcdc_transfer_host2buf(CDC0_INTFNUM);
+            break;
             
         case USBVECINT_OUTPUT_ENDPOINT3: break;
         case USBVECINT_OUTPUT_ENDPOINT4: break;

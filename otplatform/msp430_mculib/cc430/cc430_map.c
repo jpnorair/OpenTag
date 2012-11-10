@@ -26,6 +26,7 @@
 
 #include "cc430_map.h"
 
+#ifdef __CC430__
 
 /******************************************************************************/
 /*                 Port Lists for Init and Port Grounding                     */
@@ -53,4 +54,4 @@ const u8* cc430_pdir_list[CC430_TOTAL_PORTS] = {
     (u8*)0x0324      //Port J DDIR
 };
 
-
+#endif

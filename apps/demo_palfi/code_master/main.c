@@ -121,10 +121,6 @@ void sub_trig4_toggle();
 #define APP_BUTTON_POL      0
 
 
-
-
-
-
 /** LED routines, plus a process to show that initialization has succeeded <BR>
   * ===========================================================================
   * The RX and TX indicators are part of the mainline platform code.  All boards
@@ -137,8 +133,6 @@ void sub_trig3_toggle() {  APP_TRIG3_PORT->DOUT ^= APP_TRIG3_PIN; }
 void sub_trig4_high() {    APP_TRIG4_PORT->DOUT |= APP_TRIG4_PIN; }
 void sub_trig4_low() {     APP_TRIG4_PORT->DOUT &= ~APP_TRIG4_PIN; }
 void sub_trig4_toggle() {  APP_TRIG4_PORT->DOUT ^= APP_TRIG4_PIN; }
-
-
 
 void sub_trig_init() {
 #if (APP_TRIG3_PORTNUM == APP_TRIG4_PORTNUM)
@@ -153,17 +147,9 @@ void sub_trig_init() {
 }
 
 
-
 /// USB Stick
 #elif defined(BOARD_RF430USB_5509)
 #include "_patch_5509stick/extf_code.c"
-
-void sub_trig3_high()   { }
-void sub_trig3_low()    { }
-void sub_trig3_toggle() { }
-void sub_trig4_high()   { }
-void sub_trig4_low()    { }
-void sub_trig4_toggle() { }
 
 void sub_trig_init() {
 /// Configure Timer1 Pin to generate small duty cycle on LED pin.  Amazingly,
@@ -178,6 +164,9 @@ void sub_trig_init() {
 
 void sub_button_init()  { }
 
+
+#elif defined(BOARD_AG430DK_GW1)
+void sub_trig_init() { }
 
 
 #else

@@ -27,10 +27,8 @@
 #ifndef __CC430_LIB_RF_H
 #define __CC430_LIB_RF_H
 
-
-
 #include "cc430_map.h"
-
+#ifdef __CC430__
 
 
 // CC430 RSSI OFFSET (Always 74)
@@ -777,4 +775,4 @@ u8 RF_Instruction( u8 Instr, u8 ReadBytes, u8* InputByte, u8* OutputData );
  */
 
 #endif
-
+#endif

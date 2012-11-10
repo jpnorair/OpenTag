@@ -156,7 +156,7 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
-#   if (defined(DEBUG_ON) || defined(__DEBUG__))
+#   if (defined(__DEBUG__))
 #   else
     PJDIR = 0xFF;
     PJOUT = 0x00;
@@ -164,11 +164,8 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
     
     GPIO12->DDIR    = 0xFFFF;
     GPIO34->DDIR    = 0xFFFF;
-    GPIO56->DDIR    = 0xFFFF;
-    
     GPIO12->DOUT    = 0x0000;
     GPIO34->DOUT    = 0x0000;
-    GPIO56->DOUT    = 0x0000;
 }
 
 

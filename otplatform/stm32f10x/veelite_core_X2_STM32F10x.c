@@ -114,8 +114,8 @@ ot_u8 NAND_write_short(ot_u16* addr, ot_u16 data) {
 
 /// VLX2 Debugging
 /// This driver is quite stable, so debugging features are not implemented
-/// even when DEBUG_ON is active
-#ifdef DEBUG_ON
+/// even when __DEBUG__ is active
+#ifdef __DEBUG__
 //#   define VLX2_DEBUG_ON
 #endif
 

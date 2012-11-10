@@ -143,7 +143,7 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
     GPIO34->DDIR    = 0xFFFF;
     GPIO56->DDIR    = 0xFFFF; //^ (BOARD_LFXT_PINS | BOARD_HFXT_PINS);
     
-#   if (defined(DEBUG_ON) || defined(__DEBUG__))
+#   if (defined(__DEBUG__))
 #   else
     PJDIR = 0xFF;
     PJOUT = 0x00;

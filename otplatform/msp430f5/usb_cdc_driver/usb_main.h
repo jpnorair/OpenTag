@@ -200,90 +200,115 @@
 
 /*
 #if defined(__IAR_SYSTEMS_ICC__) || (__TI_COMPILER_VERSION__)
-extern __no_init tDEVICE_REQUEST __data16 tSetupPacket;
-extern __no_init ot_u8 __data16 abIEP0Buffer[];
-extern __no_init ot_u8 __data16 abOEP0Buffer[];
-extern __no_init ot_u8 __data16 pbXBufferAddressEp1[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp1[];
-extern __no_init ot_u8 __data16 pbXBufferAddressEp81[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp81[];
-extern __no_init ot_u8 __data16 pbXBufferAddressEp2[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp2[];
-extern __no_init ot_u8 __data16 pbXBufferAddressEp82[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp82[];
+extern __no_init usbreq_struct __data16 dblock_setup;
+extern __no_init ot_u8 __data16 abuf_ep0in[];
+extern __no_init ot_u8 __data16 abuf_ep0out[];
+extern __no_init ot_u8 __data16 xbuf_ep1[];
+extern __no_init ot_u8 __data16 ybuf_ep1[];
+extern __no_init ot_u8 __data16 xbuf_ep81[];
+extern __no_init ot_u8 __data16 ybuf_ep81[];
+extern __no_init ot_u8 __data16 xbuf_ep2[];
+extern __no_init ot_u8 __data16 ybuf_ep2[];
+extern __no_init ot_u8 __data16 xbuf_ep82[];
+extern __no_init ot_u8 __data16 ybuf_ep82[];
 
-extern __no_init ot_u8 __data16 pbXBufferAddressEp3[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp3[];
-extern __no_init ot_u8 __data16 pbXBufferAddressEp83[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp83[];
+extern __no_init ot_u8 __data16 xbuf_ep3[];
+extern __no_init ot_u8 __data16 ybuf_ep3[];
+extern __no_init ot_u8 __data16 xbuf_ep83[];
+extern __no_init ot_u8 __data16 ybuf_ep83[];
 
-extern __no_init ot_u8 __data16 pbXBufferAddressEp4[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp4[];
-extern __no_init ot_u8 __data16 pbXBufferAddressEp84[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp84[];
+extern __no_init ot_u8 __data16 xbuf_ep4[];
+extern __no_init ot_u8 __data16 ybuf_ep4[];
+extern __no_init ot_u8 __data16 xbuf_ep84[];
+extern __no_init ot_u8 __data16 ybuf_ep84[];
 
-extern __no_init ot_u8 __data16 pbXBufferAddressEp5[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp5[];
-extern __no_init ot_u8 __data16 pbXBufferAddressEp85[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp85[];
+extern __no_init ot_u8 __data16 xbuf_ep5[];
+extern __no_init ot_u8 __data16 ybuf_ep5[];
+extern __no_init ot_u8 __data16 xbuf_ep85[];
+extern __no_init ot_u8 __data16 ybuf_ep85[];
 
 
-extern __no_init ot_u8 __data16 pbXBufferAddressEp6[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp6[];
-extern __no_init ot_u8 __data16 pbXBufferAddressEp86[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp86[];
+extern __no_init ot_u8 __data16 xbuf_ep6[];
+extern __no_init ot_u8 __data16 ybuf_ep6[];
+extern __no_init ot_u8 __data16 xbuf_ep86[];
+extern __no_init ot_u8 __data16 ybuf_ep86[];
 
-extern __no_init ot_u8 __data16 pbXBufferAddressEp7[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp7[];
-extern __no_init ot_u8 __data16 pbXBufferAddressEp87[];
-extern __no_init ot_u8 __data16 pbYBufferAddressEp87[];
+extern __no_init ot_u8 __data16 xbuf_ep7[];
+extern __no_init ot_u8 __data16 ybuf_ep7[];
+extern __no_init ot_u8 __data16 xbuf_ep87[];
+extern __no_init ot_u8 __data16 ybuf_ep87[];
 
 #else // More direct (and more compatible) version of the above
 */
-#   define tSetupPacket                     (*((tDEVICE_REQUEST*)0x2380))
-#   define tEndPoint0DescriptorBlock        (*((tEDB0*)0x0920))
-#   define tInputEndPointDescriptorBlock    ((tEDB*)0x23C8)                 //Size = 7
-#   define tOutputEndPointDescriptorBlock   ((tEDB*)0x2388)                 //Size = 7
-#   define abIEP0Buffer                     ((u8*)0x2378)                   //Size = EP0_MAX_PACKET_SIZE
-#   define abOEP0Buffer                     ((u8*)0x2370)                   //Size = EP0_MAX_PACKET_SIZE
-#   define pbXBufferAddressEp1              ((u8*)OEP1_X_BUFFER_ADDRESS)    //Size = EP_MAX_PACKET_SIZE
-#   define pbYBufferAddressEp1              ((u8*)OEP1_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp81             ((u8*)IEP1_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp81             ((u8*)IEP1_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp2              ((u8*)OEP2_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp2              ((u8*)OEP2_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp82             ((u8*)IEP2_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp82             ((u8*)IEP2_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp3              ((u8*)OEP3_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp3              ((u8*)OEP3_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp83             ((u8*)IEP3_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp83             ((u8*)IEP3_Y_BUFFER_ADDRESS) 
-#   define pbXBufferAddressEp4              ((u8*)OEP4_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp4              ((u8*)OEP4_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp84             ((u8*)IEP4_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp84             ((u8*)IEP4_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp5              ((u8*)OEP5_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp5              ((u8*)OEP5_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp85             ((u8*)IEP5_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp85             ((u8*)IEP5_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp6              ((u8*)OEP6_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp6              ((u8*)OEP6_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp86             ((u8*)IEP6_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp86             ((u8*)IEP6_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp7              ((u8*)OEP7_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp7              ((u8*)OEP7_Y_BUFFER_ADDRESS)
-#   define pbXBufferAddressEp87             ((u8*)IEP7_X_BUFFER_ADDRESS)
-#   define pbYBufferAddressEp87             ((u8*)IEP7_Y_BUFFER_ADDRESS)
+#   define dblock_ep0       (*((tEDB0*)0x0920))
+#   define dblock_epin      ((tEDB*)0x23C8)                 //Size = 7
+#   define dblock_epout     ((tEDB*)0x2388)                 //Size = 7
+#   define dblock_setup     (*((usbreq_struct*)0x2380))
+#   define abuf_ep0in       ((u8*)0x2378)                   //Size = EP0_MAX_PACKET_SIZE
+#   define abuf_ep0out      ((u8*)0x2370)                   //Size = EP0_MAX_PACKET_SIZE
+#   define xbuf_ep1         ((u8*)OEP1_X_BUFFER_ADDRESS)    //Size = EP_MAX_PACKET_SIZE
+#   define ybuf_ep1         ((u8*)OEP1_Y_BUFFER_ADDRESS)
+#   define xbuf_ep81        ((u8*)IEP1_X_BUFFER_ADDRESS)
+#   define ybuf_ep81        ((u8*)IEP1_Y_BUFFER_ADDRESS)
+#   define xbuf_ep2         ((u8*)OEP2_X_BUFFER_ADDRESS)
+#   define ybuf_ep2         ((u8*)OEP2_Y_BUFFER_ADDRESS)
+#   define xbuf_ep82        ((u8*)IEP2_X_BUFFER_ADDRESS)
+#   define ybuf_ep82        ((u8*)IEP2_Y_BUFFER_ADDRESS)
+#   define xbuf_ep3         ((u8*)OEP3_X_BUFFER_ADDRESS)
+#   define ybuf_ep3         ((u8*)OEP3_Y_BUFFER_ADDRESS)
+#   define xbuf_ep83        ((u8*)IEP3_X_BUFFER_ADDRESS)
+#   define ybuf_ep83        ((u8*)IEP3_Y_BUFFER_ADDRESS) 
+#   define xbuf_ep4         ((u8*)OEP4_X_BUFFER_ADDRESS)
+#   define ybuf_ep4         ((u8*)OEP4_Y_BUFFER_ADDRESS)
+#   define xbuf_ep84        ((u8*)IEP4_X_BUFFER_ADDRESS)
+#   define ybuf_ep84        ((u8*)IEP4_Y_BUFFER_ADDRESS)
+#   define xbuf_ep5         ((u8*)OEP5_X_BUFFER_ADDRESS)
+#   define ybuf_ep5         ((u8*)OEP5_Y_BUFFER_ADDRESS)
+#   define xbuf_ep85        ((u8*)IEP5_X_BUFFER_ADDRESS)
+#   define ybuf_ep85        ((u8*)IEP5_Y_BUFFER_ADDRESS)
+#   define xbuf_ep6         ((u8*)OEP6_X_BUFFER_ADDRESS)
+#   define ybuf_ep6         ((u8*)OEP6_Y_BUFFER_ADDRESS)
+#   define xbuf_ep86        ((u8*)IEP6_X_BUFFER_ADDRESS)
+#   define ybuf_ep86        ((u8*)IEP6_Y_BUFFER_ADDRESS)
+#   define xbuf_ep7         ((u8*)OEP7_X_BUFFER_ADDRESS)
+#   define ybuf_ep7         ((u8*)OEP7_Y_BUFFER_ADDRESS)
+#   define xbuf_ep87        ((u8*)IEP7_X_BUFFER_ADDRESS)
+#   define ybuf_ep87        ((u8*)IEP7_Y_BUFFER_ADDRESS)
 
 //#endif
 
 
-extern ot_u16 wBytesRemainingOnIEP0;
-extern ot_u16 wBytesRemainingOnOEP0;
-extern ot_u8 abUsbRequestReturnData[];
-extern ot_u8 abUsbRequestIncomingData[];
-extern ot_u8 bEnumerationStatus;
-extern ot_u8 bFunctionSuspended;
+
+//JP's Flags
+#define USB_STATUS_SUSPENDED    0x01
+#define USB_STATUS_ENUMERATED   0x02
+
+#define USB_FLAG_OVERPULL       0x01
+#define USB_FLAG_WAKEON         0x02
+
+
+typedef struct {
+    // Used internally in usb_main.c
+    ot_u8*          pbuf_ep0in;
+    ot_u8*          pbuf_ep0out;
+    ot_u8           intfnum;        
+    ot_u8           confnum;
+    ot_u8           flags;
+
+    // Used internally and externally
+    ot_u8           status;
+    ACTION_index    action;                                 //bStatusAction
+    ot_u16          bytes_ep0in;                  //wBytesRemainingOnIEP0;
+    ot_u16          bytes_ep0out;                 //wBytesRemainingOnOEP0;
+    ot_u8           response[USB_RETURN_DATA_LENGTH];        //abUsbRequestReturnData[USB_RETURN_DATA_LENGTH];
+    ot_u8           request[USB_RETURN_DATA_LENGTH];      //abUsbRequestIncomingData[USB_RETURN_DATA_LENGTH];
+} usbctl_struct;
+
+extern usbctl_struct usbctl;
+
+
+
+
 
 //Function return values
 #define kUSB_succeed        0x00
@@ -336,205 +361,219 @@ void usbClearOEPByteCount(ot_u8);
  * MSP430 USB Module Management functions
  */
 
-/**
- * Init the USB HW interface.
+/** @brief Init the USB HW interface.
  */
-ot_u8 USB_init(void);
+ot_u8 usb_init(void);
 
-/**
- * Init and start the USB PLL.
+/** @brief Init and start the USB PLL.
  */
-ot_u8 USB_enable ();
+ot_u8 usb_enable();
 
-/**
- * Disables the USB module and PLL.
+/** @brief Disables the USB module and PLL.
  */
-ot_u8 USB_disable(void);
+ot_u8 usb_disable(void);
 
-/*
- * Enables/disables various USB events.
- */
-ot_u8 USB_setEnabledEvents (ot_u16 events);
+///** @brief Enables/disables various USB events.
+// */
+//ot_u8 usb_setevents(ot_u16 event_mask);
 
-/*
- * Returns which events are enabled and which are disabled.
- */
-ot_u16 USB_getEnabledEvents ();
+///** @brief Returns which events are enabled and which are disabled.
+// */
+//ot_u16 usb_getevents();
 
-/*
- * Instruct USB module to make itself available to the PC for connection, by pulling PUR high.
+/** @brief Instruct USB module to make itself available to the PC for connection, by pulling PUR high.
  */
-ot_u8 USB_connect ();
+ot_u8 usb_connect ();
 
-/*
- * Force a disconnect from the PC by pulling PUR low.
+/** @brief Force a disconnect from the PC by pulling PUR low.
  */
-ot_u8 USB_disconnect ();
+ot_u8 usb_disconnect();
 
-/**
- * Reset USB-SIE and global variables.
+/** @brief Reset USB-SIE and global variables.
  */
-ot_u8 USB_reset ();
+ot_u8 usb_reset();
 
-/**
- * Suspend USB.
+/** @brief Suspend USB.
  */
-ot_u8 USB_suspend(void);
+ot_u8 usb_suspend(void);
 
-/**
- * Resume USB.
+/** @brief Resume USB.
  */
-ot_u8 USB_resume(void);
+ot_u8 usb_resume(void);
 
-/*
- * Force a remote wakeup of the USB host.
- *     This method can be generated only if device supports
- *     remote wake-up feature in some of its configurations.
- *     The method wakes-up the USB bus only if wake-up feature is enabled by the host.
- */
-ot_u8 USB_forceRemoteWakeup ();
 
-/*
- * Returns the status of the USB connection.
+/** @brief Force a remote wakeup of the USB host.
+ * This method can be generated only if device supports remote wake-up feature 
+ * in some of its configurations.  The method wakes-up the USB bus only if 
+ * wake-up feature is enabled by the host.
  */
-//ot_u8 USB_connectionInfo ();
+ot_u8 usb_force_wakeup();
 
-/*
- * Returns the state of the USB connection.
+/** @brief Returns the status of the USB connection.
  */
-ot_u8 USB_connectionState ();
+//ot_u8 usb_connection_info ();
+
+/** @brief Returns the state of the USB connection.
+ */
+ot_u8 usb_connection_state();
 
 #ifdef NON_COMPOSITE_MULTIPLE_INTERFACES
-/*
- * Switch to a different USB configuration. Used only for non-composite devices with multiple configuratons.
+/** @brief Switch to a different USB configuration. Used only for non-composite devices with multiple configuratons.
  */
-ot_u8 USB_switchInterface(ot_u8 interfaceIndex);
+ot_u8 usb_switch_intf(ot_u8 intf_i);
 
 #endif
 
-/*
- * Event-Handling routines
+
+
+
+
+/** Event-Handling routines
  */
 
 
-#define HANDLE_RETURN	void
+#define HANDLE_RETURN   void
 
 
-/*
- * If this function gets executed, it's a sign that the output of the USB PLL has failed.
- * returns TRUE to keep CPU awake
+/** @brief This function is executed when the USB PLL has failed.
  */
-HANDLE_RETURN USB_handleClockEvent ();
+HANDLE_RETURN usbevt_pllerror ();
 
-/*
- * If this function gets executed, it indicates that a valid voltage has just been applied to the VBUS pin.
- * returns TRUE to keep CPU awake
+/** @brief This function is executed when the Vbus pin acquires a valid voltage
  */
-HANDLE_RETURN USB_handleVbusOnEvent ();
+HANDLE_RETURN usbevt_vbuson ();
 
-/*
- * If this function gets executed, it indicates that a valid voltage has just been removed from the VBUS pin.
- * returns TRUE to keep CPU awake
- */
-HANDLE_RETURN USB_handleVbusOffEvent ();
+/** @brief This function is executed when the Vbus pin loses a valid voltage
+  */
+HANDLE_RETURN usbevt_vbusoff ();
 
-/*
- * If this function gets executed, it indicates that the USB host has issued a USB reset event to the device.
- * returns TRUE to keep CPU awake
- */
-HANDLE_RETURN USB_handleResetEvent ();
+/** @brief This function is executed when the USB host issues a USB "reset"
+  */
+HANDLE_RETURN usbevt_reset ();
 
-/*
- * If this function gets executed, it indicates that the USB host has chosen to suspend this device after a period of active
- * operation.
- * returns TRUE to keep CPU awake
+/** @brief This function is executed when the USB host issues a USB "suspend"
  */
-HANDLE_RETURN USB_handleSuspendEvent ();
+HANDLE_RETURN usbevt_suspend ();
 
-/*
- * If this function gets executed, it indicates that the USB host has chosen to resume this device after a period of suspended
- * operation.
- * returns TRUE to keep CPU awake
+/** @brief This function is executed when the USB host issues a USB "resume"
  */
-HANDLE_RETURN USB_handleResumeEvent ();
+HANDLE_RETURN usbevt_resume ();
 
-/*
- * If this function gets executed, it indicates that the USB host has enumerated this device :
- * after host assigned the address to the device.
- * returns TRUE to keep CPU awake
+/** @brief This function is executed when the USB host successfully "enumerates"
+  * this device.
  */
-ot_u8 USB_handleEnumCompleteEvent ();
+ot_u8 usbevt_enumerate();
 
-/**
- * Send stall handshake for in- and out-endpoint0 (control pipe)
- */
-void usbStallEndpoint0(void);
 
-/**
- * Clear byte counter for endpoint0 (control pipe)
- */
-void usbClearOEP0ByteCount(void);
 
-/**
- * Send stall handshake for out-endpoint0 (control pipe)
- */
-void usbStallOEP0(void);
 
-/**
- * Send further data over control pipe if needed.
- *     Function is called from control-in IRQ. Do not call from user application
- */
-void usbSendNextPacketOnIEP0(void);
 
-/**
- * Send data over control pipe to host.
- *     Number of bytes to transmit should be set with
- *     global varible "wBytesRemainingOnIEP0" before function is called.
- */
-void usbSendDataPacketOnEP0 (ot_u8* pbBuffer);
+/** @brief Send stall handshake for in- and out-endpoint0 (control pipe)
+  */
+void usbcmd_stall_ep0(void);
 
-/**
- * Receive further data from control pipe if needed.
- *     Function is called from control-out IRQ. Do not call from user application
- */
-void usbReceiveNextPacketOnOEP0(void);
+/** @brief Send stall handshake for out-endpoint0 (control pipe)
+  */
+void usbcmd_stall_ep0out(void);
 
-/**
- * Receive data from control pipe.
- *     Number of bytes to receive should be set with
- *     global varible "wBytesRemainingOnOEP0" before function is called.
- */
-void usbReceiveDataPacketOnEP0 (ot_u8* pbBuffer);
 
-/**
- * Send zero length packet on control pipe.
- */
-void usbSendZeroLengthPacketOnIEP0(void);
+/** @brief Clear byte counter for endpoint0 (control pipe)
+  */
+void usbcmd_clear_ep0(void);
+
+
+
+
+
+/** @brief Prepare to TX the next packet on EP0-input over control pipe, if needed.
+  *     
+  * Function is called from control-in IRQ. Do not call from user application
+  */
+void usbcmd_txnext_ep0(void);
+
+
+/** @brief Send data over control pipe to host.
+  * 
+  * Number of bytes to transmit should be set with global varible 
+  * "wBytesRemainingOnIEP0" before function is called.
+  */
+void usbcmd_tx_ep0 (ot_u8* pbBuffer);
+
+
+/** @brief Receive further data from control pipe if needed.
+  *
+  * Function is called from control-out IRQ. Do not call from user application
+  */
+void usbcmd_rxnext_ep0(void);
+
+
+/** @brief Receive data from control pipe.
+  *
+  * Number of bytes to receive should be set with
+  * global varible "wBytesRemainingOnOEP0" before function is called.
+  */
+void usbcmd_rx_ep0 (ot_u8* pbBuffer);
+
+
+/** @brief Send zero length packet on control pipe.
+  */
+void usbcmd_txzlp_ep0(void);
+
 
 /*Send data to host.*/
-ot_u8 MscSendData (const ot_u8* data, ot_u16 size);
+//ot_u8 MscSendData (const ot_u8* data, ot_u16 size);
 
-/**
- * Decode incoming usb setup packet and call corresponding function
- *     usbDecodeAndProcessUsbRequest is called from IRQ. Do not call from user application
- */
-ot_u8 usbDecodeAndProcessUsbRequest(void);
-ot_u8 usbClearEndpointFeature(void);
-ot_u8 usbGetConfiguration(void);
-ot_u8 usbGetDeviceDescriptor(void);
-ot_u8 usbGetConfigurationDescriptor(void);
-ot_u8 usbGetStringDescriptor(void);
-ot_u8 usbGetInterface(void);
-ot_u8 usbGetDeviceStatus(void);
-ot_u8 usbGetEndpointStatus(void);
-ot_u8 usbGetInterfaceStatus(void);
-ot_u8 usbSetAddress(void);
-ot_u8 usbSetConfiguration(void);
-ot_u8 usbClearDeviceFeature(void);
-ot_u8 usbSetDeviceFeature(void);
-ot_u8 usbSetEndpointFeature(void);
-ot_u8 usbSetInterface(void);
-ot_u8 usbInvalidRequest(void);
+
+
+
+CMD_RETURN usbcmd_clear_epfeature(void);
+
+CMD_RETURN usbcmd_get_cfg(void);
+
+CMD_RETURN usbcmd_get_devdesc(void);
+
+CMD_RETURN usbcmd_get_cfgdesc(void);
+
+CMD_RETURN usbcmd_get_strdesc(void);
+
+CMD_RETURN usbcmd_get_intf(void);
+
+CMD_RETURN usbcmd_get_devstatus(void);
+
+CMD_RETURN usbcmd_get_epstatus(void);
+
+CMD_RETURN usbcmd_get_intfstatus(void);
+
+CMD_RETURN usbcmd_set_address(void);
+
+CMD_RETURN usbcmd_set_cfg(void);
+
+CMD_RETURN usbcmd_clear_devfeature(void);
+
+CMD_RETURN usbcmd_set_devfeature(void);
+
+CMD_RETURN usbcmd_set_epfeature(void);
+
+CMD_RETURN usbcmd_set_intf(void);
+
+CMD_RETURN usbcmd_invalid_request(void);
+
+
+
+
+
+
+
+/** @brief Decode incoming usb setup packet and call corresponding function
+  *
+  * usbDecodeAndProcessUsbRequest is called from IRQ. Do not call from user application
+  *
+  * Returns true or false
+  */
+ot_u8 usbproc_parse_request(void);
+
+
+
 
 
 #define ENUMERATION_COMPLETE 0x01
