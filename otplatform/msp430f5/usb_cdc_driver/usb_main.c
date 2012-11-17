@@ -89,9 +89,22 @@
 #define DIRECTION_IN    0x80
 #define DIRECTION_OUT   0x00
 
+
+
+
+
 /*----------------------------------------------------------------------------+
  | Internal Variables                                                          |
  +----------------------------------------------------------------------------*/
+
+//@testing
+//ot_u16          Ttrace[32];
+//usbreq_struct   Treq[32];
+//ot_int          Tactive = 0;
+
+
+
+
 
 
 //interface number
@@ -130,9 +143,10 @@ usbctl_struct usbctl;
 
 
 
-void sub_reset_epdata(tEDB* edb, ot_u16* xbuf, ot_u8 count) {
+void sub_reset_epdata(tEDB* edb, ot_u16* xbuf, ot_u8 count, ot_u8 y_offset) {
     edb->bEPCNF     = EPCNF_USBIE | EPCNF_UBME | EPCNF_DBUF;
-    edb->bEPBBAX    = (ot_u8)(((*xbuf++ - START_OF_USB_BUFFER) >> 3) & 0x00ff);
+    edb->bEPBBAX    = (ot_u8)(((*xbuf - START_OF_USB_BUFFER) >> 3) & 0x00ff);
+    xbuf            = (ot_u16*)((ot_u16)xbuf + y_offset);
     edb->bEPBCTX    = count;
     edb->bEPBBAY    = (ot_u8)(((*xbuf - START_OF_USB_BUFFER) >> 3) & 0x00ff);
     edb->bEPBCTY    = count;
@@ -176,7 +190,6 @@ ot_u8 usb_init (void) {
     USBPWRCTL   = VUSBEN + SLDOAON + VBONIE;    //enable interrupt VBUSon
     USBKEYPID   = 0x9600;                       //access to configuration registers disabled
 
-    //wUsbEventMask     = 0;
     usbctl.status       = 0;
 
     //restore interrupt status
@@ -227,7 +240,7 @@ ot_u8 usb_enable () {
     }
     while (pll_unsettled && (++j <= 10));
 
-    USBCNF     |= !pll_unsettled;   //Enable USB if PLL settled (USB_EN = 0x0001)
+    USBCNF     |= (pll_unsettled == 0);   //Enable USB if PLL settled (USB_EN = 0x0001)
     USBKEYPID   = 0x9600;
 
     return pll_unsettled;   //kUSB_succeed = 0, kUSB_generalError = 1
@@ -238,11 +251,11 @@ ot_u8 usb_enable () {
 
 
 ot_u8 usb_disable (void) {
-    USBKEYPID           = 0x9628;
-    USBCNF   = 0;           //disable USB module
+    USBKEYPID       = 0x9628;
+    USBCNF          = 0;           //disable USB module
     USBPLLCTL      &= ~UPLLEN;      //disable PLL
     USBKEYPID       = 0x9600;
-    usbctl.status   = 0;         //device is not enumerated
+    usbctl.status   = 0;         //device is not enumerated or suspended
     return (kUSB_succeed);
 }
 
@@ -273,9 +286,9 @@ ot_u8 usb_reset () {
     USBKEYPID = 0x9628;
 
     //reset should be on the bus after this!
+    usbctl.status   = 0;    //device is not enumerated or suspended
     usbctl.intfnum  = 0;
-    usbctl.confnum  = 0;             //device unconfigured
-    usbctl.status   = 0;
+    usbctl.confnum  = 0;    //device unconfigured
     usbctl.flags    = 0;
     
     //FRSTE handling:
@@ -290,7 +303,6 @@ ot_u8 usb_reset () {
     //The address reset normally will be done automatically during bus function reset
     USBFUNADR           = 0x00;     //Address 0 is the value for "unconfigured device"
 
-
     // Set settings for EP0
     //NAK both 0 endpoints and enable endpoint 0 interrupt
     dblock_ep0.bIEPBCNT = EPBCNT_NAK;
@@ -300,6 +312,8 @@ ot_u8 usb_reset () {
 
     USBOEPIE            = USB_OUTEP_INT_EN;
     USBIEPIE            = USB_INEP_INT_EN;
+
+    ///@todo there will need to be a loop for multi-interface impl.
     i                   = usb_handle[0].edb_index;
 
     // Set settings for IEPx (double bufferring)
@@ -309,7 +323,18 @@ ot_u8 usb_reset () {
 //    dblock_epin[i].bEPBCTX  = EPBCNT_NAK;
 //    dblock_epin[i].bEPBCTY  = EPBCNT_NAK;
 //    dblock_epin[i].bEPSIZXY = MAX_PACKET_SIZE;
-    sub_reset_epdata(&(dblock_epin[i]), (ot_u16*)&usb_handle[0].in_xbuf, EPBCNT_NAK);
+    sub_reset_epdata(&(dblock_epin[i]), (ot_u16*)&usb_handle[0].in_xbuf, EPBCNT_NAK, 4);
+
+    // Set settings for OEPx double buffering
+//    dblock_epout[i].bEPCNF  = EPCNF_USBIE | EPCNF_UBME | EPCNF_DBUF ;
+//    dblock_epout[i].bEPBBAX = (ot_u8)(((usb_handle[0].out_xbuf - START_OF_USB_BUFFER) >> 3) & 0x00ff);
+//    dblock_epout[i].bEPBBAY = (ot_u8)(((usb_handle[0].out_ybuf - START_OF_USB_BUFFER) >> 3) & 0x00ff);
+//    dblock_epout[i].bEPBCTX = 0x00;
+//    dblock_epout[i].bEPBCTY = 0x00;
+//    dblock_epout[i].bEPSIZXY= MAX_PACKET_SIZE;
+    sub_reset_epdata(&(dblock_epout[i]), (ot_u16*)&usb_handle[0].out_xbuf, 0, 4);
+
+    ///@todo This interrupt endpoint might not actually be used at all.
 
     // Additional Mgmt interrupt end point for CDC
     // decrement index: Mgmt endpoint is one below Data
@@ -320,17 +345,10 @@ ot_u8 usb_reset () {
 //    dblock_epin[i-1].bEPBCTX  = EPBCNT_NAK;
 //    dblock_epin[i-1].bEPBCTY  = EPBCNT_NAK;
 //    dblock_epin[i-1].bEPSIZXY = MAX_PACKET_SIZE;
-    sub_reset_epdata(&(dblock_epin[i-1]), (ot_u16*)&usb_handle[0].irq_xbuf, EPBCNT_NAK);
+    sub_reset_epdata(&(dblock_epin[i-1]), (ot_u16*)&usb_handle[0].irq_xbuf, EPBCNT_NAK, 2);
     //}
 
-    // Set settings for OEPx double buffering
-//    dblock_epout[i].bEPCNF  = EPCNF_USBIE | EPCNF_UBME | EPCNF_DBUF ;
-//    dblock_epout[i].bEPBBAX = (ot_u8)(((usb_handle[0].out_xbuf - START_OF_USB_BUFFER) >> 3) & 0x00ff);
-//    dblock_epout[i].bEPBBAY = (ot_u8)(((usb_handle[0].out_ybuf - START_OF_USB_BUFFER) >> 3) & 0x00ff);
-//    dblock_epout[i].bEPBCTX = 0x00;
-//    dblock_epout[i].bEPBCTY = 0x00;
-//    dblock_epout[i].bEPSIZXY= MAX_PACKET_SIZE;
-    sub_reset_epdata(&(dblock_epout[i]), (ot_u16*)&usb_handle[0].out_xbuf, 0);
+
 
     usbcdc_reset_data();   //reset CDC specific data structures
 
@@ -423,6 +441,9 @@ ot_u8 usb_connection_info () {
 /* Returns the state of the USB connection.
  */
 ot_u8 usb_connection_state () {
+///@todo I should fix these stupid constants to be aligned with flags, but it
+/// does not appear that this function ever gets called anyway
+
     // JP's version below: compiles smaller, runs faster
     static const ot_u8 retval[16] = {
         // USBBGVBV not set
@@ -446,8 +467,11 @@ ot_u8 usb_connection_state () {
         ST_ENUM_SUSPENDED
     };
 
-    // 8 + 2 + (4 or 5 or 1)
-    ot_u8 code = (USBPWRCTL & USBBGVBV) + (USBCNF & PUR_EN)<<1 + (usbctl.status);
+    // 8 + 4 + (0,1,2,3)
+    ot_u8 code;
+    code    = (USBPWRCTL & USBBGVBV)    /*0x08*/ \
+            + (USBCNF & PUR_EN)<<1      /*0x04*/ \
+            + (usbctl.status);          /*0,1,2,3*/
 
     return retval[code];
 
@@ -561,39 +585,85 @@ void usbcmd_clear_ep0 (void) {
 
 
 void usbcmd_txnext_ep0 (void) {
-    // Base Case: set control action to nothing
-    usbctl.action = ACTION_nothing;
+    ot_int pkt_size;
 
-    // First check if there are bytes remaining to be transferred
-    // There is no MSP430 with more than 32KB of RAM, so casting to signed int
-    // is not going to be an issue.
-    if ((ot_int)usbctl.bytes_ep0in >= 0) {
-        ot_int pkt_size;
-        ot_u8* src_data;
-    
-        // Reduce the input endpoint by 8 bytes (control packet size)
+    // Set Control Action to Nothing (0) or Data_in (1) depending on if there
+    // will be a packet after this one (or any packet at all).
+    usbctl.action = ((ot_int)usbctl.bytes_ep0in >= (ot_int)EP0_PACKET_SIZE);
+
+    // Prepare to load 8 bytes into the EP0_IN buffer.  If there are less than
+    // 8 bytes to TX, adjust the packet size to that smaller amount.
+    if ((ot_int)usbctl.bytes_ep0in >= 0){
+        pkt_size         = EP0_PACKET_SIZE;
         usbctl.bytes_ep0in -= EP0_PACKET_SIZE;
         
-        // Set pkt_size to 8 (EP0_PACKET_SIZE) when there are 8 or more bytes.
-        // else, set to the number of bytes left that are less than 8.
-        pkt_size = ((ot_int)usbctl.bytes_ep0in < 0) ? \
-                    (0 - (ot_int)usbctl.bytes_ep0in) : EP0_PACKET_SIZE;
-        
-        // Keep state as ACTION_data_in (1) if there is more data or if host 
-        // requests too much data (overpull).  Else, go to ACTION_nothing (0)
-        usbctl.action = ((ot_int)usbctl.bytes_ep0in >= 0) || (usbctl.flags & USB_FLAG_OVERPULL);
-        
-        // Set the ep0 bytes to <0 (NO MORE DATA) if usbctl.action == Nothing.
-        // If ep0 bytes is already <0 from above, this doesn't affect anything.
-        usbctl.bytes_ep0in -= (usbctl.action == ACTION_nothing);
+        if (usbctl.bytes_ep0in == 0) {
+            //On Overpull condition, bytes_ep0in will stay == 0.  On no data
+            //left to TX and no overpull, bytes_ep0in is set to < 0.
+            usbctl.bytes_ep0in -= USB_FLAG_OVERPULL;
+            usbctl.bytes_ep0in += (usbctl.flags & USB_FLAG_OVERPULL);
+        }
+        else if ((ot_int)usbctl.bytes_ep0in < 0) {
+            //packet size is adjusted to 1 < pkt_size < 7
+            pkt_size += (ot_int)usbctl.bytes_ep0in;
+        }
 
-        src_data            = usbctl.pbuf_ep0in;
+        platform_memcpy(abuf_ep0in, usbctl.pbuf_ep0in, pkt_size);
         usbctl.pbuf_ep0in  += pkt_size;
         dblock_ep0.bIEPBCNT = pkt_size;
-        platform_memcpy(abuf_ep0in, src_data, pkt_size);
     }
 }
 
+
+
+/*
+void usbcmd_txnext_ep0 (void) {
+    ot_u8 bPacketSize;
+    ot_u8 bIndex;
+
+    usbctl.action = ((ot_int)usbctl.bytes_ep0in >= (ot_int)EP0_PACKET_SIZE);
+
+    //First check if there are bytes remaining to be transferred
+    if (usbctl.bytes_ep0in != NO_MORE_DATA){
+
+        if (usbctl.bytes_ep0in > EP0_PACKET_SIZE){
+            //More bytes are remaining than will fit in one packet
+            //there will be More IN Stage
+            bPacketSize         = EP0_PACKET_SIZE;
+            usbctl.bytes_ep0in -= EP0_PACKET_SIZE;
+            usbctl.action       = ACTION_data_in;
+        }
+        else if (usbctl.bytes_ep0in < EP0_PACKET_SIZE){
+            //The remaining data will fit in one packet.
+            //This case will properly handle wBytesRemainingOnIEP0 == 0
+            bPacketSize         = (ot_u8)usbctl.bytes_ep0in;
+            usbctl.bytes_ep0in  = NO_MORE_DATA;   //No more data need to be Txed
+            usbctl.action       = ACTION_nothing;
+        }
+        else {
+            bPacketSize         = EP0_PACKET_SIZE;
+            usbctl.bytes_ep0in  = 0 - (ot_int)(usbctl.flags & USB_FLAG_OVERPULL);
+            usbctl.action       = ACTION_data_in;
+
+            //if (usbctl.flags & USB_FLAG_OVERPULL){
+                //usbctl.bytes_ep0in  = 0;
+                //usbctl.action       = ACTION_data_in;
+            //}
+            //else {
+                //usbctl.bytes_ep0in  = NO_MORE_DATA;
+                //usbctl.action       = ACTION_data_in;
+            //}
+        }
+
+        platform_memcpy(abuf_ep0in, usbctl.pbuf_ep0in, bPacketSize);
+        usbctl.pbuf_ep0in  += bPacketSize;
+        dblock_ep0.bIEPBCNT = bPacketSize;
+    }
+    else {
+        usbctl.action = ACTION_nothing;
+    }
+}
+*/
 
 
 
@@ -601,14 +671,16 @@ void usbcmd_tx_ep0 (ot_u8* pbBuffer) {
     ot_u16 scratch;
     usbctl.pbuf_ep0in   = pbBuffer;
     scratch             = dblock_setup.wLength;
-    usbctl.flags       &= ~USB_FLAG_OVERPULL;
 
-    //Limit transfer size to wLength if needed
-    //this prevent USB device sending 'more than require' data back to host
-    // The bit that is set is USB_FLAG_OVERPULL
-    if (usbctl.bytes_ep0in < scratch) {
-        usbctl.flags       |= USB_FLAG_OVERPULL;
+    // Consider default as an overpull condition, that requested packet length
+    // is greater than bytes remaining to send back to host
+    usbctl.flags       |= USB_FLAG_OVERPULL;
+
+    // If the opposite is true, limit remaining bytes in input, and cancel the
+    // overpull condition.
+    if (usbctl.bytes_ep0in >= scratch) {
         usbctl.bytes_ep0in  = scratch;
+        usbctl.flags       &= ~USB_FLAG_OVERPULL;
     }
 
     usbcmd_txnext_ep0();
@@ -660,8 +732,8 @@ void usbcmd_txzlp_ep0 (void) {
 
 
 inline CMD_RETURN sub_usbget(ot_u8 remaining_bytes, ot_u8* send_data) {
-    usbctl.bytes_ep0in = remaining_bytes;
     usbcmd_clear_ep0();                                //for status stage
+    usbctl.bytes_ep0in = remaining_bytes;
     usbcmd_tx_ep0(send_data);
     //return False;
 }
@@ -672,10 +744,14 @@ CMD_RETURN usbcmd_get_cfg (void) {
 }
 
 CMD_RETURN usbcmd_get_devdesc (void) {
-    sub_usbget(SIZEOF_DEVICE_DESCRIPTOR, (ot_u8*)&usbdesc_device);
+///@note Will need to select appropriate device descriptor when/if multiple
+/// non-composite interfaces are supported
+    sub_usbget(SIZEOF_DEVICE_DESCRIPTOR, (ot_u8*)usbdesc_device);
 }
 
 CMD_RETURN usbcmd_get_cfgdesc (void) {
+///@note Will need to select appropriate device descriptor when/if multiple
+/// non-composite interfaces are supported
     sub_usbget(sizeof(usbdesc_cfg), (ot_u8*)&usbdesc_cfg);
 }
 
@@ -689,10 +765,14 @@ CMD_RETURN usbcmd_get_strdesc (void) {
 /// gets to the index specified from the host command request.
     ot_u8*  cursor;
     ot_int  str_i;
-    str_i   = dblock_setup.wValue;
+    str_i   = (ot_u8)dblock_setup.wValue;   //important to get low byte here
     cursor  = (ot_u8*)usbdesc_string;
-    
-    while (--str_i >= 0) {
+
+    if (str_i == 3) {
+        __no_operation();
+    }
+
+    while (str_i-- > 0) {
         cursor += *cursor;
     }
 
@@ -714,6 +794,9 @@ CMD_RETURN usbcmd_get_intf (void) {
 
 
 CMD_RETURN usbcmd_get_devstatus (void) {
+///@note Will need to select appropriate descriptor when/if multiple
+/// non-composite interfaces are supported
+
     //if ((usbdesc_cfg.generic.attrs &
     //     CFG_DESC_ATTR_SELF_POWERED) == CFG_DESC_ATTR_SELF_POWERED) {
     //    usbctl.response[0] = DEVICE_STATUS_SELF_POWER;
@@ -745,13 +828,17 @@ CMD_RETURN usbcmd_get_intfstatus(void) {
 
 CMD_RETURN usbcmd_get_epstatus (void) {
     ot_u8 ep_n;
+    ot_u8 is_epin;
 
     //Endpoint number is bIndexL
-    ep_n = dblock_setup.wIndex & EP_DESC_ADDR_EP_NUM;
+    ep_n    = dblock_setup.wIndex & EP_DESC_ADDR_EP_NUM;
+    is_epin = (dblock_setup.wIndex & EP_DESC_ADDR_DIR_IN) >> 6; //make 0x80 into 2 or 0
+
     if (ep_n == 0x00) {
         ot_u8* db0CNFG;
-        db0CNFG             = ((ot_u8*)&dblock_ep0) + 3;
-        db0CNFG            -= (dblock_setup.wIndex & EP_DESC_ADDR_DIR_IN) >> 6; //make 0x80 into 2 or 0
+        // db0CNFG points to dblock_ep0.bOEPCNFG or dblock_ep0.bIEPCNFG (-2)
+        db0CNFG             = ((ot_u8*)&dblock_ep0.bOEPCNFG);
+        db0CNFG            -= is_epin;
         usbctl.response[0]  = *db0CNFG & EPCNF_STALL;
     }
     
@@ -760,8 +847,11 @@ CMD_RETURN usbcmd_get_epstatus (void) {
         //EP is from EP1 to EP7 while C language start from 0
         //Firmware should NOT respond if specified endpoint is not supported. (chapter 8)
         tEDB* dblock;
-        dblock              = (tEDB*)dbselect[(dblock_setup.wIndex&EP_DESC_ADDR_DIR_IN)==0];
-        usbctl.response[0]  = dblock[--ep_n].bEPCNF & EPCNF_STALL;
+        dblock  = (is_epin) ? dblock_epin : dblock_epout;
+      //dblock  = (tEDB*)dbselect[(dblock_setup.wIndex&EP_DESC_ADDR_DIR_IN)==0];
+
+        ep_n--;
+        usbctl.response[0]  = dblock[ep_n].bEPCNF & EPCNF_STALL;
     }
     
     usbctl.response[0] >>= 3; //STALL is on b3
@@ -791,15 +881,14 @@ CMD_RETURN usbcmd_set_address (void) {
 
 
 CMD_RETURN usbcmd_set_cfg (void) {
-    usbcmd_stall_ep0();        //control write without data stage
+    usbcmd_stall_ep0out();        //control write without data stage
 
     //configuration number is in bValueL
     usbctl.confnum  = (ot_u8)dblock_setup.wValue;
-    usbctl.status  |= (usbctl.confnum != 0) << 1;   //Set Enumeration
-
-    //Send Zero Length Packet to complete configuration setup
     usbcmd_txzlp_ep0();
 
+    //Set Enumeration (or not)
+    usbctl.status  |= (usbctl.confnum != 0) << 1;
     //return False;
 }
 
@@ -833,16 +922,20 @@ CMD_RETURN usbcmd_set_devfeature (void) {
 //Added by JP
 CMD_RETURN sub_prep_epfeature(ot_u8 clear_mask, ot_u8 set_mask) {
     ot_u8 ep_n;
+
+    //bIndexL contains endpoint number (Endpoint number is in low byte of wIndex)
     ep_n = (dblock_setup.wIndex & EP_DESC_ADDR_EP_NUM);
     
+    // Do mask operation on the requested input or output endpoint
+    // Ignore requests for EP0 or any non-implemented EP
     if (ep_n <= MAX_ENDPOINT_NUMBER) {
-        //EP is from EP1 to EP7 while C language start from 0
-        //bIndexL contains endpoint number (Endpoint number is in low byte of wIndex)
         if (ep_n != 0) {
             tEDB* dblock;
-            dblock                  = (tEDB*)dbselect[(dblock_setup.wIndex&EP_DESC_ADDR_DIR_IN)==0];
-            dblock[--ep_n].bEPCNF  &= clear_mask;
-            dblock[ep_n].bEPCNF    |= set_mask;
+            dblock  = (dblock_setup.wIndex & EP_DESC_ADDR_DIR_IN) ? \
+                        dblock_epin : dblock_epout;
+            ep_n--;
+            dblock[ep_n].bEPCNF &= clear_mask;
+            dblock[ep_n].bEPCNF |= set_mask;
         }
     
         usbcmd_txzlp_ep0();
@@ -863,8 +956,9 @@ CMD_RETURN usbcmd_set_epfeature (void) {
     if (dblock_setup.wValue == FEATURE_ENDPOINT_STALL){
         sub_prep_epfeature(~0, EPCNF_STALL);
     }
-
-    usbcmd_stall_ep0();
+    else {
+        usbcmd_stall_ep0();
+    }
     //return False;
 }
 
@@ -900,17 +994,14 @@ CMD_RETURN usbcmd_invalid_request (void) {
 
 
 
-
-
-
 typedef void (*tpF)(void);
 
-ot_u8 usbproc_parse_request (void) {
+void usbproc_parse_request (void) {
     ot_u8*  pb_reqlist;
     tpF     parse_fn;
     
     //point to beginning of the matrix
-    pb_reqlist = (ot_u8*)&usbcmd_list[0];
+    pb_reqlist = (ot_u8*)usbcmd_list;
 
     while (1) {
         ot_u8*  list_cursor;
@@ -950,26 +1041,34 @@ ot_u8 usbproc_parse_request (void) {
     //setup request, we return here without processing the request
     //this check is not necessary but still kept here to reduce response(or simulation) time
     if ((USBIFG & STPOWIFG) != 0x00){
-        //return (bWakeUp);
-        return False;
+        //return False;
+        return;
     }
 
     //now we found the match and jump to the function accordingly.
     parse_fn = ((usbcmd_struct*)pb_reqlist)->pUsbFunction;
 
+    //@testing
+    //if (Tactive < 32) {
+    //    Ttrace[Tactive] = (ot_u16)parse_fn;
+    //    platform_memcpy((ot_u8*)&Treq[Tactive], (ot_u8*)&dblock_setup, sizeof(usbreq_struct));
+    //    Tactive++;
+    //}
+
     //call function
     //bWakeUp = (*parse_fn)();
-    parse_fn();
+    (*parse_fn)();
 
     //perform enumeration complete event:
     //when SetAddress was called and USBADDR is not zero
+    ///@todo This does not actually appear to be the end of enumeration, which
+    /// takes place within the usbcmd_set_cfg() command... ?
     if ((parse_fn == &usbcmd_set_address) && (USBFUNADR != 0)){
         //bWakeUp = usbevt_enumerate();
-        return usbevt_enumerate();
+        usbevt_enumerate();
     }
 
     //return bWakeUp;
-    return False;
 }
 
 

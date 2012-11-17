@@ -167,11 +167,6 @@
 			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/dll_sig_rfterminate_2.c</locationURI>
 		</link>
 		<link>
-			<name>applets/mpipe_sig_done.c</name>
-			<type>1</type>
-			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/mpipe_sig_done.c</locationURI>
-		</link>
-		<link>
 			<name>applets/network_sig_route.c</name>
 			<type>1</type>
 			<locationURI>PARENT-4-PROJECT_LOC/otlibext/applets_std/network_sig_route.c</locationURI>

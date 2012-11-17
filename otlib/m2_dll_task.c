@@ -850,10 +850,15 @@ void sub_init_rx(ot_u8 is_brx) {
 ///
 /// @todo A more adaptive method for scanning is planned, in which the latency 
 /// drops to 1 only after a sync word is detected.
+#ifdef OT_FEATURE_LISTEN_ALLOWANCE
+#   define _RX_LATENCY  OT_FEATURE_LISTEN_ALLOWANCE
+#else
+#   define _RX_LATENCY  40
+#endif
 
 	sys_task_setnext(&sys.task[TASK_radio], dll.comm.rx_timeout);
 
-    sys.task_RFA.latency    = 1;     // Could be as higher in the future
+    sys.task_RFA.latency    = _RX_LATENCY;
   //sys.task_RFA.reserved   = 10;    //un-necessary, RFA is max priority
     sys.task_RFA.event      = 3;
     
@@ -868,6 +873,8 @@ void sub_init_rx(ot_u8 is_brx) {
 #else
     rm2_rxinit(session.heap[session.top].channel, 1, &rfevt_frx);
 #endif
+
+#undef _RX_LATENCY
 }
 
 

@@ -64,7 +64,8 @@
 #define MPIPE_FOOTERBYTES   4
 
 typedef struct {
-    ot_uni16 seq;
+    ot_bool     standby;
+    ot_uni16    seq;
 } tty_struct;
 
 tty_struct tty;
@@ -88,15 +89,17 @@ tty_struct tty;
 /** If this function gets executed, it's a sign that the output of the USB PLL 
   * has failed.
   */
+#if (1)
 void usbevt_pllerror () {
 }
-
+#endif
 
 
 /** If this function gets executed, it indicates that a valid voltage has just 
   * been applied to the VBUS pin.  It returns True in order to wake the CPU,
   * which is likely asleep while waiting for the USB cable to be attached.
   */
+#if (1)
 void usbevt_vbuson () {
 /// The standard code turns-on the USB subsystem and generates a rising edge
 /// on DP (D+) via reset-connect, which causes the host to enumerate this 
@@ -105,28 +108,28 @@ void usbevt_vbuson () {
         usb_reset();
         usb_connect();
     }
-    if (mpipe.state == MPIPE_Null) {
+    if (platform_ext.usb_wakeup != False) {
         sys_resume();
     }
 }
+#endif
 
 
 
 /** If this function gets executed, it indicates that a valid voltage has just 
   * been removed from the VBUS pin.
   */
+#if (1)
 void usbevt_vbusoff (){
 /// Call sys_halt() first and mpipe_disconnect() last, because this guarantees 
 /// that whatever happens in sys_halt() does not change the fact that we are 
 /// certain MPipe must be disconnected.  sys_halt() is not a sure-thing: some 
 /// devices might have batteries, and the non-MPipe part of the application 
 /// might not want or need to halt.
-	//if (mpipe.state >= MPIPE_Idle) {
-        sys_halt(HALT_nopower);
-        mpipe_disconnect(NULL);
-	//}
+    sys_halt(HALT_nopower);     //should set platform_ext.usb_wakeup ... or not
+    mpipe_disconnect(NULL);
 }
-
+#endif
 
 
 /** If this function gets executed, it indicates that the USB host has issued a 
@@ -135,9 +138,10 @@ void usbevt_vbusoff (){
   * useless, and unless you are a USB master with some kind of clever idea, 
   * just comment-it-out in usb_descriptors.h
   */
+#if (1)
 void usbevt_reset () {
 }
-
+#endif
 
 
 /** If this function gets executed, it indicates that the USB host has chosen 
@@ -148,24 +152,25 @@ void usbevt_reset () {
   * battery in which case you can keep going!).  The decision is up to your 
   * application code.
   */
+#if (1)
 void usbevt_suspend () {
 /// Call sys_halt() first and mpipe_close() & (mpipe.state = MPIPE_Null) last, 
 /// because this guarantees that whatever happens in sys_halt() does not change 
 /// the fact that we are certain MPipe must be suspended.  sys_halt() is not a 
 /// sure-thing: some devices might have batteries, and the non-MPipe part of 
 /// the application might not want or need to halt.
-#if (MPIPE_USB_REMWAKE)
+#   if (MPIPE_USB_REMWAKE)
     if (mpipe.state >= MPIPE_Idle) {
-        sys_halt(HALT_lowpower);
         mpipe_close();
         mpipe.state = MPIPE_Null;
+        sys_halt(HALT_lowpower);        //should set platform_ext.usb_wakeup ... or not
     }
-#else
+#   else
     mpipe_close();
     mpipe.state = MPIPE_Null;
-#endif
+#   endif
 }
-
+#endif
 
 
 /** If this function gets executed, it indicates that the USB host has chosen 
@@ -175,62 +180,60 @@ void usbevt_suspend () {
   * For OpenTag, this routine calls sys_refresh() and platform_ot_preempt(), 
   * which gets everything back on-line, and in startup configuration.
   */
+#if (1)
 void usbevt_resume () {
-#if (MPIPE_USB_REMWAKE)
-	if (mpipe.state == MPIPE_Null) {
-		mpipe.state = MPIPE_Idle;
-		mpipe_open();
+#   if (MPIPE_USB_REMWAKE)
+    mpipe.state = MPIPE_Idle;
+	mpipeevt_rxinit(0);
+	if (platform_ext.usb_wakeup != False) {
 		sys_resume();
 	}
-#elif (MPIPE_USB_MANUAL_STANDBY == 0)
-	mpipe.state = MPIPE_Idle;
-#endif
+#   endif
 }
+#endif
 
 
-
-/** If this function gets executed, it indicates that the USB host has 
-  * enumerated this device.  platform_wakeup() is called in case there is some
-  * blocking process that's sleeping, waiting for enumeration (typical).
+/** If this function gets executed, it indicates that the USB host has set an
+  * address for this device -- BUT IT HAS NOT BEEN FULLY CONFIGURED.  Comms
+  * cannot actually take place until configuration is complete, and that event
+  * is detected by usbcdcevt_set_ctlline() or usbcdcevt_set_linecoding().
   */
-ot_u8 usbevt_enumerate () {
-#if 1 //(MPIPE_USB_MANUAL_STANDBY == 0)
-    mpipe.state = MPIPE_Idle;
-    mpipe_open();
-    return True;
-#else
-    return False;
-#endif
+#if (1)
+void usbevt_enumerate () {
 }
-
+#endif
 
 
 /** This event indicates that data has been received for interface intfNum, but 
   * no data receive operation is underway.  This is typically unused.
   */
+#if (1)
 void usbcdcevt_rxdetect (ot_u8 intfNum) {
     //return True;
 }
-
+#endif
 
 
 /** This event indicates that a send operation on interface intfNum has just 
   * been completed.  returns True to keep CPU awake
   */
+#if (1)
 void usbcdcevt_txdone (ot_u8 intfNum) {
     mpipedrv_isr();
     //return True;
 }
-
+#endif
 
 
 /** This event indicates that a receive operation on interface intfNum has just 
   * been completed.
   */
+#if (1)
 void usbcdcevt_rxdone (ot_u8 intfNum){
     mpipedrv_isr();
     //return True;
 }
+#endif
 
 
 
@@ -238,36 +241,40 @@ void usbcdcevt_rxdone (ot_u8 intfNum){
   * the host.  Line coding means baud rate, considering the TTY baud rate that
   * is being simulated by the USB CDC.
   */
-ot_u8 usbcdcevt_set_linecoding (ot_u8 intfNum, ot_u32 lBaudrate) {
-#if 1 //(MPIPE_USB_MANUAL_STANDBY == 0)
-    return False;
+#if (1)
+void usbcdcevt_set_linecoding (ot_u8 intfNum, ot_u32 lBaudrate) {
+}
+#endif
 
-#else
-    ot_u8 retval = False;;
+
+/** This event indicates that new line control state has been received from
+  * the host.  Line control is very similar to basic connection.  This function
+  * is somewhat more informative than usbcdcevt_set_linecoding() for signaling
+  * the start of a connection.
+  *
+  * The parameter "lineState" can have values 0,1,2,3.  It is a 2bit bitmap.
+  * Bit0 is DTR: the host is telling the device it is ready to communicate
+  * Bit1 is RTS: the host is telling the device it has data to send
+  */
+#if (1)
+void usbcdcevt_set_ctlline (ot_u8 intfNum, ot_u8 lineState) {
 
 #   if (CDC_NUM_INTERFACES > 1)
-    if (intfNum != 0) return False;
+    if (intfNum != 0) return;
 #   endif
 
-    if (mpipe.state == (MPIPE_Null-1)) {
-        mpipe_open();
-        retval = True;
+    // Only do MPipe initialization/wakeup if it is currently uninitialized
+    if (mpipe.state == MPIPE_Null) {
+        mpipe.state = MPIPE_Idle;
+        platform_ext.usb_wakeup = True;
     }
-    mpipe.state = MPIPE_Idle;
-    return retval;
+
+#   if 1 //(MPIPE_MANUAL_STANDBY == ENABLED)
+#   else
+    mpipeevt_rxinit(10);
+#   endif
+}
 #endif
-}
-
-
-
-/** This event indicates that new line control state has been received from 
-  * the host.  Line control is very similar to basic connection.  It has to do
-  * with the pin voltage arrangement on connection.  It is not terribly useful.
-  */
-void usbcdcevt_set_ctlline (ot_u8 intfNum, ot_u8 lineState) {
-	//return False;
-}
-
 
 
 
@@ -295,8 +302,9 @@ ot_int mpipedrv_init(void* port_id) {
 /// <LI> USB is disconnected at startup in order to clear the host USB driver,
 ///        which will get stuck during debugging or other sleeping processes.   </LI>
 
+    platform_ext.usb_wakeup = False;
     tty.seq.ushort          = 0;                //not actually necessary
-    mpipe.state             = (MPIPE_Null-1);	    // Disconnected
+    mpipe.state             = MPIPE_Null;	    // Disconnected
 
 	alp_init(&mpipe.alp, &dir_in, &dir_out);
 	mpipe.alp.inq->back    -= 10;
@@ -319,9 +327,8 @@ ot_int mpipedrv_init(void* port_id) {
 #ifndef EXTF_mpipedrv_standby
 void mpipedrv_standby() {
 /// Hold in LPM0 until startup complete.
-	mpipe.state = (MPIPE_Null-1);
-	__bis_SR_register(0x18);
-	__no_operation();
+    __bis_SR_register(0x18);
+    __no_operation();
 }
 #endif
 
@@ -440,10 +447,13 @@ void mpipedrv_isr() {
             mpipe.alp.inq->back     = payload_front + payload_len;
             payload_len            += MPIPE_FOOTERBYTES;
             mpipe.alp.inq->length   = payload_len + 6;
-            
-            usbcdc_rxdata(payload_front, payload_len, CDC0_INTFNUM);
-            mpipeevt_rxdetect(20);      // USB is fast: 20 ticks way more than enough
-        }   break;
+
+            // if the packet is actually done, go to done state (don't break)
+            if (usbcdc_rxdata(payload_front, payload_len, CDC0_INTFNUM) != 0) {
+                mpipeevt_rxdetect(20);
+                break;
+            }
+        }
         
         /// The reception is completely done.  Make state Idle, set sequence
         /// number to match incoming sequence, compute CRC (Good==0, Bad!=0),
@@ -452,7 +462,6 @@ void mpipedrv_isr() {
         case MPIPE_RxPayload: {
             ot_u8* footer;
             //ot_u16 crc_result;
-            mpipe.state             = MPIPE_Idle;
             footer                  = mpipe.alp.inq->back;
             tty.seq.ubyte[UPPER]    = *footer++;
             tty.seq.ubyte[LOWER]    = *footer;
@@ -470,18 +479,18 @@ void mpipedrv_isr() {
         
         /// Transmission is done.  Increment sequence ID, make state Idle, and
         /// callback the MPipe task event.  The Task delay is derived from one
-        /// page (<600 bits) @ 12 Mbps = 50 us = 0.05tick, but that rounds up 
-        /// to 1 tick.
-        ///
-        /// @note You could experiment with 0 tick delay, given than the kernel
-        /// pre-emption and scheduler runtime probably takes more than 50us
-        /// on an MSP430F5 @ 24 MHz.
+        /// page (<600 bits) @ 12 Mbps = 50 us = 0.05tick, but technically this
+        /// function (and state) should only run once the final data is safely
+        /// outbound, so 0 can be used in the event delay.
         case MPIPE_Tx_Done: 
             tty.seq.ushort++;
             //mpipe.state = MPIPE_Idle;
             //mpipedrv_kill();
-            mpipeevt_txdone(1);
+            mpipeevt_txdone(0);
             break;
+
+        default: __no_operation();
+                break;
     }
 }
 #endif

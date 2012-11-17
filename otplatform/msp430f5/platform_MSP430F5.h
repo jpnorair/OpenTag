@@ -161,6 +161,9 @@ typedef struct {
     u16* task_entry;
     u16  prand_reg;
     
+#   if 1
+    u8 usb_wakeup;
+#   endif
 #   if (RTC_OVERSAMPLE)
 #   endif
 #   if (RTC_ALARMS > 0)
@@ -251,7 +254,7 @@ void platform_isr_tim0a1(void);
 
 #ifdef _USB
 // Returns 0/1 to cause wakeup from LPM
-u8 platform_isr_usb(void);
+void platform_isr_usb(void);
 #endif
 
 void platform_isr_dma(void);

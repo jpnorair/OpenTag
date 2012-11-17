@@ -77,7 +77,7 @@
   * returns TRUE to wakeup CPU
   */
 //ot_u8 SetupPacketInterruptHandler(void);
-ot_u8 usbisr_setuppkt(void);
+void usbisr_setuppkt(void);
 
 
 /** Handle VBuss on signal.
@@ -101,7 +101,7 @@ void usbisr_ep0in(void);
 /** Handle Out-requests from control pipe.
   */
 //ot_u8 OEP0InterruptHandler(void);
-ot_u8 usbisr_ep0out(void);
+void usbisr_ep0out(void);
 
 
 #endif

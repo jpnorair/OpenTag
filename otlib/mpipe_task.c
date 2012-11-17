@@ -68,6 +68,8 @@ void mpipe_close() {
 
 
 void sub_mpipe_actuate(ot_u8 new_event, ot_u8 new_reserve, ot_uint new_nextevent) {
+/// Kernel should be pre-empted in order to cancel the currently scheduled
+/// task for MPipe and replace it with this one (if any task is scheduled).
     sys.task_MPA.event      = new_event;
     sys.task_MPA.reserve    = new_reserve;
     sys_preempt(&sys.task_MPA, new_nextevent);
@@ -83,9 +85,13 @@ void mpipe_send() {
 	sub_mpipe_actuate(3, 1, 32);
 }
 
-
 void mpipeevt_txdone(ot_int code) {
-	sub_mpipe_actuate(3, 1, (ot_uint)code);
+    sub_mpipe_actuate(3, 1, (ot_uint)code);
+}
+
+
+void mpipeevt_rxinit(ot_int code) {
+    sub_mpipe_actuate(4, 1, code);
 }
 
 
@@ -117,7 +123,10 @@ void mpipe_systask(ot_task task) {
     
         // RX successful: process the new frames -- note case fall through
         case 1: {
-            switch (alp_parse_message(&mpipe.alp, NULL)) {
+            ALP_status status;
+            status      = alp_parse_message(&mpipe.alp, NULL);
+            mpipe.state = MPIPE_Idle;
+            switch (status) {
                 //wipe queue and go back to idle listening
                 case MSG_Null:          //goto systask_mpipe_IDLE;
     
@@ -128,7 +137,7 @@ void mpipe_systask(ot_task task) {
                 //case MSG_Chunking_Out:
                 //case MSG_End:           //goto systask_mpipe_TX;
             }
-        } 
+        }
     
         // Initialize TX: mpipe_send is used.
         case 2: mpipe_send();

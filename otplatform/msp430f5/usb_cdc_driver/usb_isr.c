@@ -102,11 +102,13 @@ void usbisr_vbusoff(void) {
 }
 
 
-
 void usbisr_ep0in(void) {
     ot_u8 stall_flag;
 
     // Function Reset Connection Enable
+    //EPCNF_STALL = 0x08
+    ///@todo see if there's a good way to bundle this with usbisr_ep0out, using
+    ///      an offset value to determine OUT v IN
     USBCTL                 |= FRSTE;
     dblock_ep0.bOEPBCNT     = 0x00;
     stall_flag              = (usbctl.action != ACTION_data_in) << 3;
@@ -122,11 +124,12 @@ void usbisr_ep0in(void) {
 
 
 
-ot_u8 usbisr_ep0out(void) {
+void usbisr_ep0out(void) {
     //ot_u8 bWakeUp = False;
     ot_u8 stall_flag;
     
     // Function Reset Connection Enable
+    //EPCNF_STALL = 0x08
     USBCTL                 |= FRSTE;
     dblock_ep0.bIEPBCNT     = 0x00;
     stall_flag              = (usbctl.action != ACTION_data_out) << 3;
@@ -136,7 +139,8 @@ ot_u8 usbisr_ep0out(void) {
         usbcmd_rxnext_ep0();
         if ((usbctl.action == ACTION_nothing) \
         && (dblock_setup.bRequest == USB_CDC_SET_LINE_CODING)) {
-            return usbcdc_activate_linecoding();
+            //return usbcdc_activate_linecoding();
+            usbcdc_activate_linecoding();
         }
     }
     //else {
@@ -144,16 +148,16 @@ ot_u8 usbisr_ep0out(void) {
     //}
     
     //return (bWakeUp);
-    return False;
+    //return False;
 }
 
 
 
 
 
-ot_u8 usbisr_setuppkt(void) {
+void usbisr_setuppkt(void) {
     ot_u8 bTemp;
-    ot_u8 bWakeUp = False;
+    //ot_u8 bWakeUp = False;
     
     // Function Reset Connection Enable - set enable after first setup packet was received
     USBCTL |= FRSTE;      
@@ -164,18 +168,22 @@ ot_u8 usbisr_setuppkt(void) {
     // copy the MSB of bmRequestType to DIR bit of USBCTL
     // bit 0 is the DIR: 1=IN, 0=OUT
     // note that 1-2 = 0xFF in 8 bit logic, and 0-2 = 0xFE
-    bTemp   = ((dblock_setup.bmRequestType & USB_REQ_TYPE_INPUT) != 0);
-    USBCTL |= bTemp;
-    USBCTL &= (bTemp-2);
+    //bTemp   = ((dblock_setup.bmRequestType & USB_REQ_TYPE_INPUT) != 0);
+    //USBCTL |= bTemp;
+    //USBCTL &= (bTemp-2);
+    if (dblock_setup.bmRequestType & USB_REQ_TYPE_INPUT)    USBCTL |= DIR;
+    else                                                    USBCTL &= ~DIR;
     
     // clear out return data buffer
     usbctl.action = ACTION_nothing;
-    for (bTemp=0; bTemp<USB_RETURN_DATA_LENGTH; bTemp++) {
-        usbctl.response[bTemp] = 0x00;
-    }
+    platform_memset(usbctl.response, 0, USB_RETURN_DATA_LENGTH);
+    //for (bTemp=0; bTemp<USB_RETURN_DATA_LENGTH; bTemp++) {
+    //    usbctl.response[bTemp] = 0x00;
+    //}
     
     // decode and process the request
-    bWakeUp = usbproc_parse_request();
+    //bWakeUp = usbproc_parse_request();
+    usbproc_parse_request();
     
     // check if there is another setup packet pending
     // if it is, abandon current one by NAKing both data endpoint 0
@@ -184,23 +192,25 @@ ot_u8 usbisr_setuppkt(void) {
         goto usbisr_setuppkt_NEWPKT;
     }
     
-    return bWakeUp;
+    //return bWakeUp;
 }
 
 
 
 
+#include "mpipe.h"
+#include "system.h"
 
-
-ot_u8 platform_isr_usb (void) {
+void platform_isr_usb (void) {
 /// Check if the setup interrupt is pending.  We need to check it before other 
 /// interrupts, to work around that the Setup Int has lower priority then Input 
 /// Endpoint 0
 
-    ot_u8 bWakeUp = FALSE;
-    
+    //ot_u8 bWakeUp = FALSE;
+
     if (USBIFG & SETUPIFG) {
-        bWakeUp = usbisr_setuppkt();
+        //bWakeUp = usbisr_setuppkt();
+        usbisr_setuppkt();
         USBIFG &= ~SETUPIFG;    // clear the interrupt bit
     }
     
@@ -240,7 +250,8 @@ ot_u8 platform_isr_usb (void) {
             break;
                                         
         case USBVECINT_OUTPUT_ENDPOINT0: 
-            bWakeUp = usbisr_ep0out();
+            //bWakeUp = usbisr_ep0out();
+            usbisr_ep0out();
             break;
         
         case USBVECINT_RSTR:        
@@ -269,7 +280,8 @@ ot_u8 platform_isr_usb (void) {
             // NAK both IEP and OEP enpoints
             dblock_ep0.bIEPBCNT = EPBCNT_NAK;
             dblock_ep0.bOEPBCNT = EPBCNT_NAK;
-            bWakeUp             = usbisr_setuppkt();
+            //bWakeUp             = usbisr_setuppkt();
+            usbisr_setuppkt();
             break;
         
         case USBVECINT_STPOW_PACKET_RECEIVED: break;
@@ -301,7 +313,7 @@ ot_u8 platform_isr_usb (void) {
         default: break;
     }
     
-    return bWakeUp;
+    //return bWakeUp;
 }
 
 #endif

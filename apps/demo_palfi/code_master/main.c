@@ -252,9 +252,9 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 #if (OT_FEATURE(MPIPE))
 /// Transport Layer calls this when a UDP-class request has been received.
     static const char* label[] = { "ID:", "Data:", "Event:", "RSSI:", "Temp:", "Volt:" };
-    static const char type[]   = {  'x' ,   'x'  ,   't'   ,   's'  ,   's'  ,   's'   };
-    static const ot_u8 len[]   = {   8  ,    8   ,    1    ,    1   ,    1   ,    1    };
-    static const ot_u8 size[]  = {   8  ,    8   ,    1    ,    2   ,    2   ,    2    };
+    static const char type[]   = {  'x' ,   'x'  ,   't'   ,   'b'  ,   's'  ,   's'   };
+    static const ot_u8 len[]   = {   8  ,    8   ,    1    ,    3   ,    1   ,    1    };
+    static const ot_u8 size[]  = {   8  ,    8   ,    1    ,    3   ,    2   ,    2    };
     ot_int scratch;
     ot_u8  index;
     ot_u8  input_len;
@@ -296,8 +296,8 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
         else    break;
         
         input_data      = rxq.getcursor;
-        rxq.getcursor  += size[index];
         input_len	    = len[index];
+        rxq.getcursor  += size[index];
     }
     
     // Close the log file, send it out, return success
@@ -390,8 +390,6 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 
 
 
-
-
 /** Application Main <BR>
   * ==================================================================<BR>
   * Hint: you don't usually need to do anything to main.
@@ -411,7 +409,7 @@ void main(void) {
     mpipedrv_standby();
 
     ///4b. Load a message to show that main startup has passed
-    //otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+    otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>

@@ -89,40 +89,58 @@
 #define EP_MAX_PACKET_SIZE      0x40
 
 //Base addresses of transmit and receive buffers
-#define OEP1_X_BUFFER_ADDRESS   0x1C00  //Input  Endpoint 1 X Buffer Base-address
-#define OEP1_Y_BUFFER_ADDRESS   0x1C40  //Input  Endpoint 1 Y Buffer Base-address
-#define IEP1_X_BUFFER_ADDRESS   0x1C80  //Output Endpoint 1 X Buffer Base-address
-#define IEP1_Y_BUFFER_ADDRESS   0x1CC0  //Output Endpoint 1 Y Buffer Base-address
 
-#define OEP2_X_BUFFER_ADDRESS   0x1D00  //Input  Endpoint 2 X Buffer Base-address
-#define OEP2_Y_BUFFER_ADDRESS   0x1D40  //Input  Endpoint 2 Y Buffer Base-address
-#define IEP2_X_BUFFER_ADDRESS   0x1D80  //Output Endpoint 2 X Buffer Base-address
-#define IEP2_Y_BUFFER_ADDRESS   0x1DC0  //Output Endpoint 2 Y Buffer Base-address
 
-#define OEP3_X_BUFFER_ADDRESS   0x1E00  //Input  Endpoint 2 X Buffer Base-address
-#define OEP3_Y_BUFFER_ADDRESS   0x1E40  //Input  Endpoint 2 Y Buffer Base-address
-#define IEP3_X_BUFFER_ADDRESS   0x1E80  //Output Endpoint 2 X Buffer Base-address
-#define IEP3_Y_BUFFER_ADDRESS   0x1EC0  //Output Endpoint 2 Y Buffer Base-address
+//Endpoint 1 Buffers
+#define OEP1_X_BUFFER_ADDRESS   0x1C00
+#define IEP1_X_BUFFER_ADDRESS   (OEP1_X_BUFFER_ADDRESS+MAX_IRQ_PKT)
+#define OEP1_Y_BUFFER_ADDRESS   (IEP1_X_BUFFER_ADDRESS+MAX_IRQ_PKT)
+#define IEP1_Y_BUFFER_ADDRESS   (OEP1_Y_BUFFER_ADDRESS+MAX_IRQ_PKT)
+#define EP1_BUFFER_END          (IEP1_Y_BUFFER_ADDRESS+MAX_IRQ_PKT)
 
-#define OEP4_X_BUFFER_ADDRESS   0x1F00  //Input  Endpoint 2 X Buffer Base-address
-#define OEP4_Y_BUFFER_ADDRESS   0x1F40  //Input  Endpoint 2 Y Buffer Base-address
-#define IEP4_X_BUFFER_ADDRESS   0x1F80  //Output Endpoint 2 X Buffer Base-address
-#define IEP4_Y_BUFFER_ADDRESS   0x1FC0  //Output Endpoint 2 Y Buffer Base-address
+//Endpoint 2 Buffers
+//1D00 for 64 byte double buffer
+//2000 for 256 byte double buffer (or 512 byte single buffer)
+#define OEP2_X_BUFFER_ADDRESS   (EP1_BUFFER_END)
+#define IEP2_X_BUFFER_ADDRESS   (OEP2_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define OEP2_Y_BUFFER_ADDRESS   (IEP2_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define IEP2_Y_BUFFER_ADDRESS   (OEP2_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define EP2_BUFFER_END          (IEP2_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
 
-#define OEP5_X_BUFFER_ADDRESS   0x2000  //Input  Endpoint 2 X Buffer Base-address
-#define OEP5_Y_BUFFER_ADDRESS   0x2040  //Input  Endpoint 2 Y Buffer Base-address
-#define IEP5_X_BUFFER_ADDRESS   0x2080  //Output Endpoint 2 X Buffer Base-address
-#define IEP5_Y_BUFFER_ADDRESS   0x20C0  //Output Endpoint 2 Y Buffer Base-address
+//Endpoint 3 Buffers
+#define OEP3_X_BUFFER_ADDRESS   (EP2_BUFFER_END)
+#define IEP3_X_BUFFER_ADDRESS   (OEP3_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define OEP3_Y_BUFFER_ADDRESS   (IEP3_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define IEP3_Y_BUFFER_ADDRESS   (OEP3_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define EP3_BUFFER_END          (IEP3_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
 
-#define OEP6_X_BUFFER_ADDRESS   0x2100  //Input  Endpoint 2 X Buffer Base-address
-#define OEP6_Y_BUFFER_ADDRESS   0x2140  //Input  Endpoint 2 Y Buffer Base-address
-#define IEP6_X_BUFFER_ADDRESS   0x2180  //Output Endpoint 2 X Buffer Base-address
-#define IEP6_Y_BUFFER_ADDRESS   0x21C0  //Output Endpoint 2 Y Buffer Base-address
+//Endpoint 4 Buffers
+#define OEP4_X_BUFFER_ADDRESS   (EP3_BUFFER_END)
+#define IEP4_X_BUFFER_ADDRESS   (OEP4_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define OEP4_Y_BUFFER_ADDRESS   (IEP4_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define IEP4_Y_BUFFER_ADDRESS   (OEP4_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define EP4_BUFFER_END          (IEP4_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
 
-#define OEP7_X_BUFFER_ADDRESS   0x2200  //Input  Endpoint 2 X Buffer Base-address
-#define OEP7_Y_BUFFER_ADDRESS   0x2240  //Input  Endpoint 2 Y Buffer Base-address
-#define IEP7_X_BUFFER_ADDRESS   0x2280  //Output Endpoint 2 X Buffer Base-address
-#define IEP7_Y_BUFFER_ADDRESS   0x22C0  //Output Endpoint 2 Y Buffer Base-address
+//Endpoint 5 Buffers
+#define OEP5_X_BUFFER_ADDRESS   (EP4_BUFFER_END)
+#define IEP5_X_BUFFER_ADDRESS   (OEP5_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define OEP5_Y_BUFFER_ADDRESS   (IEP5_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define IEP5_Y_BUFFER_ADDRESS   (OEP5_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define EP5_BUFFER_END          (IEP5_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
+
+//Endpoint 6 Buffers
+#define OEP6_X_BUFFER_ADDRESS   (EP5_BUFFER_END)
+#define IEP6_X_BUFFER_ADDRESS   (OEP6_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define OEP6_Y_BUFFER_ADDRESS   (IEP6_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define IEP6_Y_BUFFER_ADDRESS   (OEP6_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define EP6_BUFFER_END          (IEP6_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
+
+//Endpoint 7 Buffers
+#define OEP7_X_BUFFER_ADDRESS   (EP6_BUFFER_END)
+#define IEP7_X_BUFFER_ADDRESS   (OEP7_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define OEP7_Y_BUFFER_ADDRESS   (IEP7_X_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define IEP7_Y_BUFFER_ADDRESS   (OEP7_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
+#define EP7_BUFFER_END          (IEP7_Y_BUFFER_ADDRESS+MAX_DATA_PKT)
 
 #define X_BUFFER 0
 #define Y_BUFFER 1
@@ -164,8 +182,8 @@ typedef struct _tEDB {
     ot_u8 bEPCNF;                        //Endpoint Configuration
     ot_u8 bEPBBAX;                       //Endpoint X Buffer Base Address
     ot_u8 bEPBCTX;                       //Endpoint X Buffer byte Count
-    ot_u8 bSPARE0;                       //no used
-    ot_u8 bSPARE1;                       //no used
+    ot_u8 bSPARE0;                       //not used
+    ot_u8 bSPARE1;                       //not used
     ot_u8 bEPBBAY;                       //Endpoint Y Buffer Base Address
     ot_u8 bEPBCTY;                       //Endpoint Y Buffer byte Count
     ot_u8 bEPSIZXY;                      //Endpoint XY Buffer Size

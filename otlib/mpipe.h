@@ -227,7 +227,16 @@ void mpipe_systask(ot_task task);
 /** Driver->Task Callbacks (Static) <BR>
   * ========================================================================<BR>
   */
-  
+
+
+/** @brief  Driver callback for RX Initialization Event
+  * @param  code    (ot_int) Number of ticks before kernel calls init procedure
+  * @retval None
+  * @ingroup Mpipe
+  */
+void mpipeevt_rxinit(ot_int code);
+
+
 /** @brief  Driver callback for RX Detect Event
   * @param  code    (ot_int) Ticks (typ 0-255) the task should apply as timeout
   * @retval None

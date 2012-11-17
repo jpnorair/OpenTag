@@ -58,14 +58,23 @@
 #include "usb_cdc_driver/usb_types.h"
 
 
-#define kUSBCDC_sendStarted         0x00 //was 0x01
-#define kUSBCDC_sendComplete        0x02
-#define kUSBCDC_intfBusyError       0x03
-#define kUSBCDC_receiveStarted      0x04
-#define kUSBCDC_receiveCompleted    0x05
-#define kUSBCDC_receiveInProgress   0x06
-#define kUSBCDC_generalError        0x07
+#define kUSBCDC_sendStarted         0x00    //was 0x01
+#define kUSBCDC_sendComplete        0x02    //currently unused
+
+#define kUSBCDC_receiveCompleted    0
+#define kUSBCDC_receiveInProgress   1
+#define kUSBCDC_receiveStarted      2
+
+#define kUSBCDC_generalError        0xFF
+#define kUSBCDC_intfBusyError       0xFE
+
+
+#define kUSBCDC_waitingForSend      0x01
+#define kUSBCDC_waitingForReceive   0x02
+#define kUSBCDC_dataWaiting         0x04
 #define kUSBCDC_busNotAvailable     0x08
+#define kUSB_allCdcEvents           0xFF
+
 
 
 //Local Macros
@@ -101,19 +110,6 @@ typedef struct {
     ot_u8   epbytes;                            //how many received bytes still available in current EP
     ot_u8   xy_select;                      //indicates which buffer is used by host to transmit data via OUT endpoint3
 } cdc_read_struct;
-
-//typedef struct {
-//    ot_u8 *pUserBuffer;                          //holds the current position of user's receiving buffer. If NULL- no receiving
-//                                                //operation started
-//    ot_u8 *pCurrentEpPos;                        //current positon to read of received data from curent EP
-//    ot_u16 nBytesToReceive;                       //holds how many bytes was requested by receiveData() to receive
-//    ot_u16 nBytesToReceiveLeft;                   //holds how many bytes is still requested by receiveData() to receive
-//    ot_u8 * pCT1;                                //holds current EPBCTxx register
-//    ot_u8 * pCT2;                                //holds next EPBCTxx register
-//    ot_u8 * pEP2;                                //holds addr of the next EP buffer
-//    ot_u8 nBytesInEp;                            //how many received bytes still available in current EP
-//    ot_u8 bCurrentBufferXY;                      //indicates which buffer is used by host to transmit data via OUT endpoint3
-//} cdc_read_struct;
 
 typedef struct {
 	cdc_control_struct  ctrler[CDC_NUM_INTERFACES];
@@ -166,11 +162,7 @@ ot_u8 usbcdc_rejectdata (ot_u8 x);
 ot_u8 usbcdc_txabort (ot_u16* size, ot_u8 x);
 
 
-#define kUSBCDC_waitingForSend      0x01
-#define kUSBCDC_waitingForReceive   0x02
-#define kUSBCDC_dataWaiting         0x04
-#define kUSBCDC_busNotAvailable     0x08
-#define kUSB_allCdcEvents           0xFF
+
 
 
 
@@ -236,7 +228,7 @@ void usbcdcevt_set_cts(ot_u8 state);
  * for line coding paramters are available.
  */
 //ot_u8 USBCDC_handleSetLineCoding (ot_u8 intfNum, ot_u32 lBaudrate);
-ot_u8 usbcdcevt_set_linecoding (ot_u8 x, ot_u32 lBaudrate);
+void usbcdcevt_set_linecoding (ot_u8 x, ot_u32 lBaudrate);
 
 
 
@@ -270,7 +262,7 @@ CMD_RETURN usbcdccmd_set_ctlline(void);     //usbSetControlLineState(void);
 
 /** Readout the settings (send from usb host) for the second uart
   */
-ot_u8 usbcdc_activate_linecoding(void);  //Handler_SetLineCoding(void);
+CMD_RETURN usbcdc_activate_linecoding(void);  //Handler_SetLineCoding(void);
 
 
 

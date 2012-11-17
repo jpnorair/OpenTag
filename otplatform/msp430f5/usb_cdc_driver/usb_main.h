@@ -347,10 +347,6 @@ extern usbctl_struct usbctl;
 #define ST_ERROR                    0x86
 #define ST_NOENUM_SUSPENDED         0x87
 
-void usbStallInEndpoint(ot_u8);
-void usbStallOutEndpoint(ot_u8);
-void usbStallEndpoint(ot_u8);
-void usbClearOEPByteCount(ot_u8);
 
 
 /*----------------------------------------------------------------------------
@@ -462,7 +458,7 @@ HANDLE_RETURN usbevt_resume ();
 /** @brief This function is executed when the USB host successfully "enumerates"
   * this device.
  */
-ot_u8 usbevt_enumerate();
+HANDLE_RETURN usbevt_enumerate();
 
 
 
@@ -570,7 +566,7 @@ CMD_RETURN usbcmd_invalid_request(void);
   *
   * Returns true or false
   */
-ot_u8 usbproc_parse_request(void);
+void usbproc_parse_request(void);
 
 
 

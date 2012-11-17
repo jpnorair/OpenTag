@@ -68,16 +68,22 @@
 
 ///@note You should edit this line below to control which events will be
 ///      handled in firmware.
-#define USBEVT_MASK      (/*USBEVT_CLOCKFAULT   |*/ \
-                            USBEVT_VBUSON       |   \
-                            USBEVT_VBUSOFF      |   \
-                          /*USBEVT_RESET        |*/ \
-                            USBEVT_SUSPEND      |   \
-                            USBEVT_RESUME       |   \
-                          /*USBEVT_RXBUFFERED   |*/ \
-                            USBEVT_TXCOMPLETE   |   \
-                            USBEVT_RXCOMPLETE   |   \
-                            0   )
+#define _USBEVT_MASK_1       (/*USBEVT_CLOCKFAULT   |*/ \
+                                USBEVT_VBUSON       |   \
+                                USBEVT_VBUSOFF      |   \
+                              /*USBEVT_RESET        |*/ \
+                              /*USBEVT_RXBUFFERED   |*/ \
+                                USBEVT_TXCOMPLETE   |   \
+                                USBEVT_RXCOMPLETE   |   \
+                                0   )
+
+#if (MPIPE_USB_REMWAKE)
+#   define _USBEVT_MASK_2   (_USBEVT_MASK_1 | USBEVT_SUSPEND | USBEVT_RESUME)
+#else
+#   define _USBEVT_MASK_2   _USBEVT_MASK_1
+#endif
+
+#define USBEVT_MASK         _USBEVT_MASK_2
 
 
 
@@ -85,7 +91,7 @@
 // #define that relates to Device Descriptor
 #define USB_VID_CDC             0x2047              // Vendor ID (VID)
 #define USB_PID_CDC             0x01                // Product ID (PID)
-#define VER_FW_H                0x02                // Device release number, in binary-coded decimal
+#define VER_FW_H                0x01                // Device release number, in binary-coded decimal
 #define VER_FW_L                0x00                // Device release number, in binary-coded decimal
 
 // If a serial number is to be reported, set this to the index within the string 
@@ -105,25 +111,28 @@
 // Interface numbers for the implemented CDSs and HIDs, 
 // This is to use in the Application(main.c) and in the interupt file(UsbIsr.c).
 #define CDC0_INTFNUM            0
-#define MSC_MAX_LUN_NUMBER      1           // Maximum number of LUNs supported
+//#define MSC_MAX_LUN_NUMBER      1           // Maximum number of LUNs supported
 
 #define PUTot_u16(x)            ((x)&0xFF),((x)>>8)
 
-#define USB_OUTEP_INT_EN        (BIT0 | BIT2) 
-#define USB_INEP_INT_EN         (BIT0 | BIT1 | BIT2) 
+#define USB_OUTEP_INT_EN        (0x04 | 0x01)
+#define USB_INEP_INT_EN         (0x04 | 0x02 | 0x01)
 
 #define USB_MCLK_FREQ           PLATFORM_HSCLOCK_HZ     // MCLK frequency of MCU, in Hz
-#define USB_DMA_CHAN            0x00                    // Set to 0xFF if no DMA channel will be used 0..7 for selected DMA channel
 
 
 
 
 
-// wTotalLength, This is the sum of:
-//      configuration descriptor length + 
-//      CDC descriptor length + 
-//      HID descriptor length
+// wTotalLength, This is a hardcoded value of:
+// sizeof(usbdesc_genericcfg_struct) + sizeof(usbdesc_cdccfg_struct)
 #define DESCRIPTOR_TOTAL_LENGTH 67 
+
+
+// Use 2 interfaces per CDC
+#define USB_NUM_INTERFACES 2
+
+
 
 // Controls whether the remote wakeup feature is supported by this device.
 // A value of 0x20 indicates that is it supported (this value is the mask for
@@ -132,9 +141,11 @@
 // Other values are undefined, as they will interfere with bmAttributes.
 #define USB_SUPPORT_REM_WAKE    MPIPE_USB_REMWAKE
 
+
 // Controls whether the application is self-powered to any degree.  Should be
-// set to 0x40, unless the USB device is fully supplied by the bus.
+// set to 0x40, unless the USB device is fully supplied by the bus (then 0x80)
 #define USB_SUPPORT_SELF_POWERED MPIPE_USB_POWERING
+
 
 #define USB_PLL_XT              MPIPE_USB_XTAL          // Defines which XT is used by the PLL (1=XT1, 2=XT2)
 #define USB_XT_FREQ             MPIPE_USB_XTFREQ        // Indicates the freq of the crystal on the oscillator indicated by USB_PLL_XT
@@ -149,13 +160,14 @@
 
 
 
-
 // Configuration constants that can not change ( Fixed Values)
 #define CDC_CLASS               2
 #define HID_CLASS               3
 #define MSC_CLASS               4
 #define PHDC_CLASS              5
-#define MAX_PACKET_SIZE         0x40
+#define MAX_PACKET_SIZE         64
+#define MAX_IRQ_PKT             64
+#define MAX_DATA_PKT            64
 
 
 // DESCRIPTOR CONSTANTS
@@ -173,8 +185,13 @@
 #define NONCOMP_NUM_USB_INTERFACES          1
 #define CDC_INTERFACE_INDEX                 0
 
+
+
 //Calculates the endpoint descriptor block number from given address
 #define EDB(addr)                           ((addr&0x07)-1)
+
+
+
 
 // Structure for generic part of configuration descriptor
 struct usbdesc_genericcfg_struct {
@@ -188,6 +205,9 @@ struct usbdesc_genericcfg_struct {
     ot_u8 attrs;        //mattributes;                         // bmAttributes, bus power, remote wakeup
     ot_u8 max_power;    //usb_max_power;                       // Max. Power Consumption at 2mA unit
 };
+
+
+
 
 // CDC Descriptor
 struct usbdesc_cdccfg_struct {
@@ -294,14 +314,17 @@ extern const ot_u8              usbdesc_string[];
 
 
 
-// Handle Structure - Will be populated in descriptors.c based on number of CDC,HID interfaces 
+// Handle Structure:
+// Populated in descriptors.c based on number of CDC interfaces
+///@note The X & Y buffer arrangement is changed from the organization used in
+/// the TI USB library, in order to improve code performance.
 typedef struct {
     ot_u8 epin_addr;                // ep_In_Addr (Input EP Addr)
     ot_u8 epout_addr;               // ep_Out_Addr (Output EP Addr)
     ot_u8 edb_index;                // The EDB index 
     ot_u8 class;                    // dev_Class (Device Class- 2 for CDC, 3 for HID)
-    ot_u16 irq_xbuf;                // intepEP_X_Buffer (Interupt X Buffer Addr)
-    ot_u16 irq_ybuf;                // intepEP_Y_Buffer (Interupt Y Buffer Addr)
+    ot_u16 irq_xbuf;                // intepEP_X_Buffer (Interrupt X Buffer Addr)
+    ot_u16 irq_ybuf;                // intepEP_Y_Buffer (Interrupt Y Buffer Addr)
     ot_u16 out_xbuf;                // oep_X_Buffer (Output X buffer Addr)
     ot_u16 in_xbuf;                 // iep_X_Buffer (Input X Buffer Addr)
     ot_u16 out_ybuf;                // oep_Y_Buffer (Output Y buffer Addr)

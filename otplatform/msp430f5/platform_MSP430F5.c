@@ -446,7 +446,10 @@ void platform_ot_preempt() {
 /// in co-operative mode after the task completes).  In this function, we just
 /// check if GPTIM is hot, which means the chip is asleep.  If so, it will
 /// invoke sys_event_manager() pre-emptively.
+
     if (OT_GPTIM->CCTL1 & CCIE) {
+        // sys_event_manager() returns 0 when a task is pending NOW.
+        // Use it to set the interrupt flag and invoke the task.
         OT_GPTIM->CCTL1 |= (sys_event_manager() == 0) | CCIE;
     }
 }
