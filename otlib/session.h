@@ -16,16 +16,20 @@
 /**
   * @file       /otlib/session.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       8 August 2012
-  * @brief      ISO 18000-7.4 Session Framework
+  * @version    R100
+  * @date       24 November 2012
+  * @brief      DASH7 M2 (ISO 18000-7.4) Session Framework
   * @defgroup   Session (Session Layer)
   * @ingroup    Session
   *
-  * Session Management in the OpenTag implementation of Made 2 is, to a large 
-  * extent, glue that holds together.  It includes the basic session layer
-  * requirements of the spec in addition to the storage of some other, session
-  * oriented parameters that need to be passed between layers.
+  * The DASH7 Mode 2 specification describes a Session Layer, and this layer is
+  * implemented completely by this module.  This module also implements some 
+  * additional features.
+  * 
+  * If the application has not enabled DASH7 Mode 2 features, the session 
+  * module is still part of the active compilation because any task can use the
+  * session stack for various tasking purposes -- especially communication 
+  * interface tasks.
   * 
   * The session module implements a session stack.  The stack is sorted when a
   * new session is inserted.  The implementation of the stack itself is in the
@@ -35,6 +39,7 @@
   * are fewer that four simultaneous sessions permitted, which is actually more
   * than a lot of devices will ever need -- for many devices, one session is all
   * that will ever be used at any given time.
+  * 
   ******************************************************************************
   */
 

@@ -143,7 +143,7 @@
 
 
 ///If specificed, this gets called after reset, during startup
-#ifdef __ISR_RESET
+#if defined(__ISR_RESET) && !defined(__N_ISR_RESET)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=RESET_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -158,7 +158,7 @@ OT_INTERRUPT void isr_reset(void) {
 
 
 
-#ifdef __ISR_SYSNMI
+#if defined(__ISR_SYSNMI) && !defined(__N_ISR_SYSNMI)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=SYSNMI_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -173,7 +173,7 @@ OT_INTERRUPT void isr_sysnmi(void) {
 
 
 
-#ifdef __ISR_USERNMI
+#if defined(__ISR_USERNMI) && !defined(__N_ISR_USERNMI)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=UNMI_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -188,7 +188,7 @@ OT_INTERRUPT void isr_usernmi(void) {
 
 
 
-#ifdef __ISR_T0B0
+#if defined(__ISR_T0B0) && !defined(__N_ISR_T0B0)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=TIMER0_B0_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -203,7 +203,7 @@ OT_INTERRUPT void isr_tim0b0(void) {
 
 
 
-#ifdef __ISR_T0B1
+#if defined(__ISR_T0B1) && !defined(__N_ISR_T0B1)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=TIMER0_B1_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -223,7 +223,7 @@ OT_INTERRUPT void isr_tim0b1(void) {
 
 
 
-#ifdef __ISR_CB
+#if defined(__ISR_CB) && !defined(__N_ISR_CB)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=COMP_B_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -239,7 +239,7 @@ OT_INTERRUPT void isr_cb(void) {
 
 
 
-#ifdef __ISR_WDTI
+#if defined(__ISR_WDTI) && !defined(__N_ISR_WDTI)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=WDT_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -255,7 +255,7 @@ OT_INTERRUPT void isr_wdti(void) {
 
 
 
-#ifdef __ISR_USCIA0
+#if defined(__ISR_USCIA0) && !defined(__N_ISR_USCIA0)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=USCI_A0_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -270,7 +270,7 @@ OT_INTERRUPT void isr_uscia0(void) {
 
 
 
-#ifdef __ISR_USCIB0
+#if defined(__ISR_USCIB0) && !defined(__N_ISR_USCIB0)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=USCI_B0_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -286,7 +286,7 @@ OT_INTERRUPT void isr_uscib0(void) {
 
 
 
-#ifdef __ISR_ADC12A
+#if defined(__ISR_ADC12A) && !defined(__N_ISR_ADC12A)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=ADC12_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -300,7 +300,7 @@ OT_INTERRUPT void isr_adc12a(void) {
 #endif
 
 
-#ifdef __ISR_ADC10A
+#if defined(__ISR_ADC10A) && !defined(__N_ISR_ADC10A)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=ADC10_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -315,7 +315,7 @@ OT_INTERRUPT void isr_adc10a(void) {
 
 
 
-#ifdef __ISR_T0A0
+#if defined(__ISR_T0A0) && !defined(__N_ISR_T0A0)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=TIMER0_A0_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -330,7 +330,7 @@ OT_INTERRUPT void isr_tim0a0(void) {
 
 
 
-#ifdef __ISR_T0A1
+#if defined(__ISR_T0A1) && !defined(__N_ISR_T0A1)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=TIMER0_A1_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -348,7 +348,7 @@ OT_INTERRUPT void isr_tim0a1(void) {
 #endif
 
 
-#ifdef __ISR_USB
+#if defined(__ISR_USB) && !defined(__N_ISR_USB)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=USB_UBM_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -367,7 +367,7 @@ OT_INTERRUPT void isr_usb(void) {
 #endif
 
 
-#ifdef __ISR_DMA
+#if defined(__ISR_DMA) && !defined(__N_ISR_DMA)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=DMA_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -381,7 +381,7 @@ OT_INTERRUPT void isr_dma(void) {
 #endif
 
 
-#ifdef __ISR_T1A0
+#if defined(__ISR_T1A0) && !defined(__N_ISR_T1A0)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=TIMER1_A0_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -396,7 +396,7 @@ OT_INTERRUPT void isr_tim1a0(void) {
 
 
 
-#ifdef __ISR_T1A1
+#if defined(__ISR_T1A1) && !defined(__N_ISR_T1A1)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=TIMER1_A1_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -415,7 +415,7 @@ OT_INTERRUPT void isr_tim1a1(void) {
 
 
 
-#ifdef __ISR_P1
+#if defined(__ISR_P1) && !defined(__N_ISR_P1)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=PORT1_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -431,7 +431,7 @@ OT_INTERRUPT void isr_p1(void) {
 
 
 
-#ifdef __ISR_USCIA1
+#if defined(__ISR_USCIA1) && !defined(__N_ISR_USCIA1)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=USCI_A1_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -446,7 +446,7 @@ OT_INTERRUPT void isr_uscia1(void) {
 
 
 
-#ifdef __ISR_USCIB1
+#if defined(__ISR_USCIB1) && !defined(__N_ISR_USCIB1)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=USCI_B1_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -461,7 +461,7 @@ OT_INTERRUPT void isr_uscib1(void) {
 
 
 
-#ifdef __ISR_T2A0
+#if defined(__ISR_T2A0) && !defined(__N_ISR_T2A0)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=TIMER2_A0_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -476,7 +476,7 @@ OT_INTERRUPT void isr_tim2a0(void) {
 
 
 
-#ifdef __ISR_T2A1
+#if defined(__ISR_T2A1) && !defined(__N_ISR_T2A1)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=TIMER2_A1_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -495,7 +495,7 @@ OT_INTERRUPT void isr_tim2a1(void) {
 
 
 
-#ifdef __ISR_P2
+#if defined(__ISR_P2) && !defined(__N_ISR_P2)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=PORT2_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -510,7 +510,7 @@ OT_INTERRUPT void isr_p2(void) {
 
 
 
-#ifdef __ISR_LCDB
+#if defined(__ISR_LCDB) && !defined(__N_ISR_LCDB)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=LCD_B_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -525,7 +525,7 @@ OT_INTERRUPT void isr_lcdb(void) {
 
 
 
-#ifdef __ISR_RTCA
+#if defined(__ISR_RTCA) && !defined(__N_ISR_RTCA)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=RTC_A_VECTOR
 #elif (CC_SUPPORT == IAR_V5)
@@ -540,7 +540,7 @@ OT_INTERRUPT void isr_rtca(void) {
 
 
 
-#ifdef __ISR_AES
+#if defined(__ISR_AES) && !defined(__N_ISR_AES)
 #if (CC_SUPPORT == CL430)
 #   pragma vector=AES_VECTOR
 #elif (CC_SUPPORT == IAR_V5)

@@ -16,7 +16,7 @@
 /**
   * @file       /otlib/OTAPI_tasker.c
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       31 Sep 2012
   * @brief      Default implementation of OTAPI communication tasker functions
   * @ingroup    OTAPI
@@ -51,8 +51,11 @@ m2session* sub_newtask(session_tmpl* s_tmpl, ot_app applet, ot_u16 offset) {
 
 
 m2session* otapi_task_immediate(session_tmpl* s_tmpl, ot_app applet) {
-    /// Flush-out any sessions that might be blocking this new session, then
-    /// Create an ad-hoc session at the top of the stack (offset = 0)
+/// Make sure the radio is stopped, flush any interfering sessions,
+/// and create the new session to occur immediately (offset = 0).
+    if (radio.state != RADIO_Idle) {
+        rm2_kill();
+    }
     session_flush();
     return sub_newtask(s_tmpl, applet, 0);
 }

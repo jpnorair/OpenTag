@@ -68,10 +68,15 @@
   * DASH7 gateway can figure out exactly what capabilities this device has.
   */
 #define OT_PARAM(VAL)                   OT_PARAM_##VAL
+
+// User/App task lists: comment-out if none.  
+// Use comma separated with TASK_xxx nomenclature (e.g. TASK_0, TASK_1, TASK_2)
+//#define OT_PARAM_USER_EXOTASKS
+#define OT_PARAM_USER_KERNELTASKS       TASK_external
+
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
 #define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    
-#define OT_PARAM_WATCHDOG_PERIOD        16                                  // Number of ticks before exception, following expected event return time
 #define OT_PARAM_KERNEL_LIMIT           -1                                  // Maximum ticks between kernel calls (if<=0, no limit)
 
 #define OT_FEATURE(VAL)                 OT_FEATURE_##VAL
@@ -96,24 +101,21 @@
 #define OT_FEATURE_SENSORS              NOT_AVAILABLE                       // (formal, spec-based sensor config)
 #define OT_FEATURE_LF                   NOT_AVAILABLE                       // Optional LF interface for event generation
 #define OT_FEATURE_HF                   NOT_AVAILABLE                       // Optional HF interface for event generation
-#define OT_FEATURE_AUTOCOPY             NOT_AVAILABLE                       // A DMA method for moving batch data (experimental)
 #define OT_FEATURE_CRC_TXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
 #define OT_FEATURE_CRC_RXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
 #define OT_FEATURE_RTC                  DISABLED                            // Do you have a precise 32768 Hz clock?
 #define OT_FEATURE_M1                   NOT_AVAILABLE                       // Mode 1 Featureset: Generally not implemented
 #define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
-#define OT_FEATURE_EXTERNAL_EVENT       DISABLED
 #define OT_FEATURE_SESSION_DEPTH        OT_PARAM_SESSION_DEPTH
-#define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE    
-#define OT_FEATURE_SYSKERN_CALLBACKS    DISABLED                             // Kernel callbacks from system layer
-#define OT_FEATURE_SYSRF_CALLBACKS      DISABLED                             // RF Process callbacks from system layer
-#define OT_FEATURE_SYSIDLE_CALLBACKS    DISABLED                            // Idle Process callbacks from system layer
-#define OT_FEATURE_M2NP_CALLBACKS       DISABLED                             // Dynamic callbacks from Network (M2NP) layer
-#define OT_FEATURE_M2QP_CALLBACKS       DISABLED                             // Dynamic callbacks from Transport (M2QP) layer
-#define OT_FEATURE_MPIPE_CALLBACKS      DISABLED                            // Dynamic callbacks from MPIPE
-#define OT_FEATURE_SW_WATCHDOG          DISABLED
-#define OT_FEATURE_HW_WATCHDOG          DISABLED
-#define OT_FEATURE_WATCHDOG_PERIOD      OT_PARAM_WATCHDOG_PERIOD                              
+#define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE
+#define OT_FEATURE_EXT_TASK             ENABLED
+#define OT_FEATURE_SYSKERN_CALLBACKS    DISABLED                            // Dynamic Kernel Callbacks (panic, sleep, etc)
+#define OT_FEATURE_SYSTASK_CALLBACKS    DISABLED                            // Dynamic Task callbacks
+#define OT_FEATURE_DLLRF_CALLBACKS      DISABLED                            // Dynamic RF Init, Terminate Callbacks
+#define OT_FEATURE_MPIPE_CALLBACKS      DISABLED                            // Signal callbacks from MPIPE
+#define OT_FEATURE_M2NP_CALLBACKS       DISABLED                            // Signal callbacks from Network (M2NP) layer
+#define OT_FEATURE_M2QP_CALLBACKS       DISABLED                            // Signal callbacks from Transport (M2QP) layer
+                       
 
 
 
@@ -124,14 +126,12 @@
 
 
 /// Logging Features (only available if C Server is enabled)
-/// These control the things that are logged.  The way things are logged depends
-/// on the implementation of the logging driver.
+/// Somewhat defunct, legacy features
 #define LOG_FEATURE(VAL)                ((LOG_FEATURE_##VAL) && (OT_FEATURE_LOGGER))
 #define LOG_FEATURE_FAULTS              ENABLED                             // Logs System Faults (errors that cause reset)
 #define LOG_FEATURE_FAILS               ENABLED                             // Logs System Failures (detected glitches)                
 #define LOG_FEATURE_RESPONSES           ENABLED
 #define LOG_FEATURE_ANY                 OT_FEATURE_LOGGER
-
 #define LOG_METHOD_DEFAULT              0                                   // Logging over NDEF+MPIPE, using OTAPI_logger.c
 #define LOG_METHOD_SOMETHINGELSE        1                                   // Just an example
 #define LOG_METHOD                      LOG_METHOD_DEFAULT
@@ -148,7 +148,6 @@
 #define M2_FEATURE_GATEWAY              ENABLED                             // Gateway device mode
 #define M2_FEATURE_SUBCONTROLLER        DISABLED                            // Subcontroller device mode
 #define M2_FEATURE_ENDPOINT             DISABLED                            // Endpoint device mode
-#define M2_FEATURE_BLINKER              DISABLED                            // Blinker device mode
 #define M2_FEATURE_M2DP                 DISABLED                            // Datastreams & associated commands
 #define M2_FEATURE_DATASTREAM           M2_FEATURE_M2DP
 #define M2_FEATURE_FECTX                DISABLED  /* test */                          // FEC support for transmissions

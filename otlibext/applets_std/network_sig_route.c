@@ -29,7 +29,7 @@
 
 
 #ifdef EXTF_network_sig_route
-void network_sig_route(ot_int code, ot_int protocol) {
+void network_sig_route(void* route, void* session) {
 	static const ot_u8 label_dialog[]	= { 9, 'M','2','_','D','i','a','l','o','g' };
 	static const ot_u8 label_nack[]		= { 7, 'M','2','_','N','a','c','k' };
 	static const ot_u8 label_stream[]	= { 9, 'M','2','_','S','t','r','e','a','m' };
@@ -39,7 +39,9 @@ void network_sig_route(ot_int code, ot_int protocol) {
 											label_nack,
 											label_stream,
 											label_snack };
-	protocol &= 3;
+	ot_u8 protocol;
+
+	protocol = ((m2session*)session)->protocol & 3;
 	otapi_log_msg(	MSG_raw,
 					labels[protocol][0],
 					rxq.length,

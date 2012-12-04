@@ -25,6 +25,8 @@
   */
 
 #include "OT_config.h"
+#if OT_FEATURE(M2)
+
 #include "OT_platform.h"
 
 #include "crc16.h"
@@ -673,5 +675,5 @@ ot_int em2_remaining_bytes() {
 
 
 
-
+#endif
 

@@ -286,19 +286,6 @@ void usbcdc_transfer_buf2host (ot_u8 x) {
             CDC_WRITER(x).is_zlp_sent = TRUE;
 
             if (CDC_WRITER(x).txcnt_last == EP_MAX_PACKET_SIZE_CDC) {
-//                if (CDC_WRITER(x).xy_select == X_BUFFER){
-//                    if (dblock_epin[i].bEPBCTX & EPBCNT_NAK) {
-//                        dblock_epin[i].bEPBCTX = 0;
-//                        CDC_WRITER(x).xy_select = Y_BUFFER;                                     //switch buffer
-//                    }
-//                }
-//                else {
-//                    if (dblock_epin[i].bEPBCTY & EPBCNT_NAK) {
-//                        dblock_epin[i].bEPBCTY = 0;
-//                        CDC_WRITER(x).xy_select = X_BUFFER;                                     //switch buffer
-//                    }
-//                }
-                
                 pCT[0]  = &dblock_epin[i].bEPBCTX;
                 pCT[1]  = &dblock_epin[i].bEPBCTY;
                 j       = CDC_WRITER(x).xy_select;
@@ -323,28 +310,12 @@ void usbcdc_transfer_buf2host (ot_u8 x) {
     /// <LI> Pick the open buffer, and rotate it to the next </LI>
     CDC_WRITER(x).is_zlp_sent = FALSE;
 
-    //This is optimized code from the original routine below
     j       = CDC_WRITER(x).xy_select;
     pEP[j]  = (ot_u8*)USB_HANDLE(x).in_xbuf;
     pCT[j]  = &dblock_epin[i].bEPBCTX;
     j      ^= 1;
     pEP[j]  = (ot_u8*)USB_HANDLE(x).in_ybuf;
     pCT[j]  = &dblock_epin[i].bEPBCTY;
-    
-//    if (CDC_WRITER(x).xy_select == X_BUFFER){
-//        //this is the active EP buffer
-//        pEP1 = 
-//        pCT1 = 
-//        pEP2 = (ot_u8*)USB_HANDLE(x).in_ybuf;
-//        pCT2 = &dblock_epin[i].bEPBCTY;
-//    }
-//    else {
-//        pEP1 = (ot_u8*)USB_HANDLE(x).in_ybuf;
-//        pCT1 = &dblock_epin[i].bEPBCTY;
-//        pEP2 = (ot_u8*)USB_HANDLE(x).in_xbuf;
-//        pCT2 = &dblock_epin[i].bEPBCTX;
-//    }
-    
 
     // iii
     j = 0;
@@ -534,27 +505,6 @@ void usbcdc_transfer_host2buf (ot_u8 x) {
     if (!((dblock_epout[i].bEPBCTX | dblock_epout[i].bEPBCTY) & EPBCNT_NAK)){
         return ;    //(bWakeUp);
     }
-
-
-    ///@todo this block should be managed with a buffer pointer
-//    if (CDC_READER(x).xy_select == X_BUFFER){ //X is current buffer
-//        //this is the active EP buffer
-//        pEP1 = (ot_u8*)USB_HANDLE(x).out_xbuf;
-//        CDC_READER(x).ct1 = &dblock_epout[i].bEPBCTX;
-//
-//        //second EP buffer
-//        CDC_READER(x).ep2 = (ot_u8*)USB_HANDLE(x).out_ybuf;
-//        CDC_READER(x).ct2 = &dblock_epout[i].bEPBCTY;
-//    }
-//    else {
-//        //this is the active EP buffer
-//        pEP1 = (ot_u8*)USB_HANDLE(x).out_ybuf;
-//        CDC_READER(x).ct1 = &dblock_epout[i].bEPBCTY;
-//
-//        //second EP buffer
-//        CDC_READER(x).ep2 = (ot_u8*)USB_HANDLE(x).out_xbuf;
-//        CDC_READER(x).ct2 = &dblock_epout[i].bEPBCTX;
-//    }
     
     //offset should be -2 (Y) or 2 (X) for host-output endpoint buffer
     offset              = 2 - (CDC_READER(x).xy_select << 2);

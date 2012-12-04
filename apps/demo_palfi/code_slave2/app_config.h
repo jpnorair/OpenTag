@@ -67,6 +67,12 @@
   * DASH7 gateway can figure out exactly what capabilities this device has.
   */
 #define OT_PARAM(VAL)                   OT_PARAM_##VAL
+
+// User/App task lists: comment-out if none.  
+// Use comma separated with TASK_xxx nomenclature (e.g. TASK_0, TASK_1, TASK_2)
+//#define OT_PARAM_USER_EXOTASKS
+#define OT_PARAM_USER_KERNELTASKS       TASK_external
+
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
 #define OT_PARAM_BUFFER_SIZE            (512 + 512*(MPIPE_FOR_DEBUGGING!=0))  // Typically, must be at least 512 bytes
@@ -94,7 +100,6 @@
 #define OT_FEATURE_SENSORS              NOT_AVAILABLE                       // (formal, spec-based sensor config)
 #define OT_FEATURE_LF                   ENABLED                             // Optional LF interface for event generation
 #define OT_FEATURE_HF                   NOT_AVAILABLE                       // Optional HF interface for event generation
-#define OT_FEATURE_AUTOCOPY             NOT_AVAILABLE                       // A DMA method for moving batch data (experimental)
 #define OT_FEATURE_CRC_TXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
 #define OT_FEATURE_CRC_RXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
 #define OT_FEATURE_RTC                  DISABLED                            // Do you have a precise 32768 Hz clock?
@@ -126,7 +131,6 @@
 #define LOG_FEATURE_FAILS               ENABLED                             // Logs System Failures (detected glitches)                
 #define LOG_FEATURE_RESPONSES           ENABLED
 #define LOG_FEATURE_ANY                 OT_FEATURE_LOGGER
-
 #define LOG_METHOD_DEFAULT              0                                   // Logging over NDEF+MPIPE, using OTAPI_logger.c
 #define LOG_METHOD_SOMETHINGELSE        1                                   // Just an example
 #define LOG_METHOD                      LOG_METHOD_DEFAULT
@@ -143,7 +147,6 @@
 #define M2_FEATURE_GATEWAY              DISABLED                            // Gateway device mode
 #define M2_FEATURE_SUBCONTROLLER        DISABLED                            // Subcontroller device mode
 #define M2_FEATURE_ENDPOINT             ENABLED                             // Endpoint device mode
-#define M2_FEATURE_BLINKER              DISABLED                            // Blinker device mode
 #define M2_FEATURE_M2DP                 DISABLED                            // Datastreams & associated commands
 #define M2_FEATURE_DATASTREAM           M2_FEATURE_M2DP
 #define M2_FEATURE_FECTX                ENABLED   /* test */                          // FEC support for transmissions

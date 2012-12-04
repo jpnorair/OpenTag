@@ -68,7 +68,7 @@
 #   define __OT_INTERRUPT_ISR(FN)     void ##FN (void)
 
 #elif (CC_SUPPORT == CL430)
-#   define OT_IRQPRAGMA(VAL)            _Pragma(#VAL)
+#   define OT_IRQPRAGMA(VAL)            _Pragma(vector=#VAL)
 #   define OT_INTERRUPT                 __interrupt
 #   define __OT_INTERRUPT_VECTOR(VAL)   _Pragma(#VAL)
 #   define __OT_INTERRUPT_ISR(FN)       __interrupt void ##FN (void)

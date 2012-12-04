@@ -63,7 +63,7 @@
   * ========================================================================<BR>
   * The TI EM430 kits so far must be re-configured to 433 MHz, or set to 866.
   */
-#define RF_PARAM_BAND   866
+#define RF_PARAM_BAND   433
 #define RF_HDB_ATTEN    6       //Half dB attenuation (units = 0.5dB), used to scale TX power
 #define RF_RSSI_OFFSET  3       //Offset applied to RSSI calculation
 
@@ -123,9 +123,11 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG2      DISABLED
 
+#define BOARD_SW2_PORTNUM               1
 #define BOARD_SW2_PORT                  GPIO1
 #define BOARD_SW2_PIN                   GPIO_Pin_7
 #define BOARD_SW2_POLARITY              0
+#define BOARD_SW2_PULLING               1
 
 #define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
 #define BOARD_PARAM_LFHz                32768
@@ -245,8 +247,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 // MSP430 only ... Boot Strap Loader
 // BSL is not presently used with OpenTag, although at some point it might be.
 // In that case, we would probably reserve Bank A for the USB driver and the
-// filesystem, and not overwrite Bank A.  The 2KB BSL space is not big enough
-// for the USB driver, but it is big enough for UART Mpipe.
+// filesystem, and not overwrite Bank A.
 #define BSL_START_ADDR          0x1000
 #define BSL_START_PAGE          0
 #define BSL_PAGE_SIZE           512
@@ -360,9 +361,27 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define OT_TRIG1_PORT       GPIO1
 #define OT_TRIG1_PIN        GPIO_Pin_0
 #define OT_TRIG1_HIDRIVE    ENABLED
-#define OT_TRIG1_PORT       GPIO3
+#define OT_TRIG2_PORT       GPIO3
 #define OT_TRIG2_PIN        GPIO_Pin_6
 #define OT_TRIG2_HIDRIVE    ENABLED
+
+#define OT_SWITCH1_PORTNUM  BOARD_SW2_PORTNUM
+#define OT_SWITCH1_PORT     BOARD_SW2_PORT
+#define OT_SWITCH1_PIN      BOARD_SW2_PIN
+#define OT_SWITCH1_POLARITY BOARD_SW2_POLARITY
+#define OT_SWITCH1_PULLING  BOARD_SW2_PULLING
+
+//CC430 & MSP430 specific
+#if (OT_SWITCH1_PORTNUM == 1)
+#   define OT_SWITCH1_PIV       GPIO1->P1IV
+#   define OT_SWITCH1_VECTOR    PORT1_VECTOR
+#   define __ISR_P1
+#elif (OT_SWITCH1_PORTNUM == 2)
+#   define OT_SWITCH1_PIV       GPIO2->P2IV
+#   define OT_SWITCH1_VECTOR    PORT2_VECTOR
+#   define __ISR_P2
+#endif
+
 
 
 // Pin that can be used for ADC-based random number (usually floating pin)

@@ -78,7 +78,7 @@ ot_u8 otutils_encode_timeout(ot_u16 timeout_ticks) {
 
 // Binary data to hex-text
 #ifndef EXTF_otutils_bin2hex
-ot_int otutils_bin2hex(ot_u8* src, ot_u8* dst, ot_int size) {
+ot_int otutils_bin2hex(ot_u8* dst, ot_u8* src, ot_int size) {
     ot_u8* src_end;
     ot_u8* dst_start;
     src_end     = src + size;
@@ -130,6 +130,7 @@ ot_int otutils_int2dec(ot_u8* dst, ot_int data) {
 
 
 ot_int slistf(ot_u8* dst, const char* label, char format, ot_u8 number, ot_u8* src) {
+/// @note: this function is designed to use a big-endian input string.
     ot_u8* scratch;
     ot_u8* dst_start;
 
@@ -141,7 +142,7 @@ ot_int slistf(ot_u8* dst, const char* label, char format, ot_u8 number, ot_u8* s
 
     // Hex format
     if (format == 'x') {
-        dst += otutils_bin2hex((ot_u8*)src, dst, number);
+        dst += otutils_bin2hex(dst, (ot_u8*)src, number);
         goto slistf_END;
     }
 
@@ -154,8 +155,8 @@ ot_int slistf(ot_u8* dst, const char* label, char format, ot_u8 number, ot_u8* s
                 value.sshort = (ot_int)*((ot_s8*)src);
             }
             else {
-                value.ubyte[1] = *src++;
-                value.ubyte[0] = *src;
+                value.ubyte[UPPER] = *src++;
+                value.ubyte[LOWER] = *src;
             }
             src++;
             dst += otutils_int2dec(dst, value.sshort);

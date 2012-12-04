@@ -181,5 +181,13 @@ typedef void (*ot_sig2)(ot_int, ot_int);
 typedef void (*ot_sigv)(void*);
 
 
+/** @typedef ot_sigv2
+  * Double void-pointer-argument signal callback
+  * looks like: void callback(void*)
+  */
+typedef void (*ot_sigv2)(void*, void*);
+
+
+
 #endif 
 

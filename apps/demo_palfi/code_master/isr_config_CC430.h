@@ -23,44 +23,57 @@
   * Don't actually include this.  Include OT_platform.h instead.  This file and
   * others like it are important to the preprocessor-based configuration scheme.
   *
-  * You can uncomment these if you want to use one of these interrupts in your
-  * app.  Note that some interrupts will be enabled and compiled because they
-  * are required by OpenTag, regardless of the setting in this file.  Also note
-  * that the board config file might define __ISR_XXX constants as well.
+  * You can uncomment these if you want to negate interrupts defined by the
+  * board support file (via __N_ISR...) or force-on some interrupts (via
+  * __ISR...).  Some interrupts are required by OpenTag, and in certain cases
+  * these will be enabled regardless of the setting in this file.
   *
-  * Actual ISRs are implemented in: 
-  * /otplatform/cc430/platform_isr_CC430.c
+  * The top-level ISRs are implemented in /otplatform/cc430/isr_CC430.c
   ******************************************************************************
   */
 
 #ifndef __ISR_CONFIG_CC430_H
 #define __ISR_CONFIG_CC430_H
 
-//#define __ISR_RESET_ID
-//#define __ISR_SYSNMI_ID
-//#define __ISR_USERNMI_ID
-//#define __ISR_CB_ID
-//#define __ISR_T0B0_ID
-//#define __ISR_T0B1_ID
-//#define __ISR_WDTI_ID
-//#define __ISR_USCIA0_ID
-//#define __ISR_USCIB0_ID
-//#define __ISR_ADC10A_ID       //Not all MSP430F55xx
-//#define __ISR_ADC12A_ID       //Not all MSP430F55xx
-//#define __ISR_T0A0_ID
-//#define __ISR_T0A1_ID
-//#define __ISR_USB_ID
-//#define __ISR_DMA_ID
-//#define __ISR_T1A0_ID
-//#define __ISR_T1A1_ID
-//#define __ISR_P1_ID
-//#define __ISR_USCIA1_ID
-//#define __ISR_USCIB1_ID
-//#define __ISR_T2A0_ID
-//#define __ISR_T2A1_ID
-//#define __ISR_P2_ID
-//#define __ISR_RTCA_ID
 
+//#define __N_ISR_RESET   63
+//#define __N_ISR_SYSNMI  62
+//#define __N_ISR_USERNMI 61
+//#define __N_ISR_CB      60
+//#define __N_ISR_WDTI    59
+//#define __N_ISR_USCIA0  58
+//#define __N_ISR_USCIB0  57
+//#define __N_ISR_ADC12A  56
+//#define __N_ISR_T0A0    55
+//#define __N_ISR_T0A1    54
+//#define __N_ISR_RF1A    53
+//#define __N_ISR_DMA     52
+//#define __N_ISR_T1A0    51
+//#define __N_ISR_T1A1    50
+//#define __N_ISR_P1      49
+//#define __N_ISR_P2      48
+//#define __N_ISR_LCDB    47
+//#define __N_ISR_RTCA    46
+//#define __N_ISR_AES     45
 
+//#define __ISR_RESET     63
+//#define __ISR_SYSNMI    62
+//#define __ISR_USERNMI   61
+//#define __ISR_CB        60
+//#define __ISR_WDTI      59
+//#define __ISR_USCIA0    58
+//#define __ISR_USCIB0    57
+//#define __ISR_ADC12A    56
+//#define __ISR_T0A0      55
+//#define __ISR_T0A1      54
+//#define __ISR_RF1A      53
+//#define __ISR_DMA       52
+//#define __ISR_T1A0      51
+//#define __ISR_T1A1      50
+//#define __ISR_P1        49
+//#define __ISR_P2        48
+//#define __ISR_LCDB      47
+//#define __ISR_RTCA      46
+//#define __ISR_AES       45
 
 #endif 

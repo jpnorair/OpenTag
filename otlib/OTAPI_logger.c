@@ -16,7 +16,7 @@
 /**
   * @file       /otlib/OTAPI_logger.c
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       31 Jul 2012
   * @brief      Default implementation of OTAPI logging functions
   * @ingroup    OTAPI

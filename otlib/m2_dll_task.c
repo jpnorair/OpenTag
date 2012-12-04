@@ -39,9 +39,13 @@
   */
 
 
+#include "OT_config.h"
+
+// Don't compile this if m2 is not enabled
+#if OT_FEATURE(M2)
+
 #include "OT_types.h"
 #include "OT_utils.h"
-#include "OT_config.h"
 #include "OT_platform.h"
 
 
@@ -500,16 +504,16 @@ void dll_systask_rf(ot_task task) {
         // Processing
         case 1: sub_processing();       break;
     
-        // Session Activation: this can spawn RF tasks.  If it spawns a 
+        // Session Activation: this can activate Radio Exotasks.
         case 2: sub_activate();         break;
         
-        // Scan Timeout Manager
+        // RX Scan Timeout Watchdog
         case 3: sub_timeout_scan();     break;
              
-        // CSMA Manager
+        // CSMA Manager (needed for archaic radios only)
         //case 4: sub_dll_txcsma();       break;
         
-        // TX & CSMA Timeout Unit
+        // TX & CSMA Timeout Watchdog
        default: rm2_kill();             break;
     }
 }
@@ -1409,4 +1413,5 @@ CLK_UNIT sub_aind_nextslot() {
 }
 */
 
+#endif
 

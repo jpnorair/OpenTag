@@ -16,7 +16,7 @@
 /**
   * @file       otlib/veelite.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       31 July 2012
   * @brief      Veelite virtual data interface for ISO 18000-7 Mode 1/2
   * @ingroup    Veelite

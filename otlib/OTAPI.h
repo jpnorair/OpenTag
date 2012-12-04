@@ -35,11 +35,13 @@
 #include "OT_config.h"          // OpenTag library-level configuration
 #include "OT_utils.h"           // Utility functions
 
+#include "auth.h"
 #include "buffers.h"            // Built-in buffers
 #include "queue.h"              // A buffer data-type module
 #include "m2_dll.h"             // Data Link Layer
 #include "m2_network.h"         // Network Layer
 #include "m2_transport.h"       // Transport Layer
+#include "radio.h"
 #include "veelite.h"            // Filesystem (Also Presentation Layer)
 
 

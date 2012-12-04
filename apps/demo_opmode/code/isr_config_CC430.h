@@ -23,10 +23,10 @@
   * Don't actually include this.  Include OT_platform.h instead.  This file and
   * others like it are important to the preprocessor-based configuration scheme.
   *
-  * You can uncomment these if you want to use one of these interrupts in your
-  * app.  Note that some interrupts will be enabled and compiled because they
-  * are required by OpenTag, regardless of the setting in this file.  Also note
-  * that the board config file might define __ISR_XXX constants as well.
+  * You can uncomment these if you want to negate interrupts defined by the
+  * board support file (via __N_ISR...) or force-on some interrupts (via
+  * __ISR...).  Some interrupts are required by OpenTag, and in certain cases
+  * these will be enabled regardless of the setting in this file.
   *
   * The top-level ISRs are implemented in /otplatform/cc430/isr_CC430.c
   ******************************************************************************
@@ -35,6 +35,26 @@
 #ifndef __ISR_CONFIG_CC430_H
 #define __ISR_CONFIG_CC430_H
 
+
+//#define __N_ISR_RESET   63
+//#define __N_ISR_SYSNMI  62
+//#define __N_ISR_USERNMI 61
+//#define __N_ISR_CB      60
+//#define __N_ISR_WDTI    59
+//#define __N_ISR_USCIA0  58
+//#define __N_ISR_USCIB0  57
+//#define __N_ISR_ADC12A  56
+//#define __N_ISR_T0A0    55
+//#define __N_ISR_T0A1    54
+//#define __N_ISR_RF1A    53
+//#define __N_ISR_DMA     52
+//#define __N_ISR_T1A0    51
+//#define __N_ISR_T1A1    50
+//#define __N_ISR_P1      49
+//#define __N_ISR_P2      48
+//#define __N_ISR_LCDB    47
+//#define __N_ISR_RTCA    46
+//#define __N_ISR_AES     45
 
 //#define __ISR_RESET     63
 //#define __ISR_SYSNMI    62
@@ -56,5 +76,4 @@
 //#define __ISR_RTCA      46
 //#define __ISR_AES       45
 
-
-#endif 
+#endif

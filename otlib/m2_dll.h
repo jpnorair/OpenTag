@@ -27,7 +27,7 @@
 
 
 
-#ifndef __M2_DLL_H
+#if (!defined(__M2_DLL_H) && OT_FEATURE(M2))
 #define __M2_DLL_H
 
 #include "OT_types.h"
@@ -279,6 +279,7 @@ typedef struct {
     ot_u8           reserved;
     ot_uint         counter;
     ot_uint         adv_time;
+    ot_int          last_nrssi;
     netconf_struct  netconf;
     m2comm_struct   comm;
 #   if (OT_FEATURE(DLLRF_CALLBACKS))

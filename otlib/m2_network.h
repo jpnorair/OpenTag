@@ -16,9 +16,9 @@
 /**
   * @file       /otlib/m2_network.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       2 November 2011
-  * @brief      Network Layer interface for Mode 2
+  * @brief      Network Layer interface for DASH7 Mode 2
   * @ingroup    Network
   *
   * Includes implementation for the following protocols:
@@ -30,7 +30,8 @@
   */
 
 
-#ifndef __M2_NETWORK_H
+#include "OT_config.h"
+#if !defined(__M2_NETWORK_H) && OT_FEATURE(M2)
 #define __M2_NETWORK_H
 
 #include "OT_types.h"
@@ -105,7 +106,7 @@ typedef struct {
 
 
 typedef struct {
-    ot_sig2 route;
+    ot_sigv2 route;
 } m2npsig_struct;
 
 
@@ -200,8 +201,8 @@ ot_int network_route_ff(m2session* session);
 
 
 /** @brief  Optional static callback function for network router
-  * @param  code        (ot_int) same as return value from network_route_ff()
-  * @param  protocol    (ot_int) protocol type of routed packet
+  * @param  route       (void*) Pointer to routing status information (ot_int*)
+  * @param  session     (void*) Pointer to active session
   * @retval None
   * @ingroup Network
   * @sa network_route_ff()
@@ -214,7 +215,7 @@ ot_int network_route_ff(m2session* session);
   * In applications that do not need dynamic callbacks, some program code and
   * global memory can be saved by using static callbacks.
   */
-void network_sig_route(ot_int code, ot_int protocol);
+void network_sig_route(void* route, void* session);
 
 
 

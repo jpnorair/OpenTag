@@ -14,9 +14,9 @@
   *
   */
 /**
-  * @file       /OTlib/veelite.c
+  * @file       /otlib/veelite.c
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       30 Oct 2010
   * @brief      ISO 18000-7 veelite data files
   * @ingroup    Veelite

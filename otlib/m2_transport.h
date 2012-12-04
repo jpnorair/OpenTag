@@ -16,15 +16,15 @@
 /**
   * @file       /otlib/m2_transport.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       31 July 2012
-  * @brief      Mode 2 Query Protocol (Transport Layer)
+  * @brief      DASH7 Mode 2 Query Protocol (Transport Layer)
   * @ingroup    M2QP
   *
   ******************************************************************************
   */
 
-#ifndef __M2QP_H
+#if !defined(__M2QP_H) && OT_FEATURE(M2)
 #define __M2QP_H
 
 #include "OT_types.h"

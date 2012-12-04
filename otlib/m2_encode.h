@@ -35,13 +35,13 @@
   */
 
 
-
-#ifndef __ENCODE_H
+#include "OT_config.h"
+#if !defined(__ENCODE_H) && OT_FEATURE(M2)
 #define __ENCODE_H
 
 #include "OT_platform.h"
 #include "OT_types.h"
-#include "OT_config.h"
+
 
 typedef struct {
     ot_u8*  fr_info;

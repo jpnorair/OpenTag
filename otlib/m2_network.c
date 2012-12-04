@@ -29,11 +29,13 @@
   ******************************************************************************
   */
 
+#include "OT_config.h"
+#include "OT_platform.h"
+#if OT_FEATURE(M2)
+
 #include "m2_network.h"
 #include "m2_transport.h"
 
-#include "OT_config.h"
-#include "OT_platform.h"
 #include "OT_utils.h"
 #include "OTAPI_tmpl.h"
 
@@ -88,22 +90,31 @@ m2session* network_parse_bf() {
     switch ( rxq.getcursor[1] & 1) {
         
         /// M2AdvP
+        /// B0:     Subnet
+        /// B1:     PID (F0)
+        /// B2:     Channel for Wakeup
+        /// B3-4:   Wakeup Duration
+        /// B5-6:   CRC16
         case (0): {
             Twobytes    scratch;
-            ot_u8       netstate;
             ot_int      slop;
+            ot_u8       netstate;
             
             scratch.ubyte[UPPER]    = rxq.getcursor[3];
             scratch.ubyte[LOWER]    = rxq.getcursor[4];
             netstate                = (M2_NETSTATE_REQRX | M2_NETSTATE_INIT);
-            slop                    = scratch.ushort / OT_GPTIM_ERRDIV;
-            slop                   += scratch.ushort / M2_ADV_ERRDIV;
             
+            // Wakeup needs to lock-on to a time offset in the future.  The
+            // lock-on performance depends on the crystal accuracy, so if the
+            // accuracy is not high, the background scan will need to happen
+            // again, closer to the wakeup event.
+            slop    = scratch.ushort / OT_GPTIM_ERRDIV;
+            slop   += scratch.ushort / M2_ADV_ERRDIV;
             if (slop > M2_ADV_SLOP) {
                 scratch.ushort -= slop;
                 netstate       |= M2_NETFLAG_FLOOD;
             }
-
+            
             return session_new(NULL, scratch.ushort, netstate, rxq.getcursor[2]);
             ///@todo need to put in session subnet?
         }
@@ -256,11 +267,10 @@ ot_int network_route_ff(m2session* session) {
         m2np_footer(session);
     }
 
-#   if (OT_FEATURE(M2NP_CALLBACKS) == ENABLED) && \
-        !defined(EXTF_network_sig_route)
-        m2np.signal.route(route_val, session->protocol);
-#   elif defined(EXTF_network_sig_route)
-        network_sig_route(route_val, session->protocol);
+#   if defined(EXTF_network_sig_route)
+        network_sig_route((void*)&route_val, (void*)session);
+#   elif (OT_FEATURE(M2NP_CALLBACKS) == ENABLED)
+        m2np.signal.route((void*)&route_val, (void*)session);
 #   endif
     
     return route_val;
@@ -569,5 +579,5 @@ void m2dp_footer() {
 
 
 
-
+#endif
 

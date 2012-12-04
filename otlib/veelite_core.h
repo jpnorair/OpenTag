@@ -14,9 +14,9 @@
   *
   */
 /**
-  * @file       /OTlib/veelite_core.h
+  * @file       /otlib/veelite_core.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       5 November 2010
   * @brief      An interface for reading and writing to veelite virtual memory
   * @defgroup   Veelite (Veelite Module)

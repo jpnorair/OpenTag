@@ -14,9 +14,9 @@
   *
   */
 /**
-  * @file       OTlib/OTAPI_tmpl.h
+  * @file       otlib/OTAPI_tmpl.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       26 Jan 2011
   * @brief      Templates for OTAPI, usually used for organizing ALP-API data 
   *             into queued form that is assimilable by API functions.  Some 

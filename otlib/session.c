@@ -16,9 +16,9 @@
 /**
   * @file       /otlib/session.c
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       8 Aug 2012
-  * @brief      ISO 18000-7.4 Session Framework
+  * @brief      DASH7 M2 (ISO 18000-7.4) Session Framework
   * @ingroup    Session
   *
   * The session stack is not exposed, because it may be implemented in a lot of

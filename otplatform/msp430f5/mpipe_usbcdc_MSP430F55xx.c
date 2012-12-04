@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/msp430f5/mpipe_usbcdc_MSP430F55xx.c
   * @author     JP Norair
-  * @version    R103
-  * @date       1 Nov 2012
+  * @version    R104
+  * @date       17 Nov 2012
   * @brief      Message Pipe (MPIPE) USB Virtual COM implementation for MSP430F55xx
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
@@ -33,20 +33,20 @@
 #include "OT_platform.h"
 
 /// Do not compile if MPIPE is disabled, or MPIPE does not use USB CDC
-#if (defined(__MSP430F5__) && OT_FEATURE(MPIPE) && defined(MPIPE_USB))
+#if (   defined(__MSP430F5__) \
+     && OT_FEATURE(MPIPE) \
+     && defined(MPIPE_USB) \
+     && (OMG_FEATURE(USBGADGET) != ENABLED) )
 
 #include "OTAPI.h"
 
 
 #include "usb_cdc_driver/usb_descriptors.h"
 #include <intrinsics.h>
-//#include <string.h>
-
 #include "usb_cdc_driver/usb_device.h"
 #include "usb_cdc_driver/usb_types.h"
 #include "usb_cdc_driver/defMSP430USB.h"
 #include "usb_cdc_driver/usb_main.h"
-//#include "F5xx_F6xx_Core_Lib/HAL_UCS.h"
 #include "usb_cdc_driver/usb_cdc_backend.h"
 #include "usb_cdc_driver/usb_isr.h"
 
@@ -61,6 +61,7 @@
   */
   
 // Footer is 2 byte sequence ID + CRC (usually 2 bytes, but could be more)
+///@todo reduce to 2, and make sure all OTlib code has no "4" magic numbers
 #define MPIPE_FOOTERBYTES   4
 
 typedef struct {
@@ -395,6 +396,8 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     
         q_writeshort(mpipe.alp.outq, tty.seq.ushort);                // Sequence Number
 
+        ///@todo remove CRC part, not necessary for USB.  
+        /// Requires coordination with OTcom, though: need to add a checkbox
         scratch = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;    //data length
         scratch = platform_crc_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
         q_writeshort(mpipe.alp.outq, scratch);                              //Put CRC
@@ -488,9 +491,6 @@ void mpipedrv_isr() {
             //mpipedrv_kill();
             mpipeevt_txdone(0);
             break;
-
-        default: __no_operation();
-                break;
     }
 }
 #endif

@@ -23,9 +23,10 @@
   ******************************************************************************
   */
 
-#include "m2_transport.h"
-
 #include "OT_config.h"
+#if OT_FEATURE(M2)
+
+#include "m2_transport.h"
 #include "OT_utils.h"
 #include "OTAPI.h"
 
@@ -1227,4 +1228,4 @@ ot_int sub_load_nonnull(ot_int* cursor, ot_u8 data_byte) {
     return 0;
 }
 
-
+#endif

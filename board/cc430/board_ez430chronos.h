@@ -16,7 +16,7 @@
 /**
   * @file       /board/cc430/board_chronos.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       5 May 2012
   * @brief      Board Configuration for TI ez430 Chronos Watch board
   * @ingroup    Platform
@@ -71,8 +71,8 @@
   * is confirmed working.
   */
 #define RF_PARAM_BAND   433
-#define RF_HDB_ATTEN    12      //Half dB attenuation (units = 0.5dB), used to scale TX power
-#define RF_RSSI_OFFSET  6       //Offset applied to RSSI calculation
+#define RF_HDB_ATTEN    20      //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_RSSI_OFFSET  10       //Offset applied to RSSI calculation
 
 
 
@@ -125,13 +125,7 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
   * ========================================================================<BR>
   * Notes apart from the obvious:  
   *
-  * 1. There is a general purpose button attached to P1.5.  The other two 
-  * buttons are hooked directly into the PaLFi core.  In the board schematic 
-  * and documentation, this button is defined as "SW2".  This button is active-
-  * low and it requires you to pull-up the input pin.
-  * 
-  * 2. The 4 LEDs (TRIGS 1-4) are reverse-biased.  Therefore, to use them
-  * properly you need to invert the output signal.
+
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
 #define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
@@ -142,9 +136,11 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 #define BOARD_FEATURE_INVERT_TRIG3      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG4      DISABLED
 
+#define BOARD_SW2_PORTNUM               1
 #define BOARD_SW2_PORT                  GPIO1
 #define BOARD_SW2_PIN                   GPIO_Pin_5
 #define BOARD_SW2_POLARITY              0
+#define BOARD_SW2_PULLING               1
 
 #define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
 #define BOARD_PARAM_LFHz                32768
@@ -176,21 +172,29 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 
 OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 /// Configure all ports to grounded outputs in order to minimize current
-    u8 i;
-
-#if (defined(__DEBUG__))
-#   define _DEBUG_ON_PORTJ  1
-    PJDIR = 0x00;
-#else
-#   define _DEBUG_ON_PORTJ  0
-#endif
-
-    for (i=(CC430_TOTAL_PORTS-_DEBUG_ON_PORTJ); i!=0; i--) {
-    	*((u8*)cc430_pdir_list[i])  = 0x00;
-    	*((u8*)cc430_pout_list[i])  = 0x00;
-    }
+#   if (defined(__DEBUG__))
+#   else
+    PJDIR = 0xFF;
+    PJOUT = 0x00;
+#   endif 
     
-#undef _DEBUG_ON_PORTJ
+    GPIO12->DDIR    = 0xFFFF;
+    GPIO34->DDIR    = 0xFFFF;
+    GPIO12->DOUT    = 0x0000;
+    GPIO34->DOUT    = 0x0000;
+}
+
+
+OT_INLINE_H void BOARD_POWER_STARTUP(void) {
+///@note On SVSM Config Flags: (1) It is advised in all cases to include
+    ///      SVSM_EventDelay.  (2) If using line-power (not battery), it is
+    ///      advised to enable FullPerformance and ActiveDuringLPM.  (3) Change
+    ///      The SVSM_Voffon_ parameter to one that matches your requirements.
+    ///      I recommend putting it as high as you can, to give the most time
+    ///      for the power-down routine to work.
+    PMM_SetVCore(PMM_Vcore_22);
+    PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay),
+                    SVS_Von_20, SVSM_Voffon_235);
 }
 
 
@@ -221,22 +225,22 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   * OpenTag needs to know where it can put Nonvolatile memory (file system) and
   * how much space it can allocate for filesystem.
   */
-#define SRAM_START_ADDR             0x0000
-#define SRAM_SIZE                   (4*1024)
-#define EEPROM_START_ADDR           0
-#define EEPROM_SIZE                 0
-#define FLASH_START_ADDR            0x8000
-#define FLASH_START_PAGE            0
-#define FLASH_PAGE_SIZE             512
-#define FLASH_WORD_BYTES            2
-#define FLASH_WORD_BITS             (FLASH_WORD_BYTES*8)
+#define SRAM_START_ADDR         0x1C00
+#define SRAM_SIZE               (4*1024)
+#define EEPROM_START_ADDR       0
+#define EEPROM_SIZE             0
+#define FLASH_START_ADDR        0x8000
+#define FLASH_START_PAGE        0
+#define FLASH_PAGE_SIZE         512
+#define FLASH_WORD_BYTES        2
+#define FLASH_WORD_BITS         (FLASH_WORD_BYTES*8)
 #ifdef __LARGE_MEMORY__
 #   warn "No current CC430 part has large-memory model"
 #else
-#   define FLASH_NUM_PAGES          64
-#   define FLASH_FS_ALLOC           (512*8)     //allocating total of 8 blocks (4KB)
-#   define FLASH_FS_ADDR            0x8000
-#   define FLASH_FS_FALLOWS         3
+#   define FLASH_NUM_PAGES      64
+#   define FLASH_FS_ALLOC       (512*8)     //allocating total of 8 blocks (4KB)
+#   define FLASH_FS_ADDR        0x8000
+#   define FLASH_FS_FALLOWS     3
 #endif
 #define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
 
@@ -255,6 +259,23 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   define INFO_C_ADDR              INFO_PAGE_ADDR(1)
 #   define INFO_B_ADDR              INFO_PAGE_ADDR(2)
 #   define INFO_A_ADDR              INFO_PAGE_ADDR(3)
+
+
+
+// MSP430 only ... Boot Strap Loader
+// BSL is not presently used with OpenTag, although at some point it might be.
+// In that case, we would probably reserve Bank A for the USB driver and the
+// filesystem, and not overwrite Bank A.
+#define BSL_START_ADDR          0x1000
+#define BSL_START_PAGE          0
+#define BSL_PAGE_SIZE           512
+#define BSL_NUM_PAGES           4
+#define BSL_PAGE_ADDR(VAL)      (BSL_START_ADDR + (BSL_PAGE_SIZE*VAL))
+#define BSL_D_ADDR              BSL_PAGE_ADDR(0)
+#define BSL_C_ADDR              BSL_PAGE_ADDR(1)
+#define BSL_B_ADDR              BSL_PAGE_ADDR(2)
+#define BSL_A_ADDR              BSL_PAGE_ADDR(3)
+
 
 
 
@@ -297,14 +318,19 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 /** Peripheral definitions for this platform <BR>
   * ========================================================================<BR>
-  * OT_GPTIM:   General Purpose Timer used by OpenTag kernel                <BR>
-  * OT_TRIG:    Optional test trigger usable in OpenTag apps (often LEDs)   <BR>
-  * MPIPE:      UART to use for the MPipe                                   <BR>
+  * <LI> OT_GPTIM:  General Purpose Timer used by OpenTag kernel and some other
+  *                   internal stuff (like Radio MAC timer). </LI>
+  * <LI> OT_TRIG:   Optional test trigger(s) usable in OpenTag apps.  Often the 
+  *                   triggers are implemented on LED pins </LI>   
+  * <LI> MPIPE:     The wireline interface, which on CC430 is often a UART </LI>
   */
-  
 #define OT_GPTIM            TIM1A3
-#define OT_GPTIM_IRQ        TIM1A3_IRQChannel
-#define OT_GPTIM_VECTOR     TIMER1_A1_VECTOR
+#define OT_GPTIM_ISR_ID     __ISR_T1A1_ID
+#ifdef __ISR_T1A1
+#   error "ISR T1A1 is already allocated.  It must be used for GPTIM."
+#else
+#   define __ISR_T1A1
+#endif
 #define OT_GPTIM_CLOCK      32768
 #define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
@@ -320,8 +346,165 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #   define OT_GPTIM_ERROR   PLATFORM_HSCLOCK_ERROR
 #endif
 
-#define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded for CCS
+#define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded, or else CCS has problems
 
+
+
+
+/** Basic GPIO Setup <BR>
+  * ========================================================================<BR>
+  * <LI> MPipe is a serial-based serial interface.  It needs to be specified 
+  *      with a serial peripheral number and RX/TX port & pin configurations. 
+  *      On Chronos, only I2C is available for MPipe, and it requires that you
+  *      hack-off some of the watch buttons to get to it.
+  * </LI>
+  * <LI> OT Triggers are test outputs, usually LEDs.  They should be configured
+  *      to ports & pins where there are LED or other trigger connections.
+  * </LI>
+  * <LI> The GWN feature is part of a true-random-number generator.  It is
+  *      optional.  It needs a port & pin for the ADC input (GWNADC) and also,
+  *      optionally, one for a Zener driving output port & pin.  On the CC430,
+  *      the ADC can be hacked to produce the benefits of a Zener without 
+  *      actually having one, so don't worry about the Zener. 
+  * </LI>
+  */
+#define MPIPE_DMANUM        0
+#define MPIPE_I2C_PORTNUM   1
+#define MPIPE_I2C_PORT      GPIO1
+#define MPIPE_I2C_PORTMAP   P1M
+#define MPIPE_I2C_SDAPIN    GPIO_Pin_5
+#define MPIPE_I2C_SCLPIN    GPIO_Pin_6
+#define MPIPE_I2C_SELF		0x01
+#define MPIPE_I2C_TARGET	0x02
+
+#define OT_TRIG1_PORT       GPIO1
+#define OT_TRIG1_PIN        GPIO_Pin_0
+#define OT_TRIG1_HIDRIVE    ENABLED
+#define OT_TRIG1_PORT       GPIO3
+#define OT_TRIG2_PIN        GPIO_Pin_6
+#define OT_TRIG2_HIDRIVE    ENABLED
+
+#define OT_SWITCH1_PORTNUM  BOARD_SW2_PORTNUM
+#define OT_SWITCH1_PORT     BOARD_SW2_PORT
+#define OT_SWITCH1_PIN      BOARD_SW2_PIN
+#define OT_SWITCH1_POLARITY BOARD_SW2_POLARITY
+#define OT_SWITCH1_PULLING  BOARD_SW2_PULLING
+
+//CC430 & MSP430 specific
+#if (OT_SWITCH1_PORTNUM == 1)
+#   define OT_SWITCH1_PIV       GPIO1->P1IV
+#   define OT_SWITCH1_VECTOR    PORT1_VECTOR
+#elif (OT_SWITCH1_PORTNUM == 2)
+#   define OT_SWITCH1_PIV       GPIO2->P2IV
+#   define OT_SWITCH1_VECTOR    PORT2_VECTOR
+#endif
+
+
+
+// Pin that can be used for ADC-based random number (usually floating pin)
+// You could also put on a low voltage, reverse-biased zener on the board
+// to produce a pile of noise.  2.1V seems like a good value.
+#define OT_GWNADC_PORTNUM   2
+#define OT_GWNADC_PINNUM    2
+#define OT_GWNADC_BITS      8
+//#define OT_GWNZENER_PORT    GPIO2
+//#define OT_GWNZENER_PIN     GPIO_Pin_2
+//#define OT_GWNZENER_HIDRIVE DISABLED
+
+#ifdef OT_GWNADC_PORTNUM
+#   if (OT_GWNADC_PORTNUM == 2)
+#       define OT_GWNADC_PORT      GPIO2
+#   else
+#       error "GWNADC (White Noise ADC Input Pin) must be on port 2"
+#   endif
+#endif
+
+#if (MCU_FEATURE_MPIPEDMA == ENABLED)
+#   if (MPIPE_DMANUM == 0)
+#       define MPIPE_DMA     DMA0
+#   elif (MPIPE_DMANUM == 1)
+#       define MPIPE_DMA     DMA1
+#   elif (MPIPE_DMANUM == 2)
+#       define MPIPE_DMA     DMA2
+#   else
+#       error "MPIPE_DMANUM is not defined to an available index (0-2)"
+#   endif
+#endif
+
+
+
+
+/** I2C MPipe (usually just for debugging on this board)
+  * ========================================================================<BR>
+  * MPipe must use I2C, because there is only a two-pin external connection,
+  * and the UCA0 is tied to the PaLFi core.  UCA0 supports UART.  UCB0 supports
+  * only SPI and I2C.
+  */
+
+#define MPIPE_I2C_PINS   	(MPIPE_I2C_SDAPIN | MPIPE_I2C_SCLPIN)
+#define MPIPE_I2C_ID   	    0xB0
+#define MPIPE_I2C           I2CB0
+#define MPIPE_I2C_SCLSIG    PM_UCB0SCL
+#define MPIPE_I2C_SDASIG    PM_UCB0SDA
+#define MPIPE_I2C_RXTRIG	DMA_Trigger_UCB0RXIFG
+#define MPIPE_I2C_TXTRIG	DMA_Trigger_UCB0TXIFG
+
+//todo?
+#define MPIPE_I2C_SCLMAP	MPIPE_I2C_PORTMAP->MAP0
+#define MPIPE_I2C_SDAMAP	MPIPE_I2C_PORTMAP->MAP1
+
+
+#if (MCU_FEATURE_MEMCPYDMA == ENABLED)
+#   define MEMCPY_DMANUM      2 //(MPIPE_DMANUM + (MCU_FEATURE_MPIPEDMA == ENABLED))
+#   if (MEMCPY_DMANUM == 0)
+#       define MEMCPY_DMA     DMA0
+#   elif (MEMCPY_DMANUM == 1)
+#       define MEMCPY_DMA     DMA1
+#   elif (MEMCPY_DMANUM == 2)
+#       define MEMCPY_DMA     DMA2
+#   else
+#       error "MEMCPY_DMANUM is not defined to an available index (0-2)"
+#   endif
+#endif
+
+
+
+
+
+/** Standard OpenTag triggers<BR>
+  * ========================================================================<BR>
+  * There is no trigger in the Chronos Watch Implementation
+  */
+
+
+/** Heartbeat Monitor Sensor <BR>
+  * ========================================================================<BR>
+  * Unimplemented in this version
+  */  
+
+
+/** Accelerometer Sensor <BR>
+  * ========================================================================<BR>
+  * Unimplemented in this version
+  */    
+  
+
+/** LCD Interface <BR>
+  * ========================================================================<BR>
+  * Unimplemented in this version
+  */  
+#define LCD_
+
+
+
+
+
+
+
+
+
+
+/******* ADDITIONAL JUNK I'M HACKING ON THIS BOARD -- IGNORE **********/
 
 
 
@@ -361,131 +544,6 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define PWMTIM_MAP      MAP1
 #define PWMTIM_SIG      PM_TA0CCR0A
   
-
-
-
-/** Standard OpenTag triggers<BR>
-  * ========================================================================<BR>
-  * There is no trigger in the Watch Implementation
-  */
-#define OT_TRIG1_PORTNUM    1
-#define OT_TRIG1_PORT       PALFI_LED1_PORT
-#define OT_TRIG1_PIN        PALFI_LED1_PIN
-#define OT_TRIG1_HIDRIVE    DISABLED
-#define OT_TRIG2_PORTNUM    1
-#define OT_TRIG2_PORT       PALFI_LED2_PORT
-#define OT_TRIG2_PIN        PALFI_LED2_PIN
-#define OT_TRIG2_HIDRIVE    DISABLED
-
-
-
-
-/** Heartbeat Monitor Sensor <BR>
-  * ========================================================================<BR>
-  * Unimplemented in this version
-  */  
-
-
-/** Accelerometer Sensor <BR>
-  * ========================================================================<BR>
-  * Unimplemented in this version
-  */    
-  
-
-/** LCD Interface <BR>
-  * ========================================================================<BR>
-  * Unimplemented in this version
-  */  
-#define LCD_
-
-
-
-
-
-
-
-
-
-
-// Pin that can be used for ADC-based random number (usually floating pin)
-// You could also put on a low voltage, reverse-biased zener on the board
-// to produce a pile of noise.  2.1V seems like a good value.
-#define OT_GWNADC_PORTNUM   2
-#define OT_GWNADC_PINNUM    2
-#define OT_GWNADC_BITS      8
-//#define OT_GWNZENER_PORT    GPIO2
-//#define OT_GWNZENER_PIN     GPIO_Pin_2
-//#define OT_GWNZENER_HIDRIVE DISABLED
-
-#ifdef OT_GWNADC_PORTNUM
-#   if (OT_GWNADC_PORTNUM == 2)
-#       define OT_GWNADC_PORT      GPIO2
-#   else
-#       error "GWNADC (White Noise ADC Input Pin) must be on port 2"
-#   endif
-#endif
-
-
-
-
-/** MPipe (usually just for debugging on this board)
-  * ========================================================================<BR>
-  * MPipe must use I2C, because there is only a two-pin external connection,
-  * and the UCA0 is tied to the PaLFi core.  UCA0 supports UART.  UCB0 supports
-  * only SPI and I2C.
-  */
-
-#define MPIPE_I2C           I2CB0
-#define MPIPE_I2C_SELF		0x01
-#define MPIPE_I2C_TARGET	0x02
-
-
-
-#define MPIPE_I2C_PORT      GPIO2
-#define MPIPE_I2C_PORTMAP   P2M
-#define MPIPE_I2C_SDAPIN    GPIO_Pin_1
-#define MPIPE_I2C_SCLPIN    GPIO_Pin_0
-#define MPIPE_I2C_PINS   	(MPIPE_I2C_SDAPIN | MPIPE_I2C_SCLPIN)
-
-#define MPIPE_I2C_SCLSIG    PM_UCB0SCL
-#define MPIPE_I2C_SDASIG    PM_UCB0SDA
-#define MPIPE_I2C_RXTRIG	DMA_Trigger_UCB0RXIFG
-#define MPIPE_I2C_TXTRIG	DMA_Trigger_UCB0TXIFG
-#define MPIPE_I2C_VECTOR    USCI_B0_VECTOR
-
-#if (MCU_FEATURE_MPIPEDMA == ENABLED)
-#define MPIPE_DMANUM        0
-#   if (MPIPE_DMANUM == 0)
-#       define MPIPE_DMA     DMA0
-#   elif (MPIPE_DMANUM == 1)
-#       define MPIPE_DMA     DMA1
-#   elif (MPIPE_DMANUM == 2)
-#       define MPIPE_DMA     DMA2
-#   else
-#       error "MPIPE_DMANUM is not defined to an available index (0-2)"
-#   endif
-#endif
-
-#define MPIPE_I2C_SCLMAP	MPIPE_I2C_PORTMAP->MAP0
-#define MPIPE_I2C_SDAMAP	MPIPE_I2C_PORTMAP->MAP1
-
-
-
-
-
-#if (MCU_FEATURE_MEMCPYDMA == ENABLED)
-#   define MEMCPY_DMANUM      (MPIPE_DMANUM + (MCU_FEATURE_MPIPEDMA == ENABLED))
-#   if (MEMCPY_DMANUM == 0)
-#       define MEMCPY_DMA     DMA0
-#   elif (MEMCPY_DMANUM == 1)
-#       define MEMCPY_DMA     DMA1
-#   elif (MEMCPY_DMANUM == 2)
-#       define MEMCPY_DMA     DMA2
-#   else
-#       error "MEMCPY_DMANUM is not defined to an available index (0-2)"
-#   endif
-#endif
-
 
 
 
