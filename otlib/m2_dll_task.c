@@ -541,23 +541,22 @@ void sub_processing() {
     session->counter        = 0;
     proc_score              = network_route_ff(session);
 
-    /// If the state is response, then processing is done.  If the score is 
-    /// negative, then the packet is not meant for this device.  Else, prepare 
-    /// response and potentially a follow-up listen.
+    /// If the Listen flag is high, clone the session to a time in the
+    /// future, when it will listen again.
+    /// <LI> dll.comm.tc has just been assigned by the request.  It is the
+    ///      response contention period (Tc). </LI>
+    /// <LI> This device should listen again after Tc ends, so the session
+    ///      is cloned & scheduled for Tc </LI>
+    /// <LI> The current session is popped after response, or on next kernel
+    ///      loop (immediately) if no response </LI>
+
+    /// Response is prepared already, so setup holdstate and flow control
     if (proc_score >= 0) {
         sub_fceval(proc_score);
         sys.task_HSS.cursor = 0;
         dll.counter         = 0;
         dll.idle_state      = M2_DLLIDLE_HOLD;
-        
-        /// If the Listen flag is high, clone the session to a time in the 
-        /// future, when it will listen again.
-        /// <LI> dll.comm.tc has just been assigned by the request.  It is the 
-        ///      response contention period (Tc). </LI>
-        /// <LI> This device should listen again after Tc ends, so the session 
-        ///      is cloned & scheduled for Tc </LI>
-        /// <LI> The current session is popped after response, or on next kernel 
-        ///      loop (immediately) if no response </LI>
+
         if (session->flags & M2FI_LISTEN) {
             m2session* s_clone;
             s_clone = session_new( session->applet, dll.comm.tc,
@@ -567,10 +566,16 @@ void sub_processing() {
             s_clone->dialog_id  = session->dialog_id;
             s_clone->subnet     = session->subnet;
             s_clone->channel    = session->channel;
-            if (session->applet == NULL) {
-                dll_set_defaults(session);
-            }
+            //if (session->applet == NULL) {
+            //    dll_set_defaults(session);    ///@todo put this in activate for all NULL requests
+            //}
         }
+    }
+
+    // No response (or no listening for responses)
+    // Plus bad score: stop the session
+    else if ((session->netstate & M2_NETSTATE_RESP) == 0) {
+        session->netstate |= M2_NETFLAG_SCRAP;
     }
 }
 
@@ -996,21 +1001,24 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
         }
         
         /// A complete packet has been received (errors or not).
-        /// <LI> When packet is good (frx_code == 0), always process it. </LI>
-        /// <LI> When request is bad or when response is any form, retry
+    	/// <LI> When packet is good (frx_code == 0), always process it. </LI>
+    	/// <LI> When request is bad or when response is any form, retry
         ///      listening until window times-out </LI>
         /// <LI> Don't return to kernel for bad frames </LI>
         /// <LI> After receiving good request, turn-off radio subsystem </LI>
         if (pcode == 0) {
-            fcode = (session->netstate & M2_NETSTATE_RESP);  // repurpose fcode
-            if (frx_code | fcode) {
-                rm2_reenter_rx(&rfevt_frx);
-                return; 					//don't return to kernel for bad frames
-            }
-            if (fcode == 0) {
-            	sys.task_RFA.reserve = 20;  ///@todo Could have quick evaluator here
+            if (frx_code == 0) {
+                sys.task_RFA.reserve = 20;  ///@todo Could have quick evaluator here
                 sys.task_RFA.event   = 1;   ///Process the packet!!!
+            }
+            if ((frx_code != 0) || (session->netstate & M2_NETSTATE_RESP)) {
+                rm2_reenter_rx(&rfevt_frx);
+            }
+            else {
                 radio_sleep();
+            }
+            if (frx_code != 0) {
+                return;
             }
         }
     }
@@ -1391,6 +1399,8 @@ CLK_UNIT sub_fcloop() {
 CLK_UNIT sub_rigd_newslot() {
 /// halve tc from previous value and offset a random within that duration
     dll.comm.tc >>= 1;
+    if (dll.comm.tc == 0)   return 0;
+
     return (TI2CLK(platform_prand_u16()) % (CLK_UNIT)dll.comm.tc);
 }
 

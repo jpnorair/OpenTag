@@ -831,7 +831,7 @@ void platform_init_memcpy() {
         DMA->CTL0  |= DMA_Trigger_DMAREQ;
 #   elif (MEMCPY_DMANUM == 1)
         DMA->CTL0  |= (DMA_Trigger_DMAREQ << 8);
-#   elif (MEMCPY_DMA == 2)
+#   elif (MEMCPY_DMANUM == 2)
         DMA->CTL1   = DMA_Trigger_DMAREQ;
 #   else
 #       error "MEMCPY_DMA is misconfigured in the board-config header"

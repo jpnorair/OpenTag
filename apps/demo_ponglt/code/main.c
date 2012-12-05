@@ -143,6 +143,12 @@ void sub_button_init();
   */
   
 #if (defined(_MSP430F5_CORE) && defined(OT_SWITCH1_PORT))
+#   if (OT_SWITCH1_PORTNUM == 1)
+#       define PLATFORM_ISR_SW  platform_isr_p1
+#   else
+#       define PLATFORM_ISR_SW  platform_isr_p2
+#   endif
+
 void sub_button_init() {
 
 #   if (OT_SWITCH1_PULLING)
@@ -162,7 +168,7 @@ void sub_button_init() {
 }
 
 
-void platform_isr_p1() {
+void PLATFORM_ISR_SW() {
 /// If you implement more interrupts on this port, you can make this function
 /// into a switch statement using OT_SWITCH1_PIV.
     OT_SWITCH1_PORT->IFG = 0;
@@ -237,7 +243,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
     pongval = q_readshort(&rxq);
 
     // Request: Copy PING VAL to PONG
-    if (dstport == 254) {
+    if (dstport == 255) {
         q_writeshort(&txq, pongval);
         return True;
     }
@@ -247,7 +253,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
     
 #   else
     // Response: Compare PING Val to PONG Val and write output to MPipe
-    if ((dstport == 255) && (app.pingval == pongval)) {
+    if (dstport == 254) {
         // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
         otapi_log_header(1, 0);
         
@@ -324,7 +330,7 @@ void ext_systask(ot_task task) {
     session_tmpl    s_tmpl;
 
     if (task->event == 1) {
-        task->event++;
+        task->event = 0;
         
         // this is the same as the length of the response window,
         // which is set in applet_send_query()
@@ -336,7 +342,9 @@ void ext_systask(ot_task task) {
         // Log a message.  It is scheduled, and the RF task has higher priority,
         // so if you are sending a DASH7 dialog this log message will usually
         // come-out after the dialog finishes.
+#       if (OT_FEATURE(MPIPE))
         otapi_log_msg(MSG_raw, 5, 2, (ot_u8*)"PING:", (ot_u8*)&app.pingval);
+#       endif
     
         // Load the session template: Only used for communication tasks
         s_tmpl.channel      = task->cursor;
@@ -348,9 +356,9 @@ void ext_systask(ot_task task) {
     // Turn off the task after 512 ticks (what is set above)
     // Note that this task will not be activated by the button press or ALP
     // when event != 0, because those routines have conditionals in them.
-    else {
-        task->event = 0;
-    }
+    //else {
+    //    task->event = 0;
+    //}
 }
 
 
@@ -377,6 +385,7 @@ void applet_send_query(m2session* session) {
 /// The query that we build will collect sensor configuration data back from
 /// all devices that support the sensor protocol.  Much more interesting queries
 /// are possible.
+    ot_u8 status;
 
     { //open request for single hop anycast query
         routing_tmpl routing;
@@ -384,47 +393,38 @@ void applet_send_query(m2session* session) {
         otapi_open_request(ADDR_anycast, &routing);
     }
     { //use a command template for collection of single file from single file search
-        ot_u8 status;
         command_tmpl command;
-        command.opcode      = (ot_u8)CMD_collect_file_on_file;
+        command.opcode      = (ot_u8)CMD_udp_on_file;
         command.type        = (ot_u8)CMDTYPE_na2p_request;
         command.extension   = (ot_u8)CMDEXT_none;
         otapi_put_command_tmpl(&status, &command);
     }
     { //write the dialog information (timeout, channels to use)
-        ot_u8 status;
         dialog_tmpl dialog;
         dialog.channels = 0;    //use same channel as request for response
-        dialog.timeout  = 512;  //512 tick response timeout (1 tick = 0,977 ms)
+        dialog.timeout  = 0x41; //same as otutils_encode_timeout(512) -- 512 tick response slot
         otapi_put_dialog_tmpl(&status, &dialog);
     }
     { //write the query to search for the sensor protocol id
+        static const ot_u8 query_str[10] = "APP=PongLT";
         query_tmpl query;
-        ot_u8 status;
-        ot_u8 protocol_id;
-        protocol_id     = 0x02;                 // sensor protocol id = 0x02
-        query.code      = M2QC_COR_SEARCH | 1;  // do a 100% length=1 correlation search
+        query.code      = M2QC_COR_SEARCH | 10; // do a 100% length=10 correlation search
         query.mask      = NULL;                 // don't do any masking (no partial matching)
-        query.length    = 1;                    // look for one byte (0x02)
-        query.value     = &protocol_id;         // (query.value is a string)
+        query.length    = 10;                   // query_str is 10 bytes
+        query.value     = (ot_u8*)query_str;
         otapi_put_query_tmpl(&status, &query);
     }
-    { //put in the information of the file to search (the protocol list)
-        ot_u8 status;
+    { //put in the information of the file to search (the user id)
         isfcomp_tmpl isfcomp;
         isfcomp.is_series   = False;
-        isfcomp.isf_id      = ISF_ID(protocol_list);
+        isfcomp.isf_id      = ISF_ID(user_id);
         isfcomp.offset      = 0;
         otapi_put_isf_comp(&status, &isfcomp);
     }
-    { //put in the information of the file to return (the sensor list)
-        ot_u8 status;
-        isfcall_tmpl isfcall;
-        isfcall.is_series   = False;
-        isfcall.isf_id      = ISF_ID(sensor_list);
-        isfcall.max_return  = 32;
-        isfcall.offset      = 0;
-        otapi_put_isf_call(&status, &isfcall);
+    { //put in UDP ports (from 254 to 255) and Ping ID
+        q_writebyte(&txq, 254);
+        q_writebyte(&txq, 255);
+        q_writeshort(&txq, app.pingval);
     }
 
     //Done building command, close the request and send the dialog
@@ -440,6 +440,11 @@ void applet_send_query(m2session* session) {
   *
   */
 void app_init() {
+#if defined(BOARD_eZ430Chronos)
+/// Setup LCD
+
+
+#else
 /// 1. Blink the board LEDs to show that it is starting up.  
 /// 2. Configure the board input button, which for this app will send a ping
     ot_u8 i;
@@ -454,6 +459,7 @@ void app_init() {
         otapi_led1_off();
         i--;
     }
+#endif
 
     sub_button_init();
 }
@@ -504,10 +510,12 @@ void main(void) {
 
     ///4a. The device will wait (and block anything else) until you connect
     ///    it to a valid console app.
-    mpipedrv_standby();
-
     ///4b. Load a message to show that main startup has passed
+#   if (OT_FEATURE(MPIPE))
+    mpipedrv_standby();
     otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+#   endif
+
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>

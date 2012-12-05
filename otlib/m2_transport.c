@@ -527,8 +527,10 @@ ot_int sub_parse_request(m2session* session) {
     /// 1.  Universal Comm Processing:
     /// <LI> Load CCA type & CSMA disable from command extension        </LI>
     /// <LI> Load NA2P or A2P dialog type from command code             </LI>
+    session->netstate      &= ~M2_NETSTATE_TMASK;
     m2qp.cmd.code           = q_readbyte(&rxq);
     m2qp.cmd.ext            = (m2qp.cmd.code & 0x80) ? q_readbyte(&rxq) : 0;
+    dll.comm.redundants     = 1;
     dll.comm.csmaca_params  = m2qp.cmd.ext & (M2_CSMACA_CAMASK | M2_CSMACA_NOCSMA);
     dll.comm.csmaca_params |= m2qp.cmd.code & M2_CSMACA_ARBMASK;
     cmd_opcode              = m2qp.cmd.code & M2OP_MASK;
@@ -567,7 +569,6 @@ ot_int sub_parse_request(m2session* session) {
     
         if ((m2qp.cmd.ext & M2CE_NORESP) == 0) {
             ot_u8 addressing;
-            session->netstate  &= ~M2_NETSTATE_TMASK;
             session->netstate  |= M2_NETSTATE_RESPTX;
             addressing          = ext_get_m2appflags();
             addressing         |= m2np.header.addr_ctl & 0x30;  // make unicast, retain VID & NLS                               
@@ -575,9 +576,9 @@ ot_int sub_parse_request(m2session* session) {
             q_writebyte(&txq, (M2TT_RESPONSE | cmd_opcode));    // Write Cmd code byte
         }
         
-        else if ((session->netstate & M2_NETSTATE_DSDIALOG) == 0) {
-            session->netstate  |= M2_NETFLAG_SCRAP;
-        }
+        //else if ((session->netstate & M2_NETSTATE_DSDIALOG) == 0) {
+        //    score = -1;
+        //}
            
         opgroup_proc[((cmd_opcode>>1) & 7)]();
     }
@@ -608,8 +609,8 @@ void sub_opgroup_udp(void) {
     src = q_readbyte(&rxq);
     dst = q_readbyte(&rxq);
 
-    // On Request, automatically swap source & destination ports in response
-    if (m2qp.cmd.code & 0x70) {
+    // For Response, automatically swap source & destination ports in Request
+    if ((m2qp.cmd.code & 0x70) != 0) {
         q_writebyte(&txq, dst);
         q_writebyte(&txq, src);  
     }

@@ -1019,19 +1019,19 @@ void rm2_txcsma_isr() {
         ///    It can do this by doing cc430.state += (1<<RADIO_STATE_TXSHIFT), 
         ///    which will put CCA from CCA1->CCA2 or CCA2->TXSTART
         case (RADIO_STATE_TXCCA1 >> RADIO_STATE_TXSHIFT): {
-            cc430.state = RADIO_STATE_TXCCA1;
-            subcc430_ccascan();
-            break;
+        //    cc430.state = RADIO_STATE_TXCCA1;
+        //    subcc430_ccascan();
+        //    break;
         }
         
         /// 3. CCA1 succeeded: do second check after waiting the guard time
         case (RADIO_STATE_TXCCA2 >> RADIO_STATE_TXSHIFT): {
-            cc430.state = RADIO_STATE_TXCCA2;
-            if (phymac[0].tg > 2) {
-                radio_sleep();
-            }
-            radio_set_mactimer( phymac[0].tg );
-            break;
+        //    cc430.state = RADIO_STATE_TXCCA2;
+        //    if (phymac[0].tg > 2) {
+        //        radio_sleep();
+        //    }
+        //    radio_set_mactimer( phymac[0].tg );
+        //    break;
         }
 
         /// 3. TX startup
@@ -1209,14 +1209,14 @@ void subcc430_finish(ot_int main_err, ot_int frame_err) {
 
 
 ot_bool subcc430_lowrssi_reenter() {
-    ot_int  min_rssi;
-    min_rssi = ((phymac[0].cs_thr >> 1) & 0x3F) - 40;
+    //ot_int  min_rssi;
+    //min_rssi = ((phymac[0].cs_thr >> 1) & 0x3F) - 40;
     
-    if (radio_rssi() < min_rssi) {
-        subcc430_reset_autocal();  
-        rm2_reenter_rx(NULL);
-        return True;
-    }
+    //if (radio_rssi() < min_rssi) {
+    //    subcc430_reset_autocal();
+    //    rm2_reenter_rx(NULL);
+    //    return True;
+    //}
     return False;
 }
 

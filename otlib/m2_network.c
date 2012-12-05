@@ -214,7 +214,7 @@ ot_int network_route_ff(m2session* session) {
         /// device's device ID (VID or UID)
         if ((m2np.header.addr_ctl & 0xC0) == 0) {
             session->netstate |= M2_NETFLAG_FIRSTRX;
-            if ( !m2np_idcmp(m2np.rt.dlog.length, q_markbyte(&rxq, m2np.rt.dlog.length)) ) {
+            if ( m2np_idcmp(m2np.rt.dlog.length, q_markbyte(&rxq, m2np.rt.dlog.length)) == False ) {
                 return -1;
             }
         }

@@ -37,14 +37,15 @@
 
 #include "OT_platform.h"
 
-#if (   defined(BOARD_eZ430Chronos) \
-    &&  OT_FEATURE(MPIPE)           \
-    &&  !defined(MPIPE_UART)        \
-    &&  !defined(MPIPE_I2C)         )
+#if ( defined(BOARD_eZ430Chronos) &&  OT_FEATURE(MPIPE) &&  defined(MPIPE_LCD) )
 
 #include "chronoslcd.h"
 #include "buffers.h"
 #include "mpipe.h"
+
+
+//Local Data storage
+clcd_struct clcd;
 
 
 
@@ -222,6 +223,18 @@ const u8 int_to_array_conversion_table[][3] = {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 /** Mpipe Subs (Board & Platform dependent)  <BR>
   * ========================================================================
   */
@@ -243,16 +256,11 @@ void sub_uart_portsetup() {
 }
 
 
-#define LCD_FLAG_FULLUPDATE     (1 << 10)
 
 
 
 
 
-
-typedef struct {
-    volatile 
-}
 
 
 
@@ -268,8 +276,8 @@ void clear_display_all(void) {
     clear_line(LINE2);
 
     // Clean up function-specific content
-    fptr_lcd_function_line1(LINE1, DISPLAY_LINE_CLEAR);
-    fptr_lcd_function_line2(LINE2, DISPLAY_LINE_CLEAR);
+    clcd.line1_fn(LINE1, DISPLAY_LINE_CLEAR);
+    clcd.line2_fn(LINE2, DISPLAY_LINE_CLEAR);
 
 }
 
@@ -343,25 +351,25 @@ u8 *int_to_array(u32 n, u8 digits, u8 blanks) {
     u8 digits1 = digits;
 
     // Preset result string
-    memcpy(int_to_array_str, "0000000", 7);
+    platform_memcpy(clcd.itoa_str, "0000000", 7);
 
     // Return empty string if number of digits is invalid (valid range for digits: 1-7)
-    if ((digits == 0) || (digits > 7))
-        return (int_to_array_str);
+    if ((digits-1) > 6)
+        return (clcd.itoa_str);
 
     // Numbers 0 .. 180 can be copied from int_to_array_conversion_table without conversion
     if (n <= 180) {
         if (digits >= 3) {
-            memcpy(int_to_array_str + (digits - 3), int_to_array_conversion_table[n], 3);
+            platform_memcpy(clcd.itoa_str + (digits - 3), int_to_array_conversion_table[n], 3);
         }
         else {                   // digits == 1 || 2
-            memcpy(int_to_array_str, int_to_array_conversion_table[n] + (3 - digits), digits);
+            platform_memcpy(clcd.itoa_str, int_to_array_conversion_table[n] + (3 - digits), digits);
         }
     }
     else {                       // For n > 180 need to calculate string content
         // Calculate digits from least to most significant number
         do {
-            int_to_array_str[digits - 1] = n % 10 + '0';
+            clcd.itoa_str[digits - 1] = n % 10 + '0';
             n /= 10;
         }
         while (--digits > 0);
@@ -369,16 +377,16 @@ u8 *int_to_array(u32 n, u8 digits, u8 blanks) {
 
     // Remove specified number of leading '0', always keep last one
     i = 0;
-    while ((int_to_array_str[i] == '0') && (i < digits1 - 1)) {
+    while ((clcd.itoa_str[i] == '0') && (i < digits1 - 1)) {
         if (blanks > 0) {
             // Convert only specified number of leading '0'
-            int_to_array_str[i] = ' ';
+            clcd.itoa_str[i] = ' ';
             blanks--;
         }
         i++;
     }
 
-    return (int_to_array_str);
+    return (clcd.itoa_str);
 }
 
 
@@ -733,11 +741,11 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     // Call Line1 display function
     if (display.flag.full_update || display.flag.line1_full_update) {
         clear_line(LINE1);
-        fptr_lcd_function_line1(LINE1, DISPLAY_LINE_UPDATE_FULL);
+        clcd.line1_fn(LINE1, DISPLAY_LINE_UPDATE_FULL);
     }
     else if (ptrMenu_L1->display_update()) {
         // Update line1 only when new data is available
-        fptr_lcd_function_line1(LINE1, DISPLAY_LINE_UPDATE_PARTIAL);
+        clcd.line1_fn(LINE1, DISPLAY_LINE_UPDATE_PARTIAL);
     }
 
     // If message text should be displayed on Line2, skip normal update
@@ -756,7 +764,7 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
 
         // Clear previous content
         clear_line(line);
-        fptr_lcd_function_line2(line, DISPLAY_LINE_CLEAR);
+        clcd.line2_fn(line, DISPLAY_LINE_CLEAR);
 
         if (line == LINE2)  display_chars(LCD_SEG_L2_5_0, string, SEG_ON);
         else                display_chars(LCD_SEG_L1_3_0, string, SEG_ON);
@@ -769,17 +777,17 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     // Call Line2 display function
     else if (display.flag.full_update || display.flag.line2_full_update) {
         clear_line(LINE2);
-        fptr_lcd_function_line2(LINE2, DISPLAY_LINE_UPDATE_FULL);
+        clcd.line2_fn(LINE2, DISPLAY_LINE_UPDATE_FULL);
     }
     
     // Update line2 only when new data is available
     else if (ptrMenu_L2->display_update() && !message.all_flags) {
-        fptr_lcd_function_line2(LINE2, DISPLAY_LINE_UPDATE_PARTIAL);
+        clcd.line2_fn(LINE2, DISPLAY_LINE_UPDATE_PARTIAL);
     }
 
     // Restore blinking icons (blinking memory is cleared when calling set_value)
     // Turn on beeper icon to show activity
-    if ((display.flag.full_update) && (is_bluerobin() == BLUEROBIN_CONNECTED)) {   
+    if (display.flag.full_update) {   
         display_symbol(LCD_ICON_BEEPER1, SEG_ON_BLINK_OFF);
         display_symbol(LCD_ICON_BEEPER2, SEG_ON_BLINK_OFF);
         display_symbol(LCD_ICON_BEEPER3, SEG_ON_BLINK_OFF);
@@ -787,7 +795,6 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
 
     // Clear display flag
     display.all_flags = 0;
-}
 }
 #endif
 
@@ -804,122 +811,7 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
 
 #ifndef EXTF_mpipedrv_isr
 void mpipedrv_isr() {
-/// MPipe is state-based.  Depending on the MPipe implementation and the HW
-/// implementation of the DMA+UART, state transitions may happen differently.
-/// <LI> In typical RX, there is a header detection event that sets-up a second
-///      RX process for downloading the rest of the packet.  When the DMA is
-///      done, the process completes.  </LI>
-/// <LI> For TX, there is a wait-state needed while the HW UART finishes
-///      sending the DMA buffered data (two bytes). </LI>
-/// <LI> If MPipe does not have HW acks, then software can be used to manage
-///      Acks.  In this case, a complete TX process also requires RX'ing an
-///      Ack, and a complete RX process requires TX'ing an Ack. </LI>
-#if (BOARD_FEATURE_USBCONVERTER != ENABLED)
-    ot_u16 crc_result;
-#endif
 
-    switch (mpipe.state) {
-        case MPIPE_Idle: //note, case doesn't break!
-        
-        case MPIPE_RxHeader: {
-            ot_u8* payload_front;
-            ot_int payload_len;
-            mpipe.state             = MPIPE_RxPayload;
-            payload_len             = mpipe.alp.inq->front[2];
-            payload_front           = mpipe.alp.inq->front + 6;
-            mpipe.alp.inq->back     = payload_front + payload_len;
-            payload_len            += MPIPE_FOOTERBYTES;
-            mpipe.alp.inq->length   = payload_len + 6;
-            MPIPE_DMA_RXCONFIG(payload_front, payload_len, ON);
-            mpipeevt_rxdetect(30);      ///@todo make dynamic: this is relevant for 115200bps
-        }   return;
-
-        case MPIPE_RxPayload: {
-            ot_u8* footer;
-            footer                  = mpipe.alp.inq->back;
-            tty.seq.ubyte[UPPER]    = *footer++;
-            tty.seq.ubyte[LOWER]    = *footer;
-            
-            // CRC is Good (==0) or bad (!=0) Discard the packet if bad
-#           if (BOARD_FEATURE_USBCONVERTER != ENABLED)
-            crc_result = platform_crc_block(mpipe.alp.inq->front, mpipe.alp.inq->length);
-#           endif
-            
-#           if (MPIPE_USE_ACKS)
-            // ACKs must be used when Broadcast mode is off
-            // 1. On ACKs, txndef() requires caller to choose state 
-            // 2. Copy RX'ed seq number into local seq number
-            // 3. Copy NACK/ACK status to 6th byte in NDEF header
-            if (tty.priority != MPIPE_Broadcast) {
-                mpipe.state = MPIPE_TxAck_Done; //MPIPE_TxAck_Wait;
-                sub_txack_header(crc_result);
-                mpipedrv_txndef(False, MPIPE_Ack);
-                return;
-            }
-#           endif
-        } goto mpipedrv_isr_RXDONE;
-
-        //case MPIPE_TxAck_Wait:
-            //MPIPE_UART->IE = UCTXIE;
-            //return;
-
-        case MPIPE_TxAck_Done:  // TX'ed an ACK
-#           if (MPIPE_USE_ACKS)
-            if (mpipe.alp.outq->front[5] != 0) { // TX'ed a NACK
-                mpipedrv_rxndef(False, tty.priority);
-                mpipe.state = MPIPE_RxHeader;
-                return;
-            }
-            tty.priority = MPIPE_Low;
-            goto mpipedrv_isr_RXDONE;
-#           endif
-
-        //case MPIPE_Tx_Wait:
-            //MPIPE_UART->IE = UCTXIE;
-            //return;
-
-        case MPIPE_Tx_Done:
-            //MPIPE_UART->IE = 0;
-#           if (MPIPE_USE_ACKS)
-            if (tty.priority != MPIPE_Broadcast) {
-                mpipedrv_rxndef(False, MPIPE_Ack);
-                mpipe.state = MPIPE_RxAck;
-                return;
-            }
-#           endif
-            goto mpipedrv_isr_TXDONE;  // Broadcast, so no ACK
-            
-        case MPIPE_RxAck:
-#           if (MPIPE_USE_ACKS)
-            if (platform_crc_block(mpipe.alp.inq->front, 10) != 0) { //RX'ed NACK
-                mpipedrv_txndef(False, tty.priority);
-                return;
-            }
-            goto mpipedrv_isr_TXDONE;  //RX'ed ACK
-#           endif
-            
-       default: mpipedrv_kill();
-                mpipe_open();
-                return;
-    }
-    
-    // This is a stack-less RX-Done subroutine
-    // Close UART, Close MPipe, Tell kernel to start processing
-    mpipedrv_isr_RXDONE:
-    mpipe.state = MPIPE_Idle;
-#   if (BOARD_FEATURE_USBCONVERTER != ENABLED)
-    mpipeevt_rxdone((ot_int)crc_result);
-#   else
-    mpipeevt_rxdone(0);
-#   endif
-    return;
-    
-    // This is a stack-less TX-Done subroutine
-    // Increment seq, Close MPipe, Tell kernel to disengage
-    mpipedrv_isr_TXDONE:
-    tty.seq.ushort++;
-    mpipe.state = MPIPE_Idle;
-    mpipeevt_txdone(2);
 }
 #endif
 

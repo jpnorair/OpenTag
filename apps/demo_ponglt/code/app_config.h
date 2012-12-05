@@ -507,7 +507,7 @@
 #define ISF_LEN_device_features                 48
 #define ISF_LEN_channel_configuration           32
 #define ISF_LEN_real_time_scheduler             12
-#define ISF_LEN_hold_scan_sequence              8
+#define ISF_LEN_hold_scan_sequence              4
 #define ISF_LEN_sleep_scan_sequence             4
 #define ISF_LEN_beacon_transmit_sequence        16
 #define ISF_LEN_protocol_list                   4
@@ -520,7 +520,7 @@
 #define ISF_LEN_root_authentication_key         0
 #define ISF_LEN_user_authentication_key         0
 #define ISF_LEN_routing_code                    0
-#define ISF_LEN_user_id                         0
+#define ISF_LEN_user_id                         11
 #define ISF_LEN_optional_command_list           7
 #define ISF_LEN_memory_size                     12
 #define ISF_LEN_table_query_size                1

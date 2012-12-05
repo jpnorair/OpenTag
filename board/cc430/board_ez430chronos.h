@@ -136,11 +136,35 @@ OT_INLINE_H BOARD_DMA_COMMON_INIT() {
 #define BOARD_FEATURE_INVERT_TRIG3      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG4      DISABLED
 
-#define BOARD_SW2_PORTNUM               1
-#define BOARD_SW2_PORT                  GPIO1
-#define BOARD_SW2_PIN                   GPIO_Pin_5
+#define BOARD_SW1_PORTNUM               2
+#define BOARD_SW1_PORT                  GPIO2
+#define BOARD_SW1_PIN                   GPIO_Pin_4
+#define BOARD_SW1_POLARITY              0
+#define BOARD_SW1_PULLING               1
+
+#define BOARD_SW2_PORTNUM               2
+#define BOARD_SW2_PORT                  GPIO2
+#define BOARD_SW2_PIN                   GPIO_Pin_0
 #define BOARD_SW2_POLARITY              0
 #define BOARD_SW2_PULLING               1
+
+#define BOARD_SWM1_PORTNUM              2
+#define BOARD_SWM1_PORT                 GPIO2
+#define BOARD_SWM1_PIN                  GPIO_Pin_2
+#define BOARD_SWM1_POLARITY             0
+#define BOARD_SWM1_PULLING              1
+
+#define BOARD_SWM2_PORTNUM              2
+#define BOARD_SWM2_PORT                 GPIO2
+#define BOARD_SWM2_PIN                  GPIO_Pin_1
+#define BOARD_SWM2_POLARITY             0
+#define BOARD_SWM2_PULLING              1
+
+#define BOARD_SWBL_PORTNUM              2
+#define BOARD_SWBL_PORT                 GPIO2
+#define BOARD_SWBL_PIN                  GPIO_Pin_3
+#define BOARD_SWBL_POLARITY             0
+#define BOARD_SWBL_PULLING              1
 
 #define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
 #define BOARD_PARAM_LFHz                32768
@@ -368,35 +392,46 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   *      actually having one, so don't worry about the Zener. 
   * </LI>
   */
-#define MPIPE_DMANUM        0
-#define MPIPE_I2C_PORTNUM   1
-#define MPIPE_I2C_PORT      GPIO1
-#define MPIPE_I2C_PORTMAP   P1M
-#define MPIPE_I2C_SDAPIN    GPIO_Pin_5
-#define MPIPE_I2C_SCLPIN    GPIO_Pin_6
-#define MPIPE_I2C_SELF		0x01
-#define MPIPE_I2C_TARGET	0x02
 
-#define OT_TRIG1_PORT       GPIO1
-#define OT_TRIG1_PIN        GPIO_Pin_0
-#define OT_TRIG1_HIDRIVE    ENABLED
-#define OT_TRIG1_PORT       GPIO3
-#define OT_TRIG2_PIN        GPIO_Pin_6
-#define OT_TRIG2_HIDRIVE    ENABLED
 
-#define OT_SWITCH1_PORTNUM  BOARD_SW2_PORTNUM
-#define OT_SWITCH1_PORT     BOARD_SW2_PORT
-#define OT_SWITCH1_PIN      BOARD_SW2_PIN
-#define OT_SWITCH1_POLARITY BOARD_SW2_POLARITY
-#define OT_SWITCH1_PULLING  BOARD_SW2_PULLING
+// If using MPipe Over LCD (Special LCD peripheral, TX only)
+#undef  MCU_FEATURE_MPIPEDMA
+#define MCU_FEATURE_MPIPEDMA    DISABLED
+//#define MPIPE_LCD
+
+// If using MPipe Over I2C
+//#define MPIPE_DMANUM        0
+//#define MPIPE_I2C_PORTNUM   1
+//#define MPIPE_I2C_PORT      GPIO1
+//#define MPIPE_I2C_PORTMAP   P1M
+//#define MPIPE_I2C_SDAPIN    GPIO_Pin_5
+//#define MPIPE_I2C_SCLPIN    GPIO_Pin_6
+//#define MPIPE_I2C_SELF      0x01
+//#define MPIPE_I2C_TARGET	  0x02
+
+// By default, no triggers on Chronos, although you can repurpose switch inputs
+//#define OT_TRIG1_PORT       BOARD_SWM1_PORT
+//#define OT_TRIG1_PIN        BOARD_SWM1_PIN
+//#define OT_TRIG1_HIDRIVE    DISABLED
+//#define OT_TRIG2_PORT       BOARD_SWM2_PORT
+//#define OT_TRIG2_PIN        BOARD_SWM2_PIN
+//#define OT_TRIG2_HIDRIVE    DISABLED
+
+#define OT_SWITCH1_PORTNUM  BOARD_SW1_PORTNUM
+#define OT_SWITCH1_PORT     BOARD_SW1_PORT
+#define OT_SWITCH1_PIN      BOARD_SW1_PIN
+#define OT_SWITCH1_POLARITY BOARD_SW1_POLARITY
+#define OT_SWITCH1_PULLING  BOARD_SW1_PULLING
 
 //CC430 & MSP430 specific
 #if (OT_SWITCH1_PORTNUM == 1)
 #   define OT_SWITCH1_PIV       GPIO1->P1IV
 #   define OT_SWITCH1_VECTOR    PORT1_VECTOR
+#   define __ISR_P1
 #elif (OT_SWITCH1_PORTNUM == 2)
 #   define OT_SWITCH1_PIV       GPIO2->P2IV
 #   define OT_SWITCH1_VECTOR    PORT2_VECTOR
+#   define __ISR_P2
 #endif
 
 

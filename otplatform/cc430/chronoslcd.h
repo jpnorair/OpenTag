@@ -25,10 +25,7 @@
 
 #include "OT_platform.h"
 
-#if (   defined(BOARD_eZ430Chronos) \
-    &&  OT_FEATURE(MPIPE)           \
-    &&  !defined(MPIPE_UART)        \
-    &&  !defined(MPIPE_I2C)         )
+#if ( defined(BOARD_eZ430Chronos) &&  OT_FEATURE(MPIPE) &&  defined(MPIPE_LCD) )
 
 // Defines section
 
