@@ -1,0 +1,1327 @@
+/* Copyright 2009-2012 JP Norair
+  *
+  * Licensed under the OpenTag License, Version 1.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.indigresso.com/wiki/doku.php?id=opentag:license_1_0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
+  */
+/**
+  * @file       /board/cc430/board_IKR001.h
+  * @author     JP Norair
+  * @version    R100
+  * @date       31 December 2012
+  * @brief      Board Configuration for STEVAL-IKR001
+  * @ingroup    Platform
+  *
+  * Do not include this file, include OT_platform.h
+  *
+  * SPECIAL NOTE: search for "note BOARD Macro" lines in this file.  These
+  * must be ported to other STM32L boards, because the OpenTag STM32L platform 
+  * implementation depends on them.
+  *
+  ******************************************************************************
+  */
+  
+
+#ifndef __board_IKR001_H
+#define __board_IKR001_H
+
+#include "build_config.h"
+#include "platform_STM32L1xx.h"
+
+#ifdef __NULL_RADIO__
+#   include "radio_null.h"
+#else
+#   include "radio_SPIRIT1.h"
+#endif
+
+
+
+/// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
+#ifdef ENABLED
+#   undef ENABLED
+#endif
+#define ENABLED  1
+
+#ifdef DISABLED
+#   undef DISABLED
+#endif
+#define DISABLED  0
+
+#ifdef NOT_AVAILABLE
+#   undef NOT_AVAILABLE
+#endif
+#define NOT_AVAILABLE   DISABLED
+
+
+
+
+/** Additional RF Front End Parameters and Settings <BR>
+  * ========================================================================<BR>
+  * The IKR001V3 uses 433 MHz band plus a lousy antenna
+  */
+#define RF_PARAM_BAND   433
+#define RF_HDB_ATTEN    16       //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_RSSI_OFFSET  8       //Offset applied to RSSI calculation
+
+
+
+/** MCU Feature settings      <BR>
+  * ========================================================================<BR>
+  * Implemented capabilities of the STM32L variants
+  */
+#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL   // FEATURE                  NOTE
+#define MCU_FEATURE_SVMONITOR           DISABLED            // Auto Low V powerdown     On many MCUs
+#define MCU_FEATURE_CRC                 DISABLED            // CCITT CRC16              On some MCUs
+#define MCU_FEATURE_AES128              DISABLED            // AES128 engine            On some MCUs
+#define MCU_FEATURE_ECC                 DISABLED            // ECC engine               Rare
+#define MCU_FEATURE_RADIODMA            DISABLED
+#define MCU_FEATURE_RADIODMA_TXBYTES    0
+#define MCU_FEATURE_RADIODMA_RXBYTES    0
+
+#define MCU_FEATURE_TURBO               ENABLED         // Allows usage of MF-HF clock boosting
+#define MCU_FEATURE_MAPEEPROM           DISABLED
+#define MCU_FEATURE_MPIPECDC            DISABLED        // USB-CDC MPipe implementation
+#define MCU_FEATURE_MPIPEUART           ENABLED         // UART MPipe Implementation
+#define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
+
+#define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
+#define MCU_PARAM_VOLTLEVEL             2               // 3=1.2, 2=1.5V, 1=1.8V
+#define MCU_PARAM_POINTERSIZE           2
+
+
+
+
+/** Board-based Feature Settings <BR>
+  * ========================================================================<BR>
+  * 1. There are 3 buttons, all active low, and all with external pullups
+  *    <LI> SW1: goes to SCM_PS input </LI>
+  *    <LI> SW3: goes to Reset input </LI>
+  *    <LI> SW2: goes to "Push Button" input </LI>
+  * 
+  * 2. There is a 5-way active low joystick: right, down, center, up, left.
+  *
+  * 3. There are 5 active low LEDs: green, orange, red, blue, yellow
+  * 
+  * 4. The SPIRIT1 SPI benefits from the highest speed clock up to 20 MHz.
+  */
+#define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
+#define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
+#define BOARD_FEATURE_MPIPE_QMGMT       ENABLED
+#define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL used as Clock source
+#define BOARD_FEATURE_HFXTAL            DISABLED                // HF XTAL used as Clock source
+#define BOARD_FEATURE_INVERT_TRIG1      ENABLED
+#define BOARD_FEATURE_INVERT_TRIG2      ENABLED
+
+#define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
+#define BOARD_PARAM_LFHz                32768
+#define BOARD_PARAM_LFtol               0.00002
+#define BOARD_PARAM_MFHz                4200000
+#define BOARD_PARAM_MFmult              1                       // Main CLK = HFHz * (MFmult/MFdiv)
+#define BOARD_PARAM_MFdiv               1
+#define BOARD_PARAM_MFtol               0.02
+#define BOARD_PARAM_HFHz                16000000
+#define BOARD_PARAM_HFmult              1                       // Turbo CLK = HFHz * (HFmult/HFdiv)
+#define BOARD_PARAM_HFdiv               1
+#define BOARD_PARAM_HFtol               0.02
+
+#define BOARD_PARAM_AHBCLKDIV           1                       // AHB Clk = Main CLK / AHBCLKDIV
+#define BOARD_PARAM_APB2CLKDIV          1                       // APB2 Clk = Main CLK / AHBCLKDIV
+#define BOARD_PARAM_APB1CLKDIV          1                       // APB1 Clk = Main CLK / AHBCLKDIV
+
+// JTAG Interface
+#define BOARD_JTMS_PORT                 GPIOA
+#define BOARD_JTMS_PINNUM               13
+#define BOARD_JTMS_PIN                  GPIO_Pin_13
+#define BOARD_SWDIO_PORT                BOARD_JTMS_PORT
+#define BOARD_SWDIO_PINNUM              BOARD_JTMS_PINNUM
+#define BOARD_SWDIO_PIN                 BOARD_JTMS_PIN
+#define BOARD_JTCK_PORT                 GPIOA
+#define BOARD_JTCK_PINNUM               14
+#define BOARD_JTCK_PIN                  GPIO_Pin_14
+#define BOARD_SWCLK_PORT                BOARD_JTCK_PORT
+#define BOARD_SWCLK_PINNUM              BOARD JTCK_PINNUM
+#define BOARD_SWCLK_PIN                 BOARD_JTCK_PIN
+#define BOARD_JTDI_PORT                 GPIOA
+#define BOARD_JTDI_PINNUM               15
+#define BOARD_JTDI_PIN                  GPIO_Pin_15
+#define BOARD_JTDO_PORT                 GPIOB
+#define BOARD_JTDO_PINNUM               3
+#define BOARD_JTDO_PIN                  GPIO_Pin_3
+#define BOARD_TRACESWO_PORT             BOARD_JTDO_PORT
+#define BOARD_TRACESWO_PINNUM           BOARD_JTDO_PINNUM
+#define BOARD_TRACESWO_PIN              BOARD_JTDO_PIN
+#define BOARD_JTDNRST_PORT              GPIOB
+#define BOARD_JTDNRST_PINNUM            4
+#define BOARD_JTDNRST_PIN               GPIO_Pin_4
+
+// Pushbutton interface
+#define BOARD_SW1_PORTNUM               2                   // Port C
+#define BOARD_SW1_PORT                  GPIOC
+#define BOARD_SW1_PINNUM                6
+#define BOARD_SW1_PIN                   GPIO_Pin_6
+#define BOARD_SW1_POLARITY              0
+#define BOARD_SW1_PULLING               0
+
+#define BOARD_SW2_PORTNUM               -1                  //Reset
+#define BOARD_SW2_PORT                  -1
+#define BOARD_SW2_PINNUM                -1
+#define BOARD_SW2_PIN                   -1
+#define BOARD_SW2_POLARITY              0
+#define BOARD_SW2_PULLING               1
+
+#define BOARD_SW3_PORTNUM               4                   // Port E
+#define BOARD_SW3_PORT                  GPIOE
+#define BOARD_SW3_PINNUM                9
+#define BOARD_SW3_PIN                   GPIO_Pin_9
+#define BOARD_SW3_POLARITY              0
+#define BOARD_SW3_PULLING               0
+
+// Joystick Interface
+#define BOARD_JOYR_PORTNUM              1                   // Port B
+#define BOARD_JOYR_PORT                 GPIOB
+#define BOARD_JOYR_PINNUM               1
+#define BOARD_JOYR_PIN                  GPIO_Pin_1
+#define BOARD_JOYR_POLARITY             0
+#define BOARD_JOYR_PULLING              0
+
+#define BOARD_JOYD_PORTNUM              1                   // Port B
+#define BOARD_JOYD_PORT                 GPIOB
+#define BOARD_JOYD_PINNUM               0
+#define BOARD_JOYD_PIN                  GPIO_Pin_0
+#define BOARD_JOYD_POLARITY             0
+#define BOARD_JOYD_PULLING              0
+
+#define BOARD_JOYC_PORTNUM              4                   // Port E
+#define BOARD_JOYC_PORT                 GPIOE
+#define BOARD_JOYC_PINNUM               7
+#define BOARD_JOYC_PIN                  GPIO_Pin_7
+#define BOARD_JOYC_POLARITY             0
+#define BOARD_JOYC_PULLING              0
+
+#define BOARD_JOYU_PORTNUM              4                   // Port E
+#define BOARD_JOYU_PORT                 GPIOE
+#define BOARD_JOYU_PINNUM               8
+#define BOARD_JOYU_PIN                  GPIO_Pin_8
+#define BOARD_JOYU_POLARITY             0
+#define BOARD_JOYU_PULLING              0
+
+#define BOARD_JOYL_PORTNUM              4                   // Port E
+#define BOARD_JOYL_PORT                 GPIOE
+#define BOARD_JOYL_PINNUM               6
+#define BOARD_JOYL_PIN                  GPIO_Pin_6
+#define BOARD_JOYL_POLARITY             0
+#define BOARD_JOYL_PULLING              0
+
+// LED interface
+#define BOARD_LEDG_PORTNUM              3                   // Port D
+#define BOARD_LEDG_PORT                 GPIOD
+#define BOARD_LEDG_PINNUM               1
+#define BOARD_LEDG_PIN                  GPIO_Pin_1
+#define BOARD_LEDG_POLARITY             0
+
+#define BOARD_LEDO_PORTNUM              3                   // Port D
+#define BOARD_LEDO_PORT                 GPIOD
+#define BOARD_LEDO_PINNUM               2
+#define BOARD_LEDO_PIN                  GPIO_Pin_2
+#define BOARD_LEDO_POLARITY             0
+
+#define BOARD_LEDR_PORTNUM              3                   // Port D
+#define BOARD_LEDR_PORT                 GPIOD
+#define BOARD_LEDR_PINNUM               3
+#define BOARD_LEDR_PIN                  GPIO_Pin_3
+#define BOARD_LEDR_POLARITY             0
+
+#define BOARD_LEDB_PORTNUM              3                   // Port D
+#define BOARD_LEDB_PORT                 GPIOD
+#define BOARD_LEDB_PINNUM               4   
+#define BOARD_LEDB_PIN                  GPIO_Pin_4
+#define BOARD_LEDB_POLARITY             0
+
+#define BOARD_LEDY_PORTNUM              3                   // Port D
+#define BOARD_LEDY_PORT                 GPIOD
+#define BOARD_LEDY_PINNUM               5
+#define BOARD_LEDY_PIN                  GPIO_Pin_5
+#define BOARD_LEDY_POLARITY             0
+
+// Analog Input BNC
+#define BOARD_BNC_PORTNUM               0
+#define BOARD_BNC_PORT                  GPIOA
+#define BOARD_BNC_PINNUM                5
+#define BOARD_BNC_PIN                   GPIO_Pin_5
+
+// Analog Voltage Sensing
+#define BOARD_VSENSE_PORTNUM            2
+#define BOARD_VSENSE_PORT               GPIOC
+#define BOARD_VSENSE_5VPINNUM           5
+#define BOARD_VSENSE_3VPINNUM           4
+#define BOARD_VSENSE_5VPIN              GPIO_Pin_5
+#define BOARD_VSENSE_3VPIN              GPIO_Pin_4
+
+// External UART interface on USART2
+#define BOARD_UART_ID                   2                   // USART2
+#define BOARD_UART_PORTNUM              0                   // Port A
+#define BOARD_UART_PORT                 GPIOA
+#define BOARD_UART_CTSPINNUM            0
+#define BOARD_UART_RTSPINNUM            1
+#define BOARD_UART_TXPINNUM             2
+#define BOARD_UART_RXPINNUM             3
+#define BOARD_UART_CTSPIN               GPIO_Pin_0
+#define BOARD_UART_RTSPIN               GPIO_Pin_1
+#define BOARD_UART_TXPIN                GPIO_Pin_2
+#define BOARD_UART_RXPIN                GPIO_Pin_3
+
+// External USB interface
+#define BOARD_USB_PORTNUM               0
+#define BOARD_USB_PORT                  GPIOA
+#define BOARD_USB_DMPINNUM              11
+#define BOARD_USB_DPPINNUM              12
+#define BOARD_USB_DMPIN                 GPIO_Pin_11
+#define BOARD_USB_DPPIN                 GPIO_Pin_12
+
+// Accelerometer Interface on I2C2
+#define BOARD_ACC_PORTNUM               1
+#define BOARD_ACC_PORT                  GPIOB
+#define BOARD_ACC_INT1PINNUM            8
+#define BOARD_ACC_INT2PINNUM            9
+#define BOARD_ACC_SCLPINNUM             10
+#define BOARD_ACC_SDAPINNUM             11
+#define BOARD_ACC_INT1PIN               GPIO_Pin_8
+#define BOARD_ACC_INT2PIN               GPIO_Pin_9
+#define BOARD_ACC_SCLPIN                GPIO_Pin_10
+#define BOARD_ACC_SDAPIN                GPIO_Pin_11
+
+// LCD Interface on SPI2
+#define BOARD_LCDBL_PORTNUM             0
+#define BOARD_LCDBL_PORT                GPIOA
+#define BOARD_LCDBL_PINNUM              9
+#define BOARD_LCDBL_PIN                 GPIO_Pin_9
+#define BOARD_LCDRESETN_PORTNUM         4
+#define BOARD_LCDRESETN_PORT            GPIOE
+#define BOARD_LCDRESETN_PINNUM          10
+#define BOARD_LCDRESETN_PIN             GPIO_Pin_10
+#define BOARD_LCDSPI_PORTNUM            1
+#define BOARD_LCDSPI_PORT               GPIOB
+#define BOARD_LCDSPI_MOSIPINNUM         15
+#define BOARD_LCDSPI_MISOPINNUM         14
+#define BOARD_LCDSPI_SCLKPINNUM         13
+#define BOARD_LCDSPI_CSNPINNUM          12
+#define BOARD_LCDSPI_MOSIPIN            GPIO_Pin_15
+#define BOARD_LCDSPI_MISOPIN            GPIO_Pin_14
+#define BOARD_LCDSPI_SCLKPIN            GPIO_Pin_13
+#define BOARD_LCDSPI_CSNPIN             GPIO_Pin_12
+
+// SD Card interface (shares SPI2)
+#define BOARD_SDCSN_PORTNUM             0
+#define BOARD_SDCSN_PORT                GPIOA
+#define BOARD_SDCSN_PINNUM              8
+#define BOARD_SDCSN_PIN                 GPIO_Pin_8
+#define BOARD_SDSPI_PORTNUM             1
+#define BOARD_SDSPI_PORT                GPIOB
+#define BOARD_SDSPI_MOSIPINNUM          15
+#define BOARD_SDSPI_MISOPINNUM          14
+#define BOARD_SDSPI_SCLKPINNUM          13
+#define BOARD_SDSPI_MOSIPIN             GPIO_Pin_15
+#define BOARD_SDSPI_MISOPIN             GPIO_Pin_14
+#define BOARD_SDSPI_SCLKPIN             GPIO_Pin_13
+
+// SPIRIT1 RF interface
+#define BOARD_RFGPIO_PORTNUM            2
+#define BOARD_RFGPIO_PORT               GPIOC
+#define BOARD_RFGPIO_0PINNUM            7
+#define BOARD_RFGPIO_1PINNUM            8
+#define BOARD_RFGPIO_2PINNUM            9
+#define BOARD_RFGPIO_3PINNUM            10
+#define BOARD_RFGPIO_SDNPINNUM          13
+#define BOARD_RFGPIO_0PIN               GPIO_Pin_7
+#define BOARD_RFGPIO_1PIN               GPIO_Pin_8
+#define BOARD_RFGPIO_2PIN               GPIO_Pin_9
+#define BOARD_RFGPIO_3PIN               GPIO_Pin_10
+#define BOARD_RFGPIO_SDNPIN             GPIO_Pin_13
+#define BOARD_RFSPI_ID                  1       //SPI1
+#define BOARD_RFSPI_PORTNUM             4       //Port E
+#define BOARD_RFSPI_PORT                GPIOE
+#define BOARD_RFSPI_MOSIPINNUM          15
+#define BOARD_RFSPI_MISOPINNUM          14
+#define BOARD_RFSPI_SCLKPINNUM          13
+#define BOARD_RFSPI_CSNPINNUM           12
+#define BOARD_RFSPI_MOSIPIN             GPIO_Pin_15
+#define BOARD_RFSPI_MISOPIN             GPIO_Pin_14
+#define BOARD_RFSPI_SCLKPIN             GPIO_Pin_13
+#define BOARD_RFSPI_CSNPIN              GPIO_Pin_12
+
+// SPIRIT1 Current Montior (SCM) interface
+#define BOARD_SCMIN_PORTNUM             2
+#define BOARD_SCMIN_PORT                GPIOC
+#define BOARD_SCMIN_PSPINNUM            6
+#define BOARD_SCMIN_RFVPINNUM           3
+#define BOARD_SCMIN_PSPIN               GPIO_Pin_6
+#define BOARD_SCMIN_RFVPIN              GPIO_Pin_3
+#define BOARD_SCMOUT_PORTNUM            4
+#define BOARD_SCMOUT_PORT               GPIOE
+#define BOARD_SCMOUT_SCMENPINNUM        4
+#define BOARD_SCMOUT_CMENPINNUM         3
+#define BOARD_SCMOUT_SCMENPIN           GPIO_Pin_4
+#define BOARD_SCMOUT_CMENPIN            GPIO_Pin_3
+
+// TIMER9 interface: note that CH2 is on same position as Joystick-Left.
+// Disconnect Joystick Left, or alternatively just don't use it.  :)
+#define BOARD_TIM9CH1_PORTNUM           4   //Port E
+#define BOARD_TIM9CH2_PORTNUM           4
+#define BOARD_TIM9CH1_PORT              GPIOE
+#define BOARD_TIM9CH2_PORT              GPIOE
+#define BOARD_TIM9CH1_PINNUM            5
+#define BOARD_TIM9CH2_PINNUM            6
+#define BOARD_TIM9CH1_PIN               GPIO_Pin_5
+#define BOARD_TIM9CH2_PIN               GPIO_Pin_6
+
+#endif
+
+
+
+
+
+
+/** BOARD Macros (most of them, anyway) <BR>
+  * ========================================================================<BR>
+  * BOARD Macros are required by the OpenTag STM32L platform implementation.
+  * We can assume certain things at the platform level, but not everything,
+  * which is why BOARD Macros are required.
+  *
+  * If your board is implementing a radio (extremely likely), there are likely
+  * some additional Board macros down near the radio configuration section.
+  */
+
+///@note BOARD Macro for Peripheral Clock initialization at startup
+OT_INLINE_H BOARD_PERIPH_INIT() {
+
+    //1. AHB Clock Setup for Active Mode
+    
+    // DMA is used in MEMCPY and thus it could be needed at any time during
+    // active runtime.  So, the active-clock must be enabled permanently.
+#   if (MCU_FEATURE_MEMCPYDMA == ENABLED)
+#       define _DMACLK_N    RCC_AHBENR_DMA1EN
+#   else
+#       define _DMACLK_N    0
+#   endif
+
+    //Flash should be enabled unless you seriously modify OpenTag.
+#   define _FLITFCLK_N      RCC_AHBENR_FLITFEN
+
+    //The built-in CRC engine is rarely used, start disabled
+#   define _CRCCLK_N        0   //RCC_AHBENR_CRCEN
+
+    // This board uses all GPIOs it has (GPIOA-E), so enable all of them.  
+    // You could optimize this if you aren't using them all.
+#   define _GPIOCLK_N       (   RCC_AHBENR_GPIOAEN  \
+                            |   RCC_AHBENR_GPIOBEN  \
+                            |   RCC_AHBENR_GPIOCEN  \
+                            |   RCC_AHBENR_GPIODEN  \
+                            |   RCC_AHBENR_GPIOEEN  )
+
+    RCC->AHBENR    |= (_DMACLK_N | _FLITFCLK_N | _CRCCLK_N | _GPIOCLK_N);
+
+
+    // 1b. AHB Clock Setup for Sleep Mode
+    
+    // DMA is only needed in Sleep if you have some sort of asynchronous data
+    // input using the DMA.  The only one so far is the MPIPE UART.  I2C slave
+    // or input-capture timers might also need it, so consider these.
+#   if (OT_FEATURE_MPIPE == ENABLED) && (MCU_FEATURE_MPIPEUART == ENABLED)
+#       define _DMACLK_LP   RCC_AHBLPENR_DMA1LPEN
+#   else
+#       define _DMACLK_LP   0
+#   endif
+
+    // SRAM should always be clocked during SLEEP
+#   define _SRAMCLK_LP      RCC_AHBLPENR_SRAMLPEN
+
+    // FLASH needs to be clocked during LP modes, such as if you are sending
+    // constant data from Flash across a DMA+Peripheral.  We assume this is the
+    // case.  In any case, the supply current hit is negligible.
+#   define _FLITFCLK_LP     RCC_AHBLPENR_FLITFLPEN
+
+    // HW CRC32 engine is never used in sleep, or much at all, so fuck it
+#   define _CRCCLK_LP       0       //RCC_AHBLPENR_CRCLPEN
+
+    // I assume that all GPIOs could have interrupts, so I enable them all in
+    // sleep.  You could optimize this if you are not using some peripherals.
+#   define _GPIOCLK_LP      (   RCC_AHBENR_GPIOALPEN  \
+                            |   RCC_AHBENR_GPIOBLPEN  \
+                            |   RCC_AHBENR_GPIOCLPEN  \
+                            |   RCC_AHBENR_GPIODLPEN  \
+                            |   RCC_AHBENR_GPIOELPEN  )
+
+    RCC->AHBLPENR  |= (_DMACLK_LP | _SRAMCLK_LP | _FLITFCLK_LP | _CRCCLK_LP | _GPIOCLK_LP);
+
+
+    // 2. APB2 Clocks in Active Mode.  APB2 is the high-speed peripheral bus.  
+    // The default is all-off, and it is the job of the peripheral drivers to 
+    // enable/disable their clocks as needed.  SYSCFG is the exception.
+    // USART1, SPI1, ADC1, TIM11, TIM10, TIM9, SYSCFG.
+    RCC->APB2ENR   |= RCC_APB2ENR_SYSCFGEN;
+
+    // 3. APB1 Clocks in Active Mode.  APB1 is the low-speed peripheral bus.
+    // The default is all-off, and it is the job of the peripheral drivers to 
+    // enable/disable their clocks as needed.  PWR is the exception.
+    // COMP, DAC, PWR, USB, I2C2, I2C1, USART3, USART2, SPI2, WWDG, LCD, TIM7,
+    // TIM6, TIM4, TIM3, TIM2
+    RCC->APB1ENR   |= RCC_APB1ENR_PWREN; 
+}
+
+
+///@note BOARD Macro for DMA peripheral enabling
+OT_INLINE_H BOARD_DMA_CLKON() {
+#if (_DMACLK_N == 0)
+    // DMA is not enabled for normal mode by default, so enable it
+    RCC->AHBENR    |= RCC_AHBENR_DMA1EN;
+#endif
+#if (_DMACLK_LP == 0)
+    // DMA is not enabled for low-power mode by default, so enable it
+    RCC->AHBLPENR  |= RCC_AHBLPENR_DMA1LPEN;
+#endif
+}
+
+OT_INLINE_H BOARD_DMA_CLKOFF() {
+#if (_DMACLK_N == 0)
+    // DMA is not enabled for normal mode by default, so disable it
+    RCC->AHBENR    &= ~RCC_AHBENR_DMA1EN;
+#endif
+#if (_DMACLK_LP == 0)
+    // DMA is not enabled for low-power mode by default, so disable it
+    RCC->AHBLPENR  &= ~RCC_AHBLPENR_DMA1LPEN;
+#endif
+}
+
+//Wipe-out some temporary constants which have generic names
+#undef _DMACLK_N
+#undef _FLITFCLK_N
+#undef _CRCCLK_N
+#undef _GPIOCLK_N
+#undef _DMACLK_LP
+#undef _SRAMCLK_LP
+#undef _FLITFCLK_LP
+#undef _CRCCLK_LP
+#undef _GPIOCLK_LP
+
+
+
+
+
+///@note BOARD Macro for EXTI initialization.  See also EXTI macros at the
+///      bottom of the page.
+OT_INLINE_H void BOARD_EXTI_STARTUP(void) {
+    // EXTI0-3 
+    //SYSCFG->EXTICR1 |=
+    
+    // EXTI4-7 (TIM9CH1 = EXTI5, TIM9CH2 = EXTI6, RF_IRQ0 = EXTI7, )
+    SYSCFG->EXTICR2    |= (BOARD_TIM9CH1_PORTNUM << 4) \
+                        | (BOARD_TIM9CH2_PORTNUM << 8) \
+                        | (BOARD_RFGPIO_PORTNUM << 12);
+    
+    // EXTI8-11 (RF_IRQ1 = EXTI8, RF_IRQ2 = EXTI9, RF_IRQ3 = EXTI10)
+    SYSCFG->EXTICR3    |= (BOARD_RFGPIO_PORTNUM << 0) \
+                        | (BOARD_RFGPIO_PORTNUM << 4) \
+                        | (BOARD_RFGPIO_PORTNUM << 8);
+    
+    // EXTI12-15
+    //SYSCFG->EXTICR4 |=
+}
+
+
+
+///@note BOARD Macro for initializing GPIO ports at startup, pursuant to the
+///      connections in the schematic of this board.
+OT_INLINE_H void BOARD_PORT_STARTUP(void) {
+    
+    // JTAG/SWD Interface: Set to Output-GND unless in DEBUG mode
+#   if !defined(__DEBUG__)
+    BOARD_JTMS_PORT->MODER |= (GPIO_MODER_OUT << (BOARD_JTMS_PINNUM<<1)) \
+                            | (GPIO_MODER_OUT << (BOARD_JTCK_PINNUM<<1)) \
+                            | (GPIO_MODER_OUT << (BOARD_JTDI_PINNUM<<1));
+    
+    BOARD_JTDO_PORT->MODER |= (GPIO_MODER_OUT << (BOARD_JTDO_PINNUM<<1)) \
+                            | (GPIO_MODER_OUT << (BOARD_JTDNRST_PINNUM<<1));
+#   endif 
+    
+    
+    // Pushbutton Interface: Set to floating inputs (defaults for this config)
+    //BOARD_SW1_PORT->MODER  &= ~(3 << (BOARD_SW1_PINNUM<<1));
+    //BOARD_SW1_PORT->PUPDR  &= ~(3 << (BOARD_SW1_PINNUM<<1));
+    
+    
+    // Joystick Interface: Set to floating inputs (defaults for this config)
+    //BOARD_JOYR_PORT->MODER &= ~(  (3 << (BOARD_JOYR_PINNUM<<1))   \
+                                  | (3 << (BOARD_JOYD_PINNUM<<1))   );
+    //BOARD_JOYR_PORT->PUPDR &= ~(  (3 << (BOARD_JOYR_PINNUM<<1))   \
+                                  | (3 << (BOARD_JOYD_PINNUM<<1))   );
+    //BOARD_JOYC_PORT->MODER &= ~(  (3 << (BOARD_JOYC_PINNUM<<1))   \
+                                  | (3 << (BOARD_JOYU_PINNUM<<1))   \
+                                  | (3 << (BOARD_JOYL_PINNUM<<1))   );
+    //BOARD_JOYC_PORT->PUPDR &= ~(  (3 << (BOARD_JOYC_PINNUM<<1))   \
+                                  | (3 << (BOARD_JOYU_PINNUM<<1))   \
+                                  | (3 << (BOARD_JOYL_PINNUM<<1))   );
+
+
+    // LED interface: Set Initially to HiZ inputs (defaults for this config),
+    // but load 1's into the ODR so that switching MODER toggles the LED
+    //BOARD_LEDG_PORT->MODER &= ~(  (3 << (BOARD_LEDG_PINNUM<<1))   \
+                                  | (3 << (BOARD_LEDO_PINNUM<<1))   \
+                                  | (3 << (BOARD_LEDR_PINNUM<<1))   \
+                                  | (3 << (BOARD_LEDB_PINNUM<<1))   \
+                                  | (3 << (BOARD_LEDY_PINNUM<<1))   );
+    //BOARD_LEDG_PORT->PUPDR &= ~(  (3 << (BOARD_LEDG_PINNUM<<1))   \
+                                  | (3 << (BOARD_LEDO_PINNUM<<1))   \
+                                  | (3 << (BOARD_LEDR_PINNUM<<1))   \
+                                  | (3 << (BOARD_LEDB_PINNUM<<1))   \
+                                  | (3 << (BOARD_LEDY_PINNUM<<1))   );
+    BOARD_LEDG_PORT->ODR       |= BOARD_LEDG_PIN | BOARD_LEDO_PIN | BOARD_LEDR_PIN \
+                                | BOARD_LEDB_PIN | BOARD_LEDY_PIN;
+    
+    
+    // Analog Input BNC: Set to analog input on this pin (Port A)
+    BOARD_BNC_PORT->MODER  |= (GPIO_MODER_AN << (BOARD_BNC_PINNUM<<1));
+    
+    
+    // Analog Input for Voltage Sense: (Port C)
+    BOARD_VSENSE_PORT->MODER   |= ( (GPIO_MODER_AN << (BOARD_VSENSE_5VPINNUM<<1))   \
+                                  | (GPIO_MODER_AN << (BOARD_VSENSE_3VPINNUM<<1))   );  //Port C
+    
+    
+    // External UART on USART2 (Port A).  RTS/CTS flow control always disabled.
+#   if ((OT_FEATURE_MPIPE == ENABLED) && (MCU_FEATURE_MPIPEUART == ENABLED))
+        BOARD_UART_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_UART_CTSPINNUM<<1)) \
+                                  | (GPIO_MODER_OUT << (BOARD_UART_RTSPINNUM<<1)) \
+                                  | (GPIO_MODER_ALT << (BOARD_UART_RXPINNUM<<1))  \
+                                  | (GPIO_MODER_ALT << (BOARD_UART_TXPINNUM<<1))  );
+#       if ((BOARD_UART_TXPINNUM < 8) && (BOARD_UART_RXPINNUM < 8))
+            BOARD_UART_PORT->AFRL |= ( (7 << (BOARD_UART_RXPINNUM*4))  \
+                                     | (7 << (BOARD_UART_TXPINNUM*4))  );
+#       else
+#           error "UART GPIO config missing"
+#       endif
+#   else
+        BOARD_UART_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_UART_CTSPINNUM<<1)) \
+                                  | (GPIO_MODER_OUT << (BOARD_UART_RTSPINNUM<<1)) \
+                                  | (GPIO_MODER_OUT << (BOARD_UART_RXPINNUM<<1))  \
+                                  | (GPIO_MODER_OUT << (BOARD_UART_TXPINNUM<<1))  );
+#   endif
+    
+    
+    // External USB interface
+    // Make sure to disable Crystal on PortF when USB is not used
+#   if ((OT_FEATURE_MPIPE == ENABLED) && (MCU_FEATURE_MPIPECDC == ENABLED))
+        GPIOF->MODER            = (GPIO_MODER_OUT << (0<<1));
+        BOARD_USB_PORT->MODER  |= ( (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM<<1)) \
+                                  | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM<<1)) );
+        BOARD_USB_PORT->AFRH   |= ( (10 << ((BOARD_USB_DMPINNUM-8)*4))  \
+                                  | (10 << ((BOARD_USB_DPPINNUM-8)*4))  );
+#   else
+        GPIOF->MODER            = ( (GPIO_MODER_OUT << (0<<1)) | (GPIO_MODER_OUT << (1<<1)) \
+                                  | (GPIO_MODER_OUT << (2<<1)) );
+        BOARD_USB_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_USB_DMPINNUM<<1)) \
+                                  | (GPIO_MODER_OUT << (BOARD_USB_DPPINNUM<<1)) );
+#   endif
+    
+    
+    // Accelerometer Interface using I2C2 (Port B)
+    BOARD_ACC_PORT->OTYPER     |= ( (1<<BOARD_ACC_SCLPIN) | (1<<BOARD_ACC_SDAPIN) );    //Open Drain
+    BOARD_ACC_PORT->OSPEEDR    |= ( (GPIO_OSPEEDR_2MHz << (BOARD_ACC_SCLPINNUM<<1)) \
+                                  | (GPIO_OSPEEDR_2MHz << (BOARD_ACC_SDAPINNUM<<1));
+    BOARD_ACC_PORT->MODER      |= ( (GPIO_MODER_ALT << (BOARD_ACC_SCLPINNUM<<1)) \
+                                  | (GPIO_MODER_ALT << (BOARD_ACC_SDAPINNUM<<1));
+#   if ((BOARD_ACC_SCLPINNUM >= 8) && (BOARD_ACC_SDAPINNUM >= 8))
+        BOARD_ACC_PORT->AFRH   |= ( (4 << ((BOARD_ACC_SCLPINNUM-8)*4))  \
+                                  | (4 << ((BOARD_ACC_SDAPINNUM-8)*4))  );
+#   else
+#       error "I2C2 GPIO config missing"
+#   endif
+    
+    
+    // LCD interface on SPI 2 (currently disabled, set to output-gnd)
+    BOARD_LCDBL_PORT->MODER    |= (GPIO_MODER_OUT << (BOARD_LCDBL_PINNUM<<1));
+    BOARD_LCDRESETN_PORT->MODER|= (GPIO_MODER_OUT << (BOARD_LCDRESETN_PINNUM<<1));
+    BOARD_LCDSPI_PORT->MODER   |= ( (GPIO_MODER_OUT << (BOARD_LCDSPI_MOSIPINNUM<<1)) \
+                                  | (GPIO_MODER_OUT << (BOARD_LCDSPI_MISOPINNUM<<1)) \
+                                  | (GPIO_MODER_OUT << (BOARD_LCDSPI_SCLKPINNUM<<1)) \
+                                  | (GPIO_MODER_OUT << (BOARD_LCDSPI_CSNPINNUM<<1)) );
+    
+    
+    // SD Card Interface on SPI2 (currently disabled)
+    // LCD interface above already disabled SPI2, so just disable SD CSn
+    BOARD_SDCSN_PORT->MODER    |= (GPIO_MODER_OUT << (BOARD_SDCSN_PINNUM<<1));
+    
+    
+    //SPIRIT1 RF Interface, using SPI1 and some GPIOs
+    //GPIO0-3 are floating inputs (default), SDN is 10MHz push-pull output
+    BOARD_RFGPIO_PORT->MODER   |= (GPIO_MODER_OUT << (BOARD_RFGPIO_SDNPINNUM*2));
+    BOARD_RFGPIO_PORT->OSPEEDR |= (GPIO_OSPEEDR_10MHz << (BOARD_RFGPIO_SDNPINNUM*2));
+    BOARD_RFSPI_PORT->MODER    |= ( (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM<<1)) \
+                                  | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM<<1)) \
+                                  | (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM<<1)) \
+                                  | (GPIO_MODER_ALT << (BOARD_RFSPI_CSNPINNUM<<1)) );
+    BOARD_RFSPI_PORT->OSPEEDR  |= ( (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_MOSIPINNUM<<1)) \
+                                  | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_MISOPINNUM<<1)) \
+                                  | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_SCLKPINNUM<<1)) \
+                                  | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_CSNPINNUM<<1)) );
+    BOARD_ACC_PORT->AFRH       |= ( (5 << ((BOARD_RFSPI_MOSIPINNUM-8)*4)) \
+                                  | (5 << ((BOARD_RFSPI_MISOPINNUM-8)*4)) \
+                                  | (5 << ((BOARD_RFSPI_SCLKPINNUM-8)*4)) \
+                                  | (5 << ((BOARD_RFSPI_CSNPINNUM-8)*4)) );
+    
+    
+    // SPIRIT1 Current Monitor Interface
+    // PS input and RFV inputs are set by default
+    BOARD_SCMOUT_PORT->MODER   |= ( (GPIO_MODER_ALT << (BOARD_SCMOUT_SCMENPINNUM<<1)) \
+                                  | (GPIO_MODER_ALT << (BOARD_SCMOUT_CMENPINNUM<<1));
+    
+    
+    // TIMER9 interrupt interface (used for GPTIM)
+    // Note: this pins appear NC, but they are used internally
+    BOARD_TIM9CH1_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_TIM9CH1_PINNUM<<1));
+    BOARD_TIM9CH2_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_TIM9CH2_PINNUM<<1));
+    BOARD_TIM9CH1_PORT->AFRL   |= ( (3 << (BOARD_TIM9CH1_PINNUM*4)) );
+    BOARD_TIM9CH2_PORT->AFRL   |= ( (3 << (BOARD_TIM9CH2_PINNUM*4)) );   
+    
+    
+    // Set up all not-connected pins as output ground
+    // PA4, PA6, PA7, PA10
+    GPIOA->MODER   |= (GPIO_MODER_OUT << (4<<1)) | (GPIO_MODER_OUT << (6<<1)) \
+                    | (GPIO_MODER_OUT << (7<<1)) | (GPIO_MODER_OUT << (10<<1));
+    // PB5
+    GPIOB->MODER   |= (GPIO_MODER_OUT << (5<<1));
+    // PD5-15 all NC
+    GPIOD->MODER   |= (GPIO_MODER_OUT << (5<<1)) | (GPIO_MODER_OUT << (6<<1)) \
+                    | (GPIO_MODER_OUT << (7<<1)) | (GPIO_MODER_OUT << (8<<1)) \
+                    | (GPIO_MODER_OUT << (9<<1)) \
+                    | (GPIO_MODER_OUT << (10<<1))| (GPIO_MODER_OUT << (11<<1)) \ 
+                    | (GPIO_MODER_OUT << (12<<1))| (GPIO_MODER_OUT << (13<<1)) \
+                    | (GPIO_MODER_OUT << (14<<1))| (GPIO_MODER_OUT << (15<<1));
+    // PE0, 1, 2, 11 all NC
+    GPIOE->MODER   |= (GPIO_MODER_OUT << (0<<1)) | (GPIO_MODER_OUT << (1<<1)) \
+                    | (GPIO_MODER_OUT << (2<<1)) | (GPIO_MODER_OUT << (11<<1));
+    
+    //The END
+}
+
+
+
+///@note BOARD Macro for initializing the STM32 PVD Module (voltage monitor) at
+///      startup.  Only relevant for battery-powered boards.
+OT_INLINE_H void BOARD_POWER_STARTUP(void) {
+#   if (MCU_FEATURE_SVMONITOR == ENABLED)
+    // Level0 is 1.9V, each level is +0.2V.  Check your battery spec and change
+    // the _LEVx component to match it.  Typical Li-Ion undervoltage is 2.7V.
+    PWR->CR    |= PWR_CR_PLS_LEV0 | PWR_CR_PVDE;  
+#   endif
+}
+
+
+
+
+///@note BOARD Macro for initializing the STM32 Crystal startup routine, done
+///      at startup.  For any build using CMSIS libraries (standard), this will
+///      be blank.  In those cases, crystal init is done in the CMSIS system
+///      startup function.
+OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
+// Currently this is handled in the system startup function.  OpenTag requires
+// a 32768Hz clock
+}
+
+
+
+///@note BOARD Macros for Radio module interrupt vectoring.  Connect these to
+///      the radio interface driver you are using.  Check the schematic of your
+///      board to see where the Radio IRQ lines are routed.  Also check the 
+///      radio interface header documentation (it's really quite simple). 
+///      These Macros will get called in the universal EXTI interrupt handler,
+///      typically implemented in platform_isr_STM32L.c
+#define BOARD_RADIO_EXTI0_ISR();
+#define BOARD_RADIO_EXTI1_ISR();
+#define BOARD_RADIO_EXTI2_ISR();
+#define BOARD_RADIO_EXTI3_ISR();
+#define BOARD_RADIO_EXTI4_ISR();
+#define BOARD_RADIO_EXTI5_ISR();
+#define BOARD_RADIO_EXTI6_ISR()     radio_mac_isr()
+#define BOARD_RADIO_EXTI7_ISR()     spirit1_irq0_isr()
+#define BOARD_RADIO_EXTI8_ISR()     spirit1_irq1_isr()
+#define BOARD_RADIO_EXTI9_ISR()     spirit1_irq2_isr()
+#define BOARD_RADIO_EXTI10_ISR()    spirit1_irq3_isr()
+#define BOARD_RADIO_EXTI11_ISR();
+#define BOARD_RADIO_EXTI12_ISR();
+#define BOARD_RADIO_EXTI13_ISR();
+#define BOARD_RADIO_EXTI14_ISR();
+#define BOARD_RADIO_EXTI15_ISR();
+
+
+///@note BOARD Macros for Kernel Timer interrupt vectoring
+#define BOARD_KTIM_EXTI0_ISR();
+#define BOARD_KTIM_EXTI1_ISR();
+#define BOARD_KTIM_EXTI2_ISR();
+#define BOARD_KTIM_EXTI3_ISR();
+#define BOARD_KTIM_EXTI4_ISR();
+#define BOARD_KTIM_EXTI5_ISR()      platform_ktim_isr();
+#define BOARD_KTIM_EXTI6_ISR();
+#define BOARD_KTIM_EXTI7_ISR();
+#define BOARD_KTIM_EXTI8_ISR();
+#define BOARD_KTIM_EXTI9_ISR();
+#define BOARD_KTIM_EXTI10_ISR();
+#define BOARD_KTIM_EXTI11_ISR();
+#define BOARD_KTIM_EXTI12_ISR();
+#define BOARD_KTIM_EXTI13_ISR();
+#define BOARD_KTIM_EXTI14_ISR();
+#define BOARD_KTIM_EXTI15_ISR();
+
+
+
+
+
+
+/** Platform Memory Configuration <BR>
+  * ========================================================================<BR>
+  * OpenTag needs to know where it can put Nonvolatile memory (file system) and
+  * how much space it can allocate for filesystem.  For this configuration, 
+  * Veelite is put into FLASH.
+  *
+  * The STM32L uses 256 byte Flash pages and 4KB Flash sectors.  Therefore, it
+  * is best to allocate the FS in Flash on 4KB boundaries because this is the 
+  * resolution that can be write protected (or, as with FS, *NOT* write 
+  * protected).  Best practice with STM32 chips is to put the FS at the back of
+  * of the Flash space because this seems to work best with the debugger HW.
+  */
+#define SRAM_START_ADDR         0x20000000
+#define SRAM_SIZE               (16*1024)
+#define EEPROM_START_ADDR       0x08080000
+#define EEPROM_SIZE             (4*1024)
+#define FLASH_START_ADDR        0x08000000
+#define FLASH_START_PAGE        0
+#define FLASH_PAGE_SIZE         256
+#define FLASH_WORD_BYTES        2
+#define FLASH_WORD_BITS         (FLASH_WORD_BYTES*8)
+#ifdef __LARGE_MEMORY__
+#   define FLASH_NUM_PAGES      (128*(1024/FLASH_PAGE_SIZE))    //allow usage of whole flash (128KB)
+#else
+#   define FLASH_NUM_PAGES      (64*(1024/FLASH_PAGE_SIZE))     //keep in lower 64KB
+#endif  
+#define FLASH_FS_ALLOC          (16*FLASH_PAGE_SIZE)            //allocating total of 16 blocks (4KB)
+#define FLASH_FS_FALLOWS        4                               //4 blocks are fallow blocks
+#define FLASH_FS_ADDR           ( (FLASH_START_ADDR+FLASH_NUM_PAGES*FLASH_PAGE_SIZE) \
+                                - FLASH_FS_ALLOC    )
+
+#define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
+
+
+
+
+
+
+
+
+
+/** Note: Clocking for the Board's MCU      <BR>
+  * ========================================================================<BR>
+  * The STM32L can be clocked up to 32MHz, but generally we use it at 16 MHz.
+  * At the 1.5V core setting, 16MHz can be used with 1 flash waitstate, but 
+  * OpenTag code tends to abhor branching, so flash wait states have less 
+  * affect on OT efficiency than they have on most other codebases.
+  */
+#define MCU_PARAM_LFXTALHz          BOARD_PARAM_LFHz
+#define MCU_PARAM_LFXTALtol         BOARD_PARAM_LFtol
+//#define MCU_PARAM_LFOSCHz           BOARD_PARAM_LFHz
+//#define MCU_PARAM_LFOSCtol          BOARD_PARAM_LFtol
+//#define MCU_PARAM_XTALHz            BOARD_PARAM_HFHz
+//#define MCU_PARAM_XTALmult          BOARD_PARAM_HFmult
+//#define MCU_PARAM_XTALtol           BOARD_PARAM_HFtol
+#define MCU_PARAM_OSCHz             ((BOARD_PARAM_HFHz*BOARD_PARAM_HFmult)/BOARD_PARAM_HFdiv)
+#define MCU_PARAM_OSCmult           BOARD_PARAM_HFmult
+#define MCU_PARAM_OSCtol            BOARD_PARAM_HFtol
+
+#define PLATFORM_MCLK_DIV           BOARD_PARAM_MCLKDIV
+#define PLATFORM_SMCLK_DIV          BOARD_PARAM_SMCLKDIV
+
+#define PLATFORM_LSCLOCK_PINS       BOARD_LFXT_PINS
+#define PLATFORM_LSCLOCK_CONF       BOARD_LFXT_CONF
+#define PLATFORM_HSCLOCK_PINS       BOARD_HFXT_PINS
+#define PLATFORM_HSCLOCK_CONF       BOARD_HFXT_CONF
+#define PLATFORM_LSCLOCK_HZ         BOARD_PARAM_LFHz
+#define PLATFORM_LSCLOCK_ERROR      BOARD_PARAM_LFtol
+#define PLATFORM_MSCLOCK_HZ         (BOARD_PARAM_MFHz)
+#define PLATFORM_MSCLOCK_ERROR      BOARD_PARAM_MFtol
+#define PLATFORM_HSCLOCK_HZ         ((BOARD_PARAM_HFHz*BOARD_PARAM_HFmult)/BOARD_PARAM_HFdiv)
+#define PLATFORM_HSCLOCK_ERROR      BOARD_PARAM_HFtol
+#define PLATFORM_HSCLOCK_MULT       BOARD_PARAM_HFmult
+
+
+
+
+
+
+
+
+/** Peripheral definitions for this platform <BR>
+  * ========================================================================<BR>
+  * <LI> OT_GPTIM:  "General Purpose Timer" used by OpenTag kernel and other
+  *                   internal stuff (sometimes Radio MAC timer). </LI>
+  * <LI> OT_TRIG:   Optional test trigger(s) usable in OpenTag apps.  Often the 
+  *                   triggers are implemented on LED pins.  Trig1 is usually
+  *                   green (typ 570nm) and Trig2 orange (typ 605nm). </LI>
+  * <LI> OT_SWITCH: Optional input switches/sources.  Usually there is at least
+  *                   one.  Many apps (especially demos) require a button. </LI>
+  * <LI> OT_GWNADC: Optional floating pin or other type of noise source that 
+  *                   can be used with ADC-based true-random-number generator </LI>
+  * <LI> OT_GWNDRV: Optional driver pin to power some sort of noise source </LI>
+  * <LI> MPIPE:     The wireline interface, usually either UART or USB-CDC, but 
+  *                   possible to use with a multi-master I2C or SPI as well </LI>
+  */
+#define OT_GPTIM_ID         9
+#define OT_GPTIM            TIM9
+#define OT_GPTIM_CLOCK      32768
+#define OT_GPTIM_RES        1024
+#define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
+#define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
+
+#if (OT_GPTIM_CLOCK == BOARD_PARAM_LFHz)
+#   define OT_GPTIM_ERROR   BOARD_PARAM_LFtol
+#else
+#   define OT_GPTIM_ERROR   BOARD_PARAM_HFtol
+#endif
+
+#define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded
+
+
+
+#define OT_TRIG1_PORT       BOARD_LEDG_PORT
+#define OT_TRIG1_PINNUM     BOARD_LEDG_PINNUM
+#define OT_TRIG1_PIN        BOARD_LEDG_PIN
+#define OT_TRIG1_POLARITY   BOARD_LEDG_POLARITY
+#define OT_TRIG2_PORT       BOARD_LEDO_PORT
+#define OT_TRIG2_PINNUM     BOARD_LEDO_PINNUM
+#define OT_TRIG2_PIN        BOARD_LEDO_PIN
+#define OT_TRIG2_POLARITY   BOARD_LEDO_POLARITY
+
+#if (OT_TRIG1_POLARITY != 0)
+#   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRRL = OT_TRIG1_PIN;
+#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BSRRH = OT_TRIG1_PIN;
+#   define OT_TRIG1_TOG()   OT_TRIG1_PORT->ODR  ^= OT_TRIG1_PIN;
+#else 
+#   define OT_TRIG1_ON()    OT_TRIG1_PORT->MODER |= (OT_TRIG1_PINNUM*2);
+#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->MODER &= ~(OT_TRIG1_PINNUM*2);
+#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->MODER &= ~(OT_TRIG1_PINNUM*2);
+#endif
+
+#if (OT_TRIG2_POLARITY != 0)
+#   define OT_TRIG2_ON()    OT_TRIG2_PORT->BSRRL = OT_TRIG2_PIN;
+#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRRH = OT_TRIG2_PIN;
+#   define OT_TRIG2_TOG()   OT_TRIG2_PORT->ODR  ^= OT_TRIG2_PIN;
+#else 
+#   define OT_TRIG2_ON()    OT_TRIG2_PORT->MODER |= (OT_TRIG2_PINNUM*2);
+#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->MODER &= ~(OT_TRIG2_PINNUM*2);
+#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->MODER ^= (OT_TRIG2_PINNUM*2);
+#endif
+
+
+
+
+#define OT_SWITCH1_PORTNUM  BOARD_SW3_PORTNUM
+#define OT_SWITCH1_PORT     BOARD_SW3_PORT
+#define OT_SWITCH1_PINNUM   BOARD_SW3_PINNUM
+#define OT_SWITCH1_PIN      BOARD_SW3_PIN
+#define OT_SWITCH1_POLARITY BOARD_SW3_POLARITY
+
+
+
+
+
+// Use PA6 as floating pin for ADC-based random number.  You could also put on 
+// a low voltage, reverse-biased zener on the board to produce a pile of noise 
+// if you are getting low-entropy on your pin (2.1V zener usually is nice).
+// Set OT_GWNDRV to enable such a zener setup.
+#define OT_GWNADC_PORTNUM   0
+#define OT_GWNADC_PORT      GPIOA
+#define OT_GWNADC_PINNUM    6
+#define OT_GWNADC_PIN       GPIO_Pin_6
+#define OT_GWNADC_BITS      8
+
+//#define OT_GWNDRV_PORTNUM   0
+//#define OT_GWNDRV_PORT      GPIOA
+//#define OT_GWNDRV_PINNUM    7
+//#define OT_GWNDRV_PIN       GPIO_Pin_7
+
+
+
+
+
+
+
+/** Boilerplate STM32L MPipe Setup <BR>
+  * ========================================================================<BR>
+  * USB MPipe requires a CDC firmware library subsystem, which typically uses
+  * memcpy to move data across HW buffers and such.  UART MPipe *REQUIRES* a,
+  * DMA however.  You could implement a driver without a DMA, but DMA makes it 
+  * so much cleaner and better.
+  */
+#if (MCU_FEATURE_MPIPECDC == ENABLED)
+// USB is mostly independent from OT, but the startup code does need to know 
+// how to boost the crystal
+#   if (BOARD_PARAM_HFHz != 2000000) && (BOARD_PARAM_HFHz != 3000000) \
+      && (BOARD_PARAM_HFHz != 4000000) && (BOARD_PARAM_HFHz != 6000000) \
+      && (BOARD_PARAM_HFHz != 8000000) && (BOARD_PARAM_HFHz != 12000000) \
+      && (BOARD_PARAM_HFHz != 16000000) && (BOARD_PARAM_HFHz != 24000000)
+#       error "USB requires 2, 3, 4, 6, 8, 12, 16, or 24 MHz HSE XTAL."
+#   elif (BOARD_PARAM_HFtol > 0.000050)
+#       error "USB requires that the tolerance of the HSE is < +/- 50ppm"
+#   endif
+#   define MPIPE_USB_ID         0
+#   define MPIPE_USB            USB0
+#   define MPIPE_USBDP_PORT     BOARD_USB_PORT
+#   define MPIPE_USBDM_PORT     BOARD_USB_PORT
+#   define MPIPE_USBDP_PIN      BOARD_USB_DPPIN
+#   define MPIPE_USBDM_PIN      BOARD_USB_DMPIN
+
+#else
+#   define MPIPE_DMANUM         1
+#   define MPIPE_DMA            DMA1
+#   define MPIPE_UART_ID        BOARD_UART_ID
+#   define MPIPE_UART_PORTNUM   BOARD_UART_PORTNUM
+#   define MPIPE_UART_PORT      BOARD_UART_PORT
+#   define MPIPE_UART_RXPIN     BOARD_UART_RXPIN
+#   define MPIPE_UART_TXPIN     BOARD_UART_TXPIN
+#   define MPIPE_UART_PINS      (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
+
+#   if (MPIPE_UART_ID == 1)
+#       define MPIPE_UART       USART1
+#       define MPIPE_DMA_RXCHAN DMA1Channel5
+#       define MPIPE_DMA_TXCHAN DMA1Channel4
+#       define __DMA_CHAN5_USED
+#       define __DMA_CHAN4_USED
+
+#   elif (MPIPE_UART_ID == 2)
+#       define MPIPE_UART       USART2
+#       define MPIPE_DMA_RXCHAN DMA1Channel7
+#       define MPIPE_DMA_TXCHAN DMA1Channel6
+#       define __DMA_CHAN7_USED
+#       define __DMA_CHAN6_USED
+
+#   elif (MPIPE_UART_ID == 3)
+#       define MPIPE_UART       USART3
+#       define MPIPE_DMA_RXCHAN DMA1Channel3
+#       define MPIPE_DMA_TXCHAN DMA1Channel2
+#       define __DMA_CHAN3_USED
+#       define __DMA_CHAN2_USED
+
+#   elif (MPIPE_UART_ID == 4)
+#       define MPIPE_UART       UART4
+
+#   elif (MPIPE_UART_ID == 5)
+#       define MPIPE_UART       UART5
+
+#   else
+#       error "MPIPE_UART_ID is defined out of range"
+#   endif
+
+#endif
+
+
+
+
+
+
+
+/** Boilerplate STM32L SPIRIT1-RF Setup <BR>
+  * ========================================================================<BR>
+  * The SPIRIT1 interface uses an SPI (ideally SPI1 because it is attached to
+  * the high-speed APB2 bus).  It also typically uses a DMA for bulk transfers,
+  * during which the core can be shut-off for reducing power.
+  */
+ 
+#define RADIO_SPI_ID    BOARD_RFSPI_ID
+#if (BOARD_RFSPI_ID == 1)
+#   define RADIO_SPI    SPI1
+#   if (defined(__DMA_CHAN2_USED) || defined(__DMA_CHAN3_USED))
+#       error "RADIO SPI is SPI1, which needs DMA Ch2 & Ch3, but they are used."
+#   else
+#       define __DMA_CHAN2_USED
+#       define __DMA_CHAN3_USED
+#   endif
+#elif (BOARD_RFSPI_ID == 2)
+#   define RADIO_SPI    SPI2
+#   if (defined(__DMA_CHAN4_USED) || defined(__DMA_CHAN5_USED))
+#       error "RADIO SPI is SPI2, which needs DMA Ch4 & Ch5, but they are used."
+#   else
+#       define __DMA_CHAN4_USED
+#       define __DMA_CHAN5_USED
+#   endif
+#else
+#   error "RADIO_SPI must be 1 or 2"
+#endif
+
+#define RADIO_SPI_PORT              BOARD_RFSPI_PORT
+#define RADIO_SPIMOSI_PORT          BOARD_RFSPI_PORT
+#define RADIO_SPIMISO_PORT          BOARD_RFSPI_PORT
+#define RADIO_SPICLK_PORT           BOARD_RFSPI_PORT
+#define RADIO_SPICS_PORT            BOARD_RFSPI_PORT
+#define RADIO_SPIMOSI_PIN           BOARD_RFSPI_MOSIPIN
+#define RADIO_SPIMISO_PIN           BOARD_RFSPI_MISOPIN
+#define RADIO_SPICLK_PIN            BOARD_RFSPI_SCLKPIN
+#define RADIO_SPICS_PIN             BOARD_RFSPI_CSNPIN
+
+#define RADIO_IRQ0_SRCPORT          BOARD_RFGPIO_PORTNUM
+#define RADIO_IRQ1_SRCPORT          BOARD_RFGPIO_PORTNUM
+#define RADIO_IRQ2_SRCPORT          BOARD_RFGPIO_PORTNUM
+#define RADIO_IRQ3_SRCPORT          BOARD_RFGPIO_PORTNUM
+#define RADIO_IRQ0_SRCLINE          BOARD_RFGPIO_0PINNUM
+#define RADIO_IRQ1_SRCLINE          BOARD_RFGPIO_1PINNUM
+#define RADIO_IRQ2_SRCLINE          BOARD_RFGPIO_2PINNUM
+#define RADIO_IRQ3_SRCLINE          BOARD_RFGPIO_3PINNUM
+
+#define RADIO_IRQ0_PORT             BOARD_RFGPIO_PORT
+#define RADIO_IRQ1_PORT             BOARD_RFGPIO_PORT
+#define RADIO_IRQ2_PORT             BOARD_RFGPIO_PORT
+#define RADIO_IRQ3_PORT             BOARD_RFGPIO_PORT
+#define RADIO_IRQ0_PIN              BOARD_RFGPIO_0PIN
+#define RADIO_IRQ1_PIN              BOARD_RFGPIO_1PIN
+#define RADIO_IRQ2_PIN              BOARD_RFGPIO_2PIN
+#define RADIO_IRQ3_PIN              BOARD_RFGPIO_3PIN
+
+
+
+
+
+/** Boilerplate STM32L DMA Memcpy Setup <BR>
+  * ========================================================================<BR>
+  * Memcpy should have a low DMA priority, such as Channel7.  It is a MEM2MEM
+  * function of the DMA, so it can take any channel.  If there is another user
+  * of DMA Channel 7, then the potential throughput of that communication
+  * interface is limited by the duty time of memcpy.
+  */
+#if (MCU_FEATURE_MEMCPYDMA != ENABLED)
+#   warn "Not using DMA for MEMCPY, a sub-optimal design choice."
+#elif !defined(__DMA_CHAN7_USED)
+#   define MEMCPY_DMANUM    7
+#   define MEMCPY_DMA       DMA1
+#   define MEMCPY_DMACHAN   DMA1Channel7
+#   define __DMA_CHAN7_USED
+#elif !defined(__DMA_CHAN6_USED)
+#   define MEMCPY_DMANUM    6
+#   define MEMCPY_DMA       DMA1
+#   define MEMCPY_DMACHAN   DMA1Channel6
+#   define __DMA_CHAN6_USED
+#elif !defined(__DMA_CHAN5_USED)
+#   define MEMCPY_DMANUM    5
+#   define MEMCPY_DMA       DMA1
+#   define MEMCPY_DMACHAN   DMA1Channel5
+#   define __DMA_CHAN5_USED
+#elif !defined(__DMA_CHAN4_USED)
+#   define MEMCPY_DMANUM    4
+#   define MEMCPY_DMA       DMA1
+#   define MEMCPY_DMACHAN   DMA1Channel4
+#   define __DMA_CHAN4_USED
+#elif !defined(__DMA_CHAN3_USED)
+#   define MEMCPY_DMANUM    3
+#   define MEMCPY_DMA       DMA1
+#   define MEMCPY_DMACHAN   DMA1Channel3
+#   define __DMA_CHAN3_USED
+#elif !defined(__DMA_CHAN2_USED)
+#   define MEMCPY_DMANUM    2
+#   define MEMCPY_DMA       DMA1
+#   define MEMCPY_DMACHAN   DMA1Channel2
+#   define __DMA_CHAN2_USED
+#elif !defined(__DMA_CHAN1_USED)
+#   define MEMCPY_DMANUM    1
+#   define MEMCPY_DMA       DMA1
+#   define MEMCPY_DMACHAN   DMA1Channel1
+#   define __DMA_CHAN1_USED
+#else
+#   error "There is no available DMA Channel to allocate to MEMCPY."
+#endif
+
+
+
+
+
+
+/** EXTI Line Utilization declaration <BR>
+  * ========================================================================<BR>
+  * EXTI Lines (external line interrupts coming from GPIO pins) are shared
+  * by all GPIO ports, so setting them up correctly is a bit of a mess.  We
+  * need to inspect all the external interrupt sources.
+  */
+#if (!defined(__USE_EXTI0) && ( \
+        (BOARD_TIM9CH1_PINNUM == 0) || (BOARD_TIM9CH2_PINNUM == 0) || \
+        (OT_SWITCH1_PINNUM == 0) || \
+        (RADIO_IRQ0_SRCLINE == 0) || (RADIO_IRQ1_SRCLINE == 0) || (RADIO_IRQ2_SRCLINE == 0) || (RADIO_IRQ3_SRCLINE == 0) \
+    ))
+#   define __USE_EXTI0
+#endif
+#if (!defined(__USE_EXTI1) && ( \
+        (BOARD_TIM9CH1_PINNUM == 1) || (BOARD_TIM9CH2_PINNUM == 1) || \
+        (OT_SWITCH1_PINNUM == 1) || \
+        (RADIO_IRQ0_SRCLINE == 1) || (RADIO_IRQ1_SRCLINE == 1) || (RADIO_IRQ2_SRCLINE == 1) || (RADIO_IRQ3_SRCLINE == 1) \
+    ))
+#   define __USE_EXTI1
+#endif
+#if (!defined(__USE_EXTI2) && ( \
+        (BOARD_TIM9CH1_PINNUM == 2) || (BOARD_TIM9CH2_PINNUM == 2) || \
+        (OT_SWITCH1_PINNUM == 2) || \
+        (RADIO_IRQ0_SRCLINE == 2) || (RADIO_IRQ1_SRCLINE == 2) || (RADIO_IRQ2_SRCLINE == 2) || (RADIO_IRQ3_SRCLINE == 2) \
+    ))
+#   define __USE_EXTI2
+#endif
+#if (!defined(__USE_EXTI3) && ( \
+        (BOARD_TIM9CH1_PINNUM == 3) || (BOARD_TIM9CH2_PINNUM == 3) || \
+        (OT_SWITCH1_PINNUM == 3) || \
+        (RADIO_IRQ0_SRCLINE == 3) || (RADIO_IRQ1_SRCLINE == 3) || (RADIO_IRQ2_SRCLINE == 3) || (RADIO_IRQ3_SRCLINE == 3) \
+    ))
+#   define __USE_EXTI3
+#endif
+#if (!defined(__USE_EXTI4) && ( \
+        (BOARD_TIM9CH1_PINNUM == 4) || (BOARD_TIM9CH2_PINNUM == 4) || \
+        (OT_SWITCH1_PINNUM == 4) || \
+        (RADIO_IRQ0_SRCLINE == 4) || (RADIO_IRQ1_SRCLINE == 4) || (RADIO_IRQ2_SRCLINE == 4) || (RADIO_IRQ3_SRCLINE == 4) \
+    ))
+#   define __USE_EXTI4
+#endif
+#if (!defined(__USE_EXTI5) && ( \
+        (BOARD_TIM9CH1_PINNUM == 5) || (BOARD_TIM9CH2_PINNUM == 5) || \
+        (OT_SWITCH1_PINNUM == 5) || \
+        (RADIO_IRQ0_SRCLINE == 5) || (RADIO_IRQ1_SRCLINE == 5) || (RADIO_IRQ2_SRCLINE == 5) || (RADIO_IRQ3_SRCLINE == 5) \
+    ))
+#   define __USE_EXTI5
+#endif
+#if (!defined(__USE_EXTI6) && ( \
+        (BOARD_TIM9CH1_PINNUM == 6) || (BOARD_TIM9CH2_PINNUM == 6) || \
+        (OT_SWITCH1_PINNUM == 6) || \
+        (RADIO_IRQ0_SRCLINE == 6) || (RADIO_IRQ1_SRCLINE == 6) || (RADIO_IRQ2_SRCLINE == 6) || (RADIO_IRQ3_SRCLINE == 6) \
+    ))
+#   define __USE_EXTI6
+#endif
+#if (!defined(__USE_EXTI7) && ( \
+        (BOARD_TIM9CH1_PINNUM == 7) || (BOARD_TIM9CH2_PINNUM == 7) || \
+        (OT_SWITCH1_PINNUM == 6) || \
+        (RADIO_IRQ0_SRCLINE == 7) || (RADIO_IRQ1_SRCLINE == 7) || (RADIO_IRQ2_SRCLINE == 7) || (RADIO_IRQ3_SRCLINE == 7) \
+    ))
+#   define __USE_EXTI7
+#endif
+#if (!defined(__USE_EXTI8) && ( \
+        (BOARD_TIM9CH1_PINNUM == 8) || (BOARD_TIM9CH2_PINNUM == 8) || \
+        (OT_SWITCH1_PINNUM == 6) || \
+        (RADIO_IRQ0_SRCLINE == 8) || (RADIO_IRQ1_SRCLINE == 8) || (RADIO_IRQ2_SRCLINE == 8) || (RADIO_IRQ3_SRCLINE == 8) \
+    ))
+#   define __USE_EXTI8
+#endif
+#if (!defined(__USE_EXTI9) && ( \
+        (BOARD_TIM9CH1_PINNUM == 9) || (BOARD_TIM9CH2_PINNUM == 9) || \
+        (OT_SWITCH1_PINNUM == 9) || \
+        (RADIO_IRQ0_SRCLINE == 9) || (RADIO_IRQ1_SRCLINE == 9) || (RADIO_IRQ2_SRCLINE == 9) || (RADIO_IRQ3_SRCLINE == 9) \
+    ))
+#   define __USE_EXTI9
+#endif
+#if (!defined(__USE_EXTI10) && ( \
+        (BOARD_TIM9CH1_PINNUM == 10) || (BOARD_TIM9CH2_PINNUM == 10) || \
+        (OT_SWITCH1_PINNUM == 10) || \
+        (RADIO_IRQ0_SRCLINE == 10) || (RADIO_IRQ1_SRCLINE == 10) || (RADIO_IRQ2_SRCLINE == 10) || (RADIO_IRQ3_SRCLINE == 10) \
+    ))
+#   define __USE_EXTI10
+#endif
+#if (!defined(__USE_EXTI11) && ( \
+        (BOARD_TIM9CH1_PINNUM == 11) || (BOARD_TIM9CH2_PINNUM == 11) || \
+        (OT_SWITCH1_PINNUM == 11) || \
+        (RADIO_IRQ0_SRCLINE == 11) || (RADIO_IRQ1_SRCLINE == 11) || (RADIO_IRQ2_SRCLINE == 11) || (RADIO_IRQ3_SRCLINE == 11) \
+    ))
+#   define __USE_EXTI11
+#endif
+#if (!defined(__USE_EXTI12) && ( \
+        (BOARD_TIM9CH1_PINNUM == 12) || (BOARD_TIM9CH2_PINNUM == 12) || \
+        (OT_SWITCH1_PINNUM == 12) || \
+        (RADIO_IRQ0_SRCLINE == 12) || (RADIO_IRQ1_SRCLINE == 12) || (RADIO_IRQ2_SRCLINE == 12) || (RADIO_IRQ3_SRCLINE == 12) \
+    ))
+#   define __USE_EXTI12
+#endif
+#if (!defined(__USE_EXTI13) && ( \
+        (BOARD_TIM9CH1_PINNUM == 13) || (BOARD_TIM9CH2_PINNUM == 13) || \
+        (OT_SWITCH1_PINNUM == 13) || \
+        (RADIO_IRQ0_SRCLINE == 13) || (RADIO_IRQ1_SRCLINE == 13) || (RADIO_IRQ2_SRCLINE == 13) || (RADIO_IRQ3_SRCLINE == 13) \
+    ))
+#   define __USE_EXTI13
+#endif
+#if (!defined(__USE_EXTI14) && ( \
+        (BOARD_TIM9CH1_PINNUM == 14) || (BOARD_TIM9CH2_PINNUM == 14) || \
+        (OT_SWITCH1_PINNUM == 14) || \
+        (RADIO_IRQ0_SRCLINE == 14) || (RADIO_IRQ1_SRCLINE == 14) || (RADIO_IRQ2_SRCLINE == 14) || (RADIO_IRQ3_SRCLINE == 14) \
+    ))
+#   define __USE_EXTI14
+#endif
+#if (!defined(__USE_EXTI15) && ( \
+        (BOARD_TIM9CH1_PINNUM == 15) || (BOARD_TIM9CH2_PINNUM == 15) || \
+        (OT_SWITCH1_PINNUM == 15) || \
+        (RADIO_IRQ0_SRCLINE == 15) || (RADIO_IRQ1_SRCLINE == 15) || (RADIO_IRQ2_SRCLINE == 15) || (RADIO_IRQ3_SRCLINE == 15) \
+    ))
+#   define __USE_EXTI15
+#endif
+
+
+
+
+
+
+
+
+/******* ALL SHIT BELOW HERE IS SUBJECT TO REDEFINITION **********/
+
+
+
+
+/** Flash Memory Setup: 
+  * "OTF" means "Open Tag Flash," but if flash is not used, it just means 
+  * storage memory.  Unfortunately this does not begin with F.
+ 
+#define OTF_VWORM_PAGES         (FLASH_FS_ALLOC/FLASH_PAGE_SIZE)
+#define OTF_VWORM_FALLOW_PAGES  3
+#define OTF_VWORM_PAGESIZE      FLASH_PAGE_SIZE
+#define OTF_VWORM_WORD_BYTES    FLASH_WORD_BYTES
+#define OTF_VWORM_WORD_BITS     FLASH_WORD_BITS
+#define OTF_VWORM_SIZE          (OTF_VWORM_PAGES * OTF_VWORM_PAGESIZE)
+#define OTF_VWORM_START_PAGE    ((FLASH_FS_ADDR-FLASH_START_ADDR)/FLASH_PAGE_SIZE)
+#define OTF_VWORM_START_ADDR    FLASH_FS_ADDR
+
+#define OTF_CRC_TABLE           DISABLED
+#define OTF_UHF_TABLE           DISABLED
+#define OTF_UHF_TABLESIZE       0
+#define OTF_M1_ENCODE_TABLE     DISABLED
+#define OTF_M2_ENCODE_TABLE     ENABLED
+
+// Total number of pages taken from program memory
+#define OTF_TOTAL_PAGES         (OTF_VWORM_PAGES)
+
+ */
+
+
+
+
+/** Abstracted Flash Organization: 
+  * OpenTag uses Flash to store 2 kinds of data.  The default setup puts 
+  * Filesystem memory in the back.
+  * 1. Program code (obviously)
+  * 2. Filesystem Memory
+  *
+  * FLASH_xxx constants are defined in the platform_config_xxx.h file.  
+
+#define OTF_TOTAL_SIZE          FLASH_FS_ALLOC
+#define OTF_START_PAGE          OTF_VWORM_START_PAGE
+#define OTF_START_ADDR          FLASH_FS_ADDR
+
+#define OTF_VWORM_LAST_PAGE     (OTF_VWORM_START_PAGE + OTF_VWORM_PAGES - 1)
+#define OTF_VWORM_END_ADDR      (FLASH_FS_ADDR + FLASH_FS_ALLOC - 1)
+
+  */
+
+
+#endif

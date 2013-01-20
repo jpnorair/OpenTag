@@ -38,6 +38,7 @@
   * These reference the exhaustive list of officially supported platform
   * setting options.
   */
+#define __CC430__
 #define PLATFORM(VAL)           PLATFORM_##VAL
 #define PLATFORM_CC430
 
@@ -97,10 +98,6 @@
 
 /** Low Power Mode Macros:
   * ========================================================================<BR>
-  * Within OpenTag, only SLEEP_MCU is used.  The other low power modes may
-  * be used outside OpenTag, especially during idle periods in the MAC sequence.
-  * STANDBY is not normally useful because it shuts off the RTC.
-  *
   * SLEEP_MCU():        LPM1 - Core off, SRAM on                        (~50 uA)
   * SLEEP_WHILE_UHF():  LPM2 - Core off, SMCLK off, FLL off, SRAM on    (~10 uA)
   * STOP_MCU():         LPM3 - Core off, ACLK on (RTC), SRAM on         (~2 uA)

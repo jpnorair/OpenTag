@@ -179,8 +179,8 @@ OT_INLINE_H void BOARD_POWER_STARTUP(void) {
     ///      I recommend putting it as high as you can, to give the most time
     ///      for the power-down routine to work.
     PMM_SetVCore(PMM_Vcore_22);
-    PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay),
-                    SVS_Von_20, SVSM_Voffon_235);
+    //PMM_SetStdSVSM( (SVM_Enable | SVSM_AutoControl | SVSM_EventDelay),
+    //                SVS_Von_20, SVSM_Voffon_235);
 }
 
 

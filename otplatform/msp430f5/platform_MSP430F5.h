@@ -38,6 +38,7 @@
   * These reference the exhaustive list of officially supported platform
   * setting options.
   */
+#define __MSP430F5__
 #define PLATFORM(VAL)           PLATFORM_##VAL
 #define PLATFORM_MSP430F5
 

@@ -408,7 +408,7 @@ void applet_send_query(m2session* session) {
     { //write the query to search for the sensor protocol id
         static const ot_u8 query_str[10] = "APP=PongLT";
         query_tmpl query;
-        query.code      = M2QC_COR_SEARCH | 10; // do a 100% length=10 correlation search
+        query.code      = M2QC_COR_SEARCH + 10; // do a 100% length=10 correlation search
         query.mask      = NULL;                 // don't do any masking (no partial matching)
         query.length    = 10;                   // query_str is 10 bytes
         query.value     = (ot_u8*)query_str;

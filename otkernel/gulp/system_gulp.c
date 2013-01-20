@@ -182,6 +182,10 @@ void sys_panic(ot_u8 err_code) {
 
 #ifndef EXTF_sys_powerdown
 void sys_powerdown() {
+/// code = 3: No active I/O Task (goto most aggressive LP regime)
+/// code = 2: RF I/O Task active
+/// code = 1: MPipe or other local peripheral I/O task active
+/// code = 0: Use fastest-exit powerdown mode 
     ot_int code;
     code    = 3; //(platform_next_ktim() <= 3) ? 0 : 3;
 #   if (1)

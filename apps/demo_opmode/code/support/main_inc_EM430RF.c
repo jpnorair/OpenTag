@@ -125,15 +125,7 @@ void sub_button_init() {
 
 
 
-#if (CC_SUPPORT == CL430)
-#   pragma vector=APP_BUTTON_VECTOR
-#elif (CC_SUPPORT == IAR_V5)
-    // don't know yet
-#elif (CC_SUPPORT == GCC)
-    OT_IRQPRAGMA(APP_BUTTON_VECTOR)
-#endif
-
-OT_INTERRUPT void app_buttons_isr(void) {
+void platform_p1_isr() {
     ot_u8 exti_source;
     exti_source				= APP_BUTTON_PORT->IFG & APP_BUTTON_PIN;
     APP_BUTTON_PORT->IFG	= 0;

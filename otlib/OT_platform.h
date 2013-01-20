@@ -51,6 +51,43 @@ void platform_rtc_isr();
 
 
 
+/** Platform Enablers <BR>
+  * ========================================================================<BR>
+  */
+
+/** @brief Initializes HW at Power On
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  *
+  * This function should be called when the chip has a cold or warm start.
+  */
+void platform_poweron();
+
+
+/** @brief Safely shuts-down: call when resetting or shutting down.
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Not all implementations will need this, but usually ones that write to 
+  * flash will require calling it any time prior to turning-off the SRAM.
+  */
+void platform_poweroff();
+
+
+/** @brief Initializes the platform for the OpenTag runtime
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Call this prior to entering the OpenTag runtime in order to configure the
+  * system for OpenTag.  If your application does not have functionality beyond
+  * OpenTag (or if the functionality does not change the OpenTag settings), then
+  * this function only needs to be run whenever the registers need to be 
+  * refreshed.
+  */
+void platform_init_OT();
 
 
 /** @brief Routine for putting maskable interrupts on hold
@@ -59,6 +96,7 @@ void platform_rtc_isr();
   * @ingroup Platform
   */
 void platform_disable_interrupts();
+
 
 /** @brief Routine for taking maskable interrupts off of hold
   * @param None
@@ -69,6 +107,63 @@ void platform_enable_interrupts();
 
 
 
+
+
+/** Platform Speed Control <BR>
+  * ========================================================================<BR>
+  */
+/** @brief  Put platform CPU into most efficient runtime speed configuration
+  * @param  None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Standard speed is the default speed.  On some systems like MSP430, Standard,
+  * Full, and Flank may be all the same without penalty.  Other systems may 
+  * benefit from having speed steps.  Most STM32L configurations, for example, 
+  * use the MSI oscillator at 4.2 MHz as the CPU clock during Standard.
+  */
+void platform_standard_speed();
+
+
+/** @brief  Put platform CPU into fastest speed allowable without setup lag
+  * @param  None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Full speed may be entered by some tasks that need faster performance, for
+  * example, packet processing.  Transition from Standard to Full should be,
+  * fast, in other words it should be a matter of oscillator switching and not
+  * PLL startup.  On most STM32L configurations, for example, Full Speed  
+  * invokes the HSI oscillator at 16 MHz.
+  */
+void platform_full_speed();
+
+
+/** @brief  Fuck everything and put platform CPU into absolute maximum speed
+  * @param  None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Flank speed almost always involves firing-up a PLL, which typically has an
+  * appreciable lag time (e.g. 100us), and often carries with it some penalties
+  * in MIPS/MHz and-or uA/MHz.  On USB-enabled configurations, Flank may be the
+  * default as USB typically requires a 48MHz clock.
+  *
+  * Flank speed is not advisable for battery-powered devices unless there is a
+  * low-duty-cycle yet demanding task such as public key cryptography, and in 
+  * addition there is a requirement that the task must complete in a given, 
+  * short amount of time.  Only use flank if both requirements exist together,
+  * otherwise use full or standard speed.
+  */
+void platform_flank_speed();
+
+
+
+
+
+/** OpenTag Kernel functions <BR>
+  * ========================================================================<BR>
+  */
 
 /** @brief Drop a context (task) from the primary stack
   * @param task_id		(ot_uint) Correlated to Task_Index
@@ -102,7 +197,6 @@ void platform_enable_interrupts();
 void platform_drop_context(ot_uint task_id);
 
 
-
 /** @brief The function that pauses OpenTag
   * @param None
   * @retval None
@@ -118,7 +212,6 @@ void platform_drop_context(ot_uint task_id);
 void platform_ot_pause();
 
 
-
 /** @brief The function that invokes OpenTag -- typically 100% automatic.
   * @param None
   * @retval None
@@ -130,7 +223,6 @@ void platform_ot_pause();
   * you will want to call platform_ot_run() immediately after creating it.
   */
 void platform_ot_run();
-
 
 
 /** @brief Pre-emption function for OpenTag
@@ -148,64 +240,9 @@ void platform_ot_preempt();
 
 
 
-/** Initialization functions 
+/** OpenTag Resource Initializers <BR>
+  * ========================================================================<BR>
   */
-
-/** @brief Initializes HW at Power On
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  *
-  * This function should be called when the chip has a cold or warm start.
-  */
-void platform_poweron();
-
-
-
-/** @brief Safely shuts-down: call when resetting or shutting down.
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  *
-  * Not all implementations will need this, but usually ones that write to 
-  * flash will require calling it any time prior to turning-off the SRAM.
-  */
-void platform_poweroff();
-
-
-
-/** @brief Initializes the platform for the OpenTag runtime
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  *
-  * Call this prior to entering the OpenTag runtime in order to configure the
-  * system for OpenTag.  If your application does not have functionality beyond
-  * OpenTag (or if the functionality does not change the OpenTag settings), then
-  * this function only needs to be run whenever the registers need to be 
-  * refreshed.
-  */
-void platform_init_OT();
-
-
-
-/** @brief An optimized method for initializing the platform for the OpenTag runtime
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  * 
-  * fast_initOT() is basically like init_OT(), except it is optimized for the 
-  * platform.  It is especially useful for platforms that retain register 
-  * settings (SRAM) through low power modes, since it can be minimized to meet
-  * very specific needs.
-  *
-  * fast_initOT() is intended to be modified by the user to best fit the 
-  * application.
-  */
-void platform_fastinit_OT();
-
-
-
 
 /** @brief Initializes the bus clocks that OpenTag uses.
   * @param None
@@ -217,8 +254,6 @@ void platform_fastinit_OT();
   * SMCLK, ACLK).
   */
 void platform_init_busclk();
-
-
 
 
 /** @brief Initializes the peripheral clocks that OpenTag uses.  If there are
@@ -237,8 +272,6 @@ void platform_init_busclk();
 void platform_init_periphclk();
 
 
-
-
 /** @brief Initializes Global Interrupt Functionality for OpenTag resources.
   * @param None
   * @retval None
@@ -250,8 +283,6 @@ void platform_init_periphclk();
 void platform_init_interruptor();
 
 
-
-
 /** @brief Initializes GPIO used by OpenTag, not including the radio module.
   * @param None
   * @retval None
@@ -261,8 +292,6 @@ void platform_init_interruptor();
   * forward compatibility reasons, but is also helpful for debugging.
   */
 void platform_init_gpio();
-
-
 
 
 /** @brief Initializes the OpenTag general purpose timer.
@@ -281,9 +310,7 @@ void platform_init_gpio();
 #endif
 
 
-
 void platform_init_watchdog();
-
 
 
 /** @brief Initializes a reset switch that may be used outside of OpenTag.
@@ -294,7 +321,6 @@ void platform_init_watchdog();
   * Not required for all platforms
   */
 void platform_init_resetswitch();
-
 
 
 
@@ -317,7 +343,6 @@ void platform_init_systick(ot_uint period);
 
 
 
-
 /** @brief Initializes a real time clock.
   * @param value: the default RTC value, in seconds
   * @retval None
@@ -331,12 +356,18 @@ void platform_init_rtc(ot_u32 value);
 void platform_init_memcpy();
 
 
-
 void platform_init_prand(ot_u16 seed);
 
 
 
 
+
+
+
+
+/** OpenTag Resource Access Routines <BR>
+  * ========================================================================<BR>
+  */
 
 /** @brief Gets the current GPTIM value, does not alter GPTIM behavior
   * @param None
@@ -354,7 +385,6 @@ ot_u16 platform_get_ktim();
 ot_u16 platform_next_ktim();
 
 
-
 void platform_pend_ktim();
 
 
@@ -366,9 +396,7 @@ void platform_pend_ktim();
 void platform_enable_ktim();
 
 
-
 void platform_disable_ktim();
-
 
 
 /** @brief Zeros GPTIM and sets an upper limit
@@ -392,13 +420,10 @@ void platform_set_gptim5(ot_u16 value);
 void platform_flush_ktim();
 
 
-
 void platform_run_watchdog();
 
 
-
 void platform_reset_watchdog(ot_u16 reset);
-
 
 
 void platform_enable_rtc();
@@ -441,8 +466,6 @@ void platform_clear_rtc_alarms();
 
 
 
-
-
 /** @brief Trigger Functions for debug. (Pin control)
   * @param : None
   * @retval : None
@@ -466,6 +489,12 @@ void platform_trig2_toggle();
 
 
 
+
+
+
+/** OpenTag OS Utility Functions <BR>
+  * ========================================================================<BR>
+  */
 
 /** @brief A random number generator.  Used within OpenTag.
   * @param rand_out     (ot_u8*) Pointer to the output random data
