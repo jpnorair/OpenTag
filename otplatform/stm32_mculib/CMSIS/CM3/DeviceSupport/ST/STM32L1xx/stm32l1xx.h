@@ -1994,6 +1994,10 @@ typedef struct
 #define  DMA_CCR1_PL                         ((uint16_t)0x3000)            /*!< PL[1:0] bits(Channel Priority level) */
 #define  DMA_CCR1_PL_0                       ((uint16_t)0x1000)            /*!< Bit 0 */
 #define  DMA_CCR1_PL_1                       ((uint16_t)0x2000)            /*!< Bit 1 */
+#define  DMA_CCR1_PL_LOW                     ((uint16_t)0x0000) 
+#define  DMA_CCR1_PL_MED                     ((uint16_t)0x1000) 
+#define  DMA_CCR1_PL_HI                      ((uint16_t)0x2000) 
+#define  DMA_CCR1_PL_VHI                     ((uint16_t)0x3000) 
 
 #define  DMA_CCR1_MEM2MEM                    ((uint16_t)0x4000)            /*!< Memory to memory mode */
 
@@ -2897,6 +2901,10 @@ typedef struct
 #define GPIO_MODER_OUTPUT          ((uint32_t)0x00000001)
 #define GPIO_MODER_ALT             ((uint32_t)0x00000002)
 #define GPIO_MODER_ANALOG          ((uint32_t)0x00000003)
+#define GPIO_MODER_IN              ((uint32_t)0x00000000)
+#define GPIO_MODER_OUT             ((uint32_t)0x00000001)
+#define GPIO_MODER_ALT             ((uint32_t)0x00000002)
+#define GPIO_MODER_AN              ((uint32_t)0x00000003)
 
 
 /*******************  Bit definition for GPIO_OTYPER register  ****************/   

@@ -86,13 +86,13 @@ ot_u8 NAND_write_short(ot_u16* addr, ot_u16 data) {
     ot_u8   wrdata[4];
     
     *((ot_u32*)wrdata)              = *addr;
-    scratch                         = (addr&3);
+    scratch                         = ((ot_u32)addr & 3);
     addr                            = (ot_u16*)((ot_u32)addr - scratch);
     *((ot_u16*)&wrdata[scratch])    = data;
 
-    output = (ot_u8)FLASH_FastProgramWord( (ot_u32)addr, *(ot_u32*)wrdata);
+    scratch = (ot_u8)FLASH_FastProgramWord( (ot_u32)addr, *(ot_u32*)wrdata);
 
-    return output;
+    return scratch;
 }
 
 // SCB_SHCSR_USGFAULTENA_Msk
@@ -759,3 +759,4 @@ void sub_attach_fallow(block_ptr* block_in) {
     
 #endif 
 
+#endif //from top

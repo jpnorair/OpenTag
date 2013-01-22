@@ -36,7 +36,15 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
-#include "gulp/system_gulp.h"
+
+// Pick the kernel that was built-in
+#include "build_config.h"
+#if defined(__KERNEL_HICCULP__)
+#   include "hicculp/system_hicculp.h"
+#else
+#   include "gulp/system_gulp.h"
+#endif
+
 
 
 #ifndef GPTIM_SHIFT

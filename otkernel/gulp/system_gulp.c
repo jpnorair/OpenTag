@@ -25,10 +25,12 @@
   ******************************************************************************
   */
 
+#include "build_config.h"
+#if defined(__KERNEL_GULP__)
+
+#include "OT_platform.h"
 #include "OT_types.h"
 #include "OT_utils.h"
-#include "OT_config.h"
-#include "OT_platform.h"
 
 #include "system.h"
 #include "gulp/system_gulp.h"
@@ -527,7 +529,7 @@ void sys_refresh_scheduler() {
 
 
 
-
+#endif // #if from top
 
 
 

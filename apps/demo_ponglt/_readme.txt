@@ -74,7 +74,7 @@ the compiler.  These constants are required for basic configuration.
 
 __[partnum]__       (mandatory)     The part number of the platform being used.
                                     E.g. for MSP430F5529 = __MSP430F5529__, for
-                                    STM32L151C8 = __STM32L151C8__.
+                                    STM32L151C8 = __STM32L151C8__.__
 
 __LITTLE_ENDIAN__   (mandatory)     Endian must be configured properly. 
 __BIG_ENDIAN__                      All supported cores are __LITTLE_ENDIAN__

@@ -29,7 +29,7 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
-#include "CC1101_registers.h"
+#include "SPIRIT1_registers.h"
 
 
 // Some radio register settings constants

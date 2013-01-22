@@ -120,21 +120,25 @@
 #endif
 #if !defined(OT_PARAM_SSTACK_ALLOC)
 #   define OT_PARAM_SSTACK_ALLOC    (160)
+#elif (OT_PARAM_SSTACK_ALLOC & 3)
+#   error "OT_PARAM_SSTACK_ALLOC must be 32-bit aligned."
 #endif
-#if !defined(OT_PARAM_TSTACK_ALLOC)
-#   define OT_PARAM_TSTACK_ALLOC    (OT_PARAM_SYSTHREADS*160)
-#endif
-#if ((OT_PARAM_TSTACK_ALLOC/OT_PARAM_SYSTHREADS) < 80)
-#   error "Specified Thread Stack Size allocates less than 80 bytes per thread stack."
+
+#if (OT_PARAM_SYSTHREADS != 0)
+#   if !defined(OT_PARAM_TSTACK_ALLOC)
+#       define OT_PARAM_TSTACK_ALLOC    (OT_PARAM_SYSTHREADS*160)
+#   endif
+#   if ((OT_PARAM_TSTACK_ALLOC/OT_PARAM_SYSTHREADS) < 80)
+#       error "Specified Thread Stack Size allocates less than 80 bytes per thread stack."
+#   endif
+#   if (OT_PARAM_TSTACK_ALLOC & 3)
+#       error "OT_PARAM_TSTACK_ALLOC must be 32-bit aligned."
+#   endif
 #endif
 
 
 #ifndef __CM3_NVIC_GROUPS
-//#   if (OT_PARAM_SYSTHREADS == 0)
-#       define __CM3_NVIC_GROUPS    2
-//#   else
-//#       define __CM3_NVIC_GROUPS    4
-//#   endif
+#   define __CM3_NVIC_GROUPS    2
 #endif
 
 #if (__CM3_NVIC_GROUPS == 1)
@@ -297,7 +301,7 @@ void platform_isr_uart5(void);
   * platform_ext stores data that is required for OpenTag to work properly on
   * the STM32L, and the data is not platform-independent.
   */
-#if (OT_FEATURE_RTC == ENABLED)
+#if (OT_FEATURE(RTC) == ENABLED)
 #define RTC_ALARMS          1        // Max=3
 #else
 #define RTC_ALARMS          0
@@ -316,28 +320,25 @@ typedef struct {
 
 typedef struct {
     // System stack alloctation: used for ISRs
-    ot_u32 sstack[((OT_PARAM_SSTACK_ALLOC+3)/4)];
+    ot_u32 sstack[OT_PARAM_SSTACK_ALLOC/4];
 
     // task & thread stacks allocation
-#   if (OT_PARAM_SYSTHREADS != 0)
-    ot_u32 tstack[((OT_PARAM_TSTACK_ALLOC+3)/4)];
+#   if (OT_PARAM_SYSTHREADS)
+    ot_u32 tstack[OT_PARAM_TSTACK_ALLOC/4];
 #   endif
 
     // Real Time Clock features
+    ot_u32  utc;
 #   if (RTC_ALARMS > 0)
-        rtcalarm    alarm[RTC_ALARMS];
-#   endif
-#   if (RTC_OVERSAMPLE)
-        ot_u32      utc;
+    rtcalarm alarm[RTC_ALARMS];
 #   endif
 
-    // Not sure if this needs to stay
-//#   ifdef EXTF_platform_ext_wakeup
-//        ot_u16      wakeup_params;
-//#   endif
-
+    // Tasking parameters
+    void*   task_exit;
+    ot_u16  last_evt;
+    ot_u16  next_evt;
+    
     // Miscellaneous platform parameters and software registers
-    ot_u16  next_task;
     ot_u16  cpu_khz;
     ot_u16  prand_reg;
     ot_u16  crc16;

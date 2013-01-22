@@ -40,13 +40,13 @@
   * 
   ******************************************************************************
   */
-
-
+  
 #ifndef __SYSTEM_HICCULP_H
 #define __SYSTEM_HICCULP_H
 
-#include "OT_types.h"
 #include "OT_config.h"
+#include "OT_types.h"
+
 
 
 
@@ -112,8 +112,8 @@ typedef struct task_marker_struct {
     ot_u8   reserve;
     ot_u8   latency;
     ot_long nextevent;
-#   if (OT_FEATURE(SYSTHREADS) == ENABLED)
-    void*   ;
+#   if (OT_PARAM_SYSTHREADS != 0)
+    void*   stack;
 #   endif
 #   if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
     void    (*call)(struct task_marker_struct *marker);
@@ -123,40 +123,6 @@ typedef struct task_marker_struct {
 
 typedef task_marker*    ot_task;
 typedef task_marker     ot_task_struct;
-
-
-
-
-
-/** Thread Data   <BR>
-  * ========================================================================<BR>
-  * A Thread is a Task that operates in its own context.  In other words, it
-  * has its own stack that it doesn't share.  Threads are fully pre-emptive, so
-  * different data is useful to Threads than it is for Tasks.
-  *
-  * thread_marker data elements:
-  * <LI> event:     a state variable for the task.  0 = off, 1-255 = on</LI>
-  * <LI> cursor:    another state variable for the task, independent of event. 
-  *                 It is only affected by the scheduler, which will set to 0
-  *                 on calls to sys_synchronize() </LI>
-  * <LI> reserve:   number of ticks the task estimates it needs to run </LI>
-  * <LI> latency:   number of ticks latency the task can afford.  If you set this
-  *                 to 0, the active task will block all lower priority tasks. </LI>
-  * <LI> nextevent: number of kernel clocks between present time (actually last 
-  *                 kernel exit) and when the tasks expects to be serviced 
-  *                 again by the kernel.</LI>
-  * <LI> call:      [Optional] Task callback. </LI>
-  *
-  * @note When dynamic callbacks are disabled, the kernel will use a static 
-  * callback method instead.  The call element, therefore, should never be used 
-  * in code outside /app, for applications where the author is certain that 
-  * dynamic callbacks are enabled.
-  */
-
-
-
-
-
 
 typedef void (*systask_fn)(ot_task);
 

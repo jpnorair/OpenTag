@@ -343,10 +343,6 @@ void spirit1_set_txpwr(ot_u8 pwr_code);
 
 
 
-void spirit1_set_pktlen(ot_u16 pktlen);
-
-
-
 /** @brief Returns the value from the CS pin
   * @param None
   * @retval (ot_bool)   True/False on High/Low of CS pin
@@ -422,14 +418,14 @@ ot_bool spirit1_check_cspin(void);
 
 
 
-/** @brief  Configures GPIOs for Listen or RX Data Modes
+/** @brief  Configures SPIRIT1 outputs for Listen or RX Data Modes
   * @param  None
   * @retval None
   * @ingroup SPIRIT1
   */ 
 void spirit1_iocfg_rx();
 
-/** @brief  Configures GPIOs for CSMA or TX Data Modes
+/** @brief  Configures SPIRIT1 outputs for CSMA or TX Data Modes
   * @param  None
   * @retval None
   * @ingroup SPIRIT1
@@ -437,6 +433,11 @@ void spirit1_iocfg_rx();
 void spirit1_iocfg_tx();
 
 
+/** @brief  Disables all GPIO Interrupts
+  * @param  None
+  * @retval None
+  * @ingroup SPIRIT1
+  */ 
 void spirit1_int_off();
 
 
@@ -505,43 +506,4 @@ void spirit1_irq0_isr();
 void spirit1_irq1_isr();
 void spirit1_irq2_isr();
 void spirit1_irq3_isr();
-
-
-/** @brief  Global ISR function for SPIRIT1 GPIOs (Bank 1)
-  * @param  None
-  * @retval None
-  * @ingroup SPIRIT1
-  *
-  * For parts that have banked access to GPIO interrupts, this function handles
-  * "Bank 1" of the GPIOs.  For example, on STM32 this corresponds to GPIOs on
-  * pin numbers 5-9.
-  */
-void spirit1_bank1irq_isr();
-
-
-/** @brief  Global ISR function for SPIRIT1 GPIOs (Bank 2)
-  * @param  None
-  * @retval None
-  * @ingroup SPIRIT1
-  *
-  * For parts that have banked access to GPIO interrupts, this function handles
-  * "Bank 2" of the GPIOs.  For example, on STM32 this corresponds to GPIOs on
-  * pin numbers 10-15.
-  */
-void spirit1_bank2irq_isr();
-
-
-/** @brief  ISR for databus (SPI) on the SPIRIT1 (optional)
-  * @param  None
-  * @retval None
-  * @ingroup SPIRIT1
-  *
-  * In virtually all cases where there's a SPIRIT1, there is an SPI driven by
-  * a DMA, and this function is the DMA RX ISR.  You may desire to place it
-  * within a global interrupt module.
-  */
-void spirit1_databus_isr();
-
-
-
 

@@ -35,7 +35,7 @@
   * The CRC16 used here is the CCITT variant that yields 29BF from ASCII
   * input "123456789"
   */
-static const ot_u16 crc_table[256] = { 
+static const ot_u16 crc16_table[256] = { 
     CRCx00, CRCx01, CRCx02, CRCx03, CRCx04, CRCx05, CRCx06, CRCx07, 
     CRCx08, CRCx09, CRCx0A, CRCx0B, CRCx0C, CRCx0D, CRCx0E, CRCx0F, 
     CRCx10, CRCx11, CRCx12, CRCx13, CRCx14, CRCx15, CRCx16, CRCx17, 
@@ -92,7 +92,7 @@ ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
     ot_u8   index;
     while (--block_size >= 0) {
         index   = ((ot_u8*)&crc_val)[UPPER] ^ *block_addr++;                    //((crc_val>>8) & 0xff) ^ *block_addr++;
-        crc_val = (crc_val<<8) ^ platform_crc16table[index];
+        crc_val = (crc_val<<8) ^ crc16_table[index];
     }
 }
 #endif
@@ -110,7 +110,7 @@ OT_INLINE void platform_crc_byte(ot_u8 databyte) {
     
     /// Option 2: uses table
     databyte           ^= ((ot_u8*)&platform_ext.crc16)[UPPER];                 //((platform_ext.crc16>>8) & 0xff);
-    platform_ext.crc16  = (platform_ext.crc16<<8) ^ platform_crc16table[databyte];
+    platform_ext.crc16  = (platform_ext.crc16<<8) ^ crc16_table[databyte];
 }
 #endif
 

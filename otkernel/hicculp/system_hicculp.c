@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,24 +14,26 @@
   *
   */
 /**
-  * @file       /otkernel/~native/system_gulp.c
+  * @file       /otkernel/hicculp/system_hicculp.c
   * @author     JP Norair
   * @version    R103
-  * @date       25 Oct 2012
-  * @brief      OpenTag GULP kernel
+  * @date       25 Jan 2013
+  * @brief      OpenTag HICCULP kernel
   * @ingroup    System
   *
   * 
   ******************************************************************************
   */
 
+#include "build_config.h"
+#if defined(__KERNEL_HICCULP__)
+
+#include "OT_platform.h"
 #include "OT_types.h"
 #include "OT_utils.h"
-#include "OT_config.h"
-#include "OT_platform.h"
 
 #include "system.h"
-#include "gulp/system_gulp.h"
+//#include "hicculp/system_hicculp.h"   //included by system.h
 
 #include "m2_dll.h"
 #include "radio.h"
@@ -53,13 +55,14 @@ typedef void (*fnvv)(void);
 
 #if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
 #   define TASK_HANDLE(INDEX)           &sys.task[INDEX]
-#   define TASK_INDEX(HANDLE)           ((HANDLE - &sys.task[0]) >> 4)  ///@todo this is specific to 32bit chips
+#   define TASK_INDEX(HANDLE)           ((HANDLE - &sys.task[0]) / sizeof(task_marker) )
 #   define TASK_DECREMENT(TASK, INDEX)  TASK--
 #   define TASK_INCREMENT(TASK, INDEX)  TASK++
 #   define TASK_SELECT(TASK, INDEX)     TASK
 #   define TASK(SELECT)                 SELECT
 #   define TASK_CALL(SELECT)            SELECT->call(SELECT)
-#	define TASK_MAX                     &sys.task[0]
+#   define TASK_INDEXED_CALL(INDEX)     sys.task[INDEX].call( &sys.task[INDEX] )
+#   define TASK_MAX                     &sys.task[0]
 #   define TASK_IS_IDLE(SELECT)         (SELECT == NULL)
 #else
 #   define TASK_HANDLE(INDEX)           INDEX
@@ -69,6 +72,7 @@ typedef void (*fnvv)(void);
 #   define TASK_SELECT(TASK, INDEX)     INDEX
 #   define TASK(SELECT)                 (&sys.task[SELECT])
 #   define TASK_CALL(SELECT)            systask_call[SELECT]( TASK(SELECT) )
+#   define TASK_INDEXED_CALL(INDEX)     systask_call[INDEX]( TASK(INDEX) )
 #   define TASK_MAX                     0
 #   define TASK_IS_IDLE(SELECT)         (SELECT < 0)
 #endif
@@ -200,14 +204,7 @@ void sys_powerdown() {
 #   elif (OT_FEATURE(SYSKERN_CALLBACKS))
         sys.powerdown(code);
 #   else
-    {
-        static const ot_sub powerdown[] = { &MCU_SLEEP,
-                                            &MCU_SLEEP_WHILE_IO,
-                                            &MCU_SLEEP_WHILE_RF,
-                                            &MCU_STOP
-                                          };
-        powerdown[code]();
-    }
+#       error "powerdown applet (sys_sig_powerdown) is not available."
 #   endif
 }
 #endif
@@ -256,24 +253,47 @@ void sys_resume() {
 
 
 void sys_kill(Task_Index i) {
-/// Kill the indexed task
-
-    /// Set event to 0 and call the task with (task->event == 0).  
-    /// Tasks should implement their kill functions on event == 0.
+/// Kill the indexed task.
+    ot_u8 task_event;
+    
+    /// Always run the task exit hook, even if the task is not active.  If the
+    /// task has spawned run-away interrupts or possibly other tasks, this 
+    /// should stop them.  Setting event to 0 and calling will invoke the task
+    /// exit hook (destructor).  This is a requirement of task implementation.
+    task_event          = sys.task[i].event;
     sys.task[i].event   = 0;
-#   if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
-    sys.task[i].call(&sys.task[i]);
-#   else
-    systask_call[i](&sys.task[i]);
-#   endif
+    TASK_INDEXED_CALL(i);
+    
+    /// Check if the task was actually running.  Don't go any further if the 
+    /// task had already exited.
+    if (task_event != 0) {
+#   if (OT_PARAM_SYSTHREADS != 0)
+        /// For threaded tasks, reset the stack pointer to empty.
+        ot_int offset;
+        offset = (ot_int)i - TASK_Thread0;
+        if (offset >= 0) {
+            offset             *= OT_PARAM_SSTACK_ALLOC;
+            sys.task[i].stack   = (void*)((ot_u8*)platform_ext.tstack + offset);
+        }
+        
+        ///@todo think about changing the thread event number to negative and
+        ///      nextevent to 0, which will cause it to get restarted.  Maybe
+        ///      do this in its own function?
+#   endif        
+        
+        /// Drop the context back to a stable point in the main context.  Next 
+        /// time the main context is enabled (typically after all interrupts
+        /// are done being serviced), the scheduler will start fresh.
+        platform_drop_context(i);
+    }
 }
 
 
 
 #ifndef EXTF_sys_kill_active
 void sys_kill_active() {
-	Task_Index i;
-	i = TASK_INDEX(sys.active);
+    Task_Index i;
+    i = TASK_INDEX(sys.active);
 
     /// There is a possibility that sys_kill_active() was called by a task or
     /// some interrupt that occured during task runtime.  So, we will use the
@@ -290,10 +310,11 @@ void sys_kill_active() {
 #ifndef EXTF_sys_kill_all
 void sys_kill_all() {
     Task_Index  i = TASK_terminus;
+    
+    do {
+        sys_kill(--i);
+    } while (i != 0);
 
-    while (i-- != 0) {
-        sys_kill(TASK_HANDLE(i));
-    }
     
     /// See notes from sys_kill_active();
     platform_drop_context(i);
@@ -320,19 +341,19 @@ void sys_task_setcursor(ot_task task, ot_u8 cursor) {
 }
 
 void sys_task_setreserve(ot_task task, ot_u8 reserve) {
-	task->reserve = reserve;
+    task->reserve = reserve;
 }
 
 void sys_task_setlatency(ot_task task, ot_u8 latency) {
-	task->latency = latency;
+    task->latency = latency;
 }
 
 void sys_task_setnext(ot_task task, ot_u16 nextevent_ti) {
-	sys_task_setnext_clocks(task, TI2CLK(nextevent_ti));
+    sys_task_setnext_clocks(task, TI2CLK(nextevent_ti));
 }
 
 void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
-	task->nextevent = (ot_long)platform_get_ktim() + nextevent_clocks;
+    task->nextevent = (ot_long)platform_get_ktim() + nextevent_clocks;
 }
 
 
@@ -365,7 +386,7 @@ void sys_task_disable(ot_u8 task_id) {
 
 ot_uint sys_event_manager() {
 /// This is the task-scheduling part of the kernel.
-	ot_uint      elapsed;
+    ot_uint      elapsed;
     ot_long      nextevent;
     task_marker* task_i;
 #   if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
@@ -409,18 +430,18 @@ ot_uint sys_event_manager() {
         TASK_DECREMENT(task_i, i);
         task_i->nextevent -= elapsed;
         if (task_i->event != 0) {
-        	// If task's nextevent is soonest, select this task to run, and
-        	// also update the "nextevent" marker.  "<=" is used for priority.
-        	if (task_i->nextevent <= nextevent) {
+            // If task's nextevent is soonest, select this task to run, and
+            // also update the "nextevent" marker.  "<=" is used for priority.
+            if (task_i->nextevent <= nextevent) {
 #               if (OT_PARAM_SYSTHREADS != 0)
                 nextnext  = nextevent;
 #               endif
-            	nextevent = task_i->nextevent;
-            	select    = TASK_SELECT(task_i, i);
+                nextevent = task_i->nextevent;
+                select    = TASK_SELECT(task_i, i);
             }
-        	// Sometime nextevent can be negative, due to a long-waiting task.
-        	// higher priority tasks will always take precedent.
-        	else if (task_i->nextevent <= 0) {
+            // Sometime nextevent can be negative, due to a long-waiting task.
+            // higher priority tasks will always take precedent.
+            else if (task_i->nextevent <= 0) {
                 select = TASK_SELECT(task_i, i);
             }
         }
@@ -448,15 +469,43 @@ ot_uint sys_event_manager() {
     
     /// 4. The event manager is done here, so subtract the runtime of the
     ///    event management loop from the nextevent time that was determined
-    ///    in the loop.  return 0 if there is an event that should happen
-    ///    immediately.
+    ///    in the loop.  
+    ///    <LI> If it is positive, there is no pending task.  Set the timer for 
+    ///           next pending task event, and return this value as well. <LI>
+    ///    <LI> If not-positive, there is a pending task.  Set timer for task
+    ///           pending *after* the current task, and return 0. </LI>
+#   if (OT_PARAM_SYSTHREADS == 0)
     nextevent -= platform_get_ktim();
     if (nextevent > 0) {
-    	ot_u16 interval = (ot_u16)nextevent;
-    	platform_set_ktim(interval);
-    	return interval;
+        ot_u16 interval;
+        interval = (ot_u16)nextevent;
+        platform_set_ktim(interval);
+        return interval;
     }
     return 0;
+    
+#   else
+    {   ot_bool test;
+        ot_u16 interval;
+        ot_u16 retval;
+        
+        interval    = platform_get_ktim();
+        nextevent  -= interval;
+        nextnext   -= interval;
+        if (nextevent > 0) {
+            interval    = (ot_u16)nextevent;
+            retval      = interval;
+        }
+        else {
+            interval = ((ot_u16)nextnext >= (ot_16)TASK(select)->reserve) ? \
+                        (ot_u16)nextnext : (ot_16)TASK(select)->reserve;
+            retval = 0;
+            
+        }
+        platform_set_ktim(interval);
+        return retval;
+    }
+#   endif
 }
 #endif
 
@@ -466,7 +515,18 @@ ot_uint sys_event_manager() {
 
 #ifndef EXTF_sys_task_manager
 void sys_task_manager() {
-/// Not implemented in GULP... will be implemented in "Big GULP"
+/// Perform a context switch onto the active task (sys.active).  In purely
+/// co-operative systems, all tasks run in the same context, so do nothing.
+
+    // Threaded mode
+#   if (OT_PARAM_SYSTHREADS != 0)
+    if (sys.active >= TASK_HANDLE[TASK_thread0]) {
+        //do some stuff
+        // - switch contexts if thread is already running
+        // - if thread not running, sys_run_task will initialize it.
+    }
+#   endif
+
 }
 #endif
 
@@ -474,23 +534,21 @@ void sys_task_manager() {
 
 #ifndef EXTF_sys_run_task
 OT_INLINE void sys_run_task() {
-#if (OT_PARAM_SYSTHREADS == 0)
-    platform_disable_ktim();
-    TASK_CALL(sys.active);
 
-#else
-    // Behavior if scheduled task is a kernel task (cooperative).
-    if (sys.active < TASK_HANDLE[TASK_thread0]) {
-        platform_disable_ktim();
-        TASK_CALL(sys.active);
+    // Threaded Mode: the thread has not been started, so start it.
+#   if (OT_PARAM_SYSTHREADS != 0)
+    if (sys.active >= TASK_HANDLE[TASK_thread0]) {
+        platform_open_context(TASK(sys.active)->stack);
+        goto sys_run_task_CALL;
     }
+#   endif
+
+    // Co-operative mode: disable timer because ktasks should always run to 
+    // completion without interference from the scheduler.
+    platform_disable_ktim();
     
-    // Behavior if scheduled task is a threaded task
-    else {
-        // - switch contexts
-        // - set ktim to reserve
-    }
-#endif
+    sys_run_task_CALL:
+    TASK_CALL(sys.active);
 }
 #endif
 
@@ -505,8 +563,8 @@ void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 /// by manually setting the timer interrupt flag.  If a task is running while
 /// this function is called (typical usage), first the task will finish and then
 /// enable the timer interrupt via sys_runtime_manager().
-	sys_task_setnext(task, nextevent_ti);
-	platform_ot_preempt();
+    sys_task_setnext(task, nextevent_ti);
+    platform_ot_preempt();
 }
 
 
@@ -515,7 +573,7 @@ void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 void sys_synchronize(Task_Index task_id) {
 #ifdef __DEBUG__
     //if (((ot_int)task_id < IO_TASKS) || (ot_int)task_id >= (IO_TASKS+IDLE_TASKS))
-	//    return;
+    //    return;
 #endif
     sys.task[task_id].cursor    = 0;
     sys_preempt(&sys.task[task_id], 0);
@@ -545,7 +603,7 @@ void sys_refresh_scheduler() {
 
 
 
-
+#endif // #if from top
 
 
 

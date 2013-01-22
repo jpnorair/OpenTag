@@ -38,10 +38,15 @@
 /// a command-line argument (or whatever is equivalent).  You can also change
 /// the default if you wish.
 
-#if (   !defined(BOARD_OMG_CC430)   \
-    &&  !defined(BOARD_EM430RF)      \
-    &&  !defined(BOARD_eZ430Chronos) \
-    &&  !defined(BOARD_RF430USB_5509)    )
+#if (   !defined(BOARD_OMG_CC430)       \
+    &&  !defined(BOARD_EM430RF)         \
+    &&  !defined(BOARD_eZ430Chronos)    \
+    &&  !defined(BOARD_RF430USB_5509)   \
+    &&  !defined(BOARD_IKR001)          \
+    &&  !defined(BOARD_HayTag_R1)       \
+    &&  !defined(BOARD_HayTag_R1T)      \
+    &&  !defined(BOARD_HayTag_R1A)      \
+    )
 #   define BOARD_OMG_CC430
 #endif
 
@@ -65,6 +70,14 @@
 #elif defined(BOARD_RF430USB_5509)
 #   include "isr_config_CC430.h"
 #   include "msp430f5/board_RF430USB_5509.h"
+
+#elif defined(BOARD_IKR001)
+#   include "isr_config_STM32L.h"
+#   include "stm32l1xx/board_IKR001.h"
+
+#elif (defined(BOARD_HayTag_R1) || defined(BOARD_HayTag_R1T) || defined(BOARD_HayTag_R1A))
+#   include "isr_config_STM32L.h"
+#   include "stm32l1xx/board_HayTag_R1.h"
 
 #else
 #   error "No supported BOARD is defined"

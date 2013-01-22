@@ -173,12 +173,13 @@
 
 
 
+
 /** Macros of Ill Repute <BR>
   * ========================================================================<BR>
   */
 #define __SET_PENDSV()      (SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk)
 #define __CLR_PENDSV()      (SCB->ICSR |= SCB_ICSR_PENDSVCLR_Msk)
-#define __SEND_SVC(VAL)     asm volatile(" svc  VAL");
+#define __SEND_SVC(VAL)     asm volatile(" svc  %0" : : "I"(VAL) );
 
 
 
@@ -283,8 +284,8 @@ void SVC_Handler(void) {
 /// If the scheduler returns 0, there is a task pending to be executed, so the
 /// proper procedure is to invoke the PendSV interrupt.
 #if (OT_PARAM_SYSTHREADS == 0)
-    platform_ext.next_task  = sys_event_manager();
-    SCB->ICSR              |= (platform_ext.next_task == 0) << SCB_ICSR_PENDSVSET_Pos;
+    platform_ext.next_evt   = sys_event_manager();
+    SCB->ICSR              |= (platform_ext.next_evt  == 0) << SCB_ICSR_PENDSVSET_Pos;
     
 #else
     ot_u8* task_lr;
@@ -295,7 +296,7 @@ void SVC_Handler(void) {
     
     // 6 word offset is where LR from caller stack is stored.  
     // LR will be instruction after SVC
-    task_lr = (ot_u8*)(pstack[6]);
+    task_lr = (ot_u8*)(stack[6]);
     
     // The 16bit Thumb2 instruction before the LR address is the SVC.
     // The lower byte of this instruction is the immediate code
@@ -304,8 +305,8 @@ void SVC_Handler(void) {
         // Call 0: this is the call to the scheduler
         case 0: 
             SVC_Handler_eventmgr:
-            platform_ext.next_task  = sys_event_manager();
-            SCB->ICSR              |= (platform_ext.next_task == 0) << SCB_ICSR_PENDSVSET_Pos;
+            platform_ext.next_evt   = sys_event_manager();
+            SCB->ICSR              |= (platform_ext.next_evt  == 0) << SCB_ICSR_PENDSVSET_Pos;
             break;
         
         // Call 1: Task Killer
@@ -315,6 +316,7 @@ void SVC_Handler(void) {
        default: //sys_notify();
                 break;  //goto SVC_Handler_eventmgr;
     }
+#endif
 }
 
 
@@ -332,8 +334,6 @@ void PendSV_Handler(void) {
 /// sys_task_manager() performs task context switching.  In certain cases, it
 /// might kill a task that is misbehaving and change the context to the next
 /// task.  To manually kill a task, use SVC 1.
-
-    ot_u32 tsp; //Thread Stack Pointer
     
     // There is an erratum that PendSV bit is not adequately cleared in HW
     CLR_PENDSV();
@@ -341,10 +341,12 @@ void PendSV_Handler(void) {
     // sys_task_manager performs context switching via platform_..._context()
     // functions.  It returns the new P-stack pointer, which we set.
 #   if (OT_PARAM_SYSTHREADS != 0)
-        tsp = (ot_u32)sys_task_manager();
-        __set_PSP(tsp);
+    sys_task_manager();
 #   endif
 }
+
+
+
 
 
 
@@ -353,19 +355,10 @@ void PendSV_Handler(void) {
   */
 
 
-
-
-
-
-
-
 #ifndef EXTF_WWDG_IRQHandler
 void WWDG_IRQHandler(void) {
 }
 #endif
-
-
-
 
 
 
@@ -378,9 +371,6 @@ void RTC_Alarm_IRQHandler(void) {
 #endif
 
 #endif
-
-
-
 
 
 
@@ -402,7 +392,7 @@ void sub_juggle_rtc_alarm() {
 
     RTC_SetAlarm(rtcval+next);
 }
-#endif
+
 
 void RTC_IRQHandler(void) {
 /// Currently Psuedocode.  RTC is normally used with ALARM interrupt.  If it
@@ -452,9 +442,18 @@ void platform_poweron() {
     BOARD_POWER_STARTUP();
 
     /// 4. Debugging setup
-    ///@todo OT_DEBUG_PERIPHERALS
 #   ifdef __DEBUG__
-    DBGMCU_Config(OT_DEBUG_PERIPHERALS, ENABLE);
+    DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP \
+                      | DBGMCU_CR_DBG_STOP \
+                      | DBGMCU_CR_DBG_STANDBY);
+    
+    DBGMCU->APB1FZ |= ( DBGMCU_APB1_FZ_DBG_RTC_STOP \
+                      | DBGMCU_APB1_FZ_DBG_WWDG_STOP \
+                      | DBGMCU_APB1_FZ_DBG_IWDG_STOP);
+
+    DBGMCU->APB2FZ |= ( DBGMCU_APB2_FZ_DBG_TIM9_STOP \
+                      | DBGMCU_APB2_FZ_DBG_TIM10_STOP \
+                      | DBGMCU_APB2_FZ_DBG_TIM11_STOP);
 #   endif
 
     /// 5. Final initialization of OpenTag system resources
@@ -511,7 +510,7 @@ void platform_init_OT() {
         ot_u16* hwid;
         ot_int  i;
         
-        fpid    = ISF_open_su(ISF_ID(device_settings));
+        fpid    = ISF_open_su(ISF_ID(device_features));
         hwid    = (ot_u16*)(0x1FF80050);
         for (i=6; i!=0; i-=2) {
             vl_write(fpid, i, *hwid++);
@@ -601,7 +600,8 @@ void sub_hsosc_config(void) {
 void platform_init_busclk() {
 /// This function should be called during initialization and restart, right at
 /// the top of platform_poweron().
-
+    ot_u16 counter;
+    
     ///1. RESET System Clocks
     RCC->CR    |= (uint32_t)0x00000100;     // Set MSION bit
     RCC->CFGR  &= (uint32_t)0x88FFC00C;     // Reset SW[1:0], HPRE[3:0], PPRE1[2:0], PPRE2[2:0], 
@@ -627,7 +627,7 @@ void platform_init_busclk() {
          || (PLATFORM_MSCLOCK_HZ == 524000)    \
          || (PLATFORM_MSCLOCK_HZ == 262000)    \
          || (PLATFORM_MSCLOCK_HZ == 131000)    \
-         || (PLATFORM_MSCLOCK_HZ == 655000)  ))
+         || (PLATFORM_MSCLOCK_HZ == 655000)  )
             
             platform_ext.cpu_khz = (PLATFORM_MSCLOCK_HZ/1000);
          
@@ -640,7 +640,7 @@ void platform_init_busclk() {
             RCC->CFGR  |= (_AHB_DIV | _APB1_DIV | _APB2_DIV);
 
             // Change MSI to required frequency
-#           if ((PLATFORM_MSCLOCK_HZ == 4200000)
+#           if (PLATFORM_MSCLOCK_HZ == 4200000)
             RCC->ICSCR ^= 0x00006000;               //setting 110
 #           elif (PLATFORM_MSCLOCK_HZ == 2100000)
                                                     //setting 101 (default)
@@ -675,7 +675,7 @@ void platform_init_busclk() {
 #       if (BOARD_FEATURE_HFXTAL == ENABLED)
 #           define _OSC_ONBIT   RCC_CR_HSEON
 #           define _OSC_RDYFLAG RCC_CR_HSERDY
-#           define _OSC_TIMEOUT 10000           //look in datasheet
+#           define _OSC_TIMEOUT HSE_STARTUP_TIMEOUT           //look in datasheet
 
 #       elif (  (PLATFORM_HSCLOCK_HZ == 32000000)       \
              || (PLATFORM_HSCLOCK_HZ == 16000000)       \
@@ -684,7 +684,7 @@ void platform_init_busclk() {
              || (PLATFORM_HSCLOCK_HZ == 2000000) ))
 #           define _OSC_ONBIT   RCC_CR_HSION
 #           define _OSC_RDYFLAG RCC_CR_HSIRDY
-#           define _OSC_TIMEOUT 10000           //look in datasheet
+#           define _OSC_TIMEOUT HSI_STARTUP_TIMEOUT           //look in datasheet
              
 #       else
 #           error "PLATFORM_HSCLOCK_HZ is not set to a value matching HW options"
@@ -712,9 +712,10 @@ void platform_init_busclk() {
 
     /// X. Vector Table Relocation in Internal SRAM or FLASH.
 #   ifdef VECT_TAB_SRAM
-        SCB->VTOR   = SRAM_BASE | VECT_TAB_OFFSET;  
+#       error "Shouldn't be here."
+        SCB->VTOR   = SRAM_BASE;  
 #   else
-        SCB->VTOR   = FLASH_BASE | VECT_TAB_OFFSET;
+        SCB->VTOR   = FLASH_BASE;
 #   endif
 }
 #endif
@@ -760,11 +761,11 @@ void platform_standard_speed() {
 /// the operation of the device.
 #if (MCU_FEATURE_MULTISPEED == ENABLED)
     if ((RCC->CR & RCC_CR_MSION) == 0) {
-        ot_u32 counter;
+        ot_u16 counter;
     
         // Turn-on MSI clock and wait for it to be ready
         RCC->CR    |= RCC_CR_MSION;
-        counter     = MSI_STARTUP_TIMEOUT;      // MSI startup <= 8us
+        counter     = 300; //MSI_STARTUP_TIMEOUT;      // MSI startup <= 8us
         while (((RCC->CR & RCC_CR_MSIRDY) == 0) && (--counter != 0));
         
         // Set MSI as system clock by clearing whatever other clock is in use,
@@ -830,9 +831,12 @@ void platform_flank_speed() {
 OT_INLINE void* platform_save_context(void) {
 /// Save the current P-Stack context (thread) onto its stack.
     ot_u32 tsp;
-    asm volatile    (   "MRS    %0, psp\n\t"
-                        "STMDB  %0!, {r4-r11}\n\t"
-                        "MSR    psp, %0\n\t"        : "=r" (tsp) );
+    asm volatile (
+    "   MRS    %0, psp\n"
+    "   STMDB  %0!, {r4-r11}\n"
+    "   MSR    psp, %0\n"
+        : "=r" (tsp) 
+    );
     return (void*)tsp;
 }
 #endif
@@ -841,9 +845,12 @@ OT_INLINE void* platform_save_context(void) {
 OT_INLINE void platform_load_context(void* tsp) {
 /// Load the current P-Stack context (thread) from its stack.
     ot_u32 scratch;
-    asm volatile    (   "MRS    %0, psp\n\t"
-                        "LDMFD  %0!, {r4-r11}\n\t"
-                        "MSR    psp, %0\n\t"        : "=r" (scratch) );
+    asm volatile (   
+    "   MRS    %0, psp\n"
+    "   LDMFD  %0!, {r4-r11}\n"
+    "   MSR    psp, %0\n"        
+        : "=r" (scratch) 
+    );
 }
 #endif
 
@@ -859,8 +866,6 @@ void platform_drop_context(ot_uint i) {
 /// sys_kill() (or code by-way-of sys_kill()) is responsible for calling the 
 /// task exit function and emptying the thread stack.
 
-    // sys_kill must first call task-exit function.
-    
 #   if (OT_PARAM_SYSTHREADS != 0)
         // Here would go some context clearing jazz
 #   endif
@@ -871,7 +876,7 @@ void platform_drop_context(ot_uint i) {
         // occurred.  By design it has a 6-word offset from PSP.  Overwrite it
         // with the saved address that sends code to RETURN_FROM_TASK.
         register ot_u32 task_lr;
-        asm volatile ("MRS  %0, PSP" : "r"(task_lr) );
+        asm volatile ("MRS  %0, PSP" : "=r"(task_lr) );
         ((ot_u32*)task_lr)[6] = (ot_u32)platform_ext.task_exit;
     }
 }
@@ -885,7 +890,7 @@ void platform_ot_preempt() {
 /// enabler bit), as the ktask will run to completion and do SVC in its own
 /// context (platform_ot_run()).
 
-    if (EXTI->IMR & (1<<OT_GPTIM_IRQ_SRCLINE)) {
+    if (EXTI->IMR & (1<<OT_KTIM_IRQ_SRCLINE)) {
         __SEND_SVC(0);
     }
 }
@@ -908,19 +913,24 @@ OT_INLINE void platform_ot_run() {
     /// 1. Save the current P-stack pointer (PSP), and push the return address 
     ///    onto this position.  If the task is killed during its runtime, this
     ///    data will be used to reset the P-stack and PC.
+    
+    ///@note this code only works with GCC-based compilers.  The && operator
+    /// ahead of the label is a label-reference, and it is a GCC feature.
     register ot_u32 return_from_task;
-    platform_ext.task_entry = (void*)__get_PSP();
+    platform_ext.task_exit  = (void*)__get_PSP();
     return_from_task        = (ot_u32)&&RETURN_FROM_TASK;
-    asm volatile ("PUSH %0" : "=r"(return_from_task) );
+    asm volatile ("PUSH {%0}" : : "r"(return_from_task) );
 
-    /// 2. Run the Tasking Engine.
+    /// 2. Run the Tasking Engine.  It will call the ktask or switch to the 
+    /// thread, as needed based on what is scheduled.
     sys_run_task();
     
-    /// 3. In any condition, retract the stack.  If the task exited cleanly,
-    ///    this will change nothing.  If killed, this will flush the stack.
+    /// 3. In any condition, retract the stack to a known, stable condition.
+    /// If the task/thread exited cleanly, this changes nothing.  If killed, 
+    /// this will flush the stack.
     RETURN_FROM_TASK:
-    __set_PSP( (ot_u32)platform_ext.task_entry );
-    platform_ext.task_entry = NULL;
+    __set_PSP( (ot_u32)platform_ext.task_exit );
+    platform_ext.task_exit = NULL;
     
     /// 3. Run the Scheduler.  The scheduler will issue a PendSV if there is a 
     /// threaded task, in which case the P-stack will get changed to that 
@@ -933,7 +943,7 @@ OT_INLINE void platform_ot_run() {
     ///    time to go to sleep (or more likely STOP mode).  The powerdown 
     ///    routine MUST re-enable interrupts immediately before issuing the WFI
     ///    instruction.
-    if (platform_ext.next_task != 0) {
+    if (platform_ext.next_evt  != 0) {
         platform_disable_interrupts();
         sys_powerdown();
     }
@@ -993,7 +1003,6 @@ void platform_init_interruptor() {
 
     /// 2. Set main NVIC parameters: Vector Table @ 0x08000000 (offset = 0),
     ///    _GROUP_PRIORITY is a constant set above in this C file
-    SCB->VTOR = NVIC_VectTab_FLASH | (0 & (uint32_t)0x1FFFFF80);    //NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0);
     NVIC_SetPriorityGrouping(_GROUP_PRIORITY);
     
     /// 3. Setup Cortex-M system interrupts 
@@ -1014,28 +1023,58 @@ void platform_init_interruptor() {
     ///    <LI> SVC is 1st subpriority.  It runs the scheduler. </LI>
     ///    <LI> GPTIM (kernel timer) is 2nd subpriority.  It runs the tasker.  </LI>
     ///    <LI> RTC is 3rd subpriority. </LI>
+#   if (OT_KTIM_IRQ_SRCLINE < 5)
+#       define OT_KTIM_IRQn     (EXTI0_IRQn + OT_KTIM_IRQ_SRCLINE)
+#       define OT_KTIM_IRQNUM   OT_KTIM_IRQ_SRCLINE
+#   elif (OT_KTIM_IRQ_SRCLINE < 10)
+#       define OT_KTIM_IRQn     EXTI9_5_IRQn
+#       define OT_KTIM_IRQNUM   5
+#   else
+#       define OT_KTIM_IRQn     EXTI15_10_IRQn
+#       define OT_KTIM_IRQNUM   10
+#   endif
 #   define _OT_SUB1         (b0001)
-#   define _OT_GPTIM_NVIC   (_KERNEL_GROUP+OT_SUB1) << 4)
+#   define _OT_SUB2         ((_OT_SUB1+1)*(_SUB_LIMIT >= (_OT_SUB1+1)))   
     ///@note On STM32L, Kernel TIM needs an EXTI line.  It must be initialized  
     ///      in BOARD_EXTI_STARTUP().  If AT-ALL-POSSIBLE... use pins 0-4 for 
     ///      Kernel TIM.
-    NVIC->IP[(uint32_t)(OT_KTIM_IRQn)]          = _OT_KTIM_NVIC;
-    NVIC->ISER[((uint32_t)(OT_KTIM_IRQn)>>5)]   = (1 << ((uint32_t)(OT_GPTIM_IRQn) & 0x1F));
-
+    NVIC->IP[(uint32_t)(OT_KTIM_IRQn)]          = ((_KERNEL_GROUP+_OT_SUB1) << 4);
+    NVIC->ISER[((uint32_t)(OT_KTIM_IRQn)>>5)]   = (1 << ((uint32_t)(OT_KTIM_IRQn) & 0x1F));
+  
 #   if (OT_FEATURE(RTC) == ENABLED) 
 #   define OT_RTC_IRQn      RTC_WKUP_IRQn
-#   define _OT_RTC_NVIC     (_KERNEL_GROUP+OT_SUB2) << 4)
-#   define _OT_SUB2         ((_OT_SUB1+1)*(_SUB_LIMIT >= (_OT_SUB1+1)))
+#   define _OT_SUB3         ((_OT_SUB2+1)*(_SUB_LIMIT >= (_OT_SUB2+1)))  
     EXTI->PR                                    = (1<<20);  //RTC Wakeup Line
     EXTI->IMR                                  |= (1<<20);
     EXTI->RTSR                                 |= (1<<20);
-    NVIC->IP[(uint32_t)(OT_RTC_IRQn)]           = _OT_RTC_NVIC;
+    NVIC->IP[(uint32_t)(OT_RTC_IRQn)]           = ((_KERNEL_GROUP+_OT_SUB2) << 4);
     NVIC->ISER[((uint32_t)(OT_RTC_IRQn)>>5)]    = (1 << ((uint32_t)(OT_RTC_IRQn) & 0x1F));
 #   else 
-#   define _OT_SUB2         _OT_SUB1
+#   define _OT_SUB3         _OT_SUB2
 #   endif
+
+#   if (OT_MACTIM_IRQ_SRCLINE < 5)
+#       define OT_MACTIM_IRQn   (EXTI0_IRQn + OT_MACTIM_IRQ_SRCLINE)
+#       define OT_MACTIM_IRQNUM OT_MACTIM_IRQ_SRCLINE
+#   elif (OT_MACTIM_IRQ_SRCLINE < 10)
+#       define OT_MACTIM_IRQn   EXTI9_5_IRQn
+#       define OT_MACTIM_IRQNUM 5
+#   else
+#       define OT_MACTIM_IRQn   EXTI15_10_IRQn
+#       define OT_MACTIM_IRQNUM 10
+#   endif
+#   if (OT_MACTIM_IRQNUM != OT_KTIM_IRQNUM)
+    NVIC->IP[(uint32_t)(OT_MACTIM_IRQn)]        = ((_KERNEL_GROUP+_OT_SUB3) << 4);
+    NVIC->ISER[((uint32_t)(OT_MACTIM_IRQn)>>5)] = (1 << ((uint32_t)(OT_MACTIM_IRQn) & 0x1F));
+#   endif
+
 }
 #endif
+
+
+
+
+
 
 
 
@@ -1070,7 +1109,7 @@ void platform_init_gptim(ot_uint prescaler) {
     // Set Rising Edge interrupt
 #   if (OT_GPTIM_ID == 9)
 #       define _KTIM_EXTI   BOARD_TIM9CH1_PIN
-#       define _MACTIM_EXTI ((RF_FEATURE(MAC_TIMER) == ENABLED) << BOARD_TIM9CH2_PINNUM)
+#       define _MACTIM_EXTI ((RF_FEATURE(MAC) != ENABLED) << BOARD_TIM9CH2_PINNUM)
 #   elif (OT_GPTIM_ID == 10)
 #       define _KTIM_EXTI   BOARD_TIM10CH1_PIN
 #       define _MACTIM_EXTI 0
@@ -1190,7 +1229,7 @@ void platform_init_memcpy() {
   * ========================================================================<BR>
   */
 ot_u16 platform_get_ktim() {
-    return (OT_GPTIM->CNT - platform_ext.lastktim);
+    return (OT_GPTIM->CNT - platform_ext.last_evt);
 }
 
 ot_u16 platform_next_ktim() {
@@ -1198,28 +1237,28 @@ ot_u16 platform_next_ktim() {
 }
 
 void platform_enable_ktim() {
-    EXTI->IMR |= (1<<OT_GPTIM_IRQ_SRCLINE);
+    EXTI->IMR |= (1<<OT_KTIM_IRQ_SRCLINE);
 }
 
 void platform_disable_ktim() {
-    EXTI->IMR &= ~(1<<OT_GPTIM_IRQ_SRCLINE);
+    EXTI->IMR &= ~(1<<OT_KTIM_IRQ_SRCLINE);
 }
 
 void platform_pend_ktim() {
-    EXTI->SWIER |= (1<<OT_GPTIM_IRQ_SRCLINE);
+    EXTI->SWIER |= (1<<OT_KTIM_IRQ_SRCLINE);
 }
 
 void platform_flush_ktim() {
-    platform_ext.lastktim   = OT_GPTIM->CNT;
-    EXTI->IMR              &= ~(1<<OT_GPTIM_IRQ_SRCLINE);
+    platform_ext.last_evt   = OT_GPTIM->CNT;
+    EXTI->IMR              &= ~(1<<OT_KTIM_IRQ_SRCLINE);
 }
 
 void platform_set_ktim(ot_u16 value) {
 /// The Kernel scheduler does not use the timer on null-delay (value==0), so
 /// there is no value==0 protection.  Kernel Timer does, however, expect to 
 /// measure the active counter, so platform_ext.lastktim needs to be saved.
-    platform_ext.lastktim   = OT_GPTIM->CNT;
-    OT_GPTIM->CCR1          = platform_ext.lastktim + value;
+    platform_ext.last_evt   = OT_GPTIM->CNT;
+    OT_GPTIM->CCR1          = platform_ext.last_evt + value;
 }
 
 void platform_set_gptim2(ot_u16 value) {
@@ -1242,7 +1281,7 @@ void platform_set_watchdog(ot_u16 timeout_ticks) {
 ///
 /// @note On STM32L, the IWDG can be only started once.  After that, you are a
 ///       slave to the watchdog, so be careful.
-
+/*
     ot_u32  wdt_clks;
     ot_u16  wdt_pre;
     
@@ -1258,6 +1297,7 @@ void platform_set_watchdog(ot_u16 timeout_ticks) {
         IWGD->KR    = 0x0000;       //Write access disable
         IWGD->KR    = 0xCCCC;       //Start it up
     }
+    */
 }
 
 void platform_kill_watchdog() {
@@ -1271,7 +1311,9 @@ void platform_pause_watchdog() {
 void platform_resume_watchdog() {
 /// For STM32L IWDG impl, once you set the IWDG, it cannot be disabled unless
 /// by reset.  You need to "resume" it before it expires.
+/*
     IWGD->KR    = 0xAAAA;
+*/
 }
 
 
@@ -1427,6 +1469,7 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
 #   undef OT_GWNADC_PIN
 #endif
 
+/*
     /// Open Floating Input pin
 #   define OT_GWNADC_PIN (1 << OT_GWNADC_PINNUM)
     OT_GWNADC_PORT->MODER  |= (3<<(OT_GWNADC_PIN<<1));  //Set to analog mode
@@ -1490,6 +1533,7 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
 #   endif
     OT_GWNADC_PORT->MODER  ^= (2<<(OT_GWNADC_PIN<<1));  // go to output mode
     OT_GWNADC_PORT->BSRRH   = OT_GWNADC_PIN;            // set output=GND
+*/
 }
 #endif
 
@@ -1543,6 +1587,9 @@ ot_u16 platform_prand_u16() {
         }                                       \
     }
 
+    
+    
+#define MEMCPY_DMA_INT  (1 << ((MEMCPY_DMANUM-1)*4))
 
 void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_int length) {
 /// Use 8, 16, or 32 bit chunks based on detected alignment
@@ -1552,10 +1599,10 @@ void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_int length) {
     align = ((ot_u32)dest | (ot_u32)src | (ot_u32)length) & 3;
     
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
-    MEMCPY_DMA_CHAN->CPAR   = (ot_u32)dest;
-    MEMCPY_DMA_CHAN->CMAR   = (ot_u32)src;
-    MEMCPY_DMA_CHAN->CNDTR  = length >> len_div[align];
-    MEMCPY_DMA_CHAN->CCR    = ccr[align];
+    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
+    MEMCPY_DMACHAN->CMAR   = (ot_u32)src;
+    MEMCPY_DMACHAN->CNDTR  = length >> len_div[align];
+    MEMCPY_DMACHAN->CCR    = ccr[align];
     
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
@@ -1570,10 +1617,10 @@ void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_int length) {
         ccr_val += 0x0500;
     }
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
-    MEMCPY_DMA_CHAN->CPAR   = (ot_u32)dest;
-    MEMCPY_DMA_CHAN->CMAR   = (ot_u32)src;
-    MEMCPY_DMA_CHAN->CNDTR  = length;
-    MEMCPY_DMA_CHAN->CCR    = ccr_val;
+    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
+    MEMCPY_DMACHAN->CMAR   = (ot_u32)src;
+    MEMCPY_DMACHAN->CNDTR  = length;
+    MEMCPY_DMACHAN->CCR    = ccr_val;
     
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
@@ -1582,14 +1629,15 @@ void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_int length) {
 void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 #if (OS_FEATURE(MEMCPY) == ENABLED)
     memcpy(dest, src, length);
+#   error "Fuck"
 
 #elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
     sub_memcpy_dma(dest, src, length);
 //    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
-//    MEMCPY_DMA_CHAN->CPAR   = (ot_u32)dest;
-//    MEMCPY_DMA_CHAN->CMAR   = (ot_u32)src;
-//    MEMCPY_DMA_CHAN->CNDTR  = length;
-//    MEMCPY_DMA_CHAN->CCR    = 0x40D1;
+//    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
+//    MEMCPY_DMACHAN->CMAR   = (ot_u32)src;
+//    MEMCPY_DMACHAN->CNDTR  = length;
+//    MEMCPY_DMACHAN->CCR    = 0x40D1;
 //    while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 
 #else
@@ -1600,12 +1648,12 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 
 void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length) {
 #if (MCU_FEATURE(MEMCPYDMA) == ENABLED)
-    sub_memcpy2_dma(dest, src, length);
+    sub_memcpy2_dma( (ot_u8*)dest, (ot_u8*)src, length);
 //    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
-//    MEMCPY_DMA_CHAN->CPAR   = (ot_u32)dest;
-//    MEMCPY_DMA_CHAN->CMAR   = (ot_u32)src;
-//    MEMCPY_DMA_CHAN->CNDTR  = length;
-//    MEMCPY_DMA_CHAN->CCR    = 0x45D1;
+//    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
+//    MEMCPY_DMACHAN->CMAR   = (ot_u32)src;
+//    MEMCPY_DMACHAN->CNDTR  = length;
+//    MEMCPY_DMACHAN->CCR    = 0x45D1;
 //    while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 
 #else
@@ -1622,17 +1670,13 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
 
 #elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;       ///@todo see if this can be globalized
-    MEMCPY_DMA_CHAN->CPAR   = (ot_u32)dest;
-    MEMCPY_DMA_CHAN->CMAR   = (ot_u32)&value;
-    MEMCPY_DMA_CHAN->CNDTR  = length;
-    MEMCPY_DMA_CHAN->CCR    = DMA_DIR_PeripheralDST       | \
-                              DMA_Mode_Normal             | \
-                              DMA_PeripheralInc_Enable    | \
-                              DMA_MemoryInc_Disable       | \
-                              DMA_PeripheralDataSize_Byte | \
-                              DMA_MemoryDataSize_Byte     | \
-                              DMA_Priority_Low            | \
-                              DMA_M2M_Enable              | \
+    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
+    MEMCPY_DMACHAN->CMAR   = (ot_u32)&value;
+    MEMCPY_DMACHAN->CNDTR  = length;
+    MEMCPY_DMACHAN->CCR    = DMA_CCR1_DIR       | \
+                              DMA_CCR1_PINC    | \
+                              DMA_CCR1_PL_LOW | \
+                              DMA_CCR1_MEM2MEM              | \
                               DMA_CCR1_EN;
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 
@@ -1652,7 +1696,7 @@ void sub_timed_wfe(ot_u16 count, ot_u16 prescaler) {
     // load prescaler
     // load 0-count
     // trigger it
-    while ((TIM10->SR & TIM10_SR_UIF) == 0) {
+    while ((TIM10->SR & TIM_SR_UIF) == 0) {
         __WFE();
     }
     // disable TIM10
@@ -1668,7 +1712,7 @@ void platform_block(ot_u16 sti) {
 
 #ifndef EXTF_platform_delay
 void platform_delay(ot_u16 n) {
-    sub_timed_wfe(sti, 31);
+    sub_timed_wfe(n, 31);
 }
 #endif
 

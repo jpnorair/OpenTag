@@ -46,6 +46,50 @@
 
 
 
+
+/// RF IRQ GPIO Macros:
+#if (RADIO_IRQ0_SRCLINE < 5)
+#   define _RFIRQ0  (EXTI0_IRQn + RADIO_IRQ0_SRCLINE)
+#elif (RADIO_IRQ0_SRCLINE < 10)
+#   define _EXTI9_5_USED
+#   define _RFIRQ0  (EXTI9_5_IRQn)
+#else
+#   define _EXTI15_10_USED
+#   define _RFIRQ0  (EXTI15_10_IRQn)
+#endif
+
+#if (RADIO_IRQ1_SRCLINE < 5)
+#   define _RFIRQ1  (EXTI0_IRQn + RADIO_IRQ1_SRCLINE)
+#elif ((RADIO_IRQ0_SRCLINE < 10) && !defined(_EXTI9_5_USED))
+#   define _EXTI9_5_USED
+#   define _RFIRQ1  (EXTI9_5_IRQn)
+#elif !defined(_EXTI15_10_USED)
+#   define _EXTI15_10_USED
+#   define _RFIRQ1  (EXTI15_10_IRQn)
+#endif
+
+#if (RADIO_IRQ2_SRCLINE < 5)
+#   define _RFIRQ2  (EXTI0_IRQn + RADIO_IRQ2_SRCLINE)
+#elif ((RADIO_IRQ2_SRCLINE < 10) && !defined(_EXTI9_5_USED))
+#   define _EXTI9_5_USED
+#   define _RFIRQ2  (EXTI9_5_IRQn)
+#elif !defined(_EXTI15_10_USED)
+#   define _EXTI15_10_USED
+#   define _RFIRQ2  (EXTI15_10_IRQn)
+#endif
+
+#if (RADIO_IRQ3_SRCLINE < 5)
+#   define _RFIRQ3  (EXTI0_IRQn + RADIO_IRQ3_SRCLINE)
+#elif ((RADIO_IRQ3_SRCLINE < 10) && !defined(_EXTI9_5_USED))
+#   define _EXTI9_5_USED
+#   define _RFIRQ3  (EXTI9_5_IRQn)
+#elif !defined(_EXTI15_10_USED)
+#   define _EXTI15_10_USED
+#   define _RFIRQ3  (EXTI15_10_IRQn)
+#endif
+
+
+
 /// SPI Bus Macros: 
 /// Most are straightforward, but take special note of the clocking macros.
 /// On STM32L, the peripheral clock must be enabled for the peripheral to work.
@@ -97,6 +141,7 @@
 #define __SPI_DISABLE()     RADIO_SPI->CR1 &= ~SPI_CR1_SPE
 #define __SPI_GET(VAL)      VAL = RADIO_SPI->DR
 #define __SPI_PUT(VAL)      RADIO_SPI->DR = VAL
+
 
 
 
@@ -328,13 +373,19 @@ void spirit1_init_bus() {
     EXTI->RTSR |= RFI_ALL;
 
     NVIC->IP[(uint32_t)_RFIRQ0]         = PLATFORM_NVIC_RF_GROUP;
-    NVIC->IP[(uint32_t)_RFIRQ1]         = PLATFORM_NVIC_RF_GROUP;
-    NVIC->IP[(uint32_t)_RFIRQ2]         = PLATFORM_NVIC_RF_GROUP;
-    NVIC->IP[(uint32_t)_RFIRQ3]         = PLATFORM_NVIC_RF_GROUP;
     NVIC->ISER[((uint32_t)_RFIRQ0>>5)]  = (1 << ((uint32_t)_RFIRQ0 & 0x1F));
+#   ifdef _RFIRQ1
+    NVIC->IP[(uint32_t)_RFIRQ1]         = PLATFORM_NVIC_RF_GROUP;
     NVIC->ISER[((uint32_t)_RFIRQ1>>5)]  = (1 << ((uint32_t)_RFIRQ1 & 0x1F));
+#   endif
+#   ifdef _RFIRQ2
+    NVIC->IP[(uint32_t)_RFIRQ2]         = PLATFORM_NVIC_RF_GROUP;
     NVIC->ISER[((uint32_t)_RFIRQ2>>5)]  = (1 << ((uint32_t)_RFIRQ2 & 0x1F));
+#   endif
+#   ifdef _RFIRQ3
+    NVIC->IP[(uint32_t)_RFIRQ3]         = PLATFORM_NVIC_RF_GROUP;
     NVIC->ISER[((uint32_t)_RFIRQ3>>5)]  = (1 << ((uint32_t)_RFIRQ3 & 0x1F));
+#   endif
 }
 
 

@@ -25,12 +25,11 @@
   * power usage on all STM32 chips.
   *   
   * STOP+LP+LSE (or +LSI if your board has no LSE) is used when there are no 
-  * ongoing I/O tasks.  On a STM32L with LSE on and RTC disabled, this can 
-  * deliver typically about 1.5uA drain.  RTC adds about 0.8uA.
+  * ongoing MCU-driven I/O tasks.  On a STM32L with LSE on and RTC disabled, 
+  * this can deliver typically about 1.5uA drain.  RTC adds about 0.8uA.
   *
-  * For the RF task, the mode above is used if HSI or MSI is the top speed
-  * system clock.  If a slow clock is the top speed system clock (HSE or PLL), 
-  * then the SLEEP mode is used while the RF task is active.
+  * For the RF task, STOP mode is used because the RF I/O is managed by the RF
+  * chipset.  The STM32L has nothing to do except wait for pin interrupt.
   * 
   * For other I/O tasks, the SLEEP mode is used with oscillators kept alive.
   * This is required for things like MPipe, which need active peripherals 
@@ -41,45 +40,54 @@
 #include "OT_platform.h"
 
 
+/// Puts system in "stop" mode.  The LSE remains active, all other clocks are
+/// stopped.  GPTIM is driven directly by LSE in STM32L OpenTag (typ TIM9), so
+/// it still has the ability to wake-up the MCU.  Wake-up from STOP goes into
+/// MSI-clocked active mode (typ 4.2 MHz), and it takes approximately 8.2 us.
+void sub_stop() {
+  //ot_u32 tmpreg;
+  
+  //tmpreg      = PWR->CR;
+  //tmpreg     &= CR_DS_MASK;       // Clear PDDS and LPDSR bits
+  //tmpreg     |= PWR_CR_LPSDSR;    // Set LPDSR bit according to PWR_Regulator value
+  //PWR->CR     = tmpreg;
+    PWR->CR    |= PWR_CR_LPSDSR;
+    SCB->SCR   |= SCB_SCR_SLEEPDEEP;
+    __WFI();
+
+    // On wakeup reset SLEEPDEEP bit of Cortex System Control Register
+    SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+    
+#   if ((MCU_FEATURE_MULTISPEED != ENABLED) && defined(BOARD_PARAM_HFHz))
+    /// No Multispeed and HSI/HSE/PLL used for System Clock.  
+    /// On exit from STOP, here we disable MSI and enable HSI/HSE/PLL.
+    platform_full_speed();
+#   endif
+}
+
+
+/// Put system into "sleep" mode.  Note, this is not "low-power sleep mode."
+/// The CPU is off, but the clocks and peripherals remain active.  Sleep mode
+/// is used during MPIPE transfers and things like these that require clocked
+/// peripherals but not necessarily CPU.
+void sub_sleep() {
+    PWR->CR    &= (PWR_CR_PDDS | PWR_CR_LPDSR);
+    SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+    __WFI();
+}
+
+
+
+
 #ifdef EXTF_sys_sig_powerdown
 void sys_sig_powerdown(ot_int code) {
 /// code = 3: No active I/O Task                                (STOP)
 /// code = 2: RF I/O Task active                                (STOP)
 /// code = 1: MPipe or other local peripheral I/O task active   (SLEEP)
 /// code = 0: Use fastest-exit powerdown mode                   (SLEEP)
-    
-#if ((MCU_FEATURE_TURBO != ENABLED) && defined(BOARD_PARAM_HFHz))
-/// No Turbo Mode and HSI/HSE/PLL used for System Clock.  On exit from STOP,
-/// MSI is automatically disabled and HSI/HSE/PLL is enabled.
-    if (code & 2) {
-        STOP;
-        SystemBoost();
+    switch (code & 2) {
+        case 0: sub_sleep();    break;
+        case 2: sub_stop();     break;
     }
-    else {
-        SLEEP;
-    }
-    
-#   elif (MCU_FEATURE_TURBO != ENABLED)
-/// No Turbo Mode, and MSI is the System Clock.  On exit from STOP, MSI is
-/// selected by STM32L Hardware, so this is a simple implementation.
-    if (code & 2)   STOP;
-    else            SLEEP;
-    
-#   else
-/// Turbo is enabled: MSI is the off-boost system clock and HSI/HSE/PLL is the 
-/// on-boost system clock (note, HSI is the best one for most things).  On exit
-/// from STOP, clock will be automatically boosted on code == 2, or system will
-/// be optimized for MSI runtime on code == 3.
-    static const ot_sub wakeup_fn[2] = { &SystemBoost, &SystemResume };
-
-    if (code & 2) {
-        STOP;
-        wakeup_fn[code & 1];
-    }
-    else {
-        SLEEP;
-    }
-#   endif
-
 }
 #endif
