@@ -134,7 +134,7 @@ void spirit1_virtual_isr(ot_u8 code) {
         
         case RFIV_TXEND:    
         case 10:             
-        case 11:            subrfctl_txend();       break;
+        case 11:            subrfctl_txend_isr();   break;
         case RFIV_TXFIFO:   rm2_txdata_isr();       break;
     }
 }
@@ -396,28 +396,15 @@ ot_bool subrfctl_test_channel(ot_u8 channel) {
 
 
 void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
-    static const ot_u8 maccfg_bg[7] = {
-        0, RFREG(PROTOCOL2), 
-        ((DRF_PROTOCOL2 & 0x1F) | _CS_TIMEOUT_MASK),
-        DRF_PROTOCOL1, 
-        DRF_PROTOCOL0,
-        1,
-        5
-    };
-    static const ot_u8 maccfg_fg[7] = {
-        0, RFREG(PROTOCOL2), 
-        ((DRF_PROTOCOL2 & 0x1F) | _SQI_TIMEOUT_MASK),
-        DRF_PROTOCOL1, 
-        DRF_PROTOCOL0,
-        0,
-        0
-    };
-
+    ot_u8 maccfg[7] = { 0, RFREG(PROTOCOL2), 
+                        ((DRF_PROTOCOL2 & 0x1F) | _SQI_TIMEOUT_MASK),
+                        DRF_PROTOCOL1, 
+                        DRF_PROTOCOL0,
+                        0,
+                        0 };
     MODE_enum   buffer_mode;
     ot_u16      pktlen;
-    ot_u8*      maccfg;
     
-
     /// 1.  Prepare RX queue by flushing it
     q_empty(&rxq);
     subrfctl_prep_q(&rxq);
@@ -432,7 +419,7 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     ///    RX-RX happens duing Response listening, unless FIRSTRX is high
     netstate &= (M2_NETFLAG_FIRSTRX | M2_NETSTATE_RESP);
     if ((netstate ^ M2_NETSTATE_RESP) == 0) {
-        protocol_0_ = _PERS_RX;
+        maccfg[4] = _PERS_RX;
     }
 
     /// 4a. Setup RX for Background detection:
@@ -449,7 +436,9 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
         rfctl.rxlimit   = 64;
         pktlen          = 7;
         buffer_mode     = MODE_bg;
-        maccfg          = (ot_u8*)macctl_bg;
+        maccfg[2]       = ((DRF_PROTOCOL2 & 0x1F) | _CS_TIMEOUT_MASK);
+        maccfg[5]       = 1;
+        maccfg[6]       = 5;
     }
 
     /// 4b. Setup RX for Foreground detection:
@@ -467,13 +456,12 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
         pktlen          = 0x0100;
         buffer_mode     = MODE_fgauto;
 #   endif
-        maccfg          = (ot_u8*)macctl_fg;
     }
 
     /// 5.  Send Configuration data to SPIRIT1
     spirit1_spibus_io(7, 0, maccfg);                            // MAC configuration
     subrfctl_buffer_config(buffer_mode, pktlen);                // packet configuration
-    spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfcfg.rxlimit);   // RX FIFO threshold
+    spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit);   // RX FIFO threshold
     spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cs_thr);     // RX CS threshold
 
     /// 6.  Prepare Decoder to receive, then receive
@@ -528,7 +516,7 @@ ot_int rm2_pkt_duration(ot_int pkt_bytes) {
 /// Wrapper function for rm2_scale_codec that adds some slop overhead
 /// Slop = preamble bytes + sync bytes + ramp-up + ramp-down + padding
     pkt_bytes  += (phymac[0].channel & 0x20) ? \
-                    RADIO_PKT_OVERHEAD+2 : RADIO_PKT_OVERHEAD;
+                    RF_PARAM_PKT_OVERHEAD+2 : RF_PARAM_PKT_OVERHEAD;
     return rm2_scale_codec(pkt_bytes);
 }
 #endif
@@ -868,7 +856,7 @@ void rm2_txcsma_isr() {
             // START CSMA if required, using LDC mode
             if ((dll.comm.csmaca_params & M2_CSMACA_NOCSMA) == 0) {
                 ot_u8 protocol2;
-                spirit1_spibus_io(9, 0, timcfg);
+                spirit1_spibus_io(9, 0, timcfg_csma);
                 spirit1_strobe(RFSTROBE_SLEEP);
                 
                 // Calibrate LDC RCO clock every X uses of CSMA.
@@ -884,7 +872,7 @@ void rm2_txcsma_isr() {
             
             // START TX if CSMA disabled for this packet.
             // Note: fall through
-            spirit1_spibus_io(3, 0, timcfg);
+            spirit1_spibus_io(3, 0, timcfg_csma);
         }
 
         /// 3. TX startup: 'nuff said
@@ -1135,8 +1123,8 @@ ot_bool subrfctl_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
             /// SPIRIT1 has different encoding for CS & CCA than DASH7 does.
             /// It's actually quite similar, but it isn't identical, so this
             /// function will convert the thresholds from DASH7 to SPIRIT1.
-            phymac[0].cs_thr    = spirit1_rssithr_calc(phymac[0].cs_thr);
-            phymac[0].cca_thr   = spirit1_rssithr_calc(phymac[0].cca_thr);
+            phymac[0].cs_thr    = spirit1_calc_rssithr(phymac[0].cs_thr);
+            phymac[0].cca_thr   = spirit1_calc_rssithr(phymac[0].cca_thr);
 
             subrfctl_chan_config(old_chan_id, old_tx_eirp);
             return True;
@@ -1154,8 +1142,8 @@ void subrfctl_chan_config(ot_u8 old_chan, ot_u8 old_eirp) {
 /// Duty: perform channel setup and recalibration when moving from one channel
 /// to another.
     static const ot_u8 drate_matrix[14] = { 
-        0, RFREG(MOD1), DRF_MOD1_LS, DRF_MOD0_LS, _DRF_FDEV0, _DRF_CHFLT_LS, 0, 0, 
-        0, RFREG(MOD1), DRF_MOD1_HS, DRF_MOD0_HS, _DRF_FDEV0, _DRF_CHFLT_HS
+        0, RFREG(MOD1), DRF_MOD1_LS, DRF_MOD0_LS, DRF_FDEV0, DRF_CHFLT_LS, 0, 0, 
+        0, RFREG(MOD1), DRF_MOD1_HS, DRF_MOD0_HS, DRF_FDEV0, DRF_CHFLT_HS
     };
 
     ot_u8 fc_i;
@@ -1171,7 +1159,7 @@ void subrfctl_chan_config(ot_u8 old_chan, ot_u8 old_eirp) {
 
     /// Configure data rate: only change registers if required
     if ( (old_chan ^ phymac[0].channel) & 0x70 ) {
-        spirit1_spibus_io( 6, 0, &drate_matrix[(phymac[0].channel & 0x20) >> 2] );
+        spirit1_spibus_io( 6, 0, (ot_u8*)&drate_matrix[(phymac[0].channel & 0x20) >> 2] );
     }
 
     /// Configure Channel: only change registers if required
@@ -1221,7 +1209,7 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
     ot_u8 is_hs;
     
     buf_cfg[0]  = 0;
-    buf_cfg[1]  = RFREG(PKTCTRL2);
+    buf_cfg[1]  = RFREG(PCKTCTRL2);
     is_hs       = (phymac[0].channel & 0x20) >> 1;
     buf_cfg[2]  = b00011010 + is_hs;
     buf_cfg[2] |= (mode & 1);
@@ -1235,7 +1223,7 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
     buf_cfg[8]  = sync_matrix[mode];
     buf_cfg[9]  = sync_matrix[mode+1];
     
-    spirit1_spibus(10, 0, buf_cfg);
+    spirit1_spibus_io(10, 0, buf_cfg);
 }
 
 
@@ -1276,7 +1264,7 @@ void subrfctl_offset_rxtimeout() {
 /// If the rx timeout is 0, set it to a minimally small amount, which relates to
 /// the rounded-up duration of an M2AdvP packet: 1, 2, 3, or 4 ti.
 ///@note this is a safety function that could be removed for certain builds
-    ot_u8 min_ti
+    ot_u8 min_ti;
     min_ti  = 3 - ((phymac[0].channel & 0x20) >> 4);
     min_ti += (rfctl.flags & RADIO_FLAG_FEC);
     

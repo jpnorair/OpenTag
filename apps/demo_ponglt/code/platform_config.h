@@ -47,7 +47,7 @@
     &&  !defined(BOARD_HayTag_R1T)      \
     &&  !defined(BOARD_HayTag_R1A)      \
     )
-#   define BOARD_OMG_CC430
+#   define BOARD_IKR001
 #endif
 
 

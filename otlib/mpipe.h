@@ -362,6 +362,13 @@ void mpipedrv_detach(void* port_id);
 void mpipedrv_kill();
 
 
+/** @brief  Clears the MPipe Driver state machine (typically sends to Idle)
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  */
+void mpipedrv_clear();
+
 
 /** @brief  Blocks MPipe from operating
   * @param  None

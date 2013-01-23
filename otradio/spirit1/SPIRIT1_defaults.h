@@ -27,8 +27,8 @@
 #ifndef __SPIRIT1_defaults_H
 #define __SPIRIT1_defaults_H
 
+#include "OT_platform.h"
 #include "OT_types.h"
-#include "OT_config.h"
 #include "SPIRIT1_registers.h"
 
 
@@ -42,22 +42,27 @@
 #   error "RF_PARAM_BAND is not set to an implemented value"
 #endif
 
-#if (BOARD_RFXTAL_Hz == 24000000)
+
+#if (BOARD_FEATURE_RFXTAL != ENABLED)
+#   undef BOARD_PARAM_RFHz
+#   define BOARD_PARAM_RFHz  BOARD_PARAM_HFHz
+#   define _XTAL_SRC    _EXT_REF
+#else
+#   define _XTAL_SRC    0
+#endif
+
+
+#if (BOARD_PARAM_RFHz == 24000000)
 #   define _24MHz
-#elif (BOARD_RFXTAL_Hz == 26000000)
+#elif (BOARD_PARAM_RFHz == 26000000)
 #   define _26MHz
-#elif (BOARD_RFXTAL_Hz == 48000000)
+#elif (BOARD_PARAM_RFHz == 48000000)
 #   define _48MHz
-#elif (BOARD_RFXTAL_Hz == 52000000)
+#elif (BOARD_PARAM_RFHz == 52000000)
 #   define _52MHz
 #else
-#   error "BOARD_RFXTAL_Hz must be 24, 26, 48, or 52 MHz"
+#   error "BOARD_PARAM_RFHz must be 24, 26, 48, or 52 MHz"
 #endif
-
-#ifndef BOARD_RFXTAL_BYPASS
-#   define BOARD_RFXTAL_BYPASS  DISABLED
-#endif
-
 
 
 
@@ -65,13 +70,13 @@
 #define DRF_ANA_FUNC_CONF1      (_GM_CONF_25m6s | _SET_BLD_LVL_2V7)
 
 //R01
-#if ((defined(_24MHz) || defined(_48MHz)) && (BOARD_RFXTAL_BYPASS == ENABLED))
+#if ((defined(_24MHz) || defined(_48MHz)) && (BOARD_FEATURE_RFXTAL != ENABLED))
 #   define DRF_ANA_FUNC_CONF0   (0x80 | _EXT_REF)
-#elif ((defined(_26MHz) || defined(_52MHz)) && (BOARD_RFXTAL_BYPASS == ENABLED))
+#elif ((defined(_26MHz) || defined(_52MHz)) && (BOARD_FEATURE_RFXTAL != ENABLED))
 #   define DRF_ANA_FUNC_CONF0   (0x80 | _24_26MHz_SELECT | _EXT_REF)
 #elif (defined(_24MHz) || defined(_48MHz))
 #   define DRF_ANA_FUNC_CONF0   (0x80 | 0)
-#elif (defined(_24MHz) || defined(_48MHz))
+#elif (defined(_26MHz) || defined(_52MHz))
 #   define DRF_ANA_FUNC_CONF0   (0x80 | _24_26MHz_SELECT)
 #endif
 
@@ -243,11 +248,11 @@
 #   define DRF_MOD1_LS          _DR_M_D7LS_26MHz
 #   define DRF_MOD1_HS          _DR_M_D7HS_26MHz
 #elif defined(_48MHz)
-#   define DRF_MOD1_LS          _DR_M_D7LS_48MHz
-#   define DRF_MOD1_HS          _DR_M_D7HS_48MHz
+#   define DRF_MOD1_LS          _DR_M_D7LS_24MHz
+#   define DRF_MOD1_HS          _DR_M_D7HS_24MHz
 #elif defined(_52MHz)
-#   define DRF_MOD1_LS          _DR_M_D7LS_52MHz
-#   define DRF_MOD1_HS          _DR_M_D7HS_52MHz
+#   define DRF_MOD1_LS          _DR_M_D7LS_26MHz
+#   define DRF_MOD1_HS          _DR_M_D7HS_26MHz
 #endif
 #define DRF_MOD1                DRF_MOD1_LS
 
@@ -259,11 +264,11 @@
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_26MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_M_D7HS_26MHz)
 #elif defined(_48MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_48MHz)
-#   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_48MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_24MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_24MHz)
 #elif defined(_52MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_52MHz)
-#   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_52MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_26MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_26MHz)
 #endif
 #define DRF_MOD0                DRF_MOD0_LS
 
@@ -286,11 +291,11 @@
 #   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_26MHz | _CHFLT_E_D7LS_26MHz)
 #   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_26MHz | _CHFLT_E_D7HS_26MHz)
 #elif defined(_48MHz)
-#   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_48MHz | _CHFLT_E_D7LS_48MHz)
-#   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_48MHz | _CHFLT_E_D7HS_48MHz)
+#   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_24MHz | _CHFLT_E_D7LS_24MHz)
+#   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_24MHz | _CHFLT_E_D7HS_24MHz)
 #elif defined(_52MHz)
-#   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_52MHz | _CHFLT_E_D7LS_52MHz)
-#   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_52MHz | _CHFLT_E_D7HS_52MHz)
+#   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_26MHz | _CHFLT_E_D7LS_26MHz)
+#   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_26MHz | _CHFLT_E_D7HS_26MHz)
 #endif
 
 //R1E (using power-up defaults)

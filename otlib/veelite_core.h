@@ -1,4 +1,4 @@
-/* Copyright 2010 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/veelite_core.h
   * @author     JP Norair
-  * @version    R100
-  * @date       5 November 2010
+  * @version    R101
+  * @date       23 Jan 2013
   * @brief      An interface for reading and writing to veelite virtual memory
   * @defgroup   Veelite (Veelite Module)
   * @ingroup    Veelite
@@ -94,9 +94,9 @@ typedef ot_u16 vaddr;
 #   define VWORM_BASE_VADDR			FLASH_FS_ADDR
 #   endif
 #   define VWORM_PAGESIZE           FLASH_PAGE_SIZE
-#   define VWORM_NUM_PAGES          FLASH_NUM_PAGES
+#   define VWORM_NUM_PAGES          FLASH_FS_PAGES
 #   define VWORM_FALLOW_PAGES       FLASH_FS_FALLOWS
-#   define VWORM_PRIMARY_PAGES      (FLASH_NUM_PAGES - FLASH_FS_FALLOWS)
+#   define VWORM_PRIMARY_PAGES      (FLASH_FS_PAGES - FLASH_FS_FALLOWS)
 #   define VWORM_MAXBLOCKSIZE       VWORM_PAGESIZE                                ///@todo bring into implementation
 #   define VWORM_BLOCKSIZE          VWORM_PAGESIZE                                ///@todo bring into implementation
 #   define VWORM_BLOCKINFO_OFFSET   VWORM_BLOCKSIZE                                 ///@todo bring into implementation

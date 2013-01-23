@@ -45,6 +45,31 @@
 
 
 
+//API wrappers
+void otapi_poweron()    { platform_poweron(); }
+void otapi_poweroff()   { platform_poweroff(); }
+void otapi_init()       { platform_init_OT(); }
+void otapi_exec()       { platform_ot_run(); }
+void otapi_preempt()    { platform_ot_preempt(); }
+void otapi_pause()      { platform_ot_pause(); }
+
+#ifndef EXTF_otapi_led1_on
+void otapi_led1_on() { platform_trig1_high(); }
+#endif
+#ifndef EXTF_otapi_led2_on
+void otapi_led2_on() { platform_trig2_high(); }
+#endif
+#ifndef EXTF_otapi_led1_off
+void otapi_led1_off() { platform_trig1_low(); }
+#endif
+#ifndef EXTF_otapi_led2_off
+void otapi_led2_off() { platform_trig2_low(); }
+#endif
+
+
+
+
+
 
 /** Context Caching Parameters <BR>
   * =======================================================================<BR>
@@ -320,10 +345,10 @@ void SVC_Handler(void) {
 }
 
 
-void OT_GPTIM_ISR() {
+void platform_ktim_isr() {
 /// The Kernel timer expiring is evidence that a task is pending, so we must
 /// invoke the PendSV interrupt here.  
-    SET_PENDSV();
+    __SET_PENDSV();
 }
 
 
@@ -336,7 +361,7 @@ void PendSV_Handler(void) {
 /// task.  To manually kill a task, use SVC 1.
     
     // There is an erratum that PendSV bit is not adequately cleared in HW
-    CLR_PENDSV();
+    __CLR_PENDSV();
     
     // sys_task_manager performs context switching via platform_..._context()
     // functions.  It returns the new P-stack pointer, which we set.
@@ -435,7 +460,7 @@ void platform_poweron() {
     
     ///2. Clock Setup: On startup, all clocks are 2.1 MHz MSI
     platform_init_busclk();
-    platform_init_perihclk();
+    platform_init_periphclk();
     
     ///3. Board Specific powering up (usually default port setup)
     BOARD_PERIPH_INIT();
@@ -681,7 +706,7 @@ void platform_init_busclk() {
              || (PLATFORM_HSCLOCK_HZ == 16000000)       \
              || (PLATFORM_HSCLOCK_HZ == 8000000)        \
              || (PLATFORM_HSCLOCK_HZ == 4000000)        \
-             || (PLATFORM_HSCLOCK_HZ == 2000000) ))
+             || (PLATFORM_HSCLOCK_HZ == 2000000) )
 #           define _OSC_ONBIT   RCC_CR_HSION
 #           define _OSC_RDYFLAG RCC_CR_HSIRDY
 #           define _OSC_TIMEOUT HSI_STARTUP_TIMEOUT           //look in datasheet
@@ -691,7 +716,7 @@ void platform_init_busclk() {
 #       endif
         
         RCC->CR    |= ((uint32_t)_OSC_ONBIT);
-        counter     = _OSC_TIMEOUT
+        counter     = _OSC_TIMEOUT;
         while (((RCC->CR & _OSC_RDYFLAG) == 0) && (--counter != 0));
     
         // Crystal Startup succeeded
@@ -1041,10 +1066,10 @@ void platform_init_interruptor() {
     NVIC->IP[(uint32_t)(OT_KTIM_IRQn)]          = ((_KERNEL_GROUP+_OT_SUB1) << 4);
     NVIC->ISER[((uint32_t)(OT_KTIM_IRQn)>>5)]   = (1 << ((uint32_t)(OT_KTIM_IRQn) & 0x1F));
   
-#   if (OT_FEATURE(RTC) == ENABLED) 
+#   if 0 //(OT_FEATURE(RTC) == ENABLED) 
 #   define OT_RTC_IRQn      RTC_WKUP_IRQn
 #   define _OT_SUB3         ((_OT_SUB2+1)*(_SUB_LIMIT >= (_OT_SUB2+1)))  
-    EXTI->PR                                    = (1<<20);  //RTC Wakeup Line
+    EXTI->PR                                    = (1<<20);  //RTC Wakeup Line should be Alarm
     EXTI->IMR                                  |= (1<<20);
     EXTI->RTSR                                 |= (1<<20);
     NVIC->IP[(uint32_t)(OT_RTC_IRQn)]           = ((_KERNEL_GROUP+_OT_SUB2) << 4);
@@ -1185,7 +1210,7 @@ void platform_init_rtc(ot_u32 value) {
 /// Task-Alarm feature uses *only* the wakeup timer feature of the STM32L RTC.
 /// The rest of the RTC features are not generally activated, and you can do
 /// whatever you want with them.
-#if (OT_FEATURE(RTC) || defined(OT_GPTIM_USERTC))
+#if 0 //(OT_FEATURE(RTC) || defined(OT_GPTIM_USERTC))
 
 #   if (BOARD_PARAM_LFHz != 32768)
 #       error "Currently, the RTC must use 32768Hz"
@@ -1323,7 +1348,7 @@ void platform_resume_watchdog() {
 void platform_enable_rtc() {
 /// In apps with RTC enabled, it is always running.  Here, we just activate the 
 /// wakeup timer feature of the STM32L RTC, which is the only part OT uses.
-#if (OT_FEATURE(RTC) == ENABLED)
+#if 0 //(OT_FEATURE(RTC) == ENABLED)
     RTC->WPR    = 0xCA;
     RTC->CR    |= (RTC_CR_WUTIE | RTC_CR_WUTE);
     RTC->WPR    = 0x53;
@@ -1335,7 +1360,7 @@ void platform_enable_rtc() {
 #ifndef EXTF_platform_disable_rtc
 void platform_disable_rtc() {
 /// Disable the RTC interrupt and wakeup timer, but keep the HW going
-#if (OT_FEATURE(RTC) == ENABLED)
+#if 0 //(OT_FEATURE(RTC) == ENABLED)
     RTC->WPR    = 0xCA;
     RTC->CR    &= ~(RTC_CR_WUTIE | RTC_CR_WUTE);
     RTC->WPR    = 0x53;
@@ -1370,7 +1395,7 @@ ot_u32 platform_get_time() {
 #ifndef EXTF_platform_set_rtc_alarm
 void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
 /// This function implementation is largely platform-independent.
-#if (OT_FEATURE(RTC) == ENABLED)
+#if 0 //(OT_FEATURE(RTC) == ENABLED)
 #   ifdef __DEBUG__
     if (alarm_id < RTC_ALARMS)
 #   endif
@@ -1589,7 +1614,7 @@ ot_u16 platform_prand_u16() {
 
     
     
-#define MEMCPY_DMA_INT  (1 << ((MEMCPY_DMANUM-1)*4))
+#define MEMCPY_DMA_INT  (1 << ((MEMCPY_DMA_CHAN_ID-1)*4))
 
 void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_int length) {
 /// Use 8, 16, or 32 bit chunks based on detected alignment

@@ -53,7 +53,7 @@
 /// When coming out of STOP, clock is always MSI.  If Multispeed clocking is
 /// disabled and a non-MSI clock is the clock source, it must be turned-on.
 #if (MCU_FEATURE_MULTISPEED != ENABLED)
-#   define __ISR_WAKEUP_HOOK()  platform_speed_full()
+#   define __ISR_WAKEUP_HOOK();  //platform_speed_full() should be done in powerdown applet
 #else
 #   define __ISR_WAKEUP_HOOK(); 
 #endif
@@ -78,44 +78,82 @@
 /// Enable MPIPE Interrupts:
 /// DMA interrupts for UART DMA
 #if (OT_FEATURE(MPIPE))
-#   if (MCU_FEATURE(MPIPEUART))
+#   if (MCU_FEATURE(MPIPECDC))
         ///@todo USB MPipe Interrupt settings
 #   elif (MCU_FEATURE(MPIPEUART))
-#       if ((MPIPE_DMA_RXCHAN == DMA1Channel1) || (MPIPE_DMA_TXCHAN == DMA1Channel1))
+#       if (MPIPE_DMA_RXCHAN_ID == 1)
 #           undef __N_ISR_DMA1_Channel1
 #           undef __ISR_DMA1_Channel1
 #           define __ISR_DMA1_Channel1
-#       elif ((MPIPE_DMA_RXCHAN == DMA1Channel2) || (MPIPE_DMA_TXCHAN == DMA1Channel2))
+#       elif (MPIPE_DMA_RXCHAN_ID == 2)
 #           undef __N_ISR_DMA1_Channel2
 #           undef __ISR_DMA1_Channel2
 #           define __ISR_DMA1_Channel2
-#       elif ((MPIPE_DMA_RXCHAN == DMA1Channel3) || (MPIPE_DMA_TXCHAN == DMA1Channel3))
+#       elif (MPIPE_DMA_RXCHAN_ID == 3)
 #           undef __N_ISR_DMA1_Channel3
 #           undef __ISR_DMA1_Channel3
 #           define __ISR_DMA1_Channel3
-#       elif ((MPIPE_DMA_RXCHAN == DMA1Channel4) || (MPIPE_DMA_TXCHAN == DMA1Channel4))
+#       elif (MPIPE_DMA_RXCHAN_ID == 4)
 #           undef __N_ISR_DMA1_Channel4
 #           undef __ISR_DMA1_Channel4
 #           define __ISR_DMA1_Channel4
-#       elif ((MPIPE_DMA_RXCHAN == DMA1Channel5) || (MPIPE_DMA_TXCHAN == DMA1Channel5))
+#       elif (MPIPE_DMA_RXCHAN_ID == 5)
 #           undef __N_ISR_DMA1_Channel5
 #           undef __ISR_DMA1_Channel5
 #           define __ISR_DMA1_Channel5
-#       elif ((MPIPE_DMA_RXCHAN == DMA1Channel6) || (MPIPE_DMA_TXCHAN == DMA1Channel6))
+#       elif (MPIPE_DMA_RXCHAN_ID == 6)
 #           undef __N_ISR_DMA1_Channel6
 #           undef __ISR_DMA1_Channel6
 #           define __ISR_DMA1_Channel6
-#       elif ((MPIPE_DMA_RXCHAN == DMA1Channel7) || (MPIPE_DMA_TXCHAN == DMA1Channel7))
+#       elif (MPIPE_DMA_RXCHAN_ID == 7)
 #           undef __N_ISR_DMA1_Channel7
 #           undef __ISR_DMA1_Channel7
 #           define __ISR_DMA1_Channel7
 #       endif
-    ///@todo CTS/RTS on UART
+#       if (MPIPE_DMA_TXCHAN_ID == 1)
+#           undef __N_ISR_DMA1_Channel1
+#           define __N_ISR_DMA1_Channel1
+#       elif (MPIPE_DMA_TXCHAN_ID == 2)
+#           undef __N_ISR_DMA1_Channel2
+#           define __N_ISR_DMA1_Channel2
+#       elif (MPIPE_DMA_TXCHAN_ID == 3)
+#           undef __N_ISR_DMA1_Channel3
+#           define __N_ISR_DMA1_Channel3
+#       elif (MPIPE_DMA_TXCHAN_ID == 4)
+#           undef __N_ISR_DMA1_Channel4
+#           define __N_ISR_DMA1_Channel4
+#       elif (MPIPE_DMA_TXCHAN_ID == 5)
+#           undef __N_ISR_DMA1_Channel5
+#           define __N_ISR_DMA1_Channel5
+#       elif (MPIPE_DMA_TXCHAN_ID == 6)
+#           undef __N_ISR_DMA1_Channel6
+#           define __N_ISR_DMA1_Channel6
+#       elif (MPIPE_DMA_TXCHAN_ID == 7)
+#           undef __N_ISR_DMA1_Channel7
+#           define __N_ISR_DMA1_Channel7
+#       endif
+
+#       if (MPIPE_UART_ID == 1)
+#           undef __ISR_USART1
+#           define __ISR_USART1
+#       elif (MPIPE_UART_ID == 2)
+#           undef __ISR_USART2
+#           define __ISR_USART2
+#       elif (MPIPE_UART_ID == 3)
+#           undef __ISR_USART3
+#           define __ISR_USART4
+#       endif
+
+        ///@todo CTS/RTS on UART
 
 #   else
 #       error "MPIPE enabled in app configuration, but not enabled on this board."
 #   endif
 #endif
+
+
+
+
 
 
 
@@ -210,15 +248,106 @@ void RCC_IRQHandler(void) {
 
 
 
-
 /// Open EXTI interrupts
+#if defined(__ISR_EXTI0)
+#   define APPLICATION_EXTI0_ISR()  platform_isr_exti0()
+#else
+#   define APPLICATION_EXTI0_ISR(); 
+#endif
+#if defined(__ISR_EXTI1)
+#   define APPLICATION_EXTI1_ISR()  platform_isr_exti1()
+#else
+#   define APPLICATION_EXTI1_ISR(); 
+#endif
+#if defined(__ISR_EXTI2)
+#   define APPLICATION_EXTI2_ISR()  platform_isr_exti2()
+#else
+#   define APPLICATION_EXTI2_ISR(); 
+#endif
+#if defined(__ISR_EXTI3)
+#   define APPLICATION_EXTI3_ISR()  platform_isr_exti3()
+#else
+#   define APPLICATION_EXTI3_ISR(); 
+#endif
+#if defined(__ISR_EXTI4)
+#   define APPLICATION_EXTI4_ISR()  platform_isr_exti4()
+#else
+#   define APPLICATION_EXTI4_ISR(); 
+#endif
+#if defined(__ISR_EXTI5)
+#   define APPLICATION_EXTI5_ISR()  platform_isr_exti5()
+#else
+#   define APPLICATION_EXTI5_ISR(); 
+#endif
+#if defined(__ISR_EXTI6)
+#   define APPLICATION_EXTI6_ISR()  platform_isr_exti6()
+#else
+#   define APPLICATION_EXTI6_ISR(); 
+#endif
+#if defined(__ISR_EXTI7)
+#   define APPLICATION_EXTI7_ISR()  platform_isr_exti7()
+#else
+#   define APPLICATION_EXTI7_ISR(); 
+#endif
+#if defined(__ISR_EXTI8)
+#   define APPLICATION_EXTI8_ISR()  platform_isr_exti8()
+#else
+#   define APPLICATION_EXTI8_ISR(); 
+#endif
+#if defined(__ISR_EXTI9)
+#   define APPLICATION_EXTI9_ISR()  platform_isr_exti9()
+#else
+#   define APPLICATION_EXTI9_ISR(); 
+#endif
+#if defined(__ISR_EXTI10)
+#   define APPLICATION_EXTI10_ISR()  platform_isr_exti10()
+#else
+#   define APPLICATION_EXTI10_ISR(); 
+#endif
+#if defined(__ISR_EXTI11)
+#   define APPLICATION_EXTI11_ISR()  platform_isr_exti11()
+#else
+#   define APPLICATION_EXTI11_ISR(); 
+#endif
+#if defined(__ISR_EXTI12)
+#   define APPLICATION_EXTI12_ISR()  platform_isr_exti12()
+#else
+#   define APPLICATION_EXTI12_ISR(); 
+#endif
+#if defined(__ISR_EXTI13)
+#   define APPLICATION_EXTI13_ISR()  platform_isr_exti13()
+#else
+#   define APPLICATION_EXTI13_ISR(); 
+#endif
+#if defined(__ISR_EXTI0)
+#   define APPLICATION_EXTI13_ISR()  platform_isr_exti13()
+#else
+#   define APPLICATION_EXTI13_ISR(); 
+#endif
+#if defined(__ISR_EXTI14)
+#   define APPLICATION_EXTI14_ISR()  platform_isr_exti14()
+#else
+#   define APPLICATION_EXTI14_ISR(); 
+#endif
+#if defined(__ISR_EXTI15)
+#   define APPLICATION_EXTI15_ISR()  platform_isr_exti15()
+#else
+#   define APPLICATION_EXTI15_ISR(); 
+#endif
 
-#define __EXTI_MACRO(NUM)   \
+
+#define __EXTI_MACRO_LOW(NUM);  \
+    EXTI->PR = (1<<NUM);  \
+    BOARD_KTIM_EXTI##NUM##_ISR(); \
+    BOARD_RADIO_EXTI##NUM##_ISR(); \
+    APPLICATION_EXTI##NUM##_ISR();
+
+#define __EXTI_MACRO(NUM);   \
     if (EXTI->PR & (1<<NUM)) { \
         EXTI->PR = (1<<NUM);  \
-        BOARD_KTIM_EXTI##NUM_ISR(); \
-        BOARD_RADIO_EXTI##NUM_ISR(); \
-        PLATFORM_EXTI##NUM_ISR(); \
+        BOARD_KTIM_EXTI##NUM##_ISR(); \
+        BOARD_RADIO_EXTI##NUM##_ISR(); \
+        APPLICATION_EXTI##NUM##_ISR(); \
     } \
     else
 
@@ -226,15 +355,7 @@ void RCC_IRQHandler(void) {
 void EXTI0_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-
-    EXTI->PR = (1<<0);
-    BOARD_KTIM_EXTI0_ISR();
-    BOARD_RADIO_EXTI0_ISR();
-    
-    // Your custom app usage of EXTI0
-#   ifdef __ISR_EXTI0
-    platform_isr_exti0();
-#   endif
+    __EXTI_MACRO_LOW(0);
     __ISR_EXIT_HOOK();
 }
 #endif
@@ -243,15 +364,7 @@ void EXTI0_IRQHandler(void) {
 void EXTI1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    
-    EXTI->PR = (1<<1);
-    BOARD_KTIM_EXTI1_ISR();
-    BOARD_RADIO_EXTI1_ISR();
-    
-    // Your custom app usage of EXTI1
-#   ifdef __ISR_EXTI1
-    platform_isr_exti1();
-#   endif
+    __EXTI_MACRO_LOW(1);
     __ISR_EXIT_HOOK();
 }
 #endif
@@ -260,15 +373,7 @@ void EXTI1_IRQHandler(void) {
 void EXTI2_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    
-    EXTI->PR = (1<<2);
-    BOARD_KTIM_EXTI2_ISR();
-    BOARD_RADIO_EXTI2_ISR();
-    
-    // Your custom app usage of EXTI2
-#   ifdef __ISR_EXTI2
-    platform_isr_exti2();
-#   endif
+    __EXTI_MACRO_LOW(2);
     __ISR_EXIT_HOOK();
 }
 #endif
@@ -277,15 +382,7 @@ void EXTI2_IRQHandler(void) {
 void EXTI3_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    
-    EXTI->PR = (1<<3);
-    BOARD_KTIM_EXTI3_ISR();
-    BOARD_RADIO_EXTI3_ISR();
-    
-    // Your custom app usage of EXTI3
-#   ifdef __ISR_EXTI3
-    platform_isr_exti3();
-#   endif
+    __EXTI_MACRO_LOW(3);
     __ISR_EXIT_HOOK();
 }
 #endif
@@ -294,15 +391,7 @@ void EXTI3_IRQHandler(void) {
 void EXTI4_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    
-    EXTI->PR = (1<<4);
-    BOARD_KTIM_EXTI4_ISR();
-    BOARD_RADIO_EXTI4_ISR();
-    
-    // Your custom app usage of EXTI4
-#   ifdef __ISR_EXTI4
-    platform_isr_exti4();
-#   endif
+    __EXTI_MACRO_LOW(4);
     __ISR_EXIT_HOOK();
 }
 #endif
@@ -381,48 +470,48 @@ void EXTI15_10_IRQHandler(void) {
 /// If you are using a DMA, the interrupt is available unless you declare
 /// __N_ISR_DMAX_ChannelY in your app.  MEMCPY uses a DMA without interrupt, so
 /// you'll see below how to force-off a DMA channel interrupt.
-#ifdef __DMA_CHAN1_USED
+#ifdef __USE_DMA1_CHAN1
 #    undef __ISR_DMA1_Channel1
 #    define __ISR_DMA1_Channel1
 #endif
-#ifdef __DMA_CHAN2_USED
+#ifdef __USE_DMA1_CHAN2
 #    undef __ISR_DMA1_Channel2
 #    define __ISR_DMA1_Channel2
 #endif
-#ifdef __DMA_CHAN3_USED
+#ifdef __USE_DMA1_CHAN3
 #    undef __ISR_DMA1_Channel3
 #    define __ISR_DMA1_Channel3
 #endif
-#ifdef __DMA_CHAN4_USED
+#ifdef __USE_DMA1_CHAN4
 #    undef __ISR_DMA1_Channel4
 #    define __ISR_DMA1_Channel4
 #endif
-#ifdef __DMA_CHAN5_USED
+#ifdef __USE_DMA1_CHAN5
 #    undef __ISR_DMA1_Channel5
 #    define __ISR_DMA1_Channel5
 #endif
-#ifdef __DMA_CHAN6_USED
+#ifdef __USE_DMA1_CHAN6
 #    undef __ISR_DMA1_Channel6
 #    define __ISR_DMA1_Channel6
 #endif
-#ifdef __DMA_CHAN7_USED
+#ifdef __USE_DMA1_CHAN7
 #    undef __ISR_DMA1_Channel7
 #    define __ISR_DMA1_Channel7
 #endif
 
-#if   ((MEMCPY_DMANUM == 1) && !defined(__N_ISR_DMA1_Channel1))
+#if   ((MEMCPY_DMA_CHAN_ID == 1) && !defined(__N_ISR_DMA1_Channel1))
 #   define __N_ISR_DMA1_Channel1
-#elif ((MEMCPY_DMANUM == 2) && !defined(__N_ISR_DMA1_Channel2))
+#elif ((MEMCPY_DMA_CHAN_ID == 2) && !defined(__N_ISR_DMA1_Channel2))
 #   define __N_ISR_DMA1_Channel2
-#elif ((MEMCPY_DMANUM == 3) && !defined(__N_ISR_DMA1_Channel3))
+#elif ((MEMCPY_DMA_CHAN_ID == 3) && !defined(__N_ISR_DMA1_Channel3))
 #   define __N_ISR_DMA1_Channel3
-#elif ((MEMCPY_DMANUM == 4) && !defined(__N_ISR_DMA1_Channel4))
+#elif ((MEMCPY_DMA_CHAN_ID == 4) && !defined(__N_ISR_DMA1_Channel4))
 #   define __N_ISR_DMA1_Channel4
-#elif ((MEMCPY_DMANUM == 5) && !defined(__N_ISR_DMA1_Channel5))
+#elif ((MEMCPY_DMA_CHAN_ID == 5) && !defined(__N_ISR_DMA1_Channel5))
 #   define __N_ISR_DMA1_Channel5
-#elif ((MEMCPY_DMANUM == 6) && !defined(__N_ISR_DMA1_Channel6))
+#elif ((MEMCPY_DMA_CHAN_ID == 6) && !defined(__N_ISR_DMA1_Channel6))
 #   define __N_ISR_DMA1_Channel6
-#elif ((MEMCPY_DMANUM == 7) && !defined(__N_ISR_DMA1_Channel7))
+#elif ((MEMCPY_DMA_CHAN_ID == 7) && !defined(__N_ISR_DMA1_Channel7))
 #   define __N_ISR_DMA1_Channel7
 #endif
 

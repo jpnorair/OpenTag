@@ -45,6 +45,7 @@
   */
 
 #define PLATFORM(VAL)           PLATFORM_##VAL
+#define __STM32__
 #define __STM32L__
 #define __STM32L1xx__
 #define PLATFORM_STM32L1xx
@@ -198,6 +199,10 @@ void SVC_Handler(void);
 void DebugMon_Handler(void);
 void PendSV_Handler(void);
 void SysTick_Handler(void);
+
+
+/// Deep level system ISRs.
+void platform_ktim_isr();
 
 
 

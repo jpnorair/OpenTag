@@ -402,17 +402,19 @@ ot_bool spirit1_check_cspin(void);
 
 #define RFI_ALL         (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 | RFI_SOURCE3)
 #define RFI_LISTEN      (RFI_RXTERM | RFI_RXSYNC)
-#define RFI_RXDATA      (RFI_RXFIN | RFI_RXFIFO)
-#define RFI_CSMA        (RFI_CCAFIN)
-#define RFI_TXDATA      (RFI_TXFIN | RFI_TXFIFO)
+#define RFI_RXDATA      (RFI_RXEND | RFI_RXFIFO)
+#define RFI_CSMA        (RFI_CCAPASS | RFI_CCAPASS2 | RFI_CCAFAIL)
+#define RFI_TXDATA      (RFI_TXEND | RFI_TXFIFO)
 
 #define RFIV_RXTERM     0
 #define RFIV_RXSYNC     1
-#define RFIV_RXFIN      2
+#define RFIV_RXEND      2
 #define RFIV_RXFIFO     5
-#define RFIV_CCAFIN     6
-#define RFIV_TXFIN      7
-#define RFIV_TXFIFO     10
+#define RFIV_CCAPASS    6
+#define RFIV_CCAPASS2   7
+#define RFIV_CCAFAIL    8
+#define RFIV_TXEND      9
+#define RFIV_TXFIFO     12
 
 
 

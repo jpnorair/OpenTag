@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /board/cc430/board_IKR001.h
+  * @file       /board/stm32l1xx/board_IKR001.h
   * @author     JP Norair
   * @version    R100
-  * @date       31 December 2012
+  * @date       24 Jan 2013
   * @brief      Board Configuration for STEVAL-IKR001
   * @ingroup    Platform
   *
@@ -87,7 +87,7 @@
 #define MCU_FEATURE_RADIODMA_TXBYTES    0
 #define MCU_FEATURE_RADIODMA_RXBYTES    0
 
-#define MCU_FEATURE_MULTISPEED          ENABLED         // Allows usage of MF-HF clock boosting
+#define MCU_FEATURE_MULTISPEED          DISABLED         // Allows usage of MF-HF clock boosting
 #define MCU_FEATURE_MAPEEPROM           DISABLED
 #define MCU_FEATURE_MPIPECDC            DISABLED        // USB-CDC MPipe implementation
 #define MCU_FEATURE_MPIPEUART           ENABLED         // UART MPipe Implementation
@@ -116,10 +116,11 @@
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
 #define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
-#define BOARD_FEATURE_MPIPE_RTSCTS      DISABLED
+#define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                // RTS/CTS style flow control
 #define BOARD_FEATURE_MPIPE_QMGMT       ENABLED
 #define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL used as Clock source
 #define BOARD_FEATURE_HFXTAL            DISABLED                // HF XTAL used as Clock source
+#define BOARD_FEATURE_RFXTAL            ENABLED                 // XTAL for RF chipset
 #define BOARD_FEATURE_INVERT_TRIG1      ENABLED
 #define BOARD_FEATURE_INVERT_TRIG2      ENABLED
 
@@ -134,6 +135,9 @@
 #define BOARD_PARAM_HFmult              1                       // Turbo CLK = HFHz * (HFmult/HFdiv)
 #define BOARD_PARAM_HFdiv               1
 #define BOARD_PARAM_HFtol               0.02
+#define BOARD_PARAM_RFHz                52000000
+#define BOARD_PARAM_RFtol               0.00003
+
 
 #define BOARD_PARAM_AHBCLKDIV           1                       // AHB Clk = Main CLK / AHBCLKDIV
 #define BOARD_PARAM_APB2CLKDIV          1                       // APB2 Clk = Main CLK / AHBCLKDIV
@@ -454,7 +458,7 @@
                             |   RCC_AHBLPENR_GPIOELPEN  )
 
 //@note BOARD Macro for Peripheral Clock initialization at startup
-OT_INLINE_H void BOARD_PERIPH_INIT(void) {
+static inline void BOARD_PERIPH_INIT(void) {
     //1. AHB Clock Setup for Active Mode
     RCC->AHBENR    |= (_DMACLK_N | _FLITFCLK_N | _CRCCLK_N | _GPIOCLK_N);
 
@@ -477,7 +481,7 @@ OT_INLINE_H void BOARD_PERIPH_INIT(void) {
 
 
 //@note BOARD Macro for DMA peripheral enabling
-OT_INLINE_H void BOARD_DMA_CLKON(void) {
+static inline void BOARD_DMA_CLKON(void) {
 #ifdef _DMACLK_DYNAMIC
     // DMA is not enabled for normal mode by default, so enable it
     RCC->AHBENR    |= RCC_AHBENR_DMA1EN;
@@ -488,7 +492,7 @@ OT_INLINE_H void BOARD_DMA_CLKON(void) {
 #endif
 }
 
-OT_INLINE_H void BOARD_DMA_CLKOFF(void) {
+static inline void BOARD_DMA_CLKOFF(void) {
 #ifdef _DMACLK_DYNAMIC
     // DMA is not enabled for normal mode by default, so disable it
     RCC->AHBENR    &= ~RCC_AHBENR_DMA1EN;
@@ -516,7 +520,7 @@ OT_INLINE_H void BOARD_DMA_CLKOFF(void) {
 
 ///@note BOARD Macro for EXTI initialization.  See also EXTI macros at the
 ///      bottom of the page.
-OT_INLINE_H void BOARD_EXTI_STARTUP(void) {
+static inline void BOARD_EXTI_STARTUP(void) {
     // EXTI0-3 
     //SYSCFG->EXTICR[1] |=
     
@@ -538,7 +542,7 @@ OT_INLINE_H void BOARD_EXTI_STARTUP(void) {
 
 ///@note BOARD Macro for initializing GPIO ports at startup, pursuant to the
 ///      connections in the schematic of this board.
-OT_INLINE_H void BOARD_PORT_STARTUP(void) {
+static inline void BOARD_PORT_STARTUP(void) {
     
     // JTAG/SWD Interface: Set to Output-GND unless in DEBUG mode
 #   if !defined(__DEBUG__)
@@ -714,7 +718,7 @@ OT_INLINE_H void BOARD_PORT_STARTUP(void) {
 
 
 
-OT_INLINE_H void BOARD_PORT_STANDBY() {
+static inline void BOARD_PORT_STANDBY() {
 
     // JTAG/SWD Interface: Keep Alive
     
@@ -799,7 +803,7 @@ OT_INLINE_H void BOARD_PORT_STANDBY() {
 
 ///@note BOARD Macro for initializing the STM32 PVD Module (voltage monitor) at
 ///      startup.  Only relevant for battery-powered boards.
-OT_INLINE_H void BOARD_POWER_STARTUP(void) {
+static inline void BOARD_POWER_STARTUP(void) {
 #   if (MCU_FEATURE_SVMONITOR == ENABLED)
     // Level0 is 1.9V, each level is +0.2V.  Check your battery spec and change
     // the _LEVx component to match it.  Typical Li-Ion undervoltage is 2.7V.
@@ -814,7 +818,7 @@ OT_INLINE_H void BOARD_POWER_STARTUP(void) {
 ///      at startup.  For any build using CMSIS libraries (standard), this will
 ///      be blank.  In those cases, crystal init is done in the CMSIS system
 ///      startup function.
-OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
+static inline void BOARD_XTAL_STARTUP(void) {
 // Currently this is handled in the system startup function.  OpenTag requires
 // a 32768Hz clock
 }
@@ -893,9 +897,10 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 //#   define FLASH_NUM_PAGES      (128*(1024/FLASH_PAGE_SIZE))    //allow usage of whole flash (128KB)
 //#else
 #   define FLASH_NUM_PAGES      (64*(1024/FLASH_PAGE_SIZE))     //keep in lower 64KB
-//#endif  
-#define FLASH_FS_ALLOC          (16*FLASH_PAGE_SIZE)            //allocating total of 16 blocks (4KB)
-#define FLASH_FS_FALLOWS        4                               //4 blocks are fallow blocks
+//#endif
+#define FLASH_FS_PAGES          16
+#define FLASH_FS_ALLOC          (FLASH_FS_PAGES*FLASH_PAGE_SIZE)    //allocating total of 16 blocks (4KB)
+#define FLASH_FS_FALLOWS        4                                   //4 blocks are fallow blocks
 #define FLASH_FS_ADDR           ( (FLASH_START_ADDR+FLASH_NUM_PAGES*FLASH_PAGE_SIZE) \
                                 - FLASH_FS_ALLOC    )
 
@@ -1084,24 +1089,24 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 #   if (MPIPE_UART_ID == 1)
 #       define MPIPE_UART       USART1
-#       define MPIPE_DMA_RXCHAN DMA1_Channel5
-#       define MPIPE_DMA_TXCHAN DMA1_Channel4
-#       define __DMA_CHAN5_USED
-#       define __DMA_CHAN4_USED
+#       define MPIPE_DMA_RXCHAN_ID  5
+#       define MPIPE_DMA_TXCHAN_ID  4
+#       define __USE_DMA1_CHAN5
+#       define __USE_DMA1_CHAN4
 
 #   elif (MPIPE_UART_ID == 2)
 #       define MPIPE_UART       USART2
-#       define MPIPE_DMA_RXCHAN DMA1_Channel7
-#       define MPIPE_DMA_TXCHAN DMA1_Channel6
-#       define __DMA_CHAN7_USED
-#       define __DMA_CHAN6_USED
+#       define MPIPE_DMA_RXCHAN_ID  7
+#       define MPIPE_DMA_TXCHAN_ID  6
+#       define __USE_DMA1_CHAN7
+#       define __USE_DMA1_CHAN6
 
 #   elif (MPIPE_UART_ID == 3)
 #       define MPIPE_UART       USART3
-#       define MPIPE_DMA_RXCHAN DMA1_Channel3
-#       define MPIPE_DMA_TXCHAN DMA1_Channel2
-#       define __DMA_CHAN3_USED
-#       define __DMA_CHAN2_USED
+#       define MPIPE_DMA_RXCHAN_ID  3
+#       define MPIPE_DMA_TXCHAN_ID  2
+#       define __USE_DMA1_CHAN3
+#       define __USE_DMA1_CHAN2
 
 #   elif (MPIPE_UART_ID == 4)
 #       define MPIPE_UART       UART4
@@ -1131,19 +1136,23 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define RADIO_SPI_ID    BOARD_RFSPI_ID
 #if (BOARD_RFSPI_ID == 1)
 #   define RADIO_SPI    SPI1
-#   if (defined(__DMA_CHAN2_USED) || defined(__DMA_CHAN3_USED))
+#   if (defined(__USE_DMA1_CHAN2) || defined(__USE_DMA1_CHAN3))
 #       error "RADIO SPI is SPI1, which needs DMA Ch2 & Ch3, but they are used."
 #   else
-#       define __DMA_CHAN2_USED
-#       define __DMA_CHAN3_USED
+#       define __USE_DMA1_CHAN2
+#       define __USE_DMA1_CHAN3
+#       define __N_ISR_DMA1_Channel2
+#       define __N_ISR_DMA1_Channel3
 #   endif
 #elif (BOARD_RFSPI_ID == 2)
 #   define RADIO_SPI    SPI2
-#   if (defined(__DMA_CHAN4_USED) || defined(__DMA_CHAN5_USED))
+#   if (defined(__USE_DMA1_CHAN4) || defined(__USE_DMA1_CHAN5))
 #       error "RADIO SPI is SPI2, which needs DMA Ch4 & Ch5, but they are used."
 #   else
-#       define __DMA_CHAN4_USED
-#       define __DMA_CHAN5_USED
+#       define __USE_DMA1_CHAN4
+#       define __USE_DMA1_CHAN5
+#       define __N_ISR_DMA1_Channel4
+#       define __N_ISR_DMA1_Channel5
 #   endif
 #else
 #   error "RADIO_SPI must be 1 or 2"
@@ -1168,10 +1177,12 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 #define RADIO_IRQ2_SRCLINE          BOARD_RFGPIO_2PINNUM
 #define RADIO_IRQ3_SRCLINE          BOARD_RFGPIO_3PINNUM
 
+#define RADIO_SDN_PORT              BOARD_RFGPIO_PORT
 #define RADIO_IRQ0_PORT             BOARD_RFGPIO_PORT
 #define RADIO_IRQ1_PORT             BOARD_RFGPIO_PORT
 #define RADIO_IRQ2_PORT             BOARD_RFGPIO_PORT
 #define RADIO_IRQ3_PORT             BOARD_RFGPIO_PORT
+#define RADIO_SDN_PIN               BOARD_RFGPIO_SDNPIN
 #define RADIO_IRQ0_PIN              BOARD_RFGPIO_0PIN
 #define RADIO_IRQ1_PIN              BOARD_RFGPIO_1PIN
 #define RADIO_IRQ2_PIN              BOARD_RFGPIO_2PIN
@@ -1190,41 +1201,41 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   */
 #if (MCU_FEATURE_MEMCPYDMA != ENABLED)
 #   error "Not using DMA for MEMCPY, a sub-optimal design choice."
-#elif !defined(__DMA_CHAN7_USED)
-#   define MEMCPY_DMANUM    7
+#elif !defined(__USE_DMA1_CHAN7)
+#   define MEMCPY_DMA_CHAN_ID 7
 #   define MEMCPY_DMA       DMA1
 #   define MEMCPY_DMACHAN   DMA1_Channel7
-#   define __DMA_CHAN7_USED
-#elif !defined(__DMA_CHAN6_USED)
-#   define MEMCPY_DMANUM    6
+#   define __USE_DMA1_CHAN7
+#elif !defined(__USE_DMA1_CHAN6)
+#   define MEMCPY_DMA_CHAN_ID    6
 #   define MEMCPY_DMA       DMA1
 #   define MEMCPY_DMACHAN   DMA1_Channel6
-#   define __DMA_CHAN6_USED
-#elif !defined(__DMA_CHAN5_USED)
-#   define MEMCPY_DMANUM    5
+#   define __USE_DMA1_CHAN6
+#elif !defined(__USE_DMA1_CHAN5)
+#   define MEMCPY_DMA_CHAN_ID    5
 #   define MEMCPY_DMA       DMA1
 #   define MEMCPY_DMACHAN   DMA1_Channel5
-#   define __DMA_CHAN5_USED
-#elif !defined(__DMA_CHAN4_USED)
-#   define MEMCPY_DMANUM    4
+#   define __USE_DMA1_CHAN5
+#elif !defined(__USE_DMA1_CHAN4)
+#   define MEMCPY_DMA_CHAN_ID    4
 #   define MEMCPY_DMA       DMA1
 #   define MEMCPY_DMACHAN   DMA1_Channel4
-#   define __DMA_CHAN4_USED
-#elif !defined(__DMA_CHAN3_USED)
-#   define MEMCPY_DMANUM    3
+#   define __USE_DMA1_CHAN4
+#elif !defined(__USE_DMA1_CHAN3)
+#   define MEMCPY_DMA_CHAN_ID    3
 #   define MEMCPY_DMA       DMA1
 #   define MEMCPY_DMACHAN   DMA1_Channel3
-#   define __DMA_CHAN3_USED
-#elif !defined(__DMA_CHAN2_USED)
-#   define MEMCPY_DMANUM    2
+#   define __USE_DMA1_CHAN3
+#elif !defined(__USE_DMA1_CHAN2)
+#   define MEMCPY_DMA_CHAN_ID    2
 #   define MEMCPY_DMA       DMA1
 #   define MEMCPY_DMACHAN   DMA1_Channel2
-#   define __DMA_CHAN2_USED
-#elif !defined(__DMA_CHAN1_USED)
-#   define MEMCPY_DMANUM    1
+#   define __USE_DMA1_CHAN2
+#elif !defined(__USE_DMA1_CHAN1)
+#   define MEMCPY_DMA_CHAN_ID    1
 #   define MEMCPY_DMA       DMA1
 #   define MEMCPY_DMACHAN   DMA1_Channel1
-#   define __DMA_CHAN1_USED
+#   define __USE_DMA1_CHAN1
 #else
 #   error "There is no available DMA Channel to allocate to MEMCPY."
 #endif

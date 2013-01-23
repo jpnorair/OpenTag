@@ -348,7 +348,7 @@ FLASH_Status FLASH_ErasePage(uint32_t Page_Address)
   FLASH_Status status = FLASH_COMPLETE;
 
   /* Check the parameters */
-  assert_param(IS_FLASH_PROGRAM_ADDRESS(Page_Address));
+  //assert_param(IS_FLASH_PROGRAM_ADDRESS(Page_Address));
  
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -393,7 +393,7 @@ FLASH_Status FLASH_FastProgramWord(uint32_t Address, uint32_t Data)
   FLASH_Status status = FLASH_COMPLETE;
 
   /* Check the parameters */
-  assert_param(IS_FLASH_PROGRAM_ADDRESS(Address));
+  //assert_param(IS_FLASH_PROGRAM_ADDRESS(Address));
   
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);

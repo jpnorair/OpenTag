@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/mpipe.c
   * @author     JP Norair
-  * @version    R100
-  * @date       24 Oct 2012
+  * @version    R101
+  * @date       24 Jan 2013
   * @brief      Message Pipe (MPIPE) Task Interface
   * @ingroup    MPipe
   *
@@ -125,7 +125,7 @@ void mpipe_systask(ot_task task) {
         case 1: {
             ALP_status status;
             status      = alp_parse_message(&mpipe.alp, NULL);
-            mpipe.state = MPIPE_Idle;
+            mpipedrv_clear();
             switch (status) {
                 //wipe queue and go back to idle listening
                 case MSG_Null:          //goto systask_mpipe_IDLE;
@@ -145,7 +145,7 @@ void mpipe_systask(ot_task task) {
 
         // TX/RX timeout -- note case fall-through
         case 3: mpipedrv_kill();
-                //mpipe.state = MPIPE_Idle;
+                //mpipedrv_clear();
         
         // Return to idle (passive RX)
         case 4:

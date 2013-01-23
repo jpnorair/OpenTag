@@ -71,7 +71,7 @@ void sub_stop() {
 /// is used during MPIPE transfers and things like these that require clocked
 /// peripherals but not necessarily CPU.
 void sub_sleep() {
-    PWR->CR    &= (PWR_CR_PDDS | PWR_CR_LPDSR);
+    PWR->CR    &= (PWR_CR_PDDS | PWR_CR_LPSDSR);
     SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
     __WFI();
 }

@@ -115,20 +115,6 @@ void opmode_goto_endpoint();
   * sub_button_init() is a board-dependent function, as 
   */
 void sub_button_init();
-
-
-#if (   defined(BOARD_OMG_CC430)   \
-    ||  defined(BOARD_EM430RF)      \
-    ||  defined(BOARD_eZ430Chronos) \
-    ||  defined(BOARD_RF430USB_5509)    )
-#   define _MSP430F5_CORE
-
-#else
-#   error "You have not defined a currently supported board: select one in build_config.h"
-
-#endif
-
-
 #define APP_TASK    (&sys.task[TASK_external])
 
 
@@ -142,7 +128,7 @@ void sub_button_init();
   * The button-press is unique to this application, and it is treated here.
   */
   
-#if (defined(_MSP430F5_CORE) && defined(OT_SWITCH1_PORT))
+#if (defined(__MSP430F5__) && defined(OT_SWITCH1_PORT))
 #   if (OT_SWITCH1_PORTNUM == 1)
 #       define PLATFORM_ISR_SW  platform_isr_p1
 #   else
@@ -179,8 +165,25 @@ void PLATFORM_ISR_SW() {
     }
 }
 
+#elif (defined(__STM32__) && defined(OT_SWITCH1_PINNUM) && (OT_SWITCH1_PINNUM >= 0))
+#   define PLATFORM_ISR_SW  platform_isr_exti##OT_SWITCH1_PINNUM
+
+void PLATFORM_ISR_SW(void) {
+    // Ignore the button press if the task is in progress already
+    if (APP_TASK->event == 0) {
+        app_invoke(7);              // Initialize Ping Task on channel 7
+    }
+}
+
+void sub_button_init() {
+/// ARM Cortex M boards must prepare all EXTI line interrupts in their board
+/// configuration files.
+}
+
+
 #else
-void sub_button_init() {}
+#   warn "You are not using a known, compatible MCU.  Demo might not work."
+    void sub_button_init() {}
 
 #endif
 

@@ -26,6 +26,9 @@
 #ifndef _DEFAULT_DATA_C
 #define _DEFAULT_DATA_C
 
+#include "OT_support.h"
+#include "OT_version.h"
+#include "OT_types.h"
 
 
 #if defined(__DEBUG__) || defined(__PROTO__)
@@ -60,12 +63,12 @@
 /// These overhead are the Veelite vl_header files. They are hard coded,
 /// and they must be in the endian of the platform. (Little endian here)
 
-//#if (CC_SUPPORT == GCC)
-//__attribute__((section(".vl_ov")))
-//#elif (CC_SUPPORT == CL430)
+#if (CC_SUPPORT == GCC)
+const ot_u8 overhead_files[] __attribute__ ((section(".vl_ov"))) = {
+#elif (CC_SUPPORT == CL430)
 #pragma DATA_SECTION(overhead_files, ".vl_ov")
-//#endif
 const ot_u8 overhead_files[] = {
+#endif
     //0x00, 0x00, 0x00, 0x01,                 /* GFB ELements 0 - 3 */
     //0x00, GFB_MOD_standard,
     //0x00, 0x14, 0xFF, 0xFF,
@@ -326,12 +329,12 @@ const ot_u8 overhead_files[] = {
 
 
 /// This array contains stock codes for isfs.  They are ordered strings.
-//#if (CC_SUPPORT == GCC)
-//__attribute__((section(".vl_isfs")))
-//#elif (CC_SUPPORT == CL430)
+#if (CC_SUPPORT == GCC)
+const ot_u8 isfs_stock_codes[] __attribute__((section(".vl_isfs"))) = {
+#elif (CC_SUPPORT == CL430)
 #pragma DATA_SECTION(isfs_stock_codes, ".vl_isfs")
-//#endif
 const ot_u8 isfs_stock_codes[] = {
+#endif
     0x10, 0x11, 0x18, 0xFF,
     0x12, 0x13, 0x14, 0xFF,
     0x15, 0xFF,
@@ -373,12 +376,12 @@ const ot_u8 gfb_stock_files[] = {0xFF, 0xFF};
 #define BC7     OT_BUILDCODE7
 
 /// This array contains the stock ISF data.  ISF data must be big endian!
-//#if (CC_SUPPORT == GCC)
-//__attribute__((section(".vl_isf")))
-//#elif (CC_SUPPORT == CL430)
+#if (CC_SUPPORT == GCC)
+const ot_u8 isf_stock_files[] __attribute__((section(".vl_isf"))) = {
+#elif (CC_SUPPORT == CL430)
 #pragma DATA_SECTION(isf_stock_files, ".vl_isf")
-//#endif
 const ot_u8 isf_stock_files[] = {
+#endif
     /* network settings: id=0x00, len=8, alloc=8 */
     __VID,                                              /* VID */
     0x11,                                               /* Device Subnet */
