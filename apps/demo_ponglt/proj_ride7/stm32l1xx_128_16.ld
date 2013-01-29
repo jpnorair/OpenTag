@@ -190,21 +190,20 @@ PROVIDE ( SCB             = (SCS_BASE + 0x0D00) ) ;
 
 
 /* MEMORY MAPPING 
- * Runs in the first 64KB, which works with Raisonance RKit-Lite
+ * Uses 4KB EEPROM for data
  */
 
 MEMORY
 {
   RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 0x4000
   
-/*FLASH (rx)       : ORIGIN = 0x08000000, LENGTH = 0x20000 */
-  FLASH (rx)       : ORIGIN = 0x08000000, LENGTH = 0x0F000
+  FLASH (rx)       : ORIGIN = 0x08000000, LENGTH = 0x20000 
   
-  FLASHOV (r)      : ORIGIN = 0x0800F000, LENGTH = 0x360
-  FLASHISFS (r)    : ORIGIN = 0x0800F360, LENGTH = 0xA0
-/*FLASHGFB (r)     : ORIGIN = 0x0800F400, LENGTH = 0x400*/
-  FLASHISF (r)     : ORIGIN = 0x0800F400, LENGTH = 0x800
-  FLASHWL (r)      : ORIGIN = 0x0800FC00, LENGTH = 0x400
+  FLASHOV (r)      : ORIGIN = 0x08080000, LENGTH = 0x360
+  FLASHISFS (r)    : ORIGIN = 0x08080360, LENGTH = 0xA0
+/*FLASHGFB (r)     : ORIGIN = 0x08080400, LENGTH = 0x400*/
+  FLASHISF (r)     : ORIGIN = 0x08080400, LENGTH = 0xC00
+/*FLASHWL (r)      : ORIGIN = 0x08080C00, LENGTH = 0x400*/
   
   EXTMEMB0 (rx)    : ORIGIN = 0x00000000, LENGTH = 0
   EXTMEMB1 (rx)    : ORIGIN = 0x00000000, LENGTH = 0
@@ -284,8 +283,8 @@ SECTIONS
 		KEEP(*(.vl_fallow))
 	    . = ALIGN(4);
 		
-    } >FLASHWL */
-    
+    } >FLASHWL 
+    */
     
     
  /* This is the initialized data section

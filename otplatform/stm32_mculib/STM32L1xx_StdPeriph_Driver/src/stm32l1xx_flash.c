@@ -188,7 +188,7 @@ void FLASH_SetLatency(uint32_t FLASH_Latency)
    uint32_t tmpreg = 0;
   
   /* Check the parameters */
-  assert_param(IS_FLASH_LATENCY(FLASH_Latency));
+  //assert_param(IS_FLASH_LATENCY(FLASH_Latency));
   
   /* Read the ACR register */
   tmpreg = FLASH->ACR;  
@@ -210,7 +210,7 @@ void FLASH_SetLatency(uint32_t FLASH_Latency)
 void FLASH_PrefetchBufferCmd(FunctionalState NewState)
 {
   /* Check the parameters */
-  assert_param(IS_FUNCTIONAL_STATE(NewState));
+  //assert_param(IS_FUNCTIONAL_STATE(NewState));
    
   if(NewState != DISABLE)
   {
@@ -237,7 +237,7 @@ void FLASH_PrefetchBufferCmd(FunctionalState NewState)
 void FLASH_ReadAccess64Cmd(FunctionalState NewState)
 {
   /* Check the parameters */
-  assert_param(IS_FUNCTIONAL_STATE(NewState));
+  //assert_param(IS_FUNCTIONAL_STATE(NewState));
   
   if(NewState != DISABLE)
   {
@@ -259,7 +259,7 @@ void FLASH_ReadAccess64Cmd(FunctionalState NewState)
 void FLASH_SLEEPPowerDownCmd(FunctionalState NewState)
 {
   /* Check the parameters */
-  assert_param(IS_FUNCTIONAL_STATE(NewState));
+  //assert_param(IS_FUNCTIONAL_STATE(NewState));
   
   if (NewState != DISABLE)
   {
@@ -348,7 +348,7 @@ FLASH_Status FLASH_ErasePage(uint32_t Page_Address)
   FLASH_Status status = FLASH_COMPLETE;
 
   /* Check the parameters */
-  //assert_param(IS_FLASH_PROGRAM_ADDRESS(Page_Address));
+  ////assert_param(IS_FLASH_PROGRAM_ADDRESS(Page_Address));
  
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -393,7 +393,7 @@ FLASH_Status FLASH_FastProgramWord(uint32_t Address, uint32_t Data)
   FLASH_Status status = FLASH_COMPLETE;
 
   /* Check the parameters */
-  //assert_param(IS_FLASH_PROGRAM_ADDRESS(Address));
+  ////assert_param(IS_FLASH_PROGRAM_ADDRESS(Address));
   
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -482,7 +482,7 @@ void DATA_EEPROM_Lock(void)
 void DATA_EEPROM_FixedTimeProgramCmd(FunctionalState NewState)
 {
   /* Check the parameters */
-  assert_param(IS_FUNCTIONAL_STATE(NewState));
+  //assert_param(IS_FUNCTIONAL_STATE(NewState));
   
   if(NewState != DISABLE)
   {
@@ -512,7 +512,7 @@ FLASH_Status DATA_EEPROM_EraseByte(uint32_t Address)
   FLASH_Status status = FLASH_COMPLETE;
   
   /* Check the parameters */
-  assert_param(IS_FLASH_DATA_ADDRESS(Address));
+  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
   
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -545,7 +545,7 @@ FLASH_Status DATA_EEPROM_EraseHalfWord(uint32_t Address)
   FLASH_Status status = FLASH_COMPLETE;
   
   /* Check the parameters */
-  assert_param(IS_FLASH_DATA_ADDRESS(Address));
+  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
   
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -578,7 +578,7 @@ FLASH_Status DATA_EEPROM_EraseWord(uint32_t Address)
   FLASH_Status status = FLASH_COMPLETE;
   
   /* Check the parameters */
-  assert_param(IS_FLASH_DATA_ADDRESS(Address));
+  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
   
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -614,7 +614,7 @@ FLASH_Status DATA_EEPROM_FastProgramByte(uint32_t Address, uint8_t Data)
 #endif
   
   /* Check the parameters */
-  assert_param(IS_FLASH_DATA_ADDRESS(Address)); 
+  //assert_param(IS_FLASH_DATA_ADDRESS(Address)); 
 
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -675,7 +675,7 @@ FLASH_Status DATA_EEPROM_FastProgramHalfWord(uint32_t Address, uint16_t Data)
 #endif
   
   /* Check the parameters */
-  assert_param(IS_FLASH_DATA_ADDRESS(Address));
+  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
 
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -741,7 +741,7 @@ FLASH_Status DATA_EEPROM_FastProgramWord(uint32_t Address, uint32_t Data)
   FLASH_Status status = FLASH_COMPLETE;
 
   /* Check the parameters */
-  assert_param(IS_FLASH_DATA_ADDRESS(Address));
+  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
   
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -783,7 +783,7 @@ FLASH_Status DATA_EEPROM_ProgramByte(uint32_t Address, uint8_t Data)
 #endif
   
   /* Check the parameters */
-  assert_param(IS_FLASH_DATA_ADDRESS(Address)); 
+  //assert_param(IS_FLASH_DATA_ADDRESS(Address)); 
 
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -841,7 +841,7 @@ FLASH_Status DATA_EEPROM_ProgramHalfWord(uint32_t Address, uint16_t Data)
 #endif
   
   /* Check the parameters */
-  assert_param(IS_FLASH_DATA_ADDRESS(Address));
+  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
 
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -903,7 +903,7 @@ FLASH_Status DATA_EEPROM_ProgramWord(uint32_t Address, uint32_t Data)
   FLASH_Status status = FLASH_COMPLETE;
   
   /* Check the parameters */
-  assert_param(IS_FLASH_DATA_ADDRESS(Address));
+  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
   
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -1032,8 +1032,8 @@ FLASH_Status FLASH_OB_WRPConfig(uint32_t OB_WRP, FunctionalState NewState)
   uint32_t tmp1 = 0, tmp2 = 0;
   
   /* Check the parameters */
-  assert_param(IS_OB_WRP(OB_WRP));
-  assert_param(IS_FUNCTIONAL_STATE(NewState));
+  //assert_param(IS_OB_WRP(OB_WRP));
+  //assert_param(IS_FUNCTIONAL_STATE(NewState));
      
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -1095,8 +1095,8 @@ FLASH_Status FLASH_OB_WRP1Config(uint32_t OB_WRP1, FunctionalState NewState)
   uint32_t tmp1 = 0, tmp2 = 0;
   
   /* Check the parameters */
-  assert_param(IS_OB_WRP(OB_WRP1));
-  assert_param(IS_FUNCTIONAL_STATE(NewState));
+  //assert_param(IS_OB_WRP(OB_WRP1));
+  //assert_param(IS_FUNCTIONAL_STATE(NewState));
      
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -1157,8 +1157,8 @@ FLASH_Status FLASH_OB_WRP2Config(uint32_t OB_WRP2, FunctionalState NewState)
   uint32_t tmp1 = 0, tmp2 = 0;
   
   /* Check the parameters */
-  assert_param(IS_OB_WRP(OB_WRP2));
-  assert_param(IS_FUNCTIONAL_STATE(NewState));
+  //assert_param(IS_OB_WRP(OB_WRP2));
+  //assert_param(IS_FUNCTIONAL_STATE(NewState));
      
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
@@ -1216,7 +1216,7 @@ FLASH_Status FLASH_OB_RDPConfig(uint8_t OB_RDP)
   uint32_t tmp2 = 0;
   
   /* Check the parameters */
-  assert_param(IS_OB_RDP(OB_RDP));
+  //assert_param(IS_OB_RDP(OB_RDP));
   status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
   
   /* calculate the option byte to write */
@@ -1263,9 +1263,9 @@ FLASH_Status FLASH_OB_UserConfig(uint8_t OB_IWDG, uint8_t OB_STOP, uint8_t OB_ST
   uint32_t tmp = 0, tmp1 = 0;
 
   /* Check the parameters */
-  assert_param(IS_OB_IWDG_SOURCE(OB_IWDG));
-  assert_param(IS_OB_STOP_SOURCE(OB_STOP));
-  assert_param(IS_OB_STDBY_SOURCE(OB_STDBY));
+  //assert_param(IS_OB_IWDG_SOURCE(OB_IWDG));
+  //assert_param(IS_OB_STOP_SOURCE(OB_STOP));
+  //assert_param(IS_OB_STDBY_SOURCE(OB_STDBY));
 
   /* Get the User Option byte register */
   tmp1 = (FLASH->OBR & 0x000F0000) >> 16;
@@ -1314,7 +1314,7 @@ FLASH_Status FLASH_OB_BORConfig(uint8_t OB_BOR)
   uint32_t tmp = 0, tmp1 = 0;
 
   /* Check the parameters */
-  assert_param(IS_OB_BOR_LEVEL(OB_BOR));
+  //assert_param(IS_OB_BOR_LEVEL(OB_BOR));
 
   /* Get the User Option byte register */
   tmp1 = (FLASH->OBR & 0x00F00000) >> 16;
@@ -1367,7 +1367,7 @@ FLASH_Status FLASH_OB_BootConfig(uint8_t OB_BOOT)
   uint32_t tmp = 0, tmp1 = 0;
 
   /* Check the parameters */
-  assert_param(IS_OB_BOOT_BANK(OB_BOOT));
+  //assert_param(IS_OB_BOOT_BANK(OB_BOOT));
 
   /* Get the User Option byte register */
   tmp1 = (FLASH->OBR & 0x007F0000) >> 16;
@@ -1498,8 +1498,8 @@ uint8_t FLASH_OB_GetBOR(void)
 void FLASH_ITConfig(uint32_t FLASH_IT, FunctionalState NewState)
 {
   /* Check the parameters */
-  assert_param(IS_FLASH_IT(FLASH_IT)); 
-  assert_param(IS_FUNCTIONAL_STATE(NewState));
+  //assert_param(IS_FLASH_IT(FLASH_IT)); 
+  //assert_param(IS_FUNCTIONAL_STATE(NewState));
   
   if(NewState != DISABLE)
   {
@@ -1533,7 +1533,7 @@ FlagStatus FLASH_GetFlagStatus(uint32_t FLASH_FLAG)
   FlagStatus bitstatus = RESET;
 
   /* Check the parameters */
-  assert_param(IS_FLASH_GET_FLAG(FLASH_FLAG));
+  //assert_param(IS_FLASH_GET_FLAG(FLASH_FLAG));
 
   if((FLASH->SR & FLASH_FLAG) != (uint32_t)RESET)
   {
@@ -1562,7 +1562,7 @@ FlagStatus FLASH_GetFlagStatus(uint32_t FLASH_FLAG)
 void FLASH_ClearFlag(uint32_t FLASH_FLAG)
 {
   /* Check the parameters */
-  assert_param(IS_FLASH_CLEAR_FLAG(FLASH_FLAG));
+  ////assert_param(IS_FLASH_CLEAR_FLAG(FLASH_FLAG));
   
   /* Clear the flags */
   FLASH->SR = FLASH_FLAG;

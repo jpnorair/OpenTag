@@ -35,8 +35,8 @@
 #ifndef __VEELITE_CORE_H
 #define __VEELITE_CORE_H
 
-#   include "OT_types.h"
-#   include "OT_config.h"
+#include "OT_platform.h"
+#include "OT_types.h"
 
 
 
@@ -85,23 +85,30 @@ typedef enum {
   * NULL_vaddr is not 0 but 0xFFFF, because in NAND Flash this value represents
   * uninitialized space.
   */
-typedef ot_u16 vaddr;  
-#   define NULL_vaddr               0xFFFF
+typedef ot_u16 vaddr;
+#   ifndef NULL_vaddr
+#       define NULL_vaddr           0xFFFF
+#   endif
 
 #   if (OT_FEATURE(VLNVWRITE) == ENABLED)
-#   define VWORM_BASE_VADDR         (0x0000)
-#	else
-#   define VWORM_BASE_VADDR			FLASH_FS_ADDR
+#       if (NULL_vaddr == 0)
+#       define VWORM_BASE_VADDR     (0x0002)
+#       else
+#       define VWORM_BASE_VADDR     (0x0000)
 #   endif
+#	else
+#       define VWORM_BASE_VADDR			FLASH_FS_ADDR
+#   endif
+
 #   define VWORM_PAGESIZE           FLASH_PAGE_SIZE
 #   define VWORM_NUM_PAGES          FLASH_FS_PAGES
 #   define VWORM_FALLOW_PAGES       FLASH_FS_FALLOWS
 #   define VWORM_PRIMARY_PAGES      (FLASH_FS_PAGES - FLASH_FS_FALLOWS)
-#   define VWORM_MAXBLOCKSIZE       VWORM_PAGESIZE                                ///@todo bring into implementation
-#   define VWORM_BLOCKSIZE          VWORM_PAGESIZE                                ///@todo bring into implementation
-#   define VWORM_BLOCKINFO_OFFSET   VWORM_BLOCKSIZE                                 ///@todo bring into implementation
-#   define VWORM_SIZE               (VWORM_NUM_PAGES * VWORM_BLOCKSIZE)             ///@todo bring into implementation
-#   define VWORM_ALLOC              (VWORM_NUM_PAGES * VWORM_PAGESIZE)
+#   define VWORM_MAXBLOCKSIZE       VWORM_PAGESIZE
+#   define VWORM_BLOCKSIZE          VWORM_PAGESIZE
+#   define VWORM_BLOCKINFO_OFFSET   VWORM_BLOCKSIZE
+#   define VWORM_SIZE               (FLASH_FS_ALLOC)
+#   define VWORM_ALLOC              (FLASH_FS_ALLOC)
 
 #   define VSRAM_BASE_VADDR         ISF_MIRROR_VADDR
 #   define VSRAM_SIZE               ISF_MIRROR_HEAP_BYTES

@@ -4954,6 +4954,13 @@ typedef struct
 #define  TIM_SMCR_TS_0                       ((uint16_t)0x0010)            /*!<Bit 0 */
 #define  TIM_SMCR_TS_1                       ((uint16_t)0x0020)            /*!<Bit 1 */
 #define  TIM_SMCR_TS_2                       ((uint16_t)0x0040)            /*!<Bit 2 */
+#define  TIM9_SMCR_TS_ITR0                  ((uint16_t)0x0000)
+#define  TIM9_SMCR_TS_ITR1                  ((uint16_t)0x0010)
+#define  TIM9_SMCR_TS_ITR2                  ((uint16_t)0x0020)
+#define  TIM9_SMCR_TS_ITR3                  ((uint16_t)0x0030)
+#define  TIM9_SMCR_TS_TI1F_ED               ((uint16_t)0x0040)
+#define  TIM9_SMCR_TS_TI1FP1                ((uint16_t)0x0050)
+#define  TIM9_SMCR_TS_TI1FP2                ((uint16_t)0x0060)
 
 #define  TIM_SMCR_MSM                        ((uint16_t)0x0080)            /*!<Master/slave mode */
 
@@ -4963,9 +4970,14 @@ typedef struct
 #define  TIM_SMCR_ETF_2                      ((uint16_t)0x0400)            /*!<Bit 2 */
 #define  TIM_SMCR_ETF_3                      ((uint16_t)0x0800)            /*!<Bit 3 */
 
+
 #define  TIM_SMCR_ETPS                       ((uint16_t)0x3000)            /*!<ETPS[1:0] bits (External trigger prescaler) */
 #define  TIM_SMCR_ETPS_0                     ((uint16_t)0x1000)            /*!<Bit 0 */
 #define  TIM_SMCR_ETPS_1                     ((uint16_t)0x2000)            /*!<Bit 1 */
+#define  TIM_SMCR_ETPS_DIV0                  ((uint16_t)0x0000)            /*!<Bit 1 */
+#define  TIM_SMCR_ETPS_DIV2                  ((uint16_t)0x1000)
+#define  TIM_SMCR_ETPS_DIV4                  ((uint16_t)0x2000)
+#define  TIM_SMCR_ETPS_DIV8                  ((uint16_t)0x3000)
 
 #define  TIM_SMCR_ECE                        ((uint16_t)0x4000)            /*!<External clock enable */
 #define  TIM_SMCR_ETP                        ((uint16_t)0x8000)            /*!<External trigger polarity */
@@ -5016,6 +5028,14 @@ typedef struct
 #define  TIM_CCMR1_OC1M_0                    ((uint16_t)0x0010)            /*!<Bit 0 */
 #define  TIM_CCMR1_OC1M_1                    ((uint16_t)0x0020)            /*!<Bit 1 */
 #define  TIM_CCMR1_OC1M_2                    ((uint16_t)0x0040)            /*!<Bit 2 */
+#define  TIM_CCMR1_OC1M_FROZEN              ((uint16_t)0x0000)
+#define  TIM_CCMR1_OC1M_SET                 ((uint16_t)0x0010)
+#define  TIM_CCMR1_OC1M_RESET               ((uint16_t)0x0020)
+#define  TIM_CCMR1_OC1M_TOGGLE              ((uint16_t)0x0030)
+#define  TIM_CCMR1_OC1M_NFORCE              ((uint16_t)0x0040)
+#define  TIM_CCMR1_OC1M_FORCE               ((uint16_t)0x0050)
+#define  TIM_CCMR1_OC1M_PWM1                ((uint16_t)0x0060)
+#define  TIM_CCMR1_OC1M_PWM2                ((uint16_t)0x0070)
 
 #define  TIM_CCMR1_OC1CE                     ((uint16_t)0x0080)            /*!<Output Compare 1Clear Enable */
 

@@ -105,6 +105,7 @@
 #   define _DMATX_IRQ       DMA1_Channel3_IRQn
 #   define _DMARX_IFG       (0x2 << (4*(2-1)))
 #   define _DMATX_IFG       (0x2 << (4*(3-1)))
+#   define __DMA_CLEAR_IFG() (DMA1->IFCR = (0xF << (4*(2-1))) | (0xF << (4*(3-1))))
 #   define __SPI_CLKON()    (RCC->APB2ENR |= RCC_APB2ENR_SPI1EN)
 #   define __SPI_CLKOFF()   (RCC->APB2ENR &= ~RCC_APB2ENR_SPI1EN)
 
@@ -118,6 +119,7 @@
 #   define _DMATX_IRQ       DMA1_Channel5_IRQn
 #   define _DMARX_IFG       (0x2 << (4*(4-1)))
 #   define _DMATX_IFG       (0x2 << (4*(5-1)))
+#   define __DMA_CLEAR_IFG() (DMA1->IFCR = (0xF << (4*(4-1))) | (0xF << (4*(5-1))))
 #   define __SPI_CLKON()    (RCC->APB1ENR |= RCC_APB1ENR_SPI2EN)
 #   define __SPI_CLKOFF()   (RCC->APB1ENR &= ~RCC_APB1ENR_SPI2EN)
 
@@ -126,16 +128,29 @@
 
 #endif
 
-#define __DMA_CLEAR_IFG()   (DMA1->IFCR = _DMARX_IFG)
-#define __DMA_CLEAR_IRQ()   (NVIC->ICPR[(ot_u32)(_DMARX_IRQ>>5)] = (1 << ((ot_u32)_DMARX_IRQ & 0x1F)))
-#define __DMA_TRIGGER()     do { _DMARX->CCR |= DMA_CCR1_EN; _DMATX->CCR |= DMA_CCR1_EN; } while(0)
+
+#define __DMA_CLEAR_IRQ()  (NVIC->ICPR[(ot_u32)(_DMARX_IRQ>>5)] = (1 << ((ot_u32)_DMARX_IRQ & 0x1F)))
+#define __DMA_ENABLE()     do { \
+                                _DMARX->CCR = (DMA_CCR1_MINC | DMA_CCR1_PL_VHI | DMA_CCR1_TCIE | DMA_CCR1_EN); \
+                                _DMATX->CCR |= (DMA_CCR1_DIR | DMA_CCR1_MINC | DMA_CCR1_PL_VHI | DMA_CCR1_EN); \
+                            } while(0)
+#define __DMA_DISABLE()    do { \
+                                _DMARX->CCR = 0; \
+                                _DMATX->CCR = 0; \
+                            } while(0)          
 
 #define __SPI_CS_HIGH()     RADIO_SPICS_PORT->BSRRL = (ot_u32)RADIO_SPICS_PIN
-#define __SPI_CS_LOW()      RADIO_SPICS_PORT->BRR   = (ot_u32)RADIO_SPICS_PIN
+#define __SPI_CS_LOW()      RADIO_SPICS_PORT->BSRRH = (ot_u32)RADIO_SPICS_PIN
 #define __SPI_CS_ON()       __SPI_CS_LOW()
 #define __SPI_CS_OFF()      __SPI_CS_HIGH()
-#define __SPI_ENABLE()      RADIO_SPI->CR1 |= SPI_CR1_SPE
-#define __SPI_DISABLE()     RADIO_SPI->CR1 &= ~SPI_CR1_SPE
+                            
+#define __SPI_ENABLE()      do { \
+                                RADIO_SPI->CR2 = (SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN); \
+                                RADIO_SPI->SR  = 0; \
+                                RADIO_SPI->CR1 = (SPI_CR1_SSI | SPI_CR1_SSM | SPI_CR1_MSTR | _SPI_DIV | SPI_CR1_SPE); \
+                            } while(0)
+                                
+#define __SPI_DISABLE()     (RADIO_SPI->CR1 = (SPI_CR1_SSI | SPI_CR1_SSM | SPI_CR1_MSTR | _SPI_DIV))
 #define __SPI_GET(VAL)      VAL = RADIO_SPI->DR
 #define __SPI_PUT(VAL)      RADIO_SPI->DR = VAL
 
@@ -235,9 +250,9 @@ void spirit1_reset() {
 
 
 void spirit1_waitforreset() {
-/// Wait for nPOR signal to go low.  
+/// Wait for POR signal to go low.  
 /// Save non-blocking implementation for a rainy day.
-    while (RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN);
+    while ((RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN) == 0);
 }
 
 
@@ -297,17 +312,17 @@ void spirit1_init_bus() {
 /// and GPIO clocks
     
     ///0. Assure that Shutdown Line is Low
-    RADIO_SDN_PORT->BSRRH = RADIO_SDN_PIN;
+    RADIO_SDN_PORT->BSRRH   = RADIO_SDN_PIN;        // Clear
     
     ///1. Set-up DMA to work with SPI.  The DMA is bound to the SPI and it is
     ///   used for Duplex TX+RX.  The DMA RX Channel is used as an EVENT.  The
     ///   STM32L can do in-context naps using EVENTS.  To enable the EVENT, we
     ///   enable the DMA RX interrupt bit, but not the NVIC.
-    _DMARX->CCR     = DMA_CCR1_MINC | DMA_CCR1_PL_VHI | DMA_CCR1_TCIE;
+    BOARD_DMA_CLKON();
     _DMARX->CMAR    = (ot_u32)&spirit1.status;
     _DMARX->CPAR    = (ot_u32)&RADIO_SPI->DR;
-    _DMATX->CCR     = DMA_CCR1_DIR | DMA_CCR1_MINC | DMA_CCR1_PL_VHI;
     _DMATX->CPAR    = (ot_u32)&RADIO_SPI->DR;
+    BOARD_DMA_CLKOFF();
     
     // Don't enable NVIC, because we want an EVENT, not an interrupt.
     //NVIC->IP[(ot_u32)_DMARX_IRQ]        = PLATFORM_NVIC_RF_GROUP;
@@ -323,9 +338,6 @@ void spirit1_init_bus() {
 #   else
 #       define _SPI_DIV (0<<3)
 #   endif
-    RADIO_SPI->CR1  = SPI_CR1_MSTR | _SPI_DIV;
-    RADIO_SPI->CR2  = SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN;
-    
     
     ///3. Wait for rest of bus to stabilize on power-up, then put it to sleep.
     ///   SPIRIT1 can do SPI while in sleep mode.  "Sleep" mode is either 
@@ -377,30 +389,32 @@ void spirit1_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
 /// peripherals, we cannot assume in this module if it is appropriate to turn-
 /// off the DMA for all other modules.
 
-    BOARD_DMA_CLKON();
     __SPI_CLKON();
     __SPI_ENABLE();
-    
-    ///Flip CS
     __SPI_CS_ON();
     
     /// Set-up DMA, and trigger it.  TX goes out from parameter.  RX goes into
     /// module buffer.  If doing a read, the garbage data getting duplexed onto
     /// TX doesn't affect the SPIRIT1.  If doing a write, simply disregard the 
     /// RX duplexed data.
-    _DMARX->CNDTR = (cmd_len+resp_len);
-    _DMATX->CMAR  = (ot_u32)cmd;
+    BOARD_DMA_CLKON();
     __DMA_CLEAR_IFG();
-    __DMA_TRIGGER();
+    cmd_len        += resp_len;
+    _DMARX->CNDTR   = cmd_len;
+    _DMATX->CNDTR   = cmd_len;
+    _DMATX->CMAR    = (ot_u32)cmd;
+    __DMA_ENABLE();
     
     /// Use Cortex-M WFE (Wait For Event) to hold until DMA is complete.  This
     /// is the CM way of doing a busywait loop, but turning off the CPU core.
     /// The while loop is for safety purposes, in case another event comes.
-    do {
-        __WFE();
-    } while((DMA1->ISR & _DMARX_IFG) == 0);
+    //do {
+        //__WFE();
+    //} 
+    while((DMA1->ISR & _DMARX_IFG) == 0);
     __DMA_CLEAR_IRQ();
     __DMA_CLEAR_IFG();
+    __DMA_DISABLE();
 
     /// Turn-off and disable SPI to save energy
     __SPI_CS_OFF();

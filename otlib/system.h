@@ -34,6 +34,7 @@
 #ifndef __SYSTEM_H
 #define __SYSTEM_H
 
+#include "OT_platform.h"
 #include "OT_types.h"
 #include "OT_config.h"
 
@@ -46,22 +47,19 @@
 #endif
 
 
-
-#ifndef GPTIM_SHIFT
-#   define GPTIM_SHIFT 0
+#ifndef OT_GPTIM_SHIFT
+#   define OT_GPTIM_SHIFT 0
 #endif
 
-#if (GPTIM_SHIFT != 0)
+#if (OT_GPTIM_SHIFT != 0)
 #   define CLK_UNIT         ot_long
-#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> GPTIM_SHIFT)
-#   define TI2CLK(TICKS)    ((ot_long)TICKS << GPTIM_SHIFT)
+#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> OT_GPTIM_SHIFT)
+#   define TI2CLK(TICKS)    ((ot_long)TICKS << OT_GPTIM_SHIFT)
 #else
 #   define CLK_UNIT         ot_u16
 #   define CLK2TI(CLOCKS)   (CLOCKS)
 #   define TI2CLK(TICKS)    (TICKS)
 #endif
-
-
 
 
 typedef enum {

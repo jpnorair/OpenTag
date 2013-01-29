@@ -21,6 +21,7 @@
   * @brief      X2 Method for Veelite Core Functions
   * @ingroup    Veelite
   *
+  * @todo STM32L has unusual FLASH design.  The X2 algorithm must be inverted.
   * @todo Integrate method of storing table in EEPROM
   * @todo Make sure interrupts are getting paused during EEPROM & FLASH writes.
   * 

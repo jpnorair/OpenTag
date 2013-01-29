@@ -53,6 +53,7 @@ void sub_stop() {
   //PWR->CR     = tmpreg;
     PWR->CR    |= PWR_CR_LPSDSR;
     SCB->SCR   |= SCB_SCR_SLEEPDEEP;
+    platform_enable_interrupts();
     __WFI();
 
     // On wakeup reset SLEEPDEEP bit of Cortex System Control Register
@@ -73,6 +74,7 @@ void sub_stop() {
 void sub_sleep() {
     PWR->CR    &= (PWR_CR_PDDS | PWR_CR_LPSDSR);
     SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+    platform_enable_interrupts();
     __WFI();
 }
 

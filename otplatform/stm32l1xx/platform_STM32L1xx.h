@@ -60,6 +60,32 @@
 
 
 
+/** STM32L family MCU settings     <BR>
+  * ========================================================================<BR>
+  * STM32L has a peculiar FLASH design where the erased value is 0 instead of
+  * 1.  This requires some unusual setup for the Memory configuration.
+  */
+#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL   // FEATURE                  NOTE
+#define MCU_FEATURE_SVMONITOR           DISABLED            // Auto Low V powerdown     On many MCUs
+#define MCU_FEATURE_CRC                 DISABLED            // CCITT CRC16              On some MCUs
+#define MCU_FEATURE_AES128              DISABLED            // AES128 engine            On some MCUs
+#define MCU_FEATURE_ECC                 DISABLED            // ECC engine               Rare
+
+#define SRAM_START_ADDR         0x20000000
+#define EEPROM_START_ADDR       0x08080000
+#define FLASH_START_ADDR        0x08000000
+#define FLASH_START_PAGE        0
+#define FLASH_PAGE_SIZE         256
+#define FLASH_WORD_BYTES        2
+#define FLASH_WORD_BITS         (FLASH_WORD_BYTES*8)
+#define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
+
+// STM32L has peculiar flash, where 0 is the erase value.  
+// On every other flash, it is 1 (i.e. FFFF).
+//#define NULL_vaddr              0x0000
+
+
+
 
 /** Chip Settings  <BR>
   * ========================================================================<BR>
@@ -324,20 +350,6 @@ typedef struct {
 
 
 typedef struct {
-    // System stack alloctation: used for ISRs
-    ot_u32 sstack[OT_PARAM_SSTACK_ALLOC/4];
-
-    // task & thread stacks allocation
-#   if (OT_PARAM_SYSTHREADS)
-    ot_u32 tstack[OT_PARAM_TSTACK_ALLOC/4];
-#   endif
-
-    // Real Time Clock features
-    ot_u32  utc;
-#   if (RTC_ALARMS > 0)
-    rtcalarm alarm[RTC_ALARMS];
-#   endif
-
     // Tasking parameters
     void*   task_exit;
     ot_u16  last_evt;
@@ -347,8 +359,23 @@ typedef struct {
     ot_u16  cpu_khz;
     ot_u16  prand_reg;
     ot_u16  crc16;
+    ot_u16  reserved;
     
-} platform_ext_struct;
+    // Real Time Clock features
+    ot_u32  utc;
+#   if (RTC_ALARMS > 0)
+    rtcalarm alarm[RTC_ALARMS];
+#   endif
+    
+    // System stack alloctation: used for ISRs
+    ot_u32 sstack[OT_PARAM_SSTACK_ALLOC/4];
+
+    // task & thread stacks allocation
+#   if (OT_PARAM_SYSTHREADS)
+    ot_u32 tstack[OT_PARAM_TSTACK_ALLOC/4];
+#   endif
+} 
+platform_ext_struct;
 
 
 extern platform_ext_struct  platform_ext;

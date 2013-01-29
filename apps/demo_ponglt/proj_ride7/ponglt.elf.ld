@@ -74,7 +74,7 @@ INPUT("B:\apps\demo_ponglt\proj_ride7\build\mpipe_uart_STM32L1xx.o")
 INPUT("B:\apps\demo_ponglt\proj_ride7\build\platform_crc_STM32L1xx.o")
 INPUT("B:\apps\demo_ponglt\proj_ride7\build\platform_isr_STM32L1xx.o")
 INPUT("B:\apps\demo_ponglt\proj_ride7\build\platform_STM32L1xx.o")
-INPUT("B:\apps\demo_ponglt\proj_ride7\build\veelite_core_X2_STM32L1xx.o")
+INPUT("B:\apps\demo_ponglt\proj_ride7\build\veelite_core_EE_STM32L1xx.o")
 INPUT("B:\apps\demo_ponglt\proj_ride7\build\radio_SPIRIT1.o")
 INPUT("B:\apps\demo_ponglt\proj_ride7\build\SPIRIT1_STM32L1xx.o")
 GROUP(

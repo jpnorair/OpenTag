@@ -459,8 +459,8 @@ void platform_poweron() {
     __set_MSP( (ot_u32)platform_ext.sstack );
     
     ///2. Clock Setup: On startup, all clocks are 2.1 MHz MSI
-    platform_init_busclk();
     platform_init_periphclk();
+    platform_init_busclk();
     
     ///3. Board Specific powering up (usually default port setup)
     BOARD_PERIPH_INIT();
@@ -612,10 +612,13 @@ void sub_hsosc_config(void) {
     // Configure HSI as clock source (and Setup the Bus Dividers as specified)
 #   else 
     RCC->CFGR  |= (RCC_CFGR_SW_HSI | _AHB_DIV | _APB1_DIV | _APB2_DIV);
-    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)RCC_CFGR_SWS_HSE) { }
+    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)RCC_CFGR_SWS_HSI) { }
 
 #   endif
-
+    
+    // Represent the new speed, and disable the MSI clock now that it is not used
+    // Turn off MSI because HS clock is now active
+    RCC->CR &= ~RCC_CR_MSION;
     platform_ext.cpu_khz = (PLATFORM_HSCLOCK_HZ/1000);
 }
 
@@ -628,13 +631,14 @@ void platform_init_busclk() {
     ot_u16 counter;
     
     ///1. RESET System Clocks
+    ///@todo This may not be necessary.  These settings should be reset default settings.
     RCC->CR    |= (uint32_t)0x00000100;     // Set MSION bit
     RCC->CFGR  &= (uint32_t)0x88FFC00C;     // Reset SW[1:0], HPRE[3:0], PPRE1[2:0], PPRE2[2:0], 
                                             //   MCOSEL[2:0], and MCOPRE[2:0] bits
     RCC->CR    &= (uint32_t)0xEEFEFFFE;     // Reset HSION, HSEON, CSSON and PLLON bits
     RCC->CR    &= (uint32_t)0xFFFBFFFF;     // Reset HSEBYP bit
     RCC->CFGR  &= (uint32_t)0xFF02FFFF;     // Reset PLLSRC, PLLMUL[3:0] and PLLDIV[1:0] bits 
-    RCC->CIR    = 0x00000000;               // Disable all interrupts
+    RCC->CIR    = 0x00000000;               // Disable all clocker interrupts (default)
 
     ///2. Prepare external Memory bus (not currently supported)
 //#   ifdef DATA_IN_ExtSRAM
@@ -715,29 +719,28 @@ void platform_init_busclk() {
 #           error "PLATFORM_HSCLOCK_HZ is not set to a value matching HW options"
 #       endif
         
+        // Prepare Flash and Voltage for new clock setting
+        sub_hsflash_config();
+        sub_voltage_config();
+        
+        ///@todo figure out a way to do this with WFE
         RCC->CR    |= ((uint32_t)_OSC_ONBIT);
         counter     = _OSC_TIMEOUT;
-        while (((RCC->CR & _OSC_RDYFLAG) == 0) && (--counter != 0));
+        while (((RCC->CR & _OSC_RDYFLAG) == 0) && (--counter));
     
-        // Crystal Startup succeeded
-        if (RCC->CR & _OSC_RDYFLAG) {
-            platform_ext.cpu_khz = (PLATFORM_HSCLOCK_HZ/1000);
-            sub_hsflash_config();
-            sub_voltage_config();
-            sub_hsosc_config();
+        // HS Osc Startup Failed
+        if (counter == 0) {
+            ///@todo Death message / Death Blinkly
         }
         
-        // Crystal Startup Failed
-        ///@todo Death message / Death Blinkly
-        else {
-            
-        }
+        // HS Osc Startup succeeded
+        sub_hsosc_config();
 
 #   endif
 
     /// X. Vector Table Relocation in Internal SRAM or FLASH.
 #   ifdef VECT_TAB_SRAM
-#       error "Shouldn't be here."
+#       error "Silly rabbit! SRAM is for DATA!"
         SCB->VTOR   = SRAM_BASE;  
 #   else
         SCB->VTOR   = FLASH_BASE;
@@ -749,7 +752,32 @@ void platform_init_busclk() {
 
 #ifndef EXTF_platform_init_periphclk
 void platform_init_periphclk() {
-/// Deprecated
+/// Turn-on LSE or LSI, it is used by some peripherals.  In particular,
+/// OpenTag likes having a 32768Hz clock for timing purposes.  TIM9, 10, 11,
+/// and the RTC are all driven by the LF clock.
+    
+#   define CSR_BYTE2_ADDRESS        ((uint32_t)0x40023835)
+#   define RCC_LSE_OFF              ((uint8_t)0x00)
+#   define RCC_LSE_ON               ((uint8_t)0x01)
+#   define RCC_LSE_Bypass           ((uint8_t)0x05)
+#   define RCC_LSE_RDY              ((uint8_t)0x02)
+    
+#define CR_OFFSET                (PWR_OFFSET + 0x00)
+#define DBP_BitNumber            0x08
+#define CR_DBP_BB                (PERIPH_BB_BASE + (CR_OFFSET * 32) + (DBP_BitNumber * 4))
+    
+#   if (BOARD_FEATURE_LFXTAL == ENABLED)
+    RCC->APB1ENR    = RCC_APB1ENR_PWREN; 
+    PWR->CR        |= PWR_CR_DBP;
+    RCC->CSR       |= RCC_CSR_LSEON;
+    while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
+    //*((__IO ot_u8*)CSR_BYTE2_ADDRESS) = RCC_LSE_ON;
+    //while ((*((__IO ot_u8*)CSR_BYTE2_ADDRESS) & RCC_LSE_RDY) == 0);
+    
+#   else
+    ///@todo this
+#   endif
+   
 }
 #endif
 
@@ -829,11 +857,8 @@ void platform_full_speed() {
 #       endif
 #       endif
 
-        // Turn on the HS OSC
+        // Turn on the HS OSC, which will also turn-off MSI
         sub_hsosc_config();
-
-        // Turn off MSI because HS clock is now active
-        RCC->CR &= ~RCC_CR_MSION;
     }
 }
 
@@ -970,6 +995,7 @@ OT_INLINE void platform_ot_run() {
     ///    instruction.
     if (platform_ext.next_evt  != 0) {
         platform_disable_interrupts();
+        platform_enable_ktim();
         sys_powerdown();
     }
 }
@@ -1009,22 +1035,10 @@ void platform_init_interruptor() {
 #   endif
 
 
-    // 1. Kill Timer is allocated based on recommendations from the board
-    //    support header.  It is not always used, but is always needed at
-    //    least as an interrupt source.  Default is TIM7.  Time-base = 1024Hz.
-//#   if !defined(OT_KILLTIM)
-//#       define OT_KILLTIM               TIM7
-//#       define OT_KILLTIM_ID            7
-//#   endif
-//#   if (OT_KILLTIM_ID >= 9)
-//#       define OT_KILLTIM_PRESCALER     (BOARD_APB2_Hz / 1024)  
-//#   else
-//#       define OT_KILLTIM_PRESCALER     (BOARD_APB1_Hz / 1024)
-//#   endif
-//    OT_KILLTIM->CR1     = TIM_CR1_OPM;
-//    OT_KILLTIM->CR2     = 0;
-//    OT_KILLTIM->DIER    = TIM_DIER_UDE;
-//    OT_KILLTIM->PSC     = OT_KILLTIM_PRESCALER;
+    /// 1. Set the EXTI channels using the board function.  Different boards
+    ///    are connected differently, so this function must be implemented in 
+    ///    the board support header.
+    BOARD_EXTI_STARTUP();
 
     /// 2. Set main NVIC parameters: Vector Table @ 0x08000000 (offset = 0),
     ///    _GROUP_PRIORITY is a constant set above in this C file
@@ -1132,40 +1146,30 @@ void platform_init_gptim(ot_uint prescaler) {
 //    OT_GPTIM->CCER  = 0;
    
     // Set Rising Edge interrupt
-#   if (OT_GPTIM_ID == 9)
-#       define _KTIM_EXTI   BOARD_TIM9CH1_PIN
-#       define _MACTIM_EXTI ((RF_FEATURE(MAC) != ENABLED) << BOARD_TIM9CH2_PINNUM)
-#   elif (OT_GPTIM_ID == 10)
-#       define _KTIM_EXTI   BOARD_TIM10CH1_PIN
-#       define _MACTIM_EXTI 0
-#   elif (OT_GPTIM_ID == 11)
-#       define _KTIM_EXTI   BOARD_TIM11CH1_PIN
-#       define _MACTIM_EXTI 0
-#   else
-#       error "OT_GPTIM must be on TIM9, 10, or 11.  Preferably TIM9"
-#   endif
+#   define _KTIM_EXTI   BOARD_GPTIM1_PIN
+#   define _MACTIM_EXTI ((RF_FEATURE(MAC) != ENABLED) << BOARD_GPTIM2_PINNUM)
 //  EXTI->IMR              |= (_KTIM_EXTI | _MACTIM_EXTI);    //done individually
     EXTI->RTSR             |= (_KTIM_EXTI | _MACTIM_EXTI);
 
     // Configure Timer for LSE clocking
-    OT_GPTIM->SMCR  = TIM_SMCR_ECE;                         // Timer Mode 2
+    OT_GPTIM->SMCR  = TIM_SMCR_ECE | TIM_SMCR_ETPS_DIV8;    // Timer Mode 2 with (1/8) prescale
     OT_GPTIM->DIER  = 0;                                    // TIM interrupts unused
     OT_GPTIM->SR    = 0;                                    // clear update flags
     
 #   if ((RF_FEATURE(MAC_TIMER) == ENABLED) && (OT_GPTIM_ID == 9))
-    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_0 | TIM_CCMR1_OC2M_0;  // Set Output on Match
+    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_SET | TIM_CCMR1_OC2M_SET;  // Set Output on Match
     OT_GPTIM->CCER  = TIM_CCER_CC1E | TIM_CCER_CC2E;        // Enable Kernel & RF MAC timers
 #   else
-    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_0;                     // Set Output on Match
+    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_SET;                     // Set Output on Match
     OT_GPTIM->CCER  = TIM_CCER_CC1E;                        // Only Enable Kernel Timer
 #   endif
-    OT_GPTIM->PSC   = ((OT_GPTIM_CLOCK / OT_GPTIM_RES)-1);  // Should be 1024 Hz
+  //OT_GPTIM->PSC   = 0;
     OT_GPTIM->ARR   = 65535;                                // Continuous Mode
     OT_GPTIM->OR    = 0;
     
     // Re-enable Timer
+    OT_GPTIM->CR1   = (TIM_CR1_UDIS | TIM_CR1_CEN);
     OT_GPTIM->EGR   = TIM_EGR_UG;
-    OT_GPTIM->CR1  |= TIM_CR1_CEN;
 }
 #endif
 
@@ -1213,7 +1217,7 @@ void platform_init_rtc(ot_u32 value) {
 #if 0 //(OT_FEATURE(RTC) || defined(OT_GPTIM_USERTC))
 
 #   if (BOARD_PARAM_LFHz != 32768)
-#       error "Currently, the RTC must use 32768Hz"
+#       error "Currently, the RTC is limited to 32768Hz clocks"
 #   endif
 
 #   ifdef OT_GPTIM_USERTC
@@ -1284,6 +1288,7 @@ void platform_set_ktim(ot_u16 value) {
 /// measure the active counter, so platform_ext.lastktim needs to be saved.
     platform_ext.last_evt   = OT_GPTIM->CNT;
     OT_GPTIM->CCR1          = platform_ext.last_evt + value;
+    ///@todo update event
 }
 
 void platform_set_gptim2(ot_u16 value) {
@@ -1621,13 +1626,15 @@ void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_int length) {
     static const ot_u16 ccr[4]      = { 0x4AD1, 0x40D1, 0x45D1, 0x40D1 };
     static const ot_u16 len_div[4]  = { 2, 0, 1, 0 };
     ot_int align;
-    align = ((ot_u32)dest | (ot_u32)src | (ot_u32)length) & 3;
     
+    MEMCPY_DMACHAN->CCR     = 0;
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
-    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
-    MEMCPY_DMACHAN->CMAR   = (ot_u32)src;
-    MEMCPY_DMACHAN->CNDTR  = length >> len_div[align];
-    MEMCPY_DMACHAN->CCR    = ccr[align];
+    MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;
+    MEMCPY_DMACHAN->CMAR    = (ot_u32)src;
+    align                   = ((ot_u32)dest | (ot_u32)src | (ot_u32)length) & 3;
+    length                >>= len_div[align];
+    MEMCPY_DMACHAN->CNDTR   = length;
+    MEMCPY_DMACHAN->CCR     = ccr[align];
     
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
@@ -1641,11 +1648,12 @@ void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_int length) {
         length >>= 1;
         ccr_val += 0x0500;
     }
+    MEMCPY_DMACHAN->CCR     = 0;
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
-    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
-    MEMCPY_DMACHAN->CMAR   = (ot_u32)src;
-    MEMCPY_DMACHAN->CNDTR  = length;
-    MEMCPY_DMACHAN->CCR    = ccr_val;
+    MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;
+    MEMCPY_DMACHAN->CMAR    = (ot_u32)src;
+    MEMCPY_DMACHAN->CNDTR   = length;
+    MEMCPY_DMACHAN->CCR     = ccr_val;
     
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
@@ -1694,11 +1702,12 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
     memset(dest, value, length);
 
 #elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
+    MEMCPY_DMACHAN->CCR     = 0;
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;       ///@todo see if this can be globalized
-    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
-    MEMCPY_DMACHAN->CMAR   = (ot_u32)&value;
-    MEMCPY_DMACHAN->CNDTR  = length;
-    MEMCPY_DMACHAN->CCR    = DMA_CCR1_DIR       | \
+    MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;
+    MEMCPY_DMACHAN->CMAR    = (ot_u32)&value;
+    MEMCPY_DMACHAN->CNDTR   = length;
+    MEMCPY_DMACHAN->CCR     = DMA_CCR1_DIR       | \
                               DMA_CCR1_PINC    | \
                               DMA_CCR1_PL_LOW | \
                               DMA_CCR1_MEM2MEM              | \
@@ -1745,22 +1754,25 @@ void platform_delay(ot_u16 n) {
 
 #ifndef EXTF_platform_swdelay_ms
 void platform_swdelay_ms(ot_u16 n) {
-    ot_u32 c;
-    c   = platform_ext.cpu_khz; // Set cycles per ms
-    c  *= n;
-    c >>= 2;                    // loop requires 4 cycles
-    while (c--);
+    ot_long c;
+    c   = (platform_ext.cpu_khz);       // Set cycles per ms
+    c  *= n;                            // Multiply by number of ms                   
+    do { 
+        c -= 7;                         // 7 cycles per loop
+    } while (c > 0);
 }
 #endif
 
 
 #ifndef EXTF_platform_swdelay_us
 void platform_swdelay_us(ot_u16 n) {
-    ot_u32 c;
+    ot_long c;
     c   = platform_ext.cpu_khz; // Set cycles per ms
     c  *= n;
-    c >>= 12;                   // divide by 1024 (~1024us/ms) and divide by 4 (4 cycles/loop)
-    while (c--);
+    c >>= 10;                   // divide by 1024 (~1024us/ms)
+    do { 
+        c -= 7;                         // 7 cycles per loop
+    } while (c > 0);
 }
 #endif
 

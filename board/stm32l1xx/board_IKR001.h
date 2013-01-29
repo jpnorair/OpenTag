@@ -78,15 +78,9 @@
   * ========================================================================<BR>
   * Implemented capabilities of the STM32L variants
   */
-#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL   // FEATURE                  NOTE
-#define MCU_FEATURE_SVMONITOR           DISABLED            // Auto Low V powerdown     On many MCUs
-#define MCU_FEATURE_CRC                 DISABLED            // CCITT CRC16              On some MCUs
-#define MCU_FEATURE_AES128              DISABLED            // AES128 engine            On some MCUs
-#define MCU_FEATURE_ECC                 DISABLED            // ECC engine               Rare
-#define MCU_FEATURE_RADIODMA            DISABLED
-#define MCU_FEATURE_RADIODMA_TXBYTES    0
-#define MCU_FEATURE_RADIODMA_RXBYTES    0
 
+//From platform_STM32L1xx.h
+//#define MCU_FEATURE(VAL)              MCU_FEATURE_##VAL   // FEATURE 
 #define MCU_FEATURE_MULTISPEED          DISABLED         // Allows usage of MF-HF clock boosting
 #define MCU_FEATURE_MAPEEPROM           DISABLED
 #define MCU_FEATURE_MPIPECDC            DISABLED        // USB-CDC MPipe implementation
@@ -97,6 +91,41 @@
 #define MCU_PARAM_PORTS                 6               // This STM32L has ports A, B, C, D, E, H
 #define MCU_PARAM_VOLTLEVEL             2               // 3=1.2, 2=1.5V, 1=1.8V
 #define MCU_PARAM_POINTERSIZE           2
+
+
+
+
+/** Platform Memory Configuration <BR>
+  * ========================================================================<BR>
+  * OpenTag needs to know where it can put Nonvolatile memory (file system) and
+  * how much space it can allocate for filesystem.  For this configuration, 
+  * Veelite is put into FLASH.
+  *
+  * The STM32L uses 256 byte Flash pages and 4KB Flash sectors.  Therefore, it
+  * is best to allocate the FS in Flash on 4KB boundaries because this is the 
+  * resolution that can be write protected (or, as with FS, *NOT* write 
+  * protected).  Best practice with STM32 chips is to put the FS at the back of
+  * of the Flash space because this seems to work best with the debugger HW.
+  */
+
+#define SRAM_SIZE               (16*1024)
+#define EEPROM_SIZE             (4*1024)
+#if 1
+#   define FLASH_SIZE           (64*1024)
+#else
+#   define FLASH_SIZE           (128*1024)   //chip actually has 128KB
+#endif
+
+// Using EEPROM: Pages figure is irrelevant
+#define FLASH_NUM_PAGES         (FLASH_SIZE/FLASH_PAGE_SIZE)
+#define FLASH_FS_ADDR           (EEPROM_START_ADDR)
+#define FLASH_FS_PAGES          0
+#define FLASH_FS_FALLOWS        0 
+#define FLASH_FS_ALLOC          (EEPROM_SIZE) 
+
+
+
+
 
 
 
@@ -306,38 +335,40 @@
 #define BOARD_ACC_SDAPIN                (1<<11)
 
 // LCD Interface on SPI2
-#define BOARD_LCDBL_PORTNUM             0
-#define BOARD_LCDBL_PORT                GPIOA
-#define BOARD_LCDBL_PINNUM              9
-#define BOARD_LCDBL_PIN                 (1<<9)
-#define BOARD_LCDRESETN_PORTNUM         4
-#define BOARD_LCDRESETN_PORT            GPIOE
-#define BOARD_LCDRESETN_PINNUM          10
-#define BOARD_LCDRESETN_PIN             (1<<10)
-#define BOARD_LCDSPI_PORTNUM            1
-#define BOARD_LCDSPI_PORT               GPIOB
-#define BOARD_LCDSPI_MOSIPINNUM         15
-#define BOARD_LCDSPI_MISOPINNUM         14
-#define BOARD_LCDSPI_SCLKPINNUM         13
-#define BOARD_LCDSPI_CSNPINNUM          12
-#define BOARD_LCDSPI_MOSIPIN            (1<<15)
-#define BOARD_LCDSPI_MISOPIN            (1<<14)
-#define BOARD_LCDSPI_SCLKPIN            (1<<13)
-#define BOARD_LCDSPI_CSNPIN             (1<<12)
+// LCD Card interface cannot be utilized, because TIM9 is required
+//#define BOARD_LCDBL_PORTNUM             0
+//#define BOARD_LCDBL_PORT                GPIOA
+//#define BOARD_LCDBL_PINNUM              9
+//#define BOARD_LCDBL_PIN                 (1<<9)
+//#define BOARD_LCDRESETN_PORTNUM         4
+//#define BOARD_LCDRESETN_PORT            GPIOE
+//#define BOARD_LCDRESETN_PINNUM          10
+//#define BOARD_LCDRESETN_PIN             (1<<10)
+//#define BOARD_LCDSPI_PORTNUM            1
+//#define BOARD_LCDSPI_PORT               GPIOB
+//#define BOARD_LCDSPI_MOSIPINNUM         15
+//#define BOARD_LCDSPI_MISOPINNUM         14
+//#define BOARD_LCDSPI_SCLKPINNUM         13
+//#define BOARD_LCDSPI_CSNPINNUM          12
+//#define BOARD_LCDSPI_MOSIPIN            (1<<15)
+//#define BOARD_LCDSPI_MISOPIN            (1<<14)
+//#define BOARD_LCDSPI_SCLKPIN            (1<<13)
+//#define BOARD_LCDSPI_CSNPIN             (1<<12)
 
 // SD Card interface (shares SPI2)
-#define BOARD_SDCSN_PORTNUM             0
-#define BOARD_SDCSN_PORT                GPIOA
-#define BOARD_SDCSN_PINNUM              8
-#define BOARD_SDCSN_PIN                 (1<<8)
-#define BOARD_SDSPI_PORTNUM             1
-#define BOARD_SDSPI_PORT                GPIOB
-#define BOARD_SDSPI_MOSIPINNUM          15
-#define BOARD_SDSPI_MISOPINNUM          14
-#define BOARD_SDSPI_SCLKPINNUM          13
-#define BOARD_SDSPI_MOSIPIN             (1<<15)
-#define BOARD_SDSPI_MISOPIN             (1<<14)
-#define BOARD_SDSPI_SCLKPIN             (1<<13)
+// SD Card interface cannot be utilized, because TIM9 is required
+//#define BOARD_SDCSN_PORTNUM             0
+//#define BOARD_SDCSN_PORT                GPIOA
+//#define BOARD_SDCSN_PINNUM              8
+//#define BOARD_SDCSN_PIN                 (1<<8)
+//#define BOARD_SDSPI_PORTNUM             1
+//#define BOARD_SDSPI_PORT                GPIOB
+//#define BOARD_SDSPI_MOSIPINNUM          15
+//#define BOARD_SDSPI_MISOPINNUM          14
+//#define BOARD_SDSPI_SCLKPINNUM          13
+//#define BOARD_SDSPI_MOSIPIN             (1<<15)
+//#define BOARD_SDSPI_MISOPIN             (1<<14)
+//#define BOARD_SDSPI_SCLKPIN             (1<<13)
 
 // SPIRIT1 RF interface
 #define BOARD_RFGPIO_PORTNUM            2
@@ -378,16 +409,26 @@
 #define BOARD_SCMOUT_SCMENPIN           (1<<4)
 #define BOARD_SCMOUT_CMENPIN            (1<<3)
 
-// TIMER9 interface: note that CH2 is on same position as Joystick-Left.
-// Disconnect Joystick Left, or alternatively just don't use it.  :)
-#define BOARD_TIM9CH1_PORTNUM           4   //Port E
-#define BOARD_TIM9CH2_PORTNUM           4
-#define BOARD_TIM9CH1_PORT              GPIOE
-#define BOARD_TIM9CH2_PORT              GPIOE
-#define BOARD_TIM9CH1_PINNUM            5
-#define BOARD_TIM9CH2_PINNUM            6
-#define BOARD_TIM9CH1_PIN               (1<<5)
-#define BOARD_TIM9CH2_PIN               (1<<6)
+// TIMER9 output interface: 
+// You cannot use LCD or SD card with Timer 9
+#define BOARD_TIM9CH1_PORTNUM           1   //Port B
+#define BOARD_TIM9CH2_PORTNUM           1
+#define BOARD_TIM9CH1_PORT              GPIOB
+#define BOARD_TIM9CH2_PORT              GPIOB
+#define BOARD_TIM9CH1_PINNUM            13
+#define BOARD_TIM9CH2_PINNUM            14
+#define BOARD_TIM9CH1_PIN               (1<<13)
+#define BOARD_TIM9CH2_PIN               (1<<14)
+
+// GPTIM wakeup interface: Uses loopback from Timer 9
+#define BOARD_GPTIM1_PORTNUM            1   //Port B
+#define BOARD_GPTIM2_PORTNUM            1   
+#define BOARD_GPTIM1_PORT               GPIOB
+#define BOARD_GPTIM2_PORT               GPIOB
+#define BOARD_GPTIM1_PINNUM             13
+#define BOARD_GPTIM2_PINNUM             14
+#define BOARD_GPTIM1_PIN                (1<<13)
+#define BOARD_GPTIM2_PIN                (1<<14)
 
 
 
@@ -460,7 +501,7 @@
 //@note BOARD Macro for Peripheral Clock initialization at startup
 static inline void BOARD_PERIPH_INIT(void) {
     //1. AHB Clock Setup for Active Mode
-    RCC->AHBENR    |= (_DMACLK_N | _FLITFCLK_N | _CRCCLK_N | _GPIOCLK_N);
+    RCC->AHBENR    = (_DMACLK_N | _FLITFCLK_N | _CRCCLK_N | _GPIOCLK_N);
 
     // 1b. AHB Clock Setup for Sleep Mode
     RCC->AHBLPENR  = (_DMACLK_LP | _SRAMCLK_LP | _FLITFCLK_LP | _CRCCLK_LP | _GPIOCLK_LP);
@@ -469,14 +510,14 @@ static inline void BOARD_PERIPH_INIT(void) {
     // The default is all-off, and it is the job of the peripheral drivers to 
     // enable/disable their clocks as needed.  SYSCFG is the exception.
     // USART1, SPI1, ADC1, TIM11, TIM10, TIM9, SYSCFG.
-    RCC->APB2ENR   |= RCC_APB2ENR_SYSCFGEN;
+    RCC->APB2ENR   = (RCC_APB2ENR_TIM9EN) | RCC_APB2ENR_SYSCFGEN;
 
     // 3. APB1 Clocks in Active Mode.  APB1 is the low-speed peripheral bus.
     // The default is all-off, and it is the job of the peripheral drivers to 
     // enable/disable their clocks as needed.  PWR is the exception.
     // COMP, DAC, PWR, USB, I2C2, I2C1, USART3, USART2, SPI2, WWDG, LCD, TIM7,
     // TIM6, TIM4, TIM3, TIM2
-    RCC->APB1ENR   |= RCC_APB1ENR_PWREN; 
+    RCC->APB1ENR   = (RCC_APB1ENR_PWREN); 
 }
 
 
@@ -524,24 +565,23 @@ static inline void BOARD_EXTI_STARTUP(void) {
     // EXTI0-3 
     //SYSCFG->EXTICR[1] |=
     
-    // EXTI4-7 (TIM9CH1 = EXTI5, TIM9CH2 = EXTI6, RF_IRQ0 = EXTI7, )
-    SYSCFG->EXTICR[2]  |= ( (BOARD_TIM9CH1_PORTNUM << 4) \
-                          | (BOARD_TIM9CH2_PORTNUM << 8) \
-                          | (BOARD_RFGPIO_PORTNUM << 12) );
+    // EXTI4-7 (RF_IRQ0 = EXTI7, )
+    SYSCFG->EXTICR[1]  |= (BOARD_RFGPIO_PORTNUM << 12);
     
     // EXTI8-11 (RF_IRQ1 = EXTI8, RF_IRQ2 = EXTI9, RF_IRQ3 = EXTI10)
-    SYSCFG->EXTICR[3]  |= ( (BOARD_RFGPIO_PORTNUM << 0) \
+    SYSCFG->EXTICR[2]  |= ( (BOARD_RFGPIO_PORTNUM << 0) \
                           | (BOARD_RFGPIO_PORTNUM << 4) \
                           | (BOARD_RFGPIO_PORTNUM << 8) );
     
-    // EXTI12-15
-    //SYSCFG->EXTICR[4] |= 
+    // EXTI12-15 (GPTIM1 = 12, GPTIM2 = 15)
+    SYSCFG->EXTICR[3]  |= ( (BOARD_GPTIM1_PORTNUM << 4) \
+                          | (BOARD_GPTIM2_PORTNUM << 8) );
 }
 
 
 
 ///@note BOARD Macro for initializing GPIO ports at startup, pursuant to the
-///      connections in the schematic of this board.
+///      connections in the schematic of this board.  This funciotn
 static inline void BOARD_PORT_STARTUP(void) {
     
     // JTAG/SWD Interface: Set to Output-GND unless in DEBUG mode
@@ -650,9 +690,9 @@ static inline void BOARD_PORT_STARTUP(void) {
     
     
     // LCD interface on SPI 2 (currently disabled, set to output-gnd)
-    BOARD_LCDBL_PORT->MODER    |= (GPIO_MODER_OUT << (BOARD_LCDBL_PINNUM*2));
-    BOARD_LCDRESETN_PORT->MODER|= (GPIO_MODER_OUT << (BOARD_LCDRESETN_PINNUM*2));
-    BOARD_LCDSPI_PORT->MODER   |= ( (GPIO_MODER_OUT << (BOARD_LCDSPI_MOSIPINNUM*2)) \
+    //BOARD_LCDBL_PORT->MODER    |= (GPIO_MODER_OUT << (BOARD_LCDBL_PINNUM*2));
+    //BOARD_LCDRESETN_PORT->MODER|= (GPIO_MODER_OUT << (BOARD_LCDRESETN_PINNUM*2));
+    //BOARD_LCDSPI_PORT->MODER   |= ( (GPIO_MODER_OUT << (BOARD_LCDSPI_MOSIPINNUM*2)) \
                                   | (GPIO_MODER_OUT << (BOARD_LCDSPI_MISOPINNUM*2)) \
                                   | (GPIO_MODER_OUT << (BOARD_LCDSPI_SCLKPINNUM*2)) \
                                   | (GPIO_MODER_OUT << (BOARD_LCDSPI_CSNPINNUM*2)) );
@@ -660,25 +700,36 @@ static inline void BOARD_PORT_STARTUP(void) {
     
     // SD Card Interface on SPI2 (currently disabled)
     // LCD interface above already disabled SPI2, so just disable SD CSn
-    BOARD_SDCSN_PORT->MODER    |= (GPIO_MODER_OUT << (BOARD_SDCSN_PINNUM*2));
+    //BOARD_SDCSN_PORT->MODER    |= (GPIO_MODER_OUT << (BOARD_SDCSN_PINNUM*2));
     
     
     //SPIRIT1 RF Interface, using SPI1 and some GPIOs
-    //GPIO0-3 are floating inputs (default), SDN is 2MHz push-pull output
+    //GPIO0-3 are pull-down inputs, SDN is 2MHz push-pull output
+    //SPI bus is pull-down, CSN pin is pull-up
     BOARD_RFGPIO_PORT->MODER   |= (GPIO_MODER_OUT << (BOARD_RFGPIO_SDNPINNUM*2));
     BOARD_RFGPIO_PORT->OSPEEDR |= (GPIO_OSPEEDR_2MHz << (BOARD_RFGPIO_SDNPINNUM*2));
+    BOARD_RFGPIO_PORT->PUPDR   |= (2 << (BOARD_RFGPIO_0PINNUM*2)) \
+                                | (2 << (BOARD_RFGPIO_1PINNUM*2)) \
+                                | (2 << (BOARD_RFGPIO_2PINNUM*2)) \
+                                | (2 << (BOARD_RFGPIO_3PINNUM*2));
+    BOARD_RFGPIO_PORT->BSRRL    = BOARD_RFGPIO_SDNPIN;
+    
+    BOARD_RFSPI_PORT->PUPDR    |= ( (2 << (BOARD_RFSPI_MOSIPINNUM*2)) \
+                                  | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                                  | (2 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                                  | (0 << (BOARD_RFSPI_CSNPINNUM*2)) );
     BOARD_RFSPI_PORT->MODER    |= ( (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM*2)) \
                                   | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
                                   | (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                                  | (GPIO_MODER_ALT << (BOARD_RFSPI_CSNPINNUM*2)) );
+                                  | (GPIO_MODER_OUT << (BOARD_RFSPI_CSNPINNUM*2)) );
     BOARD_RFSPI_PORT->OSPEEDR  |= ( (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_MOSIPINNUM*2)) \
                                   | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_MISOPINNUM*2)) \
                                   | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_SCLKPINNUM*2)) \
                                   | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_CSNPINNUM*2)) );
-    BOARD_RFSPI_PORT->AFR[1]     |= ( (5 << ((BOARD_RFSPI_MOSIPINNUM-8)*4)) \
+    BOARD_RFSPI_PORT->AFR[1]     |= (5 << ((BOARD_RFSPI_MOSIPINNUM-8)*4)) \
                                   | (5 << ((BOARD_RFSPI_MISOPINNUM-8)*4)) \
-                                  | (5 << ((BOARD_RFSPI_SCLKPINNUM-8)*4)) \
-                                  | (5 << ((BOARD_RFSPI_CSNPINNUM-8)*4)) );
+                                  | (5 << ((BOARD_RFSPI_SCLKPINNUM-8)*4));
+    BOARD_RFSPI_PORT->BSRRL     = BOARD_RFSPI_CSNPIN;
     
     
     // SPIRIT1 Current Monitor Interface
@@ -688,20 +739,29 @@ static inline void BOARD_PORT_STARTUP(void) {
     /// does this need AFR config?
     
     
-    // TIMER9 interrupt interface (used for GPTIM)
+    // TIMER9 interface (used for GPTIM)
     // Note: this pins appear NC, but they are used internally
-    BOARD_TIM9CH1_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_TIM9CH1_PINNUM*2));
-    BOARD_TIM9CH2_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_TIM9CH2_PINNUM*2));
-    BOARD_TIM9CH1_PORT->AFR[0]   |= ( (3 << (BOARD_TIM9CH1_PINNUM*4)) );
-    BOARD_TIM9CH2_PORT->AFR[0]   |= ( (3 << (BOARD_TIM9CH2_PINNUM*4)) );   
+    BOARD_TIM9CH1_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_TIM9CH1_PINNUM*2)) \
+                                | (GPIO_MODER_ALT << (BOARD_TIM9CH2_PINNUM*2));
+    //BOARD_TIM9CH1_PORT->PUPDR  |= (2 << (BOARD_TIM9CH1_PINNUM*2)) \
+                                | (2 << (BOARD_TIM9CH2_PINNUM*2));
+    BOARD_TIM9CH1_PORT->AFR[1] |= ( (3 << ((BOARD_TIM9CH1_PINNUM-8)*4)) ) \
+                                | ( (3 << ((BOARD_TIM9CH2_PINNUM-8)*4)) ); 
     
+
+    // GPTIM interrupt interface: Floating Inputs (default case)
+    // These pins should be connected directly to TIM9 CH1 and CH2
+    //BOARD_GPTIM1_PORT->MODER   |= (GPIO_MODER_IN << (BOARD_GPTIM1_PINNUM*2)) \
+                                | (GPIO_MODER_IN << (BOARD_GPTIM2_PINNUM*2));
     
     // Set up all not-connected pins as output ground
-    // PA4, PA6, PA7, PA10
+    // PA4, PA6, PA7-10
     GPIOA->MODER   |= ( (GPIO_MODER_OUT << (4*2)) | (GPIO_MODER_OUT << (6*2)) \
-                      | (GPIO_MODER_OUT << (7*2)) | (GPIO_MODER_OUT << (10*2)) );
+                      | (GPIO_MODER_OUT << (7*2)) | (GPIO_MODER_OUT << (8*2)) \
+                      | (GPIO_MODER_OUT << (9*2)) | (GPIO_MODER_OUT << (10*2)) );
     // PB5
     GPIOB->MODER   |= (GPIO_MODER_OUT << (5*2));
+    
     // PD5-15 all NC
     GPIOD->MODER   |= ( (GPIO_MODER_OUT << (5*2)) | (GPIO_MODER_OUT << (6*2)) \
                       | (GPIO_MODER_OUT << (7*2)) | (GPIO_MODER_OUT << (8*2)) \
@@ -709,9 +769,10 @@ static inline void BOARD_PORT_STARTUP(void) {
                       | (GPIO_MODER_OUT << (10*2))| (GPIO_MODER_OUT << (11*2)) \
                       | (GPIO_MODER_OUT << (12*2))| (GPIO_MODER_OUT << (13*2)) \
                       | (GPIO_MODER_OUT << (14*2))| (GPIO_MODER_OUT << (15*2)) );
-    // PE0, 1, 2, 11 all NC
+    // PE0-2, 10-11 all NC
     GPIOE->MODER   |= ( (GPIO_MODER_OUT << (0*2)) | (GPIO_MODER_OUT << (1*2)) \
-                      | (GPIO_MODER_OUT << (2*2)) | (GPIO_MODER_OUT << (11*2)) );
+                      | (GPIO_MODER_OUT << (2*2)) | (GPIO_MODER_OUT << (10*2)) \
+                      | (GPIO_MODER_OUT << (11*2)) );
     
     //The END
 }
@@ -742,8 +803,9 @@ static inline void BOARD_PORT_STANDBY() {
     // External UART on USART2 (Port A).  
     // Keep alive RTS/CTS, set RX/TX to HiZ
 #   if ((OT_FEATURE_MPIPE == ENABLED) && (MCU_FEATURE_MPIPEUART == ENABLED))
+        BOARD_UART_PORT->PUPDR |= (2 << (BOARD_UART_RTSPINNUM*2));
         BOARD_UART_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_UART_CTSPINNUM*2)) \
-                                  | (GPIO_MODER_OUT << (BOARD_UART_RTSPINNUM*2)) \
+                                  | (GPIO_MODER_IN  << (BOARD_UART_RTSPINNUM*2)) \
                                   | (GPIO_MODER_ALT << (BOARD_UART_RXPINNUM*2))  \
                                   | (GPIO_MODER_ALT << (BOARD_UART_TXPINNUM*2))  );
 #   else
@@ -837,7 +899,7 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define BOARD_RADIO_EXTI3_ISR();
 #define BOARD_RADIO_EXTI4_ISR();
 #define BOARD_RADIO_EXTI5_ISR();
-#define BOARD_RADIO_EXTI6_ISR()     radio_mac_isr()
+#define BOARD_RADIO_EXTI6_ISR();     
 #define BOARD_RADIO_EXTI7_ISR()     spirit1_irq0_isr()
 #define BOARD_RADIO_EXTI8_ISR()     spirit1_irq1_isr()
 #define BOARD_RADIO_EXTI9_ISR()     spirit1_irq2_isr()
@@ -845,7 +907,7 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define BOARD_RADIO_EXTI11_ISR();
 #define BOARD_RADIO_EXTI12_ISR();
 #define BOARD_RADIO_EXTI13_ISR();
-#define BOARD_RADIO_EXTI14_ISR();
+#define BOARD_RADIO_EXTI14_ISR()    radio_mac_isr()
 #define BOARD_RADIO_EXTI15_ISR();
 
 
@@ -855,61 +917,17 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define BOARD_KTIM_EXTI2_ISR();
 #define BOARD_KTIM_EXTI3_ISR();
 #define BOARD_KTIM_EXTI4_ISR();
-#define BOARD_KTIM_EXTI5_ISR()      platform_ktim_isr();
+#define BOARD_KTIM_EXTI5_ISR();      
 #define BOARD_KTIM_EXTI6_ISR();
 #define BOARD_KTIM_EXTI7_ISR();
 #define BOARD_KTIM_EXTI8_ISR();
 #define BOARD_KTIM_EXTI9_ISR();
 #define BOARD_KTIM_EXTI10_ISR();
 #define BOARD_KTIM_EXTI11_ISR();
-#define BOARD_KTIM_EXTI12_ISR();
-#define BOARD_KTIM_EXTI13_ISR();
+#define BOARD_KTIM_EXTI12_ISR();    
+#define BOARD_KTIM_EXTI13_ISR()     platform_ktim_isr()
 #define BOARD_KTIM_EXTI14_ISR();
 #define BOARD_KTIM_EXTI15_ISR();
-
-
-
-
-
-
-/** Platform Memory Configuration <BR>
-  * ========================================================================<BR>
-  * OpenTag needs to know where it can put Nonvolatile memory (file system) and
-  * how much space it can allocate for filesystem.  For this configuration, 
-  * Veelite is put into FLASH.
-  *
-  * The STM32L uses 256 byte Flash pages and 4KB Flash sectors.  Therefore, it
-  * is best to allocate the FS in Flash on 4KB boundaries because this is the 
-  * resolution that can be write protected (or, as with FS, *NOT* write 
-  * protected).  Best practice with STM32 chips is to put the FS at the back of
-  * of the Flash space because this seems to work best with the debugger HW.
-  */
-#define SRAM_START_ADDR         0x20000000
-#define SRAM_SIZE               (16*1024)
-#define EEPROM_START_ADDR       0x08080000
-#define EEPROM_SIZE             (4*1024)
-#define FLASH_START_ADDR        0x08000000
-#define FLASH_START_PAGE        0
-#define FLASH_PAGE_SIZE         256
-#define FLASH_WORD_BYTES        2
-#define FLASH_WORD_BITS         (FLASH_WORD_BYTES*8)
-//#ifdef __LARGE_MEMORY__
-//#   define FLASH_NUM_PAGES      (128*(1024/FLASH_PAGE_SIZE))    //allow usage of whole flash (128KB)
-//#else
-#   define FLASH_NUM_PAGES      (64*(1024/FLASH_PAGE_SIZE))     //keep in lower 64KB
-//#endif
-#define FLASH_FS_PAGES          16
-#define FLASH_FS_ALLOC          (FLASH_FS_PAGES*FLASH_PAGE_SIZE)    //allocating total of 16 blocks (4KB)
-#define FLASH_FS_FALLOWS        4                                   //4 blocks are fallow blocks
-#define FLASH_FS_ADDR           ( (FLASH_START_ADDR+FLASH_NUM_PAGES*FLASH_PAGE_SIZE) \
-                                - FLASH_FS_ALLOC    )
-
-#define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
-
-
-
-
-
 
 
 
@@ -972,9 +990,11 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define OT_GPTIM_ID         9
 #define OT_GPTIM            TIM9
 #define OT_GPTIM_CLOCK      32768
-#define OT_GPTIM_RES        1024
+#define OT_GPTIM_RES        4096
+#define OT_GPTIM_SHIFT      2
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
 #define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
+
 
 #if (OT_GPTIM_CLOCK == BOARD_PARAM_LFHz)
 #   define OT_GPTIM_ERROR   BOARD_PARAM_LFtol
@@ -984,8 +1004,8 @@ static inline void BOARD_XTAL_STARTUP(void) {
 
 #define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded
 
-#define OT_KTIM_IRQ_SRCLINE     BOARD_TIM9CH1_PINNUM
-#define OT_MACTIM_IRQ_SRCLINE   BOARD_TIM9CH2_PINNUM
+#define OT_KTIM_IRQ_SRCLINE     BOARD_GPTIM1_PINNUM
+#define OT_MACTIM_IRQ_SRCLINE   BOARD_GPTIM2_PINNUM
 
 
 
@@ -1252,112 +1272,112 @@ static inline void BOARD_XTAL_STARTUP(void) {
   * need to inspect all the external interrupt sources.
   */
 #if (!defined(__USE_EXTI0) && ( \
-        (BOARD_TIM9CH1_PINNUM == 0) || (BOARD_TIM9CH2_PINNUM == 0) || \
+        (BOARD_GPTIM1_PINNUM == 0) || (BOARD_GPTIM2_PINNUM == 0) || \
         (OT_SWITCH1_PINNUM == 0) || \
         (RADIO_IRQ0_SRCLINE == 0) || (RADIO_IRQ1_SRCLINE == 0) || (RADIO_IRQ2_SRCLINE == 0) || (RADIO_IRQ3_SRCLINE == 0) \
     ))
 #   define __USE_EXTI0
 #endif
 #if (!defined(__USE_EXTI1) && ( \
-        (BOARD_TIM9CH1_PINNUM == 1) || (BOARD_TIM9CH2_PINNUM == 1) || \
+        (BOARD_GPTIM1_PINNUM == 1) || (BOARD_GPTIM2_PINNUM == 1) || \
         (OT_SWITCH1_PINNUM == 1) || \
         (RADIO_IRQ0_SRCLINE == 1) || (RADIO_IRQ1_SRCLINE == 1) || (RADIO_IRQ2_SRCLINE == 1) || (RADIO_IRQ3_SRCLINE == 1) \
     ))
 #   define __USE_EXTI1
 #endif
 #if (!defined(__USE_EXTI2) && ( \
-        (BOARD_TIM9CH1_PINNUM == 2) || (BOARD_TIM9CH2_PINNUM == 2) || \
+        (BOARD_GPTIM1_PINNUM == 2) || (BOARD_GPTIM2_PINNUM == 2) || \
         (OT_SWITCH1_PINNUM == 2) || \
         (RADIO_IRQ0_SRCLINE == 2) || (RADIO_IRQ1_SRCLINE == 2) || (RADIO_IRQ2_SRCLINE == 2) || (RADIO_IRQ3_SRCLINE == 2) \
     ))
 #   define __USE_EXTI2
 #endif
 #if (!defined(__USE_EXTI3) && ( \
-        (BOARD_TIM9CH1_PINNUM == 3) || (BOARD_TIM9CH2_PINNUM == 3) || \
+        (BOARD_GPTIM1_PINNUM == 3) || (BOARD_GPTIM2_PINNUM == 3) || \
         (OT_SWITCH1_PINNUM == 3) || \
         (RADIO_IRQ0_SRCLINE == 3) || (RADIO_IRQ1_SRCLINE == 3) || (RADIO_IRQ2_SRCLINE == 3) || (RADIO_IRQ3_SRCLINE == 3) \
     ))
 #   define __USE_EXTI3
 #endif
 #if (!defined(__USE_EXTI4) && ( \
-        (BOARD_TIM9CH1_PINNUM == 4) || (BOARD_TIM9CH2_PINNUM == 4) || \
+        (BOARD_GPTIM1_PINNUM == 4) || (BOARD_GPTIM2_PINNUM == 4) || \
         (OT_SWITCH1_PINNUM == 4) || \
         (RADIO_IRQ0_SRCLINE == 4) || (RADIO_IRQ1_SRCLINE == 4) || (RADIO_IRQ2_SRCLINE == 4) || (RADIO_IRQ3_SRCLINE == 4) \
     ))
 #   define __USE_EXTI4
 #endif
 #if (!defined(__USE_EXTI5) && ( \
-        (BOARD_TIM9CH1_PINNUM == 5) || (BOARD_TIM9CH2_PINNUM == 5) || \
+        (BOARD_GPTIM1_PINNUM == 5) || (BOARD_GPTIM2_PINNUM == 5) || \
         (OT_SWITCH1_PINNUM == 5) || \
         (RADIO_IRQ0_SRCLINE == 5) || (RADIO_IRQ1_SRCLINE == 5) || (RADIO_IRQ2_SRCLINE == 5) || (RADIO_IRQ3_SRCLINE == 5) \
     ))
 #   define __USE_EXTI5
 #endif
 #if (!defined(__USE_EXTI6) && ( \
-        (BOARD_TIM9CH1_PINNUM == 6) || (BOARD_TIM9CH2_PINNUM == 6) || \
+        (BOARD_GPTIM1_PINNUM == 6) || (BOARD_GPTIM2_PINNUM == 6) || \
         (OT_SWITCH1_PINNUM == 6) || \
         (RADIO_IRQ0_SRCLINE == 6) || (RADIO_IRQ1_SRCLINE == 6) || (RADIO_IRQ2_SRCLINE == 6) || (RADIO_IRQ3_SRCLINE == 6) \
     ))
 #   define __USE_EXTI6
 #endif
 #if (!defined(__USE_EXTI7) && ( \
-        (BOARD_TIM9CH1_PINNUM == 7) || (BOARD_TIM9CH2_PINNUM == 7) || \
+        (BOARD_GPTIM1_PINNUM == 7) || (BOARD_GPTIM2_PINNUM == 7) || \
         (OT_SWITCH1_PINNUM == 6) || \
         (RADIO_IRQ0_SRCLINE == 7) || (RADIO_IRQ1_SRCLINE == 7) || (RADIO_IRQ2_SRCLINE == 7) || (RADIO_IRQ3_SRCLINE == 7) \
     ))
 #   define __USE_EXTI7
 #endif
 #if (!defined(__USE_EXTI8) && ( \
-        (BOARD_TIM9CH1_PINNUM == 8) || (BOARD_TIM9CH2_PINNUM == 8) || \
+        (BOARD_GPTIM1_PINNUM == 8) || (BOARD_GPTIM2_PINNUM == 8) || \
         (OT_SWITCH1_PINNUM == 6) || \
         (RADIO_IRQ0_SRCLINE == 8) || (RADIO_IRQ1_SRCLINE == 8) || (RADIO_IRQ2_SRCLINE == 8) || (RADIO_IRQ3_SRCLINE == 8) \
     ))
 #   define __USE_EXTI8
 #endif
 #if (!defined(__USE_EXTI9) && ( \
-        (BOARD_TIM9CH1_PINNUM == 9) || (BOARD_TIM9CH2_PINNUM == 9) || \
+        (BOARD_GPTIM1_PINNUM == 9) || (BOARD_GPTIM2_PINNUM == 9) || \
         (OT_SWITCH1_PINNUM == 9) || \
         (RADIO_IRQ0_SRCLINE == 9) || (RADIO_IRQ1_SRCLINE == 9) || (RADIO_IRQ2_SRCLINE == 9) || (RADIO_IRQ3_SRCLINE == 9) \
     ))
 #   define __USE_EXTI9
 #endif
 #if (!defined(__USE_EXTI10) && ( \
-        (BOARD_TIM9CH1_PINNUM == 10) || (BOARD_TIM9CH2_PINNUM == 10) || \
+        (BOARD_GPTIM1_PINNUM == 10) || (BOARD_GPTIM2_PINNUM == 10) || \
         (OT_SWITCH1_PINNUM == 10) || \
         (RADIO_IRQ0_SRCLINE == 10) || (RADIO_IRQ1_SRCLINE == 10) || (RADIO_IRQ2_SRCLINE == 10) || (RADIO_IRQ3_SRCLINE == 10) \
     ))
 #   define __USE_EXTI10
 #endif
 #if (!defined(__USE_EXTI11) && ( \
-        (BOARD_TIM9CH1_PINNUM == 11) || (BOARD_TIM9CH2_PINNUM == 11) || \
+        (BOARD_GPTIM1_PINNUM == 11) || (BOARD_GPTIM2_PINNUM == 11) || \
         (OT_SWITCH1_PINNUM == 11) || \
         (RADIO_IRQ0_SRCLINE == 11) || (RADIO_IRQ1_SRCLINE == 11) || (RADIO_IRQ2_SRCLINE == 11) || (RADIO_IRQ3_SRCLINE == 11) \
     ))
 #   define __USE_EXTI11
 #endif
 #if (!defined(__USE_EXTI12) && ( \
-        (BOARD_TIM9CH1_PINNUM == 12) || (BOARD_TIM9CH2_PINNUM == 12) || \
+        (BOARD_GPTIM1_PINNUM == 12) || (BOARD_GPTIM2_PINNUM == 12) || \
         (OT_SWITCH1_PINNUM == 12) || \
         (RADIO_IRQ0_SRCLINE == 12) || (RADIO_IRQ1_SRCLINE == 12) || (RADIO_IRQ2_SRCLINE == 12) || (RADIO_IRQ3_SRCLINE == 12) \
     ))
 #   define __USE_EXTI12
 #endif
 #if (!defined(__USE_EXTI13) && ( \
-        (BOARD_TIM9CH1_PINNUM == 13) || (BOARD_TIM9CH2_PINNUM == 13) || \
+        (BOARD_GPTIM1_PINNUM == 13) || (BOARD_GPTIM2_PINNUM == 13) || \
         (OT_SWITCH1_PINNUM == 13) || \
         (RADIO_IRQ0_SRCLINE == 13) || (RADIO_IRQ1_SRCLINE == 13) || (RADIO_IRQ2_SRCLINE == 13) || (RADIO_IRQ3_SRCLINE == 13) \
     ))
 #   define __USE_EXTI13
 #endif
 #if (!defined(__USE_EXTI14) && ( \
-        (BOARD_TIM9CH1_PINNUM == 14) || (BOARD_TIM9CH2_PINNUM == 14) || \
+        (BOARD_GPTIM1_PINNUM == 14) || (BOARD_GPTIM2_PINNUM == 14) || \
         (OT_SWITCH1_PINNUM == 14) || \
         (RADIO_IRQ0_SRCLINE == 14) || (RADIO_IRQ1_SRCLINE == 14) || (RADIO_IRQ2_SRCLINE == 14) || (RADIO_IRQ3_SRCLINE == 14) \
     ))
 #   define __USE_EXTI14
 #endif
 #if (!defined(__USE_EXTI15) && ( \
-        (BOARD_TIM9CH1_PINNUM == 15) || (BOARD_TIM9CH2_PINNUM == 15) || \
+        (BOARD_GPTIM1_PINNUM == 15) || (BOARD_GPTIM2_PINNUM == 15) || \
         (OT_SWITCH1_PINNUM == 15) || \
         (RADIO_IRQ0_SRCLINE == 15) || (RADIO_IRQ1_SRCLINE == 15) || (RADIO_IRQ2_SRCLINE == 15) || (RADIO_IRQ3_SRCLINE == 15) \
     ))

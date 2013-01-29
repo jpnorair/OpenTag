@@ -144,7 +144,7 @@ void sub_csma_scramble();
   * @retval ot_uint     Initial TX backoff, in ticks
   * @ingroup System
   */
-ot_uint sub_fcinit();
+CLK_UNIT sub_fcinit();
 
 
 /** @brief Evaluates the TX slot usage based on the quality of the query
@@ -160,7 +160,7 @@ void sub_fceval(ot_int query_score);
   * @retval ot_uint     Subsequent TX backoff, in ticks
   * @ingroup System
   */
-ot_uint sub_fcloop();
+CLK_UNIT sub_fcloop();
 
 
 /** @brief Initializes a RIGD sequence and determines initial TX offset
@@ -176,7 +176,7 @@ ot_uint sub_fcloop();
   * period (dll.comm.tca) into subslots of decaying duration and picks random
   * TX offsets within each subslot.
   */
-ot_uint sub_rigd_newslot();
+CLK_UNIT sub_rigd_newslot();
 
 
 /** @brief Continues an ongoing RIGD sequence and determines subslot TX offset
