@@ -128,6 +128,16 @@
 
 #endif
 
+/// Set-up SPI peripheral for Master Mode, Full Duplex, DMAs used for TRX.
+/// Configure SPI clock divider to make sure that clock rate is not above
+/// 10MHz.  SPI clock = bus clock/2, so only systems that have HSCLOCK
+/// above 20MHz need to divide.
+#   if (_SPICLK > 20000000)
+#       define _SPI_DIV (1<<3)
+#   else
+#       define _SPI_DIV (0<<3)
+#   endif
+
 
 #define __DMA_CLEAR_IRQ()  (NVIC->ICPR[(ot_u32)(_DMARX_IRQ>>5)] = (1 << ((ot_u32)_DMARX_IRQ & 0x1F)))
 #define __DMA_ENABLE()     do { \
@@ -209,6 +219,7 @@ void spirit1_load_defaults() {
         3,  0,  0x1C,   DRF_FDEV0, 
         3,  0,  0x27,   DRF_ANT_SELECT_CONF, 
         3,  0,  0x3A,   DRF_QI,
+        3,  0,  0x41,   DRF_FIFO_CONFIG0,
         3,  0,  0x4F,   DRF_PCKT_FLT_OPTIONS,
         0   //Terminating 0
     };
@@ -250,9 +261,16 @@ void spirit1_reset() {
 
 
 void spirit1_waitforreset() {
-/// Wait for POR signal to go low.  
+/// Wait for POR signal to rise.  
 /// Save non-blocking implementation for a rainy day.
     while ((RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN) == 0);
+}
+
+
+void spirit1_waitforready() {
+/// Wait for the Ready Pin to go high (reset pin is remapped in init).
+/// STANDBY->READY should take about 75us
+    spirit1_waitforreset();
 }
 
 
@@ -328,49 +346,51 @@ void spirit1_init_bus() {
     //NVIC->IP[(ot_u32)_DMARX_IRQ]        = PLATFORM_NVIC_RF_GROUP;
     //NVIC->ISER[(ot_u32)(_DMARX_IRQ>>5)] = (1 << ((ot_u32)_DMARX_IRQ & 0x1F));
 
-
-    ///2. Set-up SPI peripheral for Master Mode, Full Duplex, DMAs used for TRX.
-    ///   Configure SPI clock divider to make sure that clock rate is not above
-    ///   10MHz.  SPI clock = bus clock/2, so only systems that have HSCLOCK
-    ///   above 20MHz need to divide.
-#   if (_SPICLK > 20000000)
-#       define _SPI_DIV (1<<3)
-#   else
-#       define _SPI_DIV (0<<3)
-#   endif
+    /// 2. Connect GPIOs from SPIRIT1 to STM32L External Interrupt sources
+    /// The GPIO configuration should be done in BOARD_PORT_STARTUP() and the
+    /// binding of each GPIO to the corresponding EXTI should be done in
+    /// BOARD_EXTI_STARTUP().  This architecture is required because the STM32L
+    /// External interrupt mechanism must be shared by all drivers, and we can
+    /// only know this information at the board level.
+    ///
+    /// However, here we set the EXTI lines to the rising edge triggers we need
+    /// and configure the NVIC.  Eventually, the NVIC stuff might be done in
+    /// the platform module JUST FOR EXTI interrupts though.
     
-    ///3. Wait for rest of bus to stabilize on power-up, then put it to sleep.
-    ///   SPIRIT1 can do SPI while in sleep mode.  "Sleep" mode is either 
-    ///   implemented as STANDBY or SLEEP, per SPIRIT1 specs, depending on the
-    ///   driver.  Usually, it is STANDBY.  Both can take SPI I/O.
-    spirit1_waitforreset();
-    radio_sleep();
-    
-    
-    ///4. Managing SPIRIT1 GPIOs as sources of External Interrupt:
-    ///   The GPIOs should be bound to EXTI lines in BOARD_EXTI_STARTUP(), 
-    ///   defined in the board support header and run in platform_init().
-    ///   For the current impl, all the GPIOs are rising-edge activators
     EXTI->PR    =  RFI_ALL;         //clear flag bits
     EXTI->IMR  &= ~RFI_ALL;         //clear interrupt enablers
     EXTI->EMR  &= ~RFI_ALL;         //clear event enablers
     EXTI->FTSR &= ~RFI_ALL;         // For this version, all GPIOs are rising edge
     EXTI->RTSR |= RFI_ALL;
-
-    NVIC->IP[(uint32_t)_RFIRQ0]         = PLATFORM_NVIC_RF_GROUP;
+    
+    NVIC->IP[(uint32_t)_RFIRQ0]         = (PLATFORM_NVIC_RF_GROUP << 4);
     NVIC->ISER[((uint32_t)_RFIRQ0>>5)]  = (1 << ((uint32_t)_RFIRQ0 & 0x1F));
 #   ifdef _RFIRQ1
-    NVIC->IP[(uint32_t)_RFIRQ1]         = PLATFORM_NVIC_RF_GROUP;
+    NVIC->IP[(uint32_t)_RFIRQ1]         = (PLATFORM_NVIC_RF_GROUP << 4);
     NVIC->ISER[((uint32_t)_RFIRQ1>>5)]  = (1 << ((uint32_t)_RFIRQ1 & 0x1F));
 #   endif
 #   ifdef _RFIRQ2
-    NVIC->IP[(uint32_t)_RFIRQ2]         = PLATFORM_NVIC_RF_GROUP;
+    NVIC->IP[(uint32_t)_RFIRQ2]         = (PLATFORM_NVIC_RF_GROUP << 4);
     NVIC->ISER[((uint32_t)_RFIRQ2>>5)]  = (1 << ((uint32_t)_RFIRQ2 & 0x1F));
 #   endif
 #   ifdef _RFIRQ3
-    NVIC->IP[(uint32_t)_RFIRQ3]         = PLATFORM_NVIC_RF_GROUP;
+    NVIC->IP[(uint32_t)_RFIRQ3]         = (PLATFORM_NVIC_RF_GROUP << 4);
     NVIC->ISER[((uint32_t)_RFIRQ3>>5)]  = (1 << ((uint32_t)_RFIRQ3 & 0x1F));
 #   endif
+    
+    ///3. The best way to wait for the SPIRIT1 to start is to wait for the reset
+    ///   line to come high.  Once it is high, the chip is in ready.
+    spirit1_waitforreset();
+
+    ///4. Take GPIOs out of pull-down and into floating mode.  This is to save
+    ///   energy, which could otherwise just be draining over the pull-downs.
+    ///@todo this
+    
+    ///5. Put the SPIRIT1 into a default IO configuration, and then to sleep.
+    ///   It is important to expose the READY signal on GPIO0, because the 
+    ///   driver needs this signal to confirm state changes.
+    spirit1_iocfg_rx();
+    radio_sleep();
 }
 
 
@@ -428,7 +448,7 @@ void spirit1_strobe(ot_u8 strobe) {
     ot_u8 cmd[2];
     cmd[0]  = 0x80;
     cmd[1]  = strobe;
-    spirit1_spibus_io(2, 0, &strobe);
+    spirit1_spibus_io(2, 0, cmd);
 }
 
 ot_u8 spirit1_read(ot_u8 addr) {
@@ -576,18 +596,18 @@ ot_bool spirit1_check_cspin(void) {
 
 static const ot_u8 gpio_rx[6] = { 
     0, RFREG(GPIO3_CONF),
-    RFGPO_RX_FIFO_ALMOST_FULL,  //indicate buffer threshold condition (kept for RX)
-    RFGPO_RSSI_ABOVE_THR,       //indicate if RSSI goes above/below CS threshold
-    RFGPO_SYNC_WORD,            //indicate when sync word is qualified
-    RFGPO_READY                 //indicate when listen/rx is exited 
+    RFGPO(RX_FIFO_ALMOST_FULL),  //indicate buffer threshold condition (kept for RX)
+    RFGPO(RSSI_ABOVE_THR),       //indicate if RSSI goes above/below CS threshold
+    RFGPO(SYNC_WORD),            //indicate when sync word is qualified
+    RFGPO(READY)                 //indicate when listen/rx is exited 
 };
 
 static const ot_u8 gpio_tx[6] = { 
     0, RFREG(GPIO3_CONF),
-    RFGPO_TX_FIFO_ALMOST_EMPTY, //indicate buffer threshold condition (kept for RX)
-    RFGPO_RSSI_ABOVE_THR,       //indicate if RSSI goes above/below CCA threshold
-    RFGPO_SLEEP_OR_STANDBY,     //indicate when csma is backing off 
-    RFGPO_READY                 //indicate when tx is exited
+    RFGPO(TX_FIFO_ALMOST_EMPTY), //indicate buffer threshold condition
+    RFGPO(RSSI_ABOVE_THR),       //indicate if RSSI goes above/below CCA threshold
+    RFGPO(SLEEP_OR_STANDBY),     //indicate when csma is backing off 
+    RFGPO(READY)                 //indicate when tx is exited
 };
     
 void spirit1_iocfg_rx()  {
@@ -608,12 +628,15 @@ void spirit1_iocfg_tx()  {
 
 
 void sub_int_config(ot_u16 ie_sel) {
+    ot_u16 scratch;
     EXTI->PR    = RFI_ALL;
-    EXTI->IMR  &= ~(RFI_ALL);
-    EXTI->IMR  |= ie_sel;
+    scratch     = EXTI->IMR;
+    scratch    &= ~RFI_ALL;
+    scratch    |= ie_sel;
+    EXTI->IMR   = scratch;
 }
 
-void spirit1_int_off()      {   sub_int_config(0);            }
+void spirit1_int_off()      {   sub_int_config(0);   }
 
 void spirit1_int_listen()   {   spirit1.imode = MODE_Listen;    
                                 sub_int_config(RFI_LISTEN);     }
@@ -626,6 +649,7 @@ void spirit1_int_csma()     {   spirit1.imode = MODE_CSMA;
                                 
 void spirit1_int_txdata()   {   spirit1.imode = MODE_TXData;
                                 sub_int_config(RFI_TXDATA);   }
+
 
 void spirit1_int_force(ot_u16 ifg_sel)   { EXTI->SWIER |= ifg_sel; }
 void spirit1_int_turnon(ot_u16 ie_sel)   { EXTI->IMR   |= ie_sel;  }

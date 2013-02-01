@@ -80,78 +80,75 @@
 #if (OT_FEATURE(MPIPE))
 #   if (MCU_FEATURE(MPIPECDC))
         ///@todo USB MPipe Interrupt settings
+   
 #   elif (MCU_FEATURE(MPIPEUART))
-#       if (MPIPE_DMA_RXCHAN_ID == 1)
-#           undef __N_ISR_DMA1_Channel1
-#           undef __ISR_DMA1_Channel1
-#           define __ISR_DMA1_Channel1
-#       elif (MPIPE_DMA_RXCHAN_ID == 2)
-#           undef __N_ISR_DMA1_Channel2
-#           undef __ISR_DMA1_Channel2
-#           define __ISR_DMA1_Channel2
-#       elif (MPIPE_DMA_RXCHAN_ID == 3)
-#           undef __N_ISR_DMA1_Channel3
-#           undef __ISR_DMA1_Channel3
-#           define __ISR_DMA1_Channel3
-#       elif (MPIPE_DMA_RXCHAN_ID == 4)
-#           undef __N_ISR_DMA1_Channel4
-#           undef __ISR_DMA1_Channel4
-#           define __ISR_DMA1_Channel4
-#       elif (MPIPE_DMA_RXCHAN_ID == 5)
-#           undef __N_ISR_DMA1_Channel5
-#           undef __ISR_DMA1_Channel5
-#           define __ISR_DMA1_Channel5
-#       elif (MPIPE_DMA_RXCHAN_ID == 6)
-#           undef __N_ISR_DMA1_Channel6
-#           undef __ISR_DMA1_Channel6
-#           define __ISR_DMA1_Channel6
-#       elif (MPIPE_DMA_RXCHAN_ID == 7)
-#           undef __N_ISR_DMA1_Channel7
-#           undef __ISR_DMA1_Channel7
-#           define __ISR_DMA1_Channel7
-#       endif
-#       if (MPIPE_DMA_TXCHAN_ID == 1)
-#           undef __N_ISR_DMA1_Channel1
-#           define __N_ISR_DMA1_Channel1
-#       elif (MPIPE_DMA_TXCHAN_ID == 2)
-#           undef __N_ISR_DMA1_Channel2
-#           define __N_ISR_DMA1_Channel2
-#       elif (MPIPE_DMA_TXCHAN_ID == 3)
-#           undef __N_ISR_DMA1_Channel3
-#           define __N_ISR_DMA1_Channel3
-#       elif (MPIPE_DMA_TXCHAN_ID == 4)
-#           undef __N_ISR_DMA1_Channel4
-#           define __N_ISR_DMA1_Channel4
-#       elif (MPIPE_DMA_TXCHAN_ID == 5)
-#           undef __N_ISR_DMA1_Channel5
-#           define __N_ISR_DMA1_Channel5
-#       elif (MPIPE_DMA_TXCHAN_ID == 6)
-#           undef __N_ISR_DMA1_Channel6
-#           define __N_ISR_DMA1_Channel6
-#       elif (MPIPE_DMA_TXCHAN_ID == 7)
-#           undef __N_ISR_DMA1_Channel7
-#           define __N_ISR_DMA1_Channel7
+        // MPipe UART Driver only uses RTS/CTS if Board implements them
+#       if (BOARD_FEATURE(MPIPE_FLOWCTL))
+        ///@todo CTS/RTS on UART
 #       endif
 
+        // MPipe UART Driver uses TX DMA, but not interrupt
 #       if (MPIPE_UART_ID == 1)
+//#           undef __USE_DMA1_CHAN4
 #           undef __ISR_USART1
 #           define __ISR_USART1
 #       elif (MPIPE_UART_ID == 2)
+//#           undef __USE_DMA1_CHAN6
 #           undef __ISR_USART2
 #           define __ISR_USART2
 #       elif (MPIPE_UART_ID == 3)
+//#           undef __USE_DMA1_CHAN2
 #           undef __ISR_USART3
-#           define __ISR_USART4
+#           define __ISR_USART3
 #       endif
-
-        ///@todo CTS/RTS on UART
 
 #   else
 #       error "MPIPE enabled in app configuration, but not enabled on this board."
 #   endif
+
+#else
+#   if ((MPIPE_DMA_TXCHAN_ID == 1) || (MPIPE_DMA_RXCHAN_ID == 1))
+#       undef __USE_DMA1_CHAN1
+#   endif
+#   if ((MPIPE_DMA_TXCHAN_ID == 2) || (MPIPE_DMA_RXCHAN_ID == 2))
+#       undef __USE_DMA1_CHAN2
+#   endif
+#   if ((MPIPE_DMA_TXCHAN_ID == 3) || (MPIPE_DMA_RXCHAN_ID == 3))
+#       undef __USE_DMA1_CHAN3
+#   endif
+#   if ((MPIPE_DMA_TXCHAN_ID == 4) || (MPIPE_DMA_RXCHAN_ID == 4))
+#       undef __USE_DMA1_CHAN4
+#   endif
+#   if ((MPIPE_DMA_TXCHAN_ID == 5) || (MPIPE_DMA_RXCHAN_ID == 5))
+#       undef __USE_DMA1_CHAN5
+#   endif
+#   if ((MPIPE_DMA_TXCHAN_ID == 6) || (MPIPE_DMA_RXCHAN_ID == 6))
+#       undef __USE_DMA1_CHAN6
+#   endif
+#   if ((MPIPE_DMA_TXCHAN_ID == 7) || (MPIPE_DMA_RXCHAN_ID == 7))
+#       undef __USE_DMA1_CHAN7
+#   endif
 #endif
 
 
+
+
+// Don't use DMA interrupt for Memcpy
+#if   ((MEMCPY_DMA_CHAN_ID == 1) && !defined(__N_ISR_DMA1_Channel1))
+#   define __N_ISR_DMA1_Channel1
+#elif ((MEMCPY_DMA_CHAN_ID == 2) && !defined(__N_ISR_DMA1_Channel2))
+#   define __N_ISR_DMA1_Channel2
+#elif ((MEMCPY_DMA_CHAN_ID == 3) && !defined(__N_ISR_DMA1_Channel3))
+#   define __N_ISR_DMA1_Channel3
+#elif ((MEMCPY_DMA_CHAN_ID == 4) && !defined(__N_ISR_DMA1_Channel4))
+#   define __N_ISR_DMA1_Channel4
+#elif ((MEMCPY_DMA_CHAN_ID == 5) && !defined(__N_ISR_DMA1_Channel5))
+#   define __N_ISR_DMA1_Channel5
+#elif ((MEMCPY_DMA_CHAN_ID == 6) && !defined(__N_ISR_DMA1_Channel6))
+#   define __N_ISR_DMA1_Channel6
+#elif ((MEMCPY_DMA_CHAN_ID == 7) && !defined(__N_ISR_DMA1_Channel7))
+#   define __N_ISR_DMA1_Channel7
+#endif
 
 
 
@@ -470,53 +467,8 @@ void EXTI15_10_IRQHandler(void) {
 /// If you are using a DMA, the interrupt is available unless you declare
 /// __N_ISR_DMAX_ChannelY in your app.  MEMCPY uses a DMA without interrupt, so
 /// you'll see below how to force-off a DMA channel interrupt.
-#ifdef __USE_DMA1_CHAN1
-#    undef __ISR_DMA1_Channel1
-#    define __ISR_DMA1_Channel1
-#endif
-#ifdef __USE_DMA1_CHAN2
-#    undef __ISR_DMA1_Channel2
-#    define __ISR_DMA1_Channel2
-#endif
-#ifdef __USE_DMA1_CHAN3
-#    undef __ISR_DMA1_Channel3
-#    define __ISR_DMA1_Channel3
-#endif
-#ifdef __USE_DMA1_CHAN4
-#    undef __ISR_DMA1_Channel4
-#    define __ISR_DMA1_Channel4
-#endif
-#ifdef __USE_DMA1_CHAN5
-#    undef __ISR_DMA1_Channel5
-#    define __ISR_DMA1_Channel5
-#endif
-#ifdef __USE_DMA1_CHAN6
-#    undef __ISR_DMA1_Channel6
-#    define __ISR_DMA1_Channel6
-#endif
-#ifdef __USE_DMA1_CHAN7
-#    undef __ISR_DMA1_Channel7
-#    define __ISR_DMA1_Channel7
-#endif
 
-#if   ((MEMCPY_DMA_CHAN_ID == 1) && !defined(__N_ISR_DMA1_Channel1))
-#   define __N_ISR_DMA1_Channel1
-#elif ((MEMCPY_DMA_CHAN_ID == 2) && !defined(__N_ISR_DMA1_Channel2))
-#   define __N_ISR_DMA1_Channel2
-#elif ((MEMCPY_DMA_CHAN_ID == 3) && !defined(__N_ISR_DMA1_Channel3))
-#   define __N_ISR_DMA1_Channel3
-#elif ((MEMCPY_DMA_CHAN_ID == 4) && !defined(__N_ISR_DMA1_Channel4))
-#   define __N_ISR_DMA1_Channel4
-#elif ((MEMCPY_DMA_CHAN_ID == 5) && !defined(__N_ISR_DMA1_Channel5))
-#   define __N_ISR_DMA1_Channel5
-#elif ((MEMCPY_DMA_CHAN_ID == 6) && !defined(__N_ISR_DMA1_Channel6))
-#   define __N_ISR_DMA1_Channel6
-#elif ((MEMCPY_DMA_CHAN_ID == 7) && !defined(__N_ISR_DMA1_Channel7))
-#   define __N_ISR_DMA1_Channel7
-#endif
-
-
-#if defined(__ISR_DMA1_Channel1) && !defined(__N_ISR_DMA1_Channel1)
+#if (defined(__USE_DMA1_CHAN1) || defined(__ISR_DMA1_Channel1)) && !defined(__N_ISR_DMA1_Channel1)
 void DMA1_Channel1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma1ch1();
@@ -524,7 +476,7 @@ void DMA1_Channel1_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA1_Channel2) && !defined(__N_ISR_DMA1_Channel2)
+#if (defined(__USE_DMA1_CHAN2) || defined(__ISR_DMA1_Channel2)) && !defined(__N_ISR_DMA1_Channel2)
 void DMA1_Channel2_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma1ch2();
@@ -532,7 +484,7 @@ void DMA1_Channel2_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA1_Channel3) && !defined(__N_ISR_DMA1_Channel3)
+#if (defined(__USE_DMA1_CHAN3) || defined(__ISR_DMA1_Channel3)) && !defined(__N_ISR_DMA1_Channel3)
 void DMA1_Channel3_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma1ch3();
@@ -540,7 +492,7 @@ void DMA1_Channel3_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA1_Channel4) && !defined(__N_ISR_DMA1_Channel4)
+#if (defined(__USE_DMA1_CHAN4) || defined(__ISR_DMA1_Channel4)) && !defined(__N_ISR_DMA1_Channel4)
 void DMA1_Channel4_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma1ch4();
@@ -548,7 +500,7 @@ void DMA1_Channel4_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA1_Channel5) && !defined(__N_ISR_DMA1_Channel5)
+#if (defined(__USE_DMA1_CHAN5) || defined(__ISR_DMA1_Channel5)) && !defined(__N_ISR_DMA1_Channel5)
 void DMA1_Channel5_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma1ch5();
@@ -556,7 +508,7 @@ void DMA1_Channel5_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA1_Channel6) && !defined(__N_ISR_DMA1_Channel6)
+#if (defined(__USE_DMA1_CHAN6) || defined(__ISR_DMA1_Channel6)) && !defined(__N_ISR_DMA1_Channel6)
 void DMA1_Channel6_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma1ch6();
@@ -564,7 +516,7 @@ void DMA1_Channel6_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA1_Channel7) && !defined(__N_ISR_DMA1_Channel7)
+#if (defined(__USE_DMA1_CHAN7) || defined(__ISR_DMA1_Channel7)) && !defined(__N_ISR_DMA1_Channel7)
 void DMA1_Channel7_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma1ch7();
@@ -572,7 +524,7 @@ void DMA1_Channel7_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA2_Channel1) && !defined(__N_ISR_DMA2_Channel1)
+#if (defined(__ISR_DMA2_Channel1) && !defined(__N_ISR_DMA2_Channel1))
 void DMA2_Channel1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma2ch1();
@@ -580,7 +532,7 @@ void DMA2_Channel1_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA2_Channel2) && !defined(__N_ISR_DMA2_Channel2)
+#if (defined(__ISR_DMA2_Channel2) && !defined(__N_ISR_DMA2_Channel2))
 void DMA2_Channel2_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma2ch2();
@@ -588,7 +540,7 @@ void DMA2_Channel2_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA2_Channel3) && !defined(__N_ISR_DMA2_Channel3)
+#if (defined(__ISR_DMA2_Channel3) && !defined(__N_ISR_DMA2_Channel3))
 void DMA2_Channel3_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma2ch3();
@@ -596,7 +548,7 @@ void DMA2_Channel3_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA2_Channel4) && !defined(__N_ISR_DMA2_Channel4)
+#if (defined(__ISR_DMA2_Channel4) && !defined(__N_ISR_DMA2_Channel4))
 void DMA2_Channel4_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma2ch4();
@@ -604,7 +556,7 @@ void DMA2_Channel4_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_DMA2_Channel5) && !defined(__N_ISR_DMA2_Channel5)
+#if (defined(__ISR_DMA2_Channel5) && !defined(__N_ISR_DMA2_Channel5))
 void DMA2_Channel5_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_dma2ch5();

@@ -45,17 +45,18 @@
 /// it still has the ability to wake-up the MCU.  Wake-up from STOP goes into
 /// MSI-clocked active mode (typ 4.2 MHz), and it takes approximately 8.2 us.
 void sub_stop() {
-  //ot_u32 tmpreg;
-  
-  //tmpreg      = PWR->CR;
-  //tmpreg     &= CR_DS_MASK;       // Clear PDDS and LPDSR bits
-  //tmpreg     |= PWR_CR_LPSDSR;    // Set LPDSR bit according to PWR_Regulator value
-  //PWR->CR     = tmpreg;
-    PWR->CR    |= PWR_CR_LPSDSR;
+    ot_u32 scratch;
     SCB->SCR   |= SCB_SCR_SLEEPDEEP;
+    scratch     = PWR->CR;
+    scratch    &= ~PWR_CR_PDDS;
+    scratch    |= (PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP);
+    PWR->CR     = scratch;
+    EXTI->PR    = 0;
     platform_enable_interrupts();
     __WFI();
-
+    
+    ///@todo this is going to need to go into the interrupt system
+    
     // On wakeup reset SLEEPDEEP bit of Cortex System Control Register
     SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
     
@@ -72,7 +73,11 @@ void sub_stop() {
 /// is used during MPIPE transfers and things like these that require clocked
 /// peripherals but not necessarily CPU.
 void sub_sleep() {
-    PWR->CR    &= (PWR_CR_PDDS | PWR_CR_LPSDSR);
+    ot_u32 scratch;
+    scratch     = PWR->CR;
+    scratch    &= ~(PWR_CR_PDDS | PWR_CR_LPSDSR | PWR_CR_ULP);
+    scratch    |= PWR_CR_FWU;
+    PWR->CR     = scratch;
     SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
     platform_enable_interrupts();
     __WFI();
@@ -87,9 +92,10 @@ void sys_sig_powerdown(ot_int code) {
 /// code = 2: RF I/O Task active                                (STOP)
 /// code = 1: MPipe or other local peripheral I/O task active   (SLEEP)
 /// code = 0: Use fastest-exit powerdown mode                   (SLEEP)
-    switch (code & 2) {
-        case 0: sub_sleep();    break;
-        case 2: sub_stop();     break;
-    }
+    //switch (code & 2) {
+    //    case 0: sub_sleep();    break;
+    //    case 2: sub_stop();     break;
+    //}
+    sub_sleep();
 }
 #endif

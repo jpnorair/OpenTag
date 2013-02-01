@@ -378,11 +378,11 @@
 #define DRF_MBUS_PSTMBL         0x20
 #define DRF_MBUS_CTRL           0
 
-//R3E-41: set during RX & TX
+//R3E-41: set during RX & TX, except TX-almost-empty which is always 5
 #define DRF_FIFO_CONFIG3        96
 #define DRF_FIFO_CONFIG2        96
 #define DRF_FIFO_CONFIG1        96
-#define DRF_FIFO_CONFIG0        96
+#define DRF_FIFO_CONFIG0        5
 
 //R42-4E: unused for time being.  Control Field might be used in later impls.
 #define DRF_PCKT_FLT_GOALS12     0x42

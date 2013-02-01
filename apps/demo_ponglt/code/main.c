@@ -254,7 +254,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 #   if defined(BOARD_eZ430Chronos)
     // Chronos doesn't have a normal MPipe, so print-out responses on the LCD
     
-#   else
+#   elif (OT_FEATURE(MPIPE))
     // Response: Compare PING Val to PONG Val and write output to MPipe
     if (dstport == 254) {
         // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0

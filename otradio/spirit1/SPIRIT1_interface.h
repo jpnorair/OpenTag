@@ -35,7 +35,7 @@ typedef enum {
     MODE_Listen = 0,
     MODE_RXData = 2,
     MODE_CSMA   = 6,
-    MODE_TXData = 7
+    MODE_TXData = 9
 } SPIRIT1_IMode;
 
 
@@ -107,12 +107,21 @@ void spirit1_load_defaults();
 void spirit1_reset();
 
 
-/** @brief  Holds processing until nPOR signal goes low, indicating safe RESET
+/** @brief  Holds processing until POR signal goes low, indicating safe RESET
   * @param  None
   * @retval None
   * @ingroup SPIRIT1
   */
 void spirit1_waitforreset();
+
+
+
+/** @brief  Holds processing until READY signal goes high
+  * @param  None
+  * @retval None
+  * @ingroup SPIRIT1
+  */
+void spirit1_waitforready();
 
 
 /** @brief  Manually refreshes chip status bits (16 bits)

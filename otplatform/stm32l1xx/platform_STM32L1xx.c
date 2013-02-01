@@ -347,7 +347,8 @@ void SVC_Handler(void) {
 
 void platform_ktim_isr() {
 /// The Kernel timer expiring is evidence that a task is pending, so we must
-/// invoke the PendSV interrupt here.  
+/// invoke the PendSV interrupt here.  Before that, we must clear the OC pulse.
+    OT_GPTIM->SR &= ~TIM_SR_CC1IF; 
     __SET_PENDSV();
 }
 
@@ -456,7 +457,7 @@ void platform_poweron() {
     ///1. Set runtime in P-stack
     __set_PSP( __get_MSP() );
     __set_CONTROL(2);
-    __set_MSP( (ot_u32)platform_ext.sstack );
+    __set_MSP( (ot_u32)&platform_ext.sstack[(OT_PARAM_SSTACK_ALLOC/4)-1] );
     
     ///2. Clock Setup: On startup, all clocks are 2.1 MHz MSI
     platform_init_periphclk();
@@ -1139,28 +1140,27 @@ void platform_init_gptim(ot_uint prescaler) {
 /// requires that an EXTI interrupt is used from the CC-out pin.
    
     // Disable Timer(s): this is startup-default, so commented out
-//    OT_GPTIM->CR1   = 0; // TIM_CR1_UDIS;
-//#   if (OT_GPTIM_ID == 9)
-//    OT_GPTIM->CR2   = 0;
-//#   endif
-//    OT_GPTIM->CCER  = 0;
    
     // Set Rising Edge interrupt
 #   define _KTIM_EXTI   BOARD_GPTIM1_PIN
 #   define _MACTIM_EXTI ((RF_FEATURE(MAC) != ENABLED) << BOARD_GPTIM2_PINNUM)
 //  EXTI->IMR              |= (_KTIM_EXTI | _MACTIM_EXTI);    //done individually
     EXTI->RTSR             |= (_KTIM_EXTI | _MACTIM_EXTI);
+    EXTI->FTSR             |= (_KTIM_EXTI | _MACTIM_EXTI);
 
     // Configure Timer for LSE clocking
-    OT_GPTIM->SMCR  = TIM_SMCR_ECE | TIM_SMCR_ETPS_DIV8;    // Timer Mode 2 with (1/8) prescale
-    OT_GPTIM->DIER  = 0;                                    // TIM interrupts unused
-    OT_GPTIM->SR    = 0;                                    // clear update flags
+    platform_ext.last_evt   = 0;
+    OT_GPTIM->DIER          = 0;                     // TIM interrupts unused
+    OT_GPTIM->SR            = 0;                    // clear update flags
+    OT_GPTIM->SMCR          = TIM_SMCR_ECE \
+                            | TIM_SMCR_ETPS_DIV8;   // Timer Mode 2 with (1/8) prescale
     
-#   if ((RF_FEATURE(MAC_TIMER) == ENABLED) && (OT_GPTIM_ID == 9))
-    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_SET | TIM_CCMR1_OC2M_SET;  // Set Output on Match
-    OT_GPTIM->CCER  = TIM_CCER_CC1E | TIM_CCER_CC2E;        // Enable Kernel & RF MAC timers
+#   if ((RF_FEATURE(MAC_TIMER) != ENABLED) && (OT_GPTIM_ID == 9))
+    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_TOGGLE \
+                    | TIM_CCMR1_OC2M_TOGGLE;                // Set Output on Match
+    OT_GPTIM->CCER  = TIM_CCER_CC1E /*| TIM_CCER_CC2E */;   // Enable Kernel & RF MAC timers
 #   else
-    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_SET;                     // Set Output on Match
+    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_TOG;                     // Set Output on Match
     OT_GPTIM->CCER  = TIM_CCER_CC1E;                        // Only Enable Kernel Timer
 #   endif
   //OT_GPTIM->PSC   = 0;
@@ -1168,6 +1168,7 @@ void platform_init_gptim(ot_uint prescaler) {
     OT_GPTIM->OR    = 0;
     
     // Re-enable Timer
+    OT_GPTIM->CCR1  = 65535;
     OT_GPTIM->CR1   = (TIM_CR1_UDIS | TIM_CR1_CEN);
     OT_GPTIM->EGR   = TIM_EGR_UG;
 }
@@ -1279,7 +1280,7 @@ void platform_pend_ktim() {
 
 void platform_flush_ktim() {
     platform_ext.last_evt   = OT_GPTIM->CNT;
-    EXTI->IMR              &= ~(1<<OT_KTIM_IRQ_SRCLINE);
+    //EXTI->IMR              &= ~(1<<OT_KTIM_IRQ_SRCLINE);
 }
 
 void platform_set_ktim(ot_u16 value) {
@@ -1295,6 +1296,16 @@ void platform_set_gptim2(ot_u16 value) {
 /// gptim2 is often used for RF MAC timing.  It includes value==0 protection.
     OT_GPTIM->CCR2  = OT_GPTIM->CNT + value;
     EXTI->SWIER    |= (1<<(value==0));          //pend interrupt if value == 0
+}
+
+void platform_enable_gptim2() {
+    OT_GPTIM->CCER |= TIM_CCER_CC2E;
+    EXTI->IMR      |= BOARD_GPTIM2_PIN;
+}
+
+void platform_disable_gptim2() {
+    OT_GPTIM->CCER &= ~TIM_CCER_CC2E;
+    EXTI->IMR      &= ~BOARD_GPTIM2_PIN;
 }
 
 ot_u16 platform_get_gptim() {
@@ -1739,7 +1750,9 @@ void sub_timed_wfe(ot_u16 count, ot_u16 prescaler) {
 
 #ifndef EXTF_platform_block
 void platform_block(ot_u16 sti) {
-    sub_timed_wfe(sti, 0);
+///@todo get WFE working on STM32L
+    platform_swdelay_us( (sti<<5) );
+    //sub_timed_wfe(sti, 0);
 }
 #endif
 
@@ -1758,7 +1771,7 @@ void platform_swdelay_ms(ot_u16 n) {
     c   = (platform_ext.cpu_khz);       // Set cycles per ms
     c  *= n;                            // Multiply by number of ms                   
     do { 
-        c -= 7;                         // 7 cycles per loop
+        c -= 7;                         // 7 cycles per loop (measured)
     } while (c > 0);
 }
 #endif
@@ -1767,11 +1780,11 @@ void platform_swdelay_ms(ot_u16 n) {
 #ifndef EXTF_platform_swdelay_us
 void platform_swdelay_us(ot_u16 n) {
     ot_long c;
-    c   = platform_ext.cpu_khz; // Set cycles per ms
-    c  *= n;
-    c >>= 10;                   // divide by 1024 (~1024us/ms)
+    c   = platform_ext.cpu_khz;         // Set cycles per ms
+    c  *= n;                            // Multiply by number of us
+    c >>= 10;                           // divide by 1024 (~1024us/ms)
     do { 
-        c -= 7;                         // 7 cycles per loop
+        c -= 7;                         // 7 cycles per loop (measured)
     } while (c > 0);
 }
 #endif

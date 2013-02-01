@@ -144,11 +144,20 @@ void spirit1_virtual_isr(ot_u8 code) {
 
 
 void radio_mac_isr() {
-/// Used only for TX Flooding
-#if (SYS_FLOOD == ENABLED)
-    dll.counter--;
-    radio_set_mactimer(TI2CLK(1));
-#endif
+    switch (radio.state) {
+        //case RADIO_Idle:
+        //case RADIO_Listening:
+        case RADIO_Csma:        platform_disable_gptim2();
+                                rm2_txcsma_isr();   
+                                break;
+        //case RADIO_DataRX:
+            
+#       if (SYS_FLOOD == ENABLED)
+        case RADIO_DataTX:      dll.counter--;
+                                radio_set_mactimer(TI2CLK(1));
+                                break;
+#       endif
+    }
 }
     
 
@@ -179,10 +188,7 @@ void radio_sleep() {
 /// Oscillator at all, so STANDBY is the best choice.
 /// Only go to STANDBY if it is not already the present mode.
     if ((rfctl.flags & RADIO_FLAG_ASLEEP) == 0) {
-        if (radio.state != RADIO_Idle) {
-            radio.state = RADIO_Idle;
-            spirit1_strobe(RFSTROBE_READY);
-        }
+        radio_idle();
         rfctl.flags |= RADIO_FLAG_ASLEEP;
         spirit1_strobe(RFSTROBE_STANDBY);
     }
@@ -197,6 +203,7 @@ void radio_idle() {
         radio.state = RADIO_Idle;
         rfctl.flags &= ~RADIO_FLAG_ASLEEP;
         spirit1_strobe(RFSTROBE_READY);
+        spirit1_waitforready();
     }
 }
 #endif
@@ -215,9 +222,8 @@ void radio_calibrate() {
 
 #ifndef EXTF_radio_set_mactimer
 void radio_set_mactimer(ot_u16 clocks) {
-/// For SPIRIT1, MCU-bound MAC timer is only used for TX Flooding
+/// Used for high-accuracy TX/CSMA slot insertion, and flooding.
 #if (SYS_FLOOD == ENABLED)
-    ///@todo apply board configuration
     platform_set_gptim2(clocks);
 #endif
 }
@@ -446,7 +452,6 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     else {
 #   if ((M2_FEATURE(MULTIFRAME) == ENABLED) || (M2_FEATURE(FECRX) == ENABLED))
         rfctl.state     = rfctl.flags & 3;
-        rfctl.rxlimit   = (rfctl.flags & 3) ? 8 : 64;
         pktlen          = (rfctl.flags & RADIO_FLAG_FRCONT) ? 0x1000 : 0x0100;  // 0x1000 should be MAXPKTLEN
         buffer_mode     = MODE_fgauto + (rfctl.state != RADIO_STATE_RXAUTO);
 #   else
@@ -461,7 +466,6 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     /// 5.  Send Configuration data to SPIRIT1
     spirit1_spibus_io(7, 0, maccfg);                            // MAC configuration
     subrfctl_buffer_config(buffer_mode, pktlen);                // packet configuration
-    spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit);   // RX FIFO threshold
     spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cs_thr);     // RX CS threshold
 
     /// 6.  Prepare Decoder to receive, then receive
@@ -559,8 +563,10 @@ void rm2_reenter_rx(ot_sig2 callback) {
     if ( (spirit1_read(RFREG(MC_STATE0)) & 0x22) == 0x22 ) {
     rm2_reenter_rx_PROC:
         radio_flush_rx();
-        spirit1_int_listen();
+        rfctl.rxlimit = (rfctl.state == RADIO_STATE_RXAUTO) ? 64 : 8;
+        spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit);
         spirit1_strobe( RFSTROBE_RX );
+        spirit1_int_listen();
         radio.state = RADIO_Listening;
         rfctl.state = RADIO_STATE_RXINIT;
     }
@@ -648,9 +654,10 @@ void rm2_rxtimeout_isr() {
 #ifndef EXTF_rm2_rxdata_isr
 void rm2_rxdata_isr() {
 #if (SYS_RECEIVE == ENABLED)
-    rm2_rxdata_isr_TOP:
-
+    ot_int frames_left;
+    
     /// 1. load data
+    rm2_rxdata_isr_TOP:
     em2_decode_data();      // Contains logic to prevent over-run
 
     /// 2. Handle each RX type, and transitions
@@ -672,25 +679,23 @@ void rm2_rxdata_isr() {
         /// once this is known (after first decoder pass).
 #       if ((M2_FEATURE(MULTIFRAME) == ENABLED) || (M2_FEATURE(FECRX) == ENABLED))
         case (RADIO_STATE_RXPAGE >> RADIO_STATE_RXSHIFT): {
-        rm2_rxdata_isr_RXPAGE:
-            if (rfctl.flags & (RADIO_FLAG_RESIZE | RADIO_FLAG_FRCONT)) {
-                ot_u16 pktlen;
-                ot_u8  cmd[4];
-                rfctl.flags    &= ~(RADIO_FLAG_RESIZE | RADIO_FLAG_FRCONT);
-                rfctl.rxlimit   = 48;
+            if (rfctl.flags & RADIO_FLAG_RESIZE) {
+                rfctl.rxlimit = 64;
+                spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit);
                 
-                // Update SPIRIT1 PCKTLEN with known packet length;
-                pktlen  = rxq.length + em2_remaining_bytes();
-                cmd[0]  = 0;
-                cmd[1]  = RFREG(PCKTLEN1);
-                cmd[2]  = ((ot_u8*)&pktlen)[UPPER];
-                cmd[3]  = ((ot_u8*)&pktlen)[LOWER];
-                spirit1_spibus_io(4, 0, cmd);
-            }
-            if (em2_remaining_bytes() <= rfctl.rxlimit) {
-                // Put into DONE state, kill RX thresh interrupt
-                rfctl.state = RADIO_STATE_RXDONE;
-                spirit1_int_turnoff(RFI_RXFIFO);
+                // I know this is "spaghetti code," deal with it.
+                // This section updates the PCKTLEN with known packet length;
+                rm2_rxdata_isr_RXLASTFRAME: {
+                    ot_u16 pktlen;
+                    ot_u8  cmd[4];
+                    rfctl.flags    &= ~(RADIO_FLAG_RESIZE | RADIO_FLAG_FRCONT);
+                    pktlen          = rxq.length + em2_remaining_bytes();
+                    cmd[0]          = 0;
+                    cmd[1]          = RFREG(PCKTLEN1);
+                    cmd[2]          = ((ot_u8*)&pktlen)[UPPER];
+                    cmd[3]          = ((ot_u8*)&pktlen)[LOWER];
+                    spirit1_spibus_io(4, 0, cmd);
+                }
             }
             break;
         }
@@ -701,7 +706,6 @@ void rm2_rxdata_isr() {
 #       if (M2_FEATURE(MULTIFRAME) == ENABLED)
         case (RADIO_STATE_RXMFP >> RADIO_STATE_RXSLOT):
         case (RADIO_STATE_RXMFP >> RADIO_STATE_RXSHIFT): {
-            ot_int frames_left;
             frames_left = em2_remaining_frames();
 
             // If this is the last frame, move to single-frame packet mode
@@ -709,12 +713,13 @@ void rm2_rxdata_isr() {
             // Else, RX is in the middle of a frame (do nothing)
             if (frames_left == 0) {
                 rfctl.state = RADIO_STATE_RXPAGE;
-                goto rm2_rxdata_isr_RXPAGE;
+                goto rm2_rxdata_isr_RXLASTFRAME;
             }
             if (em2_remaining_bytes() == 0) {
                 /// @todo: I might require in the future that queue rebasing is
                 ///        done in the evtdone callback (gives more flexibility).
-                radio.evtdone(frames_left, (ot_int)crc_check() - 1);            // argument 2 is negative on bad Frame CRC
+                // argument 2 is negative on bad Frame CRC
+                radio.evtdone(frames_left, (ot_int)crc_check() - 1);            
 
                 // Prepare the next frame by moving the "front" pointer and
                 // re-initializing the decoder engine
@@ -764,14 +769,9 @@ void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
     radio.state     = RADIO_Csma;
     rfctl.state     = RADIO_STATE_TXINIT;
     
-    /// @note Flush TX FIFO and set buffer threshold to 5 bytes.  5 bytes 
-    /// represents 200us in turbo mode, which should be plenty of time to 
-    /// service the buffer with more data.
-    radio_flush_tx();
-    spirit1_write(RFREG(FIFO_CONFIG0), 5);
-    
     /// CSMA-CA interrupt based and fully pre-emptive.  This is
     /// possible using CC1 on the GPTIM to clock the intervals.
+    platform_enable_gptim2();
     radio_set_mactimer( (ot_uint)dll.comm.tca );
 }
 #endif
@@ -804,13 +804,17 @@ void rm2_txcsma_isr() {
         /// <LI> If NOCSMA is net, bypass CSMA process </LI>
         /// <LI> Fall-through to CCA1 if CSMA is enabled </LI>
         case (RADIO_STATE_TXINIT >> RADIO_STATE_TXSHIFT): {
-            ot_u8 timcfg_csma[9] = {
+            static const ot_u8 timcfg_flood[9] = {
                 0, RFREG(PROTOCOL0),
-                DRF_PROTOCOL0,      // _PERS_TX used on FLOODS
-                1, 5,               // RX Timer @ ~240us
-                1, 4,               // LDC Entry timer @ ~115us
-                33, 0               // LDC Interval timer @ 1tick resolution
+                (DRF_PROTOCOL0 | _PERS_TX), // _PERS_TX used on FLOODS
+                1, 5,                       // RX Timer @ ~240us
+                1, 4,                       // LDC Entry timer @ ~115us
+                33, 0                       // LDC Interval timer @ 1tick resolution
             };
+            static const ot_u8 timcfg_normal[9] = {
+                0, RFREG(PROTOCOL0), (DRF_PROTOCOL0), 1, 5, 1, 4, 33, 0 
+            };
+            ot_u8*      timcfg;
             MODE_enum   type;
             ot_u16      pktlen;
             
@@ -829,16 +833,54 @@ void rm2_txcsma_isr() {
             // Set other TX Buffering & Packet parameters, and also save the
             // Peristent-TX attribute for floods, which is written later
             if (rfctl.flags & RADIO_FLAG_FLOOD) {
-                pktlen          = 7;
-                type            = MODE_bg;
-                timcfg_csma[2] |= _PERS_TX;
+                pktlen  = 7;
+                type    = MODE_bg;
+                timcfg  = (ot_u8*)timcfg_flood;
             }
             else {
-                pktlen          = txq.length;
-                type            = (rfctl.flags & 3) ? MODE_fgpage : MODE_fgauto;
+                pktlen  = txq.length;
+                type    = (rfctl.flags & 3) ? MODE_fgpage : MODE_fgauto;
+                timcfg  = (ot_u8*)timcfg_normal;
             }
             subrfctl_buffer_config(type, pktlen);
+            spirit1_int_off();
+            spirit1_iocfg_tx();
+            
+            /// @todo put this FIFO_CONFIG0 setting in the defaults, since it is only once.
+            spirit1_write(RFREG(FIFO_CONFIG0), 5);
+            
+            // START CSMA if required, using LDC mode
+            if ((dll.comm.csmaca_params & M2_CSMACA_NOCSMA) == 0) {
+                ot_u8 protocol2;
+                spirit1_spibus_io(9, 0, timcfg);
+                radio_idle();
+                
+                // Calibrate LDC RCO clock every X uses of CSMA.
+                protocol2 = (_VCO_CALIBRATION | _LDC_MODE);
+                if (rfctl.nextcal == 0) {
+                    rfctl.nextcal   = RF_PARAM(RCO_CAL_INTERVAL);
+                    protocol2      |= _RCO_CALIBRATION;
+                }
+                spirit1_write(RFREG(PROTOCOL2), protocol2);
+                spirit1_strobe(RFSTROBE_SLEEP);
+                spirit1_int_csma();
+                break;
+            }
+            
+            // START TX if CSMA disabled for this packet.
+            // Note: fall through
+            spirit1_spibus_io(3, 0, timcfg);
+            
+            
+        }
 
+        /// 3. TX startup: 'nuff said
+        case (RADIO_STATE_TXSTART >> RADIO_STATE_TXSHIFT): {
+        rm2_txcsma_START:
+            // Send TX start (CSMA done) signal to DLL task
+            // arg2: 0 for background, 1 for foreground
+            radio.evtdone(0, ((rfctl.flags & RADIO_FLAG_FLOOD) == 0));  
+            
             // Preload into TX FIFO a small amount of data (up to 8 bytes)
             // This is small-enough that the TX state machine doesn't need
             // special conditions, and less initial data = less latency.
@@ -848,47 +890,17 @@ void rm2_txcsma_isr() {
             subrfctl_prep_q(&txq);
             em2_encode_newpacket();
             em2_encode_newframe();
+            
+            radio_idle(); 
+            radio_flush_tx();
             em2_encode_data();
             
-            spirit1_int_off();
-            spirit1_iocfg_tx();
-            
-            // START CSMA if required, using LDC mode
-            if ((dll.comm.csmaca_params & M2_CSMACA_NOCSMA) == 0) {
-                ot_u8 protocol2;
-                spirit1_spibus_io(9, 0, timcfg_csma);
-                spirit1_strobe(RFSTROBE_SLEEP);
-                
-                // Calibrate LDC RCO clock every X uses of CSMA.
-                protocol2 = (_VCO_CALIBRATION | _LDC_MODE);
-                if (rfctl.nextcal == 0) {
-                    rfctl.nextcal   = RF_PARAM(RCO_CAL_INTERVAL);
-                    protocol2      |= _RCO_CALIBRATION;
-                }
-                spirit1_write(RFREG(PROTOCOL2), protocol2);
-                spirit1_int_csma();
-                break;
-            }
-            
-            // START TX if CSMA disabled for this packet.
-            // Note: fall through
-            spirit1_spibus_io(3, 0, timcfg_csma);
-        }
-
-        /// 3. TX startup: 'nuff said
-        case (RADIO_STATE_TXSTART >> RADIO_STATE_TXSHIFT): {
-        rm2_txcsma_START:
-            // Send TX start (CSMA done) signal to DLL task
-            // arg2: 0 for background, 1 for foreground
-            radio.evtdone(0, ((rfctl.flags & RADIO_FLAG_FLOOD) == 0));  
-
             // Prepare for TX, then enter TX
             radio.state     = RADIO_DataTX;
             rfctl.state     = RADIO_STATE_TXDATA;
             rfctl.txlimit   = RADIO_BUFFER_TXMAX;   // Change TXlimit to max buffer
-            radio_idle();                           // Must put in Idle (READY) before TX.
-            spirit1_int_txdata();
             spirit1_strobe( RFSTROBE_TX );
+            spirit1_int_txdata();
             break;
         }
     }

@@ -33,6 +33,8 @@
   */
 #define RFREG(VAL)      (RF_##VAL)
 #define STROBE(VAL)     (RFSTROBE_##VAL)
+#define RFGPO(VAL)      ((RFGPO_##VAL << 3) | 2)
+
 
 
 // Read/Write Registers

@@ -394,9 +394,13 @@ void platform_pend_ktim();
   * @ingroup Platform
   */
 void platform_enable_ktim();
+void platform_enable_gptim2();
+
 
 
 void platform_disable_ktim();
+void platform_disable_gptim2();
+
 
 
 /** @brief Zeros GPTIM and sets an upper limit
@@ -405,11 +409,13 @@ void platform_disable_ktim();
   * @ingroup Platform
   */
 void platform_set_ktim(ot_u16 value);
-
 void platform_set_gptim2(ot_u16 value);
 void platform_set_gptim3(ot_u16 value);
 void platform_set_gptim4(ot_u16 value);
 void platform_set_gptim5(ot_u16 value);
+
+
+
 
 
 /** @brief Zeros GPTIM, turns off interrupt, and puts into free-running

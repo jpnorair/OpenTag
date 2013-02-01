@@ -309,7 +309,7 @@
 #define BOARD_UART_RTSPINNUM            1
 #define BOARD_UART_TXPINNUM             2
 #define BOARD_UART_RXPINNUM             3
-#define BOARD_UART_CTSPIN               (1<<0
+#define BOARD_UART_CTSPIN               (1<<0)
 #define BOARD_UART_RTSPIN               (1<<1)
 #define BOARD_UART_TXPIN                (1<<2)
 #define BOARD_UART_RXPIN                (1<<3)
@@ -640,17 +640,17 @@ static inline void BOARD_PORT_STARTUP(void) {
     
     
     // External UART on USART2 (Port A).  RTS/CTS flow control always disabled.
+    // RX pin and CTS use input pull-down, TX pin uses push-pull output
+    // CTS and RTS are conducted in SW, if enabled.
 #   if (MCU_FEATURE(MPIPEUART) == ENABLED)
-        BOARD_UART_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_UART_CTSPINNUM*2)) \
-                                  | (GPIO_MODER_OUT << (BOARD_UART_RTSPINNUM*2)) \
-                                  | (GPIO_MODER_ALT << (BOARD_UART_RXPINNUM*2))  \
-                                  | (GPIO_MODER_ALT << (BOARD_UART_TXPINNUM*2))  );
-#       if ((BOARD_UART_TXPINNUM < 8) && (BOARD_UART_RXPINNUM < 8))
-            BOARD_UART_PORT->AFR[0] |= ( (7 << (BOARD_UART_RXPINNUM*4))  \
-                                       | (7 << (BOARD_UART_TXPINNUM*4)) );
-#       else
-#           error "UART GPIO config missing"
-#       endif
+        BOARD_UART_PORT->PUPDR |= (2 << (BOARD_UART_RXPINNUM*2)) \
+                                | (2 << (BOARD_UART_CTSPINNUM*2));
+        BOARD_UART_PORT->MODER |= (GPIO_MODER_IN  << (BOARD_UART_CTSPINNUM*2)) \
+                                | (GPIO_MODER_OUT << (BOARD_UART_RTSPINNUM*2)) \
+                                | (GPIO_MODER_ALT << (BOARD_UART_RXPINNUM*2))  \
+                                | (GPIO_MODER_ALT << (BOARD_UART_TXPINNUM*2));
+        BOARD_UART_PORT->AFR[0]|= (7 << (BOARD_UART_RXPINNUM*4)) \
+                                | (7 << (BOARD_UART_TXPINNUM*4));
 #   else
         BOARD_UART_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_UART_CTSPINNUM*2)) \
                                   | (GPIO_MODER_OUT << (BOARD_UART_RTSPINNUM*2)) \
@@ -1105,6 +1105,10 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #   define MPIPE_UART_PORT      BOARD_UART_PORT
 #   define MPIPE_UART_RXPIN     BOARD_UART_RXPIN
 #   define MPIPE_UART_TXPIN     BOARD_UART_TXPIN
+#   define MPIPE_RTS_PORT       BOARD_UART_PORT
+#   define MPIPE_CTS_PORT       BOARD_UART_PORT
+#   define MPIPE_RTS_PIN        BOARD_UART_RTSPIN
+#   define MPIPE_CTS_PIN        BOARD_UART_CTSPIN
 #   define MPIPE_UART_PINS      (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
 
 #   if (MPIPE_UART_ID == 1)
@@ -1116,8 +1120,8 @@ static inline void BOARD_XTAL_STARTUP(void) {
 
 #   elif (MPIPE_UART_ID == 2)
 #       define MPIPE_UART       USART2
-#       define MPIPE_DMA_RXCHAN_ID  7
-#       define MPIPE_DMA_TXCHAN_ID  6
+#       define MPIPE_DMA_RXCHAN_ID  6
+#       define MPIPE_DMA_TXCHAN_ID  7
 #       define __USE_DMA1_CHAN7
 #       define __USE_DMA1_CHAN6
 

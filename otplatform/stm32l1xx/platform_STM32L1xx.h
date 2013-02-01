@@ -146,7 +146,7 @@
 #   define OT_PARAM_SYSTHREADS      0
 #endif
 #if !defined(OT_PARAM_SSTACK_ALLOC)
-#   define OT_PARAM_SSTACK_ALLOC    (160)
+#   define OT_PARAM_SSTACK_ALLOC    (256)
 #elif (OT_PARAM_SSTACK_ALLOC & 3)
 #   error "OT_PARAM_SSTACK_ALLOC must be 32-bit aligned."
 #endif
@@ -182,32 +182,32 @@
 #   ifndef __KERNEL_HICCULP__
 #       define __KERNEL_HICCULP__
 #   endif
-#   define PLATFORM_NVIC_KERNEL_GROUP   0
-#   define PLATFORM_NVIC_RF_GROUP       0
-#   define PLATFORM_NVIC_IO_GROUP       0
-#   define PLATFORM_NVIC_INT_GROUP      1
-#   define PLATFORM_NVIC_TASK_GROUP     1
+#   define PLATFORM_NVIC_KERNEL_GROUP   b0000
+#   define PLATFORM_NVIC_RF_GROUP       b0000
+#   define PLATFORM_NVIC_IO_GROUP       b1000
+#   define PLATFORM_NVIC_INT_GROUP      b1000
+#   define PLATFORM_NVIC_TASK_GROUP     b1000 
 
 #elif (__CM3_NVIC_GROUPS == 4)
 #   ifndef __KERNEL_HICCULP__
 #       define __KERNEL_HICCULP__
 #   endif
-#   define PLATFORM_NVIC_KERNEL_GROUP   0
-#   define PLATFORM_NVIC_RF_GROUP       1
-#   define PLATFORM_NVIC_IO_GROUP       1
-#   define PLATFORM_NVIC_INT_GROUP      2
-#   define PLATFORM_NVIC_TASK_GROUP     3
+#   define PLATFORM_NVIC_KERNEL_GROUP   b0000
+#   define PLATFORM_NVIC_RF_GROUP       b0100
+#   define PLATFORM_NVIC_IO_GROUP       b0100
+#   define PLATFORM_NVIC_INT_GROUP      b1000
+#   define PLATFORM_NVIC_TASK_GROUP     b1100
 
 #elif (__CM3_NVIC_GROUPS == 8)
 #   ifndef __KERNEL_HICCULP__
 #       define __KERNEL_HICCULP__
 #   endif
-#   define PLATFORM_NVIC_KERNEL_GROUP   0
-#   define PLATFORM_NVIC_RF_GROUP       1
-#   define PLATFORM_NVIC_IO_GROUP       2
-#   define PLATFORM_NVIC_SLOWIO_GROUP   3
-#   define PLATFORM_NVIC_INT_GROUP      6
-#   define PLATFORM_NVIC_TASK_GROUP     7
+#   define PLATFORM_NVIC_KERNEL_GROUP   b0000
+#   define PLATFORM_NVIC_RF_GROUP       b0010
+#   define PLATFORM_NVIC_IO_GROUP       b0100
+#   define PLATFORM_NVIC_SLOWIO_GROUP   b0110
+#   define PLATFORM_NVIC_INT_GROUP      b1100
+#   define PLATFORM_NVIC_TASK_GROUP     b1110
 
 #else
 #   error "__CM3_NVIC_GROUPS must be set to 1, 2, 4, or 8"

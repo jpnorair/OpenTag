@@ -8,7 +8,7 @@
 		<NodeC Path="..\code\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="0" />
 		<NodeH Path="..\code\platform_config.h" Header="platform_config.h" Marker="-1" OutputFile="" sate="0" />
 	</Group>
-	<Group Header="applets" Marker="-1" OutputFile="" sate="96" >
+	<Group Header="applets" Marker="-1" OutputFile="" sate="0" >
 		<NodeC Path="..\..\..\otlibext\applets_std\dll_sig_rfinit.c" Header="dll_sig_rfinit.c" Marker="-1" OutputFile=".\build\dll_sig_rfinit.o" sate="0" />
 		<NodeC Path="..\..\..\otlibext\applets_std\dll_sig_rfterminate_2.c" Header="dll_sig_rfterminate_2.c" Marker="-1" OutputFile=".\build\dll_sig_rfterminate_2.o" sate="0" />
 		<NodeC Path="..\..\..\otlibext\applets_std\mpipe_sig_done.c" Header="mpipe_sig_done.c" Marker="-1" OutputFile=".\build\mpipe_sig_done.o" sate="0" />
@@ -29,7 +29,7 @@
 		</NodeC>
 		<NodeC Path="..\..\..\otlibext\applets_std\sys_sig_powerdown_[stm32lp].c" Header="sys_sig_powerdown_[stm32lp].c" Marker="-1" OutputFile=".\build\sys_sig_powerdown_[stm32lp].o" sate="0" />
 	</Group>
-	<Group Header="board" Marker="0" OutputFile="" sate="96" >
+	<Group Header="board" Marker="0" OutputFile="" sate="0" >
 		<Group Header="stm32f10x" sate="0" Marker="0" OutputFile="" >
 			<NodeH Path="..\..\..\board\stm32f10x\board_MLX73Proto_E.h" Header="board_MLX73Proto_E.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\board\stm32f10x\board_opennode.h" Header="board_opennode.h" Marker="-1" OutputFile="" sate="0" />
@@ -71,7 +71,7 @@
 			<NodeH Path="..\..\..\otkernel\hicculp\system_hicculp.h" Header="system_hicculp.h" Marker="-1" OutputFile="" sate="0" />
 		</Group>
 	</Group>
-	<Group Header="otlib" Marker="-1" OutputFile="" sate="96" >
+	<Group Header="otlib" Marker="-1" OutputFile="" sate="0" >
 		<NodeH Path="..\..\..\otlib\veelite_core.h" Header="veelite_core.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\alp.h" Header="alp.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\..\..\otlib\alp_api_client.c" Header="alp_api_client.c" Marker="-1" OutputFile=".\build\alp_api_client.o" sate="0" />
@@ -392,7 +392,7 @@
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\veelite_core_EE_STM32L1xx.c" Header="veelite_core_EE_STM32L1xx.c" Marker="-1" OutputFile=".\build\veelite_core_EE_STM32L1xx.o" sate="0" />
 		</Group>
 	</Group>
-	<Group Header="otradio" Marker="-1" OutputFile="" sate="0" >
+	<Group Header="otradio" Marker="-1" OutputFile="" sate="96" >
 		<Group Header="cc1101" sate="0" Marker="0" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\cc1101\CC1101_MSP430F5.c" Header="CC1101_MSP430F5.c" Marker="-1" OutputFile=".\build\CC1101_MSP430F5.o" sate="0" />
 			<NodeC Path="..\..\..\otradio\cc1101\CC1101_STM32F10x.c" Header="CC1101_STM32F10x.c" Marker="-1" OutputFile=".\build\CC1101_STM32F10x.o" sate="0" />
@@ -451,7 +451,7 @@
 				</Config>
 			</Options>
 		</Group>
-		<Group Header="spirit1" sate="0" Marker="-1" OutputFile="" >
+		<Group Header="spirit1" sate="96" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\spirit1\radio_SPIRIT1.c" Header="radio_SPIRIT1.c" Marker="-1" OutputFile=".\build\radio_SPIRIT1.o" sate="0" />
 			<NodeC Path="..\..\..\otradio\spirit1\SPIRIT1_STM32L1xx.c" Header="SPIRIT1_STM32L1xx.c" Marker="-1" OutputFile=".\build\SPIRIT1_STM32L1xx.o" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\radio_SPIRIT1.h" Header="radio_SPIRIT1.h" Marker="-1" OutputFile="" sate="0" />
