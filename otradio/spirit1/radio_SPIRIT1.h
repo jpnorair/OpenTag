@@ -28,8 +28,10 @@
 #ifndef __radio_SPIRIT1_H
 #define __radio_SPIRIT1_H
 
+#include "OT_config.h"
 #include "OT_support.h"
 #include "OT_types.h"
+
 
 
 #ifndef ENABLED
@@ -39,6 +41,18 @@
 #ifndef DISABLED
 #   define DISABLED  0
 #endif
+
+
+
+/** Patch functions implemented in the driver     <BR>
+  * ========================================================================<BR>
+  */
+#if (defined(EXTF_em2_encode_data_HWCRC) || defined(EXTF_em2_dencode_data_HWCRC))
+#   error "em2_encode_data_HWCRC() and em2_dencode_data_HWCRC() are implemented in driver."
+#endif
+#define EXTF_em2_encode_data_HW
+#define EXTF_em2_encode_data_HWCRC
+#define EXTF_em2_dencode_data_HWCRC
 
 
 

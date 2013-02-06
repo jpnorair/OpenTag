@@ -1062,13 +1062,13 @@ void rm2_txcsma_isr() {
                         buffer_size = 7;
 #                   endif
                 }
-                radio.evtdone(0, buffer_mode);  // arg2: 0 for background, 1 for foreground
+                radio.evtdone(0, buffer_mode-1);  // arg2: !0 for background, 0 for foreground
                 subcc430_buffer_config(buffer_mode, buffer_size);
                 subcc430_syncword_config( sync_type );
                 RF_WriteSingleReg(RFREG(MCSM1), mcsm1);
             }
 #           else
-                radio.evtdone(0, 1);            // arg2: 0 for background, 1 for foreground
+                radio.evtdone(0, 0);            // arg2: !0 for background, 0 for foreground
                 subcc430_buffer_config(1, 255);
                 subcc430_syncword_config( SYNC_fg );
                 //cc430_write(RFREG(MCSM1), b00000000 );   //should be persistent default

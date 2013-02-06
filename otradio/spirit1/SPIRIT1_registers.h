@@ -119,17 +119,18 @@
 
 
 // Settings for DASH7
+// Official Fbase = 433.16064 
 //
 // | XO | Fbase            | SYNT (dec)    | SYNT (hex)
 // +----+------------------+---------------+----------------
 // | 24 | 433161210.9375   | 28387653.12   | 0x01B12945
 // | 26 | 433159074.7070   | 26203858.26   | 0x018FD6D2
-// | 48 | 433161210.937    | 28387653.12   | 0x01B12945
-// | 52 | 433164628.90625  | 26204194.26   | 0x018FD822
+// | 48 | 433161210.937    | 28387653.12   | 0x00D894A2
+// | 52 | 433164628.90625  | 26204194.26   | 0x00C7EC11
 #define _SYNT_D7_24MHz          0x01B12945
 #define _SYNT_D7_26MHz          0x018FD6D2
-#define _SYNT_D7_48MHz          0x01B12945
-#define _SYNT_D7_52MHz          0x018FD822
+#define _SYNT_D7_48MHz          0x00D894A2  
+#define _SYNT_D7_52MHz          0x00C7EC11  
 #define _DR_M_D7LS_24MHz        47          // 47.407
 #define _DR_E_D7LS_24MHz        11
 #define _DR_M_D7LS_26MHz        24          // 24.068

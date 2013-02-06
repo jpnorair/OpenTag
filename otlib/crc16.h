@@ -55,18 +55,6 @@ extern crc_struct crc;
 
 
 
-/** @brief Calculates the CRC16 for a complete data block
-  * @param block_size : (ot_int) number of bytes in the data block
-  * @param block_addr : (ot_u8*) address of the data block
-  * @retval ot_u16 : CRC16 value
-  * @ingroup CRC16
-  */
-ot_u16 crc_calc_block(ot_int block_size, ot_u8 *block_addr);
-
-
-
-
-
 /** @brief Initializes streaming CRC16 engine
   * @param stream_size  (ot_int) Number of bytes in stream
   * @param stream       (ot_u8*) pointer to the data for CRC calculation
@@ -86,15 +74,27 @@ void crc_init_stream(ot_int stream_size, ot_u8* stream);
   * @param None
   * @retval None
   * @ingroup CRC16
+  * @sa crc_calc_nstream()
+  * @sa crc_init_stream()
   *
   * This is state-based.  When the stream is done, the value of the CRC 
   * calculated from the stream data will be inserted onto the end of the stream
   * automatically.  If you keep calling it forever, it will keep writing the
-  * CRC to the end of the stream.  It will not go off and start doing weird
-  * shit to nearby data.
+  * CRC to the end of the stream, and it will not overwrite subsequent data.
   */
 void crc_calc_stream();
 
+
+
+
+/** @brief Performs a stream CRC calculation on more than one byte
+  * @param n    (ot_u16) number of new stream bytes, must be positive
+  * @retval None
+  * @ingroup CRC16
+  * @sa crc_calc_stream()
+  * @sa crc_init_stream()
+  */
+void crc_calc_nstream(ot_u16 n);
 
 
 

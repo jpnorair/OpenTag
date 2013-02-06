@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,10 +17,22 @@
   * @file       /otradio/spirit1/radio_SPIRIT1.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       22 July 2012
+  * @date       2 Feb 2013
   * @brief      Radio Driver (RF transceiver) for SPIRIT1
   * @defgroup   Radio (Radio Module)
   * @ingroup    Radio
+  *
+  * "   Invisible airwaves crackle with life, 
+  *     Bright antenna, bristle with the energy. 
+  *     Emotional feedback, on timeless wavelength, 
+  *     Bearing a gift beyond price, almost free.
+  *
+  *     All this machinery making modern music 
+  *     Can still be open-hearted. 
+  *     Not so coldly charted, it's really just a question 
+  *     Of your honesty.  Yeah, your honesty!   "
+  *
+  *     -- The SPIRIT1 of Radio (I couldn't resist):
   *
   * The header file for this implementation is /otlib/radio.h.  It is universal
   * for all platforms, even though the implementation (this file) can differ.
@@ -124,17 +136,14 @@ void spirit1_virtual_isr(ot_u8 code) {
         case RFIV_RXSYNC:   rm2_rxsync_isr();       break;
         
         case RFIV_RXEND:    rm2_rxend_isr();        break;
-        case 3:             
-        case 4:             
+        case 3:                 
         case RFIV_RXFIFO:   rm2_rxdata_isr();       break;
         
-        case RFIV_CCAPASS:  
-        case RFIV_CCAPASS2: subrfctl_ccapass_isr(); break;
+        case RFIV_CCAPASS:  subrfctl_ccapass_isr(); break;
         case RFIV_CCAFAIL:  subrfctl_ccafail_isr(); break;
         
         case RFIV_TXEND:    
-        case 10:             
-        case 11:            subrfctl_txend_isr();   break;
+        case 8:             subrfctl_txend_isr();   break;
         case RFIV_TXFIFO:   rm2_txdata_isr();       break;
     }
 }
@@ -144,22 +153,21 @@ void spirit1_virtual_isr(ot_u8 code) {
 
 
 void radio_mac_isr() {
-    switch (radio.state) {
-        //case RADIO_Idle:
-        //case RADIO_Listening:
-        case RADIO_Csma:        platform_disable_gptim2();
-                                rm2_txcsma_isr();   
-                                break;
-        //case RADIO_DataRX:
-            
-#       if (SYS_FLOOD == ENABLED)
-        case RADIO_DataTX:      dll.counter--;
-                                radio_set_mactimer(TI2CLK(1));
-                                break;
-#       endif
+#   if (SYS_FLOOD == ENABLED)
+    if (radio.state == RADIO_DataTX) {
+        dll.counter--;
+        radio_set_mactimer(TI2CLK(1));
+        return;
     }
+#   endif
+    
+    //if (radio.state == RADIO_Csma)
+    platform_disable_gptim2();
+    rm2_txcsma_isr();
 }
     
+
+
 
 
 
@@ -228,6 +236,9 @@ void radio_set_mactimer(ot_u16 clocks) {
 #endif
 }
 #endif
+
+
+
 
 
 
@@ -376,6 +387,90 @@ ot_bool radio_txopen_4() {
 
 
 
+/** Replacement Encoder functions <BR>
+  * ========================================================================<BR>
+  * The Encoder/Decoder module in OTlib provides some generic encode and 
+  * decode functions.  They work for most radios.  The SPIRIT1 implementation
+  * has these optimized encode and decode functions.
+  *
+  */ 
+
+#ifdef EXTF_em2_encode_data_HWCRC
+void em2_encode_data_HWCRC() {
+    ot_int  fill;
+    ot_int  load;
+    ot_u8   save[2];
+    ot_u8*  cmd;
+    
+    // Loop unrolling for FIFO loading
+    load = (rfctl.txlimit - spirit1_txbytes());
+    
+    while ((load > 0) && (em2.bytes > 0)) {
+        fill = load;
+        if (fill > 24) fill = 24;
+        load       -= fill;
+        em2.bytes  -= fill;
+        
+        if (txq.options.ubyte[UPPER] != 0) {
+            crc_calc_nstream(fill);
+        }
+        cmd     = txq.getcursor;
+        save[0] = *(--cmd);
+        *cmd    = 0xff;
+        save[1] = *(--cmd);
+        *cmd    = 0x00;
+        
+        txq.getcursor += fill;
+        spirit1_spibus_io(fill+2, 0, cmd);
+        *cmd++  = save[1];
+        *cmd    = save[0];
+    }
+    
+    /// dummy SPI access to complete fill
+    *(ot_u16*)save  = 0x0080;
+    spirit1_spibus_io(2, 0, save);
+}
+#endif
+
+
+
+
+#ifdef EXTF_em2_decode_data_HWCRC
+void em2_decode_data_HWCRC() {
+    static const ot_u8 cmd[] = { 0x01, 0xFF };
+    ot_u16 grab;
+    
+    em2_decode_data_TOP:
+
+    grab = spirit1_rxbytes();
+    if (grab != 0) {
+        if (grab > 24)  grab = 24;
+        
+        spirit1_spibus_io(2, grab, (ot_u8*)cmd);
+        q_writestring(&rxq, spirit1.busrx, grab);
+        
+        if (em2.state == 0) {
+            em2.state--;
+            em2.bytes = (ot_int)*rxq.getcursor;
+            crc_init_stream(1+em2.bytes, rxq.getcursor);
+        }
+        
+        em2.bytes -= grab;
+        crc_calc_nstream(grab);
+        if (em2.bytes > 0) {
+            goto em2_decode_data_TOP;
+        }
+    }
+}
+
+#endif
+
+
+
+
+
+
+
 
 /** Radio I/O Functions
   * ============================================================================
@@ -520,7 +615,7 @@ ot_int rm2_pkt_duration(ot_int pkt_bytes) {
 /// Wrapper function for rm2_scale_codec that adds some slop overhead
 /// Slop = preamble bytes + sync bytes + ramp-up + ramp-down + padding
     pkt_bytes  += (phymac[0].channel & 0x20) ? \
-                    RF_PARAM_PKT_OVERHEAD+2 : RF_PARAM_PKT_OVERHEAD;
+                    RF_PARAM_PKT_OVERHEAD+6 : RF_PARAM_PKT_OVERHEAD+4;
     return rm2_scale_codec(pkt_bytes);
 }
 #endif
@@ -532,20 +627,21 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
 /// Turns a number of bytes (buf_bytes) into a number of ti units.
 /// To refresh your memory: 
 /// 1 ti    = ((1sec/32768) * 2^5) = 2^-10 sec = ~0.977 ms
-/// 1 mti   = 1/1024 ti = 2^-20 sec = ~0.954us
+/// 1 miti   = 1/1024 ti = 2^-20 sec = ~0.954us
 
-    /// Low-Speed + Non-FEC = 18.88 mti/bit  (55.55 kbps), 
-    /// Low-Speed + FEC     = 37.75 mti/bit  (27.77 kbps), 
-    /// Hi-Speed + Non-FEC  = 5.24 mti/bit   (200 kbps), 
-    /// Hi-Speed + FEC      = 10.49 mti/bit  (100 kbps), 
+    /// Low-Speed + Non-FEC = 18.88 miti/bit (55.55 kbps), 
+    /// Low-Speed + FEC     = 37.75 miti/bit (27.77 kbps), 
+    /// Hi-Speed + Non-FEC  = 5.24 miti/bit  (200 kbps), 
+    /// Hi-Speed + FEC      = 10.49 miti/bit (100 kbps), 
     static const ot_u8 bit_us[4] = { 19, 38, 6, 11 };
     ot_u8 index;
     
     index       = ((phymac[0].channel & 0x20)>>4) + (rfctl.flags & RADIO_FLAG_FEC);
     buf_bytes  *= bit_us[index];
+    // buf_bytes = (buf_bytes * 8 / 1024) = (buf_bytes >> 7)
     buf_bytes >>= 7;
 
-    return (buf_bytes);
+    return buf_bytes;
 }
 #endif
 
@@ -577,9 +673,11 @@ void rm2_reenter_rx(ot_sig2 callback) {
 #ifndef EXTF_rm2_resend
 void rm2_resend(ot_sig2 callback) {
     radio.evtdone               = callback;
-    rfctl.state                 = RADIO_STATE_TXSTART;
+    radio.state                 = RADIO_Csma;
+    rfctl.state                 = RADIO_STATE_TXINIT;
     txq.options.ubyte[UPPER]    = 255;
-    rm2_txcsma_isr();
+    platform_enable_gptim2();
+    radio_set_mactimer(0);
 }
 #endif
 
@@ -846,9 +944,6 @@ void rm2_txcsma_isr() {
             spirit1_int_off();
             spirit1_iocfg_tx();
             
-            /// @todo put this FIFO_CONFIG0 setting in the defaults, since it is only once.
-            spirit1_write(RFREG(FIFO_CONFIG0), 5);
-            
             // START CSMA if required, using LDC mode
             if ((dll.comm.csmaca_params & M2_CSMACA_NOCSMA) == 0) {
                 ot_u8 protocol2;
@@ -879,7 +974,7 @@ void rm2_txcsma_isr() {
         rm2_txcsma_START:
             // Send TX start (CSMA done) signal to DLL task
             // arg2: 0 for background, 1 for foreground
-            radio.evtdone(0, ((rfctl.flags & RADIO_FLAG_FLOOD) == 0));  
+            radio.evtdone(0, (rfctl.flags & RADIO_FLAG_FLOOD));  
             
             // Preload into TX FIFO a small amount of data (up to 8 bytes)
             // This is small-enough that the TX state machine doesn't need
@@ -946,51 +1041,47 @@ void subrfctl_ccapass_isr() {
 
 #ifndef EXTF_rm2_txdata_isr
 void rm2_txdata_isr() {
-    /// Continues where rm2_txcsma() leaves off.
-    switch ( (rfctl.state >> (RADIO_STATE_TXSHIFT+1)) & (RADIO_STATE_TXMASK >> (RADIO_STATE_TXSHIFT+1)) ) {
-
-        /// 4. Continuous TX'ing of a single packet data
-        case (RADIO_STATE_TXDATA >> (RADIO_STATE_TXSHIFT+1)): {
-        rm2_txpkt_TXDATA:
-            /// Frame is not done, so come back later to fill buffer again
-            em2_encode_data();
-            if (em2_remaining_bytes() != 0) {
-                break;
-            }
-
-#           if (SYS_FLOOD == ENABLED)
-            /// Packet flooding.  Only needed on devices that can send M2AdvP
-            if (rfctl.flags & RADIO_FLAG_FLOOD) {
-                radio.evtdone(2, 0);
-                txq.getcursor = txq.front;
-                em2_encode_newframe();
-                goto rm2_txpkt_TXDATA;
-            }
-#           endif
-
-#           if (M2_FEATURE(MULTIFRAME) == ENABLED)
-            /// If the frame is done, but more need to be sent (e.g. MFP's)
-            /// queue it up.  The additional encode stage is there to fill up
-            /// what's left of the buffer.
-            if (em2_remaining_frames() != 0) {
-                q_rebase(&txq, txq.getcursor);
-                radio.evtdone(1, 0);        //callback action for next frame
-                em2_encode_newframe();
-                txq.front[1] = phymac[0].tx_eirp;
-                goto rm2_txpkt_TXDATA;
-            }
-#           endif
     
-            /// TX is finishing: disable Threshold interrupt and wait for READY
-            rfctl.state = RADIO_STATE_TXDONE;
-            spirit1_int_turnoff(RFI_TXFIFO);
-            break;
+    /// Continues where rm2_txcsma() leaves off.
+    if ((rfctl.state & RADIO_STATE_TXMASK) == RADIO_STATE_TXDATA) {
+        rm2_txpkt_TXDATA:
+        /// Frame is not done, so come back later to fill buffer again
+        em2_encode_data();
+        if (em2_remaining_bytes() != 0) {
+            return;
         }
 
-        /// Bug trap
-        default:
-            rm2_kill();
-            break;
+#       if (SYS_FLOOD == ENABLED)
+        /// Packet flooding.  Only needed on devices that can send M2AdvP
+        if (rfctl.flags & RADIO_FLAG_FLOOD) {
+            radio.evtdone(2, 0);
+            txq.getcursor = txq.front;
+            em2_encode_newframe();
+            goto rm2_txpkt_TXDATA;
+        }
+#       endif
+
+#       if (M2_FEATURE(MULTIFRAME) == ENABLED)
+        /// If the frame is done, but more need to be sent (e.g. MFP's)
+        /// queue it up.  The additional encode stage is there to fill up
+        /// what's left of the buffer.
+        if (em2_remaining_frames() != 0) {
+            q_rebase(&txq, txq.getcursor);
+            radio.evtdone(1, 0);        //callback action for next frame
+            em2_encode_newframe();
+            txq.front[1] = phymac[0].tx_eirp;
+            goto rm2_txpkt_TXDATA;
+        }
+#       endif
+    
+        /// TX is finishing: disable Threshold interrupt and wait for READY
+        rfctl.state = RADIO_STATE_TXDONE;
+        spirit1_int_turnoff(RFI_TXFIFO);
+    }
+
+    /// Bug trap
+    else {
+        rm2_kill();
     }
 }
 #endif
@@ -1000,7 +1091,7 @@ void subrfctl_txend_isr() {
 ///@todo could put (rfctl.state != RADIO_STATE_TXDONE) as an argument, or 
 ///      something that resolves to an appropriate non-zero,as an arg in order 
 ///      to signal an error
-  subrfctl_finish(0, 0);
+    subrfctl_finish(0, 0);
 }
 
 
@@ -1020,7 +1111,7 @@ void subrfctl_finish(ot_int main_err, ot_int frame_err) {
 /// By design, SPIRIT1 is in READY (Idle state) at this function
     ot_sig2 callback;
 
-    /// 1. Turn-off interrupts 
+    /// 1. Turn-off radio interrupts 
     radio_gag();
     
     /// 2. Reset radio & callback to null state, then run saved callback

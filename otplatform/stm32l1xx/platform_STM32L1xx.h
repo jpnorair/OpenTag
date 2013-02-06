@@ -146,7 +146,7 @@
 #   define OT_PARAM_SYSTHREADS      0
 #endif
 #if !defined(OT_PARAM_SSTACK_ALLOC)
-#   define OT_PARAM_SSTACK_ALLOC    (256)
+#   define OT_PARAM_SSTACK_ALLOC    (512)
 #elif (OT_PARAM_SSTACK_ALLOC & 3)
 #   error "OT_PARAM_SSTACK_ALLOC must be 32-bit aligned."
 #endif
@@ -183,7 +183,7 @@
 #       define __KERNEL_HICCULP__
 #   endif
 #   define PLATFORM_NVIC_KERNEL_GROUP   b0000
-#   define PLATFORM_NVIC_RF_GROUP       b0000
+#   define PLATFORM_NVIC_RF_GROUP       b0100
 #   define PLATFORM_NVIC_IO_GROUP       b1000
 #   define PLATFORM_NVIC_INT_GROUP      b1000
 #   define PLATFORM_NVIC_TASK_GROUP     b1000 

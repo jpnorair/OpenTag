@@ -120,6 +120,11 @@ void sub_stream1() {
     crc.stream      = &sub_stream2;
 }
 
+
+#if (CC_SUPPORT == GCC)
+void sub_stream0() __attribute__((flatten));
+#endif
+
 void sub_stream0() {
     platform_crc_byte( *crc.cursor++ );
     if (crc.cursor == crc.end) {
@@ -129,15 +134,6 @@ void sub_stream0() {
 }
 
 
-ot_u16 crc_calc_block(ot_int block_size, ot_u8* block_addr) {
-/// In this function, you can see the difference between the table-based and
-/// optimized, non-table-based computation methods.  By my estimation, the
-/// table-based method is about twice as fast.
-    platform_crc_init();
-    crc.cursor = block_addr;
-    crc.val    = platform_crc_block(block_addr, block_size);
-    return crc.val;
-}
 
 
 void crc_init_stream(ot_int stream_size, ot_u8* stream) {
@@ -151,6 +147,14 @@ void crc_init_stream(ot_int stream_size, ot_u8* stream) {
 void crc_calc_stream() {
     crc.stream();
 }
+
+
+void crc_calc_nstream(ot_u16 n) {
+    do {
+        crc.stream();
+    } while (--n);
+}
+
 
 
 ot_bool crc_check() {

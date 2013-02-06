@@ -210,8 +210,10 @@ void spirit1_load_defaults() {
 /// The data ordering is: WRITE LENGTH, WRITE HEADER (0), START ADDR, VALUES
 /// Ignore registers that are set later, are unused, or use the hardware default values.
     static const ot_u8 spirit1_defaults[] = {
-        3,  0,  0x01,   DRF_ANA_FUNC_CONF0, 
-       10,  0,  0x07,   DRF_IF_OFFSET_ANA, DRF_SYNT3, DRF_SYNT2, DRF_SYNT1, 
+        15, 0,  0x01,   DRF_ANA_FUNC_CONF0, 
+                        RFGPO(READY), RFGPO(GND), RFGPO(GND), RFGPO(GND),
+                        DRF_MCU_CK_CONF,
+                        DRF_IF_OFFSET_ANA, DRF_SYNT3, DRF_SYNT2, DRF_SYNT1, 
                         DRF_SYNT0, DRF_CHSPACE, DRF_IF_OFFSET_DIG,
         3,  0,  0xB4,   DRF_XO_RCO_TEST,
         4,  0,  0x9E,   DRF_SYNTH_CONFIG1, DRF_SYNTH_CONFIG0,
@@ -270,7 +272,7 @@ void spirit1_waitforreset() {
 void spirit1_waitforready() {
 /// Wait for the Ready Pin to go high (reset pin is remapped in init).
 /// STANDBY->READY should take about 75us
-    spirit1_waitforreset();
+    while ((RADIO_IRQ3_PORT->IDR & RADIO_IRQ3_PIN) == 0);
 }
 
 
@@ -328,6 +330,7 @@ void spirit1_linkinfo(spirit1_link* link) {
 void spirit1_init_bus() {
 /// @note platform_init_periphclk() should have alread enabled RADIO_SPI clock
 /// and GPIO clocks
+    ot_u16 scratch;
     
     ///0. Assure that Shutdown Line is Low
     RADIO_SDN_PORT->BSRRH   = RADIO_SDN_PIN;        // Clear
@@ -360,8 +363,11 @@ void spirit1_init_bus() {
     EXTI->PR    =  RFI_ALL;         //clear flag bits
     EXTI->IMR  &= ~RFI_ALL;         //clear interrupt enablers
     EXTI->EMR  &= ~RFI_ALL;         //clear event enablers
-    EXTI->FTSR &= ~RFI_ALL;         // For this version, all GPIOs are rising edge
-    EXTI->RTSR |= RFI_ALL;
+    
+    // PIN0 is falling edge, 1 & 2 are rising edge  
+    EXTI->FTSR |= RFI_SOURCE0;
+    EXTI->RTSR |= (RFI_SOURCE1 | RFI_SOURCE2);
+    
     
     NVIC->IP[(uint32_t)_RFIRQ0]         = (PLATFORM_NVIC_RF_GROUP << 4);
     NVIC->ISER[((uint32_t)_RFIRQ0>>5)]  = (1 << ((uint32_t)_RFIRQ0 & 0x1F));
@@ -408,7 +414,8 @@ void spirit1_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
 /// macro or inline function.  As the board may be using DMA for numerous
 /// peripherals, we cannot assume in this module if it is appropriate to turn-
 /// off the DMA for all other modules.
-
+    
+    platform_disable_interrupts();
     __SPI_CLKON();
     __SPI_ENABLE();
     __SPI_CS_ON();
@@ -441,6 +448,7 @@ void spirit1_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
     __SPI_DISABLE();
     __SPI_CLKOFF();
     BOARD_DMA_CLKOFF();
+    platform_enable_interrupts();
 }
 
 
@@ -594,36 +602,32 @@ ot_bool spirit1_check_cspin(void) {
 /// This I/O configuration does not use many of the SPIRIT1 advanced features.
 /// Those features will be experimented-with in the future.
 
-static const ot_u8 gpio_rx[6] = { 
-    0, RFREG(GPIO3_CONF),
+static const ot_u8 gpio_rx[5] = { 
+    0, RFREG(GPIO2_CONF),
     RFGPO(RX_FIFO_ALMOST_FULL),  //indicate buffer threshold condition (kept for RX)
-    RFGPO(RSSI_ABOVE_THR),       //indicate if RSSI goes above/below CS threshold
     RFGPO(SYNC_WORD),            //indicate when sync word is qualified
-    RFGPO(READY)                 //indicate when listen/rx is exited 
+    RFGPO(TRX_INDICATOR)         //indicate when TX or RX is active
 };
 
-static const ot_u8 gpio_tx[6] = { 
-    0, RFREG(GPIO3_CONF),
+static const ot_u8 gpio_tx[5] = { 
+    0, RFREG(GPIO2_CONF),
     RFGPO(TX_FIFO_ALMOST_EMPTY), //indicate buffer threshold condition
     RFGPO(RSSI_ABOVE_THR),       //indicate if RSSI goes above/below CCA threshold
-    RFGPO(SLEEP_OR_STANDBY),     //indicate when csma is backing off 
-    RFGPO(READY)                 //indicate when tx is exited
+    RFGPO(TRX_INDICATOR)         //indicate when TX or RX is active
 };
     
 void spirit1_iocfg_rx()  {
 /// All EXTIs for RX and TX are rising-edge detect, so the edge-select bit is
 /// set universally following chip startup.
-    EXTI->PR        = RFI_ALL;                  //clear all pending bits
-//    EXTI->RTSR     |= RFI_ALL;
-    spirit1_spibus_io(6, 0, (ot_u8*)gpio_rx);
+    EXTI->PR = RFI_ALL;   //clear all pending bits
+    spirit1_spibus_io(5, 0, (ot_u8*)gpio_rx);
 }
 
 void spirit1_iocfg_tx()  {
 /// All EXTIs for RX and TX are rising-edge detect, so the edge-select bit is
 /// set universally following chip startup.
-    EXTI->PR        = RFI_ALL;                  //clear all pending bits
-//    EXTI->RTSR     |= RFI_ALL; 
-    spirit1_spibus_io(6, 0, (ot_u8*)gpio_tx);
+    EXTI->PR = RFI_ALL;   //clear all pending bits
+    spirit1_spibus_io(5, 0, (ot_u8*)gpio_tx);
 }
 
 
@@ -653,7 +657,11 @@ void spirit1_int_txdata()   {   spirit1.imode = MODE_TXData;
 
 void spirit1_int_force(ot_u16 ifg_sel)   { EXTI->SWIER |= ifg_sel; }
 void spirit1_int_turnon(ot_u16 ie_sel)   { EXTI->IMR   |= ie_sel;  }
-void spirit1_int_turnoff(ot_u16 ie_sel)  { EXTI->IMR   &= ~ie_sel; }
+
+void spirit1_int_turnoff(ot_u16 ie_sel)  { 
+    EXTI->PR    = ie_sel;
+    EXTI->IMR  &= ~ie_sel; 
+}
 
 
 

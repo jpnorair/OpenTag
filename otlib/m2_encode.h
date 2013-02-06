@@ -183,7 +183,15 @@ ot_bool em2_complete();
 
 
 
-
+void em2_encode_data_HW();
+void em2_decode_data_HW();
+void em2_encode_data_HWCRC();
+void em2_decode_data_HWCRC();
+void em2_encode_data_PN9();
+void em2_decode_data_PN9();
+void em2_encode_data_FEC();
+void em2_decode_data_FEC();
+    
 #endif
 
 

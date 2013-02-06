@@ -55,10 +55,10 @@ void sub_stop() {
     platform_enable_interrupts();
     __WFI();
     
-    ///@todo this is going to need to go into the interrupt system
-    
     // On wakeup reset SLEEPDEEP bit of Cortex System Control Register
-    SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+    //SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+    
+    ///@todo this is going to need to go into the interrupt system
     
 #   if ((MCU_FEATURE_MULTISPEED != ENABLED) && defined(BOARD_PARAM_HFHz))
     /// No Multispeed and HSI/HSE/PLL used for System Clock.  

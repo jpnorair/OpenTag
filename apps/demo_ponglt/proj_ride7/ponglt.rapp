@@ -1,6 +1,6 @@
 
 <ApplicationBuild Header="ponglt" Extern=".\ponglt.rapp" Path=".\ponglt.rapp" OutputFile=".\ponglt.elf" sate="96" Config="IKR001_Debug" >
-	<Group Header="app" Marker="-1" OutputFile="" sate="0" >
+	<Group Header="app" Marker="-1" OutputFile="" sate="96" >
 		<NodeH Path="..\code\app_config.h" Header="app_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\build_config.h" Header="build_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\extf_config.h" Header="extf_config.h" Marker="-1" OutputFile="" sate="0" />
@@ -71,12 +71,12 @@
 			<NodeH Path="..\..\..\otkernel\hicculp\system_hicculp.h" Header="system_hicculp.h" Marker="-1" OutputFile="" sate="0" />
 		</Group>
 	</Group>
-	<Group Header="otlib" Marker="-1" OutputFile="" sate="0" >
+	<Group Header="otlib" Marker="-1" OutputFile="" sate="96" >
 		<NodeH Path="..\..\..\otlib\veelite_core.h" Header="veelite_core.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\alp.h" Header="alp.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\..\..\otlib\alp_api_client.c" Header="alp_api_client.c" Marker="-1" OutputFile=".\build\alp_api_client.o" sate="0" />
 		<NodeC Path="..\..\..\otlib\alp_api_server.c" Header="alp_api_server.c" Marker="-1" OutputFile=".\build\alp_api_server.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\alp_dashforth.c" Header="alp_dashforth.c" Marker="-1" OutputFile=".\build\alp_dashforth.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_dashforth.c" Header="alp_dashforth.c" Marker="-1" OutputFile=".\build\alp_dashforth.o" sate="2" />
 		<NodeC Path="..\..\..\otlib\alp_filedata.c" Header="alp_filedata.c" Marker="-1" OutputFile=".\build\alp_filedata.o" sate="0" />
 		<NodeC Path="..\..\..\otlib\alp_logger.c" Header="alp_logger.c" Marker="-1" OutputFile=".\build\alp_logger.o" sate="0" />
 		<NodeC Path="..\..\..\otlib\alp_main.c" Header="alp_main.c" Marker="-1" OutputFile=".\build\alp_main.o" sate="0" />
@@ -127,7 +127,7 @@
 		<NodeC Path="..\..\..\otlib\veelite.c" Header="veelite.c" Marker="-1" OutputFile=".\build\veelite.o" sate="0" />
 		<NodeH Path="..\..\..\otlib\veelite.h" Header="veelite.h" Marker="-1" OutputFile="" sate="0" />
 	</Group>
-	<Group Header="otplatform" Marker="-1" OutputFile="" sate="96" >
+	<Group Header="otplatform" Marker="-1" OutputFile="" sate="0" >
 		<Group Header="stm32_mculib" Marker="-1" OutputFile="" sate="0" >
 			<Group Header="CMSIS" Marker="-1" OutputFile="" sate="96" >
 				<Group Header="CM3" Marker="-1" OutputFile="" sate="96" >
@@ -373,7 +373,7 @@
 		<Group Header="stm32l1xx" sate="96" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\mpipe_uart_STM32L1xx.c" Header="mpipe_uart_STM32L1xx.c" Marker="-1" OutputFile=".\build\mpipe_uart_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_crc_STM32L1xx.c" Header="platform_crc_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_crc_STM32L1xx.o" sate="0" />
-			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="2" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_STM32L1xx.c" Header="platform_STM32L1xx.c" Marker="0" OutputFile=".\build\platform_STM32L1xx.o" sate="0" >
 				<Options>
 					<Config Header="IKR001_Debug" >

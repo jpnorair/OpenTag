@@ -559,7 +559,7 @@ void sub_processing() {
 
         if (session->flags & M2FI_LISTEN) {
             m2session* s_clone;
-            s_clone = session_new( session->applet, dll.comm.tc,
+            s_clone = session_new( session->applet, CLK2TI(dll.comm.tc),
                                    (M2_NETSTATE_REQRX | M2_NETSTATE_ASSOCIATED),
                                    dll.comm.rx_chanlist[0]     );
 
@@ -1034,22 +1034,22 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
 
 
 void rfevt_txcsma(ot_int pcode, ot_int tcode) {
-    ot_uint event_time;
+    ot_uint event_ticks;
 
     /// ON CSMA SUCCESS: pcode == 0, tcode == 0/1 for BG/FG
     if (pcode == 0) {
         sys.task_RFA.latency    = 0;
         sys.task_RFA.event      = 5;
 #       if (SYS_FLOOD == ENABLED)
-        if (tcode == 0) {
+        if (tcode != 0) {
             radio.evtdone   = &rfevt_btx;
-            event_time      = dll.counter;
+            event_ticks     = dll.counter;
         }
         else
 #       endif
         {
             radio.evtdone   = &rfevt_ftx;
-            event_time      = (ot_uint)(rm2_pkt_duration(txq.length) + TI2CLK(4));
+            event_ticks     = (ot_uint)(rm2_pkt_duration(txq.length) + 4);
         }
     }
 
@@ -1074,10 +1074,10 @@ void rfevt_txcsma(ot_int pcode, ot_int tcode) {
         
         session.heap[session.top].netstate |= M2_NETFLAG_SCRAP;
         sys.task_RFA.event                  = 0;
-        event_time                          = 0;
+        event_ticks                         = 0;
     }
     
-    sys_preempt(&sys.task_RFA, event_time);
+    sys_preempt(&sys.task_RFA, event_ticks);
 }
 
 
@@ -1105,7 +1105,7 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
         dll.comm.redundants--;
         if ((dll.comm.redundants != 0) && scratch) {
             dll.comm.csmaca_params = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
-            rm2_resend(&rfevt_txcsma);
+            rm2_resend( (ot_sig2)&rfevt_txcsma );
         }
         
         /// Scrap (End) Session if:
@@ -1143,7 +1143,7 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
             sys.task_RFA.event                      = 0;
             session.heap[session.top+1].counter     = 0;    
             session.heap[session.top+1].netstate   &= ~M2_NETSTATE_INIT;
-            dll.comm.tc                             = 2;
+            dll.comm.tc                             = TI2CLK(2);
             dll.comm.csmaca_params                  = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
         } break;
         
@@ -1167,7 +1167,7 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         /// <LI> The Radio Driver will flood adv packets forever, in parallel
         ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
         case 2: {
-            if (TI2CLK(dll.counter) < rm2_pkt_duration(7)) {
+            if (dll.counter < rm2_pkt_duration(7)) {
                 m2advp_close();
                 rm2_txstop_flood();
             }
@@ -1257,7 +1257,7 @@ void dll_set_defaults(m2session* session) {
     else if (session->netstate & M2_NETSTATE_INIT) {
         // Default for new session is beacon request.  These parameters often
         // get altered afterward, in the session applet
-        dll.comm.tc             = M2_PARAM_BEACON_TCA;
+        dll.comm.tc             = TI2CLK(M2_PARAM_BEACON_TCA);
         dll.comm.rx_timeout     = rm2_default_tgd(session->channel);
         dll.comm.csmaca_params  = dll_default_csma(session->channel);
     }
@@ -1352,7 +1352,7 @@ CLK_UNIT sub_fcinit() {
     if (dll.comm.csmaca_params & M2_CSMACA_RAIND) {
         CLK_UNIT random;
         random  = TI2CLK(platform_prand_u16());
-        random %= (dll.comm.tc - rm2_pkt_duration(txq.front[0]) );
+        random %= (dll.comm.tc - TI2CLK(rm2_pkt_duration(txq.front[0])) );
         return random;
     }
     
@@ -1381,7 +1381,7 @@ CLK_UNIT sub_fcloop() {
     
     // AIND & RAIND Loop
     if (dll.comm.csmaca_params & 0x18) {    //RAIND, AIND
-        return rm2_pkt_duration(txq.front[0]);
+        return TI2CLK(rm2_pkt_duration(txq.front[0]));
     }
     
     // RIGD loop
@@ -1419,7 +1419,7 @@ CLK_UNIT sub_rigd_nextslot() {
 
 CLK_UNIT sub_aind_nextslot() {
 /// Works for RAIND or AIND next slot
-    return rm2_pkt_duration(txq.front[0]);
+    return TI2CLK(rm2_pkt_duration(txq.front[0]));
 }
 */
 

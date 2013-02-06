@@ -947,15 +947,16 @@ void rm2_txcsma_isr() {
                     buffer_mode = 0;
                     buffer_size = em2_remaining_bytes();
                 }
-                radio.evtdone(0, buffer_mode);  // arg2: 0 for background, 1 for foreground
+                radio.evtdone(0, buffer_mode-1);  // arg2: !0 for background, 0 for foreground
                 subcc1101_buffer_config(buffer_mode, buffer_size);
                 subcc1101_syncword_config( sync_type );
                 cc1101_write(RFREG(MCSM1), mcsm1 );
             }
 #           else
-            subcc430_buffer_config(1, 255);
-            subcc1101_syncword_config( SYNC_fg );
-            //cc1101_write(RFREG(MCSM1), b00000000 );   //should be persistent default
+                radio.evtdone(0, 0);            // arg2: !0 for background, 0 for foreground
+                subcc430_buffer_config(1, 255);
+                subcc1101_syncword_config( SYNC_fg );
+                //cc1101_write(RFREG(MCSM1), b00000000 );   //should be persistent default
 #           endif
             
             // Preload into TX FIFO a relatively small amount (8 bytes) for min

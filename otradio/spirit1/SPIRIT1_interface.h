@@ -34,8 +34,8 @@
 typedef enum {
     MODE_Listen = 0,
     MODE_RXData = 2,
-    MODE_CSMA   = 6,
-    MODE_TXData = 9
+    MODE_CSMA   = 5,
+    MODE_TXData = 7
 } SPIRIT1_IMode;
 
 
@@ -402,28 +402,26 @@ ot_bool spirit1_check_cspin(void);
 #define RFI_RXTERM      RFI_SOURCE0
 #define RFI_RXSYNC      RFI_SOURCE1
 #define RFI_RXEND       RFI_SOURCE0
-#define RFI_RXFIFO      RFI_SOURCE3
+#define RFI_RXFIFO      RFI_SOURCE2
 #define RFI_CCAPASS     RFI_SOURCE0
-#define RFI_CCAPASS2    RFI_SOURCE1
-#define RFI_CCAFAIL     RFI_SOURCE2
+#define RFI_CCAFAIL     RFI_SOURCE1
 #define RFI_TXEND       RFI_SOURCE0
-#define RFI_TXFIFO      RFI_SOURCE3
+#define RFI_TXFIFO      RFI_SOURCE2
 
 #define RFI_ALL         (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 | RFI_SOURCE3)
 #define RFI_LISTEN      (RFI_RXTERM | RFI_RXSYNC)
 #define RFI_RXDATA      (RFI_RXEND | RFI_RXFIFO)
-#define RFI_CSMA        (RFI_CCAPASS | RFI_CCAPASS2 | RFI_CCAFAIL)
+#define RFI_CSMA        (RFI_CCAPASS | RFI_CCAFAIL)
 #define RFI_TXDATA      (RFI_TXEND | RFI_TXFIFO)
 
 #define RFIV_RXTERM     0
 #define RFIV_RXSYNC     1
 #define RFIV_RXEND      2
-#define RFIV_RXFIFO     5
-#define RFIV_CCAPASS    6
-#define RFIV_CCAPASS2   7
-#define RFIV_CCAFAIL    8
-#define RFIV_TXEND      9
-#define RFIV_TXFIFO     12
+#define RFIV_RXFIFO     4
+#define RFIV_CCAPASS    5
+#define RFIV_CCAFAIL    6
+#define RFIV_TXEND      7
+#define RFIV_TXFIFO     9
 
 
 

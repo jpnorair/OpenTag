@@ -262,6 +262,8 @@ void NMI_Handler(void) {
   
 
 void HardFault_Handler(void) {
+/// If you have traced the code here, most likely the problem is stack overrun.
+/// You need to allocate a bigger stack for SSTACK or your thread.
 #ifdef __DEBUG__
     while (1);
 #else
@@ -305,14 +307,11 @@ void DebugMon_Handler(void) { }
   * =================
   */
 void SVC_Handler(void) { 
-/// SVC Handler runs the scheduler, and potentially some future system calls.
-/// If the scheduler returns 0, there is a task pending to be executed, so the
-/// proper procedure is to invoke the PendSV interrupt.
-#if (OT_PARAM_SYSTHREADS == 0)
+/// SVC Handler runs potentially some future system calls.
     platform_ext.next_evt   = sys_event_manager();
-    SCB->ICSR              |= (platform_ext.next_evt  == 0) << SCB_ICSR_PENDSVSET_Pos;
     
-#else
+    
+#if 0 //(OT_PARAM_SYSTHREADS != 0)
     ot_u8* task_lr;
     register ot_u32* stack;
     
@@ -347,28 +346,30 @@ void SVC_Handler(void) {
 
 void platform_ktim_isr() {
 /// The Kernel timer expiring is evidence that a task is pending, so we must
-/// invoke the PendSV interrupt here.  Before that, we must clear the OC pulse.
-    OT_GPTIM->SR &= ~TIM_SR_CC1IF; 
-    __SET_PENDSV();
+/// set next_evt to 0 in order to clear sleep or invoke the task manager
+    OT_GPTIM->SR           &= ~TIM_SR_CC1IF;
+    platform_ext.next_evt   = 0;
+    
+    ///@todo I'll need to implement a check to see if this is a task-end or
+    ///      task-start event
+#   if (OT_PARAM_SYSTHREADS != 0)
+    sys_task_manager();
+#   endif
 }
 
 
 void PendSV_Handler(void) { 
 /// PendSV ISR handles task management.
 /// @note SV is for "Supervisor," not "Sport Veloce"
-
-/// sys_task_manager() performs task context switching.  In certain cases, it
-/// might kill a task that is misbehaving and change the context to the next
-/// task.  To manually kill a task, use SVC 1.
-    
+   
     // There is an erratum that PendSV bit is not adequately cleared in HW
     __CLR_PENDSV();
     
-    // sys_task_manager performs context switching via platform_..._context()
-    // functions.  It returns the new P-stack pointer, which we set.
-#   if (OT_PARAM_SYSTHREADS != 0)
-    sys_task_manager();
-#   endif
+    // Disable interrupts during scheduler runtime
+    __SEND_SVC(0);
+    //platform_disable_interrupts();
+    //platform_ext.next_evt = sys_event_manager();
+    //platform_enable_interrupts();
 }
 
 
@@ -386,6 +387,49 @@ void WWDG_IRQHandler(void) {
 }
 #endif
 
+
+
+
+
+
+
+/** RTC stuff
+  * ========================================================================<BR>
+  */
+#define _BCD(T,O)   ((T<<4) | O)
+static const ot_u8 bcd_lut[60] = {
+    _BCD(0,0),  _BCD(0,1),  _BCD(0,2),  _BCD(0,3),  _BCD(0,4),  
+    _BCD(0,5),  _BCD(0,6),  _BCD(0,7),  _BCD(0,8),  _BCD(0,9), 
+    _BCD(1,0),  _BCD(1,1),  _BCD(1,2),  _BCD(1,3),  _BCD(1,4),  
+    _BCD(1,5),  _BCD(1,6),  _BCD(1,7),  _BCD(1,8),  _BCD(1,9), 
+    _BCD(2,0),  _BCD(2,1),  _BCD(2,2),  _BCD(2,3),  _BCD(2,4),  
+    _BCD(2,5),  _BCD(2,6),  _BCD(2,7),  _BCD(2,8),  _BCD(2,9), 
+    _BCD(3,0),  _BCD(3,1),  _BCD(3,2),  _BCD(3,3),  _BCD(3,4),  
+    _BCD(3,5),  _BCD(3,6),  _BCD(3,7),  _BCD(3,8),  _BCD(3,9), 
+    _BCD(4,0),  _BCD(4,1),  _BCD(4,2),  _BCD(4,3),  _BCD(4,4),  
+    _BCD(4,5),  _BCD(4,6),  _BCD(4,7),  _BCD(4,8),  _BCD(4,9), 
+    _BCD(5,0),  _BCD(5,1),  _BCD(5,2),  _BCD(5,3),  _BCD(5,4),  
+    _BCD(5,5),  _BCD(5,6),  _BCD(5,7),  _BCD(5,8),  _BCD(5,9)
+};
+
+ot_u32 sub_int2rtc(ot_u32 secs) {
+/// STM32 has hardware divider and MAC instructions that operate in relatively
+/// fast time.  Otherwise this would be quite slow.  It returns an hours-
+/// minutes-seconds figure that the STM32L RTC needs.
+    ot_u32 hours, mins;
+    
+    hours   = (secs/3600);          // should be UDIV
+    secs    = secs - (hours*3600);  // should be MLS
+    mins    = (secs/60);
+    secs    = secs - (mins*60);
+    hours   = bcd_lut[hours];
+    hours <<= 8;
+    hours  |= bcd_lut[mins];
+    hours <<= 8;
+    hours  |= bcd_lut[secs];
+    
+    return hours;
+}
 
 
 #if (RTC_ALARMS > 0)
@@ -938,12 +982,17 @@ void platform_drop_context(ot_uint i) {
 void platform_ot_preempt() {
 /// Run the kernel scheduler by using system call.  If running a kernel task,
 /// do not run the scheduler (we check this by inspecting the KTIM interrupt
-/// enabler bit), as the ktask will run to completion and do SVC in its own
-/// context (platform_ot_run()).
+/// enabler bit), as the ktask will run to completion and do the call in its 
+/// own context (platform_ot_run()).
 
-    if (EXTI->IMR & (1<<OT_KTIM_IRQ_SRCLINE)) {
-        __SEND_SVC(0);
-    }
+    //if (EXTI->IMR & (1<<OT_KTIM_IRQ_SRCLINE)) {
+    //    __SET_PENDSV();
+    //}
+    
+    //SCB->ICSR |= (EXTI->IMR & (1<<OT_KTIM_IRQ_SRCLINE)) << \
+    //                (SCB_ICSR_PENDSVSET_Pos - OT_KTIM_IRQ_SRCLINE);
+    
+    if (platform_ext.task_exit == NULL) __SET_PENDSV();
 }
 #endif
 
@@ -994,11 +1043,15 @@ OT_INLINE void platform_ot_run() {
     ///    time to go to sleep (or more likely STOP mode).  The powerdown 
     ///    routine MUST re-enable interrupts immediately before issuing the WFI
     ///    instruction.
-    if (platform_ext.next_evt  != 0) {
+    while (platform_ext.next_evt != 0) {
         platform_disable_interrupts();
         platform_enable_ktim();
         sys_powerdown();
     }
+    
+    //while (platform_ext.next_evt != 0) {
+    //    __WFI();
+    //}
 }
 #endif
 
@@ -1294,8 +1347,8 @@ void platform_set_ktim(ot_u16 value) {
 
 void platform_set_gptim2(ot_u16 value) {
 /// gptim2 is often used for RF MAC timing.  It includes value==0 protection.
-    OT_GPTIM->CCR2  = OT_GPTIM->CNT + value;
-    EXTI->SWIER    |= (1<<(value==0));          //pend interrupt if value == 0
+    if (value == 0) EXTI->SWIER    |= BOARD_GPTIM2_PIN;
+    else            OT_GPTIM->CCR2  = OT_GPTIM->CNT + value;
 }
 
 void platform_enable_gptim2() {
