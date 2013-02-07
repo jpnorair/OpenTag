@@ -88,7 +88,7 @@
 #   define _RCO_RATIO_1in128    (1<<0)
 
 #define RF_XO_RCO_TEST          0xB4
-#   define _PD_CLKDIV           (1<<3)      //set (disable) on 24/26 MHz systems
+#   define _PD_CLKDIV           (1<<3)      //set (disable) on 24-26 MHz systems
 
 #define RF_SYNTH_CONFIG0        0x9F
 #   define _SEL_TSPLIT          (1<<7)
@@ -124,23 +124,29 @@
 // | XO | Fbase            | SYNT (dec)    | SYNT (hex)
 // +----+------------------+---------------+----------------
 // | 24 | 433161210.9375   | 28387653.12   | 0x01B12945
+// | 25 | 433161638.1836   | 27252173.88   | 0x019FD5CE
 // | 26 | 433159074.7070   | 26203858.26   | 0x018FD6D2
 // | 48 | 433161210.937    | 28387653.12   | 0x00D894A2
+// | 50 | 433161638.1836   | 13626087.97   | 0x00CFEAE7
 // | 52 | 433164628.90625  | 26204194.26   | 0x00C7EC11
 #define _SYNT_D7_24MHz          0x01B12945
+#define _SYNT_D7_25MHz          0x019FD5CE
 #define _SYNT_D7_26MHz          0x018FD6D2
-#define _SYNT_D7_48MHz          0x00D894A2  
+#define _SYNT_D7_48MHz          0x00D894A2 
+#define _SYNT_D7_50MHz          0x00CFEAE7 
 #define _SYNT_D7_52MHz          0x00C7EC11  
 #define _DR_M_D7LS_24MHz        47          // 47.407
 #define _DR_E_D7LS_24MHz        11
+#define _DR_M_D7LS_25MHz        35          // 35.27
+#define _DR_E_D7LS_25MHz        11
 #define _DR_M_D7LS_26MHz        24          // 24.068
 #define _DR_E_D7LS_26MHz        11
 #define _DR_M_D7HS_24MHz        17          // 17.067
 #define _DR_E_D7HS_24MHz        13
+#define _DR_M_D7HS_25MHz        6           // 6.144
+#define _DR_E_D7HS_25MHz        13
 #define _DR_M_D7HS_26MHz        248         // 248.123
 #define _DR_E_D7HS_26MHz        12
-
-
 
 
 
@@ -152,27 +158,35 @@
 #   define _WCP_866MHz          (0<<5)
 #   define _SYNT_HI             (31<<0)
 #   define _SYNT_HI_D7_24MHz    ((ot_u8)((_SYNT_D7_24MHz>>21)&_SYNT_HI))
+#   define _SYNT_HI_D7_25MHz    ((ot_u8)((_SYNT_D7_25MHz>>21)&_SYNT_HI))
 #   define _SYNT_HI_D7_26MHz    ((ot_u8)((_SYNT_D7_26MHz>>21)&_SYNT_HI))
 #   define _SYNT_HI_D7_48MHz    ((ot_u8)((_SYNT_D7_48MHz>>21)&_SYNT_HI))
+#   define _SYNT_HI_D7_50MHz    ((ot_u8)((_SYNT_D7_50MHz>>21)&_SYNT_HI))
 #   define _SYNT_HI_D7_52MHz    ((ot_u8)((_SYNT_D7_52MHz>>21)&_SYNT_HI))
 
 #define RF_SYNT2                0x09
 #   define _SYNT2_D7_24MHz      ((ot_u8)((_SYNT_D7_24MHz>>13)&0xff))
+#   define _SYNT2_D7_25MHz      ((ot_u8)((_SYNT_D7_25MHz>>13)&0xff))
 #   define _SYNT2_D7_26MHz      ((ot_u8)((_SYNT_D7_26MHz>>13)&0xff))
 #   define _SYNT2_D7_48MHz      ((ot_u8)((_SYNT_D7_48MHz>>13)&0xff))
+#   define _SYNT2_D7_50MHz      ((ot_u8)((_SYNT_D7_50MHz>>13)&0xff))
 #   define _SYNT2_D7_52MHz      ((ot_u8)((_SYNT_D7_52MHz>>13)&0xff))
 
 #define RF_SYNT1                0x0A
 #   define _SYNT1_D7_24MHz      ((ot_u8)((_SYNT_D7_24MHz>>5)&0xff))
+#   define _SYNT1_D7_25MHz      ((ot_u8)((_SYNT_D7_25MHz>>5)&0xff))
 #   define _SYNT1_D7_26MHz      ((ot_u8)((_SYNT_D7_26MHz>>5)&0xff))
 #   define _SYNT1_D7_48MHz      ((ot_u8)((_SYNT_D7_48MHz>>5)&0xff))
+#   define _SYNT1_D7_50MHz      ((ot_u8)((_SYNT_D7_50MHz>>5)&0xff))
 #   define _SYNT1_D7_52MHz      ((ot_u8)((_SYNT_D7_52MHz>>5)&0xff))
 
 #define RF_SYNT0                0x0B
 #   define _SYNT_LO             (31<<3)
 #   define _SYNT_LO_D7_24MHz    ((ot_u8)((_SYNT_D7_24MHz<<3)&_SYNT_LO))
+#   define _SYNT_LO_D7_25MHz    ((ot_u8)((_SYNT_D7_25MHz<<3)&_SYNT_LO))
 #   define _SYNT_LO_D7_26MHz    ((ot_u8)((_SYNT_D7_26MHz<<3)&_SYNT_LO))
 #   define _SYNT_LO_D7_48MHz    ((ot_u8)((_SYNT_D7_48MHz<<3)&_SYNT_LO))
+#   define _SYNT_LO_D7_50MHz    ((ot_u8)((_SYNT_D7_50MHz<<3)&_SYNT_LO))
 #   define _SYNT_LO_D7_52MHz    ((ot_u8)((_SYNT_D7_52MHz<<3)&_SYNT_LO))
 #   define _BS                  (7<<0)
 #   define _BS_868MHz           (1<<0)
@@ -184,8 +198,10 @@
 #define RF_CHSPACE              0x0C
 #   define _CHSPACE(BW, XOHZ)   (ot_u8)( ((float)BW) / (((float)XOHZ)/32768))
 #   define _CHSPACE_D7_24MHz    148
+#   define _CHSPACE_D7_25MHz    142
 #   define _CHSPACE_D7_26MHz    137
 #   define _CHSPACE_D7_48MHz    74
+#   define _CHSPACE_D7_50MHz    71
 #   define _CHSPACE_D7_52MHz    68   
 
 #define RF_IF_OFFSET_DIG        0x0D
@@ -237,34 +253,45 @@
 #define RF_FDEV0                0x1C
 #   define _FDEV_E              (15<<4)
 #   define _FDEV_E_D7_24MHz     (7<<4)      // 46.875 kHz
+#   define _FDEV_E_D7_25MHz     (7<<4)      // 48.828 kHz
 #   define _FDEV_E_D7_26MHz     (7<<4)      // 50.781 kHz
 #   define _FDEV_E_D7_48MHz     (6<<4)      // 46.875 kHz
+#   define _FDEV_E_D7_50MHz     (6<<4)      // 48.828 kHz
 #   define _FDEV_E_D7_52MHz     (6<<4)      // 50.781 kHz
 #   define _CLOCK_REC_ALGO_SEL  (1<<3)
 #   define _FDEV_M              (7<<0)
 #   define _FDEV_M_D7_24MHz     0           // 46.875 kHz
+#   define _FDEV_M_D7_25MHz     0           // 48.828 kHz
 #   define _FDEV_M_D7_26MHz     0           // 50.781 kHz
 #   define _FDEV_M_D7_48MHz     0           // 46.875 kHz 
+#   define _FDEV_M_D7_50MHz     0           // 48.828 kHz 
 #   define _FDEV_M_D7_52MHz     0           // 50.781 kHz
 
 #define RF_CHFLT                0x1D
 #   define _CHFLT_M             (15<<4)
 #   define _CHFLT_M_D7LS_24MHz  (6<<4)      //150 kHz
+#   define _CHFLT_M_D7LS_25MHz  (7<<4)      //147 kHz
 #   define _CHFLT_M_D7LS_26MHz  (7<<4)      //147 kHz
 #   define _CHFLT_M_D7LS_48MHz  (6<<4)      //150 kHz
+#   define _CHFLT_M_D7LS_50MHz  (6<<4)      //150 kHz
 #   define _CHFLT_M_D7LS_52MHz  (7<<4)      //147 kHz
 #   define _CHFLT_M_D7HS_24MHz  (6<<4)      //300 kHz
+#   define _CHFLT_M_D7HS_25MHz  (6<<4)      //300 kHz
 #   define _CHFLT_M_D7HS_26MHz  (7<<4)      //294 kHz
 #   define _CHFLT_M_D7HS_48MHz  (6<<4)      //300 kHz
+#   define _CHFLT_M_D7HS_50MHz  (6<<4)      //300 kHz
 #   define _CHFLT_M_D7HS_52MHz  (7<<4)      //294 kHz
 #   define _CHFLT_E             (15<<0)
 #   define _CHFLT_E_D7LS_24MHz  (2<<0)      //150 kHz
+#   define _CHFLT_E_D7LS_25MHz  (2<<0)      //147 kHz
 #   define _CHFLT_E_D7LS_26MHz  (2<<0)      //147 kHz
 #   define _CHFLT_E_D7LS_48MHz  (3<<0)      //150 kHz
 #   define _CHFLT_E_D7LS_52MHz  (3<<0)      //147 kHz
 #   define _CHFLT_E_D7HS_24MHz  (1<<0)      //300 kHz
+#   define _CHFLT_E_D7HS_25MHz  (1<<0)      //300 kHz
 #   define _CHFLT_E_D7HS_26MHz  (1<<0)      //294 kHz
 #   define _CHFLT_E_D7HS_48MHz  (2<<0)      //300 kHz
+#   define _CHFLT_E_D7HS_50MHz  (2<<0)      //300 kHz
 #   define _CHFLT_E_D7HS_52MHz  (2<<0)      //294 kHz
 
 #define RF_AFC2                 0x1E

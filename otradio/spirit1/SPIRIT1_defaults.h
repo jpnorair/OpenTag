@@ -54,14 +54,18 @@
 
 #if (BOARD_PARAM_RFHz == 24000000)
 #   define _24MHz
+#elif (BOARD_PARAM_RFHz == 25000000)
+#   define _25MHz
 #elif (BOARD_PARAM_RFHz == 26000000)
 #   define _26MHz
 #elif (BOARD_PARAM_RFHz == 48000000)
 #   define _48MHz
+#elif (BOARD_PARAM_RFHz == 50000000)
+#   define _50MHz
 #elif (BOARD_PARAM_RFHz == 52000000)
 #   define _52MHz
 #else
-#   error "BOARD_PARAM_RFHz must be 24, 26, 48, or 52 MHz"
+#   error "BOARD_PARAM_RFHz must be 24, 25, 26, 48, 50, or 52 MHz"
 #endif
 
 
@@ -70,15 +74,17 @@
 #define DRF_ANA_FUNC_CONF1      (_GM_CONF_25m6s | _SET_BLD_LVL_2V7)
 
 //R01
-#if ((defined(_24MHz) || defined(_48MHz)) && (BOARD_FEATURE_RFXTAL != ENABLED))
-#   define DRF_ANA_FUNC_CONF0   (0x80 | _EXT_REF)
-#elif ((defined(_26MHz) || defined(_52MHz)) && (BOARD_FEATURE_RFXTAL != ENABLED))
-#   define DRF_ANA_FUNC_CONF0   (0x80 | _24_26MHz_SELECT | _EXT_REF)
-#elif (defined(_24MHz) || defined(_48MHz))
-#   define DRF_ANA_FUNC_CONF0   (0x80 | 0)
-#elif (defined(_26MHz) || defined(_52MHz))
-#   define DRF_ANA_FUNC_CONF0   (0x80 | _24_26MHz_SELECT)
+#if (BOARD_FEATURE_RFXTAL != ENABLED)
+#   define _XTAL_BYPASS     _EXT_REF
+#else
+#   define _XTAL_BYPASS     0
 #endif
+#if (defined(_24MHz) || defined(_48MHz))
+#   define DRF_ANA_FUNC_CONF0   (0x80 | _XTAL_BYPASS)
+#else
+#   define DRF_ANA_FUNC_CONF0   (0x80 | _24_26MHz_SELECT | _XTAL_BYPASS)
+#endif
+
 
 //R02 (power-up default)
 #define DRF_GPIO3_CONF          (_GPIO_SELECT(RFGPO_GND) | _GPIO_MODE_OUTPUT)
@@ -93,10 +99,10 @@
 #define DRF_GPIO0_CONF          (_GPIO_SELECT(RFGPO_nPOR) | _GPIO_MODE_OUTPUT)
 
 //R06 (power-up default)
-#define DRF_MCU_CK_CONF          (0)
+#define DRF_MCU_CK_CONF         (0)
 
 //RB4 
-#if (defined(_24MHz) || defined(_26MHz))
+#if (defined(_24MHz) || defined(_25MHz) || defined(_26MHz))
 #   define DRF_XO_RCO_TEST      (_PD_CLKDIV)
 #else
 #   define DRF_XO_RCO_TEST      (0)
@@ -115,10 +121,14 @@
 //R07
 #if defined(_24MHz)
 #   define DRF_IF_OFFSET_ANA    _IF_OFFSET_ANA_24MHz
+#elif defined(_25MHz)
+#   define DRF_IF_OFFSET_ANA    _IF_OFFSET_ANA_25MHz
 #elif defined(_26MHz)
 #   define DRF_IF_OFFSET_ANA    _IF_OFFSET_ANA_26MHz
 #elif defined(_48MHz)
 #   define DRF_IF_OFFSET_ANA    _IF_OFFSET_ANA_48MHz
+#elif defined(_50MHz)
+#   define DRF_IF_OFFSET_ANA    _IF_OFFSET_ANA_50MHz
 #elif defined(_52MHz)
 #   define DRF_IF_OFFSET_ANA    _IF_OFFSET_ANA_52MHz
 #endif
@@ -126,10 +136,14 @@
 //R08
 #if defined(_24MHz)
 #   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_24MHz
+#elif defined(_25MHz)
+#   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_25MHz
 #elif defined(_26MHz)
 #   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_26MHz
 #elif defined(_48MHz)
 #   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_48MHz
+#elif defined(_50MHz)
+#   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_50MHz
 #elif defined(_52MHz)
 #   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_52MHz
 #endif
@@ -147,10 +161,14 @@
 //R09
 #if defined(_24MHz)
 #   define DRF_SYNT2            _SYNT2_D7_24MHz
+#elif defined(_25MHz)
+#   define DRF_SYNT2            _SYNT2_D7_25MHz
 #elif defined(_26MHz)
 #   define DRF_SYNT2            _SYNT2_D7_26MHz
 #elif defined(_48MHz)
 #   define DRF_SYNT2            _SYNT2_D7_48MHz
+#elif defined(_50MHz)
+#   define DRF_SYNT2            _SYNT2_D7_50MHz
 #elif defined(_52MHz)
 #   define DRF_SYNT2            _SYNT2_D7_52MHz
 #endif
@@ -158,10 +176,14 @@
 //R0A
 #if defined(_24MHz)
 #   define DRF_SYNT1            _SYNT1_D7_24MHz
+#elif defined(_25MHz)
+#   define DRF_SYNT1            _SYNT1_D7_25MHz
 #elif defined(_26MHz)
 #   define DRF_SYNT1            _SYNT1_D7_26MHz
 #elif defined(_48MHz)
 #   define DRF_SYNT1            _SYNT1_D7_48MHz
+#elif defined(_50MHz)
+#   define DRF_SYNT1            _SYNT1_D7_50MHz
 #elif defined(_52MHz)
 #   define DRF_SYNT1            _SYNT1_D7_52MHz
 #endif
@@ -169,10 +191,14 @@
 //R0B
 #if defined(_24MHz)
 #   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_24MHz
+#elif defined(_25MHz)
+#   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_25MHz
 #elif defined(_26MHz)
 #   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_26MHz
 #elif defined(_48MHz)
 #   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_48MHz
+#elif defined(_50MHz)
+#   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_50MHz
 #elif defined(_52MHz)
 #   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_52MHz
 #endif
@@ -190,10 +216,14 @@
 //R0C
 #if defined(_24MHz)
 #   define DRF_CHSPACE          _CHSPACE_D7_24MHz
+#elif defined(_25MHz)
+#   define DRF_CHSPACE          _CHSPACE_D7_25MHz
 #elif defined(_26MHz)
 #   define DRF_CHSPACE          _CHSPACE_D7_26MHz
 #elif defined(_48MHz)
 #   define DRF_CHSPACE          _CHSPACE_D7_48MHz
+#elif defined(_50MHz)
+#   define DRF_CHSPACE          _CHSPACE_D7_50MHz
 #elif defined(_52MHz)
 #   define DRF_CHSPACE          _CHSPACE_D7_52MHz
 #endif
@@ -201,10 +231,14 @@
 //R0D
 #if defined(_24MHz)
 #   define DRF_IF_OFFSET_DIG    _IF_OFFSET_DIG_24MHz
+#elif defined(_25MHz)
+#   define DRF_IF_OFFSET_DIG    _IF_OFFSET_DIG_25MHz
 #elif defined(_26MHz)
 #   define DRF_IF_OFFSET_DIG    _IF_OFFSET_DIG_26MHz
 #elif defined(_48MHz)
 #   define DRF_IF_OFFSET_DIG    _IF_OFFSET_DIG_48MHz
+#elif defined(_50MHz)
+#   define DRF_IF_OFFSET_DIG    _IF_OFFSET_DIG_50MHz
 #elif defined(_52MHz)
 #   define DRF_IF_OFFSET_DIG    _IF_OFFSET_DIG_52MHz
 #endif
@@ -244,12 +278,18 @@
 #if defined(_24MHz)
 #   define DRF_MOD1_LS          _DR_M_D7LS_24MHz
 #   define DRF_MOD1_HS          _DR_M_D7HS_24MHz
+#elif defined(_25MHz)
+#   define DRF_MOD1_LS          _DR_M_D7LS_25MHz
+#   define DRF_MOD1_HS          _DR_M_D7HS_25MHz
 #elif defined(_26MHz)
 #   define DRF_MOD1_LS          _DR_M_D7LS_26MHz
 #   define DRF_MOD1_HS          _DR_M_D7HS_26MHz
 #elif defined(_48MHz)
 #   define DRF_MOD1_LS          _DR_M_D7LS_24MHz
 #   define DRF_MOD1_HS          _DR_M_D7HS_24MHz
+#elif defined(_50MHz)
+#   define DRF_MOD1_LS          _DR_M_D7LS_25MHz
+#   define DRF_MOD1_HS          _DR_M_D7HS_25MHz
 #elif defined(_52MHz)
 #   define DRF_MOD1_LS          _DR_M_D7LS_26MHz
 #   define DRF_MOD1_HS          _DR_M_D7HS_26MHz
@@ -260,12 +300,18 @@
 #if defined(_24MHz)
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_24MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_24MHz)
+#elif defined(_25MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_25MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_25MHz)
 #elif defined(_26MHz)
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_26MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_M_D7HS_26MHz)
 #elif defined(_48MHz)
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_24MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_24MHz)
+#elif defined(_50MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_25MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_25MHz)
 #elif defined(_52MHz)
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_26MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_26MHz)
@@ -275,10 +321,14 @@
 //R1C
 #if defined(_24MHz)
 #   define DRF_FDEV0            (_FDEV_E_D7_24MHz | _FDEV_M_D7_24MHz)
+#elif defined(_25MHz)
+#   define DRF_FDEV0            (_FDEV_E_D7_25MHz | _FDEV_M_D7_25MHz)
 #elif defined(_26MHz)
 #   define DRF_FDEV0            (_FDEV_E_D7_26MHz | _FDEV_M_D7_26MHz)
 #elif defined(_48MHz)
 #   define DRF_FDEV0            (_FDEV_E_D7_48MHz | _FDEV_M_D7_48MHz)
+#elif defined(_50MHz)
+#   define DRF_FDEV0            (_FDEV_E_D7_50MHz | _FDEV_M_D7_50MHz)
 #elif defined(_52MHz)
 #   define DRF_FDEV0            (_FDEV_E_D7_52MHz | _FDEV_M_D7_52MHz)
 #endif
@@ -287,12 +337,18 @@
 #if defined(_24MHz)
 #   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_24MHz | _CHFLT_E_D7LS_24MHz)
 #   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_24MHz | _CHFLT_E_D7HS_24MHz)
+#elif defined(_25MHz)
+#   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_25MHz | _CHFLT_E_D7LS_25MHz)
+#   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_25MHz | _CHFLT_E_D7HS_25MHz)
 #elif defined(_26MHz)
 #   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_26MHz | _CHFLT_E_D7LS_26MHz)
 #   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_26MHz | _CHFLT_E_D7HS_26MHz)
 #elif defined(_48MHz)
 #   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_24MHz | _CHFLT_E_D7LS_24MHz)
 #   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_24MHz | _CHFLT_E_D7HS_24MHz)
+#elif defined(_50MHz)
+#   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_25MHz | _CHFLT_E_D7LS_25MHz)
+#   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_25MHz | _CHFLT_E_D7HS_25MHz)
 #elif defined(_52MHz)
 #   define DRF_CHFLT_LS         (_CHFLT_M_D7LS_26MHz | _CHFLT_E_D7LS_26MHz)
 #   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_26MHz | _CHFLT_E_D7HS_26MHz)
@@ -326,7 +382,7 @@
 #define DRF_AGCCTRL0            (_AGC_ENABLE | 0x0A)
 
 //R27: Target is (100us < RSSI measuring time < 200us)
-#if defined(_24MHz) || defined(_26MHz)
+#if defined(_24MHz) || defined(_25MHz) || defined(_26MHz)
 #   define DRF_ANT_SELECT_CONF  (__AS_MEAS_TIME(5))
 #else
 #   define DRF_ANT_SELECT_CONF  (__AS_MEAS_TIME(4))
@@ -421,7 +477,7 @@
 //RX_TIMEOUT 16bit timer.  Needs more investigation
 #if (defined(_24MHz) || defined(_48MHz))
 #   define DRF_TIMERS5          (1)
-#elif (defined(_26MHz) || defined(_52MHz))
+#else
 #   define DRF_TIMERS5          (1)
 #endif
 #define DRF_TIMERS4             (0)

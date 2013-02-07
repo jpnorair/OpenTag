@@ -396,6 +396,8 @@ void WWDG_IRQHandler(void) {
 /** RTC stuff
   * ========================================================================<BR>
   */
+
+/*
 #define _BCD(T,O)   ((T<<4) | O)
 static const ot_u8 bcd_lut[60] = {
     _BCD(0,0),  _BCD(0,1),  _BCD(0,2),  _BCD(0,3),  _BCD(0,4),  
@@ -430,6 +432,7 @@ ot_u32 sub_int2rtc(ot_u32 secs) {
     
     return hours;
 }
+*/
 
 
 #if (RTC_ALARMS > 0)

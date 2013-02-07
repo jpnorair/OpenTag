@@ -1311,18 +1311,20 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
     ot_u8 is_fec;
     ot_u8 is_hs;
     
+    ///@todo optimize memory storage
     buf_cfg[0]  = 0;
     buf_cfg[1]  = RFREG(PCKTCTRL2);
     is_hs       = (phymac[0].channel & 0x20) >> 1;
     buf_cfg[2]  = b00011010 + is_hs;
     buf_cfg[2] |= (mode & 1);
     is_fec      = (phymac[0].channel & 0x80) >> 4;
-    mode       += is_fec;
     buf_cfg[3]  = b00010000 + (is_fec >> 3);
     buf_cfg[4]  = ((ot_u8*)&param)[UPPER];
     buf_cfg[5]  = ((ot_u8*)&param)[LOWER];
     buf_cfg[6]  = 0;
     buf_cfg[7]  = 0;
+    mode      <<= 1;
+    mode       += is_fec;
     buf_cfg[8]  = sync_matrix[mode];
     buf_cfg[9]  = sync_matrix[mode+1];
     

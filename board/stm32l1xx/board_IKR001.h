@@ -164,7 +164,11 @@
 #define BOARD_PARAM_HFmult              1                       // Turbo CLK = HFHz * (HFmult/HFdiv)
 #define BOARD_PARAM_HFdiv               1
 #define BOARD_PARAM_HFtol               0.02
-#define BOARD_PARAM_RFHz                52000000
+
+///@note VERY IMPORTANT.  My board has a 50 MHz crystal.  I'm not sure that all
+///      of the SPIRIT1 modules have the same crystal.  It might be 24, 25, 26,
+///      48, 50, or 52 MHz.  Check and change BOARD_PARAM_RFHz as needed.
+#define BOARD_PARAM_RFHz                50000000                
 #define BOARD_PARAM_RFtol               0.00003
 
 
