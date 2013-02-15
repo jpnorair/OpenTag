@@ -52,23 +52,27 @@
 /// ISRs that can bring the system out of STOP mode have __ISR_WAKEUP_HOOK().
 /// When coming out of STOP, clock is always MSI.  If Multispeed clocking is
 /// disabled and a non-MSI clock is the clock source, it must be turned-on.
-#if (MCU_FEATURE_MULTISPEED != ENABLED)
-#   define __ISR_WAKEUP_HOOK();  //platform_speed_full() should be done in powerdown applet
+#if ((MCU_FEATURE_MULTISPEED != ENABLED) && defined(BOARD_PARAM_HFHz))
+#   define __ISR_KTIM_WAKEUP_HOOK() platform_full_speed()
+#   define __ISR_WAKEUP_HOOK() \
+        do { gptim_start_chrono(); platform_full_speed(); } while(0)
 #else
-#   define __ISR_WAKEUP_HOOK(); 
+#   define __ISR_KTIM_WAKEUP_HOOK();
+#   define __ISR_WAKEUP_HOOK()          gptim_start_chrono()
+        
 #endif
 
 
-/// Enable RTC Alarm interrupt if RTC is enabled through app configuration.
-/// There are more RTC interrupts that could be used, but the one OpenTag uses
-/// internally is the Alarm interrupt.
-#if (OT_FEATURE(RTC))
-#   undef __ISR_RTC_Alarm
-#   undef __N_ISR_RTC_Alarm
-#   define __ISR_RTC_Alarm
-#endif
 
 
+/// RTC Alarm interrupt is required by OpenTag
+#undef __ISR_RTC_Alarm
+#undef __N_ISR_RTC_Alarm
+#define __ISR_RTC_Alarm
+
+#undef __ISR_RTC_WKUP
+#undef __N_ISR_RTC_WKUP
+#define __ISR_RTC_WKUP
 
 
 /// Open SPI interrupts:
@@ -182,6 +186,7 @@ void WWDG_IRQHandler(void) {
 #if defined(__ISR_PVD) && !defined(__N_ISR_PVD)
 void PVD_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
     platform_isr_pvd();
     __ISR_EXIT_HOOK();
 }
@@ -195,6 +200,8 @@ void PVD_IRQHandler(void) {
 #if defined(__ISR_TAMPER_STAMP) && !defined(__N_ISR_TAMPER_STAMP)
 void TAMPER_STAMP_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
+    RTC->ISR &= ~RTC_ISR_RSF;
+    __ISR_WAKEUP_HOOK();
     platform_isr_tamper();
     __ISR_EXIT_HOOK();
 }
@@ -203,7 +210,9 @@ void TAMPER_STAMP_IRQHandler(void) {
 #if defined(__ISR_RTC_WKUP) && !defined(__N_ISR_RTC_WKUP)
 void RTC_WKUP_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    platform_isr_rtcwkup();
+    //RTC->ISR &= ~RTC_ISR_RSF;
+    //__ISR_WAKEUP_HOOK();
+    platform_isr_rtcwakeup();
     __ISR_EXIT_HOOK();
 }
 #endif
@@ -211,7 +220,8 @@ void RTC_WKUP_IRQHandler(void) {
 #if defined(__ISR_RTC_Alarm) && !defined(__N_ISR_RTC_Alarm)
 void RTC_Alarm_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    __ISR_WAKEUP_HOOK();
+    RTC->ISR &= ~RTC_ISR_RSF;
+    __ISR_KTIM_WAKEUP_HOOK();
     platform_isr_rtcalarm();
     __ISR_EXIT_HOOK();
 }
@@ -603,6 +613,7 @@ void USB_LP_IRQHandler(void) {
 #if defined(__ISR_USB_FS_WKUP) && !defined(__N_ISR_USB_FS_WKUP)
 void USB_FS_WKUP_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
     platform_isr_fswkup();
     __ISR_EXIT_HOOK();
 }
@@ -628,6 +639,7 @@ void DAC_IRQHandler(void) {
 #if defined(__ISR_COMP) && !defined(__N_ISR_COMP)
 void COMP_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
     platform_isr_comp();
     __ISR_EXIT_HOOK();
 }
@@ -636,6 +648,7 @@ void COMP_IRQHandler(void) {
 #if defined(__ISR_COMP_ACQ) && !defined(__N_ISR_COMP_ACQ)
 void COMP_ACQ_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
     platform_isr_compacq();
     __ISR_EXIT_HOOK();
 }
@@ -711,7 +724,6 @@ void TIM7_IRQHandler(void) {
 #if defined(__ISR_TIM9) && !defined(__N_ISR_TIM9)
 void TIM9_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    //__ISR_WAKEUP_HOOK();
     platform_isr_tim9();
     __ISR_EXIT_HOOK();
 }
@@ -720,7 +732,6 @@ void TIM9_IRQHandler(void) {
 #if defined(__ISR_TIM10) && !defined(__N_ISR_TIM10)
 void TIM10_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    //__ISR_WAKEUP_HOOK();
     platform_isr_tim10();
     __ISR_EXIT_HOOK();
 }
@@ -729,7 +740,6 @@ void TIM10_IRQHandler(void) {
 #if defined(__ISR_TIM11) && !defined(__N_ISR_TIM11)
 void TIM11_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    //__ISR_WAKEUP_HOOK();
     platform_isr_tim11();
     __ISR_EXIT_HOOK();
 }

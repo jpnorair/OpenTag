@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/stm32l1xx/platform_STM32L1xx.h
   * @author     JP Norair
-  * @version    R101
-  * @date       17 Jan 2013
+  * @version    R102
+  * @date       14 Feb 2013
   * @brief      Platform Library Macros and Functions for STM32L
   * @ingroup    Platform
   *
@@ -53,10 +53,10 @@
 #ifndef __LITTLE_ENDIAN__
 #   error "Endian-ness misdefined, should be __LITTLE_ENDIAN__ (check build_config.h)"
 #endif
-#define PLATFORM_POINTER_SIZE       4               // How many bytes is a pointer?
-#define PLATFORM_ENDIAN16(VAR16)    __REV16(VAR16)  // Big-endian to Platform-endian
-#define PLATFORM_ENDIAN32(VAR32)    __REV(VAR32)    // Big-endian to Platform-endian
-
+#define PLATFORM_POINTER_SIZE           4               // How many bytes is a pointer?
+#define PLATFORM_ENDIAN16(VAR16)        __REV16(VAR16)  // Big-endian to Platform-endian
+#define PLATFORM_ENDIAN32(VAR32)        __REV(VAR32)    // Big-endian to Platform-endian
+#define PLATFORM_ENDIAN16_C(CONST16)    (ot_u16)( (((ot_u16)CONST16) << 8) | (((ot_u16)CONST16) >> 8) )
 
 
 
@@ -227,8 +227,6 @@ void PendSV_Handler(void);
 void SysTick_Handler(void);
 
 
-/// Deep level system ISRs.
-void platform_ktim_isr();
 
 
 
@@ -245,7 +243,7 @@ void platform_ktim_isr();
 void platform_isr_wwdg(void);
 void platform_isr_pvd(void);
 void platform_isr_tamper(void);
-void platform_isr_rtcwkup(void);
+void platform_isr_rtcwakeup(void);
 void platform_isr_flash(void);
 void platform_isr_rcc(void);
 void platform_isr_exti0(void);
@@ -319,9 +317,45 @@ void platform_isr_uart5(void);
 
 
 
-/** STM32L Special Platform Functions  <BR>
+/** STM32L Special Platform Functions & data for timing & clocking <BR>
   * ========================================================================<BR>
   */
+#if (OT_FEATURE(RTC) == ENABLED)
+#   define RTC_ALARMS   1       // Max=3
+#else
+#   define RTC_ALARMS   0
+#endif
+
+#define GPTIM_FLAG_RTCBYPASS    (1<<1)
+#define GPTIM_FLAG_SLEEP        (1<<0)
+  
+typedef struct {
+    ot_u16  flags;
+    ot_u16  chron_stamp;
+    ot_u32  evt_stamp;
+    ot_u32  evt_span;
+} gptim_struct;
+
+typedef struct {
+    ot_u8   disabled;
+    ot_u8   taskid;
+    ot_u16  mask;
+    ot_u16  value;
+} rtcalarm;
+
+//typedef struct {
+//    ot_u32      utc;
+//    rtcalarm    alarm[RTC_ALARMS];
+//} rtc_struct;
+
+
+//extern rtc_struct rtc;
+extern gptim_struct gptim;
+
+void gptim_start_chrono();
+void gptim_restart_chrono();
+ot_u16 gptim_get_chrono();
+void gptim_stop_chrono();
 
 
 
@@ -332,40 +366,18 @@ void platform_isr_uart5(void);
   * platform_ext stores data that is required for OpenTag to work properly on
   * the STM32L, and the data is not platform-independent.
   */
-#if (OT_FEATURE(RTC) == ENABLED)
-#define RTC_ALARMS          1        // Max=3
-#else
-#define RTC_ALARMS          0
-#endif
-
-#define RTC_OVERSAMPLE      0
-
-typedef struct {
-    ot_u8   disabled;
-    ot_u8   taskid;
-    ot_u16  mask;
-    ot_u16  value;
-} rtcalarm;
 
 
 
 typedef struct {
     // Tasking parameters
     void*   task_exit;
-    ot_u16  last_evt;
-    ot_u16  next_evt;
     
     // Miscellaneous platform parameters and software registers
     ot_u16  cpu_khz;
     ot_u16  prand_reg;
     ot_u16  crc16;
     ot_u16  reserved;
-    
-    // Real Time Clock features
-    ot_u32  utc;
-#   if (RTC_ALARMS > 0)
-    rtcalarm alarm[RTC_ALARMS];
-#   endif
     
     // System stack alloctation: used for ISRs
     ot_u32 sstack[OT_PARAM_SSTACK_ALLOC/4];

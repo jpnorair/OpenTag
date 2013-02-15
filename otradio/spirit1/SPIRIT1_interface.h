@@ -371,25 +371,23 @@ ot_bool spirit1_check_cspin(void);
   * will be a soft ISR.  The input parameter is an interrupt vector.  The vector
   * values are shown below:
   *
-  * IMode = 0       RX Terminated:              0   (Ready State entered)
-  * (Listen)        Sync word RX'ed:            1
-  *                 CS Indicator [IRQ off]:     -   
+  * -------------- RX MODES (set spirit1_iocfg_rx()) --------------
+  * IMode = 0       RX Timeout (Finished):      0 
+  * (Listen)        Sync word RX'ed:            1 
   *                 RX FIFO thr [IRQ off]:      -
   *                 
-  * IMode = 2       RX Finished:                2   (Ready State entered)
+  * IMode = 2       RX Finished:                2  
   * (RX Data)       Sync word RX'ed [IRQ off]:  -
-  *                 CS Indicator [IRQ off]:     -
-  *                 RX FIFO threshold:          5
+  *                 RX FIFO threshold:          4
   *
-  * IMode = 6       CCA scan pass:              6   (Ready State entered)
-  * (CSMA)          CCA scan pass (2):          7   (Sleep/Standby entered)
-  *                 CS Indicator:               8   
+  * -------------- TX MODES (set spirit1_iocfg_tx()) --------------
+  * IMode = 5       CCA Sense Timeout:          5   (pass)
+  * (CSMA)          CS Indicator:               6   (fail)
   *                 TX FIFO thr [IRQ off]:      - 
   *
-  * IMode = 7       TX finished:                9   (Ready State entered)
-  * (TX)            Sleep/Standby [IRQ off]     -
-  *                 CS Indicator [IRQ off]:     -
-  *                 TX FIFO threshold:          12 
+  * IMode = 7       TX finished:                7
+  * (TX)            CS Indicator [IRQ off]:     -
+  *                 TX FIFO threshold:          9 
   */
 
 #define RFINT(VAL)      RFI_##VAL
@@ -397,21 +395,24 @@ ot_bool spirit1_check_cspin(void);
 #define RFI_SOURCE0     (1 << RADIO_IRQ0_SRCLINE)
 #define RFI_SOURCE1     (1 << RADIO_IRQ1_SRCLINE)
 #define RFI_SOURCE2     (1 << RADIO_IRQ2_SRCLINE)
-#define RFI_SOURCE3     (1 << RADIO_IRQ3_SRCLINE)
-
-#define RFI_RXTERM      RFI_SOURCE0
-#define RFI_RXSYNC      RFI_SOURCE1
-#define RFI_RXEND       RFI_SOURCE0
-#define RFI_RXFIFO      RFI_SOURCE2
-#define RFI_CCAPASS     RFI_SOURCE0
-#define RFI_CCAFAIL     RFI_SOURCE1
-#define RFI_TXEND       RFI_SOURCE0
-#define RFI_TXFIFO      RFI_SOURCE2
+#define RFI_SOURCE3     0 //(1 << RADIO_IRQ3_SRCLINE)   //used for READY pin, no interrupt
 
 #define RFI_ALL         (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 | RFI_SOURCE3)
-#define RFI_LISTEN      (RFI_RXTERM | RFI_RXSYNC)
+
+#define RFI_RXTIMEOUT   RFI_SOURCE0
+#define RFI_RXSYNC      RFI_SOURCE1
+#define RFI_LISTEN      (/*RFI_RXTIMEOUT | */ RFI_RXSYNC)
+
+#define RFI_RXEND       RFI_SOURCE0
+#define RFI_RXFIFO      RFI_SOURCE2
 #define RFI_RXDATA      (RFI_RXEND | RFI_RXFIFO)
-#define RFI_CSMA        (RFI_CCAPASS | RFI_CCAFAIL)
+
+#define RFI_CCATIMEOUT  RFI_SOURCE0
+#define RFI_CCAFAIL     RFI_SOURCE1
+#define RFI_CSMA        (RFI_CCATIMEOUT | RFI_CCAFAIL)
+
+#define RFI_TXEND       RFI_SOURCE0
+#define RFI_TXFIFO      RFI_SOURCE2
 #define RFI_TXDATA      (RFI_TXEND | RFI_TXFIFO)
 
 #define RFIV_RXTERM     0
@@ -423,6 +424,13 @@ ot_bool spirit1_check_cspin(void);
 #define RFIV_TXEND      7
 #define RFIV_TXFIFO     9
 
+
+
+void spirit1_start_counter();
+
+void spirit1_stop_counter();
+
+ot_u16 spirit1_get_counter();
 
 
 

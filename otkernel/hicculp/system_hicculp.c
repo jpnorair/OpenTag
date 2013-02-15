@@ -158,9 +158,6 @@ void sys_init() {
 #   if (OT_FEATURE(MPIPE) == ENABLED)
         mpipe_connect(NULL);
 #   endif
-    
-    // Flush GPTIM (Kernel Timer): unnecessary, b/c should done in platform init
-    //platform_flush_ktim();
 }
 #endif
 
@@ -397,10 +394,11 @@ ot_uint sys_event_manager() {
 #   endif    
     
     /// 1. On entry, we need to know the time that has passed since the last
-    ///    run of this function, and then we can flush the timer and begin a
-    ///    new loop of tasking.
+    ///    run of this function.  Then, we start the chronometer to measure the
+    ///    amount of time the scheduler actually is taking.
     elapsed = platform_get_ktim();
     platform_flush_ktim();
+
 
     /// 2. Clock all the tasks, to find out which one to do next.
     /// <LI> Run DLL clocker.  DLL module manages some irregular tasks. </LI>
@@ -475,14 +473,7 @@ ot_uint sys_event_manager() {
     ///    <LI> If not-positive, there is a pending task.  Set timer for task
     ///           pending *after* the current task, and return 0. </LI>
 #   if (OT_PARAM_SYSTHREADS == 0)
-    nextevent -= platform_get_ktim();
-    if (nextevent > 0) {
-        ot_u16 interval;
-        interval = (ot_u16)nextevent;
-        platform_set_ktim(interval);
-        return interval;
-    }
-    return 0;
+    return platform_schedule_ktim( nextevent, platform_get_ktim() );
     
 #   else
     {   ot_bool test;
@@ -562,7 +553,7 @@ void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 /// Pre-empting will "pend" the timer.  In device terms, this is implemented
 /// by manually setting the timer interrupt flag.  If a task is running while
 /// this function is called (typical usage), first the task will finish and then
-/// enable the timer interrupt via sys_runtime_manager().
+/// the scheduler will run anyway.
     sys_task_setnext(task, nextevent_ti);
     platform_ot_preempt();
 }

@@ -45,26 +45,26 @@
 /// it still has the ability to wake-up the MCU.  Wake-up from STOP goes into
 /// MSI-clocked active mode (typ 4.2 MHz), and it takes approximately 8.2 us.
 void sub_stop() {
-    ot_u32 scratch;
+    ot_u16 scratch;
+    
     SCB->SCR   |= SCB_SCR_SLEEPDEEP;
+    
+    // ULP option only reduces power in cases where Vdd < 3V
+    // FWU option is superfluous unless ULP is set
     scratch     = PWR->CR;
     scratch    &= ~PWR_CR_PDDS;
-    scratch    |= (PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP);
+    scratch    |= (PWR_CR_LPSDSR /*| PWR_CR_FWU | PWR_CR_ULP */); 
     PWR->CR     = scratch;
-    EXTI->PR    = 0;
+     
+    // In STM32 implementations we must kill the chrono timer before STOP
+    // and also clear EXTI's.  In very rare cases, an EXTI might be missed,
+    // but there is nothing that can be done about this.
+    gptim_stop_chrono();
+    EXTI->PR = 0;
+    
+    // In all implementations we need interrupts to wakeup
     platform_enable_interrupts();
     __WFI();
-    
-    // On wakeup reset SLEEPDEEP bit of Cortex System Control Register
-    //SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
-    
-    ///@todo this is going to need to go into the interrupt system
-    
-#   if ((MCU_FEATURE_MULTISPEED != ENABLED) && defined(BOARD_PARAM_HFHz))
-    /// No Multispeed and HSI/HSE/PLL used for System Clock.  
-    /// On exit from STOP, here we disable MSI and enable HSI/HSE/PLL.
-    platform_full_speed();
-#   endif
 }
 
 
@@ -73,12 +73,9 @@ void sub_stop() {
 /// is used during MPIPE transfers and things like these that require clocked
 /// peripherals but not necessarily CPU.
 void sub_sleep() {
-    ot_u32 scratch;
-    scratch     = PWR->CR;
-    scratch    &= ~(PWR_CR_PDDS | PWR_CR_LPSDSR | PWR_CR_ULP);
-    scratch    |= PWR_CR_FWU;
-    PWR->CR     = scratch;
     SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+    PWR->CR    &= ~(PWR_CR_PDDS | PWR_CR_LPSDSR | PWR_CR_ULP);
+    //EXTI->PR    = 0;
     platform_enable_interrupts();
     __WFI();
 }
@@ -92,10 +89,8 @@ void sys_sig_powerdown(ot_int code) {
 /// code = 2: RF I/O Task active                                (STOP)
 /// code = 1: MPipe or other local peripheral I/O task active   (SLEEP)
 /// code = 0: Use fastest-exit powerdown mode                   (SLEEP)
-    //switch (code & 2) {
-    //    case 0: sub_sleep();    break;
-    //    case 2: sub_stop();     break;
-    //}
-    sub_sleep();
+    
+    if (code & 2)   sub_stop();
+    else            sub_sleep();
 }
 #endif

@@ -399,10 +399,10 @@
 #define DRF_PCKTCTRL3           (_PCKT_FRMT_BASIC | _RX_MODE_NORMAL | __LEN_WID(8))
 
 //R32: The preamble length & fixed/var is set when picking a channel
-#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_2 | _FIX_VAR_LEN)
-#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_2)
-#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(6) | _SYNC_LENGTH_2 | _FIX_VAR_LEN)
-#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(6) | _SYNC_LENGTH_2)
+#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3 | _FIX_VAR_LEN)
+#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
+#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(6) | _SYNC_LENGTH_3 | _FIX_VAR_LEN)
+#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(6) | _SYNC_LENGTH_3)
 
 //R33: It is changed when picking a channel
 ///@todo observe CRC operation and potentially change this
@@ -427,7 +427,7 @@
 #define DRF_SYNC1               0xD0
 
 //R3A:                
-#define DRF_QI                  (__SQI_TH(0) | __PQI_TH(2) | _SQI_EN | _PQI_EN)
+#define DRF_QI                  (__SQI_TH(0) | __PQI_TH(4) | _SQI_EN | _PQI_EN)
 
 //R3B-3D: unused
 #define DRF_MBUS_PRMBL          0x20

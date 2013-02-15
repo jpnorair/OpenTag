@@ -69,8 +69,8 @@
   * The IKR001V3 uses 433 MHz band plus a lousy antenna
   */
 #define RF_PARAM_BAND   433
-#define RF_HDB_ATTEN    16       //Half dB attenuation (units = 0.5dB), used to scale TX power
-#define RF_RSSI_OFFSET  8       //Offset applied to RSSI calculation
+#define RF_HDB_ATTEN    6       //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_RSSI_OFFSET  3       //Offset applied to RSSI calculation
 
 
 
@@ -235,7 +235,7 @@
 #define BOARD_JOYD_PORTNUM              1                   // Port B
 #define BOARD_JOYD_PORT                 GPIOB
 #define BOARD_JOYD_PINNUM               0
-#define BOARD_JOYD_PIN                  (1<<0
+#define BOARD_JOYD_PIN                  (1<<0)
 #define BOARD_JOYD_POLARITY             0
 #define BOARD_JOYD_PULLING              0
 
@@ -415,24 +415,24 @@
 
 // TIMER9 output interface: 
 // You cannot use LCD or SD card with Timer 9
-#define BOARD_TIM9CH1_PORTNUM           1   //Port B
-#define BOARD_TIM9CH2_PORTNUM           1
-#define BOARD_TIM9CH1_PORT              GPIOB
-#define BOARD_TIM9CH2_PORT              GPIOB
-#define BOARD_TIM9CH1_PINNUM            13
-#define BOARD_TIM9CH2_PINNUM            14
-#define BOARD_TIM9CH1_PIN               (1<<13)
-#define BOARD_TIM9CH2_PIN               (1<<14)
+//#define BOARD_TIM9CH1_PORTNUM           1   //Port B
+//#define BOARD_TIM9CH2_PORTNUM           1
+//#define BOARD_TIM9CH1_PORT              GPIOB
+//#define BOARD_TIM9CH2_PORT              GPIOB
+//#define BOARD_TIM9CH1_PINNUM            13
+//#define BOARD_TIM9CH2_PINNUM            14
+//#define BOARD_TIM9CH1_PIN               (1<<13)
+//#define BOARD_TIM9CH2_PIN               (1<<14)
 
 // GPTIM wakeup interface: Uses loopback from Timer 9
-#define BOARD_GPTIM1_PORTNUM            1   //Port B
-#define BOARD_GPTIM2_PORTNUM            1   
-#define BOARD_GPTIM1_PORT               GPIOB
-#define BOARD_GPTIM2_PORT               GPIOB
-#define BOARD_GPTIM1_PINNUM             13
-#define BOARD_GPTIM2_PINNUM             14
-#define BOARD_GPTIM1_PIN                (1<<13)
-#define BOARD_GPTIM2_PIN                (1<<14)
+//#define BOARD_GPTIM1_PORTNUM            1   //Port B
+//#define BOARD_GPTIM2_PORTNUM            1   
+//#define BOARD_GPTIM1_PORT               GPIOB
+//#define BOARD_GPTIM2_PORT               GPIOB
+//#define BOARD_GPTIM1_PINNUM             13
+//#define BOARD_GPTIM2_PINNUM             14
+//#define BOARD_GPTIM1_PIN                (1<<13)
+//#define BOARD_GPTIM2_PIN                (1<<14)
 
 
 
@@ -473,15 +473,10 @@
                             |   RCC_AHBENR_GPIODEN  \
                             |   RCC_AHBENR_GPIOEEN  )
 
-    // DMA is only needed in Sleep if you have some sort of asynchronous data
-    // input using the DMA.  The only one so far is the MPIPE UART.  I2C slave
-    // or input-capture timers might also need it, so consider these.
-#   if (MCU_FEATURE_MPIPEUART)
-#       define _DMACLK_LP   RCC_AHBLPENR_DMA1LPEN 
-#   else
-#       define _DMACLK_LP   0
-#       define _DMACLK_DYNAMIC_LP
-#   endif
+    // DMA will be enabled in Sleep on demand by the device driver.  By default
+    // it is disabled in sleep
+#   define _DMACLK_LP   0
+#   define _DMACLK_DYNAMIC_LP
 
     // SRAM should always be clocked during SLEEP
 #   define _SRAMCLK_LP      RCC_AHBLPENR_SRAMLPEN
@@ -562,24 +557,22 @@ static inline void BOARD_DMA_CLKOFF(void) {
 
 
 
-
 ///@note BOARD Macro for EXTI initialization.  See also EXTI macros at the
 ///      bottom of the page.
 static inline void BOARD_EXTI_STARTUP(void) {
     // EXTI0-3 
-    //SYSCFG->EXTICR[1] |=
+    //SYSCFG->EXTICR[1]  |= 
     
-    // EXTI4-7 (RF_IRQ0 = EXTI7, )
-    SYSCFG->EXTICR[1]  |= (BOARD_RFGPIO_PORTNUM << 12);
+    // EXTI4-7 (SW1 = EXTI6, RF_IRQ0 = EXTI7, )
+    SYSCFG->EXTICR[1]  |= (BOARD_SW1_PORTNUM << 8) \
+                        | (BOARD_RFGPIO_PORTNUM << 12);
     
-    // EXTI8-11 (RF_IRQ1 = EXTI8, RF_IRQ2 = EXTI9, RF_IRQ3 = EXTI10)
+    // EXTI8-11 (RF_IRQ1 = EXTI8, RF_IRQ2 = EXTI9)
     SYSCFG->EXTICR[2]  |= ( (BOARD_RFGPIO_PORTNUM << 0) \
-                          | (BOARD_RFGPIO_PORTNUM << 4) \
-                          | (BOARD_RFGPIO_PORTNUM << 8) );
+                          | (BOARD_RFGPIO_PORTNUM << 4));
     
-    // EXTI12-15 (GPTIM1 = 12, GPTIM2 = 15)
-    SYSCFG->EXTICR[3]  |= ( (BOARD_GPTIM1_PORTNUM << 4) \
-                          | (BOARD_GPTIM2_PORTNUM << 8) );
+    // EXTI12-15 
+    //SYSCFG->EXTICR[3]  |= 
 }
 
 
@@ -745,11 +738,11 @@ static inline void BOARD_PORT_STARTUP(void) {
     
     // TIMER9 interface (used for GPTIM)
     // Note: this pins appear NC, but they are used internally
-    BOARD_TIM9CH1_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_TIM9CH1_PINNUM*2)) \
+    //BOARD_TIM9CH1_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_TIM9CH1_PINNUM*2)) \
                                 | (GPIO_MODER_ALT << (BOARD_TIM9CH2_PINNUM*2));
     //BOARD_TIM9CH1_PORT->PUPDR  |= (2 << (BOARD_TIM9CH1_PINNUM*2)) \
                                 | (2 << (BOARD_TIM9CH2_PINNUM*2));
-    BOARD_TIM9CH1_PORT->AFR[1] |= ( (3 << ((BOARD_TIM9CH1_PINNUM-8)*4)) ) \
+    //BOARD_TIM9CH1_PORT->AFR[1] |= ( (3 << ((BOARD_TIM9CH1_PINNUM-8)*4)) ) \
                                 | ( (3 << ((BOARD_TIM9CH2_PINNUM-8)*4)) ); 
     
 
@@ -907,11 +900,11 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define BOARD_RADIO_EXTI7_ISR()     spirit1_irq0_isr()
 #define BOARD_RADIO_EXTI8_ISR()     spirit1_irq1_isr()
 #define BOARD_RADIO_EXTI9_ISR()     spirit1_irq2_isr()
-#define BOARD_RADIO_EXTI10_ISR()    spirit1_irq3_isr()
+#define BOARD_RADIO_EXTI10_ISR();    //spirit1_irq3_isr()
 #define BOARD_RADIO_EXTI11_ISR();
 #define BOARD_RADIO_EXTI12_ISR();
 #define BOARD_RADIO_EXTI13_ISR();
-#define BOARD_RADIO_EXTI14_ISR()    radio_mac_isr()
+#define BOARD_RADIO_EXTI14_ISR();
 #define BOARD_RADIO_EXTI15_ISR();
 
 
@@ -929,7 +922,7 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define BOARD_KTIM_EXTI10_ISR();
 #define BOARD_KTIM_EXTI11_ISR();
 #define BOARD_KTIM_EXTI12_ISR();    
-#define BOARD_KTIM_EXTI13_ISR()     platform_ktim_isr()
+#define BOARD_KTIM_EXTI13_ISR();
 #define BOARD_KTIM_EXTI14_ISR();
 #define BOARD_KTIM_EXTI15_ISR();
 
@@ -991,11 +984,11 @@ static inline void BOARD_XTAL_STARTUP(void) {
   * <LI> MPIPE:     The wireline interface, usually either UART or USB-CDC, but 
   *                   possible to use with a multi-master I2C or SPI as well </LI>
   */
-#define OT_GPTIM_ID         9
-#define OT_GPTIM            TIM9
+#define OT_GPTIM_ID         'R'
+#define OT_GPTIM            RTC
 #define OT_GPTIM_CLOCK      32768
-#define OT_GPTIM_RES        4096
-#define OT_GPTIM_SHIFT      2
+#define OT_GPTIM_RES        1024
+#define OT_GPTIM_SHIFT      0
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
 #define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
 
@@ -1045,11 +1038,11 @@ static inline void BOARD_XTAL_STARTUP(void) {
 
 
 
-#define OT_SWITCH1_PORTNUM  BOARD_SW3_PORTNUM
-#define OT_SWITCH1_PORT     BOARD_SW3_PORT
-#define OT_SWITCH1_PINNUM   BOARD_SW3_PINNUM
-#define OT_SWITCH1_PIN      BOARD_SW3_PIN
-#define OT_SWITCH1_POLARITY BOARD_SW3_POLARITY
+#define OT_SWITCH1_PORTNUM  BOARD_SW1_PORTNUM
+#define OT_SWITCH1_PORT     BOARD_SW1_PORT
+#define OT_SWITCH1_PINNUM   BOARD_SW1_PINNUM
+#define OT_SWITCH1_PIN      BOARD_SW1_PIN
+#define OT_SWITCH1_POLARITY BOARD_SW1_POLARITY
 
 
 
@@ -1203,7 +1196,7 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define RADIO_IRQ0_SRCLINE          BOARD_RFGPIO_0PINNUM
 #define RADIO_IRQ1_SRCLINE          BOARD_RFGPIO_1PINNUM
 #define RADIO_IRQ2_SRCLINE          BOARD_RFGPIO_2PINNUM
-#define RADIO_IRQ3_SRCLINE          BOARD_RFGPIO_3PINNUM
+#define RADIO_IRQ3_SRCLINE          -1
 
 #define RADIO_SDN_PORT              BOARD_RFGPIO_PORT
 #define RADIO_IRQ0_PORT             BOARD_RFGPIO_PORT
@@ -1280,112 +1273,96 @@ static inline void BOARD_XTAL_STARTUP(void) {
   * need to inspect all the external interrupt sources.
   */
 #if (!defined(__USE_EXTI0) && ( \
-        (BOARD_GPTIM1_PINNUM == 0) || (BOARD_GPTIM2_PINNUM == 0) || \
         (OT_SWITCH1_PINNUM == 0) || \
         (RADIO_IRQ0_SRCLINE == 0) || (RADIO_IRQ1_SRCLINE == 0) || (RADIO_IRQ2_SRCLINE == 0) || (RADIO_IRQ3_SRCLINE == 0) \
     ))
 #   define __USE_EXTI0
 #endif
 #if (!defined(__USE_EXTI1) && ( \
-        (BOARD_GPTIM1_PINNUM == 1) || (BOARD_GPTIM2_PINNUM == 1) || \
         (OT_SWITCH1_PINNUM == 1) || \
         (RADIO_IRQ0_SRCLINE == 1) || (RADIO_IRQ1_SRCLINE == 1) || (RADIO_IRQ2_SRCLINE == 1) || (RADIO_IRQ3_SRCLINE == 1) \
     ))
 #   define __USE_EXTI1
 #endif
 #if (!defined(__USE_EXTI2) && ( \
-        (BOARD_GPTIM1_PINNUM == 2) || (BOARD_GPTIM2_PINNUM == 2) || \
         (OT_SWITCH1_PINNUM == 2) || \
         (RADIO_IRQ0_SRCLINE == 2) || (RADIO_IRQ1_SRCLINE == 2) || (RADIO_IRQ2_SRCLINE == 2) || (RADIO_IRQ3_SRCLINE == 2) \
     ))
 #   define __USE_EXTI2
 #endif
 #if (!defined(__USE_EXTI3) && ( \
-        (BOARD_GPTIM1_PINNUM == 3) || (BOARD_GPTIM2_PINNUM == 3) || \
         (OT_SWITCH1_PINNUM == 3) || \
         (RADIO_IRQ0_SRCLINE == 3) || (RADIO_IRQ1_SRCLINE == 3) || (RADIO_IRQ2_SRCLINE == 3) || (RADIO_IRQ3_SRCLINE == 3) \
     ))
 #   define __USE_EXTI3
 #endif
 #if (!defined(__USE_EXTI4) && ( \
-        (BOARD_GPTIM1_PINNUM == 4) || (BOARD_GPTIM2_PINNUM == 4) || \
         (OT_SWITCH1_PINNUM == 4) || \
         (RADIO_IRQ0_SRCLINE == 4) || (RADIO_IRQ1_SRCLINE == 4) || (RADIO_IRQ2_SRCLINE == 4) || (RADIO_IRQ3_SRCLINE == 4) \
     ))
 #   define __USE_EXTI4
 #endif
 #if (!defined(__USE_EXTI5) && ( \
-        (BOARD_GPTIM1_PINNUM == 5) || (BOARD_GPTIM2_PINNUM == 5) || \
         (OT_SWITCH1_PINNUM == 5) || \
         (RADIO_IRQ0_SRCLINE == 5) || (RADIO_IRQ1_SRCLINE == 5) || (RADIO_IRQ2_SRCLINE == 5) || (RADIO_IRQ3_SRCLINE == 5) \
     ))
 #   define __USE_EXTI5
 #endif
 #if (!defined(__USE_EXTI6) && ( \
-        (BOARD_GPTIM1_PINNUM == 6) || (BOARD_GPTIM2_PINNUM == 6) || \
         (OT_SWITCH1_PINNUM == 6) || \
         (RADIO_IRQ0_SRCLINE == 6) || (RADIO_IRQ1_SRCLINE == 6) || (RADIO_IRQ2_SRCLINE == 6) || (RADIO_IRQ3_SRCLINE == 6) \
     ))
 #   define __USE_EXTI6
 #endif
 #if (!defined(__USE_EXTI7) && ( \
-        (BOARD_GPTIM1_PINNUM == 7) || (BOARD_GPTIM2_PINNUM == 7) || \
         (OT_SWITCH1_PINNUM == 6) || \
         (RADIO_IRQ0_SRCLINE == 7) || (RADIO_IRQ1_SRCLINE == 7) || (RADIO_IRQ2_SRCLINE == 7) || (RADIO_IRQ3_SRCLINE == 7) \
     ))
 #   define __USE_EXTI7
 #endif
 #if (!defined(__USE_EXTI8) && ( \
-        (BOARD_GPTIM1_PINNUM == 8) || (BOARD_GPTIM2_PINNUM == 8) || \
         (OT_SWITCH1_PINNUM == 6) || \
         (RADIO_IRQ0_SRCLINE == 8) || (RADIO_IRQ1_SRCLINE == 8) || (RADIO_IRQ2_SRCLINE == 8) || (RADIO_IRQ3_SRCLINE == 8) \
     ))
 #   define __USE_EXTI8
 #endif
 #if (!defined(__USE_EXTI9) && ( \
-        (BOARD_GPTIM1_PINNUM == 9) || (BOARD_GPTIM2_PINNUM == 9) || \
         (OT_SWITCH1_PINNUM == 9) || \
         (RADIO_IRQ0_SRCLINE == 9) || (RADIO_IRQ1_SRCLINE == 9) || (RADIO_IRQ2_SRCLINE == 9) || (RADIO_IRQ3_SRCLINE == 9) \
     ))
 #   define __USE_EXTI9
 #endif
 #if (!defined(__USE_EXTI10) && ( \
-        (BOARD_GPTIM1_PINNUM == 10) || (BOARD_GPTIM2_PINNUM == 10) || \
         (OT_SWITCH1_PINNUM == 10) || \
         (RADIO_IRQ0_SRCLINE == 10) || (RADIO_IRQ1_SRCLINE == 10) || (RADIO_IRQ2_SRCLINE == 10) || (RADIO_IRQ3_SRCLINE == 10) \
     ))
 #   define __USE_EXTI10
 #endif
 #if (!defined(__USE_EXTI11) && ( \
-        (BOARD_GPTIM1_PINNUM == 11) || (BOARD_GPTIM2_PINNUM == 11) || \
         (OT_SWITCH1_PINNUM == 11) || \
         (RADIO_IRQ0_SRCLINE == 11) || (RADIO_IRQ1_SRCLINE == 11) || (RADIO_IRQ2_SRCLINE == 11) || (RADIO_IRQ3_SRCLINE == 11) \
     ))
 #   define __USE_EXTI11
 #endif
 #if (!defined(__USE_EXTI12) && ( \
-        (BOARD_GPTIM1_PINNUM == 12) || (BOARD_GPTIM2_PINNUM == 12) || \
         (OT_SWITCH1_PINNUM == 12) || \
         (RADIO_IRQ0_SRCLINE == 12) || (RADIO_IRQ1_SRCLINE == 12) || (RADIO_IRQ2_SRCLINE == 12) || (RADIO_IRQ3_SRCLINE == 12) \
     ))
 #   define __USE_EXTI12
 #endif
 #if (!defined(__USE_EXTI13) && ( \
-        (BOARD_GPTIM1_PINNUM == 13) || (BOARD_GPTIM2_PINNUM == 13) || \
         (OT_SWITCH1_PINNUM == 13) || \
         (RADIO_IRQ0_SRCLINE == 13) || (RADIO_IRQ1_SRCLINE == 13) || (RADIO_IRQ2_SRCLINE == 13) || (RADIO_IRQ3_SRCLINE == 13) \
     ))
 #   define __USE_EXTI13
 #endif
 #if (!defined(__USE_EXTI14) && ( \
-        (BOARD_GPTIM1_PINNUM == 14) || (BOARD_GPTIM2_PINNUM == 14) || \
         (OT_SWITCH1_PINNUM == 14) || \
         (RADIO_IRQ0_SRCLINE == 14) || (RADIO_IRQ1_SRCLINE == 14) || (RADIO_IRQ2_SRCLINE == 14) || (RADIO_IRQ3_SRCLINE == 14) \
     ))
 #   define __USE_EXTI14
 #endif
 #if (!defined(__USE_EXTI15) && ( \
-        (BOARD_GPTIM1_PINNUM == 15) || (BOARD_GPTIM2_PINNUM == 15) || \
         (OT_SWITCH1_PINNUM == 15) || \
         (RADIO_IRQ0_SRCLINE == 15) || (RADIO_IRQ1_SRCLINE == 15) || (RADIO_IRQ2_SRCLINE == 15) || (RADIO_IRQ3_SRCLINE == 15) \
     ))

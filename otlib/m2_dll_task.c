@@ -717,6 +717,7 @@ void dll_systask_beacon(ot_task task) {
         scratch.ushort = vl_read(fp, task->cursor+=2);
         scratch.ushort = PLATFORM_ENDIAN16(scratch.ushort);
 #   endif
+    //task->nextevent = scratch.ushort;
     sys_task_setnext(task, scratch.ushort);
 
     /// Beacon List Management:
@@ -831,14 +832,13 @@ void sub_timeout_scan() {
 /// applications using very custom builds of OpenTag.
 
 #if (RF_FEATURE(RXTIMER) == DISABLED)
-	// Pad the nextevent for some time.  rm2_rxtimeout_isr() will preempt
-	// the kernel if it is called, and reset nextevent.  If packet is RX'ing,
-	// radio will also generate the RX-done interrupt, and preempt kernel.
-    sys_task_setnext(&sys.task[TASK_radio], 128);
-
-    if ((radio.state != RADIO_DataRX) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) {
+    // If not presently receiving, time-out the RX.
+    // else if presently receiving, pad timeout by 128
+    if ((radio.state != RADIO_DataRX) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) 
         rm2_rxtimeout_isr();
-    }
+    else 
+        sys_task_setnext(&sys.task[TASK_radio], 128);
+
 #else
     // Add a little bit of time in case the radio timer is a bit slow.
     sys_task_setnext(&sys.task[TASK_radio]->nextevent, 10);
@@ -864,7 +864,6 @@ void sub_init_rx(ot_u8 is_brx) {
 #else
 #   define _RX_LATENCY  40
 #endif
-
 	sys_task_setnext(&sys.task[TASK_radio], dll.comm.rx_timeout);
 
     sys.task_RFA.latency    = _RX_LATENCY;
@@ -1167,12 +1166,15 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         /// <LI> The Radio Driver will flood adv packets forever, in parallel
         ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
         case 2: {
-            if (dll.counter < rm2_pkt_duration(7)) {
+            ot_u16 countdown;
+            countdown = radio_get_countdown();
+            ///@todo make faster function for bg packet duration lookup
+            if (countdown < rm2_pkt_duration(7)) {
                 m2advp_close();
                 rm2_txstop_flood();
             }
             else {
-                m2advp_update(dll.counter);
+                m2advp_update(countdown);
             }
         } return; // skip termination section
     

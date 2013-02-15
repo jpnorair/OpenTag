@@ -36,16 +36,21 @@
 
 
 em2_struct  em2;
-fn_codec    em2_encode_data;
-fn_codec    em2_decode_data;
 
+#if !defined(EXTF_em2_encode_data)
+fn_codec    em2_encode_data;
+#endif
+
+#if !defined(EXTF_em2_decode_data)
+fn_codec    em2_decode_data;
+#endif
 
 
 #if ( (RF_FEATURE_CRC == ENABLED) && \
       (RF_FEATURE_PN9 == ENABLED) && \
       ((RF_FEATURE_FEC == ENABLED) || (M2_FEATURE(FEC) != ENABLED)) )
     
-#   ifndef EXTF_em2_encode_data_HW
+#   if !defined(EXTF_em2_encode_data_HW)
     void em2_encode_data_HW() {
         while ( (em2.bytes > 0) && (radio_txopen() == True) ) {
             radio_putbyte( q_readbyte(&txq) );
@@ -54,7 +59,7 @@ fn_codec    em2_decode_data;
     }
 #   endif
     
-#   ifndef EXTF_em2_decode_data_HW
+#   if !defined(EXTF_em2_decode_data_HW)
     void em2_decode_data_HW() {
         if (em2.state == 0) {
             em2.state--;
@@ -67,6 +72,7 @@ fn_codec    em2_decode_data;
         }
     }
 #   endif
+
 #endif
     
     
@@ -74,7 +80,7 @@ fn_codec    em2_decode_data;
 
 #if ((RF_FEATURE(PN9) == ENABLED) && (RF_FEATURE(CRC) != ENABLED))
 
-#   ifndef EXTF_em2_encode_data_HWCRC
+#   if !defined(EXTF_em2_encode_data_HWCRC)
     void em2_encode_data_HWCRC() {
         while ( (em2.bytes > 0) && (radio_txopen() == True) ) {
             crc_calc_stream();
@@ -84,7 +90,7 @@ fn_codec    em2_decode_data;
     }
 #   endif
     
-#   ifndef EXTF_em2_decode_data_HWCRC
+#   if !defined(EXTF_em2_decode_data_HWCRC)
     void em2_decode_data_HWCRC() {
         if (em2.state == 0) {
             em2.state--;
@@ -132,7 +138,7 @@ fn_codec    em2_decode_data;
 #endif
     
 #if (RF_FEATURE(PN9) != ENABLED)
-#   ifndef EXTF_em2_encode_data_PN9
+#   if !defined(EXTF_em2_encode_data_PN9)
     void em2_encode_data_PN9() {
         while ( (em2.bytes > 0) && (radio_txopen() == True) ) {
             crc_calc_stream();
@@ -145,7 +151,7 @@ fn_codec    em2_decode_data;
 #endif
     
 #if (RF_FEATURE(PN9) != ENABLED)
-#   ifndef EXTF_em2_decode_data_PN9
+#   if !defined(EXTF_em2_decode_data_PN9)
     void em2_decode_data_PN9() {
         if (em2.state == 0) {
             em2.state--;
@@ -182,7 +188,7 @@ fn_codec    em2_decode_data;
 
 static const ot_u8 FECtable[16] = { 0, 3, 1, 2, 3, 0, 2, 1, 3, 0, 2, 1, 0, 3, 1, 2 }; 
     
-#   ifndef EXTF_em2_encode_data_FEC
+#   if !defined(EXTF_em2_encode_data_FEC)
     void em2_encode_data_FEC() {
         ot_int      i, j, k;
         ot_u8       scratch;
@@ -313,7 +319,7 @@ static const ot_u8 FECtable[16] = { 0, 3, 1, 2, 3, 0, 2, 1, 3, 0, 2, 1, 0, 3, 1,
 
     
     
-#   ifndef EXTF_em2_decode_data_FEC
+#   if !defined(EXTF_em2_decode_data_FEC)
     void em2_decode_data_FEC() {
 
         // Two sets of buffers (last, current) for each destination state for holding: 
@@ -508,39 +514,22 @@ static const ot_u8 FECtable[16] = { 0, 3, 1, 2, 3, 0, 2, 1, 3, 0, 2, 1, 0, 3, 1,
 #define DEC_PN9			(DEC_FEC + DEC_PN9_ON)
 
 
+#if !defined(EXTF_em2_encode_newpacket)
 static const fn_codec m2_encoder[ENCODERS] = {
 #if (ENC_HW_ON)
-	&em2_encode_data_HW,
+    &em2_encode_data_HW,
 #endif
 #if (ENC_HWCRC_ON)
-	&em2_encode_data_HWCRC,
+    &em2_encode_data_HWCRC,
 #endif
 #if (ENC_PN9_ON)
-	&em2_encode_data_PN9,
+    &em2_encode_data_PN9,
 #endif
 #if (ENC_FEC_ON)
-	&em2_encode_data_FEC,
+    &em2_encode_data_FEC,
 #endif
 };
-
-static const fn_codec m2_decoder[DECODERS] = {
-#if (DEC_HW_ON)
-	&em2_decode_data_HW,
-#endif
-#if (DEC_HWCRC_ON)
-	&em2_decode_data_HWCRC,
-#endif
-#if (DEC_PN9_ON)
-	&em2_decode_data_PN9,
-#endif
-#if (DEC_FEC_ON)
-	&em2_decode_data_FEC,
-#endif
-};
-
-
-
-#ifndef EXTF_em2_encode_newpacket
+    
 void em2_encode_newpacket() {
 #if (ENCODERS == 1)
 	em2_encode_data = m2_encoder[0];
@@ -556,7 +545,24 @@ void em2_encode_newpacket() {
 #endif
 
 
-#ifndef EXTF_em2_decode_newpacket
+
+
+#if !defined(EXTF_em2_decode_newpacket)
+static const fn_codec m2_decoder[DECODERS] = {
+#if (DEC_HW_ON)
+    &em2_decode_data_HW,
+#endif
+#if (DEC_HWCRC_ON)
+    &em2_decode_data_HWCRC,
+#endif
+#if (DEC_PN9_ON)
+    &em2_decode_data_PN9,
+#endif
+#if (DEC_FEC_ON)
+    &em2_decode_data_FEC,
+#endif
+};
+
 void em2_decode_newpacket() {
 #if (DECODERS == 1)
 	em2_decode_data = m2_decoder[0];
@@ -574,7 +580,7 @@ void em2_decode_newpacket() {
 
 
 
-#ifndef EXTF_em2_encode_newframe
+#if !defined(EXTF_em2_encode_newframe)
 void em2_encode_newframe() {
     /// 1. Prepare the CRC, also adding 2 bytes to the frame length
 #   if (RF_FEATURE(CRC) != ENABLED)
@@ -617,7 +623,7 @@ void em2_encode_newframe() {
 
 
 
-#ifndef EXTF_em2_decode_newframe
+#if !defined(EXTF_em2_decode_newframe)
 void em2_decode_newframe() {
     em2.fr_info = &rxq.front[3];
     em2.state   = 0;
@@ -652,7 +658,7 @@ void em2_decode_newframe() {
 
 
 
-#ifndef EXTF_em2_remaining_frames
+#if !defined(EXTF_em2_remaining_frames)
 ot_int em2_remaining_frames() {
 /// Returns 0 if no more frames, or non-zero if more frames
     return (ot_int)(*em2.fr_info & 0x10);
@@ -660,7 +666,7 @@ ot_int em2_remaining_frames() {
 #endif
 
 
-#ifndef EXTF_em2_remaining_bytes
+#if !defined(EXTF_em2_remaining_bytes)
 ot_int em2_remaining_bytes() {
     return em2.bytes;
 }

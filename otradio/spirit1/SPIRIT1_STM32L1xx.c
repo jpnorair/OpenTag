@@ -395,8 +395,6 @@ void spirit1_init_bus() {
     ///5. Put the SPIRIT1 into a default IO configuration, and then to sleep.
     ///   It is important to expose the READY signal on GPIO0, because the 
     ///   driver needs this signal to confirm state changes.
-    spirit1_iocfg_rx();
-    radio_sleep();
 }
 
 
@@ -598,6 +596,52 @@ ot_bool spirit1_check_cspin(void) {
 
 
 
+
+/** Common GPIO setup & interrupt functions  <BR>
+  * ========================================================================<BR>
+  * Your radio ISR function should be of the type void radio_isr(ot_u8), as it 
+  * will be a soft ISR.  The input parameter is an interrupt vector.  The vector
+  * values are shown below:
+  *
+  * -------------- RX MODES (set spirit1_iocfg_rx()) --------------
+  * IMode = 0       RX Timeout (Finished):      0 
+  * (Listen)        Sync word RX'ed:            1 
+  *                 RX FIFO thr [IRQ off]:      -
+  *                 
+  * IMode = 2       RX Finished:                2  
+  * (RX Data)       Sync word RX'ed [IRQ off]:  -
+  *                 RX FIFO threshold:          4
+  *
+  * -------------- TX MODES (set spirit1_iocfg_tx()) --------------
+  * IMode = 5       CCA Sense Timeout:          5   (pass)
+  * (CSMA)          CS Indicator:               6   (fail)
+  *                 TX FIFO thr [IRQ off]:      - 
+  *
+  * IMode = 7       TX finished:                7
+  * (TX)            CS Indicator [IRQ off]:     -
+  *                 TX FIFO threshold:          9 
+  */
+
+void platform_isr_rtcwakeup() {
+/// Decrement dll counter... that's it
+    EXTI->PR    = (1<<20);
+    RTC->ISR   &= ~RTC_ISR_WUTF;
+    dll.counter--;
+}
+
+void spirit1_start_counter() {
+    RTC->CR |= RTC_CR_WUTE;
+}
+
+void spirit1_stop_counter() {
+    RTC->CR &= ~RTC_CR_WUTE;
+}
+
+ot_u16 spirit1_get_counter() {
+    return dll.counter;
+}
+
+
 /// Simple configuration method: 
 /// This I/O configuration does not use many of the SPIRIT1 advanced features.
 /// Those features will be experimented-with in the future.
@@ -616,14 +660,14 @@ static const ot_u8 gpio_tx[5] = {
     RFGPO(TRX_INDICATOR)         //indicate when TX or RX is active
 };
     
-void spirit1_iocfg_rx()  {
+inline void spirit1_iocfg_rx()  {
 /// All EXTIs for RX and TX are rising-edge detect, so the edge-select bit is
 /// set universally following chip startup.
     EXTI->PR = RFI_ALL;   //clear all pending bits
     spirit1_spibus_io(5, 0, (ot_u8*)gpio_rx);
 }
 
-void spirit1_iocfg_tx()  {
+inline void spirit1_iocfg_tx()  {
 /// All EXTIs for RX and TX are rising-edge detect, so the edge-select bit is
 /// set universally following chip startup.
     EXTI->PR = RFI_ALL;   //clear all pending bits
@@ -632,10 +676,10 @@ void spirit1_iocfg_tx()  {
 
 
 void sub_int_config(ot_u16 ie_sel) {
-    ot_u16 scratch;
-    EXTI->PR    = RFI_ALL;
+    ot_u32 scratch;
+    EXTI->PR    = (ot_u32)RFI_ALL;
     scratch     = EXTI->IMR;
-    scratch    &= ~RFI_ALL;
+    scratch    &= ~((ot_u32)RFI_ALL);
     scratch    |= ie_sel;
     EXTI->IMR   = scratch;
 }
@@ -644,10 +688,10 @@ void spirit1_int_off()      {   sub_int_config(0);   }
 
 void spirit1_int_listen()   {   spirit1.imode = MODE_Listen;    
                                 sub_int_config(RFI_LISTEN);     }
-                                
+
 void spirit1_int_rxdata()   {   spirit1.imode = MODE_RXData;
                                 sub_int_config(RFI_RXDATA);   }
-                                
+
 void spirit1_int_csma()     {   spirit1.imode = MODE_CSMA;
                                 sub_int_config(RFI_CSMA);     }
                                 
@@ -655,12 +699,12 @@ void spirit1_int_txdata()   {   spirit1.imode = MODE_TXData;
                                 sub_int_config(RFI_TXDATA);   }
 
 
-void spirit1_int_force(ot_u16 ifg_sel)   { EXTI->SWIER |= ifg_sel; }
-void spirit1_int_turnon(ot_u16 ie_sel)   { EXTI->IMR   |= ie_sel;  }
+void spirit1_int_force(ot_u16 ifg_sel)   { EXTI->SWIER |= (ot_u32)ifg_sel; }
+void spirit1_int_turnon(ot_u16 ie_sel)   { EXTI->IMR   |= (ot_u32)ie_sel;  }
 
 void spirit1_int_turnoff(ot_u16 ie_sel)  { 
-    EXTI->PR    = ie_sel;
-    EXTI->IMR  &= ~ie_sel; 
+    EXTI->PR    = (ot_u32)ie_sel;
+    EXTI->IMR  &= ~((ot_u32)ie_sel); 
 }
 
 

@@ -103,6 +103,22 @@ void otapi_led2_off() { platform_trig2_low(); }
 /** Clocking Constants <BR>
   * ========================================================================<BR>
   */
+#if (BOARD_FEATURE_HFXTAL == ENABLED)
+#   define _OSC_ONBIT   RCC_CR_HSEON
+#   define _OSC_RDYFLAG RCC_CR_HSERDY
+#   define _OSC_TIMEOUT HSE_STARTUP_TIMEOUT           //look in datasheet
+#elif (  (PLATFORM_HSCLOCK_HZ == 32000000)       \
+             || (PLATFORM_HSCLOCK_HZ == 16000000)       \
+             || (PLATFORM_HSCLOCK_HZ == 8000000)        \
+             || (PLATFORM_HSCLOCK_HZ == 4000000)        \
+             || (PLATFORM_HSCLOCK_HZ == 2000000) )
+#   define _OSC_ONBIT   RCC_CR_HSION
+#   define _OSC_RDYFLAG RCC_CR_HSIRDY
+#   define _OSC_TIMEOUT HSI_STARTUP_TIMEOUT           //look in datasheet      
+#else
+#   error "PLATFORM_HSCLOCK_HZ is not set to a value matching HW options"
+#endif
+  
 #if (MCU_FEATURE_MULTISPEED == ENABLED)
 #   define _STD_CLOCK_HZ    PLATFORM_MSCLOCK_Hz
 #   define _FULL_CLOCK_HZ   PLATFORM_HSCLOCK_Hz
@@ -214,8 +230,8 @@ void otapi_led2_off() { platform_trig2_low(); }
 /** Platform Data <BR>
   * ========================================================================<BR>
   */
-platform_struct platform;
-platform_ext_struct  platform_ext;
+platform_struct     platform;
+platform_ext_struct platform_ext;
 
 
 
@@ -308,8 +324,7 @@ void DebugMon_Handler(void) { }
   */
 void SVC_Handler(void) { 
 /// SVC Handler runs potentially some future system calls.
-    platform_ext.next_evt   = sys_event_manager();
-    
+    sys_event_manager();
     
 #if 0 //(OT_PARAM_SYSTHREADS != 0)
     ot_u8* task_lr;
@@ -329,8 +344,6 @@ void SVC_Handler(void) {
         // Call 0: this is the call to the scheduler
         case 0: 
             SVC_Handler_eventmgr:
-            platform_ext.next_evt   = sys_event_manager();
-            SCB->ICSR              |= (platform_ext.next_evt  == 0) << SCB_ICSR_PENDSVSET_Pos;
             break;
         
         // Call 1: Task Killer
@@ -344,32 +357,19 @@ void SVC_Handler(void) {
 }
 
 
-void platform_ktim_isr() {
-/// The Kernel timer expiring is evidence that a task is pending, so we must
-/// set next_evt to 0 in order to clear sleep or invoke the task manager
-    OT_GPTIM->SR           &= ~TIM_SR_CC1IF;
-    platform_ext.next_evt   = 0;
-    
-    ///@todo I'll need to implement a check to see if this is a task-end or
-    ///      task-start event
-#   if (OT_PARAM_SYSTHREADS != 0)
-    sys_task_manager();
-#   endif
-}
-
 
 void PendSV_Handler(void) { 
-/// PendSV ISR handles task management.
+/// PendSV ISR is issued if and only if some task or event is asynchronously 
+/// pre-empting the kernel.  It is invoked __only__ through platform_ot_preempt().
 /// @note SV is for "Supervisor," not "Sport Veloce"
    
     // There is an erratum that PendSV bit is not adequately cleared in HW
     __CLR_PENDSV();
     
+    // halt system until RTC is known to be ready
+    
     // Disable interrupts during scheduler runtime
     __SEND_SVC(0);
-    //platform_disable_interrupts();
-    //platform_ext.next_evt = sys_event_manager();
-    //platform_enable_interrupts();
 }
 
 
@@ -386,106 +386,6 @@ void PendSV_Handler(void) {
 void WWDG_IRQHandler(void) {
 }
 #endif
-
-
-
-
-
-
-
-/** RTC stuff
-  * ========================================================================<BR>
-  */
-
-/*
-#define _BCD(T,O)   ((T<<4) | O)
-static const ot_u8 bcd_lut[60] = {
-    _BCD(0,0),  _BCD(0,1),  _BCD(0,2),  _BCD(0,3),  _BCD(0,4),  
-    _BCD(0,5),  _BCD(0,6),  _BCD(0,7),  _BCD(0,8),  _BCD(0,9), 
-    _BCD(1,0),  _BCD(1,1),  _BCD(1,2),  _BCD(1,3),  _BCD(1,4),  
-    _BCD(1,5),  _BCD(1,6),  _BCD(1,7),  _BCD(1,8),  _BCD(1,9), 
-    _BCD(2,0),  _BCD(2,1),  _BCD(2,2),  _BCD(2,3),  _BCD(2,4),  
-    _BCD(2,5),  _BCD(2,6),  _BCD(2,7),  _BCD(2,8),  _BCD(2,9), 
-    _BCD(3,0),  _BCD(3,1),  _BCD(3,2),  _BCD(3,3),  _BCD(3,4),  
-    _BCD(3,5),  _BCD(3,6),  _BCD(3,7),  _BCD(3,8),  _BCD(3,9), 
-    _BCD(4,0),  _BCD(4,1),  _BCD(4,2),  _BCD(4,3),  _BCD(4,4),  
-    _BCD(4,5),  _BCD(4,6),  _BCD(4,7),  _BCD(4,8),  _BCD(4,9), 
-    _BCD(5,0),  _BCD(5,1),  _BCD(5,2),  _BCD(5,3),  _BCD(5,4),  
-    _BCD(5,5),  _BCD(5,6),  _BCD(5,7),  _BCD(5,8),  _BCD(5,9)
-};
-
-ot_u32 sub_int2rtc(ot_u32 secs) {
-/// STM32 has hardware divider and MAC instructions that operate in relatively
-/// fast time.  Otherwise this would be quite slow.  It returns an hours-
-/// minutes-seconds figure that the STM32L RTC needs.
-    ot_u32 hours, mins;
-    
-    hours   = (secs/3600);          // should be UDIV
-    secs    = secs - (hours*3600);  // should be MLS
-    mins    = (secs/60);
-    secs    = secs - (mins*60);
-    hours   = bcd_lut[hours];
-    hours <<= 8;
-    hours  |= bcd_lut[mins];
-    hours <<= 8;
-    hours  |= bcd_lut[secs];
-    
-    return hours;
-}
-*/
-
-
-#if (RTC_ALARMS > 0)
-
-#ifndef RTC_Alarm_IRQHandler
-void RTC_Alarm_IRQHandler(void) {
-
-}
-#endif
-
-#endif
-
-
-
-
-#if (OT_FEATURE(RTC) == ENABLED)
-void sub_juggle_rtc_alarm() {
-    ot_u8  i;
-    ot_u32 comp;
-    ot_u32 next     = ~0;
-    ot_u32 rtcval   = RTC_GetCounter();
-    
-    for (i=0; i<RTC_ALARMS; i++) {
-        if (otrtc.alarm[i].active) {
-            comp    = rtcval & ((ot_u32)otrtc.alarm[i].mask << RTC_OVERSAMPLE);
-            comp   += (ot_u32)otrtc.alarm[i].value << RTC_OVERSAMPLE;
-            next    = (comp < next) ? comp : next;
-        }
-    }
-
-    RTC_SetAlarm(rtcval+next);
-}
-
-
-void RTC_IRQHandler(void) {
-/// Currently Psuedocode.  RTC is normally used with ALARM interrupt.  If it
-/// is oversampling, then it will also interrupt on each second, so the user
-/// can increment the UTC.
-#if (RTC_OVERSAMPLE != 0)
-    if (__rtc_interrupt_is_second__) {
-        otrtc.utc++;
-        //add clear flag
-    }
-#endif
-#if (RTC_ALARMS > 0)
-    if (__rtc_interrupt_is_alarm__) {
-        sub_juggle_rtc_alarm();
-        //add clear flag
-    }
-#endif
-}
-
-#endif // End of RTC stuff
 
 
 
@@ -534,7 +434,10 @@ void platform_poweron() {
     platform_init_interruptor();    // Interrupts OpenTag cares about
     platform_init_gptim(0);         // Initialize GPTIM (to 1024 Hz)
     
-    /// 6. Initialize Low-Level Drivers (worm, mpipe)
+    /// 6. Start the chronometer
+    gptim_start_chrono();
+    
+    /// 7. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
     vworm_init();
 }
@@ -623,13 +526,13 @@ void sub_hsflash_config(void) {
 
 void sub_voltage_config(void) {
     // Set Power Configuration based on Voltage Level parameters
-    RCC->APB1ENR   |= RCC_APB1ENR_PWREN;    // Power enable
+    //RCC->APB1ENR   |= RCC_APB1ENR_PWREN;    // Power should be enabled by periphclk function
 #   if (MCU_PARAM_VOLTLEVEL == 3)
-    PWR->CR         = PWR_CR_VOS_1V2;
+    PWR->CR         = (PWR_CR_VOS_1V2 | PWR_CR_DBP);
 #   elif (MCU_PARAM_VOLTLEVEL == 2)
-    PWR->CR         = PWR_CR_VOS_1V5;
+    PWR->CR         = (PWR_CR_VOS_1V5 | PWR_CR_DBP);
 #   elif (MCU_PARAM_VOLTLEVEL == 1)
-    PWR->CR         = PWR_CR_VOS_1V8;
+    PWR->CR         = (PWR_CR_VOS_1V8 | PWR_CR_DBP);
 #   else
 #   error "MCU_PARAM_VOLTLEVEL must be set to 1, 2, or 3 (typ. 2)."
 #   endif 
@@ -640,6 +543,17 @@ void sub_voltage_config(void) {
 
 
 void sub_hsosc_config(void) {
+    ot_u16 counter;
+    
+    ///@todo figure out a way to do this with WFE
+    // Wait for Oscillator to get ready, counter goes to 0 on failure
+    RCC->CR    |= ((uint32_t)_OSC_ONBIT);
+    counter = _OSC_TIMEOUT;
+    while (((RCC->CR & _OSC_RDYFLAG) == 0) && (--counter));
+    if (counter == 0) {
+        ///@todo Death message / Death Blinkly
+    }
+    
     // Configure PLL only if required (and Setup the Bus Dividers as specified)
 #   if (PLATFORM_HSCLOCK_HZ != BOARD_PARAM_HFHz)
     RCC->CFGR  &= (uint32_t)((uint32_t)~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLMUL | RCC_CFGR_PLLDIV));
@@ -660,7 +574,7 @@ void sub_hsosc_config(void) {
     // Configure HSI as clock source (and Setup the Bus Dividers as specified)
 #   else 
     RCC->CFGR  |= (RCC_CFGR_SW_HSI | _AHB_DIV | _APB1_DIV | _APB2_DIV);
-    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)RCC_CFGR_SWS_HSI) { }
+    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS_HSI) == 0);
 
 #   endif
     
@@ -683,8 +597,7 @@ void platform_init_busclk() {
     RCC->CR    |= (uint32_t)0x00000100;     // Set MSION bit
     RCC->CFGR  &= (uint32_t)0x88FFC00C;     // Reset SW[1:0], HPRE[3:0], PPRE1[2:0], PPRE2[2:0], 
                                             //   MCOSEL[2:0], and MCOPRE[2:0] bits
-    RCC->CR    &= (uint32_t)0xEEFEFFFE;     // Reset HSION, HSEON, CSSON and PLLON bits
-    RCC->CR    &= (uint32_t)0xFFFBFFFF;     // Reset HSEBYP bit
+    RCC->CR    &= (uint32_t)0xEEFAFFFE;     // Reset HSION, HSEON, HSEBYP, CSSON and PLLON bits
     RCC->CFGR  &= (uint32_t)0xFF02FFFF;     // Reset PLLSRC, PLLMUL[3:0] and PLLDIV[1:0] bits 
     RCC->CIR    = 0x00000000;               // Disable all clocker interrupts (default)
 
@@ -749,39 +662,12 @@ void platform_init_busclk() {
     ///           (BOARD_PARAM_HFHz * BOARD_PARAM_HFmult) must be 96 MHz, and
     ///           (96 MHz / BOARD_PARAM_HFdiv) == PLATFORM_HSCLOCK_HZ. </LI>
 #   else
-#       if (BOARD_FEATURE_HFXTAL == ENABLED)
-#           define _OSC_ONBIT   RCC_CR_HSEON
-#           define _OSC_RDYFLAG RCC_CR_HSERDY
-#           define _OSC_TIMEOUT HSE_STARTUP_TIMEOUT           //look in datasheet
-
-#       elif (  (PLATFORM_HSCLOCK_HZ == 32000000)       \
-             || (PLATFORM_HSCLOCK_HZ == 16000000)       \
-             || (PLATFORM_HSCLOCK_HZ == 8000000)        \
-             || (PLATFORM_HSCLOCK_HZ == 4000000)        \
-             || (PLATFORM_HSCLOCK_HZ == 2000000) )
-#           define _OSC_ONBIT   RCC_CR_HSION
-#           define _OSC_RDYFLAG RCC_CR_HSIRDY
-#           define _OSC_TIMEOUT HSI_STARTUP_TIMEOUT           //look in datasheet
-             
-#       else
-#           error "PLATFORM_HSCLOCK_HZ is not set to a value matching HW options"
-#       endif
-        
         // Prepare Flash and Voltage for new clock setting
         sub_hsflash_config();
         sub_voltage_config();
         
-        ///@todo figure out a way to do this with WFE
-        RCC->CR    |= ((uint32_t)_OSC_ONBIT);
-        counter     = _OSC_TIMEOUT;
-        while (((RCC->CR & _OSC_RDYFLAG) == 0) && (--counter));
-    
-        // HS Osc Startup Failed
-        if (counter == 0) {
-            ///@todo Death message / Death Blinkly
-        }
-        
-        // HS Osc Startup succeeded
+        // Enabled Oscillator bit (startup only), the turn-on oscillator
+        //RCC->CR    |= ((uint32_t)_OSC_ONBIT);
         sub_hsosc_config();
 
 #   endif
@@ -816,14 +702,14 @@ void platform_init_periphclk() {
     
 #   if (BOARD_FEATURE_LFXTAL == ENABLED)
     RCC->APB1ENR    = RCC_APB1ENR_PWREN; 
-    PWR->CR        |= PWR_CR_DBP;
-    RCC->CSR       |= RCC_CSR_LSEON;
+    PWR->CR         = ((1 << 11) | PWR_CR_DBP);
+    RCC->CSR       |= RCC_CSR_LSEON | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSE;
     while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
     //*((__IO ot_u8*)CSR_BYTE2_ADDRESS) = RCC_LSE_ON;
     //while ((*((__IO ot_u8*)CSR_BYTE2_ADDRESS) & RCC_LSE_RDY) == 0);
     
 #   else
-    ///@todo this
+    ///@todo do this
 #   endif
    
 }
@@ -988,14 +874,8 @@ void platform_ot_preempt() {
 /// enabler bit), as the ktask will run to completion and do the call in its 
 /// own context (platform_ot_run()).
 
-    //if (EXTI->IMR & (1<<OT_KTIM_IRQ_SRCLINE)) {
-    //    __SET_PENDSV();
-    //}
-    
-    //SCB->ICSR |= (EXTI->IMR & (1<<OT_KTIM_IRQ_SRCLINE)) << \
-    //                (SCB_ICSR_PENDSVSET_Pos - OT_KTIM_IRQ_SRCLINE);
-    
-    if (platform_ext.task_exit == NULL) __SET_PENDSV();
+    if (platform_ext.task_exit == NULL) 
+        __SET_PENDSV();
 }
 #endif
 
@@ -1013,16 +893,41 @@ OT_INLINE void platform_ot_run() {
 /// This function must be run in a while(1) loop from main.  It is the context
 /// used by Kernel Tasks, which are co-operatively multitasked.
 
+    /// 3. Run the Scheduler.  The scheduler will issue a PendSV if there is a 
+    /// threaded task, in which case the P-stack will get changed to that 
+    /// thread, and the code after this call will not run until all threads are 
+    /// dormant.
+    __SEND_SVC(0);
+    
+    
+    /// 4. When the PC is here, it means that a kernel task has been scheduled 
+    ///    or that no task is scheduled.  If no task is scheduled, then it is
+    ///    time to go to sleep (or more likely STOP mode).  The powerdown 
+    ///    routine MUST re-enable interrupts immediately before issuing the WFI
+    ///    instruction.
+    while (gptim.flags & GPTIM_FLAG_SLEEP) {
+        platform_disable_interrupts();
+        platform_enable_ktim();
+        sys_powerdown();
+    }
+    
+    //while (gptim.flags & GPTIM_FLAG_SLEEP) {
+    //    __WFI();
+    //}
+    
+    
     /// 1. Save the current P-stack pointer (PSP), and push the return address 
     ///    onto this position.  If the task is killed during its runtime, this
     ///    data will be used to reset the P-stack and PC.
     
     ///@note this code only works with GCC-based compilers.  The && operator
     /// ahead of the label is a label-reference, and it is a GCC feature.
+    {
     register ot_u32 return_from_task;
     platform_ext.task_exit  = (void*)__get_PSP();
     return_from_task        = (ot_u32)&&RETURN_FROM_TASK;
     asm volatile ("PUSH {%0}" : : "r"(return_from_task) );
+    }
 
     /// 2. Run the Tasking Engine.  It will call the ktask or switch to the 
     /// thread, as needed based on what is scheduled.
@@ -1034,27 +939,7 @@ OT_INLINE void platform_ot_run() {
     RETURN_FROM_TASK:
     __set_PSP( (ot_u32)platform_ext.task_exit );
     platform_ext.task_exit = NULL;
-    
-    /// 3. Run the Scheduler.  The scheduler will issue a PendSV if there is a 
-    /// threaded task, in which case the P-stack will get changed to that 
-    /// thread, and the code after this call will not run until all threads are 
-    /// dormant.
-    __SEND_SVC(0);
-    
-    /// 4. When the PC is here, it means that a kernel task has been scheduled 
-    ///    or that no task is scheduled.  If no task is scheduled, then it is
-    ///    time to go to sleep (or more likely STOP mode).  The powerdown 
-    ///    routine MUST re-enable interrupts immediately before issuing the WFI
-    ///    instruction.
-    while (platform_ext.next_evt != 0) {
-        platform_disable_interrupts();
-        platform_enable_ktim();
-        sys_powerdown();
-    }
-    
-    //while (platform_ext.next_evt != 0) {
-    //    __WFI();
-    //}
+
 }
 #endif
 
@@ -1091,7 +976,6 @@ void platform_init_interruptor() {
 #       define _SUB_LIMIT   b0001
 #   endif
 
-
     /// 1. Set the EXTI channels using the board function.  Different boards
     ///    are connected differently, so this function must be implemented in 
     ///    the board support header.
@@ -1116,54 +1000,32 @@ void platform_init_interruptor() {
     /// each other, but there are subpriorities.  I/O interrupts should be set 
     /// in their individual I/O driver initializers.
     ///    <LI> NMI will interrupt anything.  It is used for panics.    </LI>
-    ///    <LI> SVC is 1st subpriority.  It runs the scheduler. </LI>
-    ///    <LI> GPTIM (kernel timer) is 2nd subpriority.  It runs the tasker.  </LI>
-    ///    <LI> RTC is 3rd subpriority. </LI>
-#   if (OT_KTIM_IRQ_SRCLINE < 5)
-#       define OT_KTIM_IRQn     (EXTI0_IRQn + OT_KTIM_IRQ_SRCLINE)
-#       define OT_KTIM_IRQNUM   OT_KTIM_IRQ_SRCLINE
-#   elif (OT_KTIM_IRQ_SRCLINE < 10)
-#       define OT_KTIM_IRQn     EXTI9_5_IRQn
-#       define OT_KTIM_IRQNUM   5
+    ///    <LI> SVC is priority 0-0.  It runs the scheduler. </LI>
+    ///    <LI> GPTIM (via RTC ALARM) is priority 0-1.  It runs the tasker.  </LI>
+    ///    <LI> OT-Systick (via RTC WAKEUP) is priority 0-2. </LI>
+#   if (RF_FEATURE(TXTIMER) != ENABLED)
+#   define RTC_EXTI_MASK    ((1<<17) | (1<<20))
 #   else
-#       define OT_KTIM_IRQn     EXTI15_10_IRQn
-#       define OT_KTIM_IRQNUM   10
+#   define RTC_EXTI_MASK    (1<<17)
 #   endif
+#   define OT_GPTIM_IRQn    RTC_Alarm_IRQn
+#   define OT_SYSTICK_IRQn  RTC_WKUP_IRQn
 #   define _OT_SUB1         (b0001)
-#   define _OT_SUB2         ((_OT_SUB1+1)*(_SUB_LIMIT >= (_OT_SUB1+1)))   
-    ///@note On STM32L, Kernel TIM needs an EXTI line.  It must be initialized  
-    ///      in BOARD_EXTI_STARTUP().  If AT-ALL-POSSIBLE... use pins 0-4 for 
-    ///      Kernel TIM.
-    NVIC->IP[(uint32_t)(OT_KTIM_IRQn)]          = ((_KERNEL_GROUP+_OT_SUB1) << 4);
-    NVIC->ISER[((uint32_t)(OT_KTIM_IRQn)>>5)]   = (1 << ((uint32_t)(OT_KTIM_IRQn) & 0x1F));
-  
-#   if 0 //(OT_FEATURE(RTC) == ENABLED) 
-#   define OT_RTC_IRQn      RTC_WKUP_IRQn
+#   define _OT_SUB2         ((_OT_SUB1+1)*(_SUB_LIMIT >= (_OT_SUB1+1)))  
 #   define _OT_SUB3         ((_OT_SUB2+1)*(_SUB_LIMIT >= (_OT_SUB2+1)))  
-    EXTI->PR                                    = (1<<20);  //RTC Wakeup Line should be Alarm
-    EXTI->IMR                                  |= (1<<20);
-    EXTI->RTSR                                 |= (1<<20);
-    NVIC->IP[(uint32_t)(OT_RTC_IRQn)]           = ((_KERNEL_GROUP+_OT_SUB2) << 4);
-    NVIC->ISER[((uint32_t)(OT_RTC_IRQn)>>5)]    = (1 << ((uint32_t)(OT_RTC_IRQn) & 0x1F));
-#   else 
-#   define _OT_SUB3         _OT_SUB2
-#   endif
 
-#   if (OT_MACTIM_IRQ_SRCLINE < 5)
-#       define OT_MACTIM_IRQn   (EXTI0_IRQn + OT_MACTIM_IRQ_SRCLINE)
-#       define OT_MACTIM_IRQNUM OT_MACTIM_IRQ_SRCLINE
-#   elif (OT_MACTIM_IRQ_SRCLINE < 10)
-#       define OT_MACTIM_IRQn   EXTI9_5_IRQn
-#       define OT_MACTIM_IRQNUM 5
-#   else
-#       define OT_MACTIM_IRQn   EXTI15_10_IRQn
-#       define OT_MACTIM_IRQNUM 10
-#   endif
-#   if (OT_MACTIM_IRQNUM != OT_KTIM_IRQNUM)
-    NVIC->IP[(uint32_t)(OT_MACTIM_IRQn)]        = ((_KERNEL_GROUP+_OT_SUB3) << 4);
-    NVIC->ISER[((uint32_t)(OT_MACTIM_IRQn)>>5)] = (1 << ((uint32_t)(OT_MACTIM_IRQn) & 0x1F));
-#   endif
+    EXTI->PR                                    = RTC_EXTI_MASK;
+    EXTI->IMR                                  |= RTC_EXTI_MASK;
+    EXTI->RTSR                                 |= RTC_EXTI_MASK;
+    NVIC->IP[(uint32_t)(OT_GPTIM_IRQn)]         = ((_KERNEL_GROUP+_OT_SUB1) << 4);
+    NVIC->ISER[((uint32_t)(OT_GPTIM_IRQn)>>5)]  = (1 << ((uint32_t)(OT_GPTIM_IRQn) & 0x1F));
 
+    NVIC->IP[(uint32_t)(OT_SYSTICK_IRQn)]       = ((_KERNEL_GROUP+_OT_SUB2) << 4);
+    NVIC->ISER[((uint32_t)(OT_SYSTICK_IRQn)>>5)]= (1 << ((uint32_t)(OT_SYSTICK_IRQn) & 0x1F));
+    
+    
+    /// 5. Setup other external interrupts
+    
 }
 #endif
 
@@ -1187,48 +1049,8 @@ void platform_init_gpio() {
 
 
 
-#ifndef EXTF_platform_init_gptim
-void platform_init_gptim(ot_uint prescaler) {
-/// For STM32L, TIM9 is assumed as gptim.  In the future, there may be another 
-/// suitable timer (TIM10 and TIM11 are close), so there is some configuration.
-/// The prescaler parameter is a direct divider of the LSE clock.  Anyway, the
-/// GPTIM interrupt is a bit circuitous due to the STM32L architecture, which
-/// requires that an EXTI interrupt is used from the CC-out pin.
-   
-    // Disable Timer(s): this is startup-default, so commented out
-   
-    // Set Rising Edge interrupt
-#   define _KTIM_EXTI   BOARD_GPTIM1_PIN
-#   define _MACTIM_EXTI ((RF_FEATURE(MAC) != ENABLED) << BOARD_GPTIM2_PINNUM)
-//  EXTI->IMR              |= (_KTIM_EXTI | _MACTIM_EXTI);    //done individually
-    EXTI->RTSR             |= (_KTIM_EXTI | _MACTIM_EXTI);
-    EXTI->FTSR             |= (_KTIM_EXTI | _MACTIM_EXTI);
+// platform_init_gptim() is implemented in platform_gptim_STM32L1xx.c
 
-    // Configure Timer for LSE clocking
-    platform_ext.last_evt   = 0;
-    OT_GPTIM->DIER          = 0;                     // TIM interrupts unused
-    OT_GPTIM->SR            = 0;                    // clear update flags
-    OT_GPTIM->SMCR          = TIM_SMCR_ECE \
-                            | TIM_SMCR_ETPS_DIV8;   // Timer Mode 2 with (1/8) prescale
-    
-#   if ((RF_FEATURE(MAC_TIMER) != ENABLED) && (OT_GPTIM_ID == 9))
-    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_TOGGLE \
-                    | TIM_CCMR1_OC2M_TOGGLE;                // Set Output on Match
-    OT_GPTIM->CCER  = TIM_CCER_CC1E /*| TIM_CCER_CC2E */;   // Enable Kernel & RF MAC timers
-#   else
-    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_TOG;                     // Set Output on Match
-    OT_GPTIM->CCER  = TIM_CCER_CC1E;                        // Only Enable Kernel Timer
-#   endif
-  //OT_GPTIM->PSC   = 0;
-    OT_GPTIM->ARR   = 65535;                                // Continuous Mode
-    OT_GPTIM->OR    = 0;
-    
-    // Re-enable Timer
-    OT_GPTIM->CCR1  = 65535;
-    OT_GPTIM->CR1   = (TIM_CR1_UDIS | TIM_CR1_CEN);
-    OT_GPTIM->EGR   = TIM_EGR_UG;
-}
-#endif
 
 
 #ifndef EXTF_platform_init_watchdog
@@ -1249,54 +1071,21 @@ void platform_init_resetswitch() {
 
 #ifndef EXTF_platform_init_systick
 void platform_init_systick(ot_uint period) {
-/// OpenTag does NOT use the ARM Cortex M SysTick.  In fact, JP thinks SysTick 
-/// is *STUPID* and you shouldn't use it either.  However, if you have some
-/// clever hack, maybe that's OK.  Be warned: OpenTag systems sleep a lot, and
-/// Systick counting can be very unreliable.
-    if (period <= SysTick_LOAD_RELOAD_Msk) {            //Cancel if period is too large
-        SysTick->VAL    = 0;                            //Load the SysTick Counter Value
-        SysTick->CTRL   = SysTick_CTRL_CLKSOURCE_Msk \
-                        | SysTick_CTRL_TICKINT_Msk   \
-                        | SysTick_CTRL_ENABLE_Msk;       //Enable SysTick IRQ and Timer 
-    }
+/// OpenTag does NOT use the ARM Cortex M SysTick.  Instead, it uses the RTC
+/// Wakeup Timer feature to produce a 1 ti (1/1024sec) interval, which actually
+/// is implemented as GPTIM for STM32L.  So, the setup for establishing this
+/// interval is done in the gptim initialization (above).
 }
 #endif
 
 
 #ifndef EXTF_platform_init_rtc
 void platform_init_rtc(ot_u32 value) {
-/// OpenTag does not use the entire RTC featureset.  If you enable it globally
-/// in your app, you will enable the RTC to run at all times.  However, it will
-/// not do anything for OpenTag until a *TASK-ALARM* is attached to it.  The OT
-/// Task-Alarm feature uses *only* the wakeup timer feature of the STM32L RTC.
-/// The rest of the RTC features are not generally activated, and you can do
-/// whatever you want with them.
-#if 0 //(OT_FEATURE(RTC) || defined(OT_GPTIM_USERTC))
-
-#   if (BOARD_PARAM_LFHz != 32768)
-#       error "Currently, the RTC is limited to 32768Hz clocks"
-#   endif
-
-#   ifdef OT_GPTIM_USERTC
-#       error "GPTIM not implemented at present to use RTC"
-#   endif
-
-    /// Set Prescalers for 1 second RTC increments (assuming 32768 Hz), but 
-    /// do not activate RTC wakeup timer.  This is activated when a task gets 
-    /// bound to an RTC Alarm.
-    platform_clear_rtc_alarms();
-    
-    RCC->CSR   |= (RCC_CSR_RTCSEL_LSE | RCC_CSR_RTCEN);
-    RTC->WPR    = 0xCA;
-    RTC->ISR   |= (RTC_ISR_INIT);
-//  RTC->PRER   = 0x007F00FF;           // This is startup default
-    RTC->CR     = (RTC_CR_WUCKSEL_CKSPRE);
-    platform_set_time(value);
-    RTC->ISR   &= ~RTC_ISR_INIT;
-    RTC->WPR    = 0x53;
-    
-#endif
+/// OpenTag on STM32L uses the RTC hardware for GPTIM purposes, so the 
+/// functional RTC must be handled in software by a kernel-task.
+    platform_set_rtc(value);
 }
+#endif
 
 
 #ifndef EXTF_platform_init_memcpy
@@ -1309,64 +1098,6 @@ void platform_init_memcpy() {
 
 
 
-
-
-/** OpenTag Resource Access Routines <BR>
-  * ========================================================================<BR>
-  */
-ot_u16 platform_get_ktim() {
-    return (OT_GPTIM->CNT - platform_ext.last_evt);
-}
-
-ot_u16 platform_next_ktim() {
-    return (OT_GPTIM->CCR1 - OT_GPTIM->CNT);
-}
-
-void platform_enable_ktim() {
-    EXTI->IMR |= (1<<OT_KTIM_IRQ_SRCLINE);
-}
-
-void platform_disable_ktim() {
-    EXTI->IMR &= ~(1<<OT_KTIM_IRQ_SRCLINE);
-}
-
-void platform_pend_ktim() {
-    EXTI->SWIER |= (1<<OT_KTIM_IRQ_SRCLINE);
-}
-
-void platform_flush_ktim() {
-    platform_ext.last_evt   = OT_GPTIM->CNT;
-    //EXTI->IMR              &= ~(1<<OT_KTIM_IRQ_SRCLINE);
-}
-
-void platform_set_ktim(ot_u16 value) {
-/// The Kernel scheduler does not use the timer on null-delay (value==0), so
-/// there is no value==0 protection.  Kernel Timer does, however, expect to 
-/// measure the active counter, so platform_ext.lastktim needs to be saved.
-    platform_ext.last_evt   = OT_GPTIM->CNT;
-    OT_GPTIM->CCR1          = platform_ext.last_evt + value;
-    ///@todo update event
-}
-
-void platform_set_gptim2(ot_u16 value) {
-/// gptim2 is often used for RF MAC timing.  It includes value==0 protection.
-    if (value == 0) EXTI->SWIER    |= BOARD_GPTIM2_PIN;
-    else            OT_GPTIM->CCR2  = OT_GPTIM->CNT + value;
-}
-
-void platform_enable_gptim2() {
-    OT_GPTIM->CCER |= TIM_CCER_CC2E;
-    EXTI->IMR      |= BOARD_GPTIM2_PIN;
-}
-
-void platform_disable_gptim2() {
-    OT_GPTIM->CCER &= ~TIM_CCER_CC2E;
-    EXTI->IMR      &= ~BOARD_GPTIM2_PIN;
-}
-
-ot_u16 platform_get_gptim() {
-    return OT_GPTIM->CNT;
-}
 
 
 
@@ -1418,12 +1149,11 @@ void platform_resume_watchdog() {
 
 #ifndef EXTF_platform_enable_rtc
 void platform_enable_rtc() {
-/// In apps with RTC enabled, it is always running.  Here, we just activate the 
-/// wakeup timer feature of the STM32L RTC, which is the only part OT uses.
+/// OpenTag's RTC feature on STM32L is entirely managed in software by a
+/// kernel task of specific design.  It is always running, so killing it
+/// actually just resets the task.
 #if 0 //(OT_FEATURE(RTC) == ENABLED)
-    RTC->WPR    = 0xCA;
-    RTC->CR    |= (RTC_CR_WUTIE | RTC_CR_WUTE);
-    RTC->WPR    = 0x53;
+    sys_kill(TASK_RTC);
 #endif
 }
 #endif
@@ -1431,11 +1161,13 @@ void platform_enable_rtc() {
 
 #ifndef EXTF_platform_disable_rtc
 void platform_disable_rtc() {
-/// Disable the RTC interrupt and wakeup timer, but keep the HW going
+/// OpenTag's RTC feature on STM32L is entirely managed in software by a 
+/// kernel task of specific design.  The task is always running, so it is
+/// "disabled" by setting the update interval to a slow amount (256 sec).
+/// This is done by killing the task!
 #if 0 //(OT_FEATURE(RTC) == ENABLED)
-    RTC->WPR    = 0xCA;
-    RTC->CR    &= ~(RTC_CR_WUTIE | RTC_CR_WUTE);
-    RTC->WPR    = 0x53;
+    TASK_RTC->cursor = 255;
+    sys_kill(TASK_RTC);
 #endif
 }
 #endif
@@ -1443,13 +1175,10 @@ void platform_disable_rtc() {
 
 #ifndef EXTF_platform_set_time
 void platform_set_time(ot_u32 utc_time) {
-/// On STM32L, always set the UTC time, but only set the calendar if required.
-/// Converting from UTC to the Calendar is non-trivial.
-    platform_ext.utc = utc_time;
-    
-#   if (BOARD_FEATURE_RTC_CALENDAR == ENABLED)
-    ///@todo this... currently, calendar features unsupported
-#   endif
+/// OpenTag's RTC feature on STM32L is entirely managed in software.
+#if (OT_FEATURE(RTC) == ENABLED)
+    // set to backup register
+#endif
 }
 #endif
 
@@ -1458,7 +1187,7 @@ void platform_set_time(ot_u32 utc_time) {
 ot_u32 platform_get_time() {
 /// UTC time is always maintained
 #if (OT_FEATURE(RTC) == ENABLED)
-    return platform_ext.utc;
+    // pull from backup register
 #endif
 }
 #endif
@@ -1466,9 +1195,9 @@ ot_u32 platform_get_time() {
 
 #ifndef EXTF_platform_set_rtc_alarm
 void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
-/// This function implementation is largely platform-independent.
+///@todo STM32L OpenTag alarming must be done as a task.
 #if 0 //(OT_FEATURE(RTC) == ENABLED)
-#   ifdef __DEBUG__
+#   if defined(__DEBUG__) || defined(__PROTO__)
     if (alarm_id < RTC_ALARMS)
 #   endif
     {
@@ -1476,27 +1205,22 @@ void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
         ot_u16 best_limit;
         vlFILE* fp; 
                                      
-        fp                                      = ISF_open_su( ISF_ID(real_time_scheduler) );
-        platform_ext.alarm[alarm_id].disabled   = 0;
-        platform_ext.alarm[alarm_id].taskid     = task_id;
-        platform_ext.alarm[alarm_id].mask       = PLATFORM_ENDIAN16(ISF_read(fp, offset));
-        platform_ext.alarm[alarm_id].value      = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
+        fp                          = ISF_open_su( ISF_ID(real_time_scheduler) );
+        rtc.alarm[alarm_id].disabled= 0;
+        rtc.alarm[alarm_id].taskid  = task_id;
+        rtc.alarm[alarm_id].mask    = PLATFORM_ENDIAN16(ISF_read(fp, offset));
+        rtc.alarm[alarm_id].value   = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
         vl_close(fp);
         
         // Determine largest allowable wakeup interval based on alarm criteria,
         // and set it.  (Do checks so not to exceed any other alarm's criteria)
         mask_lsb    = 1;
-        best_limit  = RTC->WUTR + 1;
+        best_limit  = /* RTC->WUTR */ + 1;
         while ( (mask_lsb != 0) \
-            && ((mask_lsb & platform_ext.alarm[alarm_id].mask) == 0) \
+            && ((mask_lsb & rtc.alarm[alarm_id].mask) == 0) \
             && ((mask_lsb & best_limit) == 0) ) {
             mask_lsb <<= 1;
         }
-        
-        RTC->WPR    = 0xCA;
-        RTC->WUTR   = mask_lsb-1;
-        RTC->CR    |= (RTC_CR_WUTIE | RTC_CR_WUTE);
-        RTC->WPR    = 0x53;
     }
 #endif
 }
@@ -1650,7 +1374,7 @@ ot_u8 platform_prand_u8() {
 #ifndef EXTF_platform_prand_u16
 ot_u16 platform_prand_u16() {
     ot_u16 timer_value;
-    timer_value = OT_GPTIM->CNT;
+    timer_value = (ot_u16)RTC->TR;
     
     return platform_crc_block((ot_u8*)&timer_value, 1);
 }
@@ -1774,10 +1498,8 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
     MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;
     MEMCPY_DMACHAN->CMAR    = (ot_u32)&value;
     MEMCPY_DMACHAN->CNDTR   = length;
-    MEMCPY_DMACHAN->CCR     = DMA_CCR1_DIR       | \
-                              DMA_CCR1_PINC    | \
-                              DMA_CCR1_PL_LOW | \
-                              DMA_CCR1_MEM2MEM              | \
+    MEMCPY_DMACHAN->CCR     = DMA_CCR1_DIR      | DMA_CCR1_PINC     | \
+                              DMA_CCR1_PL_LOW   | DMA_CCR1_MEM2MEM  | \
                               DMA_CCR1_EN;
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 
@@ -1790,17 +1512,16 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
 
 
 void sub_timed_wfe(ot_u16 count, ot_u16 prescaler) {
-/// Low power blocking function: uses Wait For Event (WFE) on a TIM10 update
-/// event.  TIM10 in this case is clocked by LSE.
+/// Low power blocking function: uses Wait For Event (WFE) and a TIM update event.
     
-    // Enable TIM10
+    // Enable TIMx
     // load prescaler
     // load 0-count
     // trigger it
-    while ((TIM10->SR & TIM_SR_UIF) == 0) {
-        __WFE();
-    }
-    // disable TIM10
+    //while ((TIMx->SR & TIM_SR_UIF) == 0) {
+    //    __WFE();
+    //}
+    // disable TIMx
 }
 
 
@@ -1848,7 +1569,4 @@ void platform_swdelay_us(ot_u16 n) {
 
 
 
-
-
-#endif
 

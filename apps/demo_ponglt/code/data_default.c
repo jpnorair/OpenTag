@@ -1,4 +1,4 @@
-/* Copyright 2012 JP Norair
+/* Copyright 2012-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /apps/demo_ponglt/code/default_data.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R101
+  * @date       14 Feb 2013
   * @brief      PongLT Demo Default Data
   * 
   ******************************************************************************
@@ -388,7 +388,7 @@ const ot_u8 isf_stock_files[] = {
     0x11,                                               /* Beacon Subnet */
     SPLIT_SHORT(OT_ACTIVE_SETTINGS),                    /* Active Setting */
     0x00,                                               /* Default Device Flags */
-    2,                                                  /* Beacon Attempts */   //FIX
+    1,                                                  /* Beacon Attempts */
     SPLIT_SHORT(2),                                     /* Hold Scan Sequence Cycles */
 
     /* device features: id=0x01, len=48, alloc=48 */
@@ -463,8 +463,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* hold scan periods: id=0x04, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x07, 0x40, 0x02, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */ //FIX
-    0xFF, 0xFF, 0xFF, 0xFF,
+    0x07, 0x40, 0x04, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */ //FIX
+    0x17, 0x40, 0x08, 0x00,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
@@ -485,8 +485,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240
-    0x07, 0x06, 0x20, 0x00, 0x00, 0x08, 0x00, 0x20,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
-    0x2A, 0x06, 0x20, 0x00, 0x00, 0x08, 0x04, 0x00, //0xb00
+    0x07, 0x06, 0x20, 0x00, 0x00, 0x08, 0x01, 0x00,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
+    0x2A, 0x06, 0x20, 0x00, 0x00, 0x08, 0x0B, 0x00, 
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* App Protocol List: id=0x07, len=4, alloc=16 */

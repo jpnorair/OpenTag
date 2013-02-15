@@ -369,12 +369,35 @@ void platform_init_prand(ot_u16 seed);
   * ========================================================================<BR>
   */
 
-/** @brief Gets the current GPTIM value, does not alter GPTIM behavior
+/** @brief Starts the process chronometer
   * @param None
-  * @retval ot_u16      current timer value
+  * @retval None
   * @ingroup Platform
   */
-ot_u16 platform_get_ktim();
+void platform_start_chrono();
+
+/** @brief Stops the process chronometer, and returns the measured time
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  */
+ot_u16 platform_stop_chrono();
+
+
+/** @brief Returns the time elapsed since the last flush or set of ktim
+  * @param None
+  * @retval ot_u32      Elapsed time since last refresh
+  * @ingroup Platform
+  */
+ot_u32 platform_get_ktim();
+
+
+/** @brief Reloads ktim to update calls to platform_get_ktim()
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  */
+void platform_flush_ktim();
 
 
 /** @brief Returns the amount of timer clocks until the next interrupt
@@ -414,16 +437,11 @@ void platform_set_gptim3(ot_u16 value);
 void platform_set_gptim4(ot_u16 value);
 void platform_set_gptim5(ot_u16 value);
 
+ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead);
 
 
 
 
-/** @brief Zeros GPTIM, turns off interrupt, and puts into free-running
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  */
-void platform_flush_ktim();
 
 
 void platform_run_watchdog();

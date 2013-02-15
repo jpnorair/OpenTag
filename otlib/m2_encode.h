@@ -1,4 +1,4 @@
-/* Copyright 2009 JP Norair
+/* Copyright 2009-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       OTlib/m2_encode.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       12 June 2009
+  * @version    R101
+  * @date       12 Feb 2013
   * @brief      Encoding and Decoding of bytewise data for the Radio
   * @defgroup   Encode (Encode Module)
   * @ingroup    Encode
@@ -29,6 +29,8 @@
   *
   * Mode 2 offers two encoding options: FEC and PN9.  The queue options field
   * is set up depending on how you want to encode or decode.
+  * options.ubyte[UPPER]  = 0: No CRC
+  * options.ubyte[UPPER] != 0: CRC
   * options.ubyte[LOWER]  = 0: PN9
   * options.ubyte[LOWER] != 0: FEC
   ******************************************************************************
@@ -80,8 +82,9 @@ typedef void (*fn_codec)(void);
   * @retval None
   * @ingroup Encode
   */
+#ifndef EXTF_em2_encode_data
 extern fn_codec em2_encode_data;
-
+#endif
 
 /** @par Decode function pointer
   * The function @c decode_newpacket sets this function pointer to the
@@ -93,8 +96,9 @@ extern fn_codec em2_encode_data;
   * @retval None
   * @ingroup Encode
   */
+#ifndef EXTF_em2_decode_data
 extern fn_codec em2_decode_data;
-
+#endif
 
 
 

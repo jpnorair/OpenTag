@@ -353,6 +353,8 @@ void radio_idle();
 void radio_set_mactimer(ot_u16 clocks);
 
 
+ot_u16 radio_get_countdown();
+
 
 /** @brief Flushes the TX buffer
   * @param None

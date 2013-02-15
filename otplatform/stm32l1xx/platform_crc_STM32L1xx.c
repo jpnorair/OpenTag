@@ -82,18 +82,20 @@ static const ot_u16 crc16_table[256] = {
 #ifndef EXTF_platform_crc_init
 ot_u16 platform_crc_init() {
     platform_ext.crc16 = 0xFFFF;
+    return 0xFFFF;
 }
 #endif
 
 
 #ifndef EXTF_platform_crc_block
 ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
-    ot_u16  crc_val;
+    ot_u16  crc_val = 0xffff;
     ot_u8   index;
     while (--block_size >= 0) {
         index   = ((ot_u8*)&crc_val)[UPPER] ^ *block_addr++;                    //((crc_val>>8) & 0xff) ^ *block_addr++;
         crc_val = (crc_val<<8) ^ crc16_table[index];
     }
+    return crc_val;
 }
 #endif
 
