@@ -193,7 +193,7 @@ void sys_powerdown() {
     code   -= (sys.task_RFA.event != 0);
 #   endif
 #   if (OT_FEATURE(MPIPE))
-    code    = (mpipe_status() <= 0) ? 1 : code;
+    code    = (mpipe_status() >= 0) ? 1 : code;
 #   endif
 
 #   if defined(EXTF_sys_sig_powerdown)
@@ -465,17 +465,14 @@ ot_uint sys_event_manager() {
     /// 3. Set the active task callback to the selected
     sys.active = select;
     
-    /// 4. The event manager is done here, so subtract the runtime of the
-    ///    event management loop from the nextevent time that was determined
-    ///    in the loop.  
-    ///    <LI> If it is positive, there is no pending task.  Set the timer for 
-    ///           next pending task event, and return this value as well. <LI>
-    ///    <LI> If not-positive, there is a pending task.  Set timer for task
-    ///           pending *after* the current task, and return 0. </LI>
+    /// 4. The event manager is done here.  platform_schedule_ktim() will
+    ///    make sure that the task hasn't been pended during the scheduler
+    ///    runtime.
 #   if (OT_PARAM_SYSTHREADS == 0)
     return platform_schedule_ktim( nextevent, platform_get_ktim() );
     
 #   else
+    ///@todo this isn't ready yet... experimental code
     {   ot_bool test;
         ot_u16 interval;
         ot_u16 retval;

@@ -345,14 +345,12 @@ void RCC_IRQHandler(void) {
 
 #define __EXTI_MACRO_LOW(NUM);  \
     EXTI->PR = (1<<NUM);  \
-    BOARD_KTIM_EXTI##NUM##_ISR(); \
     BOARD_RADIO_EXTI##NUM##_ISR(); \
     APPLICATION_EXTI##NUM##_ISR();
 
 #define __EXTI_MACRO(NUM);   \
     if (EXTI->PR & (1<<NUM)) { \
         EXTI->PR = (1<<NUM);  \
-        BOARD_KTIM_EXTI##NUM##_ISR(); \
         BOARD_RADIO_EXTI##NUM##_ISR(); \
         APPLICATION_EXTI##NUM##_ISR(); \
     } \

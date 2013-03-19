@@ -1,0 +1,676 @@
+
+<ApplicationBuild Header="ponglt" Extern=".\ponglt.rapp" Path=".\ponglt.rapp" OutputFile=".\build\ponglt.elf" sate="96" Config="Standard" >
+	<Group Header="app" Marker="-1" OutputFile="" sate="0" >
+		<NodeH Path="..\code\app_config.h" Header="app_config.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\code\build_config.h" Header="build_config.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\code\extf_config.h" Header="extf_config.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\code\isr_config_STM32L.h" Header="isr_config_STM32L.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\code\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="0" />
+		<NodeH Path="..\code\platform_config.h" Header="platform_config.h" Marker="-1" OutputFile="" sate="0" />
+									
+	</Group>
+	<Group Header="applets" Marker="-1" OutputFile="" sate="0" >
+		<NodeC Path="..\..\..\otlibext\applets_std\dll_sig_rfinit.c" Header="dll_sig_rfinit.c" Marker="-1" OutputFile=".\build\dll_sig_rfinit.o" sate="0" />
+		<NodeC Path="..\..\..\otlibext\applets_std\dll_sig_rfterminate_2.c" Header="dll_sig_rfterminate_2.c" Marker="-1" OutputFile=".\build\dll_sig_rfterminate_2.o" sate="0" />
+		<NodeC Path="..\..\..\otlibext\applets_std\mpipe_sig_done.c" Header="mpipe_sig_done.c" Marker="-1" OutputFile=".\build\mpipe_sig_done.o" sate="0" />
+		<NodeC Path="..\..\..\otlibext\applets_std\network_sig_route.c" Header="network_sig_route.c" Marker="-1" OutputFile=".\build\network_sig_route.o" sate="0" />
+		<NodeC Path="..\..\..\otlibext\applets_std\sys_sig_panic.c" Header="sys_sig_panic.c" Marker="-1" OutputFile=".\build\sys_sig_panic.o" sate="0" />
+		<NodeC Path="..\..\..\otlibext\applets_std\sys_sig_powerdown_[stm32lp].c" Header="sys_sig_powerdown_[stm32lp].c" Marker="-1" OutputFile=".\build\sys_sig_powerdown_[stm32lp].o" sate="0" />
+									
+	</Group>
+	<Group Header="board" Marker="0" OutputFile="" sate="96" >
+		<Group Header="stm32f10x" sate="0" Marker="0" OutputFile="" >
+			<NodeH Path="..\..\..\board\stm32f10x\board_MLX73Proto_E.h" Header="board_MLX73Proto_E.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\board\stm32f10x\board_opennode.h" Header="board_opennode.h" Marker="-1" OutputFile="" sate="0" />
+			<Options>
+				<Config Header="Standard" >
+					<Set Header="Group" >
+						<Section Header="Build" >
+							<Property Header="Exclude" Value="Yes" Removable="1" />
+																																																
+						</Section>
+																																								
+					</Set>
+																											
+				</Config>
+																					
+			</Options>
+															
+		</Group>
+		<Group Header="stm32l1xx" sate="0" Marker="-1" OutputFile="" >
+			<NodeH Path="..\..\..\board\stm32l1xx\board_IKR001.h" Header="board_IKR001.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\board\stm32l1xx\board_SX1231Proto_H152.h" Header="board_SX1231Proto_H152.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\board\stm32l1xx\board_HayTag_R1.h" Header="board_HayTag_R1.h" Marker="-1" OutputFile="" sate="0" />
+															
+		</Group>
+		<Options>
+			<Config Header="Standard" >
+				<Set Header="Group" >
+					<Section Header="Build" >
+						<Property Header="Exclude" Value="No" Removable="1" />
+																																									
+					</Section>
+																																	
+				</Set>
+																					
+			</Config>
+															
+		</Options>
+									
+	</Group>
+	<Group Header="otkernel" Marker="-1" OutputFile="" sate="96" >
+		<Group Header="gulp" sate="0" Marker="-1" OutputFile="" >
+			<NodeC Path="..\..\..\otkernel\gulp\system_gulp.c" Header="system_gulp.c" Marker="-1" OutputFile=".\build\system_gulp.o" sate="0" />
+			<NodeH Path="..\..\..\otkernel\gulp\system_gulp.h" Header="system_gulp.h" Marker="-1" OutputFile="" sate="0" />
+															
+		</Group>
+		<Group Header="hicculp" sate="96" Marker="-1" OutputFile="" >
+			<NodeC Path="..\..\..\otkernel\hicculp\system_hicculp.c" Header="system_hicculp.c" Marker="-1" OutputFile=".\build\system_hicculp.o" sate="2" />
+			<NodeH Path="..\..\..\otkernel\hicculp\system_hicculp.h" Header="system_hicculp.h" Marker="-1" OutputFile="" sate="0" />
+															
+		</Group>
+									
+	</Group>
+	<Group Header="otlib" Marker="-1" OutputFile="" sate="0" >
+		<NodeH Path="..\..\..\otlib\veelite_core.h" Header="veelite_core.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\alp.h" Header="alp.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_api_client.c" Header="alp_api_client.c" Marker="-1" OutputFile=".\build\alp_api_client.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_api_server.c" Header="alp_api_server.c" Marker="-1" OutputFile=".\build\alp_api_server.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_dashforth.c" Header="alp_dashforth.c" Marker="-1" OutputFile=".\build\alp_dashforth.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_filedata.c" Header="alp_filedata.c" Marker="-1" OutputFile=".\build\alp_filedata.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_logger.c" Header="alp_logger.c" Marker="-1" OutputFile=".\build\alp_logger.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_main.c" Header="alp_main.c" Marker="-1" OutputFile=".\build\alp_main.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_security.c" Header="alp_security.c" Marker="-1" OutputFile=".\build\alp_security.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_sensor.c" Header="alp_sensor.c" Marker="-1" OutputFile=".\build\alp_sensor.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\auth.c" Header="auth.c" Marker="-1" OutputFile=".\build\auth.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\auth.h" Header="auth.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\buffers.c" Header="buffers.c" Marker="-1" OutputFile=".\build\buffers.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\buffers.h" Header="buffers.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\crc16.c" Header="crc16.c" Marker="-1" OutputFile=".\build\crc16.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\crc16.h" Header="crc16.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\crc16_table.h" Header="crc16_table.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\crypto_aes128.c" Header="crypto_aes128.c" Marker="-1" OutputFile=".\build\crypto_aes128.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\crypto_aes128.h" Header="crypto_aes128.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\external.c" Header="external.c" Marker="-1" OutputFile=".\build\external.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\external.h" Header="external.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\m2_dll.h" Header="m2_dll.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\m2_dll_task.c" Header="m2_dll_task.c" Marker="-1" OutputFile=".\build\m2_dll_task.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\m2_encode.c" Header="m2_encode.c" Marker="-1" OutputFile=".\build\m2_encode.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\m2_encode.h" Header="m2_encode.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\m2_encode_table.h" Header="m2_encode_table.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\m2_network.c" Header="m2_network.c" Marker="-1" OutputFile=".\build\m2_network.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\m2_network.h" Header="m2_network.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\m2_transport.c" Header="m2_transport.c" Marker="-1" OutputFile=".\build\m2_transport.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\m2_transport.h" Header="m2_transport.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\mpipe.h" Header="mpipe.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\mpipe_task.c" Header="mpipe_task.c" Marker="-1" OutputFile=".\build\mpipe_task.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\ndef.h" Header="ndef.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\OT_config.h" Header="OT_config.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\OT_platform.h" Header="OT_platform.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\OT_support.h" Header="OT_support.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\OT_types.h" Header="OT_types.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\OT_utils.c" Header="OT_utils.c" Marker="-1" OutputFile=".\build\OT_utils.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\OT_utils.h" Header="OT_utils.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\OT_version.h" Header="OT_version.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\OTAPI.h" Header="OTAPI.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\OTAPI_c.h" Header="OTAPI_c.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\OTAPI_logger.c" Header="OTAPI_logger.c" Marker="-1" OutputFile=".\build\OTAPI_logger.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\OTAPI_tasker.c" Header="OTAPI_tasker.c" Marker="-1" OutputFile=".\build\OTAPI_tasker.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\OTAPI_tmpl.h" Header="OTAPI_tmpl.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\queue.c" Header="queue.c" Marker="-1" OutputFile=".\build\queue.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\queue.h" Header="queue.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\radio.h" Header="radio.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\radio_task.c" Header="radio_task.c" Marker="-1" OutputFile=".\build\radio_task.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\session.c" Header="session.c" Marker="-1" OutputFile=".\build\session.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\session.h" Header="session.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\otlib\system.h" Header="system.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\otlib\veelite.c" Header="veelite.c" Marker="-1" OutputFile=".\build\veelite.o" sate="0" />
+		<NodeH Path="..\..\..\otlib\veelite.h" Header="veelite.h" Marker="-1" OutputFile="" sate="0" />
+									
+	</Group>
+	<Group Header="otplatform" Marker="-1" OutputFile="" sate="96" >
+		<Group Header="stm32_mculib" Marker="-1" OutputFile="" sate="0" >
+			<Group Header="CMSIS" Marker="-1" OutputFile="" sate="0" >
+				<Group Header="CM3" Marker="-1" OutputFile="" sate="96" >
+					<Group Header="CoreSupport" sate="0" Marker="-1" OutputFile="" >
+						<NodeC Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport\core_cm3.c" Header="core_cm3.c" Marker="-1" OutputFile=".\build\core_cm3.o" sate="0" />
+						<NodeH Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport\core_cm3.h" Header="core_cm3.h" Marker="-1" OutputFile="" sate="0" />
+																																	
+					</Group>
+					<Group Header="DeviceSupport" Marker="-1" OutputFile="" sate="96" >
+						<Group Header="ST" Marker="-1" OutputFile="" sate="96" >
+							<Group Header="STM32F10x" sate="0" Marker="0" OutputFile="" >
+								<NodeC Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32F10x\system_stm32f10x.c" Header="system_stm32f10x.c" Marker="-1" OutputFile=".\build\system_stm32f10x.o" sate="0" />
+								<NodeH Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32F10x\stm32f10x.h" Header="stm32f10x.h" Marker="-1" OutputFile="" sate="0" />
+								<NodeH Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32F10x\system_stm32f10x.h" Header="system_stm32f10x.h" Marker="-1" OutputFile="" sate="0" />
+								<Options>
+									<Config Header="Standard" >
+										<Set Header="Group" >
+											<Section Header="Build" >
+												<Property Header="Exclude" Value="Yes" Removable="1" />
+																																																																																			
+											</Section>
+																																																																											
+										</Set>
+																																																									
+									</Config>
+																																																			
+								</Options>
+																																													
+							</Group>
+							<Group Header="STM32L1xx" sate="0" Marker="-1" OutputFile="" >
+								<NodeC Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32L1xx\system_stm32l1xx.c" Header="system_stm32l1xx.c" Marker="0" OutputFile=".\build\system_stm32l1xx.o" sate="0" >
+									<Options>
+										<Config Header="IKR001_Debug" >
+											<Set Header="NodeC" >
+												<Section Header="Build" >
+													<Property Header="Exclude" Value="Yes" Removable="1" />
+																																																																																										
+												</Section>
+																																																																																		
+											</Set>
+																																																															
+										</Config>
+										<Config Header="Standard" >
+											<Set Header="NodeC" >
+												<Section Header="Build" >
+													<Property Header="Exclude" Value="Yes" Removable="1" />
+																																								
+												</Section>
+																																				
+											</Set>
+																					
+										</Config>
+																			
+									</Options>
+																																																			
+								</NodeC>
+								<NodeH Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32L1xx\stm32l1xx.h" Header="stm32l1xx.h" Marker="-1" OutputFile="" sate="0" />
+								<NodeH Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32L1xx\system_stm32l1xx.h" Header="system_stm32l1xx.h" Marker="-1" OutputFile="" sate="0" />
+																																													
+							</Group>
+																																							
+						</Group>
+																																	
+					</Group>
+																											
+				</Group>
+																					
+			</Group>
+			<Group Header="STM32_USB-FS-Device_Driver" Marker="0" OutputFile="" sate="0" >
+				<Group Header="inc" sate="0" Marker="-1" OutputFile="" >
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\otgd_fs_cal.h" Header="otgd_fs_cal.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\otgd_fs_dev.h" Header="otgd_fs_dev.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\otgd_fs_int.h" Header="otgd_fs_int.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\otgd_fs_pcd.h" Header="otgd_fs_pcd.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\otgd_fs_regs.h" Header="otgd_fs_regs.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_core.h" Header="usb_core.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_def.h" Header="usb_def.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_init.h" Header="usb_init.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_int.h" Header="usb_int.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_lib.h" Header="usb_lib.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_mem.h" Header="usb_mem.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_regs.h" Header="usb_regs.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_sil.h" Header="usb_sil.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_type.h" Header="usb_type.h" Marker="-1" OutputFile="" sate="0" />
+																											
+				</Group>
+				<Group Header="src" sate="0" Marker="-1" OutputFile="" >
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\otgd_fs_cal.c" Header="otgd_fs_cal.c" Marker="-1" OutputFile=".\build\otgd_fs_cal.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\otgd_fs_dev.c" Header="otgd_fs_dev.c" Marker="-1" OutputFile=".\build\otgd_fs_dev.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\otgd_fs_int.c" Header="otgd_fs_int.c" Marker="-1" OutputFile=".\build\otgd_fs_int.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\otgd_fs_pcd.c" Header="otgd_fs_pcd.c" Marker="-1" OutputFile=".\build\otgd_fs_pcd.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_core.c" Header="usb_core.c" Marker="-1" OutputFile=".\build\usb_core.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_init.c" Header="usb_init.c" Marker="-1" OutputFile=".\build\usb_init.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_int.c" Header="usb_int.c" Marker="-1" OutputFile=".\build\usb_int.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_mem.c" Header="usb_mem.c" Marker="-1" OutputFile=".\build\usb_mem.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_regs.c" Header="usb_regs.c" Marker="-1" OutputFile=".\build\usb_regs.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_sil.c" Header="usb_sil.c" Marker="-1" OutputFile=".\build\usb_sil.o" sate="0" />
+					<Options>
+						<Config Header="IKR001_Debug" >
+							<Set Header="Group" >
+								<Section Header="Build" >
+									<Property Header="Exclude" Value="No" Removable="1" />
+																																																														
+								</Section>
+																																																						
+							</Set>
+																																							
+						</Config>
+																																	
+					</Options>
+																											
+				</Group>
+				<Options>
+					<Config Header="IKR001_Debug" >
+						<Set Header="Group" >
+							<Section Header="Build" >
+								<Property Header="Exclude" Value="Yes" Removable="1" />
+																																																							
+							</Section>
+																																															
+						</Set>
+																																	
+					</Config>
+					<Config Header="Standard" >
+						<Set Header="Group" >
+							<Section Header="Build" >
+								<Property Header="Exclude" Value="Yes" Removable="1" />
+																									
+							</Section>
+																					
+						</Set>
+											
+					</Config>
+									
+				</Options>
+																					
+			</Group>
+			<Group Header="STM32F10x_StdPeriph_Driver" Marker="0" OutputFile="" sate="0" >
+				<Group Header="inc" sate="0" Marker="-1" OutputFile="" >
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\misc.h" Header="misc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_adc.h" Header="stm32f10x_adc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_bkp.h" Header="stm32f10x_bkp.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_can.h" Header="stm32f10x_can.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_cec.h" Header="stm32f10x_cec.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_crc.h" Header="stm32f10x_crc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_dac.h" Header="stm32f10x_dac.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_dbgmcu.h" Header="stm32f10x_dbgmcu.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_dma.h" Header="stm32f10x_dma.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_exti.h" Header="stm32f10x_exti.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_flash.h" Header="stm32f10x_flash.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_fsmc.h" Header="stm32f10x_fsmc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_gpio.h" Header="stm32f10x_gpio.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_i2c.h" Header="stm32f10x_i2c.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_iwdg.h" Header="stm32f10x_iwdg.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_pwr.h" Header="stm32f10x_pwr.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_rcc.h" Header="stm32f10x_rcc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_rtc.h" Header="stm32f10x_rtc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_sdio.h" Header="stm32f10x_sdio.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_spi.h" Header="stm32f10x_spi.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_tim.h" Header="stm32f10x_tim.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_usart.h" Header="stm32f10x_usart.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_wwdg.h" Header="stm32f10x_wwdg.h" Marker="-1" OutputFile="" sate="0" />
+																											
+				</Group>
+				<Group Header="src" sate="0" Marker="-1" OutputFile="" >
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\misc.c" Header="misc.c" Marker="-1" OutputFile=".\build\misc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_adc.c" Header="stm32f10x_adc.c" Marker="-1" OutputFile=".\build\stm32f10x_adc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_bkp.c" Header="stm32f10x_bkp.c" Marker="-1" OutputFile=".\build\stm32f10x_bkp.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_can.c" Header="stm32f10x_can.c" Marker="-1" OutputFile=".\build\stm32f10x_can.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_cec.c" Header="stm32f10x_cec.c" Marker="-1" OutputFile=".\build\stm32f10x_cec.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_crc.c" Header="stm32f10x_crc.c" Marker="-1" OutputFile=".\build\stm32f10x_crc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_dac.c" Header="stm32f10x_dac.c" Marker="-1" OutputFile=".\build\stm32f10x_dac.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_dbgmcu.c" Header="stm32f10x_dbgmcu.c" Marker="-1" OutputFile=".\build\stm32f10x_dbgmcu.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_dma.c" Header="stm32f10x_dma.c" Marker="-1" OutputFile=".\build\stm32f10x_dma.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_exti.c" Header="stm32f10x_exti.c" Marker="-1" OutputFile=".\build\stm32f10x_exti.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_flash.c" Header="stm32f10x_flash.c" Marker="-1" OutputFile=".\build\stm32f10x_flash.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_fsmc.c" Header="stm32f10x_fsmc.c" Marker="-1" OutputFile=".\build\stm32f10x_fsmc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_gpio.c" Header="stm32f10x_gpio.c" Marker="-1" OutputFile=".\build\stm32f10x_gpio.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_i2c.c" Header="stm32f10x_i2c.c" Marker="-1" OutputFile=".\build\stm32f10x_i2c.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_iwdg.c" Header="stm32f10x_iwdg.c" Marker="-1" OutputFile=".\build\stm32f10x_iwdg.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_pwr.c" Header="stm32f10x_pwr.c" Marker="-1" OutputFile=".\build\stm32f10x_pwr.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_rcc.c" Header="stm32f10x_rcc.c" Marker="-1" OutputFile=".\build\stm32f10x_rcc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_rtc.c" Header="stm32f10x_rtc.c" Marker="-1" OutputFile=".\build\stm32f10x_rtc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_sdio.c" Header="stm32f10x_sdio.c" Marker="-1" OutputFile=".\build\stm32f10x_sdio.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_spi.c" Header="stm32f10x_spi.c" Marker="-1" OutputFile=".\build\stm32f10x_spi.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_tim.c" Header="stm32f10x_tim.c" Marker="-1" OutputFile=".\build\stm32f10x_tim.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_usart.c" Header="stm32f10x_usart.c" Marker="-1" OutputFile=".\build\stm32f10x_usart.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_wwdg.c" Header="stm32f10x_wwdg.c" Marker="-1" OutputFile=".\build\stm32f10x_wwdg.o" sate="0" />
+																											
+				</Group>
+				<Options>
+					<Config Header="Standard" >
+						<Set Header="Group" >
+							<Section Header="Build" >
+								<Property Header="Exclude" Value="Yes" Removable="1" />
+								<Property Header="LinkExclude" Value="Yes" Removable="1" />
+																																																							
+							</Section>
+																																															
+						</Set>
+																																	
+					</Config>
+																											
+				</Options>
+																					
+			</Group>
+			<Group Header="STM32L1xx_StdPeriph_Driver" Marker="0" OutputFile="" sate="96" >
+				<Group Header="inc" sate="0" Marker="-1" OutputFile="" >
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\misc.h" Header="misc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_adc.h" Header="stm32l1xx_adc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_aes.h" Header="stm32l1xx_aes.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_comp.h" Header="stm32l1xx_comp.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_crc.h" Header="stm32l1xx_crc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_dac.h" Header="stm32l1xx_dac.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_dbgmcu.h" Header="stm32l1xx_dbgmcu.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_dma.h" Header="stm32l1xx_dma.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_exti.h" Header="stm32l1xx_exti.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_flash.h" Header="stm32l1xx_flash.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_fsmc.h" Header="stm32l1xx_fsmc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_gpio.h" Header="stm32l1xx_gpio.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_i2c.h" Header="stm32l1xx_i2c.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_iwdg.h" Header="stm32l1xx_iwdg.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_lcd.h" Header="stm32l1xx_lcd.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_opamp.h" Header="stm32l1xx_opamp.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_pwr.h" Header="stm32l1xx_pwr.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_rcc.h" Header="stm32l1xx_rcc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_rtc.h" Header="stm32l1xx_rtc.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_sdio.h" Header="stm32l1xx_sdio.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_spi.h" Header="stm32l1xx_spi.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_syscfg.h" Header="stm32l1xx_syscfg.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_tim.h" Header="stm32l1xx_tim.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_usart.h" Header="stm32l1xx_usart.h" Marker="-1" OutputFile="" sate="0" />
+					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_wwdg.h" Header="stm32l1xx_wwdg.h" Marker="-1" OutputFile="" sate="0" />
+																											
+				</Group>
+				<Group Header="src" sate="0" Marker="0" OutputFile="" >
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\misc.c" Header="misc.c" Marker="-1" OutputFile=".\build\misc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_adc.c" Header="stm32l1xx_adc.c" Marker="-1" OutputFile=".\build\stm32l1xx_adc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_aes.c" Header="stm32l1xx_aes.c" Marker="-1" OutputFile=".\build\stm32l1xx_aes.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_aes_util.c" Header="stm32l1xx_aes_util.c" Marker="-1" OutputFile=".\build\stm32l1xx_aes_util.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_comp.c" Header="stm32l1xx_comp.c" Marker="-1" OutputFile=".\build\stm32l1xx_comp.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_crc.c" Header="stm32l1xx_crc.c" Marker="-1" OutputFile=".\build\stm32l1xx_crc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_dac.c" Header="stm32l1xx_dac.c" Marker="-1" OutputFile=".\build\stm32l1xx_dac.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_dbgmcu.c" Header="stm32l1xx_dbgmcu.c" Marker="-1" OutputFile=".\build\stm32l1xx_dbgmcu.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_dma.c" Header="stm32l1xx_dma.c" Marker="-1" OutputFile=".\build\stm32l1xx_dma.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_exti.c" Header="stm32l1xx_exti.c" Marker="-1" OutputFile=".\build\stm32l1xx_exti.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_flash.c" Header="stm32l1xx_flash.c" Marker="-1" OutputFile=".\build\stm32l1xx_flash.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_fsmc.c" Header="stm32l1xx_fsmc.c" Marker="-1" OutputFile=".\build\stm32l1xx_fsmc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_gpio.c" Header="stm32l1xx_gpio.c" Marker="-1" OutputFile=".\build\stm32l1xx_gpio.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_i2c.c" Header="stm32l1xx_i2c.c" Marker="-1" OutputFile=".\build\stm32l1xx_i2c.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_iwdg.c" Header="stm32l1xx_iwdg.c" Marker="-1" OutputFile=".\build\stm32l1xx_iwdg.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_lcd.c" Header="stm32l1xx_lcd.c" Marker="-1" OutputFile=".\build\stm32l1xx_lcd.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_opamp.c" Header="stm32l1xx_opamp.c" Marker="-1" OutputFile=".\build\stm32l1xx_opamp.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_pwr.c" Header="stm32l1xx_pwr.c" Marker="-1" OutputFile=".\build\stm32l1xx_pwr.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_rcc.c" Header="stm32l1xx_rcc.c" Marker="-1" OutputFile=".\build\stm32l1xx_rcc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_rtc.c" Header="stm32l1xx_rtc.c" Marker="-1" OutputFile=".\build\stm32l1xx_rtc.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_sdio.c" Header="stm32l1xx_sdio.c" Marker="-1" OutputFile=".\build\stm32l1xx_sdio.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_spi.c" Header="stm32l1xx_spi.c" Marker="-1" OutputFile=".\build\stm32l1xx_spi.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_syscfg.c" Header="stm32l1xx_syscfg.c" Marker="-1" OutputFile=".\build\stm32l1xx_syscfg.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_tim.c" Header="stm32l1xx_tim.c" Marker="-1" OutputFile=".\build\stm32l1xx_tim.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_usart.c" Header="stm32l1xx_usart.c" Marker="-1" OutputFile=".\build\stm32l1xx_usart.o" sate="0" />
+					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_wwdg.c" Header="stm32l1xx_wwdg.c" Marker="-1" OutputFile=".\build\stm32l1xx_wwdg.o" sate="0" />
+					<Options>
+						<Config Header="Standard" >
+							<Set Header="Group" >
+								<Section Header="Build" >
+									<Property Header="Exclude" Value="Yes" Removable="1" />
+																												
+								</Section>
+																								
+							</Set>
+													
+						</Config>
+											
+					</Options>
+																											
+				</Group>
+				<Options>
+					<Config Header="Standard" >
+						<Set Header="Group" >
+							<Section Header="Build" >
+								<Property Header="Exclude" Value="No" Removable="1" />
+																									
+							</Section>
+																					
+						</Set>
+											
+					</Config>
+									
+				</Options>
+																					
+			</Group>
+															
+		</Group>
+		<Group Header="stm32f10x" sate="0" Marker="0" OutputFile="" >
+			<NodeC Path="..\..\..\otplatform\stm32f10x\mpipe_uart_STM32F10x.c" Header="mpipe_uart_STM32F10x.c" Marker="-1" OutputFile=".\build\mpipe_uart_STM32F10x.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32f10x\mpipe_usbcdc_STM32F10x.c" Header="mpipe_usbcdc_STM32F10x.c" Marker="-1" OutputFile=".\build\mpipe_usbcdc_STM32F10x.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32f10x\platform_STM32F10x.c" Header="platform_STM32F10x.c" Marker="-1" OutputFile=".\build\platform_STM32F10x.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32f10x\system_stm32f10x.c" Header="system_stm32f10x.c" Marker="-1" OutputFile=".\build\system_stm32f10x.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32f10x\veelite_core_X2_STM32F10x.c" Header="veelite_core_X2_STM32F10x.c" Marker="-1" OutputFile=".\build\veelite_core_X2_STM32F10x.o" sate="0" />
+			<NodeH Path="..\..\..\otplatform\stm32f10x\platform_STM32F10x.h" Header="platform_STM32F10x.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otplatform\stm32f10x\stm32f10x_conf.h" Header="stm32f10x_conf.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otplatform\stm32f10x\usb_conf.h" Header="usb_conf.h" Marker="-1" OutputFile="" sate="0" />
+			<Options>
+				<Config Header="Standard" >
+					<Set Header="Group" >
+						<Section Header="Build" >
+							<Property Header="Exclude" Value="Yes" Removable="1" />
+							<Property Header="LinkExclude" Value="Yes" Removable="1" />
+																																																
+						</Section>
+																																								
+					</Set>
+																											
+				</Config>
+																					
+			</Options>
+															
+		</Group>
+		<Group Header="stm32l1xx" sate="0" Marker="-1" OutputFile="" >
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\mpipe_uart_STM32L1xx.c" Header="mpipe_uart_STM32L1xx.c" Marker="-1" OutputFile=".\build\mpipe_uart_STM32L1xx.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_crc_STM32L1xx.c" Header="platform_crc_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_crc_STM32L1xx.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_gptim_STM32L1xx.c" Header="platform_gptim_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_gptim_STM32L1xx.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_STM32L1xx.c" Header="platform_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_STM32L1xx.o" sate="0" >
+				<Options>				</Options>
+																					
+			</NodeC>
+			<NodeH Path="..\..\..\otplatform\stm32l1xx\platform_STM32L1xx.h" Header="platform_STM32L1xx.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeASM Path="..\..\..\otplatform\stm32l1xx\startup_stm32l1xx_md.s" Header="startup_stm32l1xx_md.s" Marker="-1" OutputFile=".\build\startup_stm32l1xx_md.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\stm32l1xx_flash.c" Header="stm32l1xx_flash.c" Marker="-1" OutputFile=".\build\stm32l1xx_flash.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\veelite_core_EE_STM32L1xx.c" Header="veelite_core_EE_STM32L1xx.c" Marker="-1" OutputFile=".\build\veelite_core_EE_STM32L1xx.o" sate="0" />
+															
+		</Group>
+									
+	</Group>
+	<Group Header="otradio" Marker="-1" OutputFile="" sate="96" >
+		<Group Header="cc1101" sate="0" Marker="0" OutputFile="" >
+			<NodeC Path="..\..\..\otradio\cc1101\CC1101_MSP430F5.c" Header="CC1101_MSP430F5.c" Marker="-1" OutputFile=".\build\CC1101_MSP430F5.o" sate="0" />
+			<NodeC Path="..\..\..\otradio\cc1101\CC1101_STM32F10x.c" Header="CC1101_STM32F10x.c" Marker="-1" OutputFile=".\build\CC1101_STM32F10x.o" sate="0" />
+			<NodeC Path="..\..\..\otradio\cc1101\radio_CC1101.c" Header="radio_CC1101.c" Marker="-1" OutputFile=".\build\radio_CC1101.o" sate="0" />
+			<NodeH Path="..\..\..\otradio\cc1101\CC1101_defaults.h" Header="CC1101_defaults.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\cc1101\CC1101_interface.h" Header="CC1101_interface.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\cc1101\CC1101_registers.h" Header="CC1101_registers.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\cc1101\radio_CC1101.h" Header="radio_CC1101.h" Marker="-1" OutputFile="" sate="0" />
+			<Options>
+				<Config Header="Standard" >
+					<Set Header="Group" >
+						<Section Header="Build" >
+							<Property Header="Exclude" Value="Yes" Removable="1" />
+																																																
+						</Section>
+																																								
+					</Set>
+																											
+				</Config>
+																					
+			</Options>
+															
+		</Group>
+		<Group Header="mlx73xxx" sate="0" Marker="0" OutputFile="" >
+			<NodeC Path="..\..\..\otradio\mlx73xxx\mlx73xxx_MSP430F5.c" Header="mlx73xxx_MSP430F5.c" Marker="-1" OutputFile=".\build\mlx73xxx_MSP430F5.o" sate="0" />
+			<NodeC Path="..\..\..\otradio\mlx73xxx\mlx73xxx_STM32.c" Header="mlx73xxx_STM32.c" Marker="-1" OutputFile=".\build\mlx73xxx_STM32.o" sate="0" />
+			<NodeC Path="..\..\..\otradio\mlx73xxx\radio_MLX73290.c" Header="radio_MLX73290.c" Marker="-1" OutputFile=".\build\radio_MLX73290.o" sate="0" />
+			<NodeH Path="..\..\..\otradio\mlx73xxx\mlx73xxx_defaults.h" Header="mlx73xxx_defaults.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\mlx73xxx\mlx73xxx_interface.h" Header="mlx73xxx_interface.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\mlx73xxx\mlx73xxx_registers.h" Header="mlx73xxx_registers.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\mlx73xxx\radio_MLX73290.h" Header="radio_MLX73290.h" Marker="-1" OutputFile="" sate="0" />
+			<Options>
+				<Config Header="Standard" >
+					<Set Header="Group" >
+						<Section Header="Build" >
+							<Property Header="Exclude" Value="Yes" Removable="1" />
+																																																
+						</Section>
+																																								
+					</Set>
+																											
+				</Config>
+																					
+			</Options>
+															
+		</Group>
+		<Group Header="null" sate="0" Marker="0" OutputFile="" >
+			<NodeC Path="..\..\..\otradio\null\radio_null.c" Header="radio_null.c" Marker="-1" OutputFile=".\build\radio_null.o" sate="0" />
+			<NodeH Path="..\..\..\otradio\null\null_defaults.h" Header="null_defaults.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\null\null_interface.h" Header="null_interface.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\null\null_registers.h" Header="null_registers.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\null\radio_null.h" Header="radio_null.h" Marker="-1" OutputFile="" sate="0" />
+			<Options>
+				<Config Header="Standard" >
+					<Set Header="Group" >
+						<Section Header="Build" >
+							<Property Header="Exclude" Value="Yes" Removable="1" />
+																																																
+						</Section>
+																																								
+					</Set>
+																											
+				</Config>
+																					
+			</Options>
+															
+		</Group>
+		<Group Header="spirit1" sate="96" Marker="-1" OutputFile="" >
+			<NodeC Path="..\..\..\otradio\spirit1\radio_SPIRIT1.c" Header="radio_SPIRIT1.c" Marker="-1" OutputFile=".\build\radio_SPIRIT1.o" sate="0" />
+			<NodeC Path="..\..\..\otradio\spirit1\SPIRIT1_STM32L1xx.c" Header="SPIRIT1_STM32L1xx.c" Marker="-1" OutputFile=".\build\SPIRIT1_STM32L1xx.o" sate="0" />
+			<NodeH Path="..\..\..\otradio\spirit1\radio_SPIRIT1.h" Header="radio_SPIRIT1.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_defaults.h" Header="SPIRIT1_defaults.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_interface.h" Header="SPIRIT1_interface.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_registers.h" Header="SPIRIT1_registers.h" Marker="-1" OutputFile="" sate="0" />
+															
+		</Group>
+		<Group Header="sx1231" sate="0" Marker="0" OutputFile="" >
+			<NodeC Path="..\..\..\otradio\sx1231\radio_SX1231.c" Header="radio_SX1231.c" Marker="-1" OutputFile=".\build\radio_SX1231.o" sate="0" />
+			<NodeC Path="..\..\..\otradio\sx1231\spi_sx1231.c" Header="spi_sx1231.c" Marker="-1" OutputFile=".\build\spi_sx1231.o" sate="0" />
+			<NodeH Path="..\..\..\otradio\sx1231\radio_SX1231.h" Header="radio_SX1231.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\sx1231\stm32_sx1231_private.h" Header="stm32_sx1231_private.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\sx1231\sx1231_registers.h" Header="sx1231_registers.h" Marker="-1" OutputFile="" sate="0" />
+			<Options>
+				<Config Header="Standard" >
+					<Set Header="Group" >
+						<Section Header="Build" >
+							<Property Header="Exclude" Value="Yes" Removable="1" />
+																																																
+						</Section>
+																																								
+					</Set>
+																											
+				</Config>
+																					
+			</Options>
+															
+		</Group>
+									
+	</Group>
+	<Configs>
+		<Config Header="IKR001_Debug" />
+									
+	</Configs>
+	<Options>
+		<Config Header="Standard" >
+			<Set Header="ApplicationBuild" >
+				<Section Header="General" >
+					<Property Header="TargetFamily" Value="ARM" />
+																																																				
+				</Section>
+				<Section Header="Directories" >
+					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;B:\apps\app_7lan\code;B:\board;B:\otlib;B:\otkernel;B:\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport;B:\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport;B:\otplatform\stm32l1xx;B:\otradio\spirit1" Removable="1" />
+					<Property Header="OutDir" Value="$(ApplicationDir)\build" Removable="1" />
+					<Property Header="ListDir" Value="$(ApplicationDir)\build" Removable="1" />
+							
+				</Section>
+					
+			</Set>
+			<Set Header="Target" >
+				<Section Header="ProcessorARM" >
+					<Property Header="Processor" Value="STM32L151C8T6" />
+																
+				</Section>
+				<Section Header="ToolSetARM" >
+					<Property Header="BuildToolSetARM" Value="ARM\GNU.config" />
+																																																				
+				</Section>
+												
+			</Set>
+			<Set Header="GCC" >
+				<Section Header="Dialect" >
+					<Property Header="CharSign" Value="-funsigned-char" Removable="1" />
+																																											
+				</Section>
+				<Section Header="Defines" >
+					<Property Header="Defines" Value="__STM32L151C8U6__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_HayTag_R1" Removable="1" />
+																
+				</Section>
+												
+			</Set>
+			<Set Header="LD" >
+				<Section Header="Scripts" >
+					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
+					<Property Header="File" Value="$(ApplicationDir)\stm32l1xx_64_10.ld" Removable="1" />
+							
+				</Section>
+				<Section Header="Startup" >
+					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
+					<Property Header="File" Value="" Removable="1" />
+							
+				</Section>
+				<Section Header="LIB" >
+					<Property Header="UART0PUTC" Value="0" Removable="1" />
+							
+				</Section>
+					
+			</Set>
+		</Config>
+		<Config Header="IKR001_Debug" >
+			<Set Header="LD" >
+				<Section Header="Startup" >
+					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
+					<Property Header="File" Value="B:\apps\demo_ponglt\proj_ride7\build\startup_stm32l1xx_md.o" Removable="1" />
+																																		
+				</Section>
+				<Section Header="Scripts" >
+					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
+					<Property Header="File" Value="B:\apps\demo_ponglt\proj_ride7\stm32l1xx_128_16.ld" Removable="1" />
+																																		
+				</Section>
+				<Section Header="LIB" >
+					<Property Header="UART0PUTC" Value="0" Removable="1" />
+																																		
+				</Section>
+				<Section Header="Linker" >
+					<Property Header="WARNONCE" Value="-Wl,--warn-once" Removable="1" />
+																																		
+				</Section>
+																										
+			</Set>
+			<Set Header="ApplicationBuild" >
+				<Section Header="Directories" >
+					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;B:\apps\demo_ponglt\code;B:\board;B:\otlib;B:\otkernel;B:\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport;B:\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport;B:\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc;B:\otplatform\stm32l1xx;B:\otradio\spirit1;B:\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32L1xx" Removable="1" />
+					<Property Header="OutDir" Value="$(ApplicationDir)\build" Removable="1" />
+					<Property Header="LinkerOutputDir" Value="Application Directory" Removable="1" />
+					<Property Header="ListDir" Value="$(ApplicationDir)\build" Removable="1" />
+																																		
+				</Section>
+																										
+			</Set>
+			<Set Header="GCC" >
+				<Section Header="OPTIMIZE" >
+					<Property Header="Optimize" Value="-O1" Removable="1" />
+																																		
+				</Section>
+																										
+			</Set>
+			<Set Header="Target" >
+				<Section Header="ProcessorARM" >
+					<Property Header="Processor" Value="STM32L151C8T6" />
+																
+				</Section>
+												
+			</Set>
+					
+		</Config>
+	</Options>
+</ApplicationBuild>

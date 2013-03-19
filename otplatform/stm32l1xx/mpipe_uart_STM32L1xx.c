@@ -157,7 +157,18 @@
 
 // UART basic control
 #define __UART_CLOSE()      (MPIPE_UART->CR1 = 0)
-#define __UART_TXOPEN()     (MPIPE_UART->CR1 = (USART_CR1_UE))
+#if (BOARD_FEATURE_USBCONVERTER == ENABLED)
+#   define  __UART_TXOPEN()  do {       \
+                MPIPE_UART->DR  = 0;    \
+                MPIPE_UART->SR  = 0;    \
+                MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_TE);    \
+            } while (0)
+#else
+#   define  __UART_TXOPEN()  do { 
+                MPIPE_UART->SR  = 0;    \
+                MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_UE | USART_CR1_SBK); \
+            } while (0)
+#endif
 #define __UART_RXOPEN()     (MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_RE))
 #define __UART_CLEAR()      (MPIPE_UART->SR  = 0)
 
@@ -473,14 +484,12 @@ void sub_txndef(ot_bool blocking, mpipe_priority data_priority) {
         data                        = mpipe.alp.outq->getcursor;            //data start
         mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;            //move queue past packet
 
-        /// DMA setup: Receive null data but use the interrupt to indicate
-        /// exactly when the packet is done.
+        /// DMA setup: Pad 2 bytes to deal with DMA's premature 
         BOARD_DMA_CLKON();
         __DMA_TXCONFIG(data, scratch+2);
         __UART_CLKON();
-        MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_TE); 
-        MPIPE_UART->SR  = 0; 
-        _DMATX->CCR     = (DMA_CCR1_DIR | DMA_CCR1_MINC | DMA_CCR1_PL_HI | DMA_CCR1_TCIE | DMA_CCR1_EN); 
+        __UART_TXOPEN();
+        _DMATX->CCR = (DMA_CCR1_DIR | DMA_CCR1_MINC | DMA_CCR1_PL_HI | DMA_CCR1_TCIE | DMA_CCR1_EN); 
         
         if (blocking) {
            mpipedrv_wait();
