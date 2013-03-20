@@ -65,7 +65,7 @@
 															
 		</Group>
 		<Group Header="hicculp" sate="96" Marker="-1" OutputFile="" >
-			<NodeC Path="..\..\..\otkernel\hicculp\system_hicculp.c" Header="system_hicculp.c" Marker="-1" OutputFile=".\build\system_hicculp.o" sate="2" />
+			<NodeC Path="..\..\..\otkernel\hicculp\system_hicculp.c" Header="system_hicculp.c" Marker="-1" OutputFile=".\build\system_hicculp.o" sate="0" />
 			<NodeH Path="..\..\..\otkernel\hicculp\system_hicculp.h" Header="system_hicculp.h" Marker="-1" OutputFile="" sate="0" />
 															
 		</Group>
@@ -448,10 +448,10 @@
 			</Options>
 															
 		</Group>
-		<Group Header="stm32l1xx" sate="0" Marker="-1" OutputFile="" >
+		<Group Header="stm32l1xx" sate="96" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\mpipe_uart_STM32L1xx.c" Header="mpipe_uart_STM32L1xx.c" Marker="-1" OutputFile=".\build\mpipe_uart_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_crc_STM32L1xx.c" Header="platform_crc_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_crc_STM32L1xx.o" sate="0" />
-			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_gptim_STM32L1xx.c" Header="platform_gptim_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_gptim_STM32L1xx.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_gptim_STM32L1xx.c" Header="platform_gptim_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_gptim_STM32L1xx.o" sate="2" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_STM32L1xx.c" Header="platform_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_STM32L1xx.o" sate="0" >
 				<Options>				</Options>
@@ -533,7 +533,7 @@
 			</Options>
 															
 		</Group>
-		<Group Header="spirit1" sate="96" Marker="-1" OutputFile="" >
+		<Group Header="spirit1" sate="0" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\spirit1\radio_SPIRIT1.c" Header="radio_SPIRIT1.c" Marker="-1" OutputFile=".\build\radio_SPIRIT1.o" sate="0" />
 			<NodeC Path="..\..\..\otradio\spirit1\SPIRIT1_STM32L1xx.c" Header="SPIRIT1_STM32L1xx.c" Marker="-1" OutputFile=".\build\SPIRIT1_STM32L1xx.o" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\radio_SPIRIT1.h" Header="radio_SPIRIT1.h" Marker="-1" OutputFile="" sate="0" />

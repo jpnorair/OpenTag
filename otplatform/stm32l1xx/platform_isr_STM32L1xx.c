@@ -94,16 +94,16 @@
         // MPipe UART Driver uses TX DMA, but not interrupt
 #       if (MPIPE_UART_ID == 1)
 //#           undef __USE_DMA1_CHAN4
-#           undef __ISR_USART1
-#           define __ISR_USART1
+//#           undef __ISR_USART1
+//#           define __ISR_USART1
 #       elif (MPIPE_UART_ID == 2)
 //#           undef __USE_DMA1_CHAN6
-#           undef __ISR_USART2
-#           define __ISR_USART2
+//#           undef __ISR_USART2
+//#           define __ISR_USART2
 #       elif (MPIPE_UART_ID == 3)
 //#           undef __USE_DMA1_CHAN2
-#           undef __ISR_USART3
-#           define __ISR_USART3
+//#           undef __ISR_USART3
+//#           define __ISR_USART3
 #       endif
 
 #   else

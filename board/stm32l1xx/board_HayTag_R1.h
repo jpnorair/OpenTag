@@ -85,6 +85,7 @@
 #define MCU_FEATURE_MAPEEPROM           DISABLED
 #define MCU_FEATURE_MPIPECDC            DISABLED        // USB-CDC MPipe implementation
 #define MCU_FEATURE_MPIPEUART           ENABLED         // UART MPipe Implementation
+#define MCU_FEATURE_MPIPEI2C            DISABLED        // I2C MPipe Implementation
 #define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
@@ -152,8 +153,13 @@
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
 #define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
+#define BOARD_FEATURE_MPIPE_DIRECT      ENABLED
+#define BOARD_FEATURE_MPIPE_BREAK       DISABLED                // Send/receive leading break for wakeup
+#define BOARD_FEATURE_MPIPE_CS          DISABLED                // Chip-Select / DTR wakeup control
 #define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                // RTS/CTS style flow control
-#define BOARD_FEATURE_MPIPE_QMGMT       ENABLED
+
+#define BOARD_FEATURE_MPIPE_QMGMT       ENABLED                 // (possibly defunct)
+
 #define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL used as Clock source
 #define BOARD_FEATURE_HFXTAL            DISABLED                // HF XTAL used as Clock source
 #define BOARD_FEATURE_RFXTAL            ENABLED                 // XTAL for RF chipset
