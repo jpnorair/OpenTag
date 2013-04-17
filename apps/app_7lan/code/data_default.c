@@ -382,7 +382,7 @@ const ot_u8 isf_stock_files[] __attribute__((section(".vl_isf"))) = {
 #pragma DATA_SECTION(isf_stock_files, ".vl_isf")
 const ot_u8 isf_stock_files[] = {
 #endif
-    /* network settings: id=0x00, len=8, alloc=8 */
+    /* network settings: id=0x00, len=10, alloc=10 */
     __VID,                                              /* VID */
     0x11,                                               /* Device Subnet */
     0x11,                                               /* Beacon Subnet */

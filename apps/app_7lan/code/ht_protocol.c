@@ -14,154 +14,18 @@
   *
   */
 /**
-  * @file       /apps/app_7lan/code/main.c
+  * @file       /hbuilder/protocols/ht_server.c
   * @author     JP Norair
   * @version    R100
-  * @date       7 Mar 2012
-  * @brief      7LAN app for classic-style UDP networking with DASH7
+  * @date       7 April 2013
+  * @brief      HayTag server protocols
   *
-  * See _readme.txt in the app_7lan directory for basic information about what
-  * this app does.  Also, please see the wiki for detailed information.
-  *
-  * http://www.indigresso.com/wiki/doku.php?id=opentag:apps:app_7lan
   *
   ******************************************************************************
   */
 
 #include "OTAPI.h"
 #include "OT_platform.h"
-
-
-
-
-/** Data Mapping <BR>
-  * ===========================================================================
-  * The Opmode Demo needs a particular data mapping.  It is not unusual, but 
-  * the demo may not work if the data is not set correctly.  This define below
-  * uses the default data mapping (/apps/demo_opmode/code/data_default.c)
-  */
-#define __DATA_DEFAULT
-
-
-
-
-
-
-/** Application Global Variables <BR>
-  * ========================================================================<BR>
-  * opmode_devicemode must be volatile, since it is set in an interrupt service 
-  * routine.
-  */
-typedef struct {
-    ot_u16 pingval;
-} app_struct;
-
-app_struct app;
-
-
-
-
-
-/** Applet Functions (platform & board independent) <BR>
-  * ========================================================================
-  */
-// Main Application Functions
-void app_init();
-void app_invoke(ot_u8 call_type);
-
-/// Communication Task Applets
-void applet_send_query(m2session* session);
-void applet_send_beacon(m2session* session);
-
-/// Direct Control Applets
-void opmode_goto_gateway();
-void opmode_goto_endpoint();
-
-// Applets that run due to OpenTag callbacks
-//void    app_packet_routing(ot_int code, ot_int type);
-
-
-
-/** Application local subroutines (platform & board dependent) <BR>
-  * ========================================================================<BR>
-  * sub_button_init() is a board-dependent function, as 
-  */
-void sub_button_init();
-#define APP_TASK    (&sys.task[TASK_external])
-
-
-
-
-
-/** Application Events <BR>
-  * ========================================================================<BR>
-  * This Application can be initialized by a button-press or by an ALP command.
-  * The ALP command is treated at a higher-level (see ALP callback later).  
-  * The button-press is unique to this application, and it is treated here.
-  */
-  
-#if (defined(__MSP430F5__) && defined(OT_SWITCH1_PORT))
-#   if (OT_SWITCH1_PORTNUM == 1)
-#       define PLATFORM_ISR_SW  platform_isr_p1
-#   else
-#       define PLATFORM_ISR_SW  platform_isr_p2
-#   endif
-
-void sub_button_init() {
-
-#   if (OT_SWITCH1_PULLING)
-    OT_SWITCH1_PORT->REN   |= OT_SWITCH1_PIN;       //Enable Internal Pull up/down
-#   endif
-#   if (OT_SWITCH1_POLARITY == 0)
-    OT_SWITCH1_PORT->DOUT  |= OT_SWITCH1_PIN;       //Set Pull-up (pull-down is default)
-    //OT_SWITCH1_PORT->IES   &= ~OT_SWITCH1_PIN;    //falling edge is default
-#   else
-    //OT_SWITCH1_PORT->DOUT  &= ~OT_SWITCH1_PIN;    //Pull-down is default
-    OT_SWITCH1_PORT->IES   |= OT_SWITCH1_PIN;       //Set Rising Edge
-#   endif
-
-    //Clear and enable interrupt
-    OT_SWITCH1_PORT->IFG    = 0;
-    OT_SWITCH1_PORT->IE    |= OT_SWITCH1_PIN;
-}
-
-
-void PLATFORM_ISR_SW() {
-/// If you implement more interrupts on this port, you can make this function
-/// into a switch statement using OT_SWITCH1_PIV.
-    OT_SWITCH1_PORT->IFG = 0;
-
-    // Ignore the button press if the task is in progress already
-    if (APP_TASK->event == 0) {
-        app_invoke(7);              // Initialize Ping Task on channel 7
-    }
-}
-
-#elif (defined(__STM32__) && defined(OT_SWITCH1_PINNUM) && (OT_SWITCH1_PINNUM >= 0))
-#   define PLATFORM_ISR_SW  platform_isr_exti##OT_SWITCH1_PINNUM
-
-void PLATFORM_ISR_SW(void) {
-    // Ignore the button press if the task is in progress already
-    if (APP_TASK->event == 0) {
-        app_invoke(7);              // Initialize Ping Task on channel 7
-    }
-}
-
-void sub_button_init() {
-/// ARM Cortex M boards must prepare all EXTI line interrupts in their board
-/// configuration files.
-}
-
-
-#else
-#   warn "You are not using a known, compatible MCU.  Demo might not work."
-    void sub_button_init() {}
-
-#endif
-
-
-
-
 
 
 /** ALP Processor Callback for Starting a Ping <BR>
@@ -197,6 +61,260 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
         alp_load_retval(alp, 1);        // Write back 1 (success)
     }
 }
+
+
+/** DASHCom Client-Server protocol <BR>
+  * ========================================================================<BR>
+  * DASHCom is a REST-like client-server messaging protocol that implements a
+  * simple, command-oriented interface between DASH7 devices.  DASHCom is 
+  * intended especially for querying applications.
+  *
+  * Data is packed as binary, but it may contain fields represented as text.
+  * 
+  * The Communication model is Template-based.  The user must first open a 
+  * session using a Control Template.  Afterwards, more templates can be 
+  * provided.  A typical Session might be templated as: C M QF RF
+  *
+  * Response data sent from server-to-client will contain a File Resource 
+  * Template corresponding to the data source, followed by a Data Template.
+  * 
+  *
+  * C: Control Template
+  * <LI> Format is C:o|c|x </LI>
+  * <LI> 'o' is for open, used to begin a command session.  'c' is for close, 
+  *      used to terminate the current session in progress.  'x' is for execute
+  *      used to initialize the command communication to the server dataset. </LI>
+  * 
+  * <LI> Format is F:a|b|g|l|t:addr:file:offset:length </LI>
+  * <LI> Argument a, b, g, l, or t is the second byte.  'a' is antecedent mode,
+  *      that is, it copies the address from the last-entered File template
+  *      and "addr" is therefore 0-bytes. 'b' is broadcast mode, with 0-byte 
+  *      address.  'g' is global mode with 8-byte address.  'l' is local mode 
+  *      with 2-byte address.  't' is text mode, which is RFU.  </LI>
+  * <LI> The address is an integer, which is binary mode is a binary value or
+  *      in text mode is a hexadecimal string.  The loopback address is 0. </LI>
+  
+  * @note The server dataset is typically a group of external DASH7 devices.
+  * 
+  *
+  * D: Data Template
+  * <LI> Format is D::length:data </LI>
+  * <LI> flags are ignored, but the byte is present in communication </LI>
+  * <LI> length is a 2-byte integer </LI>
+  * <LI> data is a binary bytestream </LI>
+  *
+  * K: Comparison File Template
+  * A "File" is a binary data resource available on DASH7 devices.  Files are
+  * used as input and output, which in a query relates to comparison and return.
+  * This Comparison File Template should only follow a Query Template (Q).
+  * <LI> Format is K:a|*:file:offset:length </LI>
+  * <LI> Flags 'a' is antecedent mode, in which the file resource shall link to
+  *      last-entered comparison file, and the remaining fields are not used.
+  *      Any flag value other than 'a' requires the remaining fields. </LI>
+  * <LI> The file path is a concatenation of block integer and file integer. 
+  *      Block is 1-byte (0-3) and File is 1-byte (0-255).  In text mode, it is
+  *      represented as hexadecimal text.  </LI>
+  * <LI> Offset is a 2-byte integer describing a byte-offset to the resource
+  *      for read/write, starting at byte 0.  </LI>
+  * <LI> Length is a 2-byte integer describing resource byte access.  Using 0
+  *      for Length is equivalent to using 65536, which will guarantee that the
+  *      resource is accessed from the offset to its end. </LI>
+  *
+  * 
+  * M: Media Template
+  * <LI> Format is M:d:[flag-specific data] </LI>
+  * <LI> The only supported flag at the moment is 'd' for DASH7.  This is a 
+  *      media specifier for DASH7 media access. </LI>
+  * 
+  * DASH7 Media Data is a 8-byte binary payload
+  * <PRE>
+  * ^ DATA FIELD          ^ BYTES ^ VALUE        ^
+  * +---------------------+-------+--------------+
+  * | advertising channel |   1   | channel code |
+  * | session channel     |   1   | channel code |
+  * | subnet              |   1   | subnet code  |
+  * | subnet mask         |   1   | subnet mask  |
+  * | advertising timeout |   2   | integer ms   |
+  * | session timeout     |   2   | integer ms   |
+  * | retrieval timeout   |   2   | integer ms   |
+  * </PRE>
+  * 
+  * 
+  * Q: Query Template
+  * Querying is the primary activity of DASH7 communications.  A Query Template
+  * expects to be followed by a File Resource template.
+  * <LI> Format is Q:a|o:!=|==|<|<=|>|>=|nn|sx:token:mask
+  * <LI> Flags 'a'|'o' mean "and"|"or".  If you are doing a single query, the
+  *      value doesn't matter.  If you are doing *batch queries* using multiple
+  *      Query Templates in a single command, you can AND and OR this Query 
+  *      with the next one.  Batch querying is a way to improve the speed of
+  *      data retrieval and reduce energy expense, but it is necessary only for
+  *      complex querying. </LI>
+  * <LI> Comparison flags are 2-bytes, != == < <= > >= nn sx, and mostly self-
+  *      explanatory.  The token should match part of the resource being
+  *      queried using the chosen comparison method.  "nn" means "Non-null" and
+  *      it succeeds if the resource exists at all. "sx" is a compound flag.
+  *      's' means string search and 'x' is replaced with a 1-byte integer 
+  *      (0-255).  x is the number of bytes/characters that can be different
+  *      in the search.  0 is perfect match, 1 is one difference, etc. </LI>
+  * <LI> Token is a length-value binary byte-string.  Length is one-byte, so
+  *      the token is maximally 255 bytes long. </LI>
+  * <LI> Mask is a length-value binary byte-string, similar to Token.  The Mask
+  *      is logically ANDed onto the resource and Token data before comparison.
+  *      If Mask-length is 0, mask isn't used.  If Mask-length is shorter than
+  *      Token-length, the extra portion of the Token is unaffected by the mask.
+  *      </LI>
+  *
+  *
+  * R: Return File Template
+  * Codify some information to return via the command.  Return Template is not
+  * mandatory.  If missing, the return will be acknowledgements only.  The 
+  * template is identical to the Comparison File Template (K) other than the 
+  * leading 'R'
+  * <LI> Format is R:a|n:file:offset:length </LI>
+  *
+  *
+  * S: Security Template
+  * Used for data authentication and encryption, RFU
+  * 
+  */
+
+
+
+
+
+void hbs_dashcom_proc(alp_tmpl* alp, id_tmpl* user_id) {
+    
+    /// Available commands: g (GET), p (PUT), a (POST), d (DELETE) 
+    alp->inrec.cmd
+    
+    switch (q_readbyte(alp->inq)) {
+        case 'C': 
+        case 'D':
+        case 'F':
+        case 'M':
+        case 'Q':
+        case 'R':
+        
+        // Not supported
+        default: 
+    }
+    
+    /// Control Templates
+    /// - get/put communication parameters
+    /// - post query
+    
+    alp_load_retval(alp, 1)
+}
+
+
+void sub_proc_control() {
+    
+}
+
+void sub_proc_data() {
+    // unimplemented at present time
+}
+
+
+void sub_get_file(dc_filetmpl* attachpoint) {
+    /// Only add resource if necessary, and breakdown input template
+    if (*alp->inq->getcursor++ != 'a') {
+        handle                      = (dc_filetmpl*)sub_add_template(sizeof(dc_filetmple));
+        handle->next                = NULL;
+        handle->last                = dashcom.filelist;
+        dashcom.filelist->next      = handle;
+        dashcom.filelist            = handle;
+        dashcom.filelist->block     = *alp->inq->getcursor++;
+        dashcom.filelist->id        = *alp->inq->getcursor++;
+        dashcom.filelist->offset    = q_readshort(alp->inq);
+        dashcom.filelist->length    = q_readshort(alp->inq);
+    }
+    
+    /// Attach the file, either new one or the last one
+    attachpoint = dashcom.filelist;
+}
+
+void sub_proc_retfile() {   sub_get_file(dashcom.retfile);      }
+void sub_proc_compfile() {  sub_get_file(dashcom.query.file);   }
+
+
+
+
+void sub_proc_media() {
+    if (*alp->inq->getcursor++ != 'd') {
+        //error must be standard DASH7
+    }
+    else {
+        dashcom.advert.channel      = *alp->inq->getcursor++;
+        dashcom.session.channel     = *alp->inq->getcursor++;
+        dashcom.session.subnet      = *alp->inq->getcursor++;
+        dashcom.session.subnetmask  = *alp->inq->getcursor++;
+        dashcom.advert.duration     = q_readshort(alp->inq);
+        dashcom.extra.csma_timeout  = q_readshort(alp->inq);
+        dashcom.extra.comm_timeout  = q_readshort(alp->inq);
+    }
+}
+
+
+
+void sub_proc_query() {
+    /// Add a new query to the list
+    query               = (dc_querytmpl*)sub_add_template(sizeof(dc_querytmpl));
+    query->last         = dashcom.query;
+    dashcom.query->next = query;
+    dashcom.query       = query;
+    
+    /// If query is sequential and ANDing, update the last query window by 
+    /// setting to 0 and moving old value to this value.
+    query->window       = query->last->window;
+    query->last->window = 0;
+
+    /// If query is sequential and ORing, update the last query window by
+    /// dividing by two, and set this window to the same amount
+    query->last->window >>= 1;
+    query->window       = query->last->window;
+    
+    /// Copy Comparison type
+    ot_u8 comp1, comp0;
+    comp1           = *alp->inq->getcursor++;
+    comp0           = *alp->inq->getcursor++;
+    comp0           = (comp0 == '=');
+    query->length   = *alp->inq->getcursor++;
+    ccode           = b00100000;
+    
+    if (comp1 == 'n') {
+        ccode = 0;  
+    }
+    else if (comp1 == 's') {
+        comp0 = query->length - comp0;    // comp0 reset to correlation tolerance
+        ccode = b0100000 | (comp0 & b00011111);
+    }
+    else if (comp1 == '=')  ccode = b00100001;
+    else if (comp1 == '<')  ccode = b00100010 + comp0;
+    else if (comp1 == '>')  ccode = b00100100 + comp0;
+
+    /// Load Token
+    if (query->length != 0) {
+        query->token = (ot_u8*)sub_add_template(query->length);
+        q_readstring(alp->inq, query->token, query->length);
+    }
+    
+    /// Load Mask
+    mask_length     = *alp->inq->getcursor++;
+    query->mask     = NULL;
+    if (mask_length != 0) {
+        query->mask = (ot_u8*)sub_add_template(query->length);
+        q_readstring(alp->inq, query->mask, mask_length);
+        while(mask_length < query_length) {
+            query->mask[mask_length] = 0xff;
+            mask_length++;
+        }
+        ccode |= b10000000;
+    }
+}
+
+
 
 
 
@@ -410,38 +528,6 @@ void applet_send_query(m2session* session) {
 
 
 
-/** Application Main <BR>
-  * ==================================================================<BR>
-  *
-  */
-void app_init() {
-#if defined(BOARD_eZ430Chronos)
-/// Setup LCD
-
-
-#else
-/// 1. Blink the board LEDs to show that it is starting up.  
-/// 2. Configure the board input button, which for this app will send a ping
-    ot_u8 i;
-
-    i=4;
-    while (i != 0) {
-        if (i&1)    otapi_led1_on();
-        else        otapi_led2_on();
-
-        platform_swdelay_ms(30);
-        otapi_led2_off();
-        otapi_led1_off();
-        i--;
-    }
-#endif
-
-    sub_button_init();
-}
-
-
-
-
 
 void app_invoke(ot_u8 channel) {
 /// The "External Task" is the place where the kernel runs the main user app.
@@ -473,41 +559,3 @@ void app_invoke(ot_u8 channel) {
 
 
   
-  
-void main(void) {
-    ///1. Standard Power-on routine (Clocks, Timers, IRQ's, etc)
-    ///2. Standard OpenTag Init (most stuff actually will not be used)
-    platform_poweron();
-    platform_init_OT();
-
-    ///3a. The device will wait (and block anything else) until you connect
-    ///    it to a valid console app.
-    ///3b. Load a message to show that main startup has passed
-#   if (OT_FEATURE(MPIPE))
-    mpipedrv_standby();
-    otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
-#   endif
-    
-    ///4. Initialize the User Applet & interrupts
-    app_init();
-
-    ///5. MAIN RUNTIME (post-init)  <BR>
-    ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
-    ///<LI> You could put code before or after sys_runtime_manager, which will
-    ///     run before or after the (task + kernel).  If you do, keep the code
-    ///     very short or else you are risking timing glitches.</LI>
-    ///<LI> To run any significant amount of user code, use tasks. </LI>
-    while(1) {
-        platform_ot_run();
-    }
-}
-
-
-
-
-#if defined(__DATA_DEFAULT)
-#   include "data_default.c"
-#else
-#   error "There is no data mapping specified.  Put one here."
-#endif
-

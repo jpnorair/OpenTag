@@ -48,7 +48,9 @@
 
 
 /// RF IRQ GPIO Macros:
-#if (RADIO_IRQ0_SRCLINE < 5)
+#if (RADIO_IRQ0_SRCLINE < 0)
+#   undef _RFIRQ0
+#elif (RADIO_IRQ0_SRCLINE < 5)
 #   define _RFIRQ0  (EXTI0_IRQn + RADIO_IRQ0_SRCLINE)
 #elif (RADIO_IRQ0_SRCLINE < 10)
 #   define _EXTI9_5_USED
@@ -58,7 +60,9 @@
 #   define _RFIRQ0  (EXTI15_10_IRQn)
 #endif
 
-#if (RADIO_IRQ1_SRCLINE < 5)
+#if (RADIO_IRQ1_SRCLINE < 0)
+#   undef _RFIRQ1
+#elif (RADIO_IRQ1_SRCLINE < 5)
 #   define _RFIRQ1  (EXTI0_IRQn + RADIO_IRQ1_SRCLINE)
 #elif ((RADIO_IRQ0_SRCLINE < 10) && !defined(_EXTI9_5_USED))
 #   define _EXTI9_5_USED
@@ -68,7 +72,9 @@
 #   define _RFIRQ1  (EXTI15_10_IRQn)
 #endif
 
-#if (RADIO_IRQ2_SRCLINE < 5)
+#if (RADIO_IRQ2_SRCLINE < 0)
+#   undef _RFIRQ2
+#elif (RADIO_IRQ2_SRCLINE < 5)
 #   define _RFIRQ2  (EXTI0_IRQn + RADIO_IRQ2_SRCLINE)
 #elif ((RADIO_IRQ2_SRCLINE < 10) && !defined(_EXTI9_5_USED))
 #   define _EXTI9_5_USED
@@ -78,7 +84,9 @@
 #   define _RFIRQ2  (EXTI15_10_IRQn)
 #endif
 
-#if (RADIO_IRQ3_SRCLINE < 5)
+#if (RADIO_IRQ3_SRCLINE < 0)
+#   undef _RFIRQ3
+#elif (RADIO_IRQ3_SRCLINE < 5)
 #   define _RFIRQ3  (EXTI0_IRQn + RADIO_IRQ3_SRCLINE)
 #elif ((RADIO_IRQ3_SRCLINE < 10) && !defined(_EXTI9_5_USED))
 #   define _EXTI9_5_USED

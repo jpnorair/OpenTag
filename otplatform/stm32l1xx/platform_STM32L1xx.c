@@ -434,8 +434,10 @@ void platform_poweron() {
     platform_init_interruptor();    // Interrupts OpenTag cares about
     platform_init_gptim(0);         // Initialize GPTIM (to 1024 Hz)
     
-    /// 6. Start the chronometer
+    /// 6. Start the chronometer if not in debug mode
+#   if !defined(__DEBUG__)
     gptim_start_chrono();
+#   endif
     
     /// 7. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
@@ -494,6 +496,11 @@ void platform_init_OT() {
         vl_close(fpid);
     }
 #   endif
+
+    ///5. This prevents the scheduler from getting called by a preemption
+    ///   event until it officially begins.  It allows some tasks to be
+    ///   used for special purposes at power-on (namely MPipe).
+    platform_ext.task_exit = (void*)__get_PSP();
 }
 #endif
 
@@ -701,7 +708,7 @@ void platform_init_periphclk() {
 #define CR_DBP_BB                (PERIPH_BB_BASE + (CR_OFFSET * 32) + (DBP_BitNumber * 4))
     
 #   if (BOARD_FEATURE_LFXTAL == ENABLED)
-    RCC->APB1ENR    = RCC_APB1ENR_PWREN; 
+    RCC->APB1ENR   |= RCC_APB1ENR_PWREN; 
     PWR->CR         = ((1 << 11) | PWR_CR_DBP);
     RCC->CSR       |= RCC_CSR_LSEON | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSE;
     while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
@@ -1003,6 +1010,8 @@ void platform_init_interruptor() {
     ///    <LI> SVC is priority 0-0.  It runs the scheduler. </LI>
     ///    <LI> GPTIM (via RTC ALARM) is priority 0-1.  It runs the tasker.  </LI>
     ///    <LI> OT-Systick (via RTC WAKEUP) is priority 0-2. </LI>
+    
+#   ifndef __DEBUG__
 #   if (RF_FEATURE(TXTIMER) != ENABLED)
 #   define RTC_EXTI_MASK    ((1<<17) | (1<<20))
 #   else
@@ -1022,7 +1031,7 @@ void platform_init_interruptor() {
 
     NVIC->IP[(uint32_t)(OT_SYSTICK_IRQn)]       = ((_KERNEL_GROUP+_OT_SUB2) << 4);
     NVIC->ISER[((uint32_t)(OT_SYSTICK_IRQn)>>5)]= (1 << ((uint32_t)(OT_SYSTICK_IRQn) & 0x1F));
-    
+#   endif
     
     /// 5. Setup other external interrupts
     
@@ -1041,9 +1050,109 @@ void platform_init_gpio() {
 /// Initialize ports/pins exclusively used within this platform module.
 /// A. Trigger Pins
 /// B. Random Number ADC pins: A Zener can be used to generate noise.
+       /// Configure Port A IO.  
+    /// Port A is used for internal features and HCOM.
+    // - A0:1 are used for LED push-pull outputs.  They can link to TIM2 in the future.
+    // - A2 is the radio shutdown push-pull output
+    // - A3 is the radio signal input for RFIO3.  It should be HiZ input or open-drain out.
+    // - A4 is the radio SPI CS pin, which is a push-pull output
+    // - A5:7 are radio SPI bus, set to ALT.  MISO is pull-down
+    // - A8 is the MCO pin, which by default we use as output ground
+    // - A9 is HCOM UART TX, which is ALT open-drain output
+    // - A10 is HCOM UART RX, which is ALT pullup input
+    // - A11 is UART RTS, which is pull-up open drain output by default
+    // - A12 is UART CTS, which is pull-up input by default
+    // - A13:14 are SWD, which are ALT
+    // - A15 is HCOM SRES, which is pull-up input by default
+    GPIOA->BSRRL    = BOARD_RFCTL_SDNPIN | BOARD_RFSPI_CSNPIN;
+    
+    GPIOA->MODER    = (GPIO_MODER_OUT << (0*2)) \
+                    | (GPIO_MODER_OUT << (1*2)) \
+                    | (GPIO_MODER_OUT << (2*2)) \
+                    | (GPIO_MODER_IN  << (3*2)) \
+                    | (GPIO_MODER_OUT << (4*2)) \
+                    | (GPIO_MODER_ALT << (5*2)) \
+                    | (GPIO_MODER_ALT << (6*2)) \
+                    | (GPIO_MODER_ALT << (7*2)) \
+                    | (GPIO_MODER_OUT << (8*2)) \
+                    | (GPIO_MODER_ALT << (9*2)) \
+                    | (GPIO_MODER_ALT << (10*2)) \
+                    | (GPIO_MODER_OUT << (11*2)) \
+                    | (GPIO_MODER_IN  << (12*2)) \
+                    | (GPIO_MODER_ALT << (13*2)) \
+                    | (GPIO_MODER_ALT << (14*2)) \
+                    | (GPIO_MODER_IN  << (15*2));
+    
+    GPIOA->OTYPER   = (1 << (9)) | (1 << (11)) | (1 << 14);
+    
+    GPIOA->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (4*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (5*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (6*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (7*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (8*2)) \
+                    | (GPIO_OSPEEDR_2MHz  << (9*2)) \
+                    | (GPIO_OSPEEDR_2MHz  << (10*2)) \
+                    | (GPIO_OSPEEDR_40MHz  << (13*2)) \
+                    | (GPIO_OSPEEDR_40MHz  << (14*2));
+    
+    GPIOA->PUPDR    = (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                    | (1 << (9*2)) | (1 << (10*2)) \
+                    | (1 << (11*2)) | (1 << (12*2)) \
+                    | (1 << (13*2)) | (2 << (14*2)) \
+                    | (1 << (15*2));
+    
+    GPIOA->AFR[0]   = (5 << ((BOARD_RFSPI_MOSIPINNUM)*4)) \
+                    | (5 << ((BOARD_RFSPI_MISOPINNUM)*4)) \
+                    | (5 << ((BOARD_RFSPI_SCLKPINNUM)*4));
+                    
+    GPIOA->AFR[1]   = (7 << ((BOARD_HCOMUART_TXPINNUM-8)*4)) \
+                    | (7 << ((BOARD_HCOMUART_RXPINNUM-8)*4));
+                    
 
+    /// Configure Port B IO.
+    /// Port B is used for external (module) IO.
+    // - B0:2 are radio IRQs, which are input HiZ by startup default
+    // - B3: is the TRACE pin, which is a pullup input for test
+    // - B4:9 are USER IOBUS pins, which are input HiZ by startup default
+    // - B10:11 are the HCOM I2C pins, which input HiZ by startup default
+    // - B12:15 are the ADC pins, which are set to floating ADC (HiZ)
+    GPIOB->MODER    = (GPIO_MODER_ANALOG << (12*2)) \
+                    | (GPIO_MODER_ANALOG << (13*2)) \
+                    | (GPIO_MODER_ANALOG << (14*2)) \
+                    | (GPIO_MODER_ANALOG << (15*2));
+    
+    GPIOB->OTYPER   = (1 << (10)) | (1 << (11));
+    
+    GPIOB->OSPEEDR  = (GPIO_OSPEEDR_40MHz << (3*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (4*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (5*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (6*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (7*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (8*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (9*2)) \
+                    | (GPIO_OSPEEDR_2MHz << (10*2)) \
+                    | (GPIO_OSPEEDR_2MHz << (11*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (12*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (13*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (14*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (15*2));
+
+    //GPIOB->PUPDR    = (1 << (10*2)) | (1 << (11*2));
+    
+    
+    /// Configure Port C IO.
+    /// Port C is used only for USB sense and 32kHz crystal driving
+    // - C13 is USB Sense, pullup input
+    // - C14:15 are 32kHz crystal driving, set to ALT
+    GPIOC->MODER    = (GPIO_MODER_IN << (13*2)) \
+                    | (GPIO_MODER_ALT << (14*2)) \
+                    | (GPIO_MODER_ALT << (15*2));
+                    
+    GPIOC->PUPDR    = (1 << (13*2));
+    
+    
     // This must be an inline function in the board header
-    BOARD_PORT_STARTUP();  
+    //BOARD_PORT_STARTUP();  
 }
 #endif
 
@@ -1409,6 +1518,8 @@ ot_u16 platform_prand_u16() {
     }
 
     
+
+#if (MCU_FEATURE(MEMCPYDMA) == ENABLED)  
     
 #define MEMCPY_DMA_INT  (1 << ((MEMCPY_DMA_CHAN_ID-1)*4))
 
@@ -1449,11 +1560,14 @@ void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_int length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
 
+#endif
+
+
+
 
 void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 #if (OS_FEATURE(MEMCPY) == ENABLED)
     memcpy(dest, src, length);
-#   error "Fuck"
 
 #elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
     sub_memcpy_dma(dest, src, length);

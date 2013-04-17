@@ -77,16 +77,29 @@ void sub_mpipe_actuate(ot_u8 new_event, ot_u8 new_reserve, ot_uint new_nextevent
 
 
 void mpipe_send() {
-/// "32" is a magic number right now, which is probably longer than the largest packet
-/// that can be TXed or RXed.
 ///@todo A session stack could be implemented for MPipe Task.  For now, Sending (TX)
 /// will just fall-through if mpipe is occupied
-	mpipedrv_txndef(False, MPIPE_High);
-	sub_mpipe_actuate(3, 1, 32);
+	sub_mpipe_actuate(3, 1, (ot_uint)mpipedrv_txndef(False, MPIPE_High));
 }
 
+
+void mpipe_txschedule(ot_int wait) {
+    sub_mpipe_actuate(2, 1, wait);
+}
+
+
+void mpipe_rxschedule(ot_int wait) {
+    sub_mpipe_actuate(4, 1, wait);
+}
+
+
 void mpipeevt_txdone(ot_int code) {
-    sub_mpipe_actuate(3, 1, (ot_uint)code);
+    // If driver returns 0, it closes connection itself.  Reopen in RX.
+    // If driver returns >0, the task must delay the connection termination.
+    ot_u8 nextevent;
+    nextevent = 3 + (code==0); 
+    sub_mpipe_actuate(nextevent, 1, code);
+    //sub_mpipe_actuate(4, 1, code);
 }
 
 
@@ -107,9 +120,12 @@ void mpipeevt_rxdone(ot_int code) {
 #if (defined(MPIPE_USB) || (BOARD_FEATURE_USBCONVERTER == ENABLED))
 	sub_mpipe_actuate(1, 32, 0);
 #else
-    static const ot_u8 params[] = { 4, 1, 1, 32 };
-    code = (code == 0);
-    sub_mpipe_actuate(params[code], params[code+2], 0);
+    static const ot_u8 params[] = { 1, 32, 4, 1 };
+    ot_u8* task_params;
+    
+    task_params  = params;
+    task_params += (code != 0) << 1;
+    sub_mpipe_actuate(task_params[0], task_params[1], 0);
 #endif
 }
 

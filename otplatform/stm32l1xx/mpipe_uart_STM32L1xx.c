@@ -196,76 +196,49 @@
   * ========================================================================<BR>
   */
 
-// UART TXOPEN routine variants        
-#if (BOARD_FEATURE(MPIPE_BREAK) != ENABLED)
-#   define  __UART_TXOPEN()  do {                   \
-                MPIPE_UART->SR  = 0;                \
-                MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_UE); \
-            } while (0) 
+#define __UART_TXOPEN() do { \
+            MPIPE_UART->CR1 = 0; \
+            MPIPE_UART->SR  = 0; \
+            MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_TE); \
+        } while (0)
 
-#elif ((MPIPE_UARTMODES == 1) && (BOARD_FEATURE(USBCONVERTER) == ENABLED))
-#   define  __UART_TXOPEN()  do {                       \
-                MPIPE_UART->DR  = 0;                    \
-                MPIPE_UART->SR  = 0;                    \
-                MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_TE);    \
-            } while (0)
-                 
-#elif ((MPIPE_UARTMODES == 1))
-#   define  __UART_TXOPEN()  do {                       \
-                MPIPE_UART->SR  = 0;                    \
-                MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_TE | USART_CR1_SBK);    \
-            } while (0)
-
-#else
-#   error "This MPIPE feature-set is not currently supported."
-#endif
-
-
-// UART RXOPEN routine variants 
-#define __UART_RXOPEN()     (MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_RE))
-#define __UART_CLOSE()      (MPIPE_UART->CR1 = 0)
-#define __UART_CLEAR()      (MPIPE_UART->SR  = 0)
+#define __UART_RXOPEN() do { \
+            MPIPE_UART->CR1 = 0; \
+            MPIPE_UART->SR  = 0; \
+            MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_RE);   \
+        } while (0)
+        
+#define __UART_CLOSE()  (MPIPE_UART->CR1 = 0)
+#define __UART_CLEAR()  (MPIPE_UART->SR  = 0)
 
 
 // DMA basic control
-#define _DMA_RX_ON          (_DMARX->CCR |= DMA_CCR1_EN)
-#define _DMA_RX_OFF         (_DMARX->CCR &= ~DMA_CCR1_EN)
-#define _DMA_TX_ON          (_DMATX->CCR |= DMA_CCR1_EN)
-#define _DMA_TX_OFF         (_DMATX->CCR &= ~DMA_CCR1_EN)
-#define __DMA_RX(ONOFF)     _DMA_RX_##ONOFF
-#define __DMA_TX(ONOFF)     _DMA_TX_##ONOFF
+#define __DMA_TXOPEN(SRC, SIZE) do { \
+            _DMATX->CCR     = 0;                \
+            _DMATX->CMAR    = (uint32_t)SRC;    \
+            _DMATX->CNDTR   = (ot_u16)SIZE;     \
+            DMA1->IFCR      = (_DMARX_IFG | _DMATX_IFG);       \
+            _DMATX->CCR     = (DMA_CCR1_DIR | DMA_CCR1_MINC | DMA_CCR1_PL_HI | DMA_CCR1_TCIE | DMA_CCR1_EN); \
+        } while (0)
+
+#define __DMA_RXOPEN(DEST, SIZE) do { \
+            _DMARX->CCR     = 0;                \
+            _DMARX->CMAR    = (ot_u32)DEST;     \
+            _DMARX->CNDTR   = (ot_u16)SIZE;     \
+            DMA1->IFCR      = (_DMARX_IFG | _DMATX_IFG);       \
+            _DMARX->CCR     = (DMA_CCR1_MINC | DMA_CCR1_PL_HI | DMA_CCR1_TCIE | DMA_CCR1_EN); \
+        } while (0)        
+        
+#define __DMA_RX_CLOSE()    (_DMATX->CCR = 0)
+#define __DMA_TX_CLOSE()    (_DMATX->CCR = 0)
+#define __DMA_ALL_CLOSE()   (_DMATX->CCR = 0)
 #define __DMA_RX_CLEAR()    (DMA1->IFCR = _DMARX_IFG)
 #define __DMA_TX_CLEAR()    (DMA1->IFCR = _DMATX_IFG)
 #define __DMA_ALL_CLEAR()   (DMA1->IFCR = (_DMARX_IFG | _DMATX_IFG))
-
-// TX / RX configuration of DMAs
-#define __DMA_RXCONFIG(DEST, SIZE)  do { \
-                                    _DMARX->CCR   = 0; \
-                                    _DMARX->CMAR  = (ot_u32)DEST; \
-                                    _DMARX->CNDTR = (ot_u16)SIZE; \
-                                    DMA1->IFCR    = _DMARX_IFG; \
-                                    } while(0)
-
-#define __DMA_TXCONFIG(SRC, SIZE)   do { \
-                                    _DMATX->CCR   = 0; \
-                                    _DMATX->CMAR  = (uint32_t)SRC; \
-                                    _DMATX->CNDTR = (ot_u16)SIZE; \
-                                    DMA1->IFCR    = _DMATX_IFG; \
-                                    } while(0)  
-
-// Software triggering of DMAs
-#define __DMA_TXENABLE() \
-    do { \
-        MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_TE); \
-        MPIPE_UART->SR  = 0; \
-        _DMATX->CCR     = (DMA_CCR1_DIR | DMA_CCR1_MINC | DMA_CCR1_PL_HI | DMA_CCR1_TCIE | DMA_CCR1_EN); \
-    } while(0)
-    
-#define __DMA_RXENABLE() \
-    do { \
-        _DMARX->CCR = (DMA_CCR1_MINC | DMA_CCR1_PL_HI | DMA_CCR1_TCIE | DMA_CCR1_EN); \
-    } while(0)
-
+#define __DMA_CLKON();
+#define __DMA_CLKOFF();     
+//#define __DMA_CLKON()       (RCC->AHBLPENR  |= RCC_AHBLPENR_DMA1LPEN)
+//#define __DMA_CLKOFF()      (RCC->AHBLPENR &= ~RCC_AHBLPENR_DMA1LPEN)
 
 #if (BOARD_FEATURE(MPIPE_FLOWCTL) == ENABLED)
 #   define __SET_RTS()      (MPIPE_RTS_PORT->BSRRL = MPIPE_RTS_PIN)
@@ -277,6 +250,23 @@
 #   define __CLR_MPIPE()    (mpipe.state = MPIPE_Idle)
 #endif
 
+// Multimode RTS clearing strategy
+//#   if ((MPIPE_UARTMODES == 1) && BOARD_FEATURE_MPIPE_FLOWCTL)
+//        MPIPE_UART_PORT->BSRRH = MPIPE_RTS_PIN;
+//#   elif (MPIPE_UARTMODES > 1)
+//        MPIPE_UART_PORT->BSRRH = (uart.mode & 2) << (MPIPE_RTS_PIN-1);
+//#   endif
+
+
+
+
+
+/** MPipe Macros 
+  * ========================================================================<BR>
+  */
+
+/// @todo lookup actual data rate in use
+#define __MPIPE_TIMEOUT(BYTES)  (10 + (BYTES >> 3))
 
 
 
@@ -345,18 +335,24 @@ static const ot_u16 br_hssel[4] = {
   * to different channels.
   */
   
-void sub_uart_close();
+void sub_mpipe_close();
 void sub_txndef(ot_bool blocking, mpipe_priority data_priority);
 void sub_rxndef(ot_bool blocking, mpipe_priority data_priority);
+void sub_txopen(ot_u8* data, ot_u16 length);
 
 
-void sub_uart_close() {
-    __UART_CLEAR();
+void sub_mpipe_close() {
+    __DMA_ALL_CLOSE();
+    __DMA_ALL_CLEAR();
+    __DMA_CLKOFF();
     __UART_CLOSE();
+    __UART_CLEAR();
     __UART_CLKOFF();
     __CLR_RTS();
     __CLR_MPIPE();
     __DISMISS_FULL_SPEED();
+    
+    mpipe.state = MPIPE_Idle;
 }
 
 
@@ -419,10 +415,10 @@ void __DMATX_ISR(void) {
 
 
 ///@todo the UART TC interrupt just does not seem to work properly on STM32L.
-/// One day I would like to get it working, if at all possible.  Right now, 
-/// 2 bytes are padded to TX in order to roughly synchronize the DMA TX-complete
-/// interrupt with the end of the UART data.  This is ugly, but OK because of 
-/// the packet implementation of MPIPE.
+/// Padding the TX with 2 bytes is also not sufficient because there are 
+/// timing inconsistencies with the DMA<-->UART signalling interface.  
+/// Instead, we need to use the ugly approach of waiting for each extra byte
+/// to finish.
 //void __UART_ISR(void) {
 //}
 
@@ -504,14 +500,9 @@ ot_int mpipedrv_init(void* port_id) {
     /// Configure optional double-edge CTS interrupt
     /// NVIC configuration must be in the platform_STM32L1xx.c implementation,
     /// due to the way EXTIs are shared.
-#   if ((BOARD_FEATURE(MPIPE_FLOWCTL) == ENABLED) || BOARD_FEATURE(MPIPE_CS))
-#       if (MPIPE_UARTMODES > 1)
-        if (uart.mode & 2)
-#       endif
-        {
-            EXTI->FTSR  |= MPIPE_UART_CTSPIN;
-            EXTI->RTSR  |= MPIPE_UART_CTSPIN;
-        }
+#   if (BOARD_FEATURE(MPIPE_FLOWCTL) || BOARD_FEATURE(MPIPE_CS))
+        EXTI->FTSR  |= MPIPE_UART_CTSPIN;
+        EXTI->RTSR  |= MPIPE_UART_CTSPIN;
 #   endif
     
         
@@ -520,12 +511,6 @@ ot_int mpipedrv_init(void* port_id) {
     uart.priority   = MPIPE_Low;
 #   endif
     uart.seq.ushort = 0;          //not actually necessary
-    
-#   if (BOARD_FEATURE(MPIPE_FLOWCTL) == ENABLED)
-    mpipe.state     = MPIPE_Null;
-#   else
-    mpipe.state     = MPIPE_Idle;
-#   endif
 
     alp_init(&mpipe.alp, &dir_in, &dir_out);
     mpipe.alp.inq->back    -= 10;
@@ -572,11 +557,10 @@ void mpipedrv_unblock() {
 
 #ifndef EXTF_mpipedrv_kill
 void mpipedrv_kill() {
-    __DMA_RX(OFF);
-    __DMA_TX(OFF);
-    __DMA_ALL_CLEAR();
-    sub_uart_close();
+    // Close down the peripheral
+    sub_mpipe_close();
     
+    // Clear the TX queue
 	q_empty(mpipe.alp.outq);
 	mpipe.alp.outq->back -= 10;
 }
@@ -601,77 +585,43 @@ void mpipedrv_setspeed(mpipe_speed speed) {
 
 
 
-void sub_txndef(ot_bool blocking, mpipe_priority data_priority) {
-    ot_u16 scratch;
-    ot_u8* data;
-
-#if (MPIPE_USE_ACKS)
-    if (data_priority == MPIPE_Ack)) {
-        uart.priority  = data_priority;
-        goto mpipedrv_txndef_SETUP;
-    }
-#endif
-    if (mpipe.state == MPIPE_Idle) {
-        mpipe.state = MPIPE_Tx_Done; //MPIPE_Tx_Wait;
-        
-        mpipedrv_txndef_SETUP:
-        __REQUEST_FULL_SPEED();
-        
-        q_writeshort(mpipe.alp.outq, uart.seq.ushort);                       //Sequence Number
-        scratch = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;    //data length
-        scratch = platform_crc_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
-        q_writeshort(mpipe.alp.outq, scratch);                              //Put CRC
-        
-        scratch                     = mpipe.alp.outq->putcursor \
-                                    - mpipe.alp.outq->getcursor;            //data length w/ CRC
-        data                        = mpipe.alp.outq->getcursor;            //data start
-        mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;            //move queue past packet
-
-        /// DMA setup: Pad 2 bytes to deal with DMA's premature 
-        __DMA_TXCONFIG(data, scratch+2);
-        __UART_CLKON();
-        __UART_TXOPEN();
-        _DMATX->CCR = (DMA_CCR1_DIR | DMA_CCR1_MINC | DMA_CCR1_PL_HI | DMA_CCR1_TCIE | DMA_CCR1_EN); 
-        
-        if (blocking) {
-           mpipedrv_wait();
-        }
-    }
-}
-
 #ifndef EXTF_mpipedrv_txndef
-void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
+ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
 /// Data TX will only occur if this function is called when the MPipe state is
 /// idle.  The exception is when the function is called with ACK priority, in
 /// which case the state doesn't need to be Idle.  Lastly, if you specify the 
 /// blocking parameter, the function will not return until the packet is 
 /// completely transmitted.
     
-/// Single UART mode routines
-#if (MPIPE_UARTMODES == 1)
-#   if (BOARD_FEATURE(MPIPE_DIRECT))
+#   if (MPIPE_UARTMODES == 1) && (BOARD_FEATURE(MPIPE_DIRECT))
+    /// Direct UART Only
+    sub_txndef(blocking, data_priority);
+    
+#   elif (MPIPE_UARTMODES == 1) && (BOARD_FEATURE(MPIPE_CS))
+    /// DTR UART Only
+    if ((MPIPE_UART_PORT->IDR & MPIPE_UART_DTRPIN) == 0) {
         sub_txndef(blocking, data_priority);
-#   else
-        if ((MPIPE_UART_PORT->IDR & MPIPE_UART_CTSPIN) == 0) {
-            sub_txndef(blocking, data_priority);
-        }
-#       if (BOARD_FEATURE(MPIPE_FLOWCTL))
-        else {
-            ///@todo implement a short timer with a guard time to prevent CTS collision.
-            //disable CTS interrupt
-            //counter = x;
-            //while (CTS != active) {
-            //counter--;
-            __SET_RTS();
-            //}
-            //if (counter != 0) { pull down RTS, enable CTS interrupt, goto TOP }
-            //else enable CTS interrupt
-        }
-#       endif
-#   endif
+    }
 
-/// Multiple UART configuration routine
-#else
+#   elif (MPIPE_UARTMODES == 1) && (BOARD_FEATURE(FLOW_CTL))
+    /// CTS/RTS UART Only
+    if ((MPIPE_UART_PORT->IDR & MPIPE_UART_CTSPIN) == 0) {
+        sub_txndef(blocking, data_priority);
+    }
+    else {
+        ///@todo implement a short timer with a guard time to prevent CTS collision.
+        //disable CTS interrupt
+        //counter = x;
+        //while (CTS != active) {
+        //counter--;
+        __SET_RTS();
+        //}
+        //if (counter != 0) { pull down RTS, enable CTS interrupt, goto TOP }
+        //else enable CTS interrupt
+    }
+        
+#   else
+    /// Multiple software configurable UART modes
     ot_u16 cts_mask;
     cts_mask    = (uart.mode & 2) << (MPIPE_UART_CTSPIN-1);
     cts_mask   &= MPIPE_UART_PORT->IDR;
@@ -689,53 +639,80 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
         //}
         //if (counter != 0) { pull down RTS, enable CTS interrupt, goto TOP }
         //else enable CTS interrupt
-        return;
     }
-#endif
+#   endif
+
+    return __MPIPE_TIMEOUT(mpipe.alp.outq->length);
 }
 #endif
 
 
+void sub_txndef(ot_bool blocking, mpipe_priority data_priority) {
+    ot_u16 length;
+    ot_u8* data;
 
-
-
-void sub_rxndef(ot_bool blocking, mpipe_priority data_priority) {
 #if (MPIPE_USE_ACKS)
-    if (data_priority == MPIPE_Ack) {
+    if (data_priority == MPIPE_Ack)) {
         uart.priority  = data_priority;
-        goto mpipedrv_rxndef_SETUP;
+    
+        /// Todo: load the ACK
+        goto mpipedrv_txndef_GO;
     }
 #endif
-    if (blocking) {
-        mpipedrv_wait();
-    }
+    
+    // Write the footer (sequence + CRC) onto this packet
+    q_writeshort(mpipe.alp.outq, uart.seq.ushort++);
+    length = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;
+    q_writeshort(   mpipe.alp.outq, 
+                    platform_crc_block(mpipe.alp.outq->getcursor, length)  );
+    
+    // Save the beginning of the packet (data), and move getcursor past 
+    // this packet.  If another packet is queued during this transmission, 
+    // it will hold its place in the queue and get piggybacked.
+    length                     += (2 + 2);                      // CRC16 + Padded bytes
+    data                        = mpipe.alp.outq->getcursor;
+    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
+    
+    // If the transmitter is idle, start it up.
     if (mpipe.state == MPIPE_Idle) {
-        mpipedrv_rxndef_SETUP:
+        mpipe.state = MPIPE_Tx_Done;    //MPIPE_Tx_Wait;
         __REQUEST_FULL_SPEED();
-        q_empty(mpipe.alp.inq);
-        //mpipe.alp.inq->back -=10;
         
-        __DMA_RXCONFIG(mpipe.alp.inq->front, 6);
-        __UART_CLKON();
-        __UART_CLEAR();
-        __UART_RXOPEN();
-        __DMA_RXENABLE();
+        mpipedrv_txndef_GO:
+        sub_txopen(data, length);
+        
+        if (blocking) {
+           mpipedrv_wait();
+        }
     }
 }
+
+
+
+void sub_txopen(ot_u8* data, ot_u16 length) {
+    __UART_CLKON();
+    __UART_TXOPEN();
+    __DMA_TXOPEN(data, length);
+}
+
+
+
+
+
 
 #ifndef EXTF_mpipedrv_rxndef
 void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
-/// Single UART mode routines
-#if (MPIPE_UARTMODES == 1)
-#   if (BOARD_FEATURE(MPIPE_DIRECT))
-        sub_rxndef(blocking, data_priority);
-#   else
-        if (__UART_CHECKPIN())  sub_rxndef(blocking, data_priority);
-        else                    EXTI->IMR |= MPIPE_CTS_PIN;
-#   endif
+#if (MPIPE_UARTMODES == 1) && (BOARD_FEATURE(MPIPE_DIRECT))
+    /// DIRECT UART Only
+    sub_rxndef(blocking, data_priority);
 
-/// Multiple UART configuration routine
-#else 
+#elif (MPIPE_UARTMODES == 1)
+    /// CTS/RTS or DTR UART Only
+    if (__UART_CHECKPIN())  sub_rxndef(blocking, data_priority);
+    else                    EXTI->IMR |= MPIPE_CTS_PIN;
+
+#else
+    /// Multiple, software configurable UART modes
     ot_u16 cts_mask;
     cts_mask    = (uart.mode & 2) << (MPIPE_UART_CTSPIN-1);
     cts_mask   &= MPIPE_UART_PORT->IDR;
@@ -749,6 +726,29 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
 #endif
 }
 #endif
+
+void sub_rxndef(ot_bool blocking, mpipe_priority data_priority) {
+#if (MPIPE_USE_ACKS)
+    if (data_priority == MPIPE_Ack) {
+        uart.priority  = data_priority;
+        goto mpipedrv_rxndef_SETUP;
+    }
+#endif
+    if (blocking) {
+        mpipedrv_wait();
+    }
+    if (mpipe.state == MPIPE_Idle) {
+        mpipedrv_rxndef_SETUP:
+        //mpipe.state = MPIPE_RxHeader;
+        __REQUEST_FULL_SPEED();
+        q_empty(mpipe.alp.inq);
+        //mpipe.alp.inq->back -=10;
+        
+        __UART_CLKON();
+        __UART_RXOPEN();
+        __DMA_RXOPEN(mpipe.alp.inq->front, 10);
+    }
+}
 
 
 
@@ -771,6 +771,9 @@ void mpipedrv_isr() {
     ot_u16 crc_result;
 #endif
 
+    __DMA_ALL_CLOSE();
+    __DMA_ALL_CLEAR();
+    
     switch (mpipe.state) {
         case MPIPE_Idle: //note, case doesn't break!
         
@@ -779,22 +782,21 @@ void mpipedrv_isr() {
             ot_int payload_len;
             mpipe.state             = MPIPE_RxPayload;
             payload_len             = mpipe.alp.inq->front[2];
-            payload_front           = mpipe.alp.inq->front + 6;
+            mpipe.alp.inq->length   = payload_len + 10;
+            payload_front           = mpipe.alp.inq->front + 10;
             mpipe.alp.inq->back     = payload_front + payload_len;
-            payload_len            += MPIPE_FOOTERBYTES;
-            mpipe.alp.inq->length   = payload_len + 6;
-            __DMA_RXCONFIG(payload_front, payload_len);
+            __DMA_RXOPEN(payload_front, payload_len);
             
             ///@todo This should be dynamic (current value relevant for 115200),
             ///      and it will need to be conditional when RTS/CTS is enabled.
-            mpipeevt_rxdetect(30);
+            mpipeevt_rxdetect( __MPIPE_TIMEOUT(payload_len) );
         }   return;
 
         case MPIPE_RxPayload: {
             ot_u8* footer;
             footer                  = mpipe.alp.inq->back;
-            uart.seq.ubyte[UPPER]    = *footer++;
-            uart.seq.ubyte[LOWER]    = *footer;
+            uart.seq.ubyte[UPPER]   = *footer++;
+            uart.seq.ubyte[LOWER]   = *footer;
             
             // CRC is Good (==0) or bad (!=0) Discard the packet if bad
 #           if (BOARD_FEATURE_USBCONVERTER != ENABLED)
@@ -819,8 +821,8 @@ void mpipedrv_isr() {
             //MPIPE_UART->IE = UCTXIE;
             //return;
 
+#       if (MPIPE_USE_ACKS)        
         case MPIPE_TxAck_Done:  // TX'ed an ACK
-#           if (MPIPE_USE_ACKS)
             if (mpipe.alp.outq->front[5] != 0) { // TX'ed a NACK
                 mpipedrv_rxndef(False, uart.priority);
                 mpipe.state = MPIPE_RxHeader;
@@ -828,59 +830,64 @@ void mpipedrv_isr() {
             }
             uart.priority = MPIPE_Low;
             goto mpipedrv_isr_RXSIG;
-#           endif
+#       endif
 
         //case MPIPE_Tx_Wait:
-            //MPIPE_UART->IE = UCTXIE;
+            //Do a wait or setup some interim interrupt
+            //(none used here)
             //return;
 
+#       if (MPIPE_USE_ACKS)
         case MPIPE_Tx_Done:
-            //MPIPE_UART->IE = 0;
-#           if (MPIPE_USE_ACKS)
+            //Cancel Tx_Wait interim interrupt, if any
+            //(none used here)
             if (uart.priority != MPIPE_Broadcast) {
                 mpipedrv_rxndef(False, MPIPE_Ack);
                 mpipe.state = MPIPE_RxAck;
                 return;
             }
-#           endif
             goto mpipedrv_isr_TXSIG;
-            
+#       endif          
+        
+#       if (MPIPE_USE_ACKS)        
         case MPIPE_RxAck:
-#           if (MPIPE_USE_ACKS)
             if (platform_crc_block(mpipe.alp.inq->front, 10) != 0) { //RX'ed NACK
                 mpipedrv_txndef(False, uart.priority);
                 return;
             }
             goto mpipedrv_isr_TXSIG;
-#           endif
+#       endif
             
-       default: mpipedrv_kill();
-                goto mpipedrv_isr_TXSIG;
+       //default: goto mpipedrv_isr_TXSIG;  //normal behavior is to fall through
     }
     
+    // The TX process is complete, including any ACKing.
+    // - Check the TX queue to see if there is anything queued.
+    // - If yes, then piggyback the transmission
+    // - If no, then close Mpipe and call txdone event handler in the MPipe Task
     mpipedrv_isr_TXSIG:
-    __DMA_TX(OFF);
-    __DMA_TX_CLEAR();
-    uart.seq.ushort++;
-#   if ((MPIPE_UARTMODES == 1) && BOARD_FEATURE_MPIPE_FLOWCTL)
-    MPIPE_UART_PORT->BSRRH = MPIPE_RTS_PIN;
-#   elif (MPIPE_UARTMODES > 1)
-    MPIPE_UART_PORT->BSRRH = (uart.mode & 2) << (MPIPE_RTS_PIN-1);
-#   endif
+    if (mpipe.alp.outq->getcursor != mpipe.alp.outq->putcursor) {
+        ot_u16 nextpkt_len;
+        nextpkt_len = (mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor) + 2;
+        sub_txopen( mpipe.alp.outq->getcursor, nextpkt_len);
+        return;
+    }
+    mpipedrv_kill();
     mpipeevt_txdone(0);
-    goto mpipedrv_isr_END;
+    return;
     
+    
+    // The RX process is complete, including and ACKing.
+    // - Close MPipe and call rxdone event handler from MPipe Task
+    // - If RX CRC matters, then make sure to compute it.
     mpipedrv_isr_RXSIG:
-    __DMA_RX(OFF);
-    __DMA_RX_CLEAR();
+    sub_mpipe_close();
 #   if (BOARD_FEATURE_USBCONVERTER != ENABLED)
         mpipeevt_rxdone((ot_int)crc_result);
 #   else
         mpipeevt_rxdone(0);
 #   endif
     
-    mpipedrv_isr_END:
-    sub_uart_close();
 }
 #endif
 

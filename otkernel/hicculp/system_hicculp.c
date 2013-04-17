@@ -350,7 +350,7 @@ void sys_task_setnext(ot_task task, ot_u16 nextevent_ti) {
 }
 
 void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
-    task->nextevent = (ot_long)platform_get_ktim() + nextevent_clocks;
+    task->nextevent = nextevent_clocks + (ot_long)platform_get_ktim();
 }
 
 
@@ -414,7 +414,7 @@ ot_uint sys_event_manager() {
     ///      invocation of the pending task. </LI>
     dll_clock(elapsed);
         
-    nextevent   = 60000;
+    nextevent   = OT_GPTIM_LIMIT;
     task_i      = &sys.task[TASK_terminus];
     select      = TASK_MAX;
 #   if (OT_FEATURE(SYSTASK_CALLBACKS) != ENABLED)

@@ -35,6 +35,13 @@
 //#include "stm32l1xx_conf.h"
 
 
+#undef OT_GPTIM_LIMIT
+#ifdef __DEBUG__
+#   define OT_GPTIM_LIMIT   15000
+#else
+#   define OT_GPTIM_LIMIT   60000
+#endif
+
 
 
 /** Platform Support settings      <BR>
@@ -328,12 +335,17 @@ void platform_isr_uart5(void);
 
 #define GPTIM_FLAG_RTCBYPASS    (1<<1)
 #define GPTIM_FLAG_SLEEP        (1<<0)
-  
+
 typedef struct {
     ot_u16  flags;
+#   if defined(__DEBUG__)
+    ot_u16  stamp1;
+    ot_u16  stamp2;
+#   else
     ot_u16  chron_stamp;
     ot_u32  evt_stamp;
     ot_u32  evt_span;
+#   endif
 } gptim_struct;
 
 typedef struct {

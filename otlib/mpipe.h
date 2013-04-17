@@ -266,7 +266,7 @@ void mpipeevt_rxdone(ot_int code);
 
 /** @brief  Driver callback for TX Done Event
   * @param  code    (ot_int) Ticks (typ 0-255) the driver needs to page-out TX
-  * @retval None
+  * @retval none
   * @ingroup Mpipe
   * 
   * Some MPipe driver implementations may deliver "DONE" interrupts before the 
@@ -415,7 +415,7 @@ void mpipedrv_setspeed(mpipe_speed speed);
 /** @brief  Transmits an NDEF structured datastream over the MPIPE
   * @param  blocking    (ot_bool) True/False for blocking/non-blocking call
   * @param  data_priority (mpipe_priority) Priority of the TX
-  * @retval None
+  * @retval ot_uint     Number of ticks before TX stream timeout
   * @ingroup Mpipe
   * @sa mpipe_rxndef, mpipe_status
   *
@@ -430,7 +430,7 @@ void mpipedrv_setspeed(mpipe_speed speed);
   * underway if its own priority is higher.
   *
   */
-void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority);
+ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority);
 
 
 

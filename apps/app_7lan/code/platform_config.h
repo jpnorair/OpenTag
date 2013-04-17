@@ -39,12 +39,12 @@
 /// the default if you wish.
 
 #if (   !defined(BOARD_IKR001)          \
-    &&  !defined(BOARD_Haystack_Jupiter_R1) \
+    &&  !defined(BOARD_Jupiter) \
     &&  !defined(BOARD_HayTag_R1)       \
     &&  !defined(BOARD_HayTag_R1T)      \
     &&  !defined(BOARD_HayTag_R1A)      \
     )
-#   define BOARD_Haystack_Jupiter_R1
+#   define BOARD_Jupiter_R1
 #endif
 
 
@@ -56,13 +56,17 @@
 #   include "isr_config_STM32L.h"
 #   include "stm32l1xx/board_IKR001.h"
 
-#elif (defined(BOARD_Haystack_Jupiter_R1))
+#elif (defined(BOARD_Jupiter) || defined(BOARD_Jupiter_R1))
 #   include "isr_config_STM32L.h"
-#   include "stm32l1xx/board_Haystack_Jupiter_R1.h"
+#   include "stm32l1xx/board_Jupiter_R1.h"
 
-#elif (defined(BOARD_HayTag_R1) || defined(BOARD_HayTag_R1T) || defined(BOARD_HayTag_R1A))
+#elif (defined(BOARD_HayTag_R1) || defined(BOARD_HayTag_R1T))
 #   include "isr_config_STM32L.h"
 #   include "stm32l1xx/board_HayTag_R1.h"
+
+#elif (defined(BOARD_HayTag_R1A))
+#   include "isr_config_STM32L.h"
+#   include "stm32l1xx/board_HayTag_R1A.h"
 
 #else
 #   error "No supported BOARD is defined"

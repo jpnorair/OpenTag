@@ -59,6 +59,7 @@ void sys_sig_powerdown(ot_int code) {
     // - In STM32 implementations we must kill the chrono timer before STOP
     //     and also clear EXTI's.  In very rare cases, an EXTI might be 
     //     missed, but there is nothing that can be done about this.
+#   if !defined(__DEBUG__)
     if (code & 2) {
         ot_u16 scratch;
         SCB->SCR   |= SCB_SCR_SLEEPDEEP;
@@ -69,9 +70,9 @@ void sys_sig_powerdown(ot_int code) {
         EXTI->PR    = 0;
         gptim_stop_chrono();
     }   
-    
-    // SLEEP mode:
-    else {
+    else 
+#   endif
+    {   // SLEEP mode:
         SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
         PWR->CR    &= ~(PWR_CR_PDDS | PWR_CR_LPSDSR | PWR_CR_ULP);
     }

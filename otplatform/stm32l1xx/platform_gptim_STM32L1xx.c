@@ -35,11 +35,157 @@
 
 #include "system.h"
 
-
 gptim_struct gptim;
 
 
+#if defined(__DEBUG__)
+/** Debug Implementation <BR>
+  * ========================================================================<BR>
+  * When __DEBUG__ is defined, we use TIM9 and we don't send the system to 
+  * STOP mode.  Using TIM9 for the GPTIM disallows STOP mode, but it allows
+  * the breakpoints to stop the timer.  That is very important for debugging.
+  */
 
+void platform_isr_tim9() {
+// TIM9 CCR1 is Kernel Timer interrupt
+// TIM9 CCR2 is the GPTIM2 interrupt, typically the MAC timer
+    ot_u16 test;
+    test        = TIM9->SR;
+    TIM9->SR    = 0;
+
+    if (test & TIM_SR_CC2IF) {
+        radio_mac_isr();
+    }
+    if (test & TIM_SR_CC1IF) {
+        gptim.flags = 0;
+    }
+}
+
+
+
+#ifndef EXTF_platform_init_gptim
+void platform_init_gptim(ot_uint prescaler) {
+/// This is the DEBUG implementation that uses TIM9 at 1024 Hz rather than
+/// the RTC hybrid method.
+
+    gptim.flags     = 0;
+    gptim.stamp1    = 0;
+    gptim.stamp2    = 0;
+
+    // Timer 9 is our timer
+    NVIC->IP[(uint32_t)(TIM9_IRQn)]         = ((b0001) << 4);
+    NVIC->ISER[((uint32_t)(TIM9_IRQn)>>5)]  = (1 << ((uint32_t)(TIM9_IRQn) & 0x1F));
+
+    TIM9->DIER  = 0;                    // TIM interrupts unused
+    TIM9->SR    = 0;                    // clear update flags
+    TIM9->CCMR1 = 0;
+    TIM9->PSC   = 15;
+    TIM9->OR    = 0;
+    
+    // Timer Mode 2 with (1/8) prescale yields 4096 Hz
+    TIM9->SMCR  = TIM_SMCR_ECE | TIM_SMCR_ETPS_DIV8;   
+    
+    // Set TIM9 OC interrupts
+#   if (RF_FEATURE(MAC_TIMER) != ENABLED)
+    TIM9->DIER  = TIM_DIER_CC1IE;
+    TIM9->CCER  = TIM_CCER_CC1E | TIM_CCER_CC2E;    // Enable Kernel & RF MAC timers
+#   else
+    TIM9->DIER  = TIM_DIER_CC1IE;
+    TIM9->CCER  = TIM_CCER_CC1E;                    // Only Enable Kernel Timer
+#   endif
+
+    // Re-enable Timer with continuous mode and update disabled
+    TIM9->ARR   = 65535;
+    TIM9->CCR1  = 65535;
+    TIM9->CR1   = (TIM_CR1_UDIS | TIM_CR1_CEN);
+    TIM9->EGR   = TIM_EGR_UG;
+    
+    
+    
+    
+}
+#endif
+
+
+
+
+ot_u32 platform_get_ktim() {
+    ot_u16 timer_cnt;
+    timer_cnt = (TIM9->CNT - (ot_u16)gptim.stamp1) >> 2;
+    return (ot_u32)timer_cnt;
+}
+
+ot_u16 platform_next_ktim() {
+    return ((gptim.stamp1 - TIM9->CNT) >> 2);
+}
+
+void platform_enable_ktim() {
+    TIM9->DIER |= TIM_DIER_CC1IE;
+}
+
+void platform_disable_ktim() {
+    TIM9->DIER &= ~TIM_DIER_CC1IE;
+}
+
+void platform_pend_ktim() {
+    TIM9->EGR |= TIM_EGR_CC1G;
+}
+
+void platform_flush_ktim() {
+    TIM9->DIER     &= ~TIM_DIER_CC1IE;
+    gptim.stamp1    = TIM9->CNT;
+}
+
+ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
+/// This should only be called from the scheduler.  Note how this function 
+/// implements tail-chaining
+    if ( (ot_long)(nextevent-overhead) <= 0 ) {
+        gptim.flags = 0;
+        return 0;
+    }
+    gptim.flags     = GPTIM_FLAG_SLEEP;
+    TIM9->DIER     &= ~TIM_DIER_CC1IE;
+    gptim.stamp1    = TIM9->CNT;
+    TIM9->CCR1      = gptim.stamp1 + (ot_u16)(nextevent << 2);
+    TIM9->DIER     |= TIM_DIER_CC1IE;
+    
+    return (ot_u16)nextevent;
+}
+
+
+void platform_set_gptim2(ot_u16 value) {
+/// gptim2 is often used for RF MAC timing.  It includes "value" = 0 protection 
+/// because often a time-slot is started at position 0.  In that case, fuck the
+/// annoying RTC, just force it with a software interrupt on the EXTI.
+
+    TIM9->DIER     &= ~TIM_DIER_CC2IE;
+    gptim.stamp2    = TIM9->CNT;
+    TIM9->CCR2      = gptim.stamp2 + (ot_u16)(value << 2);
+    TIM9->DIER     |= TIM_DIER_CC2IE;
+}
+
+
+void platform_enable_gptim2() {
+    TIM9->DIER |= TIM_DIER_CC2IE;
+}
+
+
+void platform_disable_gptim2() {
+    TIM9->DIER &= ~TIM_DIER_CC2IE;
+}
+
+
+
+
+
+
+
+
+#else
+/** Proto and Release Implementation <BR>
+  * ========================================================================<BR>
+  * Use the RTC-based implementation for __PROTO__ or __RELEASE__ builds
+  */
 
 
 /** GPTIM Subroutine Prototypes <BR>
@@ -205,41 +351,7 @@ void platform_init_gptim(ot_uint prescaler) {
 #endif
 
  
-/* Old TIM9 code for GPTIM
-{
-    // Disable Timer(s): this is startup-default, so commented out
-    // Set Rising Edge interrupt
-#   define _KTIM_EXTI   BOARD_GPTIM1_PIN
-#   define _MACTIM_EXTI ((RF_FEATURE(MAC) != ENABLED) << BOARD_GPTIM2_PINNUM)
-//  EXTI->IMR              |= (_KTIM_EXTI | _MACTIM_EXTI);    //done individually
-    EXTI->RTSR             |= (_KTIM_EXTI | _MACTIM_EXTI);
-    EXTI->FTSR             |= (_KTIM_EXTI | _MACTIM_EXTI);
 
-    // Configure Timer for LSE clocking
-    platform_ext.last_evt   = 0;
-    OT_GPTIM->DIER          = 0;                     // TIM interrupts unused
-    OT_GPTIM->SR            = 0;                    // clear update flags
-    OT_GPTIM->SMCR          = TIM_SMCR_ECE \
-                            | TIM_SMCR_ETPS_DIV8;   // Timer Mode 2 with (1/8) prescale
-    
-#   if ((RF_FEATURE(MAC_TIMER) != ENABLED) && (OT_GPTIM_ID == 9))
-    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_TOGGLE \
-                    | TIM_CCMR1_OC2M_TOGGLE;                // Set Output on Match
-    OT_GPTIM->CCER  = TIM_CCER_CC1E;   // Enable Kernel & RF MAC timers
-#   else
-    OT_GPTIM->CCMR1 = TIM_CCMR1_OC1M_TOG;                     // Set Output on Match
-    OT_GPTIM->CCER  = TIM_CCER_CC1E;                        // Only Enable Kernel Timer
-#   endif
-  //OT_GPTIM->PSC   = 0;
-    OT_GPTIM->ARR   = 65535;                                // Continuous Mode
-    OT_GPTIM->OR    = 0;
-    
-    // Re-enable Timer
-    OT_GPTIM->CCR1  = 65535;
-    OT_GPTIM->CR1   = (TIM_CR1_UDIS | TIM_CR1_CEN);
-    OT_GPTIM->EGR   = TIM_EGR_UG;
-}
-*/
 
 
 
@@ -533,6 +645,12 @@ inline ot_u16 gptim_get_chrono() {
 inline void gptim_stop_chrono() {
     TIM9->CR1 = 0;
 }
+
+
+#endif
+// END of ifdef __DEBUG__
+
+
 
 
 

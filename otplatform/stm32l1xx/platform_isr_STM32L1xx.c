@@ -49,10 +49,26 @@
 #define __ISR_ENTRY_HOOK(); 
 #define __ISR_EXIT_HOOK(); 
 
+/// RTC Alarm interrupt is required by OpenTag
+#undef __ISR_RTC_Alarm
+#undef __N_ISR_RTC_Alarm
+#define __ISR_RTC_Alarm
+
+#undef __ISR_RTC_WKUP
+#undef __N_ISR_RTC_WKUP
+#define __ISR_RTC_WKUP
+
+
 /// ISRs that can bring the system out of STOP mode have __ISR_WAKEUP_HOOK().
 /// When coming out of STOP, clock is always MSI.  If Multispeed clocking is
 /// disabled and a non-MSI clock is the clock source, it must be turned-on.
-#if ((MCU_FEATURE_MULTISPEED != ENABLED) && defined(BOARD_PARAM_HFHz))
+#if defined(__DEBUG__)
+#   undef __ISR_RTC_Alarm
+#   define __ISR_TIM9
+#   define __ISR_KTIM_WAKEUP_HOOK();
+#   define __ISR_WAKEUP_HOOK();
+
+#elif ((MCU_FEATURE_MULTISPEED != ENABLED) && defined(BOARD_PARAM_HFHz))
 #   define __ISR_KTIM_WAKEUP_HOOK() platform_full_speed()
 #   define __ISR_WAKEUP_HOOK() \
         do { gptim_start_chrono(); platform_full_speed(); } while(0)
@@ -65,14 +81,7 @@
 
 
 
-/// RTC Alarm interrupt is required by OpenTag
-#undef __ISR_RTC_Alarm
-#undef __N_ISR_RTC_Alarm
-#define __ISR_RTC_Alarm
 
-#undef __ISR_RTC_WKUP
-#undef __N_ISR_RTC_WKUP
-#define __ISR_RTC_WKUP
 
 
 /// Open SPI interrupts:
