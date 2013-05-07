@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/stm32l1xx/mpipe_uart_STM32L.c
   * @author     JP Norair
-  * @version    R100
-  * @date       14 Jan 2013
+  * @version    R102
+  * @date       14 April 2013
   * @brief      Message Pipe (MPIPE) UART implementation for STM32L1xx
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
@@ -33,7 +33,7 @@
   * Baudrates supported:    9600, 28800, 57600, 115200, (higher possible)
   * Byte structure:         8N1
   * Duplex:                 Half
-  * Flow control:           Crossover RTS/CTS
+  * Flow control:           None, DTR, RTS/CTS
   * Connection:             RS-232, DTE-DTE (use a null-modem connector)
   *
   * Design Assumptions:
@@ -59,6 +59,14 @@
   * <PRE>
   * [ Seq ID ] 0xDD 0x00 0x00 0x02 0x00 0xYY  [ CRC16 ]
   * </PRE>
+  *
+  * The MPipe driver also supports a Raw-ALP build.  MPIPE_USE_MAC can be set
+  * to zero through the board config header or in this file (Default is ON).
+  * Raw ALP does not include NDEF-compliant header or any footer.  Therefore,
+  * there is no ACK ability.  Raw ALP has a 4-byte ALP header, identical to 
+  * NDEF header except Type Length and ID Length are removed.  Type Length is
+  * implicitly 0 and ID Length is implicitly 2.
+  * 
   ******************************************************************************
   */
 
@@ -81,9 +89,20 @@
   * the MPIPE across different peripherals and with different options that are
   * made available at runtime.
   */
-#define MPIPE_FOOTERBYTES   4
+#ifndef MPIPE_USE_MAC
+#   define MPIPE_USE_MAC        1
+#endif
+
+#if (MPIPE_USE_MAC)
+#   define MPIPE_HEADERBYTES    6
+#   define MPIPE_FOOTERBYTES    4
+#else
+#   define MPIPE_HEADERBYTES    4
+#   define MPIPE_FOOTERBYTES    0
+#endif
+
+#define MPIPE_OVERHEADBYTES (MPIPE_HEADERBYTES + MPIPE_FOOTERBYTES)
 #define MPIPE_UARTMODES     ( (BOARD_FEATURE_MPIPE_DIRECT == ENABLED) \
-                            + (BOARD_FEATURE_MPIPE_BREAK == ENABLED)  \
                             + (BOARD_FEATURE_MPIPE_CS == ENABLED)     \
                             + (BOARD_FEATURE_MPIPE_FLOWCTL == ENABLED))
 #define MPIPE_MODES         (MPIPE_UARTMODES)
@@ -119,13 +138,16 @@
   * multispeed clocking will need some extra logic in the MPIPE driver to 
   * assure that the clock speed is on the right setting during MPIPE usage.
   */
-#if (MCU_FEATURE(MULTISPEED) == ENABLED)
-///@todo system calls
-#   define __REQUEST_FULL_SPEED();  // sys_req_fullspeed()
-#   define __DISMISS_FULL_SPEED();  // sys_clr_fullspeed()
+#if (BOARD_FEATURE_STDSPEED == ENABLED)
+#   if (BOARD_FEATURE_FULLSPEED == ENABLED)
+#       define __SYS_CLKON()    platform_full_speed();
+#   elif (BOARD_FEATURE_FLANKSPEED == ENABLED)
+#       define __SYS_CLKON()    platform_flank_speed();
+#   else 
+#       define __SYS_CLKON();
+#   endif
 #else
-#   define __REQUEST_FULL_SPEED();
-#   define __DISMISS_FULL_SPEED();
+#       define __SYS_CLKON();
 #endif
 
 
@@ -277,6 +299,8 @@
   
 typedef struct {
     ot_uni16 seq;
+    ot_int  packets;
+    ot_u8*  pkt;
 #if (MPIPE_USE_ACKS)
     mpipe_priority  priority;
 #endif
@@ -336,10 +360,9 @@ static const ot_u16 br_hssel[4] = {
   */
   
 void sub_mpipe_close();
-void sub_txndef(ot_bool blocking, mpipe_priority data_priority);
-void sub_rxndef(ot_bool blocking, mpipe_priority data_priority);
-void sub_txopen(ot_u8* data, ot_u16 length);
-
+void sub_tx(ot_bool blocking, mpipe_priority data_priority);
+void sub_rx(ot_bool blocking, mpipe_priority data_priority);
+void sub_txopen();
 
 void sub_mpipe_close() {
     __DMA_ALL_CLOSE();
@@ -350,7 +373,7 @@ void sub_mpipe_close() {
     __UART_CLKOFF();
     __CLR_RTS();
     __CLR_MPIPE();
-    __DISMISS_FULL_SPEED();
+    //__DISMISS_FULL_SPEED();
     
     mpipe.state = MPIPE_Idle;
 }
@@ -362,10 +385,10 @@ void sub_mpipe_close() {
 void __CTS_ISR(void) {
     mpipe.state = MPIPE_Idle;
     if ((MPIPE_UART_PORT->ODR & BOARD_UART_RTSPIN) == 0) {
-        sub_txndef(False, 0);
+        sub_tx(False, 0);
     }
     else {
-        sub_rxndef(False, 0);
+        sub_rx(False, 0);
         MPIPE_UART_PORT->BSRRL = BOARD_UART_RTSPINNUM; 
     }
 }
@@ -377,7 +400,7 @@ void __CTS_ISR(void) {
     }
     else {
         mpipe.state = MPIPE_Idle;
-        sub_rxndef(False, 0);
+        sub_rx(False, 0);
     }
 }
 #elif ((BOARD_FEATURE(MPIPE_FLOWCTL) == ENABLED) && (BOARD_FEATURE(MPIPE_CS) == ENABLED))
@@ -393,15 +416,13 @@ void __CTS_ISR(void) {
         mpipe_kill();
     }
     else if ((MPIPE_UART_PORT->ODR & BOARD_UART_RTSPIN) == 0) {
-        sub_txndef(False, 0);
+        sub_tx(False, 0);
     }
     else {
-        sub_rxndef(False, 0);
+        sub_rx(False, 0);
         MPIPE_UART_PORT->BSRRL = rts_mask;
     }
-
 }
-
 #endif
 
 
@@ -465,7 +486,6 @@ ot_int mpipedrv_init(void* port_id) {
         baud_id     = (uart.mode == 0) ? 0 : ((ot_u8*)port_id)[1];  
 #   endif
     
-    
     /// UART Setup (RX & TX setup takes place at time of startup)
     __UART_CLKON();
     MPIPE_UART->BRR     = br_hssel[baud_id];
@@ -473,7 +493,6 @@ ot_int mpipedrv_init(void* port_id) {
     MPIPE_UART->CR2     = 0;
     MPIPE_UART->CR1     = 0;
     __UART_CLKOFF();
-    
     
     /// Set up DMA channels for RX and TX
 //  _DMARX->CCR     = 0;
@@ -496,7 +515,6 @@ ot_int mpipedrv_init(void* port_id) {
     //NVIC->IP[(ot_u32)_UART_IRQ]         = _IRQGROUP;
     //NVIC->ISER[(ot_u32)(_UART_IRQ>>5)]  = (1 << ((ot_u32)_UART_IRQ & 0x1F));
     
-    
     /// Configure optional double-edge CTS interrupt
     /// NVIC configuration must be in the platform_STM32L1xx.c implementation,
     /// due to the way EXTIs are shared.
@@ -505,7 +523,6 @@ ot_int mpipedrv_init(void* port_id) {
         EXTI->RTSR  |= MPIPE_UART_CTSPIN;
 #   endif
     
-        
     /// Final MPIPE configuration
 #   if (MPIPE_USE_ACKS)
     uart.priority   = MPIPE_Low;
@@ -515,8 +532,9 @@ ot_int mpipedrv_init(void* port_id) {
     alp_init(&mpipe.alp, &dir_in, &dir_out);
     mpipe.alp.inq->back    -= 10;
     mpipe.alp.outq->back   -= 10;
+    uart.packets            = 0;
+    uart.pkt                = mpipe.alp.outq->front;
         
-    
     return 255;
 }
 #endif
@@ -563,6 +581,8 @@ void mpipedrv_kill() {
     // Clear the TX queue
 	q_empty(mpipe.alp.outq);
 	mpipe.alp.outq->back -= 10;
+    uart.packets          = 0;
+    uart.pkt              = mpipe.alp.outq->front;
 }
 #endif
 
@@ -595,18 +615,18 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     
 #   if (MPIPE_UARTMODES == 1) && (BOARD_FEATURE(MPIPE_DIRECT))
     /// Direct UART Only
-    sub_txndef(blocking, data_priority);
+    sub_tx(blocking, data_priority);
     
 #   elif (MPIPE_UARTMODES == 1) && (BOARD_FEATURE(MPIPE_CS))
     /// DTR UART Only
     if ((MPIPE_UART_PORT->IDR & MPIPE_UART_DTRPIN) == 0) {
-        sub_txndef(blocking, data_priority);
+        sub_tx(blocking, data_priority);
     }
 
 #   elif (MPIPE_UARTMODES == 1) && (BOARD_FEATURE(FLOW_CTL))
     /// CTS/RTS UART Only
     if ((MPIPE_UART_PORT->IDR & MPIPE_UART_CTSPIN) == 0) {
-        sub_txndef(blocking, data_priority);
+        sub_tx(blocking, data_priority);
     }
     else {
         ///@todo implement a short timer with a guard time to prevent CTS collision.
@@ -627,7 +647,7 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     cts_mask   &= MPIPE_UART_PORT->IDR;
     
     if (cts_mask == 0) {
-        sub_txndef(blocking, data_priority);
+        sub_tx(blocking, data_priority);
     }
     else if (uart.mode & 1) {
         ///@todo implement a short timer with a guard time to prevent CTS collision.
@@ -647,39 +667,37 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
 #endif
 
 
-void sub_txndef(ot_bool blocking, mpipe_priority data_priority) {
-    ot_u16 length;
-    ot_u8* data;
-
-#if (MPIPE_USE_ACKS)
+void sub_tx(ot_bool blocking, mpipe_priority data_priority) {
+#   if (MPIPE_USE_ACKS)
     if (data_priority == MPIPE_Ack)) {
         uart.priority  = data_priority;
-    
-        /// Todo: load the ACK
+        ///@todo In this space, the ACK needs to be swapped to the queue
         goto mpipedrv_txndef_GO;
     }
-#endif
+    ///@todo In this space, swap to the standard mpipe queue
+#   endif
     
-    // Write the footer (sequence + CRC) onto this packet
-    q_writeshort(mpipe.alp.outq, uart.seq.ushort++);
-    length = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;
-    q_writeshort(   mpipe.alp.outq, 
-                    platform_crc_block(mpipe.alp.outq->getcursor, length)  );
+#   if (MPIPE_USE_MAC)
+    {   // Write the footer (sequence + CRC) onto this packet
+        ot_u16 crc16;
+        ot_u16 length;
+        q_writeshort(mpipe.alp.outq, uart.seq.ushort++);
+        length  = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;
+        crc16   = platform_crc_block(mpipe.alp.outq->getcursor, length);
+        q_writeshort(mpipe.alp.outq, crc16);
+    }
+#   endif
     
-    // Save the beginning of the packet (data), and move getcursor past 
-    // this packet.  If another packet is queued during this transmission, 
-    // it will hold its place in the queue and get piggybacked.
-    length                     += (2 + 2);                      // CRC16 + Padded bytes
-    data                        = mpipe.alp.outq->getcursor;
+    // Move getcursor to end of packet, to allow another packet to be added
     mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
+    uart.packets++;
     
-    // If the transmitter is idle, start it up.
     if (mpipe.state == MPIPE_Idle) {
         mpipe.state = MPIPE_Tx_Done;    //MPIPE_Tx_Wait;
-        __REQUEST_FULL_SPEED();
-        
+        uart.packets--;
         mpipedrv_txndef_GO:
-        sub_txopen(data, length);
+        __SYS_CLKON();
+        sub_txopen();
         
         if (blocking) {
            mpipedrv_wait();
@@ -687,15 +705,13 @@ void sub_txndef(ot_bool blocking, mpipe_priority data_priority) {
     }
 }
 
-
-
-void sub_txopen(ot_u8* data, ot_u16 length) {
+void sub_txopen() {
+    ot_u16 length;
     __UART_CLKON();
     __UART_TXOPEN();
-    __DMA_TXOPEN(data, length);
+    length = uart.pkt[2] + MPIPE_OVERHEADBYTES + 2;
+    __DMA_TXOPEN(uart.pkt, length);
 }
-
-
 
 
 
@@ -704,11 +720,11 @@ void sub_txopen(ot_u8* data, ot_u16 length) {
 void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
 #if (MPIPE_UARTMODES == 1) && (BOARD_FEATURE(MPIPE_DIRECT))
     /// DIRECT UART Only
-    sub_rxndef(blocking, data_priority);
+    sub_rx(blocking, data_priority);
 
 #elif (MPIPE_UARTMODES == 1)
     /// CTS/RTS or DTR UART Only
-    if (__UART_CHECKPIN())  sub_rxndef(blocking, data_priority);
+    if (__UART_CHECKPIN())  sub_rx(blocking, data_priority);
     else                    EXTI->IMR |= MPIPE_CTS_PIN;
 
 #else
@@ -720,14 +736,14 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
     
     if (cts_mask == 0) {
         mpipe.state = MPIPE_Idle;
-        sub_rxndef(blocking, data_priority);
+        sub_rx(blocking, data_priority);
     }
 }
 #endif
 }
 #endif
 
-void sub_rxndef(ot_bool blocking, mpipe_priority data_priority) {
+void sub_rx(ot_bool blocking, mpipe_priority data_priority) {
 #if (MPIPE_USE_ACKS)
     if (data_priority == MPIPE_Ack) {
         uart.priority  = data_priority;
@@ -740,13 +756,13 @@ void sub_rxndef(ot_bool blocking, mpipe_priority data_priority) {
     if (mpipe.state == MPIPE_Idle) {
         mpipedrv_rxndef_SETUP:
         //mpipe.state = MPIPE_RxHeader;
-        __REQUEST_FULL_SPEED();
         q_empty(mpipe.alp.inq);
         //mpipe.alp.inq->back -=10;
         
+        __SYS_CLKON();
         __UART_CLKON();
         __UART_RXOPEN();
-        __DMA_RXOPEN(mpipe.alp.inq->front, 10);
+        __DMA_RXOPEN(mpipe.alp.inq->front, MPIPE_OVERHEADBYTES);
     }
 }
 
@@ -782,8 +798,8 @@ void mpipedrv_isr() {
             ot_int payload_len;
             mpipe.state             = MPIPE_RxPayload;
             payload_len             = mpipe.alp.inq->front[2];
-            mpipe.alp.inq->length   = payload_len + 10;
-            payload_front           = mpipe.alp.inq->front + 10;
+            mpipe.alp.inq->length   = payload_len + MPIPE_OVERHEADBYTES;
+            payload_front           = mpipe.alp.inq->front + MPIPE_OVERHEADBYTES;
             mpipe.alp.inq->back     = payload_front + payload_len;
             __DMA_RXOPEN(payload_front, payload_len);
             
@@ -866,10 +882,9 @@ void mpipedrv_isr() {
     // - If yes, then piggyback the transmission
     // - If no, then close Mpipe and call txdone event handler in the MPipe Task
     mpipedrv_isr_TXSIG:
-    if (mpipe.alp.outq->getcursor != mpipe.alp.outq->putcursor) {
-        ot_u16 nextpkt_len;
-        nextpkt_len = (mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor) + 2;
-        sub_txopen( mpipe.alp.outq->getcursor, nextpkt_len);
+    if (uart.packets > 0) {
+        uart.pkt += uart.pkt[2] + MPIPE_OVERHEADBYTES;
+        sub_txopen( );
         return;
     }
     mpipedrv_kill();

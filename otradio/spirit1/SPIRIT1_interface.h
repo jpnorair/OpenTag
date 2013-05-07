@@ -55,7 +55,14 @@ typedef enum {
   *       read data, it is returning data copied from spirit1.busrx.  Use this
   *       knowledge to optimize your code, or do hacks & tricks.
   */
+#ifndef BOARD_FEATURE_RFXTALOUT
+#   define BOARD_FEATURE_RFXTALOUT 0
+#endif
+  
 typedef struct {
+#   if (BOARD_FEATURE_RFXTALOUT)
+    ot_bool         clkreq;
+#   endif
     SPIRIT1_IMode   imode;
     ot_u16          status;
     ot_u8           busrx[24];

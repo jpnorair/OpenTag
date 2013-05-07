@@ -181,12 +181,20 @@ void radio_gag() {
 }
 #endif
 
+
+
 #ifndef EXTF_radio_sleep
 void radio_sleep() {
 /// Sleep on SPIRIT1 is actually STANDBY mode.  There is also a SLEEP mode on 
 /// SPIRIT1 that is STANDBY+RC_Osc, but this implementation does not use the RC
 /// Oscillator at all, so STANDBY is the best choice.
-/// Only go to STANDBY if it is not already the present mode.
+#if BOARD_FEATURE_RFXTALOUT
+    if (spirit1.clkreq) {
+        radio_idle();
+    } 
+    else
+#endif
+    // Only go to STANDBY if it is not already the present mode.
     if (rfctl.flags & RADIO_FLAG_XOON) {
         radio_idle();
         rfctl.flags &= ~RADIO_FLAG_PWRMASK;
@@ -216,6 +224,31 @@ void radio_idle() {
     }
 }
 #endif
+
+
+void spirit1_clockout_on(ot_u8 clk_param) {
+/// Set the SPIRIT1 to idle, then configure the driver so it never goes into sleep 
+/// or standby, and finally configure the SPIRIT1 to output the clock.
+#if (BOARD_FEATURE_RFXTALOUT)
+    radio_idle();
+    spirit1.clkreq = True;
+    spirit1_write(RFREG(MCU_CK_CONF), clk_param);
+    spirit1_write(RFREG(GPIO3_CONF), (_GPIO_SELECT(RFGPO_MCU_CLK) | _GPIO_MODE_HIDRIVE));
+#endif
+}
+
+
+void spirit1_clockout_off() {
+/// This is the reverse of spirit1_clockout_on(), described above.
+#if (BOARD_FEATURE_RFXTALOUT)
+    spirit1.clkreq = False;
+    spirit1_write(RFREG(GPIO3_CONF), RFGPO(GND));
+    spirit1_write(RFREG(MCU_CK_CONF), 0);
+    radio_sleep();
+#endif
+}
+
+
 
 #ifndef EXTF_radio_calibrate
 void radio_calibrate() {

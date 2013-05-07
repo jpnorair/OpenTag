@@ -34,6 +34,10 @@
 
 //#include "stm32l1xx_conf.h"
 
+#ifndef STM32L1XX_MD
+#   define STM32L1XX_MD
+#endif
+
 
 #undef OT_GPTIM_LIMIT
 #ifdef __DEBUG__
@@ -369,6 +373,10 @@ void gptim_restart_chrono();
 ot_u16 gptim_get_chrono();
 void gptim_stop_chrono();
 
+
+void platform_ext_pllon();
+void platform_ext_plloff();
+void platform_ext_wakefromstop();
 
 
 

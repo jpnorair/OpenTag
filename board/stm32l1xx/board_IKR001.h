@@ -81,11 +81,13 @@
 
 //From platform_STM32L1xx.h
 //#define MCU_FEATURE(VAL)              MCU_FEATURE_##VAL   // FEATURE 
-#define MCU_FEATURE_MULTISPEED          DISABLED         // Allows usage of MF-HF clock boosting
 #define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPECDC            DISABLED        // USB-CDC MPipe implementation
+#define MCU_FEATURE_MPIPECDC            DISABLED         // USB-CDC MPipe implementation
 #define MCU_FEATURE_MPIPEUART           ENABLED         // UART MPipe Implementation
-#define MCU_FEATURE_MEMCPYDMA           ENABLED         /* MEMCPY DMA should be lower priority than MPIPE DMA */
+#define MCU_FEATURE_MPIPEI2C            DISABLED         // I2C MPipe Implementation
+#define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
+
+#define MCU_FEATURE_USB                 ((MCU_FEATURE_MPIPECDC == ENABLED) || 0)
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_PORTS                 6               // This STM32L has ports A, B, C, D, E, H
@@ -143,13 +145,24 @@
   * 
   * 4. The SPIRIT1 SPI benefits from the highest speed clock up to 20 MHz.
   */
-#define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
-#define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
-#define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                // RTS/CTS style flow control
-#define BOARD_FEATURE_MPIPE_QMGMT       ENABLED
-#define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL used as Clock source
-#define BOARD_FEATURE_HFXTAL            DISABLED                // HF XTAL used as Clock source
+#define BOARD_FEATURE_USBCONVERTER      ENABLED                // Is UART/I2C connected via USB converter?
+#define BOARD_FEATURE_MPIPE_DIRECT      ENABLED                 // Direct implementation (UART, I2C)
+#define BOARD_FEATURE_MPIPE_BREAK       DISABLED                 // Send/receive leading break for wakeup (I2C)
+#define BOARD_FEATURE_MPIPE_CS          DISABLED                 // Chip-Select / DTR wakeup control (UART)
+#define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                 // RTS/CTS style flow control (UART)
+
+#define BOARD_FEATURE_MPIPE_QMGMT       ENABLED                 // (possibly defunct)
+#define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL attached
+#define BOARD_FEATURE_HFXTAL            ENABLED                 // HF XTAL attached
+#define BOARD_FEATURE_HFBYPASS          DISABLED
 #define BOARD_FEATURE_RFXTAL            ENABLED                 // XTAL for RF chipset
+#define BOARD_FEATURE_RFXTALOUT         DISABLED
+#define BOARD_FEATURE_PLL               MCU_FEATURE_USB
+#define BOARD_FEATURE_STDSPEED          ENABLED
+#define BOARD_FEATURE_FULLSPEED         ENABLED
+#define BOARD_FEATURE_FULLXTAL          DISABLED
+#define BOARD_FEATURE_FLANKSPEED        MCU_FEATURE_USB
+#define BOARD_FEATURE_FLANKXTAL         MCU_FEATURE_USB
 #define BOARD_FEATURE_INVERT_TRIG1      ENABLED
 #define BOARD_FEATURE_INVERT_TRIG2      ENABLED
 
@@ -161,16 +174,16 @@
 #define BOARD_PARAM_MFdiv               1
 #define BOARD_PARAM_MFtol               0.02
 #define BOARD_PARAM_HFHz                16000000
-#define BOARD_PARAM_HFmult              1                       // Turbo CLK = HFHz * (HFmult/HFdiv)
-#define BOARD_PARAM_HFdiv               1
 #define BOARD_PARAM_HFtol               0.02
-
-///@note VERY IMPORTANT.  My board has a 50 MHz crystal.  I'm not sure that all
-///      of the SPIRIT1 modules have the same crystal.  It might be 24, 25, 26,
-///      48, 50, or 52 MHz.  Check and change BOARD_PARAM_RFHz as needed.
-#define BOARD_PARAM_RFHz                50000000                
+#define BOARD_PARAM_HFppm               20000
+#define BOARD_PARAM_RFHz                50000000
+#define BOARD_PARAM_RFdiv               3
+#define BOARD_PARAM_RFout               (BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)
 #define BOARD_PARAM_RFtol               0.00003
-
+#define BOARD_PARAM_PLLout              96000000
+#define BOARD_PARAM_PLLmult             (BOARD_PARAM_PLLout/8000000)
+#define BOARD_PARAM_PLLdiv              3
+#define BOARD_PARAM_PLLHz               (BOARD_PARAM_PLLout/BOARD_PARAM_PLLdiv)
 
 #define BOARD_PARAM_AHBCLKDIV           1                       // AHB Clk = Main CLK / AHBCLKDIV
 #define BOARD_PARAM_APB2CLKDIV          1                       // APB2 Clk = Main CLK / AHBCLKDIV
@@ -380,13 +393,15 @@
 #define BOARD_RFGPIO_0PINNUM            7
 #define BOARD_RFGPIO_1PINNUM            8
 #define BOARD_RFGPIO_2PINNUM            9
-#define BOARD_RFGPIO_3PINNUM            10
-#define BOARD_RFGPIO_SDNPINNUM          13
-#define BOARD_RFGPIO_0PIN               (1<<7)
-#define BOARD_RFGPIO_1PIN               (1<<8)
-#define BOARD_RFGPIO_2PIN               (1<<9)
-#define BOARD_RFGPIO_3PIN               (1<<10)
-#define BOARD_RFGPIO_SDNPIN             (1<<13)
+#define BOARD_RFCTL_PORTNUM             2
+#define BOARD_RFCTL_PORT                GPIOC
+#define BOARD_RFCTL_SDNPINNUM           13
+#define BOARD_RFCTL_3PINNUM             10
+#define BOARD_RFGPIO_0PIN               (1<<BOARD_RFGPIO_0PINNUM)
+#define BOARD_RFGPIO_1PIN               (1<<BOARD_RFGPIO_1PINNUM)
+#define BOARD_RFGPIO_2PIN               (1<<BOARD_RFGPIO_2PINNUM)
+#define BOARD_RFCTL_3PIN                (1<<BOARD_RFCTL_3PINNUM)
+#define BOARD_RFCTL_SDNPIN              (1<<BOARD_RFCTL_SDNPINNUM)
 #define BOARD_RFSPI_ID                  1       //SPI1
 #define BOARD_RFSPI_PORTNUM             4       //Port E
 #define BOARD_RFSPI_PORT                GPIOE
@@ -394,10 +409,10 @@
 #define BOARD_RFSPI_MISOPINNUM          14
 #define BOARD_RFSPI_SCLKPINNUM          13
 #define BOARD_RFSPI_CSNPINNUM           12
-#define BOARD_RFSPI_MOSIPIN             (1<<15)
-#define BOARD_RFSPI_MISOPIN             (1<<14)
-#define BOARD_RFSPI_SCLKPIN             (1<<13)
-#define BOARD_RFSPI_CSNPIN              (1<<12)
+#define BOARD_RFSPI_MOSIPIN             (1<<BOARD_RFSPI_MOSIPINNUM)
+#define BOARD_RFSPI_MISOPIN             (1<<BOARD_RFSPI_MISOPINNUM)
+#define BOARD_RFSPI_SCLKPIN             (1<<BOARD_RFSPI_SCLKPINNUM)
+#define BOARD_RFSPI_CSNPIN              (1<<BOARD_RFSPI_CSNPINNUM)
 
 // SPIRIT1 Current Montior (SCM) interface
 #define BOARD_SCMIN_PORTNUM             2
@@ -450,52 +465,52 @@
   * If your board is implementing a radio (extremely likely), there are likely
   * some additional Board macros down near the radio configuration section.
   */
-    // DMA is used in MEMCPY and thus it could be needed at any time during
-    // active runtime.  So, the active-clock must be enabled permanently.
-#   if (MCU_FEATURE_MEMCPYDMA)
-#       define _DMACLK_N    RCC_AHBENR_DMA1EN
-#   else
-#       define _DMACLK_N    0
-#       define _DMACLK_DYNAMIC
-#   endif
+// DMA is used in MEMCPY and thus it could be needed at any time during
+// active runtime.  So, the active-clock must be enabled permanently.
+#if (MCU_FEATURE_MEMCPYDMA)
+#   define _DMACLK_N    RCC_AHBENR_DMA1EN
+#else
+#   define _DMACLK_N    0
+#   define _DMACLK_DYNAMIC
+#endif
 
-    //Flash should be enabled unless you seriously modify OpenTag.
-#   define _FLITFCLK_N      RCC_AHBENR_FLITFEN
+//Flash should be enabled unless you seriously modify OpenTag.
+#define _FLITFCLK_N      RCC_AHBENR_FLITFEN
 
-    //The built-in CRC engine is rarely used, start disabled
-#   define _CRCCLK_N        0   //RCC_AHBENR_CRCEN
+//The built-in CRC engine is rarely used, start disabled
+#define _CRCCLK_N        0   //RCC_AHBENR_CRCEN
 
-    // This board uses all GPIOs it has (GPIOA-E), so enable all of them.  
-    // You could optimize this if you aren't using them all.
-#   define _GPIOCLK_N       (   RCC_AHBENR_GPIOAEN  \
-                            |   RCC_AHBENR_GPIOBEN  \
-                            |   RCC_AHBENR_GPIOCEN  \
-                            |   RCC_AHBENR_GPIODEN  \
-                            |   RCC_AHBENR_GPIOEEN  )
+// This board uses all GPIOs it has (GPIOA-E), so enable all of them.  
+// You could optimize this if you aren't using them all.
+#define _GPIOCLK_N      (   RCC_AHBENR_GPIOAEN  \
+                        |   RCC_AHBENR_GPIOBEN  \
+                        |   RCC_AHBENR_GPIOCEN  \
+                        |   RCC_AHBENR_GPIODEN  \
+                        |   RCC_AHBENR_GPIOEEN  )
 
-    // DMA will be enabled in Sleep on demand by the device driver.  By default
-    // it is disabled in sleep
-#   define _DMACLK_LP   0
-#   define _DMACLK_DYNAMIC_LP
+// DMA will be enabled in Sleep on demand by the device driver.  By default
+// it is disabled in sleep
+#define _DMACLK_LP   RCC_AHBLPENR_DMA1LPEN
+#define _DMACLK_DYNAMIC_LP
 
-    // SRAM should always be clocked during SLEEP
-#   define _SRAMCLK_LP      RCC_AHBLPENR_SRAMLPEN
+// SRAM should always be clocked during SLEEP
+#define _SRAMCLK_LP      RCC_AHBLPENR_SRAMLPEN
 
-    // FLASH needs to be clocked during LP modes, such as if you are sending
-    // constant data from Flash across a DMA+Peripheral.  We assume this is the
-    // case.  In any case, the supply current hit is negligible.
-#   define _FLITFCLK_LP     RCC_AHBLPENR_FLITFLPEN
+// FLASH needs to be clocked during LP modes, such as if you are sending
+// constant data from Flash across a DMA+Peripheral.  We assume this is the
+// case.  In any case, the supply current hit is negligible.
+#define _FLITFCLK_LP     RCC_AHBLPENR_FLITFLPEN
 
-    // HW CRC32 engine is never used in sleep, or much at all, so fuck it
-#   define _CRCCLK_LP       0       //RCC_AHBLPENR_CRCLPEN
+// HW CRC32 engine is never used in sleep, or much at all, so fuck it
+#define _CRCCLK_LP       0       //RCC_AHBLPENR_CRCLPEN
 
-    // I assume that all GPIOs could have interrupts, so I enable them all in
-    // sleep.  You could optimize this if you are not using some peripherals.
-#   define _GPIOCLK_LP      (   RCC_AHBLPENR_GPIOALPEN  \
-                            |   RCC_AHBLPENR_GPIOBLPEN  \
-                            |   RCC_AHBLPENR_GPIOCLPEN  \
-                            |   RCC_AHBLPENR_GPIODLPEN  \
-                            |   RCC_AHBLPENR_GPIOELPEN  )
+// I assume that all GPIOs could have interrupts, so I enable them all in
+// sleep.  You could optimize this if you are not using some peripherals.
+#define _GPIOCLK_LP     (   RCC_AHBLPENR_GPIOALPEN  \
+                        |   RCC_AHBLPENR_GPIOBLPEN  \
+                        |   RCC_AHBLPENR_GPIOCLPEN  \
+                        |   RCC_AHBLPENR_GPIODLPEN  \
+                        |   RCC_AHBLPENR_GPIOELPEN  )
 
 //@note BOARD Macro for Peripheral Clock initialization at startup
 static inline void BOARD_PERIPH_INIT(void) {
@@ -509,7 +524,7 @@ static inline void BOARD_PERIPH_INIT(void) {
     // The default is all-off, and it is the job of the peripheral drivers to 
     // enable/disable their clocks as needed.  SYSCFG is the exception.
     // USART1, SPI1, ADC1, TIM11, TIM10, TIM9, SYSCFG.
-    RCC->APB2ENR   = (RCC_APB2ENR_TIM9EN) | RCC_APB2ENR_SYSCFGEN;
+    RCC->APB2ENR   = (RCC_APB2ENR_TIM9EN | RCC_APB2ENR_SYSCFGEN);
 
     // 3. APB1 Clocks in Active Mode.  APB1 is the low-speed peripheral bus.
     // The default is all-off, and it is the job of the peripheral drivers to 
@@ -610,21 +625,18 @@ static inline void BOARD_PORT_STARTUP(void) {
                                   | (3 << (BOARD_JOYL_PINNUM*2))   );
 
 
-    // LED interface: Set Initially to HiZ inputs (defaults for this config),
-    // but load 0's into the ODR so that switching MODER toggles the LED
-    // (ODR at 0 is default condition)
-    //BOARD_LEDG_PORT->MODER &= ~(  (3 << (BOARD_LEDG_PINNUM*2))   \
-                                  | (3 << (BOARD_LEDO_PINNUM*2))   \
-                                  | (3 << (BOARD_LEDR_PINNUM*2))   \
-                                  | (3 << (BOARD_LEDB_PINNUM*2))   \
-                                  | (3 << (BOARD_LEDY_PINNUM*2))   );
-    //BOARD_LEDG_PORT->PUPDR &= ~(  (3 << (BOARD_LEDG_PINNUM*2))   \
-                                  | (3 << (BOARD_LEDO_PINNUM*2))   \
-                                  | (3 << (BOARD_LEDR_PINNUM*2))   \
-                                  | (3 << (BOARD_LEDB_PINNUM*2))   \
-                                  | (3 << (BOARD_LEDY_PINNUM*2))   );
-    //BOARD_LEDG_PORT->ODR       |= BOARD_LEDG_PIN | BOARD_LEDO_PIN | BOARD_LEDR_PIN \
-                                | BOARD_LEDB_PIN | BOARD_LEDY_PIN;
+    // LED interface: Set to output open drain, with default at logic 1
+    BOARD_LEDG_PORT->OTYPER    |= BOARD_LEDG_PIN | BOARD_LEDO_PIN \
+                                | BOARD_LEDR_PIN | BOARD_LEDB_PIN \
+                                | BOARD_LEDY_PIN;
+    BOARD_LEDG_PORT->BSRRL     |= BOARD_LEDG_PIN | BOARD_LEDO_PIN \
+                                | BOARD_LEDR_PIN | BOARD_LEDB_PIN \
+                                | BOARD_LEDY_PIN;                     
+    BOARD_LEDG_PORT->MODER     |= (1 << (BOARD_LEDG_PINNUM*2))   \
+                                | (1 << (BOARD_LEDO_PINNUM*2))   \
+                                | (1 << (BOARD_LEDR_PINNUM*2))   \
+                                | (1 << (BOARD_LEDB_PINNUM*2))   \
+                                | (1 << (BOARD_LEDY_PINNUM*2));
     
     
     // Analog Input BNC: Set to analog input on this pin (Port A)
@@ -703,13 +715,13 @@ static inline void BOARD_PORT_STARTUP(void) {
     //SPIRIT1 RF Interface, using SPI1 and some GPIOs
     //GPIO0-3 are pull-down inputs, SDN is 2MHz push-pull output
     //SPI bus is pull-down, CSN pin is pull-up
-    BOARD_RFGPIO_PORT->MODER   |= (GPIO_MODER_OUT << (BOARD_RFGPIO_SDNPINNUM*2));
-    BOARD_RFGPIO_PORT->OSPEEDR |= (GPIO_OSPEEDR_2MHz << (BOARD_RFGPIO_SDNPINNUM*2));
+    BOARD_RFGPIO_PORT->MODER   |= (GPIO_MODER_OUT << (BOARD_RFCTL_SDNPINNUM*2));
+    BOARD_RFGPIO_PORT->OSPEEDR |= (GPIO_OSPEEDR_2MHz << (BOARD_RFCTL_SDNPINNUM*2));
     BOARD_RFGPIO_PORT->PUPDR   |= (2 << (BOARD_RFGPIO_0PINNUM*2)) \
                                 | (2 << (BOARD_RFGPIO_1PINNUM*2)) \
                                 | (2 << (BOARD_RFGPIO_2PINNUM*2)) \
-                                | (2 << (BOARD_RFGPIO_3PINNUM*2));
-    BOARD_RFGPIO_PORT->BSRRL    = BOARD_RFGPIO_SDNPIN;
+                                | (2 << (BOARD_RFCTL_3PINNUM*2));
+    BOARD_RFGPIO_PORT->BSRRL    = BOARD_RFCTL_SDNPIN;
     
     BOARD_RFSPI_PORT->PUPDR    |= ( (2 << (BOARD_RFSPI_MOSIPINNUM*2)) \
                                   | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
@@ -723,7 +735,7 @@ static inline void BOARD_PORT_STARTUP(void) {
                                   | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_MISOPINNUM*2)) \
                                   | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_SCLKPINNUM*2)) \
                                   | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_CSNPINNUM*2)) );
-    BOARD_RFSPI_PORT->AFR[1]     |= (5 << ((BOARD_RFSPI_MOSIPINNUM-8)*4)) \
+    BOARD_RFSPI_PORT->AFR[1]   |= (5 << ((BOARD_RFSPI_MOSIPINNUM-8)*4)) \
                                   | (5 << ((BOARD_RFSPI_MISOPINNUM-8)*4)) \
                                   | (5 << ((BOARD_RFSPI_SCLKPINNUM-8)*4));
     BOARD_RFSPI_PORT->BSRRL     = BOARD_RFSPI_CSNPIN;
@@ -844,7 +856,6 @@ static inline void BOARD_PORT_STANDBY() {
                                   | (5 << ((BOARD_RFSPI_SCLKPINNUM-8)*4)) \
                                   | (5 << ((BOARD_RFSPI_CSNPINNUM-8)*4)) );
     
-    
     // SPIRIT1 Current Monitor Interface: ???
     // PS input and RFV inputs are set by default
     //# BOARD_SCMOUT_PORT->MODER   |= ( (GPIO_MODER_ALT << (BOARD_SCMOUT_SCMENPINNUM*2)) \
@@ -958,10 +969,11 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define PLATFORM_LSCLOCK_ERROR      BOARD_PARAM_LFtol
 #define PLATFORM_MSCLOCK_HZ         (BOARD_PARAM_MFHz)
 #define PLATFORM_MSCLOCK_ERROR      BOARD_PARAM_MFtol
-#define PLATFORM_HSCLOCK_HZ         ((BOARD_PARAM_HFHz*BOARD_PARAM_HFmult)/BOARD_PARAM_HFdiv)
+#define PLATFORM_HSCLOCK_HZ         BOARD_PARAM_HFHz
 #define PLATFORM_HSCLOCK_ERROR      BOARD_PARAM_HFtol
-#define PLATFORM_HSCLOCK_MULT       BOARD_PARAM_HFmult
-
+#define PLATFORM_PLLCLOCK_OUT       ((BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)*BOARD_PARAM_PLLmult)
+#define PLATFORM_PLLCLOCK_HZ        (PLATFORM_PLLCLOCK_OUT/BOARD_PARAM_PLLdiv)
+#define PLATFORM_PLLCLOCK_ERROR     BOARD_PARAM_RFtol
 
 
 
@@ -999,7 +1011,7 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #   define OT_GPTIM_ERROR   BOARD_PARAM_HFtol
 #endif
 
-#define OT_GPTIM_ERRDIV     32768 //this needs to be hard-coded
+#define OT_GPTIM_ERRDIV         32768 //this needs to be hard-coded
 
 #define OT_KTIM_IRQ_SRCLINE     BOARD_GPTIM1_PINNUM
 #define OT_MACTIM_IRQ_SRCLINE   BOARD_GPTIM2_PINNUM
@@ -1020,9 +1032,9 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BSRRH = OT_TRIG1_PIN;
 #   define OT_TRIG1_TOG()   OT_TRIG1_PORT->ODR  ^= OT_TRIG1_PIN;
 #else 
-#   define OT_TRIG1_ON()    OT_TRIG1_PORT->MODER |= (OT_TRIG1_PINNUM*2);
-#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->MODER &= ~(OT_TRIG1_PINNUM*2);
-#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->MODER &= ~(OT_TRIG1_PINNUM*2);
+#   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRRH = OT_TRIG1_PIN;
+#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BSRRL = OT_TRIG1_PIN;
+#   define OT_TRIG1_TOG()   OT_TRIG1_PORT->ODR  ^= OT_TRIG1_PIN;
 #endif
 
 #if (OT_TRIG2_POLARITY != 0)
@@ -1030,10 +1042,11 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRRH = OT_TRIG2_PIN;
 #   define OT_TRIG2_TOG()   OT_TRIG2_PORT->ODR  ^= OT_TRIG2_PIN;
 #else 
-#   define OT_TRIG2_ON()    OT_TRIG2_PORT->MODER |= (OT_TRIG2_PINNUM*2);
-#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->MODER &= ~(OT_TRIG2_PINNUM*2);
-#   define OT_TRIG2_TOG()   OT_TRIG2_PORT->MODER ^= (OT_TRIG2_PINNUM*2);
+#   define OT_TRIG2_ON()    OT_TRIG2_PORT->BSRRH = OT_TRIG2_PIN;
+#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRRL = OT_TRIG2_PIN;
+#   define OT_TRIG2_TOG()   OT_TRIG2_PORT->ODR  ^= OT_TRIG2_PIN;
 #endif
+
 
 
 
@@ -1198,16 +1211,16 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define RADIO_IRQ2_SRCLINE          BOARD_RFGPIO_2PINNUM
 #define RADIO_IRQ3_SRCLINE          -1
 
-#define RADIO_SDN_PORT              BOARD_RFGPIO_PORT
+#define RADIO_SDN_PORT              BOARD_RFCTL_PORT
 #define RADIO_IRQ0_PORT             BOARD_RFGPIO_PORT
 #define RADIO_IRQ1_PORT             BOARD_RFGPIO_PORT
 #define RADIO_IRQ2_PORT             BOARD_RFGPIO_PORT
-#define RADIO_IRQ3_PORT             BOARD_RFGPIO_PORT
-#define RADIO_SDN_PIN               BOARD_RFGPIO_SDNPIN
+#define RADIO_IRQ3_PORT             BOARD_RFCTL_PORT
+#define RADIO_SDN_PIN               BOARD_RFCTL_SDNPIN
 #define RADIO_IRQ0_PIN              BOARD_RFGPIO_0PIN
 #define RADIO_IRQ1_PIN              BOARD_RFGPIO_1PIN
 #define RADIO_IRQ2_PIN              BOARD_RFGPIO_2PIN
-#define RADIO_IRQ3_PIN              BOARD_RFGPIO_3PIN
+#define RADIO_IRQ3_PIN              BOARD_RFCTL_3PIN
 
 
 

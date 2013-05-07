@@ -100,6 +100,20 @@
 
 //R06 (power-up default)
 #define DRF_MCU_CK_CONF         (0)
+#if defined(_24MHz)
+#   define DRF_MCU_CK_CONF_24MHz    (0x80 | _XO_RATIO(0))
+#   define DRF_MCU_CK_CONF_16MHz    (0x80 | _XO_RATIO(1))
+#   define DRF_MCU_CK_CONF_12MHz    (0x80 | _XO_RATIO(2))
+#   define DRF_MCU_CK_CONF_8MHz     (0x80 | _XO_RATIO(3))
+#   define DRF_MCU_CK_CONF_4MHz     (0x80 | _XO_RATIO(5))
+#elif defined(_48MHz)
+#   define DRF_MCU_CK_CONF_24MHz    (0x80 | _XO_RATIO(2))
+#   define DRF_MCU_CK_CONF_16MHz    (0x80 | _XO_RATIO(3))
+#   define DRF_MCU_CK_CONF_12MHz    (0x80 | _XO_RATIO(4))
+#   define DRF_MCU_CK_CONF_8MHz     (0x80 | _XO_RATIO(5))
+#   define DRF_MCU_CK_CONF_4MHz     (0x80 | _XO_RATIO(7))
+#endif
+
 
 //RB4 
 #if (defined(_24MHz) || defined(_25MHz) || defined(_26MHz))

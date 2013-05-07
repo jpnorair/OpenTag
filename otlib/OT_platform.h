@@ -122,7 +122,7 @@ void platform_enable_interrupts();
   * benefit from having speed steps.  Most STM32L configurations, for example, 
   * use the MSI oscillator at 4.2 MHz as the CPU clock during Standard.
   */
-void platform_standard_speed();
+void platform_standard_speed(void);
 
 
 /** @brief  Put platform CPU into fastest speed allowable without setup lag
@@ -136,7 +136,7 @@ void platform_standard_speed();
   * PLL startup.  On most STM32L configurations, for example, Full Speed  
   * invokes the HSI oscillator at 16 MHz.
   */
-void platform_full_speed();
+void platform_full_speed(void);
 
 
 /** @brief  Fuck everything and put platform CPU into absolute maximum speed
@@ -155,7 +155,7 @@ void platform_full_speed();
   * short amount of time.  Only use flank if both requirements exist together,
   * otherwise use full or standard speed.
   */
-void platform_flank_speed();
+void platform_flank_speed(void);
 
 
 

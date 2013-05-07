@@ -163,6 +163,7 @@
 #define RADIO_FLAG_XOON         (1 << 6)
 
 
+
 /** Internal Radio Interrupt Flags
   * For performance reasons, sometimes interrupt flags will be stored locally
   * and used in later conditionals.  The usage is implementation dependent.
@@ -209,6 +210,30 @@ typedef struct {
 } rfctl_struct;
 
 extern rfctl_struct rfctl;
+
+
+
+
+/** @brief  Enables the clock-out for the radio core
+  * @param  clk_param       (ot_u8) HW-specific clock parameter
+  * @retval None
+  * @ingroup Radio
+  *
+  * Most radio transceivers have a clock-out option for driving a pin with
+  * a divided frequency from the RF crystal.
+  */
+void spirit1_clockout_on(ot_u8 clk_param);
+
+
+/** @brief  Disables the clock-out for the radio core
+  * @param  clk_param       (ot_int) HW-specific clock parameter
+  * @retval None
+  * @ingroup Radio
+  *
+  * Most radio transceivers have a clock-out option for driving a pin with
+  * a divided frequency from the RF crystal.
+  */
+void spirit1_clockout_off();
 
 
 

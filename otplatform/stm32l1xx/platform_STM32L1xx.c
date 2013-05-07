@@ -1,4 +1,4 @@
-/* Copyright 2010 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,16 +14,12 @@
   *
   */
 /**
-  * @file       /OTlib/STM32F10x/platform_STM32F10x.c
+  * @file       /otplatform/stm32l1xx/platform_STM32L1xx.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       16 July 2011
-  * @brief      ISRs and hardware services abstracted by the platform module
+  * @date       14 Feb 2013
+  * @brief      Platform Library Macros and Functions for STM32L
   * @ingroup    Platform
-  *
-  * ISRs implemented in this file shall use only the Platform module macro 
-  * abstractions, not functions or register nomenclature specific to any given 
-  * hardware platform.
   *
   ******************************************************************************
   */
@@ -103,65 +99,159 @@ void otapi_led2_off() { platform_trig2_low(); }
 /** Clocking Constants <BR>
   * ========================================================================<BR>
   */
-#if (BOARD_FEATURE_HFXTAL == ENABLED)
-#   define _OSC_ONBIT   RCC_CR_HSEON
-#   define _OSC_RDYFLAG RCC_CR_HSERDY
-#   define _OSC_TIMEOUT HSE_STARTUP_TIMEOUT           //look in datasheet
-#elif (  (PLATFORM_HSCLOCK_HZ == 32000000)       \
-             || (PLATFORM_HSCLOCK_HZ == 16000000)       \
-             || (PLATFORM_HSCLOCK_HZ == 8000000)        \
-             || (PLATFORM_HSCLOCK_HZ == 4000000)        \
-             || (PLATFORM_HSCLOCK_HZ == 2000000) )
-#   define _OSC_ONBIT   RCC_CR_HSION
-#   define _OSC_RDYFLAG RCC_CR_HSIRDY
-#   define _OSC_TIMEOUT HSI_STARTUP_TIMEOUT           //look in datasheet      
-#else
-#   error "PLATFORM_HSCLOCK_HZ is not set to a value matching HW options"
-#endif
   
-#if (MCU_FEATURE_MULTISPEED == ENABLED)
-#   define _STD_CLOCK_HZ    PLATFORM_MSCLOCK_Hz
-#   define _FULL_CLOCK_HZ   PLATFORM_HSCLOCK_Hz
-#else
-#   define _STD_CLOCK_HZ    PLATFORM_HSCLOCK_Hz
-#   define _FULL_CLOCK_HZ   _STD_CLOCK_HZ
+#define POWER_1V8   0x0800
+#define POWER_1V5   0x1000
+#define POWER_1V2   0x1800
+  
+// error checks
+#if (BOARD_FEATURE_HFXTAL == ENABLED) && (BOARD_FEATURE_HFBYPASS == ENABLED)
+#   error "BOARD_FEATURE_HFXTAL and BOARD_FEATURE_HFBYPASS cannot be both ENABLED."
+#endif
+#if (MCU_FEATURE_USB) && (BOARD_FEATURE_PLL != ENABLED)
+#   error "To use built-in USB, you must ENABLE the PLL"
+#endif
+#if (MCU_FEATURE_USB) && (PLATFORM_PLLCLOCK_OUT != 96000000) 
+#   error "STM32L requires PLL output to be 96 MHz when using internal USB."
 #endif
 
-#if ((BOARD_PARAM_HFmult != 1) || (BOARD_PARAM_HFdiv != 1))
+// If GPTIM/KTIM uses RTC as a time source, we need to keep it open,
+// and unfortunately this access tends to be in the same place as clocking.
+#if (OT_GPTIM_ID == 'R')
+#   define _RTC_PROTECTION  PWR_CR_DBP
+#else
+#   define _RTC_PROTECTION  0
+#endif
+
+// Flankspeed uses PLL, which requires 1.8V
+#if ((BOARD_FEATURE_FLANKSPEED == ENABLED) || (BOARD_FEATURE_PLL == ENABLED))
 #   define _USE_PLL
-#   if (BOARD_PARAM_HFmult == 3)
+#   define _PLL_SRC             ((BOARD_FEATURE_FLANKXTAL == ENABLED) << 16)
+#   define _FLANKSPEED_VOLTAGE  POWER_1V8
+#   if (BOARD_PARAM_PLLmult == 3)
 #       define _PLL_MULT    (0<<18)
-#   elif (BOARD_PARAM_HFmult == 4)
+#   elif (BOARD_PARAM_PLLmult == 4)
 #       define _PLL_MULT    (1<<18)
-#   elif (BOARD_PARAM_HFmult == 6)
+#   elif (BOARD_PARAM_PLLmult == 6)
 #       define _PLL_MULT    (2<<18)
-#   elif (BOARD_PARAM_HFmult == 8)
+#   elif (BOARD_PARAM_PLLmult == 8)
 #       define _PLL_MULT    (3<<18)
-#   elif (BOARD_PARAM_HFmult == 12)
+#   elif (BOARD_PARAM_PLLmult == 12)
 #       define _PLL_MULT    (4<<18)
-#   elif (BOARD_PARAM_HFmult == 16)
+#   elif (BOARD_PARAM_PLLmult == 16)
 #       define _PLL_MULT    (5<<18)
-#   elif (BOARD_PARAM_HFmult == 24)
+#   elif (BOARD_PARAM_PLLmult == 24)
 #       define _PLL_MULT    (6<<18)
-#   elif (BOARD_PARAM_HFmult == 32)
+#   elif (BOARD_PARAM_PLLmult == 32)
 #       define _PLL_MULT    (7<<18)
-#   elif (BOARD_PARAM_HFmult == 48)
+#   elif (BOARD_PARAM_PLLmult == 48)
 #       define _PLL_MULT    (8<<18)
 #   else
-#   error "PLL Multiplier from BOARD_PARAM_HFmult is out of range"
+#       error "PLL Multiplier from BOARD_PARAM_PLLmult is out of range"
 #   endif
-
-#   if (BOARD_PARAM_HFdiv == 2)
+#   if (BOARD_PARAM_PLLdiv == 2)
 #       define _PLL_DIV    (1<<22)
-#   elif (BOARD_PARAM_HFdiv == 3)
+#   elif (BOARD_PARAM_PLLdiv == 3)
 #       define _PLL_DIV    (2<<22)
-#   elif (BOARD_PARAM_HFdiv == 4)
+#   elif (BOARD_PARAM_PLLdiv == 4)
 #       define _PLL_DIV    (3<<22)
 #   else
-#   error "PLL Divider from BOARD_PARAM_HFdiv is out of range"
+#       error "PLL Divider from BOARD_PARAM_PLLdiv is out of range"
+#   endif
+#   if (PLATFORM_PLLCLOCK_HZ > 32000000)
+#       error "PLL Flank Speed Clock must be less than 32 MHz"
+#   elif (PLATFORM_PLLCLOCK_HZ > 16000000)
+#       define _FLANKSPEED_FLASHWAIT ENABLED
+#   else
+#       define _FLANKSPEED_FLASHWAIT DISABLED
+#   endif
+#   if (BOARD_FEATURE_FLANKXTAL == ENABLED)
+#       define _FLANKOSC_RDYFLAG        RCC_CR_HSERDY
+#       define _FLANKOSC_CLOCKBIT       RCC_CR_HSEON
+#       if (BOARD_FEATURE_HFBYPASS == ENABLED)
+#           define _FLANKOSC_ONBIT      (RCC_CR_HSEON | RCC_CR_HSEBYP)
+#           define _FLANKOSC_TIMEOUT    100
+#       else
+#           define _FLANKOSC_ONBIT      RCC_CR_HSEON
+#           define _FLANKOSC_TIMEOUT    HSE_STARTUP_TIMEOUT
+#       endif
+#   else
+#       define _FLANKOSC_ONBIT      RCC_CR_HSION
+#       define _FLANKOSC_RDYFLAG    RCC_CR_HSIRDY
+#       define _FLANKOSC_CLOCKBIT   RCC_CR_HSION
+#       define _FLANKOSC_TIMEOUT    HSI_STARTUP_TIMEOUT
+#   endif
+#else
+#   define _PLL_SRC     0
+#   define _PLL_MULT    0
+#   define _PLL_DIV     0
+
+#endif
+
+// Fullspeed uses HSE or HSI without PLL
+#if (BOARD_FEATURE_FULLSPEED == ENABLED)
+#   if (PLATFORM_HSCLOCK_HZ > 32000000)
+#       error "High Speed Clock must be less than 32 MHz"
+#   elif (PLATFORM_HSCLOCK_HZ > 16000000)
+#       define _FULLSPEED_VOLTAGE   POWER_1V8
+#       define _FULLSPEED_FLASHWAIT ENABLED
+#   elif (PLATFORM_HSCLOCK_HZ > 8000000)
+#       define _FULLSPEED_VOLTAGE   POWER_1V5
+#       define _FULLSPEED_FLASHWAIT ENABLED
+#   elif (PLATFORM_HSCLOCK_HZ > 4000000)
+#       define _FULLSPEED_VOLTAGE   POWER_1V5
+#       define _FULLSPEED_FLASHWAIT DISABLED
+#   elif (PLATFORM_HSCLOCK_HZ > 2000000)
+#       define _FULLSPEED_VOLTAGE   POWER_1V2
+#       define _FULLSPEED_FLASHWAIT ENABLED
+#   else
+#       define _FULLSPEED_VOLTAGE   POWER_1V2
+#       define _FULLSPEED_FLASHWAIT DISABLED
+#   endif
+#   if (BOARD_FEATURE_FULLXTAL == ENABLED)
+#       define _FULLOSC_RDYFLAG         RCC_CR_HSERDY
+#       define _FULLOSC_CLOCKBIT        RCC_CR_HSEON
+#       if (BOARD_FEATURE_HFBYPASS == ENABLED)
+#           define _FULLOSC_ONBIT       (RCC_CR_HSEON | RCC_CR_HSEBYP)
+#           define _FULLOSC_TIMEOUT     100
+#       else
+#           define _FULLOSC_ONBIT       RCC_CR_HSEON
+#           define _FULLOSC_TIMEOUT     HSE_STARTUP_TIMEOUT
+#       endif
+#   else
+#       define _FULLOSC_ONBIT      RCC_CR_HSION
+#       define _FULLOSC_RDYFLAG    RCC_CR_HSIRDY
+#       define _FULLOSC_CLOCKBIT   RCC_CR_HSION
+#       define _FULLOSC_TIMEOUT    HSI_STARTUP_TIMEOUT
 #   endif
 #endif
 
+// Standard Speed uses the MSI
+#if (BOARD_FEATURE_STDSPEED == ENABLED)
+#   if (   (PLATFORM_MSCLOCK_HZ != 4200000)   \
+        && (PLATFORM_MSCLOCK_HZ != 2100000)   \
+        && (PLATFORM_MSCLOCK_HZ != 1050000)   \
+        && (PLATFORM_MSCLOCK_HZ != 524000)    \
+        && (PLATFORM_MSCLOCK_HZ != 262000)    \
+        && (PLATFORM_MSCLOCK_HZ != 131000)    \
+        && (PLATFORM_MSCLOCK_HZ != 655000)  )
+#       error "PLATFORM_MSCLOCK_HZ is not set to a value matching HW options"
+#   endif
+#   if (PLATFORM_MSCLOCK_HZ > 4200000)
+#       error "Mid Speed Clock does not support higher than 4.2 MHz."
+#   elif (PLATFORM_MSCLOCK_HZ > 4000000)
+#       define _STDSPEED_VOLTAGE    POWER_1V5
+#       define _STDSPEED_FLASHWAIT  DISABLED
+#   elif (PLATFORM_MSCLOCK_HZ > 2000000)
+#       define _STDSPEED_VOLTAGE    POWER_1V2
+#       define _STDSPEED_FLASHWAIT  ENABLED
+#   else 
+#       define _STDSPEED_VOLTAGE    POWER_1V2
+#       define _STDSPEED_FLASHWAIT  DISABLED
+#   endif
+#endif
+
+//Validate and set AHB Divider based on board config header setting
 #if (BOARD_PARAM_AHBCLKDIV == 1)
 #   define _AHB_DIV     (0<<4)
 #elif (BOARD_PARAM_AHBCLKDIV == 2)
@@ -184,6 +274,7 @@ void otapi_led2_off() { platform_trig2_low(); }
 #   error "BOARD_PARAM_AHBCLKDIV not set to a value permitted by this HW"
 #endif
 
+//Validate and set APB1 Divider based on board config header setting
 #if (BOARD_PARAM_APB1CLKDIV == 1)
 #   define _APB1_DIV    (0<<8)
 #elif (BOARD_PARAM_APB1CLKDIV == 2)
@@ -198,6 +289,7 @@ void otapi_led2_off() { platform_trig2_low(); }
 #   error "BOARD_PARAM_APB1CLKDIV not set to a value permitted by this HW"
 #endif
 
+//Validate and set APB2 Divider based on board config header setting
 #if (BOARD_PARAM_APB2CLKDIV == 1)
 #   define _APB2_DIV    (0<<11)
 #elif (BOARD_PARAM_APB2CLKDIV == 2)
@@ -211,6 +303,8 @@ void otapi_led2_off() { platform_trig2_low(); }
 #else
 #   error "BOARD_PARAM_APB2CLKDIV not set to a value permitted by this HW"
 #endif
+
+
 
 
 
@@ -240,10 +334,97 @@ platform_ext_struct platform_ext;
 /** Local Subroutines <BR>
   * ========================================================================<BR>
   */
-void sub_msflash_config(void);
-void sub_hsflash_config(void);
-void sub_voltage_config(void);
-void sub_hsosc_config(void);
+void sub_voltage_config(ot_u16 PWR_CR_VOS_x) {
+/// Set Power Configuration based on Voltage Level parameters.
+/// Input must be: POWER_1V2, POWER_1V5, POWER_1V8
+/// Additionally, PWR_CR_DBP can be ORed in for RTC hacking
+    ot_u16 scratch;
+    
+    // Power should be enabled by periphclk function, not here
+    //RCC->APB1ENR   |= RCC_APB1ENR_PWREN;    
+    
+    scratch     = PWR->CR & ~(3<<11);
+    scratch    |= PWR_CR_VOS_x;
+    PWR->CR     = scratch;
+    
+    // Wait Until the Voltage Regulator is ready
+    while((PWR->CSR & PWR_CSR_VOSF) != RESET) { }
+}
+
+
+void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
+    ///@todo figure out a way to do this with WFE
+    // Wait for Oscillator to get ready, counter goes to 0 on failure
+    
+    RCC->CR    |= osc_mask;
+    osc_mask  <<= 1; 
+    while ( ((RCC->CR & osc_mask) == 0) && (--counter) );
+    
+    /// Test if oscillator failed to startup
+    if (counter == 0) {
+        ///@todo Death message / Death Blinkly
+    }
+}
+
+
+void sub_osc_setclock(ot_u32 clock_mask) {
+    ot_u32 scratch;
+    
+    scratch         = RCC->CFGR & ~3;
+    scratch        |= clock_mask;
+    clock_mask    <<= 2; 
+    RCC->CFGR       = scratch;
+    while ( (RCC->CFGR & clock_mask) == 0);
+}
+
+
+
+/** Extended Platform (STM32L-specific) power and PLL control<BR>
+  * ========================================================================<BR>
+  */
+#ifndef EXTF_platform_ext_wakefromstop
+void platform_ext_wakefromstop() {
+    // Always start chrono when coming out of STOP
+    gptim_start_chrono();
+    
+    // Use the lowest allowed speed coming from STOP
+#   if (BOARD_FEATURE_STDSPEED)
+        platform_standard_speed();
+#   elif (BOARD_FEATURE_FULLSPEED)
+        platform_full_speed();
+#   elif (BOARD_FEATURE_FLANKSPEED)
+        platform_flank_speed();
+#   endif
+}
+#endif
+
+
+#ifndef EXTF_platform_ext_pllon
+void platform_ext_pllon() {
+#if (BOARD_FEATURE_PLL)
+    ot_u16 counter;
+    sub_osc_startup(_FLANKOSC_TIMEOUT, _FLANKOSC_ONBIT);
+
+    RCC->CR |= RCC_CR_PLLON;
+    while((RCC->CR & RCC_CR_PLLRDY) == 0) { }
+#endif
+}
+#endif
+
+
+#ifndef EXTF_platform_ext_plloff
+void platform_ext_plloff() {
+#if (BOARD_FEATURE_PLL)
+/// Don't call this function unless you know what you are doing.  STM32L will
+/// not shut-off an active clock, so you won't kill your app, but worse: the
+/// PLL will stay on even if you probably think it is off.
+    RCC->CR &= ~RCC_CR_PLLON;
+#endif
+}
+#endif
+
+
+
 
 
 
@@ -505,93 +686,6 @@ void platform_init_OT() {
 #endif
 
 
-void sub_msflash_config(void) {
-/// Enable 64-bit flash access (must be done first), and then the 
-/// prefetch buffer + 0 or 1 wait states.
-    FLASH->ACR |= FLASH_ACR_ACC64;
-#   if (   ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_MSCLOCK_HZ <= 2000000)) \
-        ||  (MCU_PARAM_VOLTLEVEL == 2) || (MCU_PARAM_VOLTLEVEL == 1) )
-        FLASH->ACR |= (FLASH_ACR_PRFTEN);
-#   else
-        FLASH->ACR |= (FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY);
-#   endif
-}
-
-void sub_hsflash_config(void) {
-/// Enable 64-bit flash access (must be done first), and then the 
-/// prefetch buffer + 0 or 1 wait states.
-    FLASH->ACR |= FLASH_ACR_ACC64;
-#   if (    ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_HSCLOCK_HZ <= 2000000)) \
-        ||  ((MCU_PARAM_VOLTLEVEL == 2) && (PLATFORM_HSCLOCK_HZ <= 8000000)) \
-        ||  ((MCU_PARAM_VOLTLEVEL == 1) && (PLATFORM_HSCLOCK_HZ <= 16000000)))
-        FLASH->ACR |= (FLASH_ACR_PRFTEN);
-#   else
-        FLASH->ACR |= (FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY);
-#   endif
-}
-
-
-void sub_voltage_config(void) {
-    // Set Power Configuration based on Voltage Level parameters
-    //RCC->APB1ENR   |= RCC_APB1ENR_PWREN;    // Power should be enabled by periphclk function
-#   if (MCU_PARAM_VOLTLEVEL == 3)
-    PWR->CR         = (PWR_CR_VOS_1V2 | PWR_CR_DBP);
-#   elif (MCU_PARAM_VOLTLEVEL == 2)
-    PWR->CR         = (PWR_CR_VOS_1V5 | PWR_CR_DBP);
-#   elif (MCU_PARAM_VOLTLEVEL == 1)
-    PWR->CR         = (PWR_CR_VOS_1V8 | PWR_CR_DBP);
-#   else
-#   error "MCU_PARAM_VOLTLEVEL must be set to 1, 2, or 3 (typ. 2)."
-#   endif 
-    
-    // Wait Until the Voltage Regulator is ready
-    while((PWR->CSR & PWR_CSR_VOSF) != RESET) { }
-}
-
-
-void sub_hsosc_config(void) {
-    ot_u16 counter;
-    
-    ///@todo figure out a way to do this with WFE
-    // Wait for Oscillator to get ready, counter goes to 0 on failure
-    RCC->CR    |= ((uint32_t)_OSC_ONBIT);
-    counter = _OSC_TIMEOUT;
-    while (((RCC->CR & _OSC_RDYFLAG) == 0) && (--counter));
-    if (counter == 0) {
-        ///@todo Death message / Death Blinkly
-    }
-    
-    // Configure PLL only if required (and Setup the Bus Dividers as specified)
-#   if (PLATFORM_HSCLOCK_HZ != BOARD_PARAM_HFHz)
-    RCC->CFGR  &= (uint32_t)((uint32_t)~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLMUL | RCC_CFGR_PLLDIV));
-    RCC->CFGR  |= (uint32_t)(_PLL_SRC | _PLL_MULT | _PLL_DIV | _AHB_DIV | _APB1_DIV | _APB2_DIV);
-    RCC->CR    |= RCC_CR_PLLON;
-    while((RCC->CR & RCC_CR_PLLRDY) == 0) { }       
-        
-    // Select PLL as system clock source, Wait until PLL is used as system clock source
-    RCC->CFGR  &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
-    RCC->CFGR  |= (uint32_t)RCC_CFGR_SW_PLL;
-    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)RCC_CFGR_SWS_PLL) { }
-
-    // Configure HSE as clock source (and Setup the Bus Dividers as specified)
-#   elif (BOARD_FEATURE_HFXTAL == ENABLED)
-    RCC->CFGR  |= (RCC_CFGR_SW_HSE | _AHB_DIV | _APB1_DIV | _APB2_DIV);
-    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)RCC_CFGR_SWS_HSE) { }
-    
-    // Configure HSI as clock source (and Setup the Bus Dividers as specified)
-#   else 
-    RCC->CFGR  |= (RCC_CFGR_SW_HSI | _AHB_DIV | _APB1_DIV | _APB2_DIV);
-    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS_HSI) == 0);
-
-#   endif
-    
-    // Represent the new speed, and disable the MSI clock now that it is not used
-    // Turn off MSI because HS clock is now active
-    RCC->CR &= ~RCC_CR_MSION;
-    platform_ext.cpu_khz = (PLATFORM_HSCLOCK_HZ/1000);
-}
-
-
 
 #ifndef EXTF_platform_init_busclk
 void platform_init_busclk() {
@@ -601,12 +695,19 @@ void platform_init_busclk() {
     
     ///1. RESET System Clocks
     ///@todo This may not be necessary.  These settings should be reset default settings.
-    RCC->CR    |= (uint32_t)0x00000100;     // Set MSION bit
-    RCC->CFGR  &= (uint32_t)0x88FFC00C;     // Reset SW[1:0], HPRE[3:0], PPRE1[2:0], PPRE2[2:0], 
-                                            //   MCOSEL[2:0], and MCOPRE[2:0] bits
-    RCC->CR    &= (uint32_t)0xEEFAFFFE;     // Reset HSION, HSEON, HSEBYP, CSSON and PLLON bits
-    RCC->CFGR  &= (uint32_t)0xFF02FFFF;     // Reset PLLSRC, PLLMUL[3:0] and PLLDIV[1:0] bits 
-    RCC->CIR    = 0x00000000;               // Disable all clocker interrupts (default)
+    
+    // Assure MSI bit is on (it should be, by default)
+    RCC->CR    |= (uint32_t)0x00000100;
+    
+    // Configure dividers and PLL information (even if not used) and keep active clock
+    // via MSI (these fields are 0)
+    RCC->CFGR   = ( _PLL_SRC | _PLL_MULT | _PLL_DIV | _AHB_DIV | _APB1_DIV | _APB2_DIV );    
+
+    // Reset HSION, HSEON, HSEBYP, CSSON and PLLON bits
+    // Disable all clocker interrupts (default)
+    RCC->CR    &= (uint32_t)0xEEFAFFFE;
+    RCC->CIR    = 0x00000000;
+
 
     ///2. Prepare external Memory bus (not currently supported)
 //#   ifdef DATA_IN_ExtSRAM
@@ -615,68 +716,76 @@ void platform_init_busclk() {
     
     ///3a. Begin clocking system with MSI clock at specified frequency.
     ///    <LI> Specified as PLATFORM_MSCLOCK_HZ in board support header </LI>
-    ///    <LI> MSI is only used as standard clock if MCU_FEATURE_MULTISPEED
+    ///    <LI> MSI is only used as standard clock if BOARD_FEATURE_STDSPEED
     ///           is also ENABLED in board support header.
-#   if (MCU_FEATURE_MULTISPEED == ENABLED)
-#       if ((PLATFORM_MSCLOCK_HZ == 4200000)   \
-         || (PLATFORM_MSCLOCK_HZ == 2100000)   \
-         || (PLATFORM_MSCLOCK_HZ == 1050000)   \
-         || (PLATFORM_MSCLOCK_HZ == 524000)    \
-         || (PLATFORM_MSCLOCK_HZ == 262000)    \
-         || (PLATFORM_MSCLOCK_HZ == 131000)    \
-         || (PLATFORM_MSCLOCK_HZ == 655000)  )
-            
-            platform_ext.cpu_khz = (PLATFORM_MSCLOCK_HZ/1000);
-         
-            /// MSI is already started, and at init it is 2.1 MHz.
-            /// Change the divider to a different setting from 2.1MHz.
-            sub_msflash_config();
-            sub_voltage_config();
-    
-            // Setup the Bus Dividers as specified (MSI already selected as system clock)
-            RCC->CFGR  |= (_AHB_DIV | _APB1_DIV | _APB2_DIV);
-
-            // Change MSI to required frequency
-#           if (PLATFORM_MSCLOCK_HZ == 4200000)
-            RCC->ICSCR ^= 0x00006000;               //setting 110
-#           elif (PLATFORM_MSCLOCK_HZ == 2100000)
-                                                    //setting 101 (default)
-#           elif (PLATFORM_MSCLOCK_HZ == 1050000)
-            RCC->ICSCR &= ~0x00006000;              //setting 100
-#           elif (PLATFORM_MSCLOCK_HZ == 524000)
-            RCC->ICSCR ^= 0x0000C000;               //setting 011
-#           elif (PLATFORM_MSCLOCK_HZ == 262000)
-            RCC->ICSCR ^= 0x0000E000;               //setting 010
-#           elif (PLATFORM_MSCLOCK_HZ == 131000)
-            RCC->ICSCR &= ~0x0000C000;              //setting 001
-#           elif (PLATFORM_MSCLOCK_HZ == 655000)
-            RCC->ICSCR &= ~0x0000E000;              //setting 000
-#           endif
-         
-#       else
-#           error "PLATFORM_MSCLOCK_HZ is not set to a value matching HW options"
+#   if (BOARD_FEATURE_STDSPEED == ENABLED)
+        // Change MSI to required frequency
+#       if (PLATFORM_MSCLOCK_HZ == 4200000)
+        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY);
+        sub_voltage_config((POWER_1V5 | PWR_CR_DBP));
+        RCC->ICSCR ^= 0x00006000;               //setting 110
+        
+#       elif (PLATFORM_MSCLOCK_HZ == 2100000)
+        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY);
+        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
+        //RCC->ICSCR |= 0x00005000;                //setting 101 (default)
+        
+#       elif (PLATFORM_MSCLOCK_HZ == 1050000)
+        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
+        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
+        RCC->ICSCR &= ~0x00006000;              //setting 100
+        
+#       elif (PLATFORM_MSCLOCK_HZ == 524000)
+        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
+        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
+        RCC->ICSCR ^= 0x0000C000;               //setting 011
+        
+#       elif (PLATFORM_MSCLOCK_HZ == 262000)
+        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
+        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
+        RCC->ICSCR ^= 0x0000E000;               //setting 010
+        
+#       elif (PLATFORM_MSCLOCK_HZ == 131000)
+        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
+        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
+        RCC->ICSCR &= ~0x0000C000;              //setting 001
+        
+#       elif (PLATFORM_MSCLOCK_HZ == 655000)
+        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
+        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
+        RCC->ICSCR &= ~0x0000E000;              //setting 000
+        
 #       endif
 
-    ///3b. Begin clocking system with HSE or HSI clock at specified frequency.
-    ///    <LI> HSE or HSI is standard speed clock if MCU_FEATURE_MULTISPEED is 
-    ///           DISABLED in the board support header. </LI>
+        // Setup the Bus Dividers as specified (MSI already selected as system clock)
+        platform_ext.cpu_khz    = (PLATFORM_MSCLOCK_HZ/1000);
+
+
+    ///3b. Use HSE or HSI without PLL as Full-Speed clock
+    ///    <LI> HSE or HSI is full speed clock if BOARD_FEATURE_STDSPEED is 
+    ///           DISABLED and BOARD_FEATURE_FULLSPEED is ENABLED</LI>
     ///    <LI> HSE is used if BOARD_FEATURE_HFXTAL is ENABLED, else HSI used. </LI>
     ///    <LI> Boards using HSE can declare any value into PLATFORM_HSCLOCK_HZ.
-    ///           Board using HSI may only declare 2, 4, 8, 16, or 32 MHz </LI>
-    ///    <LI> PLL only used if PLATFORM_HSCLOCK_HZ != BOARD_PARAM_HFHz. </LI>
-    ///    <LI> Use BOARD_PARAM_HFdiv, BOARD_PARAM_HFmult to specify the 
-    ///           particular PLL configuration.  For example, if using USB
-    ///           (BOARD_PARAM_HFHz * BOARD_PARAM_HFmult) must be 96 MHz, and
-    ///           (96 MHz / BOARD_PARAM_HFdiv) == PLATFORM_HSCLOCK_HZ. </LI>
-#   else
-        // Prepare Flash and Voltage for new clock setting
-        sub_hsflash_config();
-        sub_voltage_config();
-        
-        // Enabled Oscillator bit (startup only), the turn-on oscillator
-        //RCC->CR    |= ((uint32_t)_OSC_ONBIT);
-        sub_hsosc_config();
+    ///           Board using HSI may only declare 2, 4, 8, or 16 MHz</LI>
+#   elif (BOARD_FEATURE_FULLSPEED == ENABLED)
+        // Basic Flash setup, then run normal routine
+        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
+        platform_full_speed();
 
+
+    ///3c. Begin clocking system with PLL driven from HSE or HSI
+    ///    <LI> PLL only used if .... </LI>
+    ///    <LI> Use BOARD_PARAM_PLLdiv, BOARD_PARAM_PLLmult to specify the 
+    ///           particular PLL configuration.  For example, if using USB
+    ///           (BOARD_PARAM_HFHz * BOARD_PARAM_PLLmult) must be 96 MHz, and
+    ///           (96 MHz / BOARD_PARAM_PLLdiv) == PLATFORM_HSCLOCK_HZ. </LI>
+#   elif (BOARD_FEATURE_FLANKSPEED == ENABLED)
+        // Basic Flash setup, then run normal routine
+        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
+        platform_flank_speed();
+        
+#   else 
+#       error "At least one of BOARD_FEATURE_STDSPEED, _FULLSPEED, or _FLANKSPEED must be ENABLED"
 #   endif
 
     /// X. Vector Table Relocation in Internal SRAM or FLASH.
@@ -747,67 +856,114 @@ void platform_enable_interrupts() {
 
 /** Platform Speed Control <BR>
   * ========================================================================<BR>
+  * These functions do not yet have a system-level call.  A function named
+  * something like "sys_speedcontrol(param)" might be nice to write at some
+  * point, which would manage the speed based on different active tasks that
+  * request it.
+  *
+  * In the meantime, a task can call any of these functions, but it is only
+  * recommended to call platform_full_speed and platform_flank_speed.  The
+  * kernel and indeed the hardware itself manage down-speeding when going 
+  * into STOP mode.
   */
+#ifndef EXTF_platform_standard_speed
 void platform_standard_speed() {
-/// MSI: typ 4.2 MHz, Power Level 2, 0 wait state.  ~1mA, 5.2 DMIPS
-/// Going into STOP will automatically put system into Standard Speed.
-/// In the present implementation, the voltage regime must be constant during
-/// the operation of the device.
-#if (MCU_FEATURE_MULTISPEED == ENABLED)
+/// Best efficient speed.  (MSI)
+/// typ config: 4.2 MHz, Power Level 2, 0 wait state.  ~1mA, 5.2 DMIPS
+/// @note Going into STOP will automatically put system into Standard Speed.
+#if (BOARD_FEATURE_STDSPEED == ENABLED)
     if ((RCC->CR & RCC_CR_MSION) == 0) {
-        ot_u16 counter;
-    
-        // Turn-on MSI clock and wait for it to be ready
-        RCC->CR    |= RCC_CR_MSION;
-        counter     = 300; //MSI_STARTUP_TIMEOUT;      // MSI startup <= 8us
-        while (((RCC->CR & RCC_CR_MSIRDY) == 0) && (--counter != 0));
+        sub_osc_startup(300, RCC_CR_MSION);
         
-        // Set MSI as system clock by clearing whatever other clock is in use,
-        // and wait for the Hardware to acknowledge
-        RCC->CFGR  &= ~3;
-        while (RCC->CFGR & 0xC);
+        // Set or clear the Flash Wait state, and set MSI as clock
+#       if (_STDSPEED_FLASHWAIT == ENABLED) 
+            FLASH->ACR |= FLASH_ACR_LATENCY;
+            sub_osc_setclock(0);
+#       else
+            FLASH->ACR &= ~FLASH_ACR_LATENCY;
+            sub_osc_setclock(0);
+#       endif
+    }
+
+    // Turn off non-MSI clocks to save power
+    RCC->CR &= ~(RCC_CR_PLLON | RCC_CR_HSEON | RCC_CR_HSION);
+
+    // Set new core voltage, if necessary.
+#   if ((_STDSPEED_VOLTAGE != _FULLSPEED_VOLTAGE) && (_STDSPEED_VOLTAGE != _FLANKSPEED_VOLTAGE))
+        sub_voltage_config(_STDSPEED_VOLTAGE | _RTC_PROTECTION);
+#   endif
+
+    // Update stored CPU speed
+    platform_ext.cpu_khz = (PLATFORM_MSCLOCK_HZ/1000);
+#endif
+}
+#endif
+
+
+#ifndef EXTF_platform_full_speed
+void platform_full_speed() {
+/// All Ahead Full.  (HSI or HSE, no PLL)
+/// typ config: 16MHz, Power Level 2, 1 wait state. ~4mA, 16.5 DMIPS
+#if (BOARD_FEATURE_FULLSPEED == ENABLED)
+    // Only Enter Full Speed from Standard Speed
+    // (Requests to full-speed from flank-speed should not stop flank)
+    if (RCC->CR & RCC_CR_MSION) {
+        // Change Voltage to FULLSPEED level, if different than STDSPEED
+#       if ( _FULLSPEED_VOLTAGE != _STDSPEED_VOLTAGE)
+        sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
+#       endif
         
-        // Turn off non-MSI clocks to save power
-        RCC->CR    &= ~(RCC_CR_PLLON | RCC_CR_HSEON | RCC_CR_HSION);
+        sub_osc_startup(_FULLOSC_TIMEOUT, _FULLOSC_ONBIT);
         
-        // Clear the Flash wait state if necessary (but only if necessary)
-#       if (    ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_HSCLOCK_HZ > 2000000)) \
-            ||  ((MCU_PARAM_VOLTLEVEL == 2) && (PLATFORM_HSCLOCK_HZ > 8000000)) \
-            ||  ((MCU_PARAM_VOLTLEVEL == 1) && (PLATFORM_HSCLOCK_HZ > 16000000)))
-#       if (   ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_MSCLOCK_HZ <= 2000000)) \
-        ||  (MCU_PARAM_VOLTLEVEL == 2) || (MCU_PARAM_VOLTLEVEL == 1) )       
+        // Activate the Full-Speed Oscillator
+#       if (_FULLSPEED_FLASHWAIT == ENABLED)
+            FLASH->ACR |= FLASH_ACR_LATENCY;
+            sub_osc_setclock(_FULLOSC_CLOCKBIT);
+#       else
+            sub_osc_setclock(_FULLOSC_CLOCKBIT);
             FLASH->ACR &= ~FLASH_ACR_LATENCY;
 #       endif
-#       endif
-
-        platform_ext.cpu_khz = (PLATFORM_MSCLOCK_HZ/1000);
+        
+        RCC->CR &= ~RCC_CR_MSION;
+        platform_ext.cpu_khz = (PLATFORM_HSCLOCK_HZ/1000);
     }
 #endif
 }
+#endif
 
-void platform_full_speed() {
-/// HSI or HSE, no PLL: typ 16MHz, Power Level 2, 1 wait state. ~4mA, 16.5 DMIPS
-    if (RCC->CR & RCC_CR_MSION) {
-        // Add a Flash wait state if necessary (but only if necessary)
-#       if (   ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_MSCLOCK_HZ <= 2000000)) \
-        ||  (MCU_PARAM_VOLTLEVEL == 2) || (MCU_PARAM_VOLTLEVEL == 1) )
-#       if (    ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_HSCLOCK_HZ > 2000000)) \
-            ||  ((MCU_PARAM_VOLTLEVEL == 2) && (PLATFORM_HSCLOCK_HZ > 8000000)) \
-            ||  ((MCU_PARAM_VOLTLEVEL == 1) && (PLATFORM_HSCLOCK_HZ > 16000000)))
-            FLASH->ACR |= FLASH_ACR_LATENCY;
-#       endif
-#       endif
 
-        // Turn on the HS OSC, which will also turn-off MSI
-        sub_hsosc_config();
-    }
-}
-
+#ifndef EXTF_platform_flank_speed
 void platform_flank_speed() {
-/// HSI or HSE + PLL: typ 32MHz, Power Level 3, 1 wait state.  ~9mA, 33 DMIPS.
-/// NOT PRESENTLY IMPLEMENTED.  Flank == Full.
+/// Coming in hot!  (HSI or HSE + PLL)
+/// typ config: 32MHz, Power Level 1, 1 wait state.  ~9mA, 33 DMIPS.
+#if (BOARD_FEATURE_FLANKSPEED)
+#   if (BOARD_FEATURE_PLL != ENABLED)
+#       error "Cannot have Flank Speed without PLL"
+#   endif
+    
+    // Enter Flank Speed if it is not already running
+    if ((RCC->CR & RCC_CR_PLLON) == 0) {
+        platform_ext_pllon();
+        
+#       if (_FLANKSPEED_FLASHWAIT == ENABLED)
+            FLASH->ACR |= FLASH_ACR_LATENCY;
+            sub_osc_setclock(_FLANKOSC_CLOCKBIT);
+#       else
+            sub_osc_setclock(_FLANKOSC_CLOCKBIT);
+            FLASH->ACR &= ~FLASH_ACR_LATENCY;
+#       endif
+    }
+    
+#else
     platform_full_speed();
+    
+#endif
 }
+#endif
+
+
+
+
 
 
 
@@ -1047,112 +1203,7 @@ void platform_init_interruptor() {
 
 #ifndef EXTF_platform_init_gpio
 void platform_init_gpio() { 
-/// Initialize ports/pins exclusively used within this platform module.
-/// A. Trigger Pins
-/// B. Random Number ADC pins: A Zener can be used to generate noise.
-       /// Configure Port A IO.  
-    /// Port A is used for internal features and HCOM.
-    // - A0:1 are used for LED push-pull outputs.  They can link to TIM2 in the future.
-    // - A2 is the radio shutdown push-pull output
-    // - A3 is the radio signal input for RFIO3.  It should be HiZ input or open-drain out.
-    // - A4 is the radio SPI CS pin, which is a push-pull output
-    // - A5:7 are radio SPI bus, set to ALT.  MISO is pull-down
-    // - A8 is the MCO pin, which by default we use as output ground
-    // - A9 is HCOM UART TX, which is ALT open-drain output
-    // - A10 is HCOM UART RX, which is ALT pullup input
-    // - A11 is UART RTS, which is pull-up open drain output by default
-    // - A12 is UART CTS, which is pull-up input by default
-    // - A13:14 are SWD, which are ALT
-    // - A15 is HCOM SRES, which is pull-up input by default
-    GPIOA->BSRRL    = BOARD_RFCTL_SDNPIN | BOARD_RFSPI_CSNPIN;
-    
-    GPIOA->MODER    = (GPIO_MODER_OUT << (0*2)) \
-                    | (GPIO_MODER_OUT << (1*2)) \
-                    | (GPIO_MODER_OUT << (2*2)) \
-                    | (GPIO_MODER_IN  << (3*2)) \
-                    | (GPIO_MODER_OUT << (4*2)) \
-                    | (GPIO_MODER_ALT << (5*2)) \
-                    | (GPIO_MODER_ALT << (6*2)) \
-                    | (GPIO_MODER_ALT << (7*2)) \
-                    | (GPIO_MODER_OUT << (8*2)) \
-                    | (GPIO_MODER_ALT << (9*2)) \
-                    | (GPIO_MODER_ALT << (10*2)) \
-                    | (GPIO_MODER_OUT << (11*2)) \
-                    | (GPIO_MODER_IN  << (12*2)) \
-                    | (GPIO_MODER_ALT << (13*2)) \
-                    | (GPIO_MODER_ALT << (14*2)) \
-                    | (GPIO_MODER_IN  << (15*2));
-    
-    GPIOA->OTYPER   = (1 << (9)) | (1 << (11)) | (1 << 14);
-    
-    GPIOA->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (4*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (5*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (6*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (7*2)) \
-                    | (GPIO_OSPEEDR_40MHz << (8*2)) \
-                    | (GPIO_OSPEEDR_2MHz  << (9*2)) \
-                    | (GPIO_OSPEEDR_2MHz  << (10*2)) \
-                    | (GPIO_OSPEEDR_40MHz  << (13*2)) \
-                    | (GPIO_OSPEEDR_40MHz  << (14*2));
-    
-    GPIOA->PUPDR    = (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                    | (1 << (9*2)) | (1 << (10*2)) \
-                    | (1 << (11*2)) | (1 << (12*2)) \
-                    | (1 << (13*2)) | (2 << (14*2)) \
-                    | (1 << (15*2));
-    
-    GPIOA->AFR[0]   = (5 << ((BOARD_RFSPI_MOSIPINNUM)*4)) \
-                    | (5 << ((BOARD_RFSPI_MISOPINNUM)*4)) \
-                    | (5 << ((BOARD_RFSPI_SCLKPINNUM)*4));
-                    
-    GPIOA->AFR[1]   = (7 << ((BOARD_HCOMUART_TXPINNUM-8)*4)) \
-                    | (7 << ((BOARD_HCOMUART_RXPINNUM-8)*4));
-                    
-
-    /// Configure Port B IO.
-    /// Port B is used for external (module) IO.
-    // - B0:2 are radio IRQs, which are input HiZ by startup default
-    // - B3: is the TRACE pin, which is a pullup input for test
-    // - B4:9 are USER IOBUS pins, which are input HiZ by startup default
-    // - B10:11 are the HCOM I2C pins, which input HiZ by startup default
-    // - B12:15 are the ADC pins, which are set to floating ADC (HiZ)
-    GPIOB->MODER    = (GPIO_MODER_ANALOG << (12*2)) \
-                    | (GPIO_MODER_ANALOG << (13*2)) \
-                    | (GPIO_MODER_ANALOG << (14*2)) \
-                    | (GPIO_MODER_ANALOG << (15*2));
-    
-    GPIOB->OTYPER   = (1 << (10)) | (1 << (11));
-    
-    GPIOB->OSPEEDR  = (GPIO_OSPEEDR_40MHz << (3*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (4*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (5*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (6*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (7*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (8*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (9*2)) \
-                    | (GPIO_OSPEEDR_2MHz << (10*2)) \
-                    | (GPIO_OSPEEDR_2MHz << (11*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (12*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (13*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (14*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (15*2));
-
-    //GPIOB->PUPDR    = (1 << (10*2)) | (1 << (11*2));
-    
-    
-    /// Configure Port C IO.
-    /// Port C is used only for USB sense and 32kHz crystal driving
-    // - C13 is USB Sense, pullup input
-    // - C14:15 are 32kHz crystal driving, set to ALT
-    GPIOC->MODER    = (GPIO_MODER_IN << (13*2)) \
-                    | (GPIO_MODER_ALT << (14*2)) \
-                    | (GPIO_MODER_ALT << (15*2));
-                    
-    GPIOC->PUPDR    = (1 << (13*2));
-    
-    
-    // This must be an inline function in the board header
-    //BOARD_PORT_STARTUP();  
+    BOARD_PORT_STARTUP();  
 }
 #endif
 

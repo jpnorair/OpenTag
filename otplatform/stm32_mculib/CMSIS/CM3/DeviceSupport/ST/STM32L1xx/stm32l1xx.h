@@ -3396,9 +3396,9 @@ typedef struct
 #define  PWR_CR_VOS                          ((uint16_t)0x1800)     /*!< VOS[1:0] bits (Voltage scaling range selection) */
 #define  PWR_CR_VOS_0                        ((uint16_t)0x0800)     /*!< Bit 0 */
 #define  PWR_CR_VOS_1                        ((uint16_t)0x1000)     /*!< Bit 1 */
-#define  PWR_CR_VOS_1V8                     ((uint16_t)0x0800)
-#define  PWR_CR_VOS_1V5                     ((uint16_t)0x1000)
-#define  PWR_CR_VOS_1V2                     ((uint16_t)0x1800)
+#define  PWR_CR_VOS_1V8                      ((uint16_t)0x0800)
+#define  PWR_CR_VOS_1V5                      ((uint16_t)0x1000)
+#define  PWR_CR_VOS_1V2                      ((uint16_t)0x1800)
 #define  PWR_CR_LPRUN                        ((uint16_t)0x4000)     /*!< Low power run mode */
 
 /*******************  Bit definition for PWR_CSR register  ********************/

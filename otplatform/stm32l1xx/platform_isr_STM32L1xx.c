@@ -46,6 +46,11 @@
   * are almost always going to be needed.
   */
 
+#if (MCU_FEATURE_USB)
+#   undef __ISR_USB_LP
+#   define __ISR_USB_LP
+#endif
+
 #define __ISR_ENTRY_HOOK(); 
 #define __ISR_EXIT_HOOK(); 
 
@@ -62,20 +67,22 @@
 /// ISRs that can bring the system out of STOP mode have __ISR_WAKEUP_HOOK().
 /// When coming out of STOP, clock is always MSI.  If Multispeed clocking is
 /// disabled and a non-MSI clock is the clock source, it must be turned-on.
+#if (BOARD_FEATURE_STDSPEED)
+#   define __ISR_KTIM_WAKEUP_HOOK()     platform_standard_speed();
+#elif (BOARD_FEATURE_FULLSPEED)
+#   define __ISR_KTIM_WAKEUP_HOOK()     platform_full_speed();
+#elif (BOARD_FEATURE_FLANKSPEED)
+#   define __ISR_KTIM_WAKEUP_HOOK()     platform_flank_speed();
+#endif
+
 #if defined(__DEBUG__)
 #   undef __ISR_RTC_Alarm
 #   define __ISR_TIM9
-#   define __ISR_KTIM_WAKEUP_HOOK();
 #   define __ISR_WAKEUP_HOOK();
 
-#elif ((MCU_FEATURE_MULTISPEED != ENABLED) && defined(BOARD_PARAM_HFHz))
-#   define __ISR_KTIM_WAKEUP_HOOK() platform_full_speed()
-#   define __ISR_WAKEUP_HOOK() \
-        do { gptim_start_chrono(); platform_full_speed(); } while(0)
-#else
-#   define __ISR_KTIM_WAKEUP_HOOK();
-#   define __ISR_WAKEUP_HOOK()          gptim_start_chrono()
-        
+#else 
+#   define __ISR_WAKEUP_HOOK()  do { gptim_start_chrono(); __ISR_KTIM_WAKEUP_HOOK(); } while(0);
+
 #endif
 
 

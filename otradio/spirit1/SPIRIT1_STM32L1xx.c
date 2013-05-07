@@ -48,7 +48,27 @@
 
 
 /// RF IRQ GPIO Macros:
+#if (RADIO_IRQ3_SRCLINE < 0)
+#   define _READY_PORT  RADIO_IRQ3_PORT
+#   define _READY_PIN   RADIO_IRQ3_PIN
+#   undef _RFIRQ3
+#elif (RADIO_IRQ3_SRCLINE < 5)
+#   define _RFIRQ3  (EXTI0_IRQn + RADIO_IRQ3_SRCLINE)
+#elif ((RADIO_IRQ3_SRCLINE < 10) && !defined(_EXTI9_5_USED))
+#   define _EXTI9_5_USED
+#   define _RFIRQ3  (EXTI9_5_IRQn)
+#elif !defined(_EXTI15_10_USED)
+#   define _EXTI15_10_USED
+#   define _RFIRQ3  (EXTI15_10_IRQn)
+#endif
+
+
+
 #if (RADIO_IRQ0_SRCLINE < 0)
+#   undef _READY_PORT
+#   undef _READY_PIN
+#   define _READY_PORT  RADIO_IRQ2_PORT
+#   define _READY_PIN   RADIO_IRQ2_PIN
 #   undef _RFIRQ0
 #elif (RADIO_IRQ0_SRCLINE < 5)
 #   define _RFIRQ0  (EXTI0_IRQn + RADIO_IRQ0_SRCLINE)
@@ -61,6 +81,10 @@
 #endif
 
 #if (RADIO_IRQ1_SRCLINE < 0)
+#   undef _READY_PORT
+#   undef _READY_PIN
+#   define _READY_PORT  RADIO_IRQ1_PORT
+#   define _READY_PIN   RADIO_IRQ1_PIN
 #   undef _RFIRQ1
 #elif (RADIO_IRQ1_SRCLINE < 5)
 #   define _RFIRQ1  (EXTI0_IRQn + RADIO_IRQ1_SRCLINE)
@@ -73,6 +97,10 @@
 #endif
 
 #if (RADIO_IRQ2_SRCLINE < 0)
+#   undef _READY_PORT
+#   undef _READY_PIN
+#   define _READY_PORT  RADIO_IRQ0_PORT
+#   define _READY_PIN   RADIO_IRQ0_PIN
 #   undef _RFIRQ2
 #elif (RADIO_IRQ2_SRCLINE < 5)
 #   define _RFIRQ2  (EXTI0_IRQn + RADIO_IRQ2_SRCLINE)
@@ -84,17 +112,7 @@
 #   define _RFIRQ2  (EXTI15_10_IRQn)
 #endif
 
-#if (RADIO_IRQ3_SRCLINE < 0)
-#   undef _RFIRQ3
-#elif (RADIO_IRQ3_SRCLINE < 5)
-#   define _RFIRQ3  (EXTI0_IRQn + RADIO_IRQ3_SRCLINE)
-#elif ((RADIO_IRQ3_SRCLINE < 10) && !defined(_EXTI9_5_USED))
-#   define _EXTI9_5_USED
-#   define _RFIRQ3  (EXTI9_5_IRQn)
-#elif !defined(_EXTI15_10_USED)
-#   define _EXTI15_10_USED
-#   define _RFIRQ3  (EXTI15_10_IRQn)
-#endif
+
 
 
 
@@ -280,7 +298,7 @@ void spirit1_waitforreset() {
 void spirit1_waitforready() {
 /// Wait for the Ready Pin to go high (reset pin is remapped in init).
 /// STANDBY->READY should take about 75us
-    while ((RADIO_IRQ3_PORT->IDR & RADIO_IRQ3_PIN) == 0);
+    while ((_READY_PORT->IDR & _READY_PIN) == 0);
 }
 
 
@@ -340,10 +358,15 @@ void spirit1_init_bus() {
 /// and GPIO clocks
     ot_u16 scratch;
     
-    ///0. Assure that Shutdown Line is Low
+    ///0. Preliminary Stuff
+#   if (BOARD_FEATURE_RFXTALOUT)
+    spirit1.clkreq = False;
+#   endif
+    
+    ///1. Assure that Shutdown Line is Low
     RADIO_SDN_PORT->BSRRH   = RADIO_SDN_PIN;        // Clear
     
-    ///1. Set-up DMA to work with SPI.  The DMA is bound to the SPI and it is
+    ///2. Set-up DMA to work with SPI.  The DMA is bound to the SPI and it is
     ///   used for Duplex TX+RX.  The DMA RX Channel is used as an EVENT.  The
     ///   STM32L can do in-context naps using EVENTS.  To enable the EVENT, we
     ///   enable the DMA RX interrupt bit, but not the NVIC.
@@ -357,7 +380,7 @@ void spirit1_init_bus() {
     //NVIC->IP[(ot_u32)_DMARX_IRQ]        = PLATFORM_NVIC_RF_GROUP;
     //NVIC->ISER[(ot_u32)(_DMARX_IRQ>>5)] = (1 << ((ot_u32)_DMARX_IRQ & 0x1F));
 
-    /// 2. Connect GPIOs from SPIRIT1 to STM32L External Interrupt sources
+    /// 3. Connect GPIOs from SPIRIT1 to STM32L External Interrupt sources
     /// The GPIO configuration should be done in BOARD_PORT_STARTUP() and the
     /// binding of each GPIO to the corresponding EXTI should be done in
     /// BOARD_EXTI_STARTUP().  This architecture is required because the STM32L
@@ -376,7 +399,6 @@ void spirit1_init_bus() {
     EXTI->FTSR |= RFI_SOURCE0;
     EXTI->RTSR |= (RFI_SOURCE1 | RFI_SOURCE2);
     
-    
     NVIC->IP[(uint32_t)_RFIRQ0]         = (PLATFORM_NVIC_RF_GROUP << 4);
     NVIC->ISER[((uint32_t)_RFIRQ0>>5)]  = (1 << ((uint32_t)_RFIRQ0 & 0x1F));
 #   ifdef _RFIRQ1
@@ -392,15 +414,15 @@ void spirit1_init_bus() {
     NVIC->ISER[((uint32_t)_RFIRQ3>>5)]  = (1 << ((uint32_t)_RFIRQ3 & 0x1F));
 #   endif
     
-    ///3. The best way to wait for the SPIRIT1 to start is to wait for the reset
+    ///4. The best way to wait for the SPIRIT1 to start is to wait for the reset
     ///   line to come high.  Once it is high, the chip is in ready.
     spirit1_waitforreset();
 
-    ///4. Take GPIOs out of pull-down and into floating mode.  This is to save
+    ///5. Take GPIOs out of pull-down and into floating mode.  This is to save
     ///   energy, which could otherwise just be draining over the pull-downs.
     ///@todo this
     
-    ///5. Put the SPIRIT1 into a default IO configuration, and then to sleep.
+    ///6. Put the SPIRIT1 into a default IO configuration, and then to sleep.
     ///   It is important to expose the READY signal on GPIO0, because the 
     ///   driver needs this signal to confirm state changes.
 }
@@ -494,6 +516,7 @@ void spirit1_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data) {
     cmd_data[1] = start_addr;
     spirit1_spibus_io((2+length), 0, cmd_data);
 }
+
 
 
 

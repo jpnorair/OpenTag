@@ -1,4 +1,4 @@
 
 <Project Header="Project 'ponglt'" Path=".\ponglt.rprj" Project="Yes" OutputFile="" sate="96" ActiveApp="ponglt" >
-	<ApplicationBuild Header="ponglt" Extern=".\ponglt.rapp" Path=".\ponglt.rapp" OutputFile=".\build\ponglt.elf" sate="96" Config="Jupiter" />
+	<ApplicationBuild Header="ponglt" Extern=".\ponglt.rapp" Path=".\ponglt.rapp" OutputFile=".\build\ponglt.elf" sate="98" Config="Jupiter" />
 </Project>
