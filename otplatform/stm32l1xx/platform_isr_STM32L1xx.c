@@ -48,7 +48,9 @@
 
 #if (MCU_FEATURE_USB)
 #   undef __ISR_USB_LP
+#   undef __ISR_USB_FS_WKUP
 #   define __ISR_USB_LP
+#   define __ISR_USB_FS_WKUP
 #endif
 
 #define __ISR_ENTRY_HOOK(); 
@@ -628,6 +630,7 @@ void USB_LP_IRQHandler(void) {
 void USB_FS_WKUP_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
+    EXTI->PR = (1<<18);     //clear pending bit
     platform_isr_fswkup();
     __ISR_EXIT_HOOK();
 }

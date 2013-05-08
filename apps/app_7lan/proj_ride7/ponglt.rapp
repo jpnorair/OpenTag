@@ -73,7 +73,7 @@
 		</Group>
 																								
 	</Group>
-	<Group Header="otlib" Marker="-1" OutputFile="" sate="96" >
+	<Group Header="otlib" Marker="-1" OutputFile="" sate="0" >
 		<NodeH Path="..\..\..\otlib\veelite_core.h" Header="veelite_core.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\alp.h" Header="alp.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\..\..\otlib\alp_api_client.c" Header="alp_api_client.c" Marker="-1" OutputFile=".\build\alp_api_client.o" sate="0" />
@@ -105,7 +105,7 @@
 		<NodeC Path="..\..\..\otlib\m2_transport.c" Header="m2_transport.c" Marker="-1" OutputFile=".\build\m2_transport.o" sate="0" />
 		<NodeH Path="..\..\..\otlib\m2_transport.h" Header="m2_transport.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\mpipe.h" Header="mpipe.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\..\..\otlib\mpipe_task.c" Header="mpipe_task.c" Marker="-1" OutputFile=".\build\mpipe_task.o" sate="2" />
+		<NodeC Path="..\..\..\otlib\mpipe_task.c" Header="mpipe_task.c" Marker="-1" OutputFile=".\build\mpipe_task.o" sate="0" />
 		<NodeH Path="..\..\..\otlib\ndef.h" Header="ndef.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\OT_config.h" Header="OT_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\OT_platform.h" Header="OT_platform.h" Marker="-1" OutputFile="" sate="0" />
@@ -131,7 +131,7 @@
 																								
 	</Group>
 	<Group Header="otplatform" Marker="-1" OutputFile="" sate="96" >
-		<Group Header="stm32_mculib" Marker="-1" OutputFile="" sate="96" >
+		<Group Header="stm32_mculib" Marker="-1" OutputFile="" sate="0" >
 			<Group Header="CMSIS" Marker="-1" OutputFile="" sate="0" >
 				<Group Header="CM3" Marker="-1" OutputFile="" sate="96" >
 					<Group Header="CoreSupport" sate="0" Marker="-1" OutputFile="" >
@@ -218,10 +218,6 @@
 																																																																								
 				</Group>
 				<Group Header="src" sate="0" Marker="0" OutputFile="" >
-					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\otgd_fs_cal.c" Header="otgd_fs_cal.c" Marker="-1" OutputFile=".\build\otgd_fs_cal.o" sate="0" />
-					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\otgd_fs_dev.c" Header="otgd_fs_dev.c" Marker="-1" OutputFile=".\build\otgd_fs_dev.o" sate="0" />
-					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\otgd_fs_int.c" Header="otgd_fs_int.c" Marker="-1" OutputFile=".\build\otgd_fs_int.o" sate="0" />
-					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\otgd_fs_pcd.c" Header="otgd_fs_pcd.c" Marker="-1" OutputFile=".\build\otgd_fs_pcd.o" sate="0" />
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_core.c" Header="usb_core.c" Marker="-1" OutputFile=".\build\usb_core.o" sate="0" />
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_init.c" Header="usb_init.c" Marker="-1" OutputFile=".\build\usb_init.o" sate="0" />
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_int.c" Header="usb_int.c" Marker="-1" OutputFile=".\build\usb_int.o" sate="0" />
@@ -276,7 +272,7 @@
 				</Options>
 																																																								
 			</Group>
-			<Group Header="STM32F10x_StdPeriph_Driver" Marker="0" OutputFile="" sate="0" >
+			<Group Header="STM32F10x_StdPeriph_Driver" Marker="0" OutputFile="" sate="96" >
 				<Group Header="inc" sate="0" Marker="-1" OutputFile="" >
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\misc.h" Header="misc.h" Marker="-1" OutputFile="" sate="0" />
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_adc.h" Header="stm32f10x_adc.h" Marker="-1" OutputFile="" sate="0" />
@@ -345,7 +341,7 @@
 				</Options>
 																																																								
 			</Group>
-			<Group Header="STM32L1xx_StdPeriph_Driver" Marker="0" OutputFile="" sate="0" >
+			<Group Header="STM32L1xx_StdPeriph_Driver" Marker="0" OutputFile="" sate="96" >
 				<Group Header="inc" sate="0" Marker="-1" OutputFile="" >
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\misc.h" Header="misc.h" Marker="-1" OutputFile="" sate="0" />
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_adc.h" Header="stm32l1xx_adc.h" Marker="-1" OutputFile="" sate="0" />
@@ -458,12 +454,12 @@
 			</Options>
 																																								
 		</Group>
-		<Group Header="stm32l1xx" sate="0" Marker="-1" OutputFile="" >
+		<Group Header="stm32l1xx" sate="96" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\mpipe_uart_STM32L1xx.c" Header="mpipe_uart_STM32L1xx.c" Marker="-1" OutputFile=".\build\mpipe_uart_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\mpipe_usbcdc_STM32L1xx.c" Header="mpipe_usbcdc_STM32L1xx.c" Marker="-1" OutputFile=".\build\mpipe_usbcdc_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_crc_STM32L1xx.c" Header="platform_crc_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_crc_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_gptim_STM32L1xx.c" Header="platform_gptim_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_gptim_STM32L1xx.o" sate="0" />
-			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="2" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_STM32L1xx.c" Header="platform_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_STM32L1xx.o" sate="0" >
 				<Options>				</Options>
 																																																								

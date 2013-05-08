@@ -82,8 +82,8 @@
 //From platform_STM32L1xx.h
 //#define MCU_FEATURE(VAL)              MCU_FEATURE_##VAL   // FEATURE 
 #define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPECDC            ENABLED         // USB-CDC MPipe implementation
-#define MCU_FEATURE_MPIPEUART           DISABLED         // UART MPipe Implementation
+#define MCU_FEATURE_MPIPECDC            DISABLED         // USB-CDC MPipe implementation
+#define MCU_FEATURE_MPIPEUART           ENABLED         // UART MPipe Implementation
 #define MCU_FEATURE_MPIPEI2C            DISABLED         // I2C MPipe Implementation
 #define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 
@@ -145,6 +145,7 @@
   * 
   * 4. The SPIRIT1 SPI benefits from the highest speed clock up to 20 MHz.
   */
+#define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
 #define BOARD_FEATURE_USBCONVERTER      ENABLED                // Is UART/I2C connected via USB converter?
 #define BOARD_FEATURE_MPIPE_DIRECT      ENABLED                 // Direct implementation (UART, I2C)
 #define BOARD_FEATURE_MPIPE_BREAK       DISABLED                 // Send/receive leading break for wakeup (I2C)
@@ -153,13 +154,13 @@
 
 #define BOARD_FEATURE_MPIPE_QMGMT       ENABLED                 // (possibly defunct)
 #define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL attached
-#define BOARD_FEATURE_HFXTAL            ENABLED                 // HF XTAL attached
+#define BOARD_FEATURE_HFXTAL            (MCU_FEATURE_USB != ENABLED)                 // HF XTAL attached
 #define BOARD_FEATURE_HFBYPASS          DISABLED
 #define BOARD_FEATURE_RFXTAL            ENABLED                 // XTAL for RF chipset
 #define BOARD_FEATURE_RFXTALOUT         DISABLED
 #define BOARD_FEATURE_PLL               MCU_FEATURE_USB
 #define BOARD_FEATURE_STDSPEED          ENABLED
-#define BOARD_FEATURE_FULLSPEED         ENABLED
+#define BOARD_FEATURE_FULLSPEED         (MCU_FEATURE_USB != ENABLED)
 #define BOARD_FEATURE_FULLXTAL          DISABLED
 #define BOARD_FEATURE_FLANKSPEED        MCU_FEATURE_USB
 #define BOARD_FEATURE_FLANKXTAL         MCU_FEATURE_USB
@@ -664,13 +665,15 @@ static inline void BOARD_PORT_STARTUP(void) {
     // External USB interface
     // Make sure to disable Crystal on PortH when USB is not used
 #   elif (MCU_FEATURE(MPIPECDC) == ENABLED)
-        //GPIOH->MODER            = (GPIO_MODER_OUT << (0*2));
-      //BOARD_USB_PORT->PUPDR  |= (1 << (BOARD_USB_DPPINNUM*2));
+      //GPIOH->MODER            = (GPIO_MODER_OUT << (0*2));
+      //BOARD_USB_PORT->PUPDR  |= (1 << (BOARD_USB_DMPINNUM*2)) \
+                                | (1 << (BOARD_USB_DPPINNUM*2));
         BOARD_USB_PORT->AFR[1] |= (10 << ((BOARD_USB_DMPINNUM-8)*4))  \
                                 | (10 << ((BOARD_USB_DPPINNUM-8)*4));
+      //BOARD_USB_PORT->OTYPER |= (BOARD_USB_DMPINNUM | BOARD_USB_DPPINNUM);
         BOARD_USB_PORT->OSPEEDR|= (GPIO_OSPEEDR_40MHz << (BOARD_USB_DMPINNUM*2)) \
-                                | (GPIO_OSPEEDR_40MHz << (BOARD_USB_DPPINNUM*2));                         
-        BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
+                                | (GPIO_OSPEEDR_40MHz << (BOARD_USB_DPPINNUM*2));
+      //BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
                                 | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
 #   else
         GPIOH->MODER            = ( (GPIO_MODER_OUT << (0*2)) | (GPIO_MODER_OUT << (1*2)) \
@@ -887,6 +890,19 @@ static inline void BOARD_HSXTAL_ON(void) {
 }
 
 static inline void BOARD_HSXTAL_OFF(void) {
+}
+
+
+static inline void BOARD_USB_PORTENABLE(void) {
+    //BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
+                            | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
+    SYSCFG->PMC            |= SYSCFG_PMC_USB_PU;
+}
+
+static inline void BOARD_USB_PORTDISABLE(void) {
+    SYSCFG->PMC            &= ~SYSCFG_PMC_USB_PU;
+    //BOARD_USB_PORT->MODER  &= ~( (3 << (BOARD_USB_DMPINNUM*2)) \
+                               | (3 << (BOARD_USB_DPPINNUM*2)) );
 }
 
 

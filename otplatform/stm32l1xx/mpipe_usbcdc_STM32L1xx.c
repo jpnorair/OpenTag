@@ -387,17 +387,19 @@ void Handle_USBAsynchXfer (void);
 //extern ot_u32 USART_Rx_length;
 
 
+
 volatile ot_u32 bDeviceState    = UNCONNECTED;  // USB device status
-volatile ot_u32 remotewakeupon  = 0;
-volatile ot_u32 EP[8];
-volatile bool   fSuspendEnabled = TRUE;         // true when suspend is possible
+volatile ot_bool remotewakeupon = False;
+volatile ot_bool fSuspendEnabled= False;         // true when suspend is possible
 
 
-
-volatile ot_u16 wIstr;                          // ISTR register last read value 
+//ot_u32 wCNTR                    = 0;
+volatile ot_u16 wIstr           = 0;                // ISTR register last read value 
+ot_int esof_counter             = 0;
 volatile ot_u8  bIntPackSOF     = 0;            // SOFs received between 2 consecutive packets 
 
-//ot_u8 Request = 0;
+ot_u8 Request = 0;
+
 
 
 // USB Standard Device Descriptor: Set up for Little Endian
@@ -639,16 +641,23 @@ ONE_DESCRIPTOR String_Descriptor[4] = {
 #define USB_Cable_Config_ENABLE  (SYSCFG->PMC |= (ot_u32)SYSCFG_PMC_USB_PU)
 #define USB_Cable_Config_DISABLE (SYSCFG->PMC &= ~(ot_u32)SYSCFG_PMC_USB_PU)
 
-
 #define Enter_LowPowerMode()    (bDeviceState = SUSPENDED)
-#define Leave_LowPowerMode()    (bDeviceState = (Device_Info.Current_Configuration != 0) ? CONFIGURED : ATTACHED)
+
+void Leave_LowPowerMode() {
+    bDeviceState = ATTACHED;
+    if (Device_Info.Current_Configuration != 0) {
+        bDeviceState    = CONFIGURED;
+        mpipe.state     = MPIPE_Idle;
+    }
+}
 
 
   
 RESULT PowerOn(void) {
     ot_u16 wRegVal;
     //USB_Cable_Config(ENABLE);   // cable plugged-in?
-    SYSCFG->PMC |= (ot_u32)SYSCFG_PMC_USB_PU;
+    //SYSCFG->PMC |= (ot_u32)SYSCFG_PMC_USB_PU;
+    BOARD_USB_PORTENABLE();
     
     wRegVal = CNTR_FRES;        // CNTR_PWDN = 0
     _SetCNTR(wRegVal);
@@ -665,7 +674,8 @@ RESULT PowerOff() {
     _SetCNTR(CNTR_FRES);                // disable all interrupts and force USB reset
     _SetISTR(0);                        // clear interrupt status register 
     //USB_Cable_Config(DISABLE);          // Disable the Pull-Up  
-    SYSCFG->PMC &= ~(ot_u32)SYSCFG_PMC_USB_PU;
+    //SYSCFG->PMC &= ~(ot_u32)SYSCFG_PMC_USB_PU;
+    BOARD_USB_PORTDISABLE();
     
     _SetCNTR(CNTR_FRES + CNTR_PDWN);    // switch-off device
     return USB_SUCCESS;
@@ -673,6 +683,7 @@ RESULT PowerOff() {
 
 
 void Suspend(void) {
+    volatile ot_u16 EP[8];
 	ot_u32 i =0;
     ot_u32 tmpreg = 0;
     volatile uint32_t savePWR_CR=0;
@@ -709,32 +720,7 @@ void Suspend(void) {
 	
 	// prepare entry in low power mode (STOP mode)
 	// Select the regulator state in STOP mode
-    ///@todo integrate this with OpenTag system
-	savePWR_CR  = PWR->CR;
-	tmpreg      = PWR->CR;
-	tmpreg     &= ((uint32_t)0xFFFFFFFC);
-	tmpreg     |= PWR_Regulator_LowPower;
-	PWR->CR     = tmpreg;
-    SCB->SCR   |= SCB_SCR_SLEEPDEEP;       
-
-	// enter system in STOP mode, only when wakeup flag in not set
-	if((_GetISTR()&ISTR_WKUP)==0) {
-		__WFI();
-        SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP); 
-	}
-	else {
-		// Clear Wakeup flag 
-		_SetISTR(CLR_WKUP);
-		// clear FSUSP to abort entry in suspend mode 
-        wCNTR   = _GetCNTR();
-        wCNTR  &=~CNTR_FSUSP;
-        _SetCNTR(wCNTR);
-		
-		//restore sleep mode configuration  
-		// restore Power regulator config in sleep mode
-		PWR->CR = savePWR_CR;
-		CB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP);   
-    }
+    mpipedrv_detach(NULL);
 }
 
 
@@ -890,8 +876,7 @@ void cdcacm_Reset(void) {
 
   
 void cdcacm_SetConfiguration(void) {
-    DEVICE_INFO *pInfo = &Device_Info;
-    if (pInfo->Current_Configuration != 0) {
+    if (Device_Info.Current_Configuration != 0) {
         bDeviceState = CONFIGURED;  // Device configured
         mpipe.state  = MPIPE_Idle;
     }
@@ -998,12 +983,17 @@ ot_u8 *cdcacm_SetLineCoding(ot_u16 Length) {
   */
 
 void platform_isr_usblp(void) {
-    wIstr = _GetISTR();
+    ot_u16 wCNTR;
+    ot_u32 i    = 0;
+    wIstr       = _GetISTR();
+    
 #   if (IMR_MSK & ISTR_SOF)
         if (wIstr & ISTR_SOF & wInterrupt_Mask) {
             _SetISTR((ot_u16)CLR_SOF);
             bIntPackSOF++;
+#           ifdef SOF_CALLBACK
             SOF_Callback();
+#           endif
         }
 #   endif
 #   if (IMR_MSK & ISTR_CTR)
@@ -1011,50 +1001,86 @@ void platform_isr_usblp(void) {
             // servicing of the endpoint correct transfer interrupt
             // clear of the CTR flag into the sub 
             CTR_LP();
+#           ifdef CTR_CALLBACK
             CTR_Callback();
+#           endif
         }
 #   endif
 #   if (IMR_MSK & ISTR_RESET)
         if (wIstr & ISTR_RESET & wInterrupt_Mask) {
             _SetISTR((ot_u16)CLR_RESET);
             Device_Property.Reset();
+#           ifdef RESET_CALLBACK
             RESET_Callback();
+#           endif
         }
 #   endif
 #   if (IMR_MSK & ISTR_DOVR)
         if (wIstr & ISTR_DOVR & wInterrupt_Mask) {
             _SetISTR((ot_u16)CLR_DOVR);
+#           ifdef DOVR_CALLBACK
             DOVR_Callback();
+#           endif
         }
 #   endif
 #   if (IMR_MSK & ISTR_ERR)
         if (wIstr & ISTR_ERR & wInterrupt_Mask) {
             _SetISTR((ot_u16)CLR_ERR);
+#           ifdef ERR_CALLBACK
             ERR_Callback();
+#           endif
         }
 #   endif
 #   if (IMR_MSK & ISTR_WKUP)
         if (wIstr & ISTR_WKUP & wInterrupt_Mask) {
             _SetISTR((ot_u16)CLR_WKUP);
             Resume(RESUME_EXTERNAL);
+#           ifdef WKUP_CALLBACK
             WKUP_Callback();
+#           endif
         }
 #   endif
 #   if (IMR_MSK & ISTR_SUSP)
         if (wIstr & ISTR_SUSP & wInterrupt_Mask) {
-            // clear of the ISTR bit must be done after setting of CNTR_FSUSP
             if (fSuspendEnabled)    Suspend();
             else                    Resume(RESUME_LATER);
-
+            // clear of the ISTR bit must be done after setting of CNTR_FSUSP
             _SetISTR((ot_u16)CLR_SUSP);
+#           ifdef SUSP_CALLBACK
             SUSP_Callback();
+#           endif
         }
 #   endif
 #   if (IMR_MSK & ISTR_ESOF)
         if (wIstr & ISTR_ESOF & wInterrupt_Mask) {
             _SetISTR((ot_u16)CLR_ESOF);   // resume handling timing is made with ESOFs 
-            Resume(RESUME_ESOF);            // request without change of the machine state 
+            if ((_GetFNR()&FNR_RXDP) != 0) {
+                esof_counter++;
+                if ((esof_counter > 3) && ((_GetCNTR() & CNTR_FSUSP) == 0)) {
+                    volatile ot_u16 EP[8];
+                    esof_counter = 0;
+                    
+                    //Sequence to apply forced-reset
+                    wCNTR = _GetCNTR(); 
+                    for (i=0;i<8;i++) EP[i] = _GetENDPOINT(i);
+                    
+                    wCNTR  |=CNTR_FRES;     _SetCNTR(wCNTR);
+                    wCNTR  &=~CNTR_FRES;    _SetCNTR(wCNTR);
+                    
+                    while((_GetISTR() & ISTR_RESET) == 0);
+                    _SetISTR((ot_u16)CLR_RESET);
+                    
+                    for (i=0;i<8;i++) _SetENDPOINT(i, EP[i]);
+                }
+            }
+            else {
+                esof_counter = 0;
+            }
+            
+            Resume(RESUME_ESOF); 
+#           ifdef ESOF_CALLBACK
             ESOF_Callback();
+#           endif
         }
 #   endif
 }
@@ -1071,13 +1097,33 @@ void EP1_IN_Callback (void) {
 void EP3_OUT_Callback(void) {
 /// Copy data from the USB HW buffer into the SW pipe, and also
 /// Advance the position of the pipe cursor for the next call.
+    ot_int  rxbytes;
+    ot_u8*  cursor;
 
     ///@todo Find how to get the USB HW buffer size before loading the
     ///      data, in order to avoid pipe overflow.
-    cdcacm.pkt += USB_SIL_Read(EP3_OUT, cdcacm.pkt);
+    rxbytes         = GetEPRxCount(ENDP3);
+    cursor          = cdcacm.pkt;
+    cdcacm.pkt     += rxbytes;
+    cdcacm.pktlen  += rxbytes;
     
+    PMAToUserBufferCopy(cursor, ENDP3_RXADDR, rxbytes);
     mpipedrv_isr();
 }
+
+
+
+
+
+/** USB Wakeup interrupt   <BR>
+  * ========================================================================<BR>
+  * This would do something for setups with attachable USB
+  */
+void platform_isr_fswkup() {
+    
+}
+
+
 
 
 
@@ -1154,7 +1200,13 @@ ot_int mpipedrv_init(void* port_id) {
 
     /// Initialize USB (using ST library function)
     __USB_CLKON();
+    BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
+                            | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
     USB_Init();
+    
+#   if defined(__DEBUG__) || defined(__PROTO__)
+    //cdcacm_Reset();
+#   endif
     
     return 255;
 }
