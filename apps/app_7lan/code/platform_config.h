@@ -32,7 +32,6 @@
 
 
 
-
 /// Default Board setting: (Haystack Jupiter)
 /// You should set BOARD_... as a constant that gets passed to the compiler as 
 /// a command-line argument (or whatever is equivalent).  You can also change

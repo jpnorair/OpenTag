@@ -479,7 +479,7 @@ void main(void) {
     ///2. Standard OpenTag Init (most stuff actually will not be used)
     platform_poweron();
     platform_init_OT();
-
+    
     ///3a. The device will wait (and block anything else) until you connect
     ///    it to a valid console app.
     ///3b. Load a message to show that main startup has passed

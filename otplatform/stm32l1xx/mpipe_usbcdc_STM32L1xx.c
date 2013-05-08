@@ -76,6 +76,7 @@
 #ifndef BOARD_PARAM_MPIPE_IFS
 #   define BOARD_PARAM_MPIPE_IFS 1
 #endif
+
 #if (defined(__STM32L__) && OT_FEATURE(MPIPE) && (BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_USB))
 
 #include "buffers.h"
@@ -138,16 +139,9 @@
   * multispeed clocking will need some extra logic in the MPIPE driver to 
   * assure that the clock speed is on the right setting during MPIPE usage.
   */
-#if (MCU_FEATURE(MULTISPEED) == ENABLED)
-///@todo system calls
-#   define __REQUEST_FULL_SPEED();  // sys_req_fullspeed()
-#   define __DISMISS_FULL_SPEED();  // sys_clr_fullspeed()
-#else
-#   define __REQUEST_FULL_SPEED();
-#   define __DISMISS_FULL_SPEED();
-#endif
 
-
+#define __USB_CLKON()   (RCC->APB1ENR |= RCC_APB1ENR_USBEN)
+#define __USB_CLKOFF()  (RCC->APB1ENR &= ~RCC_APB1ENR_USBEN)
 
 
 
@@ -218,25 +212,25 @@ void sub_usb_portsetup();
 #define USB_STRING_DESCRIPTOR_TYPE              0x03
 #define USB_INTERFACE_DESCRIPTOR_TYPE           0x04
 #define USB_ENDPOINT_DESCRIPTOR_TYPE            0x05
-#define VIRTUAL_COM_PORT_DATA_SIZE              64
-#define VIRTUAL_COM_PORT_INT_SIZE               8
-#define VIRTUAL_COM_PORT_SIZ_DEVICE_DESC        18
-#define VIRTUAL_COM_PORT_SIZ_CONFIG_DESC        67
-#define VIRTUAL_COM_PORT_SIZ_STRING_LANGID      4
-#define VIRTUAL_COM_PORT_SIZ_STRING_VENDOR      (20+2)
-#define VIRTUAL_COM_PORT_SIZ_STRING_PRODUCT     (32+2)
-#define VIRTUAL_COM_PORT_SIZ_STRING_SERIAL      (24+2)
+#define CDCACM_DATA_SIZE              64
+#define CDCACM_INT_SIZE               8
+#define CDCACM_SIZ_DEVICE_DESC        18
+#define CDCACM_SIZ_CONFIG_DESC        67
+#define CDCACM_SIZ_STRING_LANGID      4
+#define CDCACM_SIZ_STRING_VENDOR      (20+2)
+#define CDCACM_SIZ_STRING_PRODUCT     (32+2)
+#define CDCACM_SIZ_STRING_SERIAL      (24+2)
 #define STANDARD_ENDPOINT_DESC_SIZE             0x09
 
-#define Virtual_Com_Port_GetConfiguration          NOP_Process
-//#define Virtual_Com_Port_SetConfiguration          NOP_Process
-#define Virtual_Com_Port_GetInterface              NOP_Process
-#define Virtual_Com_Port_SetInterface              NOP_Process
-#define Virtual_Com_Port_GetStatus                 NOP_Process
-#define Virtual_Com_Port_ClearFeature              NOP_Process
-#define Virtual_Com_Port_SetEndPointFeature        NOP_Process
-#define Virtual_Com_Port_SetDeviceFeature          NOP_Process
-//#define Virtual_Com_Port_SetDeviceAddress          NOP_Process
+#define cdcacm_GetConfiguration          NOP_Process
+//#define cdcacm_SetConfiguration          NOP_Process
+#define cdcacm_GetInterface              NOP_Process
+#define cdcacm_SetInterface              NOP_Process
+#define cdcacm_GetStatus                 NOP_Process
+#define cdcacm_ClearFeature              NOP_Process
+#define cdcacm_SetEndPointFeature        NOP_Process
+#define cdcacm_SetDeviceFeature          NOP_Process
+//#define cdcacm_SetDeviceAddress          NOP_Process
 
 #define SEND_ENCAPSULATED_COMMAND   0x00
 #define GET_ENCAPSULATED_RESPONSE   0x01
@@ -361,20 +355,20 @@ void Suspend(void);
 void Resume_Init(void);
 void Resume(RESUME_STATE eResumeSetVal);
 
-void Virtual_Com_Port_init(void);
-void Virtual_Com_Port_Reset(void);
-void Virtual_Com_Port_SetConfiguration(void);
-void Virtual_Com_Port_SetDeviceAddress(void);
-void Virtual_Com_Port_Status_In(void);
-void Virtual_Com_Port_Status_Out(void);
-RESULT Virtual_Com_Port_Data_Setup(ot_u8 RequestNo);
-RESULT Virtual_Com_Port_NoData_Setup(ot_u8 RequestNo);
-ot_u8 *Virtual_Com_Port_GetDeviceDescriptor(ot_u16 Length);
-ot_u8 *Virtual_Com_Port_GetConfigDescriptor(ot_u16 Length);
-ot_u8 *Virtual_Com_Port_GetStringDescriptor(ot_u16 Length);
-RESULT Virtual_Com_Port_Get_Interface_Setting(ot_u8 Interface, ot_u8 AlternateSetting);
-ot_u8 *Virtual_Com_Port_GetLineCoding(ot_u16 Length);
-ot_u8 *Virtual_Com_Port_SetLineCoding(ot_u16 Length);
+void cdcacm_init(void);
+void cdcacm_Reset(void);
+void cdcacm_SetConfiguration(void);
+void cdcacm_SetDeviceAddress(void);
+void cdcacm_Status_In(void);
+void cdcacm_Status_Out(void);
+RESULT cdcacm_Data_Setup(ot_u8 RequestNo);
+RESULT cdcacm_NoData_Setup(ot_u8 RequestNo);
+ot_u8 *cdcacm_GetDeviceDescriptor(ot_u16 Length);
+ot_u8 *cdcacm_GetConfigDescriptor(ot_u16 Length);
+ot_u8 *cdcacm_GetStringDescriptor(ot_u16 Length);
+RESULT cdcacm_Get_Interface_Setting(ot_u8 Interface, ot_u8 AlternateSetting);
+ot_u8 *cdcacm_GetLineCoding(ot_u16 Length);
+ot_u8 *cdcacm_SetLineCoding(ot_u16 Length);
 
 void Handle_USBAsynchXfer (void);
 
@@ -386,7 +380,7 @@ void Handle_USBAsynchXfer (void);
 /** Mpipe Virtual COM Data Elements   <BR>
   * ========================================================================<BR>
   */
-//ot_u8 USB_Rx_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
+//ot_u8 USB_Rx_Buffer[CDCACM_DATA_SIZE];
 //ot_u8 USB_Tx_State;
 //extern  ot_u8 USART_Rx_Buffer[];
 //extern ot_u32 USART_Rx_ptr_out;
@@ -394,7 +388,12 @@ void Handle_USBAsynchXfer (void);
 
 
 volatile ot_u32 bDeviceState    = UNCONNECTED;  // USB device status
+volatile ot_u32 remotewakeupon  = 0;
+volatile ot_u32 EP[8];
 volatile bool   fSuspendEnabled = TRUE;         // true when suspend is possible
+
+
+
 volatile ot_u16 wIstr;                          // ISTR register last read value 
 volatile ot_u8  bIntPackSOF     = 0;            // SOFs received between 2 consecutive packets 
 
@@ -402,7 +401,7 @@ volatile ot_u8  bIntPackSOF     = 0;            // SOFs received between 2 conse
 
 
 // USB Standard Device Descriptor: Set up for Little Endian
-const ot_u8 Virtual_Com_Port_DeviceDescriptor[] = {
+const ot_u8 cdcacm_DeviceDescriptor[] = {
     0x12,   /* bLength */
     USB_DEVICE_DESCRIPTOR_TYPE,     /* bDescriptorType */
     0x00, 0x02, /* bcdUSB = 2.00 */
@@ -419,11 +418,11 @@ const ot_u8 Virtual_Com_Port_DeviceDescriptor[] = {
     0x01        /* bNumConfigurations */
 };
 
-const ot_u8 Virtual_Com_Port_ConfigDescriptor[] = {
+const ot_u8 cdcacm_ConfigDescriptor[] = {
     /*Configuation Descriptor*/
     0x09,   /* bLength: Configuation Descriptor size */
     USB_CONFIGURATION_DESCRIPTOR_TYPE,      /* bDescriptorType: Configuration */
-    VIRTUAL_COM_PORT_SIZ_CONFIG_DESC,       /* wTotalLength:no of returned bytes */
+    CDCACM_SIZ_CONFIG_DESC,       /* wTotalLength:no of returned bytes */
     0x00,
     0x02,   /* bNumInterfaces: 2 interface */
     0x01,   /* bConfigurationValue: Configuration value */
@@ -469,7 +468,7 @@ const ot_u8 Virtual_Com_Port_ConfigDescriptor[] = {
     USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
     0x82,   /* bEndpointAddress: (IN2) */
     0x03,   /* bmAttributes: Interrupt */
-    VIRTUAL_COM_PORT_INT_SIZE,      /* wMaxPacketSize: */
+    CDCACM_INT_SIZE,      /* wMaxPacketSize: */
     0x00,
     0xFF,   /* bInterval: */
     /*Data class interface descriptor*/
@@ -487,7 +486,7 @@ const ot_u8 Virtual_Com_Port_ConfigDescriptor[] = {
     USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
     0x03,   /* bEndpointAddress: (OUT3) */
     0x02,   /* bmAttributes: Bulk */
-    VIRTUAL_COM_PORT_DATA_SIZE,             /* wMaxPacketSize: */
+    CDCACM_DATA_SIZE,             /* wMaxPacketSize: */
     0x00,
     0x00,   /* bInterval: ignore for Bulk transfer */
     /*Endpoint 1 Descriptor*/
@@ -495,37 +494,37 @@ const ot_u8 Virtual_Com_Port_ConfigDescriptor[] = {
     USB_ENDPOINT_DESCRIPTOR_TYPE,   /* bDescriptorType: Endpoint */
     0x81,   /* bEndpointAddress: (IN1) */
     0x02,   /* bmAttributes: Bulk */
-    VIRTUAL_COM_PORT_DATA_SIZE,             /* wMaxPacketSize: */
+    CDCACM_DATA_SIZE,             /* wMaxPacketSize: */
     0x00,
     0x00    /* bInterval */
 };
 
 /* USB String Descriptors */
-const ot_u8 Virtual_Com_Port_StringLangID[VIRTUAL_COM_PORT_SIZ_STRING_LANGID] = {
-    VIRTUAL_COM_PORT_SIZ_STRING_LANGID,
+const ot_u8 cdcacm_StringLangID[CDCACM_SIZ_STRING_LANGID] = {
+    CDCACM_SIZ_STRING_LANGID,
     USB_STRING_DESCRIPTOR_TYPE,
     0x09,
     0x04 /* LangID = 0x0409: U.S. English */
 };
 
-const ot_u8 Virtual_Com_Port_StringVendor[VIRTUAL_COM_PORT_SIZ_STRING_VENDOR] = {
-    VIRTUAL_COM_PORT_SIZ_STRING_VENDOR,     /* Size of Vendor string */
+const ot_u8 cdcacm_StringVendor[CDCACM_SIZ_STRING_VENDOR] = {
+    CDCACM_SIZ_STRING_VENDOR,     /* Size of Vendor string */
     USB_STRING_DESCRIPTOR_TYPE,             /* bDescriptorType*/
     /* Vendor: "STMicro+OT" */
     'S', 0, 'T', 0, 'M', 0, 'i', 0, 'c', 0, 'r', 0, 'o', 0, '+', 0,
     'O', 0, 'T', 0
 };
 
-const ot_u8 Virtual_Com_Port_StringProduct[VIRTUAL_COM_PORT_SIZ_STRING_PRODUCT] = {
-    VIRTUAL_COM_PORT_SIZ_STRING_PRODUCT,          /* bLength */
+const ot_u8 cdcacm_StringProduct[CDCACM_SIZ_STRING_PRODUCT] = {
+    CDCACM_SIZ_STRING_PRODUCT,          /* bLength */
     USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
     /* Product name: "OpenTag MPipeUSB" */
     'O', 0, 'p', 0, 'e', 0, 'n', 0, 'T', 0, 'a', 0, 'g', 0, ' ', 0,
     'M', 0, 'P', 0, 'i', 0, 'p', 0, 'e', 0, 'U', 0, 'S', 0, 'B', 0
 };
 
-ot_u8 Virtual_Com_Port_StringSerial[VIRTUAL_COM_PORT_SIZ_STRING_SERIAL] = {
-    VIRTUAL_COM_PORT_SIZ_STRING_SERIAL,           /* bLength */
+ot_u8 cdcacm_StringSerial[CDCACM_SIZ_STRING_SERIAL] = {
+    CDCACM_SIZ_STRING_SERIAL,           /* bLength */
     USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
     'M', 0, 'P', 0, 'i', 0, 'p', 0, 'e', 0, 'U', 0, 'S', 0, 'B', 0,
     '0', 0, '0', 0, '0', 0, '0', 0
@@ -572,47 +571,47 @@ DEVICE Device_Table = {
 };
 
 DEVICE_PROP Device_Property = {
-    Virtual_Com_Port_init,
-    Virtual_Com_Port_Reset,
+    cdcacm_init,
+    cdcacm_Reset,
     NOP_Process,
     NOP_Process,
-    Virtual_Com_Port_Data_Setup,
-    Virtual_Com_Port_NoData_Setup,
-    Virtual_Com_Port_Get_Interface_Setting,
-    Virtual_Com_Port_GetDeviceDescriptor,
-    Virtual_Com_Port_GetConfigDescriptor,
-    Virtual_Com_Port_GetStringDescriptor,
+    cdcacm_Data_Setup,
+    cdcacm_NoData_Setup,
+    cdcacm_Get_Interface_Setting,
+    cdcacm_GetDeviceDescriptor,
+    cdcacm_GetConfigDescriptor,
+    cdcacm_GetStringDescriptor,
     0,
     0x40 //MAX PACKET SIZE
 };
 
 USER_STANDARD_REQUESTS User_Standard_Requests = {
-    Virtual_Com_Port_GetConfiguration,
-    Virtual_Com_Port_SetConfiguration,
-    Virtual_Com_Port_GetInterface,
-    Virtual_Com_Port_SetInterface,
-    Virtual_Com_Port_GetStatus,
-    Virtual_Com_Port_ClearFeature,
-    Virtual_Com_Port_SetEndPointFeature,
-    Virtual_Com_Port_SetDeviceFeature,
-    Virtual_Com_Port_SetDeviceAddress
+    cdcacm_GetConfiguration,
+    cdcacm_SetConfiguration,
+    cdcacm_GetInterface,
+    cdcacm_SetInterface,
+    cdcacm_GetStatus,
+    cdcacm_ClearFeature,
+    cdcacm_SetEndPointFeature,
+    cdcacm_SetDeviceFeature,
+    cdcacm_SetDeviceAddress
 };
 
 ONE_DESCRIPTOR Device_Descriptor = {
-    (ot_u8*)Virtual_Com_Port_DeviceDescriptor,
-    VIRTUAL_COM_PORT_SIZ_DEVICE_DESC
+    (ot_u8*)cdcacm_DeviceDescriptor,
+    CDCACM_SIZ_DEVICE_DESC
 };
 
 ONE_DESCRIPTOR Config_Descriptor = {
-    (ot_u8*)Virtual_Com_Port_ConfigDescriptor,
-    VIRTUAL_COM_PORT_SIZ_CONFIG_DESC
+    (ot_u8*)cdcacm_ConfigDescriptor,
+    CDCACM_SIZ_CONFIG_DESC
 };
 
 ONE_DESCRIPTOR String_Descriptor[4] = {
-    {(ot_u8*)Virtual_Com_Port_StringLangID, VIRTUAL_COM_PORT_SIZ_STRING_LANGID},
-    {(ot_u8*)Virtual_Com_Port_StringVendor, VIRTUAL_COM_PORT_SIZ_STRING_VENDOR},
-    {(ot_u8*)Virtual_Com_Port_StringProduct, VIRTUAL_COM_PORT_SIZ_STRING_PRODUCT},
-    {(ot_u8*)Virtual_Com_Port_StringSerial, VIRTUAL_COM_PORT_SIZ_STRING_SERIAL}
+    {(ot_u8*)cdcacm_StringLangID, CDCACM_SIZ_STRING_LANGID},
+    {(ot_u8*)cdcacm_StringVendor, CDCACM_SIZ_STRING_VENDOR},
+    {(ot_u8*)cdcacm_StringProduct, CDCACM_SIZ_STRING_PRODUCT},
+    {(ot_u8*)cdcacm_StringSerial, CDCACM_SIZ_STRING_SERIAL}
 };
 
 
@@ -638,7 +637,7 @@ ONE_DESCRIPTOR String_Descriptor[4] = {
   */
 #define USB_Cable_Config(VAL)    USB_Cable_Config_##VAL
 #define USB_Cable_Config_ENABLE  (SYSCFG->PMC |= (ot_u32)SYSCFG_PMC_USB_PU)
-#define USB_Cable_Config_DISABLE (SYSCFG->PMC &= (ot_u32)(~SYSCFG_PMC_USB_PU))
+#define USB_Cable_Config_DISABLE (SYSCFG->PMC &= ~(ot_u32)SYSCFG_PMC_USB_PU)
 
 
 #define Enter_LowPowerMode()    (bDeviceState = SUSPENDED)
@@ -648,7 +647,9 @@ ONE_DESCRIPTOR String_Descriptor[4] = {
   
 RESULT PowerOn(void) {
     ot_u16 wRegVal;
-    USB_Cable_Config(ENABLE);   // cable plugged-in?
+    //USB_Cable_Config(ENABLE);   // cable plugged-in?
+    SYSCFG->PMC |= (ot_u32)SYSCFG_PMC_USB_PU;
+    
     wRegVal = CNTR_FRES;        // CNTR_PWDN = 0
     _SetCNTR(wRegVal);
     wInterrupt_Mask = 0;        // CNTR_FRES = 0
@@ -663,21 +664,77 @@ RESULT PowerOn(void) {
 RESULT PowerOff() {
     _SetCNTR(CNTR_FRES);                // disable all interrupts and force USB reset
     _SetISTR(0);                        // clear interrupt status register 
-    USB_Cable_Config(DISABLE);          // Disable the Pull-Up  
+    //USB_Cable_Config(DISABLE);          // Disable the Pull-Up  
+    SYSCFG->PMC &= ~(ot_u32)SYSCFG_PMC_USB_PU;
+    
     _SetCNTR(CNTR_FRES + CNTR_PDWN);    // switch-off device
     return USB_SUCCESS;
 }
 
 
 void Suspend(void) {
-    ot_u16 wCNTR;
-    wCNTR   = _GetCNTR();     // macrocell enters suspend mode
-    wCNTR  |= CNTR_FSUSP;
-    _SetCNTR(wCNTR);
-    wCNTR   = _GetCNTR();     // force low-power mode in the macrocell 
-    wCNTR  |= CNTR_LPMODE;
-    _SetCNTR(wCNTR);
-    Enter_LowPowerMode();
+	ot_u32 i =0;
+    ot_u32 tmpreg = 0;
+    volatile uint32_t savePWR_CR=0;
+	ot_u16 wCNTR;
+	
+	//suspend preparation
+	/* ... */
+	
+	wCNTR = _GetCNTR();  
+
+    // This a sequence to apply a force RESET to handle a robustness case 
+    //Store endpoints registers status
+    for (i=0;i<8;i++) EP[i] = _GetENDPOINT(i);  
+	
+	wCNTR  |=CNTR_RESETM;       _SetCNTR(wCNTR);
+	wCNTR  |=CNTR_FRES;         _SetCNTR(wCNTR);
+	wCNTR  &=~CNTR_FRES;        _SetCNTR(wCNTR);
+	
+	//poll for RESET flag in ISTR
+	while((_GetISTR()&ISTR_RESET) == 0);
+	
+	// clear RESET flag in ISTR 
+	_SetISTR((uint16_t)CLR_RESET);
+	
+	//restore Enpoints
+    // Then it is safe to enter macrocell in suspend mode 
+	for (i=0;i<8;i++) _SetENDPOINT(i, EP[i]);
+	wCNTR  |= CNTR_FSUSP;       _SetCNTR(wCNTR);
+	
+	// force low-power mode in the macrocell 
+	wCNTR = _GetCNTR();
+	wCNTR |= CNTR_LPMODE;
+	_SetCNTR(wCNTR);
+	
+	// prepare entry in low power mode (STOP mode)
+	// Select the regulator state in STOP mode
+    ///@todo integrate this with OpenTag system
+	savePWR_CR  = PWR->CR;
+	tmpreg      = PWR->CR;
+	tmpreg     &= ((uint32_t)0xFFFFFFFC);
+	tmpreg     |= PWR_Regulator_LowPower;
+	PWR->CR     = tmpreg;
+    SCB->SCR   |= SCB_SCR_SLEEPDEEP;       
+
+	// enter system in STOP mode, only when wakeup flag in not set
+	if((_GetISTR()&ISTR_WKUP)==0) {
+		__WFI();
+        SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP); 
+	}
+	else {
+		// Clear Wakeup flag 
+		_SetISTR(CLR_WKUP);
+		// clear FSUSP to abort entry in suspend mode 
+        wCNTR   = _GetCNTR();
+        wCNTR  &=~CNTR_FSUSP;
+        _SetCNTR(wCNTR);
+		
+		//restore sleep mode configuration  
+		// restore Power regulator config in sleep mode
+		PWR->CR = savePWR_CR;
+		CB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP);   
+    }
 }
 
 
@@ -697,12 +754,18 @@ void Resume(RESUME_STATE eResumeSetVal) {
         ResumeS.eState = eResumeSetVal;
 
     switch (ResumeS.eState) {
-        case RESUME_EXTERNAL:   Resume_Init();
-                                ResumeS.eState = RESUME_OFF;
+        case RESUME_EXTERNAL:   if (remotewakeupon == 0) {
+                                    Resume_Init();
+                                    ResumeS.eState = RESUME_OFF;
+                                }
+                                else {
+                                    ResumeS.eState = RESUME_ON;
+                                }
                                 break;
                                 
         case RESUME_INTERNAL:   Resume_Init();
                                 ResumeS.eState = RESUME_START;
+                                remotewakeupon = 1;
                                 break;
       
         case RESUME_LATER:      ResumeS.bESOFcnt = 2;
@@ -714,22 +777,20 @@ void Resume(RESUME_STATE eResumeSetVal) {
                                     ResumeS.eState = RESUME_START;
                                 break;
       
-        case RESUME_START:      
-                                wCNTR   = _GetCNTR();
+        case RESUME_START:      wCNTR   = _GetCNTR();
                                 wCNTR  |= CNTR_RESUME;
                                 _SetCNTR(wCNTR);
                                 ResumeS.eState = RESUME_ON;
                                 ResumeS.bESOFcnt = 10;
                                 break;
     
-        case RESUME_ON: 
-                                ResumeS.bESOFcnt--;
-                                if (ResumeS.bESOFcnt == 0)
-                                {
+        case RESUME_ON:         ResumeS.bESOFcnt--;
+                                if (ResumeS.bESOFcnt == 0) {
                                     wCNTR   = _GetCNTR();
                                     wCNTR  &= (~CNTR_RESUME);
                                     _SetCNTR(wCNTR);
                                     ResumeS.eState = RESUME_OFF;
+                                    remotewakeupon = 0;
                                 }
                                 break;
         case RESUME_OFF:
@@ -768,12 +829,12 @@ void Get_SerialNum(void) {
     Device_Serial0 += Device_Serial2;
 
     if (Device_Serial0 != 0) {
-        IntToUnicode(Device_Serial0, &Virtual_Com_Port_StringSerial[2] , 8);
-        IntToUnicode(Device_Serial1, &Virtual_Com_Port_StringSerial[18], 4);
+        IntToUnicode(Device_Serial0, &cdcacm_StringSerial[2] , 8);
+        IntToUnicode(Device_Serial1, &cdcacm_StringSerial[18], 4);
     }
 }
 
-void Virtual_Com_Port_init(void) {
+void cdcacm_init(void) {
     /// Initialize VCOM CDC
     Get_SerialNum();            // Update the serial number string descriptor
     pInformation->Current_Configuration = 0;
@@ -783,12 +844,12 @@ void Virtual_Com_Port_init(void) {
 }
 
 
-void Virtual_Com_Port_Reset(void) {
+void cdcacm_Reset(void) {
     // - Set Virtual_Com_Port DEVICE as not configured
     // - Current Feature initialization
     // - Set Virtual_Com_Port DEVICE with the default Interface
     pInformation->Current_Configuration = 0;  
-    pInformation->Current_Feature       = Virtual_Com_Port_ConfigDescriptor[7];
+    pInformation->Current_Feature       = cdcacm_ConfigDescriptor[7];
     pInformation->Current_Interface     = 0;
 
     SetBTABLE(BTABLE_ADDRESS);
@@ -817,7 +878,7 @@ void Virtual_Com_Port_Reset(void) {
     // Initialize Endpoint 3
     SetEPType(ENDP3, EP_BULK);
     SetEPRxAddr(ENDP3, ENDP3_RXADDR);
-    SetEPRxCount(ENDP3, VIRTUAL_COM_PORT_DATA_SIZE);
+    SetEPRxCount(ENDP3, CDCACM_DATA_SIZE);
     SetEPRxStatus(ENDP3, EP_RX_VALID);
     SetEPTxStatus(ENDP3, EP_TX_DIS);
 
@@ -828,7 +889,7 @@ void Virtual_Com_Port_Reset(void) {
 }
 
   
-void Virtual_Com_Port_SetConfiguration(void) {
+void cdcacm_SetConfiguration(void) {
     DEVICE_INFO *pInfo = &Device_Info;
     if (pInfo->Current_Configuration != 0) {
         bDeviceState = CONFIGURED;  // Device configured
@@ -837,25 +898,32 @@ void Virtual_Com_Port_SetConfiguration(void) {
 }
   
 
-void Virtual_Com_Port_SetDeviceAddress (void) {
+void cdcacm_SetDeviceAddress (void) {
     bDeviceState = ADDRESSED;
 }
 
 
-RESULT Virtual_Com_Port_Data_Setup(ot_u8 RequestNo) {
+void cdcacm_Status_In(void) {
+    if (Request == SET_LINE_CODING) Request = 0;
+}
+
+void cdcacm_Status_Out(void) {}
+
+
+RESULT cdcacm_Data_Setup(ot_u8 RequestNo) {
     ot_u8 *(*CopyRoutine)(ot_u16);
 
     CopyRoutine = NULL;
     if (RequestNo == GET_LINE_CODING) {
         if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
-            CopyRoutine = Virtual_Com_Port_GetLineCoding;
+            CopyRoutine = cdcacm_GetLineCoding;
         }
     }
     else if (RequestNo == SET_LINE_CODING) {
         if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
-            CopyRoutine = Virtual_Com_Port_SetLineCoding;
+            CopyRoutine = cdcacm_SetLineCoding;
         }
-        //Request = SET_LINE_CODING;
+        Request = SET_LINE_CODING;  ///@note was commented
     }
     if (CopyRoutine == NULL) {
         return USB_UNSUPPORT;
@@ -868,35 +936,41 @@ RESULT Virtual_Com_Port_Data_Setup(ot_u8 RequestNo) {
 }
 
 
-RESULT Virtual_Com_Port_NoData_Setup(ot_u8 RequestNo) {
-    return ((Type_Recipient == (CLASS_REQUEST|INTERFACE_RECIPIENT)) && \
-            ((RequestNo == SET_COMM_FEATURE) || (RequestNo == SET_CONTROL_LINE_STATE))) ? \
-            USB_SUCCESS : USB_UNSUPPORT;
+RESULT cdcacm_NoData_Setup(ot_u8 RequestNo) {
+  if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
+    if (RequestNo == SET_COMM_FEATURE) {
+      return USB_SUCCESS;
+    }
+    else if (RequestNo == SET_CONTROL_LINE_STATE) {
+      return USB_SUCCESS;
+    }
+  }
+  return USB_UNSUPPORT;
 }
 
 
-ot_u8 *Virtual_Com_Port_GetDeviceDescriptor(ot_u16 Length) {
+ot_u8 *cdcacm_GetDeviceDescriptor(ot_u16 Length) {
     return Standard_GetDescriptorData(Length, &Device_Descriptor);
 }
 
 
-ot_u8 *Virtual_Com_Port_GetConfigDescriptor(ot_u16 Length) {
+ot_u8 *cdcacm_GetConfigDescriptor(ot_u16 Length) {
     return Standard_GetDescriptorData(Length, &Config_Descriptor);
 }
 
 
-ot_u8 *Virtual_Com_Port_GetStringDescriptor(ot_u16 Length) {
+ot_u8 *cdcacm_GetStringDescriptor(ot_u16 Length) {
     ot_u8 wValue0 = pInformation->USBwValue0;
     return (wValue0 > 4) ? NULL : Standard_GetDescriptorData(Length, &String_Descriptor[wValue0]);
 }
 
 
-RESULT Virtual_Com_Port_Get_Interface_Setting(ot_u8 Interface, ot_u8 AlternateSetting) {
+RESULT cdcacm_Get_Interface_Setting(ot_u8 Interface, ot_u8 AlternateSetting) {
     return ((AlternateSetting > 0) || (Interface > 1)) ? USB_UNSUPPORT : USB_SUCCESS;
 }
 
 
-ot_u8 *Virtual_Com_Port_GetLineCoding(ot_u16 Length) {
+ot_u8 *cdcacm_GetLineCoding(ot_u16 Length) {
     if (Length == 0) {
         pInformation->Ctrl_Info.Usb_wLength = sizeof(linecoding);
         return NULL;
@@ -905,7 +979,7 @@ ot_u8 *Virtual_Com_Port_GetLineCoding(ot_u16 Length) {
 }
 
 
-ot_u8 *Virtual_Com_Port_SetLineCoding(ot_u16 Length) {
+ot_u8 *cdcacm_SetLineCoding(ot_u16 Length) {
     if (Length == 0) {
         pInformation->Ctrl_Info.Usb_wLength = sizeof(linecoding);
         return NULL;
@@ -1020,8 +1094,8 @@ void sub_usb_loadtx() {
     ot_u8* transfer_start;
         
     transfer_start  = cdcacm.pkt;
-    transfer_size   = (cdcacm.pktlen > VIRTUAL_COM_PORT_DATA_SIZE) ? \
-                                    VIRTUAL_COM_PORT_DATA_SIZE : cdcacm.pktlen;
+    transfer_size   = (cdcacm.pktlen > CDCACM_DATA_SIZE) ? \
+                                    CDCACM_DATA_SIZE : cdcacm.pktlen;
     cdcacm.pktlen  -= transfer_size;
     cdcacm.pkt     += transfer_size;
 
@@ -1076,9 +1150,10 @@ ot_int mpipedrv_init(void* port_id) {
     NVIC->ISER[(ot_u32)(USB_LP_IRQn>>5)]    = (1 << (USB_LP_IRQn & 0x1F));
 
     /// Enable USB Clocks
-    BOARD_USBCLK_ON();
+    platform_flank_speed();
 
     /// Initialize USB (using ST library function)
+    __USB_CLKON();
     USB_Init();
     
     return 255;
@@ -1099,6 +1174,7 @@ void mpipedrv_standby() {
 void mpipedrv_detach(void* port_id) {
     mpipe.state = MPIPE_Null;
     //usb_disconnect();
+    __USB_CLKOFF();
 }
 #endif
 

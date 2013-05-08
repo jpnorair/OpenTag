@@ -1,18 +1,31 @@
-/******************** (C) COPYRIGHT 2011 STMicroelectronics ********************
-* File Name          : usb_sil.c
-* Author             : MCD Application Team
-* Version            : V3.3.0
-* Date               : 21-March-2011
-* Description        : Simplified Interface Layer for Global Initialization and 
-*                      Endpoint Rea/Write operations.
-********************************************************************************
-* THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-* WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE TIME.
-* AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY DIRECT,
-* INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING FROM THE
-* CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE CODING
-* INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
-*******************************************************************************/
+/**
+  ******************************************************************************
+  * @file    usb_sil.c
+  * @author  MCD Application Team
+  * @version V4.0.0
+  * @date    28-August-2012
+  * @brief   Simplified Interface Layer for Global Initialization and Endpoint
+  *          Rea/Write operations.
+  ******************************************************************************
+  * @attention
+  *
+  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
+  *
+  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/software_license_agreement_liberty_v2
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
+  ******************************************************************************
+  */
+
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_lib.h"
@@ -34,22 +47,12 @@
 *******************************************************************************/
 uint32_t USB_SIL_Init(void)
 {
-#ifndef STM32F10X_CL
-  
   /* USB interrupts initialization */
   /* clear pending interrupts */
   _SetISTR(0);
   wInterrupt_Mask = IMR_MSK;
   /* set interrupts mask */
   _SetCNTR(wInterrupt_Mask);
-  
-#else
-  
-  /* Perform OTG Device initialization procedure (including EP0 init) */
-  OTG_DEV_Init();
-  
-#endif /* STM32F10X_CL */
-
   return 0;
 }
 
@@ -65,21 +68,12 @@ uint32_t USB_SIL_Init(void)
 *******************************************************************************/
 uint32_t USB_SIL_Write(uint8_t bEpAddr, uint8_t* pBufferPointer, uint32_t wBufferSize)
 {
-#ifndef STM32F10X_CL
-
   /* Use the memory interface function to write to the selected endpoint */
   UserToPMABufferCopy(pBufferPointer, GetEPTxAddr(bEpAddr & 0x7F), wBufferSize);
 
   /* Update the data length in the control register */
   SetEPTxCount((bEpAddr & 0x7F), wBufferSize);
   
-#else
-  
-   /* Use the PCD interface layer function to write to the selected endpoint */
-   PCD_EP_Write (bEpAddr, pBufferPointer, wBufferSize); 
-   
-#endif /* STM32F10X_CL */
-
   return 0;
 }
 
@@ -96,31 +90,14 @@ uint32_t USB_SIL_Read(uint8_t bEpAddr, uint8_t* pBufferPointer)
 {
   uint32_t DataLength = 0;
 
-#ifndef STM32F10X_CL
-
   /* Get the number of received data on the selected Endpoint */
   DataLength = GetEPRxCount(bEpAddr & 0x7F);
   
   /* Use the memory interface function to write to the selected endpoint */
   PMAToUserBufferCopy(pBufferPointer, GetEPRxAddr(bEpAddr & 0x7F), DataLength);
 
-#else
-  
-  USB_OTG_EP *ep;
-
-  /* Get the structure pointer of the selected Endpoint */
-  ep = PCD_GetOutEP(bEpAddr);
-  
-  /* Get the number of received data */
-  DataLength = ep->xfer_len;
-  
-  /* Use the PCD interface layer function to read the selected endpoint */
-  PCD_EP_Read (bEpAddr, pBufferPointer, DataLength);
-  
-#endif /* STM32F10X_CL */
-
   /* Return the number of received data */
   return DataLength;
 }
 
-/******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

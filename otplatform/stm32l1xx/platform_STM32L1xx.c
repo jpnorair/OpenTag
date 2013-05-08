@@ -167,19 +167,19 @@ void otapi_led2_off() { platform_trig2_low(); }
 #   endif
 #   if (BOARD_FEATURE_FLANKXTAL == ENABLED)
 #       define _FLANKOSC_RDYFLAG        RCC_CR_HSERDY
-#       define _FLANKOSC_CLOCKBIT       RCC_CR_HSEON
+#       define _FLANKOSC_CLOCKBIT       3
 #       if (BOARD_FEATURE_HFBYPASS == ENABLED)
 #           define _FLANKOSC_ONBIT      (RCC_CR_HSEON | RCC_CR_HSEBYP)
-#           define _FLANKOSC_TIMEOUT    100
+#           define _FLANKOSC_TIMEOUT    1000
 #       else
 #           define _FLANKOSC_ONBIT      RCC_CR_HSEON
-#           define _FLANKOSC_TIMEOUT    HSE_STARTUP_TIMEOUT
+#           define _FLANKOSC_TIMEOUT    3000 //HSE_STARTUP_TIMEOUT
 #       endif
 #   else
 #       define _FLANKOSC_ONBIT      RCC_CR_HSION
 #       define _FLANKOSC_RDYFLAG    RCC_CR_HSIRDY
-#       define _FLANKOSC_CLOCKBIT   RCC_CR_HSION
-#       define _FLANKOSC_TIMEOUT    HSI_STARTUP_TIMEOUT
+#       define _FLANKOSC_CLOCKBIT   3
+#       define _FLANKOSC_TIMEOUT    300 //HSI_STARTUP_TIMEOUT
 #   endif
 #else
 #   define _PLL_SRC     0
@@ -210,19 +210,19 @@ void otapi_led2_off() { platform_trig2_low(); }
 #   endif
 #   if (BOARD_FEATURE_FULLXTAL == ENABLED)
 #       define _FULLOSC_RDYFLAG         RCC_CR_HSERDY
-#       define _FULLOSC_CLOCKBIT        RCC_CR_HSEON
+#       define _FULLOSC_CLOCKBIT        2
 #       if (BOARD_FEATURE_HFBYPASS == ENABLED)
 #           define _FULLOSC_ONBIT       (RCC_CR_HSEON | RCC_CR_HSEBYP)
-#           define _FULLOSC_TIMEOUT     100
+#           define _FULLOSC_TIMEOUT     1000
 #       else
 #           define _FULLOSC_ONBIT       RCC_CR_HSEON
-#           define _FULLOSC_TIMEOUT     HSE_STARTUP_TIMEOUT
+#           define _FULLOSC_TIMEOUT     3000 //HSE_STARTUP_TIMEOUT
 #       endif
 #   else
 #       define _FULLOSC_ONBIT      RCC_CR_HSION
 #       define _FULLOSC_RDYFLAG    RCC_CR_HSIRDY
-#       define _FULLOSC_CLOCKBIT   RCC_CR_HSION
-#       define _FULLOSC_TIMEOUT    HSI_STARTUP_TIMEOUT
+#       define _FULLOSC_CLOCKBIT   1
+#       define _FULLOSC_TIMEOUT    300 //HSI_STARTUP_TIMEOUT
 #   endif
 #endif
 
@@ -334,7 +334,7 @@ platform_ext_struct platform_ext;
 /** Local Subroutines <BR>
   * ========================================================================<BR>
   */
-void sub_voltage_config(ot_u16 PWR_CR_VOS_x) {
+void sub_voltage_config(ot_u16 pwr_cr_vos_x) {
 /// Set Power Configuration based on Voltage Level parameters.
 /// Input must be: POWER_1V2, POWER_1V5, POWER_1V8
 /// Additionally, PWR_CR_DBP can be ORed in for RTC hacking
@@ -343,12 +343,12 @@ void sub_voltage_config(ot_u16 PWR_CR_VOS_x) {
     // Power should be enabled by periphclk function, not here
     //RCC->APB1ENR   |= RCC_APB1ENR_PWREN;    
     
-    scratch     = PWR->CR & ~(3<<11);
-    scratch    |= PWR_CR_VOS_x;
+    scratch     = PWR->CR & ~(ot_u32)((3<<11) | (3<<5));
+    scratch    |= pwr_cr_vos_x;
     PWR->CR     = scratch;
     
     // Wait Until the Voltage Regulator is ready
-    while((PWR->CSR & PWR_CSR_VOSF) != RESET) { }
+    while((PWR->CSR & PWR_CSR_VOSF) != 0) { }
 }
 
 
@@ -374,7 +374,7 @@ void sub_osc_setclock(ot_u32 clock_mask) {
     scratch        |= clock_mask;
     clock_mask    <<= 2; 
     RCC->CFGR       = scratch;
-    while ( (RCC->CFGR & clock_mask) == 0);
+    while ( (RCC->CFGR & clock_mask) != clock_mask);
 }
 
 
@@ -402,7 +402,9 @@ void platform_ext_wakefromstop() {
 #ifndef EXTF_platform_ext_pllon
 void platform_ext_pllon() {
 #if (BOARD_FEATURE_PLL)
-    ot_u16 counter;
+    sub_voltage_config((POWER_1V8 | PWR_CR_DBP | 0x0040));
+    
+    BOARD_HSXTAL_ON();
     sub_osc_startup(_FLANKOSC_TIMEOUT, _FLANKOSC_ONBIT);
 
     RCC->CR |= RCC_CR_PLLON;
@@ -419,6 +421,7 @@ void platform_ext_plloff() {
 /// not shut-off an active clock, so you won't kill your app, but worse: the
 /// PLL will stay on even if you probably think it is off.
     RCC->CR &= ~RCC_CR_PLLON;
+    BOARD_HSXTAL_OFF();
 #endif
 }
 #endif
@@ -587,14 +590,14 @@ void platform_poweron() {
     __set_CONTROL(2);
     __set_MSP( (ot_u32)&platform_ext.sstack[(OT_PARAM_SSTACK_ALLOC/4)-1] );
     
-    ///2. Clock Setup: On startup, all clocks are 2.1 MHz MSI
+    ///2. Board Specific powering up (usually default port setup)
+    BOARD_PERIPH_INIT();
+    BOARD_POWER_STARTUP();
+    
+    ///3. Clock Setup: On startup, all clocks are 2.1 MHz MSI
     platform_init_periphclk();
     platform_init_busclk();
     
-    ///3. Board Specific powering up (usually default port setup)
-    BOARD_PERIPH_INIT();
-    BOARD_POWER_STARTUP();
-
     /// 4. Debugging setup
 #   ifdef __DEBUG__
     DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP \
@@ -721,39 +724,19 @@ void platform_init_busclk() {
 #   if (BOARD_FEATURE_STDSPEED == ENABLED)
         // Change MSI to required frequency
 #       if (PLATFORM_MSCLOCK_HZ == 4200000)
-        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY);
         sub_voltage_config((POWER_1V5 | PWR_CR_DBP));
+        FLASH->ACR  = FLASH_ACR_ACC64;
+        FLASH->ACR |= FLASH_ACR_PRFTEN;
         RCC->ICSCR ^= 0x00006000;               //setting 110
         
 #       elif (PLATFORM_MSCLOCK_HZ == 2100000)
-        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY);
+        FLASH->ACR  = FLASH_ACR_ACC64;
+        FLASH->ACR |= (FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY);
         sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
         //RCC->ICSCR |= 0x00005000;                //setting 101 (default)
         
-#       elif (PLATFORM_MSCLOCK_HZ == 1050000)
-        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
-        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
-        RCC->ICSCR &= ~0x00006000;              //setting 100
-        
-#       elif (PLATFORM_MSCLOCK_HZ == 524000)
-        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
-        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
-        RCC->ICSCR ^= 0x0000C000;               //setting 011
-        
-#       elif (PLATFORM_MSCLOCK_HZ == 262000)
-        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
-        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
-        RCC->ICSCR ^= 0x0000E000;               //setting 010
-        
-#       elif (PLATFORM_MSCLOCK_HZ == 131000)
-        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
-        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
-        RCC->ICSCR &= ~0x0000C000;              //setting 001
-        
-#       elif (PLATFORM_MSCLOCK_HZ == 655000)
-        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
-        sub_voltage_config((POWER_1V2 | PWR_CR_DBP));
-        RCC->ICSCR &= ~0x0000E000;              //setting 000
+#       else
+#       error "MSI speeds below 2.1 MHz not supported currently."
         
 #       endif
 
@@ -817,7 +800,7 @@ void platform_init_periphclk() {
 #define CR_DBP_BB                (PERIPH_BB_BASE + (CR_OFFSET * 32) + (DBP_BitNumber * 4))
     
 #   if (BOARD_FEATURE_LFXTAL == ENABLED)
-    RCC->APB1ENR   |= RCC_APB1ENR_PWREN; 
+    //RCC->APB1ENR   |= RCC_APB1ENR_PWREN; 
     PWR->CR         = ((1 << 11) | PWR_CR_DBP);
     RCC->CSR       |= RCC_CSR_LSEON | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSE;
     while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
@@ -903,10 +886,10 @@ void platform_standard_speed() {
 #ifndef EXTF_platform_full_speed
 void platform_full_speed() {
 /// All Ahead Full.  (HSI or HSE, no PLL)
-/// typ config: 16MHz, Power Level 2, 1 wait state. ~4mA, 16.5 DMIPS
+/// <LI> typ config: 16MHz, Power Level 2, 1 wait state. ~4mA, 16.5 DMIPS </LI>
+/// <LI> Only enter fullspeed from MSI (stdspeed) </LI>
+/// <LI> In system with attachable USB, check for flank-enable </LI>
 #if (BOARD_FEATURE_FULLSPEED == ENABLED)
-    // Only Enter Full Speed from Standard Speed
-    // (Requests to full-speed from flank-speed should not stop flank)
     if (RCC->CR & RCC_CR_MSION) {
         // Change Voltage to FULLSPEED level, if different than STDSPEED
 #       if ( _FULLSPEED_VOLTAGE != _STDSPEED_VOLTAGE)
@@ -953,6 +936,9 @@ void platform_flank_speed() {
             FLASH->ACR &= ~FLASH_ACR_LATENCY;
 #       endif
     }
+    
+    RCC->CR &= ~RCC_CR_MSION;
+    platform_ext.cpu_khz = (PLATFORM_PLLCLOCK_HZ/1000);
     
 #else
     platform_full_speed();

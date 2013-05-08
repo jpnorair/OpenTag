@@ -172,9 +172,9 @@
 #define BOARD_FEATURE_RFXTALOUT         MCU_FEATURE_USB
 #define BOARD_FEATURE_PLL               MCU_FEATURE_USB
 #define BOARD_FEATURE_STDSPEED          ENABLED
-#define BOARD_FEATURE_FULLSPEED         ENABLED
+#define BOARD_FEATURE_FULLSPEED         (MCU_FEATURE_USB != ENABLED)
 #define BOARD_FEATURE_FULLXTAL          DISABLED
-#define BOARD_FEATURE_FLANKSPEED        DISABLED
+#define BOARD_FEATURE_FLANKSPEED        MCU_FEATURE_USB
 #define BOARD_FEATURE_FLANKXTAL         MCU_FEATURE_USB
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG2      DISABLED
@@ -190,7 +190,7 @@
 #define BOARD_PARAM_HFtol               0.02
 #define BOARD_PARAM_HFppm               20000
 #define BOARD_PARAM_RFHz                48000000
-#define BOARD_PARAM_RFdiv               3
+#define BOARD_PARAM_RFdiv               6
 #define BOARD_PARAM_RFout               (BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)
 #define BOARD_PARAM_RFtol               0.00003
 #define BOARD_PARAM_PLLout              96000000
@@ -608,8 +608,11 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_OSPEEDR_40MHz << (8*2)) \
                     | (GPIO_OSPEEDR_2MHz  << (9*2)) \
                     | (GPIO_OSPEEDR_2MHz  << (10*2)) \
-                    | (GPIO_OSPEEDR_40MHz  << (13*2)) \
-                    | (GPIO_OSPEEDR_40MHz  << (14*2));
+                    | (GPIO_OSPEEDR_40MHz << (11*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (12*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (13*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (14*2));
+    
     
     GPIOA->PUPDR    = (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
                     | (1 << (9*2)) | (1 << (10*2)) \
@@ -723,9 +726,12 @@ static inline void BOARD_POWER_STARTUP(void) {
 ///      at startup.  For any build using CMSIS libraries (standard), this will
 ///      be blank.  In those cases, crystal init is done in the CMSIS system
 ///      startup function.
-static inline void BOARD_XTAL_STARTUP(void) {
-// Currently this is handled in the system startup function.  OpenTag requires
-// a 32768Hz clock
+static inline void BOARD_HSXTAL_ON(void) {
+    spirit1_clockout_on(b10000110); // 48MHz/3 = 16MHz
+}
+
+static inline void BOARD_HSXTAL_OFF(void) {
+    spirit1_clockout_off();
 }
 
 
@@ -922,7 +928,7 @@ static inline void BOARD_USBCLK_OFF(void) {
   * DMA however.  You could implement a driver without a DMA, but DMA makes it 
   * so much cleaner and better.
   */
-#if (MCU_FEATURE_MPIPECDC == ENABLED)
+#if (MCU_FEATURE_USB == ENABLED)
 // USB is mostly independent from OT, but the startup code does need to know 
 // how to boost the crystal
 #   if (BOARD_PARAM_HFHz != 2000000) && (BOARD_PARAM_HFHz != 3000000) \

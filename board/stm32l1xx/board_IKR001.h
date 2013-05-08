@@ -82,8 +82,8 @@
 //From platform_STM32L1xx.h
 //#define MCU_FEATURE(VAL)              MCU_FEATURE_##VAL   // FEATURE 
 #define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPECDC            DISABLED         // USB-CDC MPipe implementation
-#define MCU_FEATURE_MPIPEUART           ENABLED         // UART MPipe Implementation
+#define MCU_FEATURE_MPIPECDC            ENABLED         // USB-CDC MPipe implementation
+#define MCU_FEATURE_MPIPEUART           DISABLED         // UART MPipe Implementation
 #define MCU_FEATURE_MPIPEI2C            DISABLED         // I2C MPipe Implementation
 #define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 
@@ -659,28 +659,22 @@ static inline void BOARD_PORT_STARTUP(void) {
                                 | (GPIO_MODER_ALT << (BOARD_UART_RXPINNUM*2))  \
                                 | (GPIO_MODER_ALT << (BOARD_UART_TXPINNUM*2));
         BOARD_UART_PORT->AFR[0]|= (7 << (BOARD_UART_RXPINNUM*4)) \
-                                | (7 << (BOARD_UART_TXPINNUM*4));
-#   else
-        BOARD_UART_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_UART_CTSPINNUM*2)) \
-                                  | (GPIO_MODER_OUT << (BOARD_UART_RTSPINNUM*2)) \
-                                  | (GPIO_MODER_OUT << (BOARD_UART_RXPINNUM*2))  \
-                                  | (GPIO_MODER_OUT << (BOARD_UART_TXPINNUM*2))  );
-#   endif
-    
-    
+                               | (7 << (BOARD_UART_TXPINNUM*4));
+
     // External USB interface
     // Make sure to disable Crystal on PortH when USB is not used
-#   if (MCU_FEATURE(MPIPECDC) == ENABLED)
-        GPIOH->MODER            = (GPIO_MODER_OUT << (0*2));
-        BOARD_USB_PORT->MODER  |= ( (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
-                                  | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2)) );
-        BOARD_USB_PORT->AFR[1] |= ( (10 << ((BOARD_USB_DMPINNUM-8)*4))  \
-                                  | (10 << ((BOARD_USB_DPPINNUM-8)*4))  );
+#   elif (MCU_FEATURE(MPIPECDC) == ENABLED)
+        //GPIOH->MODER            = (GPIO_MODER_OUT << (0*2));
+      //BOARD_USB_PORT->PUPDR  |= (1 << (BOARD_USB_DPPINNUM*2));
+        BOARD_USB_PORT->AFR[1] |= (10 << ((BOARD_USB_DMPINNUM-8)*4))  \
+                                | (10 << ((BOARD_USB_DPPINNUM-8)*4));
+        BOARD_USB_PORT->OSPEEDR|= (GPIO_OSPEEDR_40MHz << (BOARD_USB_DMPINNUM*2)) \
+                                | (GPIO_OSPEEDR_40MHz << (BOARD_USB_DPPINNUM*2));                         
+        BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
+                                | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
 #   else
         GPIOH->MODER            = ( (GPIO_MODER_OUT << (0*2)) | (GPIO_MODER_OUT << (1*2)) \
                                   | (GPIO_MODER_OUT << (2*2)) );
-        BOARD_USB_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_USB_DMPINNUM*2)) \
-                                  | (GPIO_MODER_OUT << (BOARD_USB_DPPINNUM*2)) );
 #   endif
     
     
@@ -765,21 +759,21 @@ static inline void BOARD_PORT_STARTUP(void) {
     
     // Set up all not-connected pins as output ground
     // PA4, PA6, PA7-10
-    GPIOA->MODER   |= ( (GPIO_MODER_OUT << (4*2)) | (GPIO_MODER_OUT << (6*2)) \
+    //GPIOA->MODER   |= ( (GPIO_MODER_OUT << (4*2)) | (GPIO_MODER_OUT << (6*2)) \
                       | (GPIO_MODER_OUT << (7*2)) | (GPIO_MODER_OUT << (8*2)) \
                       | (GPIO_MODER_OUT << (9*2)) | (GPIO_MODER_OUT << (10*2)) );
     // PB5
-    GPIOB->MODER   |= (GPIO_MODER_OUT << (5*2));
+    //GPIOB->MODER   |= (GPIO_MODER_OUT << (5*2));
     
     // PD5-15 all NC
-    GPIOD->MODER   |= ( (GPIO_MODER_OUT << (5*2)) | (GPIO_MODER_OUT << (6*2)) \
+    //GPIOD->MODER   |= ( (GPIO_MODER_OUT << (5*2)) | (GPIO_MODER_OUT << (6*2)) \
                       | (GPIO_MODER_OUT << (7*2)) | (GPIO_MODER_OUT << (8*2)) \
                       | (GPIO_MODER_OUT << (9*2)) \
                       | (GPIO_MODER_OUT << (10*2))| (GPIO_MODER_OUT << (11*2)) \
                       | (GPIO_MODER_OUT << (12*2))| (GPIO_MODER_OUT << (13*2)) \
                       | (GPIO_MODER_OUT << (14*2))| (GPIO_MODER_OUT << (15*2)) );
     // PE0-2, 10-11 all NC
-    GPIOE->MODER   |= ( (GPIO_MODER_OUT << (0*2)) | (GPIO_MODER_OUT << (1*2)) \
+    //GPIOE->MODER   |= ( (GPIO_MODER_OUT << (0*2)) | (GPIO_MODER_OUT << (1*2)) \
                       | (GPIO_MODER_OUT << (2*2)) | (GPIO_MODER_OUT << (10*2)) \
                       | (GPIO_MODER_OUT << (11*2)) );
     
@@ -888,10 +882,13 @@ static inline void BOARD_POWER_STARTUP(void) {
 ///      at startup.  For any build using CMSIS libraries (standard), this will
 ///      be blank.  In those cases, crystal init is done in the CMSIS system
 ///      startup function.
-static inline void BOARD_XTAL_STARTUP(void) {
-// Currently this is handled in the system startup function.  OpenTag requires
-// a 32768Hz clock
+
+static inline void BOARD_HSXTAL_ON(void) {
 }
+
+static inline void BOARD_HSXTAL_OFF(void) {
+}
+
 
 
 
@@ -971,8 +968,8 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define PLATFORM_MSCLOCK_ERROR      BOARD_PARAM_MFtol
 #define PLATFORM_HSCLOCK_HZ         BOARD_PARAM_HFHz
 #define PLATFORM_HSCLOCK_ERROR      BOARD_PARAM_HFtol
-#define PLATFORM_PLLCLOCK_OUT       ((BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)*BOARD_PARAM_PLLmult)
-#define PLATFORM_PLLCLOCK_HZ        (PLATFORM_PLLCLOCK_OUT/BOARD_PARAM_PLLdiv)
+#define PLATFORM_PLLCLOCK_OUT       (BOARD_PARAM_PLLout)
+#define PLATFORM_PLLCLOCK_HZ        (BOARD_PARAM_PLLout/BOARD_PARAM_PLLdiv)
 #define PLATFORM_PLLCLOCK_ERROR     BOARD_PARAM_RFtol
 
 
@@ -1081,7 +1078,6 @@ static inline void BOARD_XTAL_STARTUP(void) {
 
 
 
-
 /** Boilerplate STM32L MPipe Setup <BR>
   * ========================================================================<BR>
   * USB MPipe requires a CDC firmware library subsystem, which typically uses
@@ -1089,17 +1085,9 @@ static inline void BOARD_XTAL_STARTUP(void) {
   * DMA however.  You could implement a driver without a DMA, but DMA makes it 
   * so much cleaner and better.
   */
-#if (MCU_FEATURE_MPIPECDC == ENABLED)
+#if (MCU_FEATURE_USB == ENABLED)
 // USB is mostly independent from OT, but the startup code does need to know 
 // how to boost the crystal
-#   if (BOARD_PARAM_HFHz != 2000000) && (BOARD_PARAM_HFHz != 3000000) \
-      && (BOARD_PARAM_HFHz != 4000000) && (BOARD_PARAM_HFHz != 6000000) \
-      && (BOARD_PARAM_HFHz != 8000000) && (BOARD_PARAM_HFHz != 12000000) \
-      && (BOARD_PARAM_HFHz != 16000000) && (BOARD_PARAM_HFHz != 24000000)
-#       error "USB requires 2, 3, 4, 6, 8, 12, 16, or 24 MHz HSE XTAL."
-#   elif (BOARD_PARAM_HFtol > 0.000050)
-#       error "USB requires that the tolerance of the HSE is < +/- 50ppm"
-#   endif
 #   define MPIPE_USB_ID         0
 #   define MPIPE_USB            USB0
 #   define MPIPE_USBDP_PORT     BOARD_USB_PORT
