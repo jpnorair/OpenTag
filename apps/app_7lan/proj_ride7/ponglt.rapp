@@ -1,12 +1,25 @@
 
 <ApplicationBuild Header="ponglt" Extern=".\ponglt.rapp" Path=".\ponglt.rapp" OutputFile=".\ponglt.elf" sate="96" Config="IKR001_Debug" >
-	<Group Header="app" Marker="-1" OutputFile="" sate="0" >
+	<Group Header="app" Marker="-1" OutputFile="" sate="96" >
 		<NodeH Path="..\code\app_config.h" Header="app_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\build_config.h" Header="build_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\extf_config.h" Header="extf_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\isr_config_STM32L.h" Header="isr_config_STM32L.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\code\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="0" />
 		<NodeH Path="..\code\platform_config.h" Header="platform_config.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\code\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\build\data_default.o" sate="0" >
+			<Options>
+				<Config Header="IKR001_Debug" >
+					<Set Header="NodeC" >
+						<Section Header="Build" >
+							<Property Header="Exclude" Value="Yes" Removable="1" />
+									
+						</Section>
+							
+					</Set>
+				</Config>
+			</Options>
+		</NodeC>
 																								
 	</Group>
 	<Group Header="applets" Marker="-1" OutputFile="" sate="0" >
@@ -18,7 +31,7 @@
 		<NodeC Path="..\..\..\otlibext\applets_std\sys_sig_powerdown_[stm32lp].c" Header="sys_sig_powerdown_[stm32lp].c" Marker="-1" OutputFile=".\build\sys_sig_powerdown_[stm32lp].o" sate="0" />
 																								
 	</Group>
-	<Group Header="board" Marker="0" OutputFile="" sate="0" >
+	<Group Header="board" Marker="0" OutputFile="" sate="96" >
 		<Group Header="stm32f10x" sate="0" Marker="0" OutputFile="" >
 			<NodeH Path="..\..\..\board\stm32f10x\board_MLX73Proto_E.h" Header="board_MLX73Proto_E.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\board\stm32f10x\board_opennode.h" Header="board_opennode.h" Marker="-1" OutputFile="" sate="0" />
@@ -73,7 +86,7 @@
 		</Group>
 																								
 	</Group>
-	<Group Header="otlib" Marker="-1" OutputFile="" sate="0" >
+	<Group Header="otlib" Marker="-1" OutputFile="" sate="96" >
 		<NodeH Path="..\..\..\otlib\veelite_core.h" Header="veelite_core.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\alp.h" Header="alp.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\..\..\otlib\alp_api_client.c" Header="alp_api_client.c" Marker="-1" OutputFile=".\build\alp_api_client.o" sate="0" />
@@ -96,7 +109,7 @@
 		<NodeC Path="..\..\..\otlib\external.c" Header="external.c" Marker="-1" OutputFile=".\build\external.o" sate="0" />
 		<NodeH Path="..\..\..\otlib\external.h" Header="external.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\m2_dll.h" Header="m2_dll.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\..\..\otlib\m2_dll_task.c" Header="m2_dll_task.c" Marker="-1" OutputFile=".\build\m2_dll_task.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\m2_dll_task.c" Header="m2_dll_task.c" Marker="-1" OutputFile=".\build\m2_dll_task.o" sate="2" />
 		<NodeC Path="..\..\..\otlib\m2_encode.c" Header="m2_encode.c" Marker="-1" OutputFile=".\build\m2_encode.o" sate="0" />
 		<NodeH Path="..\..\..\otlib\m2_encode.h" Header="m2_encode.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\m2_encode_table.h" Header="m2_encode_table.h" Marker="-1" OutputFile="" sate="0" />
@@ -132,14 +145,14 @@
 	</Group>
 	<Group Header="otplatform" Marker="-1" OutputFile="" sate="96" >
 		<Group Header="stm32_mculib" Marker="-1" OutputFile="" sate="0" >
-			<Group Header="CMSIS" Marker="-1" OutputFile="" sate="0" >
+			<Group Header="CMSIS" Marker="-1" OutputFile="" sate="96" >
 				<Group Header="CM3" Marker="-1" OutputFile="" sate="96" >
 					<Group Header="CoreSupport" sate="0" Marker="-1" OutputFile="" >
 						<NodeC Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport\core_cm3.c" Header="core_cm3.c" Marker="-1" OutputFile=".\build\core_cm3.o" sate="0" />
 						<NodeH Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport\core_cm3.h" Header="core_cm3.h" Marker="-1" OutputFile="" sate="0" />
 																																																																																								
 					</Group>
-					<Group Header="DeviceSupport" Marker="-1" OutputFile="" sate="0" >
+					<Group Header="DeviceSupport" Marker="-1" OutputFile="" sate="96" >
 						<Group Header="ST" Marker="-1" OutputFile="" sate="96" >
 							<Group Header="STM32F10x" sate="0" Marker="0" OutputFile="" >
 								<NodeC Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32F10x\system_stm32f10x.c" Header="system_stm32f10x.c" Marker="-1" OutputFile=".\build\system_stm32f10x.o" sate="0" />
@@ -459,7 +472,7 @@
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\mpipe_usbcdc_STM32L1xx.c" Header="mpipe_usbcdc_STM32L1xx.c" Marker="-1" OutputFile=".\build\mpipe_usbcdc_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_crc_STM32L1xx.c" Header="platform_crc_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_crc_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_gptim_STM32L1xx.c" Header="platform_gptim_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_gptim_STM32L1xx.o" sate="0" />
-			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="2" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_STM32L1xx.c" Header="platform_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_STM32L1xx.o" sate="0" >
 				<Options>				</Options>
 																																																								
@@ -472,7 +485,7 @@
 		</Group>
 																								
 	</Group>
-	<Group Header="otradio" Marker="-1" OutputFile="" sate="0" >
+	<Group Header="otradio" Marker="-1" OutputFile="" sate="96" >
 		<Group Header="cc1101" sate="0" Marker="0" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\cc1101\CC1101_MSP430F5.c" Header="CC1101_MSP430F5.c" Marker="-1" OutputFile=".\build\CC1101_MSP430F5.o" sate="0" />
 			<NodeC Path="..\..\..\otradio\cc1101\CC1101_STM32F10x.c" Header="CC1101_STM32F10x.c" Marker="-1" OutputFile=".\build\CC1101_STM32F10x.o" sate="0" />
@@ -549,7 +562,7 @@
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_registers.h" Header="SPIRIT1_registers.h" Marker="-1" OutputFile="" sate="0" />
 																																								
 		</Group>
-		<Group Header="sx1231" sate="96" Marker="0" OutputFile="" >
+		<Group Header="sx1231" sate="0" Marker="0" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\sx1231\radio_SX1231.c" Header="radio_SX1231.c" Marker="-1" OutputFile=".\build\radio_SX1231.o" sate="0" />
 			<NodeC Path="..\..\..\otradio\sx1231\spi_sx1231.c" Header="spi_sx1231.c" Marker="-1" OutputFile=".\build\spi_sx1231.o" sate="0" />
 			<NodeH Path="..\..\..\otradio\sx1231\radio_SX1231.h" Header="radio_SX1231.h" Marker="-1" OutputFile="" sate="0" />
@@ -643,8 +656,8 @@
 				</Section>
 				<Section Header="Scripts" >
 					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
-					<Property Header="File" Value="B:\apps\demo_ponglt\proj_ride7\stm32l1xx_128_16.ld" Removable="1" />
-																																																																															
+					<Property Header="File" Value="B:\apps\app_7lan\proj_ride7\stm32l1xx_128_16.ld" Removable="1" />
+							
 				</Section>
 				<Section Header="LIB" >
 					<Property Header="UART0PUTC" Value="0" Removable="1" />
@@ -654,7 +667,7 @@
 					<Property Header="WARNONCE" Value="-Wl,--warn-once" Removable="1" />
 																																																																															
 				</Section>
-												
+					
 			</Set>
 			<Set Header="ApplicationBuild" >
 				<Section Header="Directories" >
@@ -672,17 +685,17 @@
 																																																																															
 				</Section>
 				<Section Header="Defines" >
-					<Property Header="Defines" Value="__STM32L151C8U6__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_IKR001" Removable="1" />
-																
+					<Property Header="Defines" Value="__STM32L152VBT6__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_IKR001" Removable="1" />
+							
 				</Section>
-												
+					
 			</Set>
 			<Set Header="Target" >
 				<Section Header="ProcessorARM" >
-					<Property Header="Processor" Value="STM32L151C8T6" />
-																																																													
+					<Property Header="Processor" Value="STM32L152VBT6" />
+							
 				</Section>
-																																															
+					
 			</Set>
 		</Config>
 		<Config Header="R1_Adapter" >

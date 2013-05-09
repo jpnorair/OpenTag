@@ -752,7 +752,8 @@ void platform_init_busclk() {
     ///           Board using HSI may only declare 2, 4, 8, or 16 MHz</LI>
 #   elif (BOARD_FEATURE_FULLSPEED == ENABLED)
         // Basic Flash setup, then run normal routine
-        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
+        FLASH->ACR |= FLASH_ACR_ACC64;
+        FLASH->ACR |= FLASH_ACR_PRFTEN;
         platform_full_speed();
 
 
@@ -764,7 +765,8 @@ void platform_init_busclk() {
     ///           (96 MHz / BOARD_PARAM_PLLdiv) == PLATFORM_HSCLOCK_HZ. </LI>
 #   elif (BOARD_FEATURE_FLANKSPEED == ENABLED)
         // Basic Flash setup, then run normal routine
-        FLASH->ACR |= (FLASH_ACR_ACC64 | FLASH_ACR_PRFTEN);
+        FLASH->ACR |= FLASH_ACR_ACC64;
+        FLASH->ACR |= FLASH_ACR_PRFTEN;
         platform_flank_speed();
         
 #   else 

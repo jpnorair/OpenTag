@@ -67,5 +67,5 @@ GROUP(
 "libm.a"
 
 )
-INCLUDE "B:\apps\demo_ponglt\proj_ride7\stm32l1xx_128_16.ld"
+INCLUDE "B:\apps\app_7lan\proj_ride7\stm32l1xx_128_16.ld"
 OUTPUT("B:\apps\app_7lan\proj_ride7\ponglt.elf")

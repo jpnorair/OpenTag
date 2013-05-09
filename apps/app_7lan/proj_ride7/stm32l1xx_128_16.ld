@@ -13,7 +13,7 @@
   * limitations under the License.
   *
 
-Default linker script for STM32L1xx with 64KB Flash + 10KB SRAM + 4KB EEPROM
+Default linker script for STM32L1xx with 128KB Flash + 16KB SRAM + 4KB EEPROM
 
 DETAILS
 - Declares 192B stack, although this is only used for Kernel Tasks.  ISRs and
@@ -195,9 +195,9 @@ PROVIDE ( SCB             = (SCS_BASE + 0x0D00) ) ;
 
 MEMORY
 {
-  RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 0x2800
+  RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 0x4000
   
-  FLASH (rx)       : ORIGIN = 0x08000000, LENGTH = 0x10000 
+  FLASH (rx)       : ORIGIN = 0x08000000, LENGTH = 0x20000 
   
   FLASHOV (r)      : ORIGIN = 0x08080000, LENGTH = 0x360
   FLASHISFS (r)    : ORIGIN = 0x08080360, LENGTH = 0xA0

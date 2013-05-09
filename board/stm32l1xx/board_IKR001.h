@@ -110,12 +110,14 @@
   * of the Flash space because this seems to work best with the debugger HW.
   */
 
-#define SRAM_SIZE               (16*1024)
+
 #define EEPROM_SIZE             (4*1024)
 #if 1
+#   define SRAM_SIZE            (16*1024)
 #   define FLASH_SIZE           (64*1024)
 #else
 #   define FLASH_SIZE           (128*1024)   //chip actually has 128KB
+#   define SRAM_SIZE            (16*1024)   //chip actually has 16KB
 #endif
 
 // Using EEPROM: Pages figure is irrelevant
@@ -159,7 +161,7 @@
 #define BOARD_FEATURE_RFXTAL            ENABLED                 // XTAL for RF chipset
 #define BOARD_FEATURE_RFXTALOUT         DISABLED
 #define BOARD_FEATURE_PLL               MCU_FEATURE_USB
-#define BOARD_FEATURE_STDSPEED          ENABLED
+#define BOARD_FEATURE_STDSPEED          DISABLED
 #define BOARD_FEATURE_FULLSPEED         (MCU_FEATURE_USB != ENABLED)
 #define BOARD_FEATURE_FULLXTAL          DISABLED
 #define BOARD_FEATURE_FLANKSPEED        MCU_FEATURE_USB
