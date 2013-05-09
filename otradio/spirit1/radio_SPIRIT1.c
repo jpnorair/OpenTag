@@ -1395,18 +1395,18 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
     buf_cfg[0]  = 0;
     buf_cfg[1]  = RFREG(PCKTCTRL2);
     is_hs       = (phymac[0].channel & 0x20) >> 1;
-    buf_cfg[2]  = b00011100 + is_hs;
+    buf_cfg[2]  = DRF_PCKTCTRL2_LSBG + is_hs;
     buf_cfg[2] |= (mode & 1);
     is_fec      = (phymac[0].channel & 0x80) >> 4;
     mode      <<= 1;
     mode       += is_fec;                              
-    buf_cfg[3]  = /*_CRC_MODE_1021 | */ _WHIT_EN | (is_fec >> 3);
+    buf_cfg[3]  = /*_CRC_MODE_1021 | */ _WHIT_EN |  (is_fec >> 3);
     buf_cfg[4]  = ((ot_u8*)&param)[UPPER];
     buf_cfg[5]  = ((ot_u8*)&param)[LOWER];
     buf_cfg[6]  = 0;
-    buf_cfg[7]  = 0xAA;
-    buf_cfg[8]  = sync_matrix[mode];
-    buf_cfg[9]  = sync_matrix[mode+1];
+    buf_cfg[7]  = sync_matrix[mode];
+    buf_cfg[8]  = sync_matrix[mode+1];
+    buf_cfg[9]  = 0xAA;
     
     spirit1_spibus_io(10, 0, buf_cfg);
 }

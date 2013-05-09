@@ -7,7 +7,7 @@
 		<NodeH Path="..\code\isr_config_STM32L.h" Header="isr_config_STM32L.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\code\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="0" />
 		<NodeH Path="..\code\platform_config.h" Header="platform_config.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\code\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\build\data_default.o" sate="0" >
+		<NodeC Path="..\code\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\build\data_default.o" sate="2" >
 			<Options>
 				<Config Header="IKR001_Debug" >
 					<Set Header="NodeC" >
@@ -109,7 +109,7 @@
 		<NodeC Path="..\..\..\otlib\external.c" Header="external.c" Marker="-1" OutputFile=".\build\external.o" sate="0" />
 		<NodeH Path="..\..\..\otlib\external.h" Header="external.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\m2_dll.h" Header="m2_dll.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\..\..\otlib\m2_dll_task.c" Header="m2_dll_task.c" Marker="-1" OutputFile=".\build\m2_dll_task.o" sate="2" />
+		<NodeC Path="..\..\..\otlib\m2_dll_task.c" Header="m2_dll_task.c" Marker="-1" OutputFile=".\build\m2_dll_task.o" sate="0" />
 		<NodeC Path="..\..\..\otlib\m2_encode.c" Header="m2_encode.c" Marker="-1" OutputFile=".\build\m2_encode.o" sate="0" />
 		<NodeH Path="..\..\..\otlib\m2_encode.h" Header="m2_encode.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\..\..\otlib\m2_encode_table.h" Header="m2_encode_table.h" Marker="-1" OutputFile="" sate="0" />
