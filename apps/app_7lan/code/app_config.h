@@ -148,8 +148,8 @@
 #define M2_FEATURE_ENDPOINT             ENABLED                             // Endpoint device mode
 #define M2_FEATURE_M2DP                 DISABLED                            // Datastreams & associated commands
 #define M2_FEATURE_DATASTREAM           M2_FEATURE_M2DP
-#define M2_FEATURE_FECTX                DISABLED  /* test */                          // FEC support for transmissions
-#define M2_FEATURE_FECRX                DISABLED  /* test */                          // FEC support for receptions
+#define M2_FEATURE_FECTX                ENABLED  /* test */                          // FEC support for transmissions
+#define M2_FEATURE_FECRX                ENABLED  /* test */                          // FEC support for receptions
 #define M2_FEATURE_LEGACY               NOT_AVAILABLE                       // Legacy (Mode 1) channel (ch 01)
 #define M2_FEATURE_NORMAL               ENABLED                             // Low-speed channels (ch 1x, 9x)
 #define M2_FEATURE_TURBO                ENABLED                             // High-speed channels (ch 2x, Ax)

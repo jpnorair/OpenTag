@@ -571,7 +571,7 @@ ot_bool subrfctl_test_channel(ot_u8 channel) {
 
 
 
-
+///@note maccfg[5] should be 1 for release, and higher (i.e. 10) for bgrx test
 void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     ot_u8 maccfg[7] = { 0, RFREG(PROTOCOL2), 
                         ((DRF_PROTOCOL2 & 0x1F) | _SQI_TIMEOUT_MASK),
@@ -613,7 +613,7 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
         pktlen              = 7;
         buffer_mode         = MODE_bg;
         maccfg[2]           = ((DRF_PROTOCOL2 & 0x1F) | _CS_TIMEOUT_MASK);
-        maccfg[6]           = (5 << (BOARD_PARAM_RFHz > 26000000));
+        maccfg[6]           = (5 << (BOARD_PARAM_RFHz > 26000000)); 
     }
 
     /// 4b. Setup RX for Foreground detection:
@@ -622,7 +622,7 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
 #   if ((M2_FEATURE(MULTIFRAME) == ENABLED) || (M2_FEATURE(FECRX) == ENABLED))
         rfctl.state     = rfctl.flags & 3;
         ///@todo 0x1000 should be MAXPKTLEN
-        pktlen          = (rfctl.flags & RADIO_FLAG_FRCONT) ? 0x1000 : 0x0100;  
+        pktlen          = (rfctl.flags & RADIO_FLAG_FRCONT) ? 0x1000 : 0x0100;
         buffer_mode     = MODE_fgauto + (rfctl.state != RADIO_STATE_RXAUTO);
 #   else
         // Initial state is always RXAUTO (2), because no FEC or Multiframe RX
@@ -852,26 +852,25 @@ void rm2_rxdata_isr() {
         /// once this is known (after first decoder pass).
 #       if ((M2_FEATURE(MULTIFRAME) == ENABLED) || (M2_FEATURE(FECRX) == ENABLED))
         case (RADIO_STATE_RXPAGE >> RADIO_STATE_RXSHIFT): {
-            if (rfctl.flags & RADIO_FLAG_RESIZE) {
-                rfctl.rxlimit = 64;
-                spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit);
+            rfctl.rxlimit = 64;
+            spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit);
                 
-                // I know this is "spaghetti code," deal with it.
-                // This section updates the PCKTLEN with known packet length;
-                rm2_rxdata_isr_RXLASTFRAME: {
-                    ot_u16 pktlen;
-                    ot_u8  cmd[4];
-                    rfctl.flags    &= ~(RADIO_FLAG_RESIZE | RADIO_FLAG_FRCONT);
-                    pktlen          = rxq.length + em2_remaining_bytes();
-                    cmd[0]          = 0;
-                    cmd[1]          = RFREG(PCKTLEN1);
-                    cmd[2]          = ((ot_u8*)&pktlen)[UPPER];
-                    cmd[3]          = ((ot_u8*)&pktlen)[LOWER];
-                    spirit1_spibus_io(4, 0, cmd);
-                }
+            // I know this is "spaghetti code," deal with it.
+            // This section updates the PCKTLEN with known packet length;
+            rm2_rxdata_isr_RXLASTFRAME: {
+                ot_u16 pktlen;
+                ot_u8  cmd[4];
+                rfctl.flags    &= ~(RADIO_FLAG_RESIZE | RADIO_FLAG_FEC);
+                pktlen          = rxq.length + em2_remaining_bytes();
+                cmd[0]          = 0;
+                cmd[1]          = RFREG(PCKTLEN1);
+                cmd[2]          = ((ot_u8*)&pktlen)[UPPER];
+                cmd[3]          = ((ot_u8*)&pktlen)[LOWER];
+                spirit1_spibus_io(4, 0, cmd);
             }
-            break;
-        }
+            
+            rfctl.state = RADIO_STATE_RXAUTO;
+        } break;
 #       endif
 
         /// RX State 2 & 3:
@@ -1255,6 +1254,7 @@ ot_bool subrfctl_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
 
     /// If FEC is requested by the new channel, but this device does not support
     /// FEC, then make sure to return False.    
+    /// @todo why is this code necessary?
     if (fec_id) {
 #       if (M2_FEATURE(FEC) == ENABLED)
             i = 0;
@@ -1400,7 +1400,7 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
     is_fec      = (phymac[0].channel & 0x80) >> 4;
     mode      <<= 1;
     mode       += is_fec;                              
-    buf_cfg[3]  = /*_CRC_MODE_1021 | */ _WHIT_EN |  (is_fec >> 3);
+    buf_cfg[3]  = /*_CRC_MODE_1021 |*/ _WHIT_EN | (is_fec >> 3);
     buf_cfg[4]  = ((ot_u8*)&param)[UPPER];
     buf_cfg[5]  = ((ot_u8*)&param)[LOWER];
     buf_cfg[6]  = 0;

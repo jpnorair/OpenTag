@@ -408,7 +408,7 @@ ot_bool spirit1_check_cspin(void);
 
 #define RFI_RXTIMEOUT   RFI_SOURCE0
 #define RFI_RXSYNC      RFI_SOURCE1
-#define RFI_LISTEN      (/*RFI_RXTIMEOUT | */ RFI_RXSYNC)
+#define RFI_LISTEN      (RFI_RXTIMEOUT |  RFI_RXSYNC)
 
 #define RFI_RXEND       RFI_SOURCE0
 #define RFI_RXFIFO      RFI_SOURCE2

@@ -5,9 +5,9 @@
 		<NodeH Path="..\code\build_config.h" Header="build_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\extf_config.h" Header="extf_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\isr_config_STM32L.h" Header="isr_config_STM32L.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\code\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="0" />
+		<NodeC Path="..\code\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="2" />
 		<NodeH Path="..\code\platform_config.h" Header="platform_config.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\code\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\build\data_default.o" sate="2" >
+		<NodeC Path="..\code\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\build\data_default.o" sate="0" >
 			<Options>
 				<Config Header="IKR001_Debug" >
 					<Set Header="NodeC" >
@@ -31,7 +31,7 @@
 		<NodeC Path="..\..\..\otlibext\applets_std\sys_sig_powerdown_[stm32lp].c" Header="sys_sig_powerdown_[stm32lp].c" Marker="-1" OutputFile=".\build\sys_sig_powerdown_[stm32lp].o" sate="0" />
 																								
 	</Group>
-	<Group Header="board" Marker="0" OutputFile="" sate="96" >
+	<Group Header="board" Marker="0" OutputFile="" sate="0" >
 		<Group Header="stm32f10x" sate="0" Marker="0" OutputFile="" >
 			<NodeH Path="..\..\..\board\stm32f10x\board_MLX73Proto_E.h" Header="board_MLX73Proto_E.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\board\stm32f10x\board_opennode.h" Header="board_opennode.h" Marker="-1" OutputFile="" sate="0" />

@@ -156,6 +156,7 @@
 #define RADIO_FLAG_FEC          (1 << 0)
 #define RADIO_FLAG_FRCONT       (1 << 1)
 #define RADIO_FLAG_FLOOD        (1 << 2)
+#define RADIO_FLAG_RESIZE       (1 << 3)
 #define RADIO_FLAG_AUTOCAL		(1 << 4)
 #define RADIO_FLAG_SETPWR		(1 << 5)
 #define RADIO_FLAG_PWRMASK      (3 << 6)
