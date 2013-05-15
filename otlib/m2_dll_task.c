@@ -899,7 +899,11 @@ void sub_init_tx(ot_u8 is_btx) {
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
 #if (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER))
-    dll.counter = (is_btx != 0) ? session.heap[session.top+1].counter : 0;
+    dll.counter = 0;
+    if (is_btx) {
+        dll.counter = session.heap[session.top-1].counter;
+        m2advp_open(session_top());
+    }
     rm2_txinit(is_btx, &rfevt_txcsma);
 #else
     dll.counter = 0;
@@ -1042,7 +1046,7 @@ void rfevt_txcsma(ot_int pcode, ot_int tcode) {
 #       if (SYS_FLOOD == ENABLED)
         if (tcode != 0) {
             radio.evtdone   = &rfevt_btx;
-            event_ticks     = dll.counter;
+            event_ticks     = dll.counter+20;
         }
         else
 #       endif
@@ -1140,8 +1144,8 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
             // assure request hits NOW & assure it doesn't init dll.comm
             // Tweak dll.comm for request (2 ti is a token, small amount)
             sys.task_RFA.event                      = 0;
-            session.heap[session.top+1].counter     = 0;    
-            session.heap[session.top+1].netstate   &= ~M2_NETSTATE_INIT;
+            session.heap[session.top-1].counter     = 0;    
+            session.heap[session.top-1].netstate   &= ~M2_NETSTATE_INIT;
             dll.comm.tc                             = TI2CLK(2);
             dll.comm.csmaca_params                  = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
         } break;
@@ -1156,9 +1160,9 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         /// <LI> The advertising time is reduced by the CSMA-CA process, but
         ///      whatever that was, the request session counter has adjusted </LI>
         /// <LI> Write the first packet to the queue (via fall-though)  </LI>
-        case 1: {
-            m2advp_open(session_top());
-        }
+        //case 1: {
+        //    m2advp_open(session_top());
+        //}
         
         /// Flood Continues:
         /// <LI> Derive current value for advertising countdown and apply </LI>

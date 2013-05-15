@@ -433,7 +433,12 @@ void EXTI9_5_IRQHandler(void) {
     __EXTI_MACRO(5);
 #   endif
 #   if ((defined(__ISR_EXTI6) || defined(__USE_EXTI6)) && !defined(__N_ISR_EXTI6))
-    __EXTI_MACRO(6);
+    //__EXTI_MACRO(6);
+    if (EXTI->PR & (1<<6)) { 
+        EXTI->PR = (1<<6);  
+        BOARD_RADIO_EXTI6_ISR(); 
+        APPLICATION_EXTI6_ISR(); 
+    } 
 #   endif
 #   if ((defined(__ISR_EXTI7) || defined(__USE_EXTI7)) && !defined(__N_ISR_EXTI7))
     __EXTI_MACRO(7);

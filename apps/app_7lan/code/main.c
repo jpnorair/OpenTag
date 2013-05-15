@@ -99,7 +99,7 @@ void sub_button_init();
   * The ALP command is treated at a higher-level (see ALP callback later).  
   * The button-press is unique to this application, and it is treated here.
   */
-  
+
 #if (defined(__MSP430F5__) && defined(OT_SWITCH1_PORT))
 #   if (OT_SWITCH1_PORTNUM == 1)
 #       define PLATFORM_ISR_SW  platform_isr_p1
@@ -140,16 +140,20 @@ void PLATFORM_ISR_SW() {
 #elif (defined(__STM32__) && defined(OT_SWITCH1_PINNUM) && (OT_SWITCH1_PINNUM >= 0))
 #   define PLATFORM_ISR_SW  platform_isr_exti##OT_SWITCH1_PINNUM
 
-void PLATFORM_ISR_SW(void) {
-    // Ignore the button press if the task is in progress already
+//void OT_SWITCH1_ISR(void) {
+void platform_isr_exti6() {
+// start a background session
     if (APP_TASK->event == 0) {
-        app_invoke(7);              // Initialize Ping Task on channel 7
+        app_invoke(0x10);
     }
 }
+
 
 void sub_button_init() {
 /// ARM Cortex M boards must prepare all EXTI line interrupts in their board
 /// configuration files.
+    EXTI->FTSR |= OT_SWITCH1_PIN;
+    EXTI->IMR  |= OT_SWITCH1_PIN;
 }
 
 
@@ -291,7 +295,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 
 
 
-/** PING Kernel Task <BR>
+/** Flood Kernel Task <BR>
   * =======================================================================<BR>
   * This function will be activated by the kernel when the external task is
   * active and there are resources available to run the task.  This task will
@@ -303,6 +307,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 
 void ext_systask(ot_task task) {
     session_tmpl    s_tmpl;
+    advert_tmpl     adv_tmpl;
 
     if (task->event == 1) {
         task->event = 0;
@@ -322,10 +327,16 @@ void ext_systask(ot_task task) {
 #       endif
     
         // Load the session template: Only used for communication tasks
+        adv_tmpl.duty_off   = 0;
+        adv_tmpl.duty_on    = 0;
+        adv_tmpl.channel    = 0x10;
+        adv_tmpl.duration   = 3000;
+        
         s_tmpl.channel      = task->cursor;
         s_tmpl.flagmask     = 0;
         s_tmpl.subnetmask   = 0;
-        otapi_task_immediate(&s_tmpl, &applet_send_query);
+        otapi_task_advertise(&adv_tmpl, &s_tmpl, &applet_send_query);
+        //otapi_task_immediate(&s_tmpl, &applet_send_query);
     }
     
     // Turn off the task after 512 ticks (what is set above)
@@ -437,6 +448,10 @@ void app_init() {
 #endif
 
     sub_button_init();
+    
+    // Task initialization
+    APP_TASK->event = 0;
+    APP_TASK->cursor = 0x55;
 }
 
 

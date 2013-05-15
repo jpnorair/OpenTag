@@ -497,6 +497,14 @@ void spirit1_int_csma();
 void spirit1_int_txdata();
 
 
+/** @brief  Configures GPIO Interrupts for TX Done Mode
+  * @param  None
+  * @retval None
+  * @ingroup SPIRIT1
+  */ 
+void spirit1_int_txdone();
+
+
 /** @brief  Forces an interrupt on masked, selected sources (sets flag high)
   * @param  ifg_sel     (ot_u16) interrupt flag select
   * @retval None

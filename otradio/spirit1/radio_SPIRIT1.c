@@ -482,8 +482,10 @@ void em2_encode_data() {
     // Loop unrolling for FIFO loading
     load = (rfctl.txlimit - spirit1_txbytes());
     
-    while ((load > 0) && (em2.bytes > 0)) {
-        fill = load;
+    while (1) {
+        fill = (load < em2.bytes) ? load : em2.bytes;
+        if (fill <= 0) break;
+        
         if (fill > 24) fill = 24;
         load       -= fill;
         em2.bytes  -= fill;
@@ -956,8 +958,10 @@ void rm2_txstop_flood() {
 #if (SYS_FLOOD == ENABLED)
     rfctl.state = RADIO_STATE_TXDONE;
     spirit1_stop_counter();
-    spirit1_int_turnoff(RFI_TXFIFO);                    //Disable TXFIFO interrupt
-    spirit1_write(RFREG(PROTOCOL0), DRF_PROTOCOL0);     //Disable Persistent TX
+    spirit1_int_txdone();
+    
+    //Disable Persistent TX (might not be necessary)
+    spirit1_write(RFREG(PROTOCOL0), DRF_PROTOCOL0);     
 #endif
 }
 #endif
@@ -997,12 +1001,6 @@ void rm2_txcsma_isr() {
                 break;
             }
             
-            // Configure encoder.  On SPIRIT1 TX, this needs to be done before
-            // calling subrfctl_buffer_config().
-            subrfctl_prep_q(&txq);
-            em2_encode_newpacket();
-            em2_encode_newframe();
-            
             // Set TX PATABLE values if different than pre-existing values
             if (rfctl.flags & RADIO_FLAG_SETPWR) {
                 rfctl.flags &= ~RADIO_FLAG_SETPWR;
@@ -1012,20 +1010,30 @@ void rm2_txcsma_isr() {
             // Set other TX Buffering & Packet parameters, and also save the
             // Peristent-TX attribute for floods, which is written later
             if (rfctl.flags & RADIO_FLAG_FLOOD) {
-                pktlen  = 7;
+                txq.length  = 5;
+                em2.bytes   = 5;
+                
+                //pktlen  = 7;
                 type    = MODE_bg;
                 timcfg  = (ot_u8*)timcfg_flood;
             }
             else {
-                pktlen  = txq.length;
+                //pktlen  = txq.length;
                 type    = (rfctl.flags & 3) ? MODE_fgpage : MODE_fgauto;
                 timcfg  = (ot_u8*)timcfg_normal;
             }
-            subrfctl_buffer_config(type, pktlen);
+            
+            // Configure encoder.  On SPIRIT1 TX, this needs to be done before
+            // calling subrfctl_buffer_config().
+            subrfctl_prep_q(&txq);
+            em2_encode_newpacket();
+            em2_encode_newframe();
+            
+            subrfctl_buffer_config(type, txq.length /*pktlen*/ );
             spirit1_int_off();
             spirit1_iocfg_tx();
             
-            // START CSMA if required, using LDC mode
+            /* // START CSMA if required, using LDC mode
             if ((dll.comm.csmaca_params & M2_CSMACA_NOCSMA) == 0) {
                 ot_u8 protocol2;
                 spirit1_spibus_io(9, 0, timcfg);
@@ -1041,7 +1049,7 @@ void rm2_txcsma_isr() {
                 spirit1_strobe(RFSTROBE_SLEEP);
                 spirit1_int_csma();
                 break;
-            }
+            } */
             
             // START TX if CSMA disabled for this packet.
             // Note: fall through
@@ -1055,12 +1063,14 @@ void rm2_txcsma_isr() {
             // arg2: 0 for background, 1 for foreground
             radio.evtdone(0, (rfctl.flags & RADIO_FLAG_FLOOD));  
             
-            // Preload into TX FIFO a small amount of data (up to 8 bytes)
+            // Preload into TX FIFO a small amount of data (up to 7 bytes)
             // This is small-enough that the TX state machine doesn't need
             // special conditions, and less initial data = less latency.
-            rfctl.txlimit   = 8;
-            txq.getcursor   = txq.front;
-            txq.front[1]    = phymac[0].tx_eirp;
+            rfctl.txlimit   = 7;
+            
+            //txq.getcursor   = txq.front;  //why is this here?
+            
+            //txq.front[1]    = phymac[0].tx_eirp;
             
             radio_idle(); 
             radio_flush_tx();
@@ -1118,30 +1128,44 @@ void subrfctl_ccapass_isr() {
 
 
 
-
 #ifndef EXTF_rm2_txdata_isr
 void rm2_txdata_isr() {
+/// Continues where rm2_txcsma() leaves off.
     
-    /// Continues where rm2_txcsma() leaves off.
-    if ((rfctl.state & RADIO_STATE_TXMASK) == RADIO_STATE_TXDATA) {
-        rm2_txpkt_TXDATA:
-        /// Frame is not done, so come back later to fill buffer again
-        em2_encode_data();
-        if (em2_remaining_bytes() != 0) {
-            return;
+    /// This is a safety-check that could be removed in more mature builds
+    if ((rfctl.state & RADIO_STATE_TXMASK) != RADIO_STATE_TXDATA) {
+        rm2_kill();
+        return;
+    }
+    
+#   if (SYS_FLOOD == ENABLED)
+    /// Packet flooding.  Only needed on devices that can send M2AdvP
+    /// The radio.evtdone callback here should update the AdvP payload
+    if (rfctl.flags & RADIO_FLAG_FLOOD) {
+        dll.counter -= 3;
+ 
+        radio.evtdone(2, 0);
+        
+        if ((rfctl.state & RADIO_STATE_TXMASK) == RADIO_STATE_TXDATA) {
+            crc_init_stream(5, txq.getcursor);
+            em2.bytes = 7;
+            em2_encode_data();
         }
 
-#       if (SYS_FLOOD == ENABLED)
-        /// Packet flooding.  Only needed on devices that can send M2AdvP
-        if (rfctl.flags & RADIO_FLAG_FLOOD) {
-            radio.evtdone(2, 0);
-            txq.getcursor = txq.front;
-            em2_encode_newframe();
-            goto rm2_txpkt_TXDATA;
-        }
-#       endif
-
-#       if (M2_FEATURE(MULTIFRAME) == ENABLED)
+        return;
+    }
+#   endif
+        
+    /// Packet is not done, so fill buffer with more data and check.
+    /// Disable FIFO interrupt and this state when the packet is fully-encoded
+    rm2_txpkt_TXDATA:
+    em2_encode_data();
+    if (em2_remaining_bytes() == 0) {
+        rfctl.state = RADIO_STATE_TXDONE;
+        spirit1_int_txdone();
+    }
+#   if (M2_FEATURE(MULTIFRAME) == ENABLED)
+    else {
         /// If the frame is done, but more need to be sent (e.g. MFP's)
         /// queue it up.  The additional encode stage is there to fill up
         /// what's left of the buffer.
@@ -1152,17 +1176,8 @@ void rm2_txdata_isr() {
             txq.front[1] = phymac[0].tx_eirp;
             goto rm2_txpkt_TXDATA;
         }
-#       endif
-    
-        /// TX is finishing: disable Threshold interrupt and wait for READY
-        rfctl.state = RADIO_STATE_TXDONE;
-        spirit1_int_turnoff(RFI_TXFIFO);
     }
-
-    /// Bug trap
-    else {
-        rm2_kill();
-    }
+#   endif
 }
 #endif
 

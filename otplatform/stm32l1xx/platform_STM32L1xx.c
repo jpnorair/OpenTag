@@ -599,7 +599,7 @@ void platform_poweron() {
     platform_init_busclk();
     
     /// 4. Debugging setup
-#   ifdef __DEBUG__
+#   if defined(__DEBUG__) || defined(__PROTO__)
     DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP \
                       | DBGMCU_CR_DBG_STOP \
                       | DBGMCU_CR_DBG_STANDBY);

@@ -295,7 +295,9 @@ void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack) {
 /// transport layer, and which has NM2=0, Frame_Type={0,1}
 
     /// 1. Prep txq, and write Frame Info & Addr Ctrl Fields (universal)
-    q_start(&txq, 0, 0);
+    q_empty(&txq);
+    //q_start(&txq, 0, 0);
+    
     txq.back                = txq.getcursor + 254; 
     q_writebyte(&txq, 0);                           // null length (placeholder only)
     q_writebyte(&txq, 0);                           // Dummy TX EIRP setting (placeholder only)
@@ -453,10 +455,21 @@ ot_bool m2np_idcmp(ot_int length, void* id) {
 
 #ifndef EXTF_m2advp_open
 void m2advp_open(m2session* session) {
-    q_start(&txq, 1, 0);
-    txq.front[0] = 7;
-    q_writebyte(&txq, session->subnet);
-    q_writebyte(&txq, 0);   //Advertising protocol ID == 0
+    //q_start(&txq, 1, 0);
+    //txq.front[0] = 7;
+    
+    q_empty(&txq);
+    txq.getcursor++;
+    q_writebyte(&txq, 7);
+    
+    /// This byte gets overwritten in the driver with EIRP value.
+    /// The value 6 is needed by some sniffers during test, otherwise.
+    q_writebyte(&txq, 6);
+    
+    /// This byte is two nibbles: Subnet specifier and AdvP ID (F)
+    q_writebyte(&txq, (session->subnet | 0x0F));
+    
+    /// The rest is the AdvP payload
     q_writebyte(&txq, session->channel);
     q_writeshort(&txq, session->counter);
 }
@@ -465,9 +478,10 @@ void m2advp_open(m2session* session) {
 
 #ifndef EXTF_m2advp_update
 void m2advp_update(ot_u16 countdown) {
-    txq.front[3]    = ((ot_u8*)&countdown)[UPPER];
-    txq.front[4]    = ((ot_u8*)&countdown)[LOWER];
-    txq.putcursor   = &txq.front[5];
+    txq.getcursor       = &txq.front[1];
+    txq.getcursor[3]    = ((ot_u8*)&countdown)[UPPER];
+    txq.getcursor[4]    = ((ot_u8*)&countdown)[LOWER];
+    //txq.putcursor       = &txq.getcursor[5];
 }
 #endif
 

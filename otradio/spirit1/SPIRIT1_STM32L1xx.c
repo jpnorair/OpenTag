@@ -661,11 +661,12 @@ void platform_isr_rtcwakeup() {
 }
 
 void spirit1_start_counter() {
-    RTC->CR |= RTC_CR_WUTE;
+    //RTC->CR |= RTC_CR_WUTE;
 }
 
 void spirit1_stop_counter() {
-    RTC->CR &= ~RTC_CR_WUTE;
+    dll.counter = 0;
+    //RTC->CR &= ~RTC_CR_WUTE;
 }
 
 ot_u16 spirit1_get_counter() {
@@ -727,7 +728,15 @@ void spirit1_int_csma()     {   spirit1.imode = MODE_CSMA;
                                 sub_int_config(RFI_CSMA);     }
                                 
 void spirit1_int_txdata()   {   spirit1.imode = MODE_TXData;
-                                sub_int_config(RFI_TXDATA);   }
+                                sub_int_config(RFI_TXFIFO);   }
+                                
+void spirit1_int_txdone() {
+    ot_u32 scratch;
+    scratch     = EXTI->IMR & ~RFI_TXFIFO;
+    scratch    |= RFI_TXEND;
+    EXTI->PR    = RFI_TXEND;
+    EXTI->IMR   = scratch;
+}
 
 
 void spirit1_int_force(ot_u16 ifg_sel)   { EXTI->SWIER |= (ot_u32)ifg_sel; }

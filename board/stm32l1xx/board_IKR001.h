@@ -1072,6 +1072,9 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define OT_SWITCH1_PIN      BOARD_SW1_PIN
 #define OT_SWITCH1_POLARITY BOARD_SW1_POLARITY
 
+#define __ISR_EXTI6
+#define OT_SWITCH1_ISR      platform_isr_exti6
+
 
 
 

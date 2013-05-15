@@ -5,7 +5,7 @@
 		<NodeH Path="..\code\build_config.h" Header="build_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\extf_config.h" Header="extf_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\isr_config_STM32L.h" Header="isr_config_STM32L.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\code\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="2" />
+		<NodeC Path="..\code\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="0" />
 		<NodeH Path="..\code\platform_config.h" Header="platform_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\code\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\build\data_default.o" sate="0" >
 			<Options>
@@ -73,7 +73,7 @@
 		</Options>
 																								
 	</Group>
-	<Group Header="otkernel" Marker="-1" OutputFile="" sate="0" >
+	<Group Header="otkernel" Marker="-1" OutputFile="" sate="96" >
 		<Group Header="gulp" sate="0" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otkernel\gulp\system_gulp.c" Header="system_gulp.c" Marker="-1" OutputFile=".\build\system_gulp.o" sate="0" />
 			<NodeH Path="..\..\..\otkernel\gulp\system_gulp.h" Header="system_gulp.h" Marker="-1" OutputFile="" sate="0" />
@@ -558,7 +558,7 @@
 			<NodeC Path="..\..\..\otradio\spirit1\SPIRIT1_STM32L1xx.c" Header="SPIRIT1_STM32L1xx.c" Marker="-1" OutputFile=".\build\SPIRIT1_STM32L1xx.o" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\radio_SPIRIT1.h" Header="radio_SPIRIT1.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_defaults.h" Header="SPIRIT1_defaults.h" Marker="-1" OutputFile="" sate="0" />
-			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_interface.h" Header="SPIRIT1_interface.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_interface.h" Header="SPIRIT1_interface.h" Marker="-1" OutputFile="" sate="2" />
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_registers.h" Header="SPIRIT1_registers.h" Marker="-1" OutputFile="" sate="0" />
 																																								
 		</Group>

@@ -155,8 +155,7 @@ ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
 
 void platform_set_gptim2(ot_u16 value) {
 /// gptim2 is often used for RF MAC timing.  It includes "value" = 0 protection 
-/// because often a time-slot is started at position 0.  In that case, fuck the
-/// annoying RTC, just force it with a software interrupt on the EXTI.
+/// because often a time-slot is started at position 0.
 
     TIM9->DIER     &= ~TIM_DIER_CC2IE;
     gptim.stamp2    = TIM9->CNT;
