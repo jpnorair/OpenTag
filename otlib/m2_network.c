@@ -454,7 +454,7 @@ ot_bool m2np_idcmp(ot_int length, void* id) {
 
 
 #ifndef EXTF_m2advp_open
-void m2advp_open(m2session* session) {
+void m2advp_open(m2session* session, ot_u16 duration) {
     //q_start(&txq, 1, 0);
     //txq.front[0] = 7;
     
@@ -471,7 +471,7 @@ void m2advp_open(m2session* session) {
     
     /// The rest is the AdvP payload
     q_writebyte(&txq, session->channel);
-    q_writeshort(&txq, session->counter);
+    q_writeshort(&txq, duration);
 }
 #endif
 

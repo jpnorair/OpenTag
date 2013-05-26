@@ -1175,7 +1175,17 @@ void platform_init_interruptor() {
 
     NVIC->IP[(uint32_t)(OT_SYSTICK_IRQn)]       = ((_KERNEL_GROUP+_OT_SUB2) << 4);
     NVIC->ISER[((uint32_t)(OT_SYSTICK_IRQn)>>5)]= (1 << ((uint32_t)(OT_SYSTICK_IRQn) & 0x1F));
+    
+#   elif (RF_FEATURE(TXTIMER) != ENABLED)
+    // Setup Wakeup timer used by radio driver
+    EXTI->PR                                    = (1<<20);
+    EXTI->IMR                                  |= (1<<20);
+    EXTI->RTSR                                 |= (1<<20);
+    NVIC->IP[(uint32_t)(RTC_WKUP_IRQn)]         = ((_KERNEL_GROUP+2) << 4);
+    NVIC->ISER[((uint32_t)(RTC_WKUP_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
+
 #   endif
+    
     
     /// 5. Setup other external interrupts
     

@@ -902,7 +902,7 @@ void sub_init_tx(ot_u8 is_btx) {
     dll.counter = 0;
     if (is_btx) {
         dll.counter = session.heap[session.top-1].counter;
-        m2advp_open(session_top());
+        m2advp_open(session_top(), dll.counter);
     }
     rm2_txinit(is_btx, &rfevt_txcsma);
 #else
@@ -1170,8 +1170,8 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         /// <LI> The Radio Driver will flood adv packets forever, in parallel
         ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
         case 2: {
-            ot_u16 countdown;
-            countdown = radio_get_countdown();
+            ot_int countdown;
+            countdown = (ot_int)radio_get_countdown();
             ///@todo make faster function for bg packet duration lookup
             if (countdown < rm2_pkt_duration(7)) {
                 m2advp_close();
@@ -1291,9 +1291,8 @@ ot_bool sub_mac_filter() {
         // TX EIRP dBm              = ((encoded value) / 2) - 40
         // Link Loss                = TX EIRP dBm - Detected RX dBm
         // Link Quality Filter      = (Link Loss <= Link Loss Limit)
-        ot_int linkloss;
-        linkloss    = ((ot_int)((rxq.front[1] >> 1) & 0x3F) - 40) - radio_rssi(); 
-        qualifier   = (ot_bool)(linkloss <= (ot_int)phymac[0].link_qual);
+        dll.last_nrssi  = ((ot_int)((rxq.front[1] >> 1) & 0x3F) - 40) - radio_rssi(); 
+        qualifier       = (ot_bool)(dll.last_nrssi <= (ot_int)phymac[0].link_qual);
     }
     {
         ot_u8 fr_subnet, dsm, specifier, mask;

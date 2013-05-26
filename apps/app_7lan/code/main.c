@@ -335,8 +335,8 @@ void ext_systask(ot_task task) {
         s_tmpl.channel      = task->cursor;
         s_tmpl.flagmask     = 0;
         s_tmpl.subnetmask   = 0;
-        otapi_task_advertise(&adv_tmpl, &s_tmpl, &applet_send_query);
-        //otapi_task_immediate(&s_tmpl, &applet_send_query);
+        //otapi_task_advertise(&adv_tmpl, &s_tmpl, &applet_send_query);
+        otapi_task_immediate(&s_tmpl, &applet_send_query);
     }
     
     // Turn off the task after 512 ticks (what is set above)

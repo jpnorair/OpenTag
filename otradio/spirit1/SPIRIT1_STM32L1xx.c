@@ -655,18 +655,16 @@ ot_bool spirit1_check_cspin(void) {
 
 void platform_isr_rtcwakeup() {
 /// Decrement dll counter... that's it
-    EXTI->PR    = (1<<20);
-    RTC->ISR   &= ~RTC_ISR_WUTF;
     dll.counter--;
 }
 
 void spirit1_start_counter() {
-    //RTC->CR |= RTC_CR_WUTE;
+    RTC->CR |= RTC_CR_WUTE;
 }
 
 void spirit1_stop_counter() {
-    dll.counter = 0;
-    //RTC->CR &= ~RTC_CR_WUTE;
+    //dll.counter = 0;          // not necessary or helpful
+    RTC->CR &= ~RTC_CR_WUTE;
 }
 
 ot_u16 spirit1_get_counter() {

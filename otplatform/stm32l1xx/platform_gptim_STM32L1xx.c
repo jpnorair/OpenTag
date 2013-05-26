@@ -101,7 +101,28 @@ void platform_init_gptim(ot_uint prescaler) {
     TIM9->EGR   = TIM_EGR_UG;
     
     
+    /// Configure the RTC WKUP for usage as Advertising flood counter
     
+    // Unlock RTC as a whole, put into INIT mode 
+    RTC->WPR    = 0xCA;
+    RTC->WPR    = 0x53;
+    RTC->CR     = 0;
+    RTC->ISR    = RTC_ISR_INIT;
+    
+    // Wait for init to be ready, the set to 1-ti (1s/1024) update period.
+    while((RTC->ISR & RTC_ISR_INITF) == 0);
+    RTC->TR     = 0;
+    RTC->PRER   = (31 << 16) | 0;
+    RTC->WUTR   = 0;
+
+    // Calibration could be here
+    //RTC->CALIBR = ...
+    
+    // Re-enable RTC.  Wakeup timer is set to 1/1024 sec (1 tick).
+    // ALARMB and wakeup interrupts are always on.  ALARMA is controlled by the
+    // platform_...ktim() functions
+    RTC->CR     = RTC_CR_WUTIE | b100;
+    RTC->ISR    = 0;
     
 }
 #endif
@@ -156,10 +177,12 @@ ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
 void platform_set_gptim2(ot_u16 value) {
 /// gptim2 is often used for RF MAC timing.  It includes "value" = 0 protection 
 /// because often a time-slot is started at position 0.
-
     TIM9->DIER     &= ~TIM_DIER_CC2IE;
     gptim.stamp2    = TIM9->CNT;
-    TIM9->CCR2      = gptim.stamp2 + (ot_u16)(value << 2);
+    
+    if (value == 0) TIM9->EGR   = TIM_EGR_CC2G;
+    else            TIM9->CCR2  = gptim.stamp2 + (ot_u16)(value << 2);
+    
     TIM9->DIER     |= TIM_DIER_CC2IE;
 }
 
@@ -171,6 +194,7 @@ void platform_enable_gptim2() {
 
 void platform_disable_gptim2() {
     TIM9->DIER &= ~TIM_DIER_CC2IE;
+    TIM9->SR   &= ~TIM_SR_CC2IF;
 }
 
 

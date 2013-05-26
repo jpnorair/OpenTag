@@ -471,7 +471,7 @@
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\mpipe_uart_STM32L1xx.c" Header="mpipe_uart_STM32L1xx.c" Marker="-1" OutputFile=".\build\mpipe_uart_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\mpipe_usbcdc_STM32L1xx.c" Header="mpipe_usbcdc_STM32L1xx.c" Marker="-1" OutputFile=".\build\mpipe_usbcdc_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_crc_STM32L1xx.c" Header="platform_crc_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_crc_STM32L1xx.o" sate="0" />
-			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_gptim_STM32L1xx.c" Header="platform_gptim_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_gptim_STM32L1xx.o" sate="0" />
+			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_gptim_STM32L1xx.c" Header="platform_gptim_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_gptim_STM32L1xx.o" sate="2" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_STM32L1xx.c" Header="platform_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_STM32L1xx.o" sate="0" >
 				<Options>				</Options>
@@ -558,7 +558,7 @@
 			<NodeC Path="..\..\..\otradio\spirit1\SPIRIT1_STM32L1xx.c" Header="SPIRIT1_STM32L1xx.c" Marker="-1" OutputFile=".\build\SPIRIT1_STM32L1xx.o" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\radio_SPIRIT1.h" Header="radio_SPIRIT1.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_defaults.h" Header="SPIRIT1_defaults.h" Marker="-1" OutputFile="" sate="0" />
-			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_interface.h" Header="SPIRIT1_interface.h" Marker="-1" OutputFile="" sate="2" />
+			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_interface.h" Header="SPIRIT1_interface.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_registers.h" Header="SPIRIT1_registers.h" Marker="-1" OutputFile="" sate="0" />
 																																								
 		</Group>

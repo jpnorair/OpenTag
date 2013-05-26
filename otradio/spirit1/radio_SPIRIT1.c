@@ -111,6 +111,7 @@ void    subrfctl_ccafail_isr();
 void    subrfctl_ccapass_isr();
 void    subrfctl_txend_isr();
 
+ot_bool subrfctl_channel_fastcheck(ot_u8 chan_id);
 ot_bool subrfctl_channel_lookup(ot_u8 chan_id, vlFILE* fp);
 void    subrfctl_chan_config(ot_u8 old_chan, ot_u8 old_eirp);
 void    subrfctl_buffer_config(MODE_enum mode, ot_u16 param);
@@ -154,6 +155,7 @@ void spirit1_virtual_isr(ot_u8 code) {
 
 void radio_mac_isr() {    
     //if (radio.state == RADIO_Csma)
+    
     platform_disable_gptim2();
     rm2_txcsma_isr();
 }
@@ -556,9 +558,10 @@ void em2_decode_data() {
   */
 
 ot_bool subrfctl_test_channel(ot_u8 channel) {
-    ot_bool test = True;
+    ot_bool test;
 
-    if ((channel != phymac[0].channel)) {
+    test = subrfctl_channel_fastcheck(channel);
+    if (test == False) {
         vlFILE* fp;
         /// Open the Mode 2 FS Config register that contains the channel list
         /// for this host, and make sure the channel we want to use is available
@@ -607,12 +610,12 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     ///     <LI> Set SPIRIT1 to pause RX timer on carrier sense </LI>
     if (rfctl.flags & RADIO_FLAG_FLOOD) {
         rxq.length          = 9;
-        *(ot_u16*)rxq.front = PLATFORM_ENDIAN16_C(0x0700);
-        rxq.getcursor       = &rxq.front[2];
-        rxq.putcursor       = &rxq.front[2];
+        rxq.getcursor       = rxq.front;
+        pktlen              = 7;
+        *rxq.getcursor++    = 7;
+        rxq.putcursor       = rxq.getcursor;
         rfctl.state         = RADIO_STATE_RXAUTO;
         rfctl.rxlimit       = 64;
-        pktlen              = 7;
         buffer_mode         = MODE_bg;
         maccfg[2]           = ((DRF_PROTOCOL2 & 0x1F) | _CS_TIMEOUT_MASK);
         maccfg[6]           = (5 << (BOARD_PARAM_RFHz > 26000000)); 
@@ -622,14 +625,17 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     ///     
     else {
 #   if ((M2_FEATURE(MULTIFRAME) == ENABLED) || (M2_FEATURE(FECRX) == ENABLED))
-        rfctl.state     = rfctl.flags & 3;
+        ot_u8 is_frcont = (rfctl.flags & RADIO_FLAG_FRCONT);
+        ot_u8 is_fec    = (phymac[0].channel >> 7);
         ///@todo 0x1000 should be MAXPKTLEN
-        pktlen          = (rfctl.flags & RADIO_FLAG_FRCONT) ? 0x1000 : 0x0100;
-        buffer_mode     = MODE_fgauto + (rfctl.state != RADIO_STATE_RXAUTO);
+        pktlen          = (is_frcont) ? 0x1000 : 0x0100;
+        rfctl.state     = is_frcont + is_fec;
+        //rfctl.rxlimit   = (rfctl.state != RADIO_STATE_RXAUTO) ? 8 : 64;
+        buffer_mode     = (rfctl.state != RADIO_STATE_RXAUTO) + MODE_fgauto;
 #   else
         // Initial state is always RXAUTO (2), because no FEC or Multiframe RX
         rfctl.state     = RADIO_STATE_RXAUTO;
-        rfctl.rxlimit   = 64;
+        //rfctl.rxlimit   = 64;
         pktlen          = 0x0100;
         buffer_mode     = MODE_fgauto;
 #   endif
@@ -713,7 +719,7 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
     static const ot_u8 bit_us[4] = { 19, 38, 6, 11 };
     ot_u8 index;
     
-    index       = ((phymac[0].channel & 0x20)>>4) + (rfctl.flags & RADIO_FLAG_FEC);
+    index       = ((phymac[0].channel & 0x20)>>4) + (phymac[0].channel >> 7);
     buf_bytes  *= bit_us[index];
     // buf_bytes = (buf_bytes * 8 / 1024) = (buf_bytes >> 7)
     buf_bytes >>= 7;
@@ -737,11 +743,14 @@ void rm2_reenter_rx(ot_sig2 callback) {
     rm2_reenter_rx_PROC:
         radio_flush_rx();
         rfctl.rxlimit = (rfctl.state == RADIO_STATE_RXAUTO) ? 64 : 8;
-        spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit);
+        spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)(96-rfctl.rxlimit) );
+        //spirit1_write(RFREG(FIFO_CONFIG2), (ot_u8)(96-rfctl.rxlimit) );
         spirit1_strobe( RFSTROBE_RX );
         spirit1_int_listen();
+        //spirit1_int_rxdata();
+        
         radio.state = RADIO_Listening;
-        rfctl.state = RADIO_STATE_RXINIT;
+        //rfctl.state = RADIO_STATE_RXINIT;
     }
 }
 #endif
@@ -831,6 +840,10 @@ void rm2_rxdata_isr() {
 #if (SYS_RECEIVE == ENABLED)
     ot_int frames_left;
     
+    //if (radio.state != RADIO_DataRX) {
+    //    rm2_rxsync_isr();
+    //}
+    
     /// 1. load data
     rm2_rxdata_isr_TOP:
     em2_decode_data();      // Contains logic to prevent over-run
@@ -855,7 +868,7 @@ void rm2_rxdata_isr() {
 #       if ((M2_FEATURE(MULTIFRAME) == ENABLED) || (M2_FEATURE(FECRX) == ENABLED))
         case (RADIO_STATE_RXPAGE >> RADIO_STATE_RXSHIFT): {
             rfctl.rxlimit = 64;
-            spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit);
+            spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)(96-rfctl.rxlimit));
                 
             // I know this is "spaghetti code," deal with it.
             // This section updates the PCKTLEN with known packet length;
@@ -961,7 +974,7 @@ void rm2_txstop_flood() {
     spirit1_int_txdone();
     
     //Disable Persistent TX (might not be necessary)
-    spirit1_write(RFREG(PROTOCOL0), DRF_PROTOCOL0);     
+    //spirit1_write(RFREG(PROTOCOL0), DRF_PROTOCOL0);     
 #endif
 }
 #endif
@@ -1063,14 +1076,13 @@ void rm2_txcsma_isr() {
             // arg2: 0 for background, 1 for foreground
             radio.evtdone(0, (rfctl.flags & RADIO_FLAG_FLOOD));  
             
-            // Preload into TX FIFO a small amount of data (up to 7 bytes)
+            // Preload into TX FIFO a small amount of data (up to 8 bytes)
             // This is small-enough that the TX state machine doesn't need
             // special conditions, and less initial data = less latency.
-            rfctl.txlimit   = 7;
+            rfctl.txlimit   = 7;  //8;
             
-            //txq.getcursor   = txq.front;  //why is this here?
-            
-            //txq.front[1]    = phymac[0].tx_eirp;
+            //txq.getcursor   = txq.front;          ///@todo why is this here?
+            txq.front[1]    = phymac[0].tx_eirp;
             
             radio_idle(); 
             radio_flush_tx();
@@ -1081,11 +1093,12 @@ void rm2_txcsma_isr() {
             radio.state     = RADIO_DataTX;
             rfctl.state     = RADIO_STATE_TXDATA;
             rfctl.txlimit   = RADIO_BUFFER_TXMAX;   // Change TXlimit to max buffer
+            spirit1_strobe( RFSTROBE_TX );
+            spirit1_int_txdata();
+            
             if (rfctl.flags & RADIO_FLAG_FLOOD) {
                 spirit1_start_counter();
             }
-            spirit1_strobe( RFSTROBE_TX );
-            spirit1_int_txdata();
             break;
         }
     }
@@ -1142,7 +1155,7 @@ void rm2_txdata_isr() {
     /// Packet flooding.  Only needed on devices that can send M2AdvP
     /// The radio.evtdone callback here should update the AdvP payload
     if (rfctl.flags & RADIO_FLAG_FLOOD) {
-        dll.counter -= 3;
+        //dll.counter -= 3;
  
         radio.evtdone(2, 0);
         
@@ -1236,13 +1249,23 @@ ot_bool subrfctl_chanscan( ) {
     /// <LI> Make sure the transmission can fit within the contention period. </LI>
     /// <LI> Scan it, to make sure it can be used. </LI>
     for (i=0; i<dll.comm.tx_channels; i++) {
-        if (subrfctl_channel_lookup(dll.comm.tx_chanlist[i], fp) != False) {
-            break;
-        }
+        ot_u8 next_channel = dll.comm.tx_chanlist[i];
+        if (subrfctl_channel_fastcheck(next_channel))   break;
+        if (subrfctl_channel_lookup(next_channel, fp))  break;
     }
 
     vl_close(fp);
     return (ot_bool)(i < dll.comm.tx_channels);
+}
+
+
+
+ot_bool subrfctl_channel_fastcheck(ot_u8 chan_id) {
+    ot_u8 old_chan_id;
+    old_chan_id = phymac[0].channel & 0x7F;
+    chan_id    &= 0x7F;
+
+    return (ot_bool)((chan_id == 0x7F) || (chan_id == old_chan_id));
 }
 
 
@@ -1253,43 +1276,33 @@ ot_bool subrfctl_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
 ///       If yes, return true.  (b) Determine if recalibration is required
 ///       before changing to the new channel, and recalibrate if so.
 
-    ot_u8       fec_id;
+    //ot_u8       fec_id;
     ot_u8       spectrum_id;
     ot_int      i;
     Twobytes    scratch;
 
-    /// Only do the channel lookup if the new channel is different than before
-    if (chan_id == phymac[0].channel) {
-        return True;
-    }
+    // Only do the channel lookup if the new channel is different than before
+    // (done now in subrfctl_channel_fastcheck())
+    //if (chan_id == phymac[0].channel&0x7F) {
+    //    return True;
+    //}
 
-    /// pull spectrum id and encoding type out of chan_id
-    fec_id      = chan_id & 0x80;
-    spectrum_id = chan_id & ~0x80;
+    // pull spectrum id and encoding type out of chan_id
+    // (SPIRIT1 driver does this already in input to chan_id)
+    //fec_id      = chan_id & 0x80;
+    //spectrum_id = chan_id & ~0x80;
 
-    /// If FEC is requested by the new channel, but this device does not support
-    /// FEC, then make sure to return False.    
-    /// @todo why is this code necessary?
-    if (fec_id) {
-#       if (M2_FEATURE(FEC) == ENABLED)
-            i = 0;
-#           if (M2_FEATURE(FECRX) == ENABLED)
-                i   = (rfctl.state & RADIO_STATE_RXMASK);
-#           endif
-#           if (M2_FEATURE(FECTX) == ENABLED)
-                i  |= (rfctl.state & RADIO_STATE_TXMASK);
-#           endif
-            if (i == 0) return False;
-#       else
-            return False;
-#       endif
-    }
+    // FEC selection is done in subrfctl_buffer_config() for
+    // each packet in SPIRIT1 driver
 
-    /// 0x7F is the wildcard spectrum id.  It means use same spectrum as before.
-    /// In this case, of course no recalibration is necessary.
-    if (spectrum_id == 0x7F) {
-        return True;
-    }
+    // 0x7F is the wildcard spectrum id.  It means use same spectrum as before.
+    // In this case, of course no recalibration is necessary.
+    // (done now in subrfctl_channel_fastcheck())
+    //if (spectrum_id == 0x7F) {
+    //    return True;
+    //}
+
+    spectrum_id = chan_id & 0x7F;
 
     /// Look through the channel list to find the one with matching spectrum id.
     /// The channel list is not necessarily sorted.
@@ -1410,8 +1423,8 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
     buf_cfg[0]  = 0;
     buf_cfg[1]  = RFREG(PCKTCTRL2);
     is_hs       = (phymac[0].channel & 0x20) >> 1;
-    buf_cfg[2]  = DRF_PCKTCTRL2_LSBG + is_hs;
-    buf_cfg[2] |= (mode & 1);
+    buf_cfg[2]  = DRF_PCKTCTRL2_LSBG + is_hs;                                  
+    buf_cfg[2] |= ((ot_u8)mode & 1);
     is_fec      = (phymac[0].channel & 0x80) >> 4;
     mode      <<= 1;
     mode       += is_fec;                              
@@ -1422,6 +1435,10 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
     buf_cfg[7]  = sync_matrix[mode];
     buf_cfg[8]  = sync_matrix[mode+1];
     buf_cfg[9]  = 0xAA;
+    //buf_cfg[6]  = 0;
+    //buf_cfg[7]  = 0;
+    //buf_cfg[8]  = sync_matrix[mode];
+    //buf_cfg[9]  = sync_matrix[mode+1];
     
     spirit1_spibus_io(10, 0, buf_cfg);
 }

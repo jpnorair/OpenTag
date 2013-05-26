@@ -56,11 +56,12 @@
 #define __ISR_ENTRY_HOOK(); 
 #define __ISR_EXIT_HOOK(); 
 
-/// RTC Alarm interrupt is required by OpenTag
+/// RTC Alarm interrupt is required by OpenTag in non-debug modes
 #undef __ISR_RTC_Alarm
 #undef __N_ISR_RTC_Alarm
 #define __ISR_RTC_Alarm
 
+/// RTC Wakeup interrupt is required by OpenTag for advertisement flooding
 #undef __ISR_RTC_WKUP
 #undef __N_ISR_RTC_WKUP
 #define __ISR_RTC_WKUP
@@ -229,7 +230,9 @@ void TAMPER_STAMP_IRQHandler(void) {
 void RTC_WKUP_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     //RTC->ISR &= ~RTC_ISR_RSF;
-    //__ISR_WAKEUP_HOOK();
+    EXTI->PR    = (1<<20);
+    RTC->ISR   &= ~RTC_ISR_WUTF;
+    //__ISR_WAKEUP_HOOK();          //OpenTag doesn't use this INT for STOP wakeup
     platform_isr_rtcwakeup();
     __ISR_EXIT_HOOK();
 }

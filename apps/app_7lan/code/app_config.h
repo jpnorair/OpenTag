@@ -75,7 +75,7 @@
 //#define OT_PARAM_USER_EXOTASKS
 #define OT_PARAM_USER_KERNELTASKS       TASK_external
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
-#define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
+#define OT_PARAM_SESSION_DEPTH          6                                   // Max simultaneous sessions (i.e. tasks)
 #define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    
 #define OT_PARAM_KERNEL_LIMIT           -1                                  // Maximum ticks between kernel calls (if<=0, no limit)
 
@@ -506,7 +506,7 @@
 #define ISF_LEN_device_features                 48
 #define ISF_LEN_channel_configuration           32
 #define ISF_LEN_real_time_scheduler             12
-#define ISF_LEN_hold_scan_sequence              4
+#define ISF_LEN_hold_scan_sequence              8
 #define ISF_LEN_sleep_scan_sequence             4
 #define ISF_LEN_beacon_transmit_sequence        16
 #define ISF_LEN_protocol_list                   4
