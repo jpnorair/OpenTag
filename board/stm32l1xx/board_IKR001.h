@@ -279,32 +279,32 @@
 // LED interface
 #define BOARD_LEDG_PORTNUM              3                   // Port D
 #define BOARD_LEDG_PORT                 GPIOD
-#define BOARD_LEDG_PINNUM               1
-#define BOARD_LEDG_PIN                  (1<<1)
+#define BOARD_LEDG_PINNUM               0
+#define BOARD_LEDG_PIN                  (1<<BOARD_LEDG_PINNUM)
 #define BOARD_LEDG_POLARITY             0
 
 #define BOARD_LEDO_PORTNUM              3                   // Port D
 #define BOARD_LEDO_PORT                 GPIOD
-#define BOARD_LEDO_PINNUM               2
-#define BOARD_LEDO_PIN                  (1<<2)
+#define BOARD_LEDO_PINNUM               1
+#define BOARD_LEDO_PIN                  (1<<BOARD_LEDO_PINNUM)
 #define BOARD_LEDO_POLARITY             0
 
 #define BOARD_LEDR_PORTNUM              3                   // Port D
 #define BOARD_LEDR_PORT                 GPIOD
-#define BOARD_LEDR_PINNUM               3
-#define BOARD_LEDR_PIN                  (1<<3)
+#define BOARD_LEDR_PINNUM               2
+#define BOARD_LEDR_PIN                  (1<<BOARD_LEDR_PINNUM)
 #define BOARD_LEDR_POLARITY             0
 
 #define BOARD_LEDB_PORTNUM              3                   // Port D
 #define BOARD_LEDB_PORT                 GPIOD
-#define BOARD_LEDB_PINNUM               4   
-#define BOARD_LEDB_PIN                  (1<<4)
+#define BOARD_LEDB_PINNUM               3   
+#define BOARD_LEDB_PIN                  (1<<BOARD_LEDB_PINNUM)
 #define BOARD_LEDB_POLARITY             0
 
 #define BOARD_LEDY_PORTNUM              3                   // Port D
 #define BOARD_LEDY_PORT                 GPIOD
-#define BOARD_LEDY_PINNUM               5
-#define BOARD_LEDY_PIN                  (1<<5)
+#define BOARD_LEDY_PINNUM               4
+#define BOARD_LEDY_PIN                  (1<<BOARD_LEDY_PINNUM)
 #define BOARD_LEDY_POLARITY             0
 
 // Analog Input BNC
@@ -494,7 +494,7 @@
 // DMA will be enabled in Sleep on demand by the device driver.  By default
 // it is disabled in sleep
 #define _DMACLK_LP   RCC_AHBLPENR_DMA1LPEN
-#define _DMACLK_DYNAMIC_LP
+//#define _DMACLK_DYNAMIC_LP
 
 // SRAM should always be clocked during SLEEP
 #define _SRAMCLK_LP      RCC_AHBLPENR_SRAMLPEN
@@ -600,7 +600,7 @@ static inline void BOARD_EXTI_STARTUP(void) {
 static inline void BOARD_PORT_STARTUP(void) {
     
     // JTAG/SWD Interface: Set to Output-GND unless in DEBUG mode
-#   if !defined(__DEBUG__)
+#   if !defined(__DEBUG__) || !defined(__PROTO__)
     BOARD_JTMS_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_JTMS_PINNUM*2)) \
                               | (GPIO_MODER_OUT << (BOARD_JTCK_PINNUM*2)) \
                               | (GPIO_MODER_OUT << (BOARD_JTDI_PINNUM*2)) );

@@ -143,9 +143,7 @@ void PLATFORM_ISR_SW() {
 //void OT_SWITCH1_ISR(void) {
 void platform_isr_exti6() {
 // start a background session
-    if (APP_TASK->event == 0) {
-        app_invoke(0x10);
-    }
+    app_invoke(0x10);
 }
 
 
@@ -188,18 +186,19 @@ void sub_button_init() {
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
   */ 
 
-void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
+ot_bool otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 /// The function app_invoke() will cause the kernel to call ext_systask() as
 /// soon as resources are available.
 
     // Start the task only if: Caller is ROOT, ALP Call is Protocol-255, Task is idle
-    if (    auth_isroot(user_id)    \
-        &&  (alp->inrec.id == 0xFF) \
-        &&  (APP_TASK->event == 0)   )   {
+    if (auth_isroot(user_id)    \
+    && (alp->inrec.id == 0xFF)  )   {
         
         app_invoke(alp->inrec.cmd);     // Initialize Ping Task on supplied channel
         alp_load_retval(alp, 1);        // Write back 1 (success)
+        return True;
     }
+    return False;
 }
 
 
@@ -213,7 +212,7 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
   */
 #ifdef EXTF_m2qp_sig_udp
 ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
-    static const char* label[]  = { "PongID: ", ", RSSI: ", ", Link: " };
+    static const char* label[]  = { "PongID: ", ", RSSI:", ", Link:" };
     ot_u16  pongval;
     ot_u8   i;
     ot_u8   scratch;
@@ -224,15 +223,17 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
     // Request: Copy PING VAL to PONG
     if (dstport == 255) {
         q_writeshort(&txq, pongval);
-        return True;
+    }
+    else if (dstport != 254) {
+        return False;
     }
 
 #   if defined(BOARD_eZ430Chronos)
     // Chronos doesn't have a normal MPipe, so print-out responses on the LCD
     
 #   elif (OT_FEATURE(MPIPE))
-    // Response: Compare PING Val to PONG Val and write output to MPipe
-    if (dstport == 254) {
+    { // Response: Compare PING Val to PONG Val and write output to MPipe
+    
         // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
         otapi_log_header(1, 0);
         
@@ -310,11 +311,11 @@ void ext_systask(ot_task task) {
     advert_tmpl     adv_tmpl;
 
     if (task->event == 1) {
-        task->event = 0;
+        //task->event = 0;
         
         // this is the same as the length of the response window,
         // which is set in applet_send_query()
-        task->nextevent = 512;  
+        task->nextevent = 3000;  
     
         // Generate a pseudo random 16 bit number to be used as a ping check value
         app.pingval = platform_prand_u16();
@@ -382,13 +383,13 @@ void applet_send_query(m2session* session) {
         command_tmpl command;
         command.opcode      = (ot_u8)CMD_udp_on_file;
         command.type        = (ot_u8)CMDTYPE_na2p_request;
-        command.extension   = (ot_u8)CMDEXT_none;
+        command.extension   = (ot_u8)CMDEXT_none; //CMDEXT_none;
         otapi_put_command_tmpl(&status, &command);
     }
     { //write the dialog information (timeout, channels to use)
         dialog_tmpl dialog;
         dialog.channels = 0;    //use same channel as request for response
-        dialog.timeout  = 0x41; //same as otutils_encode_timeout(512) -- 512 tick response slot
+        dialog.timeout  = 0x43; //same as otutils_encode_timeout(1024) -- 1024 tick response slot
         otapi_put_dialog_tmpl(&status, &dialog);
     }
     { //write the query to search for the sensor protocol id
@@ -452,6 +453,8 @@ void app_init() {
     // Task initialization
     APP_TASK->event = 0;
     APP_TASK->cursor = 0x55;
+    APP_TASK->reserve = 1;
+    APP_TASK->latency = 255;
 }
 
 
@@ -479,11 +482,15 @@ void app_invoke(ot_u8 channel) {
 /// for which you probably want to enforce a request-response turnaround time.
 /// for processing and for iterative tasks it is not important: set to 255.
 ///
-    sys_task_setevent(APP_TASK, 1);
-    sys_task_setcursor(APP_TASK, channel);
-    sys_task_setreserve(APP_TASK, 1);
-    sys_task_setlatency(APP_TASK, 255);
-    sys_preempt(APP_TASK, 0);
+    
+    APP_TASK->event ^= 1;
+    if (APP_TASK->event) {
+        //sys_task_setevent(APP_TASK, 1);
+        sys_task_setcursor(APP_TASK, channel);
+        //sys_task_setreserve(APP_TASK, 1);
+        //sys_task_setlatency(APP_TASK, 255);
+        sys_preempt(APP_TASK, 0);
+    }
 }
 
 

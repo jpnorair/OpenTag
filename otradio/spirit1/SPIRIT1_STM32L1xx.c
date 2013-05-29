@@ -595,6 +595,8 @@ void spirit1_set_txpwr(ot_u8 pwr_code) {
     ot_int  step;
     ot_int  eirp_val;
 
+    /*
+    
     // "-20" corresponds to 20 half-dB steps.  
     // SPIRIT1 PA starts at -30, pwr_code at -40.
     eirp_val    = pwr_code;
@@ -613,6 +615,20 @@ void spirit1_set_txpwr(ot_u8 pwr_code) {
         *cursor++   = eirp_val;
         eirp_val   -= step;
     } while (cursor != &pa_table[9]);
+    
+    */
+    
+    pa_table[0] = 0;
+    pa_table[1] = RFREG(PAPOWER8);
+    pa_table[2] = 1;
+    pa_table[3] = 1;
+    pa_table[4] = 1;
+    pa_table[5] = 30;
+    pa_table[6] = 30;
+    pa_table[7] = 42;
+    pa_table[8] = 42;
+    pa_table[9] = 42;
+    
     
     // Write new PA Table to device
     spirit1_spibus_io(10, 0, pa_table);

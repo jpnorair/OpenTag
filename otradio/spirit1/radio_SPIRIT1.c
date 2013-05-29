@@ -644,7 +644,7 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     /// 5.  Send Configuration data to SPIRIT1
     spirit1_spibus_io(7, 0, maccfg);                            // MAC configuration
     subrfctl_buffer_config(buffer_mode, pktlen);                // packet configuration
-    spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cs_thr);     // RX CS threshold
+    spirit1_write(RFREG(RSSI_TH), 0x14 /*(ot_u8)phymac[0].cs_thr*/ );     // RX CS threshold
 
     /// 6.  Prepare Decoder to receive, then receive
     em2_decode_newpacket();
@@ -734,24 +734,21 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
 void rm2_reenter_rx(ot_sig2 callback) {
 /// If radio is in an inactive state, restart RX using the same settings that
 /// are presently in the radio core.  Always do this when forced (callback == NULL).
-    if (callback == NULL) {
-        radio_idle();
-        goto rm2_reenter_rx_PROC;
+    if (callback != NULL) {
+        radio.evtdone = callback;
     }
+    radio_idle();
         
-    if ( (spirit1_read(RFREG(MC_STATE0)) & 0x22) == 0x22 ) {
-    rm2_reenter_rx_PROC:
-        radio_flush_rx();
-        rfctl.rxlimit = (rfctl.state == RADIO_STATE_RXAUTO) ? 64 : 8;
-        spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)(96-rfctl.rxlimit) );
-        //spirit1_write(RFREG(FIFO_CONFIG2), (ot_u8)(96-rfctl.rxlimit) );
-        spirit1_strobe( RFSTROBE_RX );
-        spirit1_int_listen();
-        //spirit1_int_rxdata();
+    radio_flush_rx();
+    rfctl.rxlimit = (rfctl.state == RADIO_STATE_RXAUTO) ? 64 : 8;
+    spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)(96-rfctl.rxlimit) );
+    //spirit1_write(RFREG(FIFO_CONFIG2), (ot_u8)(96-rfctl.rxlimit) );
+    spirit1_strobe( RFSTROBE_RX );
+    spirit1_int_listen();
+    //spirit1_int_rxdata();
         
-        radio.state = RADIO_Listening;
-        //rfctl.state = RADIO_STATE_RXINIT;
-    }
+    radio.state = RADIO_Listening;
+    //rfctl.state = RADIO_STATE_RXINIT;
 }
 #endif
 

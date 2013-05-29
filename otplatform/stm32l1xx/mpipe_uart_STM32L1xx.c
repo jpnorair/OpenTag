@@ -257,8 +257,8 @@
 #define __DMA_RX_CLEAR()    (DMA1->IFCR = _DMARX_IFG)
 #define __DMA_TX_CLEAR()    (DMA1->IFCR = _DMATX_IFG)
 #define __DMA_ALL_CLEAR()   (DMA1->IFCR = (_DMARX_IFG | _DMATX_IFG))
-#define __DMA_CLKON();
-#define __DMA_CLKOFF();     
+#define __DMA_CLKON();       
+#define __DMA_CLKOFF();    
 //#define __DMA_CLKON()       (RCC->AHBLPENR  |= RCC_AHBLPENR_DMA1LPEN)
 //#define __DMA_CLKOFF()      (RCC->AHBLPENR &= ~RCC_AHBLPENR_DMA1LPEN)
 
@@ -708,6 +708,7 @@ void sub_tx(ot_bool blocking, mpipe_priority data_priority) {
 void sub_txopen() {
     ot_u16 length;
     __UART_CLKON();
+    __DMA_CLKON();
     __UART_TXOPEN();
     length = uart.pkt[2] + MPIPE_OVERHEADBYTES + 2;
     __DMA_TXOPEN(uart.pkt, length);
@@ -761,6 +762,7 @@ void sub_rx(ot_bool blocking, mpipe_priority data_priority) {
         
         __SYS_CLKON();
         __UART_CLKON();
+        __DMA_CLKON();
         __UART_RXOPEN();
         __DMA_RXOPEN(mpipe.alp.inq->front, MPIPE_OVERHEADBYTES);
     }
@@ -794,19 +796,24 @@ void mpipedrv_isr() {
         case MPIPE_Idle: //note, case doesn't break!
         
         case MPIPE_RxHeader: {
-            ot_u8* payload_front;
+            ot_u8* next_data;
             ot_int payload_len;
             mpipe.state             = MPIPE_RxPayload;
             payload_len             = mpipe.alp.inq->front[2];
             mpipe.alp.inq->length   = payload_len + MPIPE_OVERHEADBYTES;
-            payload_front           = mpipe.alp.inq->front + MPIPE_OVERHEADBYTES;
-            mpipe.alp.inq->back     = payload_front + payload_len;
-            __DMA_RXOPEN(payload_front, payload_len);
+            next_data               = mpipe.alp.inq->front + MPIPE_OVERHEADBYTES;
+            mpipe.alp.inq->back     = next_data - MPIPE_FOOTERBYTES;
             
-            ///@todo This should be dynamic (current value relevant for 115200),
-            ///      and it will need to be conditional when RTS/CTS is enabled.
-            mpipeevt_rxdetect( __MPIPE_TIMEOUT(payload_len) );
-        }   return;
+            if (payload_len != 0) {
+                __DMA_RXOPEN(next_data, payload_len);
+                ///@todo This should be dynamic (current value relevant for 115200),
+                ///      and it will need to be conditional when RTS/CTS is enabled.
+                mpipeevt_rxdetect( __MPIPE_TIMEOUT(payload_len) );
+                return;
+            }
+            
+            // Note case fall-through
+        }   
 
         case MPIPE_RxPayload: {
             ot_u8* footer;
