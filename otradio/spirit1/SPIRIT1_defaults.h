@@ -100,26 +100,20 @@
 
 //R06 (power-up default)
 #define DRF_MCU_CK_CONF         (0)
-#if defined(_24MHz)
+#if (defined(_24MHz) || defined(_48MHz))
 #   define DRF_MCU_CK_CONF_24MHz    (0x80 | _XO_RATIO(0))
 #   define DRF_MCU_CK_CONF_16MHz    (0x80 | _XO_RATIO(1))
 #   define DRF_MCU_CK_CONF_12MHz    (0x80 | _XO_RATIO(2))
 #   define DRF_MCU_CK_CONF_8MHz     (0x80 | _XO_RATIO(3))
 #   define DRF_MCU_CK_CONF_4MHz     (0x80 | _XO_RATIO(5))
-#elif defined(_48MHz)
-#   define DRF_MCU_CK_CONF_24MHz    (0x80 | _XO_RATIO(2))
-#   define DRF_MCU_CK_CONF_16MHz    (0x80 | _XO_RATIO(3))
-#   define DRF_MCU_CK_CONF_12MHz    (0x80 | _XO_RATIO(4))
-#   define DRF_MCU_CK_CONF_8MHz     (0x80 | _XO_RATIO(5))
-#   define DRF_MCU_CK_CONF_4MHz     (0x80 | _XO_RATIO(7))
 #endif
 
 
 //RB4 
 #if (defined(_24MHz) || defined(_25MHz) || defined(_26MHz))
-#   define DRF_XO_RCO_TEST      (_PD_CLKDIV)
+#   define DRF_XO_RCO_TEST      (_PD_CLKDIV | _XO_RCO_TEST_RESERVED)
 #else
-#   define DRF_XO_RCO_TEST      (0)
+#   define DRF_XO_RCO_TEST      (_XO_RCO_TEST_RESERVED)
 #endif
 
 //R9E
@@ -368,11 +362,12 @@
 #   define DRF_CHFLT_HS         (_CHFLT_M_D7HS_26MHz | _CHFLT_E_D7HS_26MHz)
 #endif
 
-//R1E (using power-up defaults)
-#define DRF_AFC2                (_AFC_ENABLED | _AFC_MODE_CLOSE_ON_SLICER | __AFC_PD_LEAKAGE(8))
+//R1E 
+#define DRF_AFC2                (_AFC_FREEZE_ON_SYNC | _AFC_ENABLED | \
+                                    _AFC_MODE_CLOSE_ON_SLICER | __AFC_PD_LEAKAGE(8))
 
-//R1F (using power-up defaults)
-#define DRF_AFC1                0x18
+//R1F 
+#define DRF_AFC1                __AFC_FAST_PERIOD(24)
 
 //R20 (using power-up defaults)
 #define DRF_AFC0                (__AFC_FAST_GAIN(2) | __AFC_SLOW_GAIN(5))
@@ -384,22 +379,24 @@
 #define DRF_RSSI_TH             __RSSI_TH(-100)
 
 //R23 (using power-up defaults)
+///@todo Evaluate different values for P_GAIN, I_GAIN
 #define DRF_CLOCKREC            (__CLK_REC_P_GAIN(2) | _PSTFLT_LEN | __CLK_REC_I_GAIN(8))
 
 //R24 (using power-up defaults)
-#define DRF_AGCCTRL2             ((2<<4) | __MEAS_TIME(2))
+///@todo __MEAS_TIME(2) = 2us AGC clock.  Might be worth trying __MEAS_TIME(3) = 4us
+#define DRF_AGCCTRL2             (0x20 | __MEAS_TIME(2))
 
-//R25 (using power-up defaults)
-#define DRF_AGCCTRL1            (__THRESHOLD_HI(6) | __THRESHOLD_LO(5))
+//R25
+#define DRF_AGCCTRL1            (__THRESHOLD_HI(6) | __THRESHOLD_LO(2))
 
 //R26 (using power-up defaults)
 #define DRF_AGCCTRL0            (_AGC_ENABLE | 0x0A)
 
 //R27: Target is (100us < RSSI measuring time < 200us)
 #if defined(_24MHz) || defined(_25MHz) || defined(_26MHz)
-#   define DRF_ANT_SELECT_CONF  (__AS_MEAS_TIME(5))
-#else
 #   define DRF_ANT_SELECT_CONF  (__AS_MEAS_TIME(4))
+#else
+#   define DRF_ANT_SELECT_CONF  (__AS_MEAS_TIME(5))
 #endif
 
 //R28-R2F (N/A)
@@ -413,10 +410,10 @@
 #define DRF_PCKTCTRL3           (_PCKT_FRMT_BASIC | _RX_MODE_NORMAL | __LEN_WID(8))
 
 //R32: The preamble length & fixed/var is set when picking a channel
-#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3 | _FIX_VAR_LEN)
-#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
-#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(6) | _SYNC_LENGTH_3 | _FIX_VAR_LEN)
-#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(6) | _SYNC_LENGTH_3)
+#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(3) | _SYNC_LENGTH_3 | _FIX_VAR_LEN)
+#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(3) | _SYNC_LENGTH_3)
+#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(5) | _SYNC_LENGTH_3 | _FIX_VAR_LEN)
+#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(5) | _SYNC_LENGTH_3)
 
 //R33: It is changed when picking a channel
 ///@todo observe CRC operation and potentially change this
@@ -441,7 +438,7 @@
 #define DRF_SYNC1               0xD0
 
 //R3A:                
-#define DRF_QI                  (__SQI_TH(0) | __PQI_TH(4) | _SQI_EN | _PQI_EN)
+#define DRF_QI                  (__SQI_TH(0) | __PQI_TH(2) | _SQI_EN | _PQI_EN)
 
 //R3B-3D: unused
 #define DRF_MBUS_PRMBL          0x20
@@ -455,19 +452,19 @@
 #define DRF_FIFO_CONFIG0        5
 
 //R42-4E: unused for time being.  Control Field might be used in later impls.
-#define DRF_PCKT_FLT_GOALS12     0x42
-#define DRF_PCKT_FLT_GOALS11     0x43
-#define DRF_PCKT_FLT_GOALS10     0x44
-#define DRF_PCKT_FLT_GOALS9      0x45
-#define DRF_PCKT_FLT_GOALS8      0x46
-#define DRF_PCKT_FLT_GOALS7      0x47
-#define DRF_PCKT_FLT_GOALS6      0x48
-#define DRF_PCKT_FLT_GOALS5      0x49
-#define DRF_PCKT_FLT_GOALS4      0x4A
-#define DRF_PCKT_FLT_GOALS3      0x4B
-#define DRF_PCKT_FLT_GOALS2      0x4C
-#define DRF_PCKT_FLT_GOALS1      0x4D
-#define DRF_PCKT_FLT_GOALS0      0x4E
+#define DRF_PCKT_FLT_GOALS12     0
+#define DRF_PCKT_FLT_GOALS11     0
+#define DRF_PCKT_FLT_GOALS10     0
+#define DRF_PCKT_FLT_GOALS9      0
+#define DRF_PCKT_FLT_GOALS8      0
+#define DRF_PCKT_FLT_GOALS7      0
+#define DRF_PCKT_FLT_GOALS6      0
+#define DRF_PCKT_FLT_GOALS5      0
+#define DRF_PCKT_FLT_GOALS4      0
+#define DRF_PCKT_FLT_GOALS3      0
+#define DRF_PCKT_FLT_GOALS2      0
+#define DRF_PCKT_FLT_GOALS1      0
+#define DRF_PCKT_FLT_GOALS0      0
 
 //R4F
 //more investigation on CRC & control fields needed
@@ -531,11 +528,11 @@
 //R6D (using power-up defaults)
 #define DRF_RCO_VCO_CALIBR_IN2  (__RWT_IN(7) | __RFB_IN(0))
 
-//R6E (using power-up defaults)
-#define DRF_RCO_VCO_CALIBR_IN1  (__VCO_CALIBR_TX(72))
+//R6E ***
+#define DRF_RCO_VCO_CALIBR_IN1  (__VCO_CALIBR_TX(b1000001))
 
-//R6F (using power-up defaults)
-#define DRF_RCO_VCO_CALIBR_IN0  (__VCO_CALIBR_RX(72))
+//R6F ***
+#define DRF_RCO_VCO_CALIBR_IN0  (__VCO_CALIBR_RX(b1000010))
 
 //R90-93 (using power-up defaults)
 #define DRF_IRQ_MASK3           (0)
@@ -543,12 +540,25 @@
 #define DRF_IRQ_MASK1           (0)
 #define DRF_IRQ_MASK0           (0)
 
+//RA3
+#define DRF_DEM_ORDER           (_DEM_RESERVED)
+
 //RA4 (using power-up defaults)
-#define DRF_PM_CONFIG           (0x0C)
+#define DRF_PM_CONFIG2          (0x0C)
 
+//RA5 
+#define DRF_PM_CONFIG1          (_EN_RM | __KRM_HI(16))
 
+//RA6 (using power-up defaults)
+#define DRF_PM_CONFIG0          (__KRM_LO(0))
 
+//RA7 (using power-up defaults)
+#define DRF_XO_RCO_CONFIG       (_XO_RCO_RESERVED)
 
+//RA8 (using power-up defaults)
+#define DRF_TEST_SELECT         (0)
 
+//RB2 (using power-up defaults)
+#define DRF_PM_TEST             (0x42)
 
 #endif

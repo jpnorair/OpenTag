@@ -188,6 +188,7 @@
 #define BOARD_PARAM_PLLdiv              3
 #define BOARD_PARAM_PLLHz               (BOARD_PARAM_PLLout/BOARD_PARAM_PLLdiv)
 
+// Standard & Full-Speed clocks (Flank halves APB2, APB1 settings)
 #define BOARD_PARAM_AHBCLKDIV           1                       // AHB Clk = Main CLK / AHBCLKDIV
 #define BOARD_PARAM_APB2CLKDIV          1                       // APB2 Clk = Main CLK / AHBCLKDIV
 #define BOARD_PARAM_APB1CLKDIV          1                       // APB1 Clk = Main CLK / AHBCLKDIV
@@ -600,7 +601,7 @@ static inline void BOARD_EXTI_STARTUP(void) {
 static inline void BOARD_PORT_STARTUP(void) {
     
     // JTAG/SWD Interface: Set to Output-GND unless in DEBUG mode
-#   if !defined(__DEBUG__) || !defined(__PROTO__)
+#   if defined(__RELEASE__)
     BOARD_JTMS_PORT->MODER |= ( (GPIO_MODER_OUT << (BOARD_JTMS_PINNUM*2)) \
                               | (GPIO_MODER_OUT << (BOARD_JTCK_PINNUM*2)) \
                               | (GPIO_MODER_OUT << (BOARD_JTDI_PINNUM*2)) );
@@ -670,10 +671,10 @@ static inline void BOARD_PORT_STARTUP(void) {
       //GPIOH->MODER            = (GPIO_MODER_OUT << (0*2));
       //BOARD_USB_PORT->PUPDR  |= (1 << (BOARD_USB_DMPINNUM*2)) \
                                 | (1 << (BOARD_USB_DPPINNUM*2));
-        BOARD_USB_PORT->AFR[1] |= (10 << ((BOARD_USB_DMPINNUM-8)*4))  \
+        //BOARD_USB_PORT->AFR[1] |= (10 << ((BOARD_USB_DMPINNUM-8)*4))  \
                                 | (10 << ((BOARD_USB_DPPINNUM-8)*4));
       //BOARD_USB_PORT->OTYPER |= (BOARD_USB_DMPINNUM | BOARD_USB_DPPINNUM);
-        BOARD_USB_PORT->OSPEEDR|= (GPIO_OSPEEDR_40MHz << (BOARD_USB_DMPINNUM*2)) \
+        //BOARD_USB_PORT->OSPEEDR|= (GPIO_OSPEEDR_40MHz << (BOARD_USB_DMPINNUM*2)) \
                                 | (GPIO_OSPEEDR_40MHz << (BOARD_USB_DPPINNUM*2));
       //BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
                                 | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
@@ -719,7 +720,7 @@ static inline void BOARD_PORT_STARTUP(void) {
     BOARD_RFGPIO_PORT->PUPDR   |= (2 << (BOARD_RFGPIO_0PINNUM*2)) \
                                 | (2 << (BOARD_RFGPIO_1PINNUM*2)) \
                                 | (2 << (BOARD_RFGPIO_2PINNUM*2)) \
-                                | (2 << (BOARD_RFCTL_3PINNUM*2));
+                                | (0 << (BOARD_RFCTL_3PINNUM*2));
     BOARD_RFGPIO_PORT->BSRRL    = BOARD_RFCTL_SDNPIN;
     
     BOARD_RFSPI_PORT->PUPDR    |= ( (2 << (BOARD_RFSPI_MOSIPINNUM*2)) \

@@ -17,7 +17,7 @@
   * @file       /otradio/spirit1/radio_SPIRIT1.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       2 Feb 2013
+  * @date       6 June 2013
   * @brief      Radio Driver (RF transceiver) for SPIRIT1
   * @defgroup   Radio (Radio Module)
   * @ingroup    Radio
@@ -73,6 +73,17 @@
 
 
 
+//#define RFCORE_DEBUG
+ot_u8 dump[256];
+
+#ifdef RFCORE_DEBUG
+#   define __CORE_DUMP()   spirit1_coredump()
+#else
+#   define __CORE_DUMP();
+#endif
+
+
+
 /** Universal Data declaration
   * Described in radio.h of the OTlib.
   * This driver only supports M2_PARAM_MI_CHANNELS = 1.
@@ -85,6 +96,7 @@ radio_struct    radio;
   * Described in radio_SPIRIT1.h
   */
 rfctl_struct rfctl;
+
 
 
 
@@ -305,8 +317,17 @@ void radio_init( ) {
     radio.evtdone   = &otutils_sig2_null;
     spirit1_init_bus();
     spirit1_load_defaults();
+    
+    /// Do this workaround (SPIRIT1 Errata DocID023165 R5, section 1.2) to fix
+    /// the shutdown current issue for input voltages <= 2.6V.  For input
+    /// voltages > 2.6V, it does not hurt anything.
+    //spirit1_write(RFREG(PM_TEST), 0xCA);
+    //spirit1_write(RFREG(TEST_SELECT), 0x04);
+    //spirit1_write(RFREG(TEST_SELECT), 0x00);
+    
+    /// Done with the radio init
     radio_sleep();
-
+    
     /// Set startup channel to a completely invalid channel ID (0x55), and run 
     /// lookup on the default channel (0x07) to kick things off.  Since the 
     /// startup channel will always be different than a real channel, the 
@@ -380,9 +401,12 @@ void radio_getfourbytes(ot_u8* data) {
 #endif
 
 
+static const ot_u8 read_irq[] = { 1, 0xFA };
+
 
 #ifndef EXTF_radio_flush_rx
 void radio_flush_rx() {
+    //spirit1_spibus_io(2, 4, (ot_u8*)read_irq);
     spirit1_strobe( RFSTROBE_FLUSHRXFIFO );
 }
 #endif
@@ -391,6 +415,7 @@ void radio_flush_rx() {
 
 #ifndef EXTF_radio_flush_tx
 void radio_flush_tx() {
+    //spirit1_spibus_io(2, 4, (ot_u8*)read_irq);
     spirit1_strobe( RFSTROBE_FLUSHTXFIFO );
 }
 #endif
@@ -508,7 +533,8 @@ void em2_encode_data() {
     }
     
     /// dummy SPI access to complete fill
-    *(ot_u16*)save  = 0x0080;
+    //spirit1_read(RFREG(IRQ_STATUS0));
+    *(ot_u16*)save  = PLATFORM_ENDIAN16_C(0x8000);
     spirit1_spibus_io(2, 0, save);
 }
 #endif
@@ -598,11 +624,11 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     }
     
     /// 3. Prepare modem state-machine to do RX-Idle or RX-RX
-    ///    RX-RX happens duing Response listening, unless FIRSTRX is high
-    netstate &= (M2_NETFLAG_FIRSTRX | M2_NETSTATE_RESP);
-    if ((netstate ^ M2_NETSTATE_RESP) == 0) {
-        maccfg[4] = _PERS_RX;
-    }
+    ///    RX-RX happens during Response listening, unless FIRSTRX is high
+    //netstate &= (M2_NETFLAG_FIRSTRX | M2_NETSTATE_RESP);
+    //if ((netstate ^ M2_NETSTATE_RESP) == 0) {
+    //    maccfg[4] = _PERS_RX;
+    //}
 
     /// 4a. Setup RX for Background detection:
     ///     <LI> Manipulate Queue to fit bg frame into common model </LI>
@@ -644,7 +670,7 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     /// 5.  Send Configuration data to SPIRIT1
     spirit1_spibus_io(7, 0, maccfg);                            // MAC configuration
     subrfctl_buffer_config(buffer_mode, pktlen);                // packet configuration
-    spirit1_write(RFREG(RSSI_TH), 0x14 /*(ot_u8)phymac[0].cs_thr*/ );     // RX CS threshold
+    spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cs_thr );     // RX CS threshold
 
     /// 6.  Prepare Decoder to receive, then receive
     em2_decode_newpacket();
@@ -653,7 +679,7 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     
     /// 7.  Using rm2_reenter_rx() with NULL forces entry into rx, and sets states
     spirit1_iocfg_rx();
-    rm2_reenter_rx(NULL);
+    rm2_reenter_rx(radio.evtdone);
 }
 
 
@@ -734,18 +760,15 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
 void rm2_reenter_rx(ot_sig2 callback) {
 /// If radio is in an inactive state, restart RX using the same settings that
 /// are presently in the radio core.  Always do this when forced (callback == NULL).
-    if (callback != NULL) {
-        radio.evtdone = callback;
-    }
+    radio.evtdone = callback;
+    
     radio_idle();
         
     radio_flush_rx();
     rfctl.rxlimit = (rfctl.state == RADIO_STATE_RXAUTO) ? 64 : 8;
     spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)(96-rfctl.rxlimit) );
-    //spirit1_write(RFREG(FIFO_CONFIG2), (ot_u8)(96-rfctl.rxlimit) );
     spirit1_strobe( RFSTROBE_RX );
     spirit1_int_listen();
-    //spirit1_int_rxdata();
         
     radio.state = RADIO_Listening;
     //rfctl.state = RADIO_STATE_RXINIT;
@@ -796,7 +819,6 @@ void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     }
 
     subrfctl_launch_rx(channel, netstate);
-
 #else
     // BLINKER only (no RX)
     callback(RM2_ERR_GENERIC, 0);
@@ -930,10 +952,14 @@ void rm2_rxdata_isr() {
 
 
 
+
 #ifndef EXTF_rm2_rxend_isr
 void rm2_rxend_isr() {
     rfctl.state = RADIO_STATE_RXDONE;           // Make sure in DONE State, for decoding
     em2_decode_data();                          // decode any leftover data
+    
+    { ot_u8 i=0; do { dump[i]=spirit1_read(i); } while (++i != 0); }
+    
     subrfctl_finish(0, (ot_int)crc_check() - 1);
 }
 #endif
@@ -1085,6 +1111,8 @@ void rm2_txcsma_isr() {
             radio_flush_tx();
             em2_encode_data();
             
+            //{ ot_u8 i=0; do { dump[i]=spirit1_read(i); } while (++i != 0); }
+            
             // Prepare for TX, then enter TX
             // For floods, we must activate the flood counter right before TX
             radio.state     = RADIO_DataTX;
@@ -1196,6 +1224,8 @@ void subrfctl_txend_isr() {
 ///@todo could put (rfctl.state != RADIO_STATE_TXDONE) as an argument, or 
 ///      something that resolves to an appropriate non-zero,as an arg in order 
 ///      to signal an error
+    //radio_idle();
+    //radio_flush_tx();
     subrfctl_finish(0, 0);
 }
 

@@ -89,11 +89,12 @@
 
 #define RF_XO_RCO_TEST          0xB4
 #   define _PD_CLKDIV           (1<<3)      //set (disable) on 24-26 MHz systems
+#   define _XO_RCO_TEST_RESERVED 0x21
 
 #define RF_SYNTH_CONFIG0        0x9F
 #   define _SEL_TSPLIT          (1<<7)
-#   define _SEL_TSPLIT_1n75s    (0<<7)
-#   define _SEL_TSPLIT_3n47s    (1<<7)      //default
+#   define _SEL_TSPLIT_1n75s    (0x40)
+#   define _SEL_TSPLIT_3n47s    (0xA0)      //default
 
 #define RF_SYNTH_CONFIG1        0x9E
 #   define _REFDIV              (1<<7)
@@ -101,10 +102,10 @@
 #   define _REFDIV_XO1in2       (1<<7)
 #   define _VCO_L_SEL           (1<<2)
 #   define _VCO_H_SEL           (1<<1)
-#   define _VCO_169MHz_SEL      (1<<1)
-#   define _VCO_315MHz_SEL      (2<<1)
-#   define _VCO_433MHz_SEL      (1<<1)
-#   define _VCO_866MHz_SEL      (1<<1)
+#   define _VCO_169MHz_SEL      (0x5B)
+#   define _VCO_315MHz_SEL      (0x5D)
+#   define _VCO_433MHz_SEL      (0x5B)
+#   define _VCO_866MHz_SEL      (0x5B)
 
 #define RF_IF_OFFSET_ANA        0x07
 #   define _IF_OFFSET_ANA(IF, XO)   (((IF*3*4096)/XO) - 64)
@@ -270,29 +271,30 @@
 #define RF_CHFLT                0x1D
 #   define _CHFLT_M             (15<<4)
 #   define _CHFLT_M_D7LS_24MHz  (6<<4)      //150 kHz
-#   define _CHFLT_M_D7LS_25MHz  (7<<4)      //147 kHz
+#   define _CHFLT_M_D7LS_25MHz  (6<<4)      //155 kHz
 #   define _CHFLT_M_D7LS_26MHz  (7<<4)      //147 kHz
 #   define _CHFLT_M_D7LS_48MHz  (6<<4)      //150 kHz
-#   define _CHFLT_M_D7LS_50MHz  (6<<4)      //150 kHz
+#   define _CHFLT_M_D7LS_50MHz  (6<<4)      //155 kHz
 #   define _CHFLT_M_D7LS_52MHz  (7<<4)      //147 kHz
 #   define _CHFLT_M_D7HS_24MHz  (6<<4)      //300 kHz
-#   define _CHFLT_M_D7HS_25MHz  (6<<4)      //300 kHz
+#   define _CHFLT_M_D7HS_25MHz  (6<<4)      //310 kHz
 #   define _CHFLT_M_D7HS_26MHz  (7<<4)      //294 kHz
 #   define _CHFLT_M_D7HS_48MHz  (6<<4)      //300 kHz
-#   define _CHFLT_M_D7HS_50MHz  (6<<4)      //300 kHz
+#   define _CHFLT_M_D7HS_50MHz  (6<<4)      //310 kHz
 #   define _CHFLT_M_D7HS_52MHz  (7<<4)      //294 kHz
 #   define _CHFLT_E             (15<<0)
 #   define _CHFLT_E_D7LS_24MHz  (2<<0)      //150 kHz
-#   define _CHFLT_E_D7LS_25MHz  (2<<0)      //147 kHz
+#   define _CHFLT_E_D7LS_25MHz  (2<<0)      //155 kHz
 #   define _CHFLT_E_D7LS_26MHz  (2<<0)      //147 kHz
-#   define _CHFLT_E_D7LS_48MHz  (3<<0)      //150 kHz
-#   define _CHFLT_E_D7LS_52MHz  (3<<0)      //147 kHz
+#   define _CHFLT_E_D7LS_48MHz  (2<<0)      //150 kHz
+#   define _CHFLT_E_D7LS_50MHz  (2<<0)      //155 kHz
+#   define _CHFLT_E_D7LS_52MHz  (2<<0)      //147 kHz
 #   define _CHFLT_E_D7HS_24MHz  (1<<0)      //300 kHz
-#   define _CHFLT_E_D7HS_25MHz  (1<<0)      //300 kHz
+#   define _CHFLT_E_D7HS_25MHz  (1<<0)      //310 kHz
 #   define _CHFLT_E_D7HS_26MHz  (1<<0)      //294 kHz
-#   define _CHFLT_E_D7HS_48MHz  (2<<0)      //300 kHz
-#   define _CHFLT_E_D7HS_50MHz  (2<<0)      //300 kHz
-#   define _CHFLT_E_D7HS_52MHz  (2<<0)      //294 kHz
+#   define _CHFLT_E_D7HS_48MHz  (1<<0)      //300 kHz
+#   define _CHFLT_E_D7HS_50MHz  (1<<0)      //310 kHz
+#   define _CHFLT_E_D7HS_52MHz  (1<<0)      //294 kHz
 
 #define RF_AFC2                 0x1E
 #   define _AFC_FREEZE_ON_SYNC  (1<<7)
@@ -301,9 +303,11 @@
 #   define _AFC_MODE_CLOSE_ON_SLICER (0<<5)     //default
 #   define _AFC_MODE_CLOSE_ON_STAGE2 (1<<5)
 #   define _AFC_PD_LEAKAGE      (31<<0)
+#   define __AFC_PD_LEAKAGE(VAL) (VAL&31)
 
 #define RF_AFC1                 0x1F
 #   define _AFC_FAST_PERIOD     (255)
+#   define __AFC_FAST_PERIOD(VAL) (VAL)
 
 #define RF_AFC0                 0x20
 #   define _AFC_FAST_GAIN       (15<<4)
@@ -611,8 +615,32 @@
 #define RF_IRQ_MASK1            0x92
 #define RF_IRQ_MASK0            0x93
 
-#define RF_PM_CONFIG            0xA4
+
+#define RF_DEM_CONFIG           0xA3
+#   define _DEM_RESERVED        0x35
+#   define _DEM_ORDER           (1<<1)
+
+#define RF_PM_CONFIG2           0xA4
 #   define _EN_TS_BUFFER        (1<<6)
+
+#define RF_PM_CONFIG1           0xA5
+#   define _EN_RM               (1<<7)
+#   define _KRM_HI              (127)
+#   define __KRM_HI(VAL)        (VAL&127)
+
+#define RF_PM_CONFIG0           0xA6
+#   define _KRM_LO              (255)
+#   define __KRM_LO(VAL)        (VAL&255)
+
+#define RF_XO_RCO_CONFIG        0xA7
+#   define _XO_RCO_RESERVED     (0xE1)
+#   define _EXT_RCOSC           (1<<3)
+
+#define RF_TEST_SELECT          0xA8
+
+#define RF_PM_TEST              0xB2
+
+
 
 
 /// Read only Registers

@@ -218,16 +218,18 @@ spirit1_struct spirit1;
   */
 void spirit1_coredump() {
 ///debugging function to dump-out register values of RF core (not all are used)
-    ot_u8 i;
+    ot_u8 i = 0;
+    ot_u8 regval;
+    ot_u8 label[]   = { 'R', 'E', 'G', '_', 0, 0 };
 
-    for (i=0; i<0xFF; i++) {
-        ot_u8 label[]   = { 'R', 'E', 'G', '_', 0, 0 };
-        ot_u8 regval    = spirit1_read(i);
-
-        otutils_bin2hex(&i, &label[4], 1);
-        ///@todo wait for mpipe here (?)
+    do {
+        regval = spirit1_read(i);
+        otutils_bin2hex(&label[4], &i, 1);
         otapi_log_msg(MSG_raw, 6, 1, label, &regval);
+        //mpipedrv_wait();
+        platform_swdelay_ms(5);
     }
+    while (++i != 0);
 }
 
 
@@ -244,11 +246,13 @@ void spirit1_load_defaults() {
         3,  0,  0xB4,   DRF_XO_RCO_TEST,
         4,  0,  0x9E,   DRF_SYNTH_CONFIG1, DRF_SYNTH_CONFIG0,
         3,  0,  0x18,   DRF_PAPOWER0,
-        3,  0,  0x1C,   DRF_FDEV0, 
-        3,  0,  0x27,   DRF_ANT_SELECT_CONF, 
+        6,  0,  0x1C,   DRF_FDEV0, DRF_CHFLT_LS, DRF_AFC2, DRF_AFC1, 
+        5,  0,  0x25,   DRF_AGCCTRL1, DRF_AGCCTRL0, DRF_ANT_SELECT_CONF, 
         3,  0,  0x3A,   DRF_QI,
         3,  0,  0x41,   DRF_FIFO_CONFIG0,
         3,  0,  0x4F,   DRF_PCKT_FLT_OPTIONS,
+      //3,  0,  0x93,   RFINT_TX_FIFO_ERROR,
+        5,  0,  0xA3,   DRF_DEM_ORDER, DRF_PM_CONFIG2, DRF_PM_CONFIG1,
         0   //Terminating 0
     };
     
@@ -262,7 +266,7 @@ void spirit1_load_defaults() {
         spirit1_spibus_io(cmd_len, 0, cmd);
     }
 
-    // Debugging Test to make sure data was written (look at first write block)
+    // Early debugging test to make sure data was written (look at first write block)
 //    {
 //        volatile ot_u8 test;
 //        ot_u8 i;
@@ -561,41 +565,41 @@ ot_u8 spirit1_calc_rssithr(ot_u8 input) {
 /// 
 /// Input is a whole-dBm value encoded linearly as: {0=-140dBm, 127=-13dBm}.
 /// Output is the value that should go into SPIRIT1 RSSI_TH field.
-
     ot_int rssi_thr;
-    rssi_thr    = input;
-    rssi_thr   -= (_ATTEN_DB + 10);                 // SPIRIT1 uses -130 as baseline, hence +10
-    rssi_thr    = (rssi_thr < 0) ? 0 : rssi_thr;    // Clip baseline at 0
-    rssi_thr  <<= 1;                                // Multiply by 2 to yield half-dBm.
     
+    // SPIRIT1 uses -130 as baseline, DASH7 -140
+    // Clip baseline at 0
+    rssi_thr = (ot_int)input - 10;
+    if (rssi_thr < 0)                               
+        rssi_thr = 0;  
+        
+    // Multiply by 2 to yield half-dBm.
+    rssi_thr  <<= 1;                                
     return rssi_thr;
 }
 
+    
 
 void spirit1_set_txpwr(ot_u8 pwr_code) {
 /// Sets the tx output power.
 /// "pwr_code" is a value, 0-127, that is: eirp_code/2 - 40 = TX dBm
 /// i.e. eirp_code=0 => -40 dBm, eirp_code=80 => 0 dBm, etc
-
-///@todo Table is not calibrated, it is a guess based on some known points.
-///      A half-dB LUT from a hermite-cubic interpolated model should be built
-///      and used until formal characterization is possible.
-    static const ot_u8 pa_lut[85] = {
-         0, 120, 113, 107, 102,  98,  94,  91,  88,  85,  82,  80,      //-30 to -24.5
-        78,  76,  74,  73,  72,  71,  70,  69,  68,  67,  66,  65,      //-24 to -18.5
-        64,  63,  62,  61,  60,  59,  59,  58,  57,  56,  55,  54,      //-18 to -12.5
-        53,  52,  51,  50,  49,  48,  47,  46,  45,  43,  41,  39,      //-12 to  -6.5
-        37,  34,  30,  26,  23,  21,  19,  18,  17,  16,  15,  14,      // -6 to  -0.5
-        13,  13,  12,  12,  11,  11,  10,  10,   9,   9,   8,   8,      //  0 to   5.5
-         7,   7,   7,   6,   6,   6,   5,   5,   5,   4,   4,   4,      //  6 to   11.5
-         3                                                              // 12 
+    static const ot_u8 pa_lut[84] = {
+        0x57, 0x57, 0x56, 0x55, 0x54, 0x53, 0x53, 0x52, 0x52, 0x50,     //-30 to -25.5
+        0x4F, 0x4E, 0x4D, 0x4C, 0x4B, 0x4B, 0x4A, 0x49, 0x48, 0x47,     //-25 to -20.5
+        0x46, 0x45, 0x44, 0x43, 0x42, 0x41, 0x40, 0x3F, 0x3E, 0x3C,     //-20 to -15.5
+        0x3B, 0x3A, 0x39, 0x38, 0x37, 0x36, 0x34, 0x33, 0x32, 0x31,     //-15 to -10.5
+        0x30, 0x2F, 0x2D, 0x2C, 0x2B, 0x2A, 0x29, 0x27, 0x26, 0x25,     //-10 to -5.5
+        0x24, 0x23, 0x22, 0x20, 0x1F, 0x1E, 0x1D, 0x1C, 0x1B, 0x19,     //-5 to -0.5
+        0x18, 0x17, 0x16, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x0F,     // 0 to 4.5
+        0x0E, 0x0D, 0x0C, 0x0B, 0x0A, 0x09, 0x08, 0x07, 0x06, 0x05,     // 5 to 9.5
+        0x04, 0x03, 0x02, 0x01                                          // 10 to 11.5
     };
+    
     ot_u8   pa_table[10];
     ot_u8*  cursor;
     ot_int  step;
     ot_int  eirp_val;
-
-    /*
     
     // "-20" corresponds to 20 half-dB steps.  
     // SPIRIT1 PA starts at -30, pwr_code at -40.
@@ -604,7 +608,7 @@ void spirit1_set_txpwr(ot_u8 pwr_code) {
 
     // Adjust base power code in case it is out-of-range
     if (eirp_val < 0)       eirp_val = 0;
-    else if (eirp_val > 84) eirp_val = 84;
+    else if (eirp_val > 83) eirp_val = 83;
 
     // Build PA RAMP using 8 steps of variable size.
     pa_table[0] = 0;
@@ -615,20 +619,7 @@ void spirit1_set_txpwr(ot_u8 pwr_code) {
         *cursor++   = eirp_val;
         eirp_val   -= step;
     } while (cursor != &pa_table[9]);
-    
-    */
-    
-    pa_table[0] = 0;
-    pa_table[1] = RFREG(PAPOWER8);
-    pa_table[2] = 1;
-    pa_table[3] = 1;
-    pa_table[4] = 1;
-    pa_table[5] = 30;
-    pa_table[6] = 30;
-    pa_table[7] = 42;
-    pa_table[8] = 42;
-    pa_table[9] = 42;
-    
+
     
     // Write new PA Table to device
     spirit1_spibus_io(10, 0, pa_table);
@@ -696,7 +687,7 @@ static const ot_u8 gpio_rx[5] = {
     0, RFREG(GPIO2_CONF),
     RFGPO(RX_FIFO_ALMOST_FULL),  //indicate buffer threshold condition (kept for RX)
     RFGPO(SYNC_WORD),            //indicate when sync word is qualified
-    RFGPO(TRX_INDICATOR)         //indicate when TX or RX is active
+    RFGPO(TRX_INDICATOR)             //indicate when RX is active (falling edge)
 };
 
 static const ot_u8 gpio_tx[5] = { 
@@ -721,7 +712,7 @@ inline void spirit1_iocfg_tx()  {
 }
 
 
-void sub_int_config(ot_u16 ie_sel) {
+void sub_int_config(ot_u32 ie_sel) {
     ot_u32 scratch;
     EXTI->PR    = (ot_u32)RFI_ALL;
     scratch     = EXTI->IMR;

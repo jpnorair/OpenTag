@@ -132,8 +132,9 @@ void platform_init_gptim(ot_uint prescaler) {
 
 ot_u32 platform_get_ktim() {
     ot_u16 timer_cnt;
-    timer_cnt = (TIM9->CNT - (ot_u16)gptim.stamp1) >> 2;
-    return (ot_u32)timer_cnt;
+    timer_cnt   = (TIM9->CNT - (ot_u16)gptim.stamp1);
+    timer_cnt >>= 2;
+    return ((ot_u32)timer_cnt & 0x3FFF);
 }
 
 ot_u16 platform_next_ktim() {

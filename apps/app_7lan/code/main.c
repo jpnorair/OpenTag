@@ -237,33 +237,23 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
         // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
         otapi_log_header(1, 0);
         
-        // Print out the three parameters for PongLT, one at a time.
-        // If you are new to OpenTag, this is a common example of a state-
-        // based code structure JP likes to use.
-        i = 0;
-        while (1) {
-            q_writestring(mpipe.alp.outq, (ot_u8*)label[i], 8);
-            switch (i++) {
-                case 0: scratch = otutils_bin2hex(  mpipe.alp.outq->putcursor, 
-                                                    user_id->value,
-                                                    user_id->length     );
-                        break;
-                
-                case 1: scratch = otutils_int2dec(mpipe.alp.outq->putcursor, radio.last_rssi);
-                        break;
-                        
-                case 2: scratch = otutils_int2dec(mpipe.alp.outq->putcursor, dll.last_nrssi);
-                        break;
-                        
-                case 3: goto m2qp_sig_udp_PRINTDONE;
-            }
-            
-            mpipe.alp.outq->putcursor  += scratch;
-            mpipe.alp.outq->length     += scratch;
-        }
+        // Print out the three parameters for PongLT
+        q_writestring(mpipe.alp.outq, (ot_u8*)"PongID: ", 8);
+        scratch = otutils_bin2hex(mpipe.alp.outq->putcursor, user_id->value, user_id->length     );
+        mpipe.alp.outq->putcursor  += scratch;
+        mpipe.alp.outq->length     += scratch;
+        
+        q_writestring(mpipe.alp.outq, (ot_u8*)", RSSI: ", 8);
+        scratch = otutils_int2dec(mpipe.alp.outq->putcursor, radio.last_rssi);
+        mpipe.alp.outq->putcursor  += scratch;
+        mpipe.alp.outq->length     += scratch;
+        
+        q_writestring(mpipe.alp.outq, (ot_u8*)", Link: ", 8);
+        scratch = otutils_int2dec(mpipe.alp.outq->putcursor, dll.last_nrssi);
+        mpipe.alp.outq->putcursor  += scratch;
+        mpipe.alp.outq->length     += scratch;  
 
         // Close the log file, send it out, return success
-        m2qp_sig_udp_PRINTDONE:
         otapi_log_direct();
         return True;
     }

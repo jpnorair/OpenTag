@@ -251,6 +251,19 @@ void otapi_led2_off() { platform_trig2_low(); }
 #   endif
 #endif
 
+// For systems with only FLANKSPEED enabled, drop APB clocks by half
+#if ((BOARD_FEATURE_FLANKSPEED == ENABLED) \
+  && (BOARD_FEATURE_STDSPEED != ENABLED) \
+  && (BOARD_FEATURE_FULLSPEED != ENABLED))
+#   undef BOARD_PARAM_AHBCLKDIV
+#   define BOARD_PARAM_AHBCLKDIV 2
+#   define _APB1SCALE    0
+#   define _APB2SCALE    0
+#else
+#   define _APB1SCALE    0
+#   define _APB2SCALE    0
+#endif
+
 //Validate and set AHB Divider based on board config header setting
 #if (BOARD_PARAM_AHBCLKDIV == 1)
 #   define _AHB_DIV     (0<<4)
@@ -276,13 +289,13 @@ void otapi_led2_off() { platform_trig2_low(); }
 
 //Validate and set APB1 Divider based on board config header setting
 #if (BOARD_PARAM_APB1CLKDIV == 1)
-#   define _APB1_DIV    (0<<8)
+#   define _APB1_DIV    ((0+_APB1SCALE)<<8)
 #elif (BOARD_PARAM_APB1CLKDIV == 2)
-#   define _APB1_DIV    (4<<8)
+#   define _APB1_DIV    ((4+_APB1SCALE)<<8)
 #elif (BOARD_PARAM_APB1CLKDIV == 4)
-#   define _APB1_DIV    (5<<8)
+#   define _APB1_DIV    ((5+_APB1SCALE)<<8)
 #elif (BOARD_PARAM_APB1CLKDIV == 8)
-#   define _APB1_DIV    (6<<8)
+#   define _APB1_DIV    ((6+_APB1SCALE)<<8)
 #elif (BOARD_PARAM_APB1CLKDIV == 16)
 #   define _APB1_DIV    (7<<8)
 #else
@@ -291,13 +304,13 @@ void otapi_led2_off() { platform_trig2_low(); }
 
 //Validate and set APB2 Divider based on board config header setting
 #if (BOARD_PARAM_APB2CLKDIV == 1)
-#   define _APB2_DIV    (0<<11)
+#   define _APB2_DIV    ((0+_APB2SCALE)<<11)
 #elif (BOARD_PARAM_APB2CLKDIV == 2)
-#   define _APB2_DIV    (4<<11)
+#   define _APB2_DIV    ((4+_APB2SCALE)<<11)
 #elif (BOARD_PARAM_APB2CLKDIV == 4)
-#   define _APB2_DIV    (5<<11)
+#   define _APB2_DIV    ((5+_APB2SCALE)<<11)
 #elif (BOARD_PARAM_APB2CLKDIV == 8)
-#   define _APB2_DIV    (6<<11)
+#   define _APB2_DIV    ((6+_APB2SCALE)<<11)
 #elif (BOARD_PARAM_APB2CLKDIV == 16)
 #   define _APB2_DIV    (7<<11)
 #else
@@ -928,8 +941,13 @@ void platform_flank_speed() {
     
     // Enter Flank Speed if it is not already running
     if ((RCC->CR & RCC_CR_PLLON) == 0) {
+        platform_disable_interrupts();
         platform_ext_pllon();
-        
+    
+#       if (BOARD_FEATURE_STDSPEED || BOARD_FEATURE_FULLSPEED)
+            RCC->CFGR   = _PLL_SRC | _PLL_MULT | _PLL_DIV \
+                        | (8<<4) | (_APB1_DIV+_APB1SCALE) | (_APB2_DIV+_APB2SCALE);  
+#       endif
 #       if (_FLANKSPEED_FLASHWAIT == ENABLED)
             FLASH->ACR |= FLASH_ACR_LATENCY;
             sub_osc_setclock(_FLANKOSC_CLOCKBIT);
@@ -937,6 +955,8 @@ void platform_flank_speed() {
             sub_osc_setclock(_FLANKOSC_CLOCKBIT);
             FLASH->ACR &= ~FLASH_ACR_LATENCY;
 #       endif
+
+        platform_enable_interrupts();
     }
     
     RCC->CR &= ~RCC_CR_MSION;

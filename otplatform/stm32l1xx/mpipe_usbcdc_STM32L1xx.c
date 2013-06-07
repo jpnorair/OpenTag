@@ -430,7 +430,7 @@ const ot_u8 cdcacm_ConfigDescriptor[] = {
     0x01,   /* bConfigurationValue: Configuration value */
     0x00,   /* iConfiguration: Index of string descriptor describing the configuration */
     0xC0,   /* bmAttributes: self powered or bus powered */
-    (ot_u8)(500>>1),   /* MaxPower 500 mA */
+    (ot_u8)(150>>1),   /* MaxPower 150 mA */
     /*Interface Descriptor*/
     0x09,   /* bLength: Interface Descriptor size */
     USB_INTERFACE_DESCRIPTOR_TYPE,  /* bDescriptorType: Interface */
@@ -647,7 +647,7 @@ void Leave_LowPowerMode() {
     bDeviceState = ATTACHED;
     if (Device_Info.Current_Configuration != 0) {
         bDeviceState    = CONFIGURED;
-        mpipe.state     = MPIPE_Idle;
+        mpipe.state     = MPIPE_Idle;   ///@todo see if this should be here
     }
 }
 
@@ -878,7 +878,7 @@ void cdcacm_Reset(void) {
 void cdcacm_SetConfiguration(void) {
     if (Device_Info.Current_Configuration != 0) {
         bDeviceState = CONFIGURED;  // Device configured
-        mpipe.state  = MPIPE_Idle;
+        //mpipe.state  = MPIPE_Idle;
     }
 }
   
@@ -958,6 +958,7 @@ RESULT cdcacm_Get_Interface_Setting(ot_u8 Interface, ot_u8 AlternateSetting) {
 ot_u8 *cdcacm_GetLineCoding(ot_u16 Length) {
     if (Length == 0) {
         pInformation->Ctrl_Info.Usb_wLength = sizeof(linecoding);
+      //mpipe.state = MPIPE_Idle;
         return NULL;
     }
     return(ot_u8 *)&linecoding;
@@ -967,6 +968,7 @@ ot_u8 *cdcacm_GetLineCoding(ot_u16 Length) {
 ot_u8 *cdcacm_SetLineCoding(ot_u16 Length) {
     if (Length == 0) {
         pInformation->Ctrl_Info.Usb_wLength = sizeof(linecoding);
+        mpipe.state = MPIPE_Idle;
         return NULL;
     }
    return(ot_u8 *)&linecoding;
@@ -1183,25 +1185,29 @@ ot_int mpipedrv_init(void* port_id) {
     
     mpipedrv_setspeed(MPIPE_115200bps);     //default baud rate
     
+    /// Enable USB Clocks & Peripheral
+    platform_flank_speed();
+    __USB_CLKON();
+    //BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
+                            | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
+    
     /// Set USB-Wakeup interrupt on Line 18: optional
-    EXTI->PR                                   &= ~(1<<18);
-    EXTI->RTSR                                 |= (1<<18);
-    EXTI->IMR                                  |= (1<<18);
-    NVIC->IP[(ot_u32)USB_FS_WKUP_IRQn]          = _IRQGROUP;
-    NVIC->ISER[(ot_u32)(USB_FS_WKUP_IRQn>>5)]   = (1 << (USB_FS_WKUP_IRQn & 0x1F));
+    /// @todo get this working properly
+    //EXTI->PR                                   &= ~(1<<18);
+    //EXTI->RTSR                                 |= (1<<18);
+    //EXTI->IMR                                  |= (1<<18);
+    //NVIC->IP[(ot_u32)USB_FS_WKUP_IRQn]          = _IRQGROUP;
+    //NVIC->ISER[(ot_u32)(USB_FS_WKUP_IRQn>>5)]   = (1 << (USB_FS_WKUP_IRQn & 0x1F));
 
     /// Set USB Low-Priority interrupt
     /// USB High-Priority interrupt is not used in this implementation
     NVIC->IP[(ot_u32)USB_LP_IRQn]           = _IRQGROUP;
     NVIC->ISER[(ot_u32)(USB_LP_IRQn>>5)]    = (1 << (USB_LP_IRQn & 0x1F));
 
-    /// Enable USB Clocks
-    platform_flank_speed();
+    /// Enable the USB connection, which configures Pullups
+    BOARD_USB_PORTENABLE();
 
     /// Initialize USB (using ST library function)
-    __USB_CLKON();
-    BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
-                            | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
     USB_Init();
     
 #   if defined(__DEBUG__) || defined(__PROTO__)

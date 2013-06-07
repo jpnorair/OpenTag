@@ -110,7 +110,7 @@ typedef enum {
   */
 
 typedef struct {
-    mpipe_state state;
+    volatile mpipe_state state;
     alp_tmpl    alp;
     
 #if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)

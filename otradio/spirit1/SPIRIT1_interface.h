@@ -404,7 +404,7 @@ ot_bool spirit1_check_cspin(void);
 #define RFI_SOURCE2     (1 << RADIO_IRQ2_SRCLINE)
 #define RFI_SOURCE3     0 //(1 << RADIO_IRQ3_SRCLINE)   //used for READY pin, no interrupt
 
-#define RFI_ALL         (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 | RFI_SOURCE3)
+#define RFI_ALL         (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 /*| RFI_SOURCE3*/)
 
 #define RFI_RXTIMEOUT   RFI_SOURCE0
 #define RFI_RXSYNC      RFI_SOURCE1
