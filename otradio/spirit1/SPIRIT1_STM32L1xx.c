@@ -41,7 +41,7 @@
 #ifdef RADIO_DB_ATTENUATION
 #   define _ATTEN_DB    RADIO_DB_ATTENUATION
 #else
-#   define _ATTEN_DB    0
+#   define _ATTEN_DB    6
 #endif
 
 
@@ -250,7 +250,7 @@ void spirit1_load_defaults() {
         5,  0,  0x25,   DRF_AGCCTRL1, DRF_AGCCTRL0, DRF_ANT_SELECT_CONF, 
         3,  0,  0x3A,   DRF_QI,
         3,  0,  0x41,   DRF_FIFO_CONFIG0,
-        3,  0,  0x4F,   DRF_PCKT_FLT_OPTIONS,
+        4,  0,  0x4F,   DRF_PCKT_FLT_OPTIONS, DRF_PROTOCOL2,
       //3,  0,  0x93,   RFINT_TX_FIFO_ERROR,
         5,  0,  0xA3,   DRF_DEM_ORDER, DRF_PM_CONFIG2, DRF_PM_CONFIG1,
         0   //Terminating 0
@@ -400,7 +400,7 @@ void spirit1_init_bus() {
     EXTI->EMR  &= ~RFI_ALL;         //clear event enablers
     
     // PIN0 is falling edge, 1 & 2 are rising edge  
-    EXTI->FTSR |= RFI_SOURCE0;
+    EXTI->FTSR |= (RFI_SOURCE0 /*| RFI_SOURCE1*/);
     EXTI->RTSR |= (RFI_SOURCE1 | RFI_SOURCE2);
     
     NVIC->IP[(uint32_t)_RFIRQ0]         = (PLATFORM_NVIC_RF_GROUP << 4);
@@ -552,8 +552,9 @@ ot_int spirit1_calc_rssi(ot_u8 encoded_value) {
 
     ot_int rssi_val;
     rssi_val    = (ot_int)encoded_value;    // Convert to signed int
-    rssi_val  >>= 1;                        // Make whole-dBm (divide by 2)
-    rssi_val   -= 130;                      // Apply 130 dBm offset
+    //rssi_val  >>= 1;                        // Make whole-dBm (divide by 2)
+    //rssi_val   -= 130;                      // Apply 130 dBm offset
+    rssi_val   -= 260;                      // Apply 130 dBm offset
     return rssi_val;
 }
 
@@ -580,7 +581,7 @@ ot_u8 spirit1_calc_rssithr(ot_u8 input) {
 
     
 
-void spirit1_set_txpwr(ot_u8 pwr_code) {
+void spirit1_set_txpwr(ot_u8* pwr_code) {
 /// Sets the tx output power.
 /// "pwr_code" is a value, 0-127, that is: eirp_code/2 - 40 = TX dBm
 /// i.e. eirp_code=0 => -40 dBm, eirp_code=80 => 0 dBm, etc
@@ -601,12 +602,24 @@ void spirit1_set_txpwr(ot_u8 pwr_code) {
     ot_int  step;
     ot_int  eirp_val;
     
-    // "-20" corresponds to 20 half-dB steps.  
-    // SPIRIT1 PA starts at -30, pwr_code at -40.
-    eirp_val    = pwr_code;
-    eirp_val   += (_ATTEN_DB*2) - 20;  
-
-    // Adjust base power code in case it is out-of-range
+    ///@todo autoscaling algorithm, and refresh value in *pwr_code
+    // Autoscaling: Try to make RSSI at receiver be -90 < RX_RSSI < -80 
+    // The simple algorithm uses the last_rssi and last_linkloss values
+    //if (*pwr_code & 0x80) {
+    //}
+    //else {
+    //}
+    
+    // Not autoscaling: extract TX power directly from pwr_code
+    eirp_val = *pwr_code;
+    
+    // Offset SPIRIT1 PA CFG to match DASH7 PA CFG, plus antenna losses 
+    // SPIRIT1: 0 --> -30 dBm, 83 --> 11.5 dBm, half-dBm steps
+    // DASH7: 0 --> -40 dBm, 127 --> 23.5 dBm, half-dBm steps
+    eirp_val += (-10*2) + (RF_HDB_ATTEN);
+    
+    // Adjust base power code in case it is out-of-range:
+    // SPIRIT1 PA starts at -30, DASH7 pwr_code starts at -40.
     if (eirp_val < 0)       eirp_val = 0;
     else if (eirp_val > 83) eirp_val = 83;
 
@@ -616,7 +629,7 @@ void spirit1_set_txpwr(ot_u8 pwr_code) {
     cursor      = &pa_table[2];
     step        = eirp_val >> 3;
     do {
-        *cursor++   = eirp_val;
+        *cursor++   = pa_lut[eirp_val];
         eirp_val   -= step;
     } while (cursor != &pa_table[9]);
 
@@ -647,7 +660,7 @@ ot_bool spirit1_check_cspin(void) {
   *                 RX FIFO thr [IRQ off]:      -
   *                 
   * IMode = 2       RX Finished:                2  
-  * (RX Data)       Sync word RX'ed [IRQ off]:  -
+  * (RX Data)       RX discarded (un-sync):     3
   *                 RX FIFO threshold:          4
   *
   * -------------- TX MODES (set spirit1_iocfg_tx()) --------------
@@ -682,6 +695,8 @@ ot_u16 spirit1_get_counter() {
 /// Simple configuration method: 
 /// This I/O configuration does not use many of the SPIRIT1 advanced features.
 /// Those features will be experimented-with in the future.
+
+///@todo test packet-discarding method, see if nIRQ must be added for RX
 
 static const ot_u8 gpio_rx[5] = { 
     0, RFREG(GPIO2_CONF),

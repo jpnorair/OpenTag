@@ -279,7 +279,6 @@ typedef struct {
     ot_u8           reserved;
     ot_uint         counter;
     ot_uint         adv_time;
-    ot_int          last_nrssi;
     netconf_struct  netconf;
     m2comm_struct   comm;
 #   if (OT_FEATURE(DLLRF_CALLBACKS))
@@ -301,6 +300,7 @@ extern m2dll_struct dll;
   * ========================================================================<BR>
   */
 void dll_block();
+void dll_unblock();
 void dll_clock(ot_uint ticks);
 void dll_next();
 void dll_systask_init();

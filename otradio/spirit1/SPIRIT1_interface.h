@@ -347,7 +347,7 @@ ot_u8 spirit1_calc_rssithr(ot_u8 input);
 
 
 /** @brief Sets the TX output power based on input DASH7 Power Code
-  * @param pwr_code     (ot_u8) pwr_code = 2*((dBm EIRP) + 40dBm)
+  * @param pwr_code     (ot_u8*) pointer to PHYMAC struct tx_eirp value
   * @retval none
   * @ingroup SPIRIT1
   *
@@ -355,7 +355,7 @@ ot_u8 spirit1_calc_rssithr(ot_u8 input);
   * PA TABLE slots 8-1 with ramped-down powers so that the TX ramp-up/ramp-down
   * is nice and smooth.
   */
-void spirit1_set_txpwr(ot_u8 pwr_code);
+void spirit1_set_txpwr(ot_u8* pwr_code);
 
 
 
@@ -408,11 +408,11 @@ ot_bool spirit1_check_cspin(void);
 
 #define RFI_RXTIMEOUT   RFI_SOURCE0
 #define RFI_RXSYNC      RFI_SOURCE1
-#define RFI_LISTEN      (RFI_RXTIMEOUT |  RFI_RXSYNC)
+#define RFI_LISTEN      (RFI_RXTIMEOUT | RFI_RXSYNC)
 
 #define RFI_RXEND       RFI_SOURCE0
 #define RFI_RXFIFO      RFI_SOURCE2
-#define RFI_RXDATA      (RFI_RXEND | RFI_RXFIFO)
+#define RFI_RXDATA      (RFI_RXEND | /*RFI_RXSYNC |*/ RFI_RXFIFO)
 
 #define RFI_CCATIMEOUT  RFI_SOURCE0
 #define RFI_CCAFAIL     RFI_SOURCE1

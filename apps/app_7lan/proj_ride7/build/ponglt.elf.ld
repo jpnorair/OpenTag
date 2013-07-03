@@ -60,6 +60,10 @@ INPUT("B:\apps\app_7lan\proj_ride7\build\stm32l1xx_flash.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\veelite_core_EE_STM32L1xx.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\radio_SPIRIT1.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\SPIRIT1_STM32L1xx.o")
+INPUT("B:\apps\app_7lan\proj_ride7\build\iap_auth_STM32L1xx.hdo.o")
+INPUT("B:\apps\app_7lan\proj_ride7\build\iap_commands.hdo.o")
+INPUT("B:\apps\app_7lan\proj_ride7\build\iap_task.hdo.o")
+INPUT("B:\apps\app_7lan\proj_ride7\build\iap_uart_STM32L1xx.hdo.o")
 GROUP(
 "std_sbrk_thumb.lib"
 "smallprintf_thumb.a"

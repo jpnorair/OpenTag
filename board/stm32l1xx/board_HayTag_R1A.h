@@ -155,7 +155,8 @@
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
 #define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
-#define BOARD_FEATURE_MPIPE_DIRECT      ENABLED
+#define BOARD_FEATURE_IAP               ENABLED                 // Is MPIPE really IAP?
+#define BOARD_FEATURE_MPIPE_DIRECT      DISABLED
 #define BOARD_FEATURE_MPIPE_BREAK       DISABLED                // Send/receive leading break for wakeup
 #define BOARD_FEATURE_MPIPE_CS          DISABLED                // Chip-Select / DTR wakeup control
 #define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                // RTS/CTS style flow control
@@ -305,6 +306,16 @@
 #define BOARD_USB_DMPINNUM              11
 #define BOARD_USB_DPPIN                 (1<<BOARD_USB_DPPINNUM)
 #define BOARD_USB_DMPIN                 (1<<BOARD_USB_DMPINNUM)
+
+// I2C interface, used for chiefly for iAP
+#define BOARD_I2C_ID                    1
+#define BOARD_I2C_PORTNUM               1                   //Port B
+#define BOARD_I2C_PORT                  GPIOB
+#define BOARD_I2C_SDAPINNUM             6
+#define BOARD_I2C_SCLPINNUM             7
+#define BOARD_I2C_SDAPIN                (1<<BOARD_I2C_SDAPINNUM)
+#define BOARD_I2C_SCLPIN                (1<<BOARD_I2C_SCLPINNUM)
+
 
 
 
@@ -857,9 +868,48 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #       error "MPIPE_UART_ID is defined out of range"
 #   endif
 
+
+
 #endif
 
+#if (BOARD_FEATURE_IAP == ENABLED)
+#   define IAP_USB_ID           0
+#   define IAP_USB              USB0
+#   define IAP_USBDP_PORT       BOARD_HCOMUSB_PORT
+#   define IAP_USBDM_PORT       BOARD_HCOMUSB_PORT
+#   define IAP_USBDP_PIN        BOARD_HCOMUSB_DPPIN
+#   define IAP_USBDM_PIN        BOARD_HCOMUSB_DMPIN
 
+#   define IAP_DMANUM           1
+#   define IAP_DMA              DMA1
+#   define IAP_UART_ID          BOARD_UART_ID
+#   define IAP_UART_PORTNUM     BOARD_UART_PORTNUM
+#   define IAP_UART_PORT        BOARD_UART_PORT
+#   define IAP_UART_RXPIN       BOARD_UART_RXPIN
+#   define IAP_UART_TXPIN       BOARD_UART_TXPIN
+#   define IAP_RTS_PORT         BOARD_UART_PORT
+#   define IAP_CTS_PORT         BOARD_UART_PORT
+#   define IAP_RTS_PIN          BOARD_UART_RTSPIN
+#   define IAP_CTS_PIN          BOARD_UART_CTSPIN
+#   define IAP_UART_PINS        (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
+
+#   define IAP_UART             MPIPE_UART
+#   define IAP_DMA_RXCHAN_ID    MPIPE_DMA_RXCHAN_ID
+#   define IAP_DMA_TXCHAN_ID    MPIPE_DMA_TXCHAN_ID
+
+#   define IAP_I2C_ID           BOARD_I2C_ID
+
+#   if (IAP_I2C_ID == 1)
+#       define IAP_I2C          I2C1
+
+#   elif (IAP_I2C_ID == 2)
+#       define IAP_I2C          I2C2
+
+#   else
+#       error "IAP_I2C_ID is defined out of range"
+#   endif
+
+#endif
 
 
 

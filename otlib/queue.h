@@ -60,10 +60,10 @@ typedef struct {
     ot_u16      alloc;
     ot_u16      length;
     Twobytes    options;
-    ot_u8*      front;
-    ot_u8*      back;
     ot_u8*      getcursor;
     ot_u8*      putcursor;
+    ot_u8*      front;
+    ot_u8*      back;
 } ot_queue;
 
 

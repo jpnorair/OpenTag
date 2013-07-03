@@ -143,7 +143,7 @@ void PLATFORM_ISR_SW() {
 //void OT_SWITCH1_ISR(void) {
 void platform_isr_exti6() {
 // start a background session
-    app_invoke(0x10);
+    app_invoke(0x90);
 }
 
 
@@ -160,6 +160,29 @@ void sub_button_init() {
     void sub_button_init() {}
 
 #endif
+
+
+
+
+
+
+
+
+void sub_print_stats() {
+    ot_int scratch;
+    q_writestring(mpipe.alp.outq, (ot_u8*)", RSSI:", 7);
+    scratch = otutils_int2dec(mpipe.alp.outq->putcursor, (radio.last_rssi/2));
+    mpipe.alp.outq->putcursor  += scratch;
+    mpipe.alp.outq->length     += scratch;
+        
+    q_writestring(mpipe.alp.outq, (ot_u8*)", Link:", 7);
+    scratch = otutils_int2dec(mpipe.alp.outq->putcursor, (radio.last_linkloss/2));
+    mpipe.alp.outq->putcursor  += scratch;
+    mpipe.alp.outq->length     += scratch;     
+}
+
+
+
 
 
 
@@ -212,7 +235,7 @@ ot_bool otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
   */
 #ifdef EXTF_m2qp_sig_udp
 ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
-    static const char* label[]  = { "PongID: ", ", RSSI:", ", Link:" };
+    //static const char* label[]  = { "PongID: ", ", RSSI:", ", Link:" };
     ot_u16  pongval;
     ot_u8   i;
     ot_u8   scratch;
@@ -239,19 +262,12 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
         
         // Print out the three parameters for PongLT
         q_writestring(mpipe.alp.outq, (ot_u8*)"PongID: ", 8);
-        scratch = otutils_bin2hex(mpipe.alp.outq->putcursor, user_id->value, user_id->length     );
+        scratch = otutils_bin2hex(mpipe.alp.outq->putcursor, user_id->value, user_id->length );
         mpipe.alp.outq->putcursor  += scratch;
         mpipe.alp.outq->length     += scratch;
         
-        q_writestring(mpipe.alp.outq, (ot_u8*)", RSSI: ", 8);
-        scratch = otutils_int2dec(mpipe.alp.outq->putcursor, radio.last_rssi);
-        mpipe.alp.outq->putcursor  += scratch;
-        mpipe.alp.outq->length     += scratch;
-        
-        q_writestring(mpipe.alp.outq, (ot_u8*)", Link: ", 8);
-        scratch = otutils_int2dec(mpipe.alp.outq->putcursor, dll.last_nrssi);
-        mpipe.alp.outq->putcursor  += scratch;
-        mpipe.alp.outq->length     += scratch;  
+        // Print out RSSI and N-RSSI
+        sub_print_stats();
 
         // Close the log file, send it out, return success
         otapi_log_direct();
@@ -273,7 +289,23 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
   * This app uses some of the "std" applets from /otlibext/applets_std
   * The applets used are selected in extf_config.h
   */
+void dll_sig_rfterminate(ot_int pcode, ot_int scode) {
+    if (scode == 0) {
+        otapi_led2_off();   //Orange LED off
+        otapi_led1_off();   //Green LED off
+    }
+    else {
+        // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
+        otapi_log_header(1, 0);
+        
+        // Add a message indicating the bad packet received, then add RSSI + N-RSSI
+        q_writestring(mpipe.alp.outq, (ot_u8*)"ERROR: Packet-Check Failed. ", 28);
+        sub_print_stats();
 
+        // Close the log file, send it out, return success
+        otapi_log_direct();
+    }
+}
 
 
 

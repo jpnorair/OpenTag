@@ -431,10 +431,10 @@ const ot_u8 isf_stock_files[] = {
 
     0x10,                                               /* Channel Spectrum ID */
     0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 110 ),                                     /* Channel Link Quality Filter Level */
+    (ot_u8)(( (11) + 40 )*2),                          /* Channel TX Power Limit */
+    (ot_u8)( 120 ),                                     /* Channel Link Quality Filter Level */
     (ot_u8)( (-110) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-100) + 140 ),                             /* CCA RSSI Threshold*/
+    (ot_u8)( (-90) + 140 ),                             /* CCA RSSI Threshold*/
     0x00,                                               /* Regulatory Code */
     0x01,                                               /* Duty Cycle (100%) */
 
@@ -463,8 +463,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* hold scan periods: id=0x04, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x10, 0x43, 0x04, 0x60,                             /* Channel X scan, Scan Code, Next Scan ms */ //FIX
-    0x10, 0x43, 0x04, 0x60,
+    0x90, 0x43, 0x04, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */ //FIX
+    0x90, 0x43, 0x04, 0x00,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
@@ -474,7 +474,7 @@ const ot_u8 isf_stock_files[] = {
 
     /* sleep scan periods: id=0x05, len=4, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x10, 0x50, 0x0C, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
+    0x90, 0x50, 0x0C, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
     0xFF, 0xFF, 0xFF, 0xFF,                             /* NOTE: Scan Code should be less than     */
     0xFF, 0xFF, 0xFF, 0xFF,                             /*       Next Scan, or else you will be    */
     0xFF, 0xFF, 0xFF, 0xFF,                             /*       doing nothing except scanning!    */

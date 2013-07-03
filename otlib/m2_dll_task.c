@@ -379,7 +379,7 @@ void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings) {
     vl_write(fp_active, 4, dll.netconf.active);
     vl_close(fp_active);
     vl_close(fp_supported);
-
+    
     // Flush the System of all Sessions and Events, and restart it
     sub_dll_flush();
 }
@@ -402,6 +402,7 @@ void sub_dll_flush() {
 	if (radio.state != RADIO_Idle) {
 		rm2_kill();
 	}
+    radio_mac_configure();
 
     task = &sys.task_HSS;
     do {
@@ -470,9 +471,18 @@ void dll_idle() {
 /** DLL Systask Manager <BR>
   * ========================================================================<BR>
   */
+#ifdef OT_FEATURE_LISTEN_ALLOWANCE
+#   define _RX_LATENCY  OT_FEATURE_LISTEN_ALLOWANCE
+#else
+#   define _RX_LATENCY  40
+#endif
 
 void dll_block() {
 	sys.task_RFA.latency = 0;
+}
+
+void dll_unblock() {
+	sys.task_RFA.latency = _RX_LATENCY;
 }
 
 
@@ -834,10 +844,13 @@ void sub_timeout_scan() {
 #if (RF_FEATURE(RXTIMER) == DISABLED)
     // If not presently receiving, time-out the RX.
     // else if presently receiving, pad timeout by 128
-    if ((radio.state != RADIO_DataRX) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) 
+    if ((radio.state != RADIO_DataRX) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) {
         rm2_rxtimeout_isr();
-    else 
+    }
+    else {
+        sys.task[TASK_radio].event = 5;
         sys_task_setnext(&sys.task[TASK_radio], 128);
+    }
 
 #else
     // Add a little bit of time in case the radio timer is a bit slow.
@@ -859,11 +872,6 @@ void sub_init_rx(ot_u8 is_brx) {
 ///
 /// @todo A more adaptive method for scanning is planned, in which the latency 
 /// drops to 1 only after a sync word is detected.
-#ifdef OT_FEATURE_LISTEN_ALLOWANCE
-#   define _RX_LATENCY  OT_FEATURE_LISTEN_ALLOWANCE
-#else
-#   define _RX_LATENCY  40
-#endif
 	sys_task_setnext(&sys.task[TASK_radio], dll.comm.rx_timeout);
 
     sys.task_RFA.latency    = _RX_LATENCY;
@@ -1021,6 +1029,7 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
                 radio_sleep();
             }
             if (frx_code != 0) {
+                DLL_SIG_RFTERMINATE(3, frx_code);
                 return;
             }
         }
@@ -1283,28 +1292,7 @@ void dll_set_defaults(m2session* session) {
 
 
 ot_bool sub_mac_filter() {
-/// Link Budget Filtering (LBF) is a normalized RSSI Qualifier.
-/// Subnet Filtering is an numerical qualifier
-    ot_bool qualifier;
-    {
-        // TX EIRP encoded value    = (dBm + 40) * 2
-        // TX EIRP dBm              = ((encoded value) / 2) - 40
-        // Link Loss                = TX EIRP dBm - Detected RX dBm
-        // Link Quality Filter      = (Link Loss <= Link Loss Limit)
-        dll.last_nrssi  = ((ot_int)((rxq.front[1] >> 1) & 0x3F) - 40) - radio_rssi(); 
-        qualifier       = (ot_bool)(dll.last_nrssi <= (ot_int)phymac[0].link_qual);
-    }
-    {
-        ot_u8 fr_subnet, dsm, specifier, mask;
-        
-        fr_subnet   = rxq.front[2];
-        dsm         = dll.netconf.subnet & 0x0F;
-        mask        = fr_subnet & dsm;
-        specifier   = (fr_subnet ^ dll.netconf.subnet) & 0xF0;
-        fr_subnet  &= 0xF0;
-        qualifier  &= (ot_bool)(((fr_subnet == 0xF0) || (specifier == 0)) && (mask == dsm));
-    }
-    return qualifier;
+    return radio_mac_filter();
 }
 
 

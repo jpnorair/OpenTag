@@ -41,6 +41,9 @@
 #include "mpipe.h"
 #include "external.h"
 
+#if (OT_FEATURE(IAP))
+#   include "iap.hdo.h"
+#endif
 
 
 
@@ -90,6 +93,8 @@ static const systask_fn systask_call[]   = {
 #endif
 #if (OT_FEATURE(MPIPE))
     &mpipe_systask,
+#elif (OT_FEATURE(IAP))
+    &iap_systask,
 #endif
 #if (1)
     &dll_systask_holdscan,

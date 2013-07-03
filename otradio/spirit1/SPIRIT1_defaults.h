@@ -376,7 +376,7 @@
 #define DRF_RSSI_FLT            (__RSSI_FLT(14) | _CS_MODE_STATIC)
 
 //R22: It is set in the driver when picking a channel
-#define DRF_RSSI_TH             __RSSI_TH(-100)
+#define DRF_RSSI_TH             __RSSI_TH(-130)
 
 //R23 (using power-up defaults)
 ///@todo Evaluate different values for P_GAIN, I_GAIN
@@ -393,6 +393,7 @@
 #define DRF_AGCCTRL0            (_AGC_ENABLE | 0x0A)
 
 //R27: Target is (100us < RSSI measuring time < 200us)
+///@note CS_BLANKING doesn't seem to work terribly well
 #if defined(_24MHz) || defined(_25MHz) || defined(_26MHz)
 #   define DRF_ANT_SELECT_CONF  (__AS_MEAS_TIME(4))
 #else
@@ -401,19 +402,19 @@
 
 //R28-R2F (N/A)
 
-//R30 (using power-up defaults)
-///@note depending on observation of SPIRIT1 FEC capabilities, this may change
-#define DRF_PCKTCTRL4           (_ADDRESS_LEN_BASIC | __CONTROL_LEN(0))
+//R30
+//This is set during...
+#define DRF_PCKTCTRL4           (_ADDRESS_LEN_NONE | __CONTROL_LEN(0))
 
 //R31 (using power-up defaults)
 ///@note depending on observation of SPIRIT1 FEC capabilities, this may change
 #define DRF_PCKTCTRL3           (_PCKT_FRMT_BASIC | _RX_MODE_NORMAL | __LEN_WID(8))
 
 //R32: The preamble length & fixed/var is set when picking a channel
-#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(3) | _SYNC_LENGTH_3 | _FIX_VAR_LEN)
-#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(3) | _SYNC_LENGTH_3)
-#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(5) | _SYNC_LENGTH_3 | _FIX_VAR_LEN)
-#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(5) | _SYNC_LENGTH_3)
+#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
+#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
+#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
+#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
 
 //R33: It is changed when picking a channel
 ///@todo observe CRC operation and potentially change this
@@ -437,8 +438,9 @@
 //R39: set when selecting FG or BG data, and FEC mode
 #define DRF_SYNC1               0xD0
 
-//R3A:                
-#define DRF_QI                  (__SQI_TH(0) | __PQI_TH(2) | _SQI_EN | _PQI_EN)
+//R3A:
+///@todo put this into the channel selection, depending on FEC usage
+#define DRF_QI                  (__SQI_TH(2) | __PQI_TH(1) | _SQI_EN | _PQI_EN)
 
 //R3B-3D: unused
 #define DRF_MBUS_PRMBL          0x20
@@ -451,7 +453,8 @@
 #define DRF_FIFO_CONFIG1        96
 #define DRF_FIFO_CONFIG0        5
 
-//R42-4E: unused for time being.  Control Field might be used in later impls.
+//R42-4E: 2nd control byte is used for subnet filtering (GOALS11, GOALS7), but
+//        this is loaded in the driver whenever the subnet is set/changed.
 #define DRF_PCKT_FLT_GOALS12     0
 #define DRF_PCKT_FLT_GOALS11     0
 #define DRF_PCKT_FLT_GOALS10     0
@@ -469,12 +472,13 @@
 //R4F
 //more investigation on CRC & control fields needed
 #define DRF_PCKT_FLT_OPTIONS    (_RX_TIMEOUT_AND_OR_SELECT)
-//#define DRF_PCKT_FLT_OPTIONS    (_RX_TIMEOUT_AND_OR_SELECT | _CRC_CHECK)
+//#define DRF_PCKT_FLT_OPTIONS    (_RX_TIMEOUT_AND_OR_SELECT | _CONTROL_FILTERING | _CRC_CHECK)
 
-//R50 (using power-up defaults)
-#define DRF_PROTOCOL2           (_VCO_CALIBRATION)
+//R50 Can't use Automatic VCO calibration due to errata
+#define DRF_PROTOCOL2           (0)
 //#   define _TX_SEQ_NUM_RELOAD   (3<<3)
 //#   define _RCO_CALIBRATION     (1<<2)
+//#   define _VCO_CALIBRATION     (1<<1)
 
 //R51 (using power-up defaults)
 ///@note more investigation needed for CSMA engine
@@ -523,7 +527,11 @@
 #define DRF_CHNUM               7
 
 //RA1 (using power-up defaults)
-#define DRF_VCO_CONFIG          __VCO_GEN_CURR(17)
+// Value 17 (0x11) is sufficient to drive TX or RX once calibrated, but
+// it is not sufficient to do so for calibration.  Use 25 (0x19).
+// REF: DocID023165 Rev 5 (Errata Sheet DM00053990.pdf, March 2013)
+#define DRF_VCO_CONFIG          __VCO_GEN_CURR(25)
+//__VCO_GEN_CURR(17)
 
 //R6D (using power-up defaults)
 #define DRF_RCO_VCO_CALIBR_IN2  (__RWT_IN(7) | __RFB_IN(0))

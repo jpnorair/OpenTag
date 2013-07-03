@@ -64,6 +64,7 @@ typedef enum {
 typedef struct {
     radio_state state;
     ot_int      last_rssi;
+    ot_int      last_linkloss;
     ot_sig2     evtdone;
 } radio_struct;
 
@@ -245,6 +246,12 @@ void radio_init();
 void radio_mac_isr();
 
 
+///@todo comments for these functions
+void radio_mac_configure();
+ot_bool radio_mac_filter();
+
+
+
 
 /** @brief  Returns the RSSI value of the most recent reception.
   * @param None
@@ -261,6 +268,22 @@ void radio_mac_isr();
   * is the area of interest.
   */
 ot_int radio_rssi();
+
+
+
+/** @brief  Calculates and saves the link information
+  * @param None
+  * @retval None
+  * @ingroup Radio
+  *
+  * This function calculates RSSI and Link-Loss, and it saves them into:
+  * radio.last_linkloss
+  * radio.last_rssi
+  *
+  * It should be called within the radio driver when a packet is finished being 
+  * received.
+  */
+void radio_calc_link();
 
 
 

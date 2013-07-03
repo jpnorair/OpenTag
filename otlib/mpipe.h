@@ -156,12 +156,9 @@ void mpipe_connect(void* port_id);
   * @sa mpipe_connect()
   * @sa mpipedrv_detach()
   *
-  * The user should call this function during system initialization, and the
-  * implementation must call mpipedrv_detach().
-  *
   * Some drivers may be essentially connectionless -- e.g. an embedded UART.
   * USB Mpipes usually need to be disconnected, though, when in fact they are
-  * disconnected.
+  * physically disconnected.
   */
 void mpipe_disconnect(void* port_id);
 
@@ -183,7 +180,7 @@ mpipe_state mpipe_status();
   * @ingroup Mpipe
   * @sa mpipe_close()
   *
-  * This function is usually called only once, by mpipe_init().  However, if
+  * This function is usually called only once, by mpipe_connect().  However, if
   * mpipe is closed, then you will have to call it again to re-open mpipe.
   */
 void mpipe_open();

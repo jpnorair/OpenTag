@@ -359,7 +359,8 @@
 
 #define RF_PCKTCTRL4            0x30
 #   define _ADDRESS_LEN         (3<<3)
-#   define _ADDRESS_LEN_BASIC   (0<<3)
+#   define _ADDRESS_LEN_NONE    (0<<3)
+#   define _ADDRESS_LEN_BASIC   (1<<3)
 #   define _ADDRESS_LEN_STACK   (2<<3)
 #   define _CONTROL_LEN         (7<<0)
 #   define __CONTROL_LEN(VAL)   (7&VAL)
