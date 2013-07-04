@@ -70,14 +70,19 @@
   * ========================================================================<BR>
   * These are the RF features that are available and currently implemented 
   * atomically in the SPIRIT1 driver.
+  *
+  * @note There is an erratum regarding the SPIRIT1 auto-calibrator, which 
+  * behooves the implementer to perform offline manual calibration.  You can
+  * call radio_calibrate() to do that.
   */
 #define RF_FEATURE(VAL)                 RF_FEATURE_##VAL    // FEATURE                  AVAILABILITY
+#define RF_FEATURE_AUTOCAL              ENABLED             // Automatic Calibration    High
 #define RF_FEATURE_MSK                  ENABLED             // MSK Modulation           Moderate
 #define RF_FEATURE_55K                  ENABLED             // 55kHz baudrate           High
 #define RF_FEATURE_200K                 ENABLED             // 200kHz baudrate          High
 #define RF_FEATURE_PN9                  ENABLED             // Integrated PN9 codec     Moderate (DASH7 has particular sequence)
 #define RF_FEATURE_FEC                  ENABLED             // Integrated FEC codec     Moderate (DASH7 has particular sequence)
-#define RF_FEATURE_FIFO                 ENABLED             // RF TX/RX FIFO            High
+#define RF_FEATURE_FIFO                 ENABLED             // RF TX/RX FIFO            High   
 #define RF_FEATURE_TXFIFO_BYTES         96
 #define RF_FEATURE_RXFIFO_BYTES         96
 #define RF_FEATURE_PACKET               ENABLED             // Packet Handler           High
@@ -102,6 +107,7 @@
 #define RF_PARAM(VAL)                   RF_PARAM_##VAL
 #define RF_PARAM_PKT_OVERHEAD           (2+4+2)
 #define RF_PARAM_RCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
+#define RF_PARAM_VCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
 
 
 

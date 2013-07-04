@@ -337,7 +337,7 @@ void ext_systask(ot_task task) {
         
         // this is the same as the length of the response window,
         // which is set in applet_send_query()
-        task->nextevent = 3000;  
+        task->nextevent = 512;  
     
         // Generate a pseudo random 16 bit number to be used as a ping check value
         app.pingval = platform_prand_u16();
@@ -411,7 +411,7 @@ void applet_send_query(m2session* session) {
     { //write the dialog information (timeout, channels to use)
         dialog_tmpl dialog;
         dialog.channels = 0;    //use same channel as request for response
-        dialog.timeout  = 0x43; //same as otutils_encode_timeout(1024) -- 1024 tick response slot
+        dialog.timeout  = 0x40; //same as otutils_encode_timeout(256) -- 256 tick response slot
         otapi_put_dialog_tmpl(&status, &dialog);
     }
     { //write the query to search for the sensor protocol id

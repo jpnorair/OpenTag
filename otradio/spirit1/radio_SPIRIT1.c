@@ -136,6 +136,14 @@ ot_int  subrfctl_eta_txi();
 void    subrfctl_offset_rxtimeout();
 
 
+#if (RF_FEATURE(AUTOCAL) != ENABLED)
+#   define __CALIBRATE()    subrfctl_offline_calibration()
+#else
+#   define __CALIBRATE();
+#endif
+
+
+
 
 //void sub_txend_isr();
 
@@ -264,12 +272,76 @@ void spirit1_clockout_off() {
 }
 
 
+#if (RF_FEATURE(AUTOCAL) != ENABLED)
+void subrfctl_offline_calibration() {
+/// Make sure to only call this function when there is nothing going on.
+    static const ot_u8 fc_div[6] = { RFREG(SYNT3), 0, 
+        DRF_SYNT3X, DRF_SYNT2X, DRF_SYNT1X, DRF_SYNT0X };
+    static const ot_u8 fc[6] = { RFREG(SYNT3), 0, 
+        DRF_SYNT3, DRF_SYNT2, DRF_SYNT1, DRF_SYNT0 };
+        
+    ot_u8   vco_cal[4] = { RFREG(RCO_VCO_CALIBR_IN1), 0, 0, 0 };
+    
+    // Step 0: Check if calibration is needed
+    if (--rfctl.nextcal >= 0) {
+        return;
+    }
+    rfctl.nextcal = RF_PARAM(VCO_CAL_INTERVAL);
+
+    // Step 1 (from erratum workaround): Set SEL_TSPLIT to 3.47 ns.
+    // This is performed during startup initialization
+    
+    radio_idle();
+    
+    // Step 2: for 48, 50, 52 MHz crystals impls, enable _REFDIV and 
+    //         change the center frequency to match.
+#   if (BOARD_PARAM_RFHz > 26000000)
+    spirit1_write( RFREG(SYNTH_CONFIG1), (DRF_SYNTH_CONFIG1 | _REFDIV) );
+    spirit1_spibus_io(6, 0, (ot_u8*)fc_div);
+#   endif
+    
+    // Step 3: Boost VCO current to 25 (from default)
+    spirit1_write( RFREG(VCO_CONFIG), __VCO_GEN_CURR(25) );
+
+    // Step 4: Enable Automatic Calibration (for now)
+    spirit1_write( RFREG(PROTOCOL2), (DRF_PROTOCOL2|_VCO_CALIBRATION) );
+
+    // Step 5: Calibrate TX & RX VCO values
+    spirit1_strobe( STROBE(LOCKTX) );
+    platform_swdelay_us(200);
+    vco_cal[2] = spirit1_read( RFREG(RCO_VCO_CALIBR_OUT0) ) & 0x7f;
+    spirit1_strobe(RFSTROBE_READY);
+    spirit1_strobe( STROBE(LOCKRX));
+    platform_swdelay_us(200);
+    vco_cal[3] = spirit1_read( RFREG(RCO_VCO_CALIBR_OUT0) ) & 0x7f;
+    spirit1_strobe(RFSTROBE_READY);
+    
+    // Step 6: write vco calibration output into SPIRIT1 input
+    spirit1_spibus_io(4, 0, vco_cal);
+    
+    // Step 7: Disable automatic calibration
+    spirit1_write( RFREG(PROTOCOL2), (DRF_PROTOCOL2) );
+    
+    // Step 8: Reduce VCO current to standard level
+    spirit1_write( RFREG(VCO_CONFIG), __VCO_GEN_CURR(17) );
+    
+    // Step 9: Revert step 2
+#   if (BOARD_PARAM_RFHz > 26000000)
+    spirit1_write( RFREG(SYNTH_CONFIG1), DRF_SYNTH_CONFIG1 );
+    spirit1_spibus_io(6, 0, (ot_u8*)fc);
+#   endif
+}
+#endif
+
 
 #ifndef EXTF_radio_calibrate
 void radio_calibrate() {
-/// SPIRIT1 has an errata with the automatic calibrator.  It is good to calibrate RCO whenever there is a 
-/// temperature change more than 10C.
+/// SPIRIT1 has an errata with the automatic calibrator.  It is best practice to 
+/// perform the calibrations manually and offline.
+#if (RF_FEATURE(AUTOCAL) != ENABLED)
+    
     rfctl.nextcal = 0;
+#endif
 }
 #endif
 
@@ -718,7 +790,10 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     em2_decode_newframe();
     subrfctl_offset_rxtimeout();
     
-    /// 7.  Using rm2_reenter_rx() with NULL forces entry into rx, and sets states
+    /// 7. If manual calibration is used, sometimes it is done here
+    __CALIBRATE();
+    
+    /// 8.  Using rm2_reenter_rx() with NULL forces entry into rx, and sets states
     spirit1_iocfg_rx();
     rm2_reenter_rx(radio.evtdone);
 }
@@ -1117,6 +1192,9 @@ void rm2_txcsma_isr() {
             subrfctl_buffer_config(type, txq.length);
             spirit1_int_off();
             spirit1_iocfg_tx();
+            
+            /// If manual calibration is used, it is done here
+            __CALIBRATE();
             
             /* // START CSMA if required, using LDC mode
             if ((dll.comm.csmaca_params & M2_CSMACA_NOCSMA) == 0) {

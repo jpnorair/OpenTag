@@ -150,10 +150,13 @@
 #   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_26MHz
 #elif defined(_48MHz)
 #   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_48MHz
+#   define DRF_SYNT3X_SYNT_HI   _SYNT_HI_D7_24MHz
 #elif defined(_50MHz)
 #   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_50MHz
+#   define DRF_SYNT3X_SYNT_HI   _SYNT_HI_D7_25MHz
 #elif defined(_52MHz)
 #   define DRF_SYNT3_SYNT_HI    _SYNT_HI_D7_52MHz
+#   define DRF_SYNT3X_SYNT_HI   _SYNT_HI_D7_26MHz
 #endif
 #if (RF_PARAM_BAND == 169)
 #   define DRF_SYNT3_WCP        _WCP_169MHz
@@ -165,6 +168,7 @@
 #   define DRF_SYNT3_WCP        _WCP_866MHz
 #endif
 #define DRF_SYNT3               (DRF_SYNT3_WCP | DRF_SYNT3_SYNT_HI)
+#define DRF_SYNT3X              (DRF_SYNT3_WCP | DRF_SYNT3X_SYNT_HI)
 
 //R09
 #if defined(_24MHz)
@@ -175,10 +179,13 @@
 #   define DRF_SYNT2            _SYNT2_D7_26MHz
 #elif defined(_48MHz)
 #   define DRF_SYNT2            _SYNT2_D7_48MHz
+#   define DRF_SYNT2X           _SYNT2_D7_24MHz
 #elif defined(_50MHz)
 #   define DRF_SYNT2            _SYNT2_D7_50MHz
+#   define DRF_SYNT2X           _SYNT2_D7_25MHz
 #elif defined(_52MHz)
 #   define DRF_SYNT2            _SYNT2_D7_52MHz
+#   define DRF_SYNT2X           _SYNT2_D7_26MHz
 #endif
 
 //R0A
@@ -190,10 +197,13 @@
 #   define DRF_SYNT1            _SYNT1_D7_26MHz
 #elif defined(_48MHz)
 #   define DRF_SYNT1            _SYNT1_D7_48MHz
+#   define DRF_SYNT1X           _SYNT2_D7_24MHz
 #elif defined(_50MHz)
 #   define DRF_SYNT1            _SYNT1_D7_50MHz
+#   define DRF_SYNT1X           _SYNT2_D7_25MHz
 #elif defined(_52MHz)
 #   define DRF_SYNT1            _SYNT1_D7_52MHz
+#   define DRF_SYNT1X           _SYNT2_D7_26MHz
 #endif
 
 //R0B
@@ -205,10 +215,13 @@
 #   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_26MHz
 #elif defined(_48MHz)
 #   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_48MHz
+#   define DRF_SYNT0X_SYNT_LO   _SYNT_LO_D7_24MHz
 #elif defined(_50MHz)
 #   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_50MHz
+#   define DRF_SYNT0X_SYNT_LO   _SYNT_LO_D7_25MHz
 #elif defined(_52MHz)
 #   define DRF_SYNT0_SYNT_LO    _SYNT_LO_D7_52MHz
+#   define DRF_SYNT0X_SYNT_LO   _SYNT_LO_D7_26MHz
 #endif
 #if (RF_PARAM_BAND == 169)
 #   define DRF_SYNT0_BS         _BS_169MHz
@@ -220,6 +233,7 @@
 #   define DRF_SYNT0_BS         _BS_866MHz
 #endif
 #define DRF_SYNT0               (DRF_SYNT0_SYNT_LO | DRF_SYNT0_BS)
+#define DRF_SYNT0X              (DRF_SYNT0X_SYNT_LO | DRF_SYNT0_BS)
 
 //R0C
 #if defined(_24MHz)
@@ -318,7 +332,7 @@
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_24MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_24MHz)
 #elif defined(_50MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_25MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_MSK | _DR_E_D7LS_25MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_25MHz)
 #elif defined(_52MHz)
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_26MHz)
@@ -474,8 +488,8 @@
 #define DRF_PCKT_FLT_OPTIONS    (_RX_TIMEOUT_AND_OR_SELECT)
 //#define DRF_PCKT_FLT_OPTIONS    (_RX_TIMEOUT_AND_OR_SELECT | _CONTROL_FILTERING | _CRC_CHECK)
 
-//R50 Can't use Automatic VCO calibration due to errata
-#define DRF_PROTOCOL2           (0)
+//R50 Note: there is an erratum for the autocalibrator on SPIRIT1
+#define DRF_PROTOCOL2           (_VCO_CALIBRATION)
 //#   define _TX_SEQ_NUM_RELOAD   (3<<3)
 //#   define _RCO_CALIBRATION     (1<<2)
 //#   define _VCO_CALIBRATION     (1<<1)
@@ -531,7 +545,7 @@
 // it is not sufficient to do so for calibration.  Use 25 (0x19).
 // REF: DocID023165 Rev 5 (Errata Sheet DM00053990.pdf, March 2013)
 #define DRF_VCO_CONFIG          __VCO_GEN_CURR(25)
-//__VCO_GEN_CURR(17)
+//__VCO_GEN_CURR(25)
 
 //R6D (using power-up defaults)
 #define DRF_RCO_VCO_CALIBR_IN2  (__RWT_IN(7) | __RFB_IN(0))

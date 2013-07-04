@@ -580,8 +580,8 @@
 		<Group Header="spirit1" sate="96" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\spirit1\radio_SPIRIT1.c" Header="radio_SPIRIT1.c" Marker="-1" OutputFile=".\build\radio_SPIRIT1.o" sate="0" />
 			<NodeC Path="..\..\..\otradio\spirit1\SPIRIT1_STM32L1xx.c" Header="SPIRIT1_STM32L1xx.c" Marker="-1" OutputFile=".\build\SPIRIT1_STM32L1xx.o" sate="0" />
-			<NodeH Path="..\..\..\otradio\spirit1\radio_SPIRIT1.h" Header="radio_SPIRIT1.h" Marker="-1" OutputFile="" sate="0" />
-			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_defaults.h" Header="SPIRIT1_defaults.h" Marker="-1" OutputFile="" sate="2" />
+			<NodeH Path="..\..\..\otradio\spirit1\radio_SPIRIT1.h" Header="radio_SPIRIT1.h" Marker="-1" OutputFile="" sate="2" />
+			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_defaults.h" Header="SPIRIT1_defaults.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_interface.h" Header="SPIRIT1_interface.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_registers.h" Header="SPIRIT1_registers.h" Marker="-1" OutputFile="" sate="0" />
 																																																																	
