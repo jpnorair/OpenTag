@@ -431,7 +431,7 @@ const ot_u8 isf_stock_files[] = {
 
     0x10,                                               /* Channel Spectrum ID */
     0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (11) + 40 )*2),                          /* Channel TX Power Limit */
+    (ot_u8)(( (10) + 40 )*2),                          /* Channel TX Power Limit */
     (ot_u8)( 120 ),                                     /* Channel Link Quality Filter Level */
     (ot_u8)( (-110) + 140 ),                             /* CS RSSI Threshold */
     (ot_u8)( (-90) + 140 ),                             /* CCA RSSI Threshold*/

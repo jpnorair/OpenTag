@@ -1294,7 +1294,7 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     ot_u16  length;
     
     // Adding a packet is an atomic operation
-    /// Todo: disable USB interrupt(s)
+    ///@todo disable USB interrupt(s)
     
     // add sequence id & crc to end of the datastream
     q_writeshort(mpipe.alp.outq, cdcacm.seq.ushort++);
@@ -1303,7 +1303,8 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     q_writeshort(mpipe.alp.outq, crc16);
     
     // Move getcursor to end of packet, to allow another packet to be added
-    mpipe.alp.outq->getcursor = mpipe.alp.outq->putcursor;
+    cdcacm.pkt                  = mpipe.alp.outq->getcursor;
+    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
     cdcacm.packets++;
     
     // If MPipe is not doing something else now, initiate the TX
@@ -1316,7 +1317,7 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
         }
     }
     
-    /// Todo: enable USB interrupt(s)
+    ///@todo enable USB interrupt(s)
     
     return (10 + (mpipe.alp.outq->length >> 8));
 }

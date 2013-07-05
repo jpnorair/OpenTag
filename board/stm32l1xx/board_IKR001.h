@@ -83,8 +83,8 @@
 //From platform_STM32L1xx.h
 //#define MCU_FEATURE(VAL)              MCU_FEATURE_##VAL   // FEATURE 
 #define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPECDC            DISABLED         // USB-CDC MPipe implementation
-#define MCU_FEATURE_MPIPEUART           ENABLED         // UART MPipe Implementation
+#define MCU_FEATURE_MPIPECDC            ENABLED //DISABLED         // USB-CDC MPipe implementation
+#define MCU_FEATURE_MPIPEUART           DISABLED //ENABLED         // UART MPipe Implementation
 #define MCU_FEATURE_MPIPEI2C            DISABLED         // I2C MPipe Implementation
 #define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 

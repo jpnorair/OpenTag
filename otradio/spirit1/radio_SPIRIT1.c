@@ -853,17 +853,23 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
 /// To refresh your memory: 
 /// 1 ti    = ((1sec/32768) * 2^5) = 2^-10 sec = ~0.977 ms
 /// 1 miti   = 1/1024 ti = 2^-20 sec = ~0.954us
-
-    /// Low-Speed + Non-FEC = 18.88 miti/bit (55.55 kbps), 
-    /// Low-Speed + FEC     = 37.75 miti/bit (27.77 kbps), 
-    /// Hi-Speed + Non-FEC  = 5.24 miti/bit  (200 kbps), 
-    /// Hi-Speed + FEC      = 10.49 miti/bit (100 kbps), 
-    static const ot_u8 bit_us[4] = { 19, 38, 6, 11 };
-    ot_u8 index;
+///
+/// Implementation follows derivation below:
+/// pkt_duration(ti) = ( (buf_bytes*8)*(miti/bit)/(miti/ti) )
+/// pkt_duration(ti) = ( (buf_bytes*bit_us[X]*8/1024 )
+/// pkt_duration(ti) = ( (buf_bytes*bit_us[X]/128 )
+///
+/// Supported Data rates below:
+/// Low-Speed + Non-FEC = 18.88 miti/bit (55.55 kbps)
+/// Low-Speed + FEC     = 37.75 miti/bit (27.77 kbps)
+/// Hi-Speed + Non-FEC  = 5.24 miti/bit  (200 kbps)
+/// Hi-Speed + FEC      = 10.49 miti/bit (100 kbps)
     
-    index       = ((phymac[0].channel & 0x20)>>4) + (phymac[0].channel >> 7);
+    //static const ot_u8 bit_us[4] = { 19, 38, 6, 11 };
+    static const ot_u8 bit_us[4] = { 53, 105, 6, 11 };  ///@test
+    
+    ot_u8 index = ((phymac[0].channel & 0x20)>>4) + (phymac[0].channel >> 7);
     buf_bytes  *= bit_us[index];
-    // buf_bytes = (buf_bytes * 8 / 1024) = (buf_bytes >> 7)
     buf_bytes >>= 7;
 
     return buf_bytes;
@@ -1587,11 +1593,10 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
     buf_cfg[4]  = ((ot_u8*)&param)[UPPER];
     buf_cfg[5]  = ((ot_u8*)&param)[LOWER];
                                       
-    // 3 byte sync with preamble follower
-    buf_cfg[6]  = 0;
-    buf_cfg[7]  = sync_matrix[mode];
-    buf_cfg[8]  = sync_matrix[mode+1];
-    buf_cfg[9]  = 0xAA;
+    buf_cfg[6]  = sync_matrix[mode];
+    buf_cfg[7]  = sync_matrix[mode+1];
+    buf_cfg[8]  = sync_matrix[mode];
+    buf_cfg[9]  = sync_matrix[mode+1];
     
     // 2 byte sync without preamble follower
     //buf_cfg[6]  = 0;
@@ -1644,9 +1649,6 @@ void subrfctl_offset_rxtimeout() {
     ot_u8 min_ti;
     min_ti = min_ti_lut[((phymac[0].channel & 0xA0) >> 5)];
     
-    ///@todo check if TI2CLK is needed
-    //if ( CLK2TI(dll.comm.rx_timeout) < min_ti)
-    //    dll.comm.rx_timeout = TI2CLK(min_ti);
     if (dll.comm.rx_timeout < min_ti)
         dll.comm.rx_timeout = min_ti;
 }

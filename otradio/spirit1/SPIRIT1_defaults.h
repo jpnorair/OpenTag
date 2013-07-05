@@ -319,6 +319,7 @@
 #define DRF_MOD1                DRF_MOD1_LS
 
 //R1B: It is set in the driver when picking a channel
+/*
 #if defined(_24MHz)
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_24MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_24MHz)
@@ -332,12 +333,34 @@
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_24MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_24MHz)
 #elif defined(_50MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_MSK | _DR_E_D7LS_25MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_25MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_25MHz)
 #elif defined(_52MHz)
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_26MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_26MHz)
 #endif
+*/
+
+#if defined(_24MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_24MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_E_D7HS_24MHz)
+#elif defined(_25MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_25MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_GSK | _DR_E_D7HS_25MHz)
+#elif defined(_26MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_26MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_M_D7HS_26MHz)
+#elif defined(_48MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_24MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_E_D7HS_24MHz)
+#elif defined(_50MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_25MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_E_D7HS_25MHz)
+#elif defined(_52MHz)
+#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_26MHz)
+#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_E_D7HS_26MHz)
+#endif
+
 #define DRF_MOD0                DRF_MOD0_LS
 
 //R1C
@@ -425,10 +448,10 @@
 #define DRF_PCKTCTRL3           (_PCKT_FRMT_BASIC | _RX_MODE_NORMAL | __LEN_WID(8))
 
 //R32: The preamble length & fixed/var is set when picking a channel
-#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
-#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
-#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
-#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(4) | _SYNC_LENGTH_3)
+#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(8) | _SYNC_LENGTH_4)
+#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(8) | _SYNC_LENGTH_4)
+#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(8) | _SYNC_LENGTH_4)
+#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(8) | _SYNC_LENGTH_4)
 
 //R33: It is changed when picking a channel
 ///@todo observe CRC operation and potentially change this
@@ -454,7 +477,7 @@
 
 //R3A:
 ///@todo put this into the channel selection, depending on FEC usage
-#define DRF_QI                  (__SQI_TH(2) | __PQI_TH(1) | _SQI_EN | _PQI_EN)
+#define DRF_QI                  (__SQI_TH(3) | __PQI_TH(2) | _SQI_EN | _PQI_EN)
 
 //R3B-3D: unused
 #define DRF_MBUS_PRMBL          0x20
@@ -544,7 +567,7 @@
 // Value 17 (0x11) is sufficient to drive TX or RX once calibrated, but
 // it is not sufficient to do so for calibration.  Use 25 (0x19).
 // REF: DocID023165 Rev 5 (Errata Sheet DM00053990.pdf, March 2013)
-#define DRF_VCO_CONFIG          __VCO_GEN_CURR(25)
+#define DRF_VCO_CONFIG          __VCO_GEN_CURR(17)
 //__VCO_GEN_CURR(25)
 
 //R6D (using power-up defaults)

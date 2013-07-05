@@ -138,8 +138,10 @@
 #define _SYNT_D7_52MHz          0x00C7EC11  
 #define _DR_M_D7LS_24MHz        47          // 47.407
 #define _DR_E_D7LS_24MHz        11
-#define _DR_M_D7LS_25MHz        35          // 35.27
-#define _DR_E_D7LS_25MHz        11
+//#define _DR_M_D7LS_25MHz        35          // 35.27
+//#define _DR_E_D7LS_25MHz        11
+#define _DR_M_D7LS_25MHz        163         // 163.4
+#define _DR_E_D7LS_25MHz        9
 #define _DR_M_D7LS_26MHz        24          // 24.068
 #define _DR_E_D7LS_26MHz        11
 #define _DR_M_D7HS_24MHz        17          // 17.067
@@ -148,7 +150,6 @@
 #define _DR_E_D7HS_25MHz        13
 #define _DR_M_D7HS_26MHz        248         // 248.123
 #define _DR_E_D7HS_26MHz        12
-
 
 
 #define RF_SYNT3                0x08
