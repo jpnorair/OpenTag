@@ -16,8 +16,8 @@
 /**
   * @file       /board/stm32l1xx/board_HayTag_R1A.h
   * @author     JP Norair
-  * @version    R100
-  * @date       13 Mar 2013
+  * @version    R101
+  * @date       13 Jul 2013
   * @brief      Board Configuration for HayTag Adapter R1 for 30 pin iOS connector
   * @ingroup    Platform
   *
@@ -70,8 +70,9 @@
   * insertion loss for TX.
   */
 #define RF_PARAM_BAND   433
-#define RF_HDB_ATTEN    6       //Half dB attenuation (units = 0.5dB), used to scale TX power
-#define RF_RSSI_OFFSET  3       //Offset applied to RSSI calculation
+#define RF_HDB_ATTEN    8       //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_HDB_RXATTEN  6
+#define RF_RSSI_OFFSET  6       //Offset applied to RSSI calculation
 
 
 
@@ -311,12 +312,16 @@
 #define BOARD_I2C_ID                    1
 #define BOARD_I2C_PORTNUM               1                   //Port B
 #define BOARD_I2C_PORT                  GPIOB
-#define BOARD_I2C_SDAPINNUM             6
-#define BOARD_I2C_SCLPINNUM             7
+#define BOARD_I2C_SDAPINNUM             7
+#define BOARD_I2C_SCLPINNUM             6
 #define BOARD_I2C_SDAPIN                (1<<BOARD_I2C_SDAPINNUM)
 #define BOARD_I2C_SCLPIN                (1<<BOARD_I2C_SCLPINNUM)
 
-
+// Additional iAP Authentication I/O
+#define BOARD_IAPAUTH_PORTNUM           1
+#define BOARD_IAPAUTH_PORT              GPIOB
+#define BOARD_IAPAUTH_PWRPINNUM         8
+#define BOARD_IAPAUTH_PWRPIN            (1<<BOARD_IAPAUTH_PWRPINNUM)
 
 
 
@@ -463,13 +468,14 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - A4 is the radio SPI CS pin, which is a push-pull output
     // - A5:7 are radio SPI bus, set to ALT.  MISO is pull-down
     // - A8 is the MCO pin, which by default we use as output ground
-    // - A9 is HCOM UART TX, which is ALT open-drain output
+    // - A9 is HCOM UART TX, which is ALT push-pull output
     // - A10 is HCOM UART RX, which is ALT pullup input
-    // - A11 is UART RTS, which is pull-up open drain output by default
-    // - A12 is UART CTS, which is pull-up input by default
+    // - A11:12 are unused RTS:CTS pins, set to HiZ input
     // - A13:14 are SWD, which are ALT
-    // - A15 is HCOM SRES, which is pull-up input by default
-    GPIOA->BSRRL    = BOARD_RFGPIO_SDNPIN | BOARD_RFSPI_CSNPIN;
+    GPIOA->BSRRL    = BOARD_RFSPI_CSNPIN \
+                    | BOARD_UART_TXPIN;
+    
+    GPIOA->OTYPER   = /*(1 << (9)) |*/ (1 << 14);
     
     GPIOA->MODER    = (GPIO_MODER_OUT << (0*2)) \
                     | (GPIO_MODER_OUT << (1*2)) \
@@ -506,8 +512,6 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_MODER_IN  << (15*2));
     */
     
-    GPIOA->OTYPER   = /* (1 << (9)) | */ (1 << (11)) | (1 << 14);
-    
     GPIOA->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (4*2)) \
                     | (GPIO_OSPEEDR_10MHz << (5*2)) \
                     | (GPIO_OSPEEDR_10MHz << (6*2)) \
@@ -519,10 +523,8 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_OSPEEDR_40MHz << (13*2)) \
                     | (GPIO_OSPEEDR_40MHz << (14*2));
     
-    
     GPIOA->PUPDR    = (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                   /* |  (1 << (9*2)) |  (1 << (10*2)) */ \
-                   /* | (1 << (11*2)) | (1 << (12*2)) */ \
+                    | (2 << (BOARD_UART_RXPINNUM*2)) \
                     | (1 << (13*2)) | (2 << (14*2));
     
     GPIOA->AFR[0]   = (5 << ((BOARD_RFSPI_MOSIPINNUM)*4)) \
@@ -541,13 +543,31 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - B0:2 are radio IRQs, which are input HiZ by startup default
     // - B3: is the TRACE pin, which is a pullup input for test
     // - B4:5 are TEST pins, which are input HiZ by startup default
+    // - B6:7 are I2C1 SCL & SDA with external resistors
     // - B10 is the radio shutdown pin, which is an output
-    GPIOB->MODER    = (GPIO_MODER_OUT << (10*2));
+    GPIOB->BSRRL    = BOARD_I2C_SCLPIN \
+                    | BOARD_I2C_SDAPIN \
+                    | BOARD_RFGPIO_SDNPIN;
+    
+    GPIOB->OTYPER   = BOARD_I2C_SCLPIN \
+                    | BOARD_I2C_SDAPIN;
+    
+    //GPIOB->MODER    = (GPIO_MODER_ALT << (6*2)) \
+    //                | (GPIO_MODER_ALT << (7*2)) \
+    //                | (GPIO_MODER_OUT << (8*2)) \
+    //                | (GPIO_MODER_OUT << (10*2));
+    GPIOB->MODER    = (GPIO_MODER_OUT << (8*2)) \
+                    | (GPIO_MODER_OUT << (10*2));
     
     GPIOB->OSPEEDR  = (GPIO_OSPEEDR_40MHz << (3*2)) \
                     | (GPIO_OSPEEDR_10MHz << (4*2)) \
                     | (GPIO_OSPEEDR_10MHz << (5*2)) \
-                    | (GPIO_OSPEEDR_2MHz << (10*2));
+                    | (GPIO_OSPEEDR_10MHz << (6*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (7*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (10*2));
+                    
+    GPIOB->AFR[0]   = (4 << ((BOARD_I2C_SDAPINNUM)*4)) \
+                    | (4 << ((BOARD_I2C_SCLPINNUM)*4));
 
     //GPIOB->PUPDR    = (1 << (10*2)) | (1 << (11*2));
     
@@ -559,6 +579,12 @@ static inline void BOARD_PORT_STARTUP(void) {
     GPIOC->MODER    = (GPIO_MODER_OUT << (13*2)) \
                     | (GPIO_MODER_ALT << (14*2)) \
                     | (GPIO_MODER_ALT << (15*2));
+    
+    
+    // Assert Port H as HiZ
+    GPIOH->MODER    = (GPIO_MODER_IN << (0*2))
+                    | (GPIO_MODER_IN << (1*2));
+    
     
     /// Configure Port H for Crystal Bypass
     /// By default it is set to HiZ input.  It is changed on-demand in FW
@@ -585,7 +611,6 @@ static inline void BOARD_PORT_STANDBY() {
         //GPIOB->MODER   &= ~(3 << (6*2)) & ~(7 << (6*2));
         //GPIOB->ODR     &= ~(1 << 6) & ~(1 << 7);
 #   endif
-    
     
     //SPIRIT1 RF Interface, using SPI1 and some GPIOs
     //GPIO0-3 are floating inputs (default), SDN is 2MHz push-pull output
@@ -782,10 +807,6 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #define OT_GWNADC_PIN       (1<<OT_GWNADC_PINNUM)
 #define OT_GWNADC_BITS      8
 
-//#define OT_GWNDRV_PORTNUM   0
-//#define OT_GWNDRV_PORT      GPIOA
-//#define OT_GWNDRV_PINNUM    7
-//#define OT_GWNDRV_PIN       (1<<7)
 
 
 
@@ -867,11 +888,9 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #   else
 #       error "MPIPE_UART_ID is defined out of range"
 #   endif
-
-
-
 #endif
 
+// HayTag Accessory Only
 #if (BOARD_FEATURE_IAP == ENABLED)
 #   define IAP_USB_ID           0
 #   define IAP_USB              USB0
@@ -893,22 +912,78 @@ static inline void BOARD_XTAL_STARTUP(void) {
 #   define IAP_CTS_PIN          BOARD_UART_CTSPIN
 #   define IAP_UART_PINS        (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
 
-#   define IAP_UART             MPIPE_UART
-#   define IAP_DMA_RXCHAN_ID    MPIPE_DMA_RXCHAN_ID
-#   define IAP_DMA_TXCHAN_ID    MPIPE_DMA_TXCHAN_ID
+#   if (IAP_UART_ID == 1)
+#       define IAP_UART             USART1
+#       define IAP_DMA_RXCHAN_ID    5
+#       define IAP_DMA_TXCHAN_ID    4
+#       define __USE_DMA1_CHAN5
+#       define __USE_DMA1_CHAN4
+
+#   elif (IAP_UART_ID == 2)
+#       define IAP_UART             USART2
+#       define IAP_DMA_RXCHAN_ID    6
+#       define IAP_DMA_TXCHAN_ID    7
+#       define __USE_DMA1_CHAN7
+#       define __USE_DMA1_CHAN6
+
+#   elif (IAP_UART_ID == 3)
+#       define IAP_UART             USART3
+#       define IAP_DMA_RXCHAN_ID    3
+#       define IAP_DMA_TXCHAN_ID    2
+#       define __USE_DMA1_CHAN3
+#       define __USE_DMA1_CHAN2
+
+#   else
+#       error "IAP_UART_ID is defined out of range"
+#   endif
+
+#   define IAP_AUTH_PORTNUM     BOARD_IAPAUTH_PORTNUM
+#   define IAP_AUTH_PORT        BOARD_IAPAUTH_PORT
+#   define IAP_AUTH_PWRPIN      BOARD_IAPAUTH_PWRPIN
 
 #   define IAP_I2C_ID           BOARD_I2C_ID
+#   define IAP_I2C_PORT         BOARD_I2C_PORT
+#   define IAP_I2C_SCLPINNUM    BOARD_I2C_SCLPINNUM
+#   define IAP_I2C_SDAPINNUM    BOARD_I2C_SDAPINNUM
+#   define IAP_I2C_SCLPIN       BOARD_I2C_SCLPIN
+#   define IAP_I2C_SDAPIN       BOARD_I2C_SDAPIN
 
 #   if (IAP_I2C_ID == 1)
 #       define IAP_I2C          I2C1
-
 #   elif (IAP_I2C_ID == 2)
 #       define IAP_I2C          I2C2
-
 #   else
 #       error "IAP_I2C_ID is defined out of range"
 #   endif
 
+#   if (IAP_I2C_ID == 1)
+#       define __USE_I2C1
+#   elif (IAP_I2C_ID == 2)
+#       define __USE_I2C2
+#   endif
+/*
+#   if ((IAP_DMA_TXCHAN_ID == 1) || (IAP_DMA_RXCHAN_ID == 1))
+#       undef __USE_DMA1_CHAN1
+#   endif
+#   if ((IAP_DMA_TXCHAN_ID == 2) || (IAP_DMA_RXCHAN_ID == 2))
+#       undef __USE_DMA1_CHAN2
+#   endif
+#   if ((IAP_DMA_TXCHAN_ID == 3) || (IAP_DMA_RXCHAN_ID == 3))
+#       undef __USE_DMA1_CHAN3
+#   endif
+#   if ((IAP_DMA_TXCHAN_ID == 4) || (IAP_DMA_RXCHAN_ID == 4))
+#       undef __USE_DMA1_CHAN4
+#   endif
+#   if ((IAP_DMA_TXCHAN_ID == 5) || (IAP_DMA_RXCHAN_ID == 5))
+#       undef __USE_DMA1_CHAN5
+#   endif
+#   if ((IAP_DMA_TXCHAN_ID == 6) || (IAP_DMA_RXCHAN_ID == 6))
+#       undef __USE_DMA1_CHAN6
+#   endif
+#   if ((IAP_DMA_TXCHAN_ID == 7) || (IAP_DMA_RXCHAN_ID == 7))
+#       undef __USE_DMA1_CHAN7
+#   endif
+*/
 #endif
 
 

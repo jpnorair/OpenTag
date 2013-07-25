@@ -1,5 +1,5 @@
 
-<ApplicationBuild Header="ponglt" Extern=".\ponglt.rapp" Path=".\ponglt.rapp" OutputFile=".\ponglt.elf" sate="96" Config="IKR001_Debug" >
+<ApplicationBuild Header="ponglt" Extern=".\ponglt.rapp" Path=".\ponglt.rapp" OutputFile=".\build\ponglt.elf" sate="96" Config="R1_Tag" >
 	<Group Header="app" Marker="-1" OutputFile="" sate="96" >
 		<NodeH Path="..\code\app_config.h" Header="app_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\code\build_config.h" Header="build_config.h" Marker="-1" OutputFile="" sate="0" />
@@ -7,33 +7,42 @@
 		<NodeH Path="..\code\isr_config_STM32L.h" Header="isr_config_STM32L.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\code\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="0" />
 		<NodeH Path="..\code\platform_config.h" Header="platform_config.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\code\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\build\data_default.o" sate="0" >
+		<NodeC Path="..\code\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\build\data_default.o" sate="2" >
 			<Options>
 				<Config Header="IKR001_Debug" >
 					<Set Header="NodeC" >
 						<Section Header="Build" >
 							<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																										
+																																																																																																																	
 						</Section>
-																																																														
+																																																																																															
 					</Set>
-																																													
+																																																																								
 				</Config>
 				<Config Header="R1_Adapter" >
 					<Set Header="NodeC" >
 						<Section Header="Build" >
 							<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																													
+																																																																																																				
 						</Section>
-																																																			
+																																																																																				
 					</Set>
-																																				
+																																																															
 				</Config>
-																												
+				<Config Header="R1_Tag" >
+					<Set Header="NodeC" >
+						<Section Header="Build" >
+							<Property Header="Exclude" Value="Yes" Removable="1" />
+							<Property Header="LinkExclude" Value="Yes" Removable="1" />
+									
+						</Section>
+							
+					</Set>
+				</Config>
 			</Options>
-																									
+																																								
 		</NodeC>
-																																							
+																																																
 	</Group>
 	<Group Header="applets" Marker="-1" OutputFile="" sate="96" >
 		<NodeC Path="..\..\..\otlibext\applets_std\dll_sig_rfinit.c" Header="dll_sig_rfinit.c" Marker="-1" OutputFile=".\build\dll_sig_rfinit.o" sate="0" />
@@ -41,7 +50,7 @@
 		<NodeC Path="..\..\..\otlibext\applets_std\network_sig_route.c" Header="network_sig_route.c" Marker="-1" OutputFile=".\build\network_sig_route.o" sate="0" />
 		<NodeC Path="..\..\..\otlibext\applets_std\sys_sig_panic.c" Header="sys_sig_panic.c" Marker="-1" OutputFile=".\build\sys_sig_panic.o" sate="0" />
 		<NodeC Path="..\..\..\otlibext\applets_std\sys_sig_powerdown_[stm32lp].c" Header="sys_sig_powerdown_[stm32lp].c" Marker="-1" OutputFile=".\build\sys_sig_powerdown_[stm32lp].o" sate="0" />
-																																							
+																																																
 	</Group>
 	<Group Header="board" Marker="0" OutputFile="" sate="96" >
 		<Group Header="stm32f10x" sate="0" Marker="0" OutputFile="" >
@@ -52,15 +61,15 @@
 					<Set Header="Group" >
 						<Section Header="Build" >
 							<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																		
+																																																																																																																																																																																																																									
 						</Section>
-																																																																																																																																																						
+																																																																																																																																																																																							
 					</Set>
-																																																																																																																					
+																																																																																																																																																
 				</Config>
-																																																																																											
+																																																																																																																
 			</Options>
-																																																																	
+																																																																																
 		</Group>
 		<Group Header="stm32l1xx" sate="96" Marker="-1" OutputFile="" >
 			<NodeH Path="..\..\..\board\stm32l1xx\board_IKR001.h" Header="board_IKR001.h" Marker="-1" OutputFile="" sate="0" />
@@ -68,35 +77,35 @@
 			<NodeH Path="..\..\..\board\stm32l1xx\board_HayTag_R1.h" Header="board_HayTag_R1.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\board\stm32l1xx\board_HayTag_R1A.h" Header="board_HayTag_R1A.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\board\stm32l1xx\board_Jupiter_R1.h" Header="board_Jupiter_R1.h" Marker="-1" OutputFile="" sate="0" />
-																																																																	
+																																																																																
 		</Group>
 		<Options>
 			<Config Header="Standard" >
 				<Set Header="Group" >
 					<Section Header="Build" >
 						<Property Header="Exclude" Value="No" Removable="1" />
-																																																																																																																																																							
+																																																																																																																																																																																								
 					</Section>
-																																																																																																																											
+																																																																																																																																																						
 				</Set>
-																																																																																											
+																																																																																																																
 			</Config>
-																																																																	
+																																																																																
 		</Options>
-																																							
+																																																
 	</Group>
 	<Group Header="otkernel" Marker="-1" OutputFile="" sate="96" >
 		<Group Header="gulp" sate="0" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otkernel\gulp\system_gulp.c" Header="system_gulp.c" Marker="-1" OutputFile=".\build\system_gulp.o" sate="0" />
 			<NodeH Path="..\..\..\otkernel\gulp\system_gulp.h" Header="system_gulp.h" Marker="-1" OutputFile="" sate="0" />
-																																																																	
+																																																																																
 		</Group>
 		<Group Header="hicculp" sate="96" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otkernel\hicculp\system_hicculp.c" Header="system_hicculp.c" Marker="-1" OutputFile=".\build\system_hicculp.o" sate="0" />
 			<NodeH Path="..\..\..\otkernel\hicculp\system_hicculp.h" Header="system_hicculp.h" Marker="-1" OutputFile="" sate="0" />
-																																																																	
+																																																																																
 		</Group>
-																																							
+																																																
 	</Group>
 	<Group Header="otlib" Marker="-1" OutputFile="" sate="96" >
 		<NodeH Path="..\..\..\otlib\veelite_core.h" Header="veelite_core.h" Marker="-1" OutputFile="" sate="0" />
@@ -153,7 +162,7 @@
 		<NodeH Path="..\..\..\otlib\system.h" Header="system.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\..\..\otlib\veelite.c" Header="veelite.c" Marker="-1" OutputFile=".\build\veelite.o" sate="0" />
 		<NodeH Path="..\..\..\otlib\veelite.h" Header="veelite.h" Marker="-1" OutputFile="" sate="0" />
-																																							
+																																																
 	</Group>
 	<Group Header="otplatform" Marker="-1" OutputFile="" sate="96" >
 		<Group Header="stm32_mculib" Marker="-1" OutputFile="" sate="0" >
@@ -162,7 +171,7 @@
 					<Group Header="CoreSupport" sate="0" Marker="-1" OutputFile="" >
 						<NodeC Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport\core_cm3.c" Header="core_cm3.c" Marker="-1" OutputFile=".\build\core_cm3.o" sate="0" />
 						<NodeH Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport\core_cm3.h" Header="core_cm3.h" Marker="-1" OutputFile="" sate="0" />
-																																																																																																																																															
+																																																																																																																																																																																
 					</Group>
 					<Group Header="DeviceSupport" Marker="-1" OutputFile="" sate="96" >
 						<Group Header="ST" Marker="-1" OutputFile="" sate="96" >
@@ -175,15 +184,15 @@
 										<Set Header="Group" >
 											<Section Header="Build" >
 												<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																																																																																																																																																									
+																																																																																																																																																																																																																																																																																																																																																																																														
 											</Section>
-																																																																																																																																																																																																																																																																																													
+																																																																																																																																																																																																																																																																																																																																																												
 										</Set>
-																																																																																																																																																																																																																																																							
+																																																																																																																																																																																																																																																																																																																
 									</Config>
-																																																																																																																																																																																																																													
+																																																																																																																																																																																																																																																																																
 								</Options>
-																																																																																																																																																																																																			
+																																																																																																																																																																																																																																																
 							</Group>
 							<Group Header="STM32L1xx" sate="0" Marker="-1" OutputFile="" >
 								<NodeC Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32L1xx\system_stm32l1xx.c" Header="system_stm32l1xx.c" Marker="0" OutputFile=".\build\system_stm32l1xx.o" sate="0" >
@@ -192,37 +201,37 @@
 											<Set Header="NodeC" >
 												<Section Header="Build" >
 													<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																																																																																																																																																																																				
+																																																																																																																																																																																																																																																																																																																																																																																																																															
 												</Section>
-																																																																																																																																																																																																																																																																																																																								
+																																																																																																																																																																																																																																																																																																																																																																																													
 											</Set>
-																																																																																																																																																																																																																																																																																	
+																																																																																																																																																																																																																																																																																																																																																
 										</Config>
 										<Config Header="Standard" >
 											<Set Header="NodeC" >
 												<Section Header="Build" >
 													<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																																																																																																																																		
+																																																																																																																																																																																																																																																																																																																																																																													
 												</Section>
-																																																																																																																																																																																																																																																																										
+																																																																																																																																																																																																																																																																																																																																															
 											</Set>
-																																																																																																																																																																																																																																							
+																																																																																																																																																																																																																																																																																																						
 										</Config>
-																																																																																																																																																																																																																	
+																																																																																																																																																																																																																																																																										
 									</Options>
-																																																																																																																																																																																																																													
+																																																																																																																																																																																																																																																																																
 								</NodeC>
 								<NodeH Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32L1xx\stm32l1xx.h" Header="stm32l1xx.h" Marker="-1" OutputFile="" sate="0" />
 								<NodeH Path="..\..\..\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport\ST\STM32L1xx\system_stm32l1xx.h" Header="system_stm32l1xx.h" Marker="-1" OutputFile="" sate="0" />
-																																																																																																																																																																																																			
+																																																																																																																																																																																																																																																
 							</Group>
-																																																																																																																																																																									
+																																																																																																																																																																																																																
 						</Group>
-																																																																																																																																															
+																																																																																																																																																																																
 					</Group>
-																																																																																																																					
+																																																																																																																																																
 				</Group>
-																																																																																											
+																																																																																																																
 			</Group>
 			<Group Header="STM32_USB-FS-Device_Driver" Marker="0" OutputFile="" sate="96" >
 				<Group Header="inc" sate="0" Marker="-1" OutputFile="" >
@@ -240,9 +249,9 @@
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_regs.h" Header="usb_regs.h" Marker="-1" OutputFile="" sate="0" />
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_sil.h" Header="usb_sil.h" Marker="-1" OutputFile="" sate="0" />
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc\usb_type.h" Header="usb_type.h" Marker="-1" OutputFile="" sate="0" />
-																																																																																																																					
+																																																																																																																																																
 				</Group>
-				<Group Header="src" sate="0" Marker="0" OutputFile="" >
+				<Group Header="src" sate="0" Marker="-1" OutputFile="" >
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_core.c" Header="usb_core.c" Marker="-1" OutputFile=".\build\usb_core.o" sate="0" />
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_init.c" Header="usb_init.c" Marker="-1" OutputFile=".\build\usb_init.o" sate="0" />
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\src\usb_int.c" Header="usb_int.c" Marker="-1" OutputFile=".\build\usb_int.o" sate="0" />
@@ -254,38 +263,48 @@
 							<Set Header="Group" >
 								<Section Header="Build" >
 									<Property Header="Exclude" Value="No" Removable="1" />
-																																																																																																																																																																																																																																								
+																																																																																																																																																																																																																																																																																											
 								</Section>
-																																																																																																																																																																																																												
+																																																																																																																																																																																																																																																									
 							</Set>
-																																																																																																																																																																									
+																																																																																																																																																																																																																
 						</Config>
-																																																																																																																																															
+																																																																																																																																																																																
 					</Options>
-																																																																																																																					
+																																																																																																																																																
 				</Group>
 				<Options>
 					<Config Header="IKR001_Debug" >
 						<Set Header="Group" >
 							<Section Header="Build" >
 								<Property Header="Exclude" Value="No" Removable="1" />
-																																																																																					
+																																																																																																																																		
 							</Section>
-																																																																									
+																																																																																																																
 						</Set>
-																																																							
+																																																																																								
 					</Config>
 					<Config Header="Standard" >
 						<Set Header="Group" >
 							<Section Header="Build" >
 								<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																															
+																																																																																																																																																																																																																												
 							</Section>
-																																																																																																																																																							
+																																																																																																																																																																																														
 						</Set>
-																																																																																																																									
+																																																																																																																																																										
 					</Config>
 					<Config Header="Jupiter" >
+						<Set Header="Group" >
+							<Section Header="Build" >
+								<Property Header="Exclude" Value="No" Removable="1" />
+																																																																																																																																																																
+							</Section>
+																																																																																																																																										
+						</Set>
+																																																																																																														
+					</Config>
+					<Config Header="R1_Adapter" >
 						<Set Header="Group" >
 							<Section Header="Build" >
 								<Property Header="Exclude" Value="No" Removable="1" />
@@ -295,19 +314,9 @@
 						</Set>
 																																																																													
 					</Config>
-					<Config Header="R1_Adapter" >
-						<Set Header="Group" >
-							<Section Header="Build" >
-								<Property Header="Exclude" Value="No" Removable="1" />
-																																																																						
-							</Section>
-																																																												
-						</Set>
-																																												
-					</Config>
-																																				
+																																																															
 				</Options>
-																																																																																											
+																																																																																																																
 			</Group>
 			<Group Header="STM32F10x_StdPeriph_Driver" Marker="0" OutputFile="" sate="96" >
 				<Group Header="inc" sate="0" Marker="-1" OutputFile="" >
@@ -334,7 +343,7 @@
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_tim.h" Header="stm32f10x_tim.h" Marker="-1" OutputFile="" sate="0" />
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_usart.h" Header="stm32f10x_usart.h" Marker="-1" OutputFile="" sate="0" />
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\inc\stm32f10x_wwdg.h" Header="stm32f10x_wwdg.h" Marker="-1" OutputFile="" sate="0" />
-																																																																																																																					
+																																																																																																																																																
 				</Group>
 				<Group Header="src" sate="0" Marker="-1" OutputFile="" >
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\misc.c" Header="misc.c" Marker="-1" OutputFile=".\build\misc.o" sate="0" />
@@ -360,7 +369,7 @@
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_tim.c" Header="stm32f10x_tim.c" Marker="-1" OutputFile=".\build\stm32f10x_tim.o" sate="0" />
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_usart.c" Header="stm32f10x_usart.c" Marker="-1" OutputFile=".\build\stm32f10x_usart.o" sate="0" />
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32F10x_StdPeriph_Driver\src\stm32f10x_wwdg.c" Header="stm32f10x_wwdg.c" Marker="-1" OutputFile=".\build\stm32f10x_wwdg.o" sate="0" />
-																																																																																																																					
+																																																																																																																																																
 				</Group>
 				<Options>
 					<Config Header="Standard" >
@@ -368,15 +377,15 @@
 							<Section Header="Build" >
 								<Property Header="Exclude" Value="Yes" Removable="1" />
 								<Property Header="LinkExclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																																													
+																																																																																																																																																																																																																																																										
 							</Section>
-																																																																																																																																																																																	
+																																																																																																																																																																																																																								
 						</Set>
-																																																																																																																																															
+																																																																																																																																																																																
 					</Config>
-																																																																																																																					
+																																																																																																																																																
 				</Options>
-																																																																																											
+																																																																																																																
 			</Group>
 			<Group Header="STM32L1xx_StdPeriph_Driver" Marker="0" OutputFile="" sate="96" >
 				<Group Header="inc" sate="0" Marker="-1" OutputFile="" >
@@ -405,7 +414,7 @@
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_tim.h" Header="stm32l1xx_tim.h" Marker="-1" OutputFile="" sate="0" />
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_usart.h" Header="stm32l1xx_usart.h" Marker="-1" OutputFile="" sate="0" />
 					<NodeH Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\inc\stm32l1xx_wwdg.h" Header="stm32l1xx_wwdg.h" Marker="-1" OutputFile="" sate="0" />
-																																																																																																																					
+																																																																																																																																																
 				</Group>
 				<Group Header="src" sate="0" Marker="0" OutputFile="" >
 					<NodeC Path="..\..\..\otplatform\stm32_mculib\STM32L1xx_StdPeriph_Driver\src\misc.c" Header="misc.c" Marker="-1" OutputFile=".\build\misc.o" sate="0" />
@@ -439,32 +448,32 @@
 							<Set Header="Group" >
 								<Section Header="Build" >
 									<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																																						
+																																																																																																																																																																																																																																																									
 								</Section>
-																																																																																																																																																																														
+																																																																																																																																																																																																																											
 							</Set>
-																																																																																																																																															
+																																																																																																																																																																																						
 						</Config>
-																																																																																																																									
+																																																																																																																																																										
 					</Options>
-																																																																																																																					
+																																																																																																																																																
 				</Group>
 				<Options>
 					<Config Header="Standard" >
 						<Set Header="Group" >
 							<Section Header="Build" >
 								<Property Header="Exclude" Value="No" Removable="1" />
-																																																																																																																																																																															
+																																																																																																																																																																																																																												
 							</Section>
-																																																																																																																																																							
+																																																																																																																																																																																														
 						</Set>
-																																																																																																																									
+																																																																																																																																																										
 					</Config>
-																																																																																																			
+																																																																																																																														
 				</Options>
-																																																																																											
+																																																																																																																
 			</Group>
-																																																																	
+																																																																																
 		</Group>
 		<Group Header="stm32f10x" sate="0" Marker="0" OutputFile="" >
 			<NodeC Path="..\..\..\otplatform\stm32f10x\mpipe_uart_STM32F10x.c" Header="mpipe_uart_STM32F10x.c" Marker="-1" OutputFile=".\build\mpipe_uart_STM32F10x.o" sate="0" />
@@ -481,15 +490,15 @@
 						<Section Header="Build" >
 							<Property Header="Exclude" Value="Yes" Removable="1" />
 							<Property Header="LinkExclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																		
+																																																																																																																																																																																																																									
 						</Section>
-																																																																																																																																																						
+																																																																																																																																																																																							
 					</Set>
-																																																																																																																					
+																																																																																																																																																
 				</Config>
-																																																																																											
+																																																																																																																
 			</Options>
-																																																																	
+																																																																																
 		</Group>
 		<Group Header="stm32l1xx" sate="96" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\mpipe_uart_STM32L1xx.c" Header="mpipe_uart_STM32L1xx.c" Marker="-1" OutputFile=".\build\mpipe_uart_STM32L1xx.o" sate="0" />
@@ -499,15 +508,15 @@
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_isr_STM32L1xx.c" Header="platform_isr_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_isr_STM32L1xx.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\platform_STM32L1xx.c" Header="platform_STM32L1xx.c" Marker="-1" OutputFile=".\build\platform_STM32L1xx.o" sate="0" >
 				<Options>				</Options>
-																																																																																											
+																																																																																																																
 			</NodeC>
 			<NodeH Path="..\..\..\otplatform\stm32l1xx\platform_STM32L1xx.h" Header="platform_STM32L1xx.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeASM Path="..\..\..\otplatform\stm32l1xx\startup_stm32l1xx_md.s" Header="startup_stm32l1xx_md.s" Marker="-1" OutputFile=".\build\startup_stm32l1xx_md.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\stm32l1xx_flash.c" Header="stm32l1xx_flash.c" Marker="-1" OutputFile=".\build\stm32l1xx_flash.o" sate="0" />
 			<NodeC Path="..\..\..\otplatform\stm32l1xx\veelite_core_EE_STM32L1xx.c" Header="veelite_core_EE_STM32L1xx.c" Marker="-1" OutputFile=".\build\veelite_core_EE_STM32L1xx.o" sate="0" />
-																																																																	
+																																																																																
 		</Group>
-																																							
+																																																
 	</Group>
 	<Group Header="otradio" Marker="-1" OutputFile="" sate="96" >
 		<Group Header="cc1101" sate="0" Marker="0" OutputFile="" >
@@ -523,15 +532,15 @@
 					<Set Header="Group" >
 						<Section Header="Build" >
 							<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																		
+																																																																																																																																																																																																																									
 						</Section>
-																																																																																																																																																						
+																																																																																																																																																																																							
 					</Set>
-																																																																																																																					
+																																																																																																																																																
 				</Config>
-																																																																																											
+																																																																																																																
 			</Options>
-																																																																	
+																																																																																
 		</Group>
 		<Group Header="mlx73xxx" sate="0" Marker="0" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\mlx73xxx\mlx73xxx_MSP430F5.c" Header="mlx73xxx_MSP430F5.c" Marker="-1" OutputFile=".\build\mlx73xxx_MSP430F5.o" sate="0" />
@@ -546,15 +555,15 @@
 					<Set Header="Group" >
 						<Section Header="Build" >
 							<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																		
+																																																																																																																																																																																																																									
 						</Section>
-																																																																																																																																																						
+																																																																																																																																																																																							
 					</Set>
-																																																																																																																					
+																																																																																																																																																
 				</Config>
-																																																																																											
+																																																																																																																
 			</Options>
-																																																																	
+																																																																																
 		</Group>
 		<Group Header="null" sate="0" Marker="0" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\null\radio_null.c" Header="radio_null.c" Marker="-1" OutputFile=".\build\radio_null.o" sate="0" />
@@ -567,24 +576,24 @@
 					<Set Header="Group" >
 						<Section Header="Build" >
 							<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																		
+																																																																																																																																																																																																																									
 						</Section>
-																																																																																																																																																						
+																																																																																																																																																																																							
 					</Set>
-																																																																																																																					
+																																																																																																																																																
 				</Config>
-																																																																																											
+																																																																																																																
 			</Options>
-																																																																	
+																																																																																
 		</Group>
 		<Group Header="spirit1" sate="96" Marker="-1" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\spirit1\radio_SPIRIT1.c" Header="radio_SPIRIT1.c" Marker="-1" OutputFile=".\build\radio_SPIRIT1.o" sate="0" />
 			<NodeC Path="..\..\..\otradio\spirit1\SPIRIT1_STM32L1xx.c" Header="SPIRIT1_STM32L1xx.c" Marker="-1" OutputFile=".\build\SPIRIT1_STM32L1xx.o" sate="0" />
-			<NodeH Path="..\..\..\otradio\spirit1\radio_SPIRIT1.h" Header="radio_SPIRIT1.h" Marker="-1" OutputFile="" sate="2" />
+			<NodeH Path="..\..\..\otradio\spirit1\radio_SPIRIT1.h" Header="radio_SPIRIT1.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_defaults.h" Header="SPIRIT1_defaults.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_interface.h" Header="SPIRIT1_interface.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeH Path="..\..\..\otradio\spirit1\SPIRIT1_registers.h" Header="SPIRIT1_registers.h" Marker="-1" OutputFile="" sate="0" />
-																																																																	
+																																																																																
 		</Group>
 		<Group Header="sx1231" sate="0" Marker="0" OutputFile="" >
 			<NodeC Path="..\..\..\otradio\sx1231\radio_SX1231.c" Header="radio_SX1231.c" Marker="-1" OutputFile=".\build\radio_SX1231.o" sate="0" />
@@ -597,114 +606,116 @@
 					<Set Header="Group" >
 						<Section Header="Build" >
 							<Property Header="Exclude" Value="Yes" Removable="1" />
-																																																																																																																																																																																		
+																																																																																																																																																																																																																									
 						</Section>
-																																																																																																																																																						
+																																																																																																																																																																																							
 					</Set>
-																																																																																																																					
+																																																																																																																																																
 				</Config>
-																																																																																											
+																																																																																																																
 			</Options>
-																																																																	
+																																																																																
 		</Group>
-																																							
+																																																
 	</Group>
 	<Configs>
 		<Config Header="IKR001_Debug" />
 		<Config Header="R1_Adapter" />
 		<Config Header="Jupiter" />
-																																							
+		<Config Header="R1_Tag" />
+																																																
 	</Configs>
-	<Group Header="hdo" Marker="-1" OutputFile="" sate="96" >
+	<Group Header="hdo" Marker="-1" OutputFile="" sate="0" >
 		<NodeH Path="..\..\..\otlibext\hdo\iap.hdo.h" Header="iap.hdo.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\..\..\otlibext\hdo\iap_auth_STM32L1xx.hdo.c" Header="iap_auth_STM32L1xx.hdo.c" Marker="-1" OutputFile=".\build\iap_auth_STM32L1xx.hdo.o" sate="0" />
 		<NodeC Path="..\..\..\otlibext\hdo\iap_commands.hdo.c" Header="iap_commands.hdo.c" Marker="-1" OutputFile=".\build\iap_commands.hdo.o" sate="0" >
 			<Options/>
-					
+																				
 		</NodeC>
 		<NodeC Path="..\..\..\otlibext\hdo\iap_task.hdo.c" Header="iap_task.hdo.c" Marker="-1" OutputFile=".\build\iap_task.hdo.o" sate="0" />
 		<NodeC Path="..\..\..\otlibext\hdo\iap_uart_STM32L1xx.hdo.c" Header="iap_uart_STM32L1xx.hdo.c" Marker="-1" OutputFile=".\build\iap_uart_STM32L1xx.hdo.o" sate="0" >
 			<Options/>
+															
 		</NodeC>
-			
+												
 	</Group>
 	<Options>
 		<Config Header="Standard" >
 			<Set Header="ApplicationBuild" >
 				<Section Header="General" >
 					<Property Header="TargetFamily" Value="ARM" />
-																																																																																																																																														
+																																																																																																																																																																									
 				</Section>
 				<Section Header="Directories" >
 					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;B:\apps\app_7lan\code;B:\board;B:\otlib;B:\otkernel;B:\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport;B:\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport;B:\otplatform\stm32l1xx;B:\otradio\spirit1" Removable="1" />
 					<Property Header="OutDir" Value="$(ApplicationDir)\build" Removable="1" />
 					<Property Header="ListDir" Value="$(ApplicationDir)\build" Removable="1" />
-																																																																																																	
+																																																																																																																												
 				</Section>
-																																																																											
+																																																																																																
 			</Set>
 			<Set Header="Target" >
 				<Section Header="ProcessorARM" >
 					<Property Header="Processor" Value="STM32L151C8T6" />
-																																																																																																										
+																																																																																																																																					
 				</Section>
 				<Section Header="ToolSetARM" >
 					<Property Header="BuildToolSetARM" Value="ARM\GNU.config" />
-																																																																																																																																														
+																																																																																																																																																																									
 				</Section>
-																																																																																		
+																																																																																																							
 			</Set>
 			<Set Header="GCC" >
 				<Section Header="Dialect" >
 					<Property Header="CharSign" Value="-funsigned-char" Removable="1" />
-																																																																																																																																					
+																																																																																																																																																																
 				</Section>
 				<Section Header="Defines" >
 					<Property Header="Defines" Value="__STM32L151C8U6__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_HayTag_R1" Removable="1" />
-																																																																																																										
+																																																																																																																																					
 				</Section>
-																																																																																		
+																																																																																																							
 			</Set>
 			<Set Header="LD" >
 				<Section Header="Scripts" >
 					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
 					<Property Header="File" Value="$(ApplicationDir)\stm32l1xx_64_10.ld" Removable="1" />
-																																																																																																	
+																																																																																																																												
 				</Section>
 				<Section Header="Startup" >
 					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
 					<Property Header="File" Value="" Removable="1" />
-																																																																																																	
+																																																																																																																												
 				</Section>
 				<Section Header="LIB" >
 					<Property Header="UART0PUTC" Value="0" Removable="1" />
-																																																																																																	
+																																																																																																																												
 				</Section>
-																																																																											
+																																																																																																
 			</Set>
-																																																		
+																																																																	
 		</Config>
 		<Config Header="IKR001_Debug" >
 			<Set Header="LD" >
 				<Section Header="Startup" >
 					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
 					<Property Header="File" Value="" Removable="1" />
-																																																													
+																																																																																								
 				</Section>
 				<Section Header="Scripts" >
 					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
 					<Property Header="File" Value="B:\apps\app_7lan\proj_ride7\stm32l1xx_128_16.ld" Removable="1" />
-																																																				
+																																																																															
 				</Section>
 				<Section Header="LIB" >
 					<Property Header="UART0PUTC" Value="0" Removable="1" />
-																																																																																																																												
+																																																																																																																																																							
 				</Section>
 				<Section Header="Linker" >
 					<Property Header="WARNONCE" Value="-Wl,--warn-once" Removable="1" />
-																																																																																																																												
+																																																																																																																																																							
 				</Section>
-																																								
+																																																													
 			</Set>
 			<Set Header="ApplicationBuild" >
 				<Section Header="Directories" >
@@ -712,66 +723,76 @@
 					<Property Header="OutDir" Value="$(ApplicationDir)\build" Removable="1" />
 					<Property Header="LinkerOutputDir" Value="Application Directory" Removable="1" />
 					<Property Header="ListDir" Value="$(ApplicationDir)\build" Removable="1" />
-																																																				
+																																																																															
 				</Section>
-																																								
+																																																													
 			</Set>
 			<Set Header="GCC" >
 				<Section Header="OPTIMIZE" >
 					<Property Header="Optimize" Value="-O1" Removable="1" />
-																																																																																																																												
+																																																																																																																																																							
 				</Section>
 				<Section Header="Defines" >
 					<Property Header="Defines" Value="__STM32L152VBT6__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_IKR001" Removable="1" />
-																									
+																																																				
 				</Section>
-																			
+																																								
 			</Set>
 			<Set Header="Target" >
 				<Section Header="ProcessorARM" >
 					<Property Header="Processor" Value="STM32L152VBT6" />
-																																																				
+																																																																															
 				</Section>
-																																								
+																																																													
 			</Set>
-										
+																									
 		</Config>
 		<Config Header="R1_Adapter" >
 			<Set Header="GCC" >
 				<Section Header="Defines" >
-					<Property Header="Defines" Value="__STM32L151C8U6__;__LITTLE_ENDIAN__;__GCC__;__PROTO__;BOARD_HayTag_R1A" Removable="1" />
-																																		
+					<Property Header="Defines" Value="__STM32L151C8U6__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_HayTag_R1A" Removable="1" />
+																
 				</Section>
 				<Section Header="OPTIMIZE" >
 					<Property Header="Optimize" Value="-O1" Removable="1" />
-							
+																																		
 				</Section>
-					
+												
 			</Set>
 			<Set Header="ApplicationBuild" >
 				<Section Header="Directories" >
 					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;B:\apps\app_7lan\code;B:\board;B:\otlib;B:\otkernel;B:\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport;B:\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport;B:\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc;B:\otplatform\stm32l1xx;B:\otradio\spirit1;B:\otlibext\hdo" Removable="1" />
-																
+																																											
 				</Section>
-												
+																																	
 			</Set>
+					
 		</Config>
 		<Config Header="Jupiter" >
 			<Set Header="GCC" >
 				<Section Header="Defines" >
 					<Property Header="Defines" Value="__STM32L151C8U6__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_Jupiter" Removable="1" />
-																																																																															
+																																																																																																										
 				</Section>
-																																																													
+																																																																																		
 			</Set>
 			<Set Header="ApplicationBuild" >
 				<Section Header="Directories" >
 					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;B:\apps\app_7lan\code;B:\board;B:\otlib;B:\otkernel;B:\otplatform\stm32_mculib\CMSIS\CM3\CoreSupport;B:\otplatform\stm32_mculib\CMSIS\CM3\DeviceSupport;B:\otplatform\stm32_mculib\STM32_USB-FS-Device_Driver\inc;B:\otplatform\stm32l1xx;B:\otradio\spirit1" Removable="1" />
-																																																																						
+																																																																																																	
 				</Section>
-																																																						
+																																																																											
 			</Set>
-																																			
+																																																		
+		</Config>
+		<Config Header="R1_Tag" >
+			<Set Header="GCC" >
+				<Section Header="Defines" >
+					<Property Header="Defines" Value="__STM32L151C8U6__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_HayTag_R1T" Removable="1" />
+							
+				</Section>
+					
+			</Set>
 		</Config>
 	</Options>
 </ApplicationBuild>

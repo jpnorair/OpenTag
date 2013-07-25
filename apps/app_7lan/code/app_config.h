@@ -72,11 +72,11 @@
 
 // User/App task lists: comment-out if none.  
 // Use comma separated with TASK_xxx nomenclature (e.g. TASK_0, TASK_1, TASK_2)
-//#define OT_PARAM_USER_EXOTASKS
+#define OT_PARAM_USER_EXOTASKS          TASK_iap
 #define OT_PARAM_USER_KERNELTASKS       TASK_external
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          6                                   // Max simultaneous sessions (i.e. tasks)
-#define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    
+#define OT_PARAM_BUFFER_SIZE            (512+2080)                          // Typically, must be at least 512 bytes    
 #define OT_PARAM_KERNEL_LIMIT           -1                                  // Maximum ticks between kernel calls (if<=0, no limit)
 
 #define OT_FEATURE_SERVER               ENABLED                             // "Server" is a build containing the OpenTag stack
@@ -88,8 +88,8 @@
 #define OT_FEATURE_ALP                  (ENABLED || (OT_FEATURE_CLIENT))    // Application Layer Protocol Support
 #define OT_FEATURE_ALPAPI               (ENABLED && (OT_FEATURE_ALP))       // Application Layer Protocol callable API's
 #define OT_FEATURE_ALPEXT               ENABLED
-#define OT_FEATURE_MPIPE                ENABLED
-#define OT_FEATURE_IAP                  DISABLED
+#define OT_FEATURE_MPIPE                ENABLED //DISABLED
+#define OT_FEATURE_IAP                  DISABLED //ENABLED
 #define OT_FEATURE_NDEF                 (OT_FEATURE_MPIPE)                  // NDEF wrapper for Messaging API
 #define OT_FEATURE_VEELITE              ENABLED                             // Veelite DASH7 File System
 #define OT_FEATURE_VLFPS                OT_PARAM_VLFPS
@@ -159,7 +159,7 @@
 #define M2_FEATURE_BEACONS              ENABLED                             // Automated Beacon transmissions
 #define M2_PARAM_BEACON_TCA             12                                  // Ticks to do CSMA for Beacons
 #define M2_PARAM_MI_CHANNELS            1                                   // Multi-input channel support, e.g. "MIMO" (1-8)
-#define M2_PARAM_MAXFRAME               255                                 // Max supported frame length in bytes (127-255)
+#define M2_PARAM_MAXFRAME               256                                 // Max supported frame length in bytes (127-255)
 #if (M2_FEATURE_M2DP == ENABLED)
 #    define M2_PARAM_MFPP             1                                     // Max Frames Per Packet (1-255, partly device-dependent)
 #else

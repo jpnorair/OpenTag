@@ -192,6 +192,9 @@ void sys_powerdown() {
 /// code = 2: RF I/O Task active
 /// code = 1: MPipe or other local peripheral I/O task active
 /// code = 0: Use fastest-exit powerdown mode 
+
+///@todo universalize EXOTASK driver states via CURSOR field
+
     ot_int code;
     code    = 3; //(platform_next_ktim() <= 3) ? 0 : 3;
 #   if (1)
@@ -199,6 +202,9 @@ void sys_powerdown() {
 #   endif
 #   if (OT_FEATURE(MPIPE))
     code    = (mpipe_status() >= 0) ? 1 : code;
+#   endif
+
+#   if defined(OT_PARAM_USER_EXOTASKS)
 #   endif
 
 #   if defined(EXTF_sys_sig_powerdown)

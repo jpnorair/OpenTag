@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /OTlib/buffers.c
+  * @file       /otlib/buffers.c
   * @author     JP Norair
   * @version    V1.0
   * @date       1 June 2011
@@ -28,8 +28,8 @@
 
 
 #define DIR_ENABLED (OT_FEATURE(NDEF) || OT_FEATURE(ALP) || OT_FEATURE(MPIPE))
-#define TXRX_SIZE   ((M2_PARAM_MAXFRAME + (M2_PARAM_MAXFRAME & 1)) * (OT_FEATURE(SERVER) == ENABLED))
-#define DIR_SIZE    ((OT_FEATURE(BUFFER_SIZE) - (TXRX_SIZE*2))/2)
+#define TXRX_SIZE   ((M2_PARAM_MAXFRAME + (M2_PARAM_MAXFRAME & 1)) * (OT_FEATURE_SERVER == ENABLED))
+#define DIR_SIZE    ((OT_PARAM_BUFFER_SIZE - (TXRX_SIZE*2))/2)
 
 #if ((DIR_SIZE < 0) && DIR_ENABLED)
 #   error "DIR Queues (Needed for ALP/NDEF/MPIPE) are configured with negative allocation."
@@ -38,7 +38,7 @@
 #endif
 
 
-ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
+ot_u8 otbuf[OT_PARAM_BUFFER_SIZE];
 
 #if (OT_FEATURE(SERVER) == ENABLED)
     Queue rxq;
@@ -52,16 +52,19 @@ ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
 
 
 
+#ifndef EXTF_buffers_init
 void buffers_init() {
-#if (OT_FEATURE(SERVER) == ENABLED)
+#   if (OT_FEATURE(SERVER) == ENABLED)
     q_init(&rxq,    otbuf,              TXRX_SIZE);
-    q_init(&txq,    otbuf+TXRX_SIZE,    TXRX_SIZE);
-#endif
-#if (DIR_ENABLED)
+    q_init(&txq,    otbuf+TXRX_SIZE,    TXRX_SIZE);    
+#   endif
+#   if (DIR_ENABLED)
     q_init(&dir_in,     otbuf+(TXRX_SIZE*2),            DIR_SIZE );
     q_init(&dir_out,    otbuf+(TXRX_SIZE*2)+DIR_SIZE,   DIR_SIZE );
-#endif
+#   endif
 }
+#endif
+
 
 
 /// Experimental

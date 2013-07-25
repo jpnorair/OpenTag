@@ -70,8 +70,9 @@
   * insertion loss for TX.
   */
 #define RF_PARAM_BAND   433
-#define RF_HDB_ATTEN    6       //Half dB attenuation (units = 0.5dB), used to scale TX power
-#define RF_RSSI_OFFSET  3       //Offset applied to RSSI calculation
+#define RF_HDB_ATTEN    8       //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_HDB_RXATTEN  6
+#define RF_RSSI_OFFSET  6       //Offset applied to RSSI calculation
 
 
 

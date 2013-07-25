@@ -31,8 +31,9 @@
 #include "OTAPI.h"
 #include "OT_platform.h"
 
-
-
+#if (OT_FEATURE(IAP) == ENABLED)
+#   include "iap.hdo.h"
+#endif
 
 /** Data Mapping <BR>
   * ===========================================================================
@@ -167,7 +168,7 @@ void sub_button_init() {
 
 
 
-
+#if (OT_FEATURE(MPIPE))
 void sub_print_stats() {
     ot_int scratch;
     q_writestring(mpipe.alp.outq, (ot_u8*)", RSSI:", 7);
@@ -180,7 +181,7 @@ void sub_print_stats() {
     mpipe.alp.outq->putcursor  += scratch;
     mpipe.alp.outq->length     += scratch;     
 }
-
+#endif
 
 
 
@@ -290,11 +291,11 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
   * The applets used are selected in extf_config.h
   */
 void dll_sig_rfterminate(ot_int pcode, ot_int scode) {
-    if (scode == 0) {
-        otapi_led2_off();   //Orange LED off
-        otapi_led1_off();   //Green LED off
-    }
-    else {
+#if (OT_FEATURE(MPIPE))
+    otapi_led2_off();   //Orange LED off
+    otapi_led1_off();   //Green LED off
+
+    if (scode != 0) {
         // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
         otapi_log_header(1, 0);
         
@@ -305,6 +306,12 @@ void dll_sig_rfterminate(ot_int pcode, ot_int scode) {
         // Close the log file, send it out, return success
         otapi_log_direct();
     }
+    
+#else
+    otapi_led2_off();       //Orange LED off
+    otapi_led1_off();       //Green LED off
+    
+#endif
 }
 
 
@@ -532,10 +539,16 @@ void main(void) {
     otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 #   endif
     
-    ///4. Initialize the User Applet & interrupts
+    ///3. If you have any custom tasks to initialize, here is a good place
+#   if (OT_FEATURE(IAP) == ENABLED)
+    dll_goto_off();
+    iap_connect(NULL);
+#   endif
+    
+    ///5. Initialize the User Applet & interrupts
     app_init();
 
-    ///5. MAIN RUNTIME (post-init)  <BR>
+    ///6. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
     ///<LI> You could put code before or after sys_runtime_manager, which will
     ///     run before or after the (task + kernel).  If you do, keep the code

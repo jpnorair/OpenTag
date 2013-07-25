@@ -130,6 +130,7 @@
 #   endif
 
 #else
+/*
 #   if ((MPIPE_DMA_TXCHAN_ID == 1) || (MPIPE_DMA_RXCHAN_ID == 1))
 #       undef __USE_DMA1_CHAN1
 #   endif
@@ -151,6 +152,7 @@
 #   if ((MPIPE_DMA_TXCHAN_ID == 7) || (MPIPE_DMA_RXCHAN_ID == 7))
 #       undef __USE_DMA1_CHAN7
 #   endif
+*/
 #endif
 
 
@@ -777,7 +779,7 @@ void TIM11_IRQHandler(void) {
 
 /// Open I2C interrupts (todo)
 
-#if defined(__ISR_I2C1_EV) && !defined(__N_ISR_I2C1_EV)
+#if defined(__USE_I2C1) || (defined(__ISR_I2C1_EV) && !defined(__N_ISR_I2C1_EV))
 void I2C1_EV_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_i2c1ev();
@@ -785,15 +787,15 @@ void I2C1_EV_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_I2C1_ER) && !defined(__N_ISR_I2C1_ER)
+#if defined(__USE_I2C1) || (defined(__ISR_I2C1_ER) && !defined(__N_ISR_I2C1_ER))
 void I2C1_ER_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    platform_isr_i2c1er(void);
+    platform_isr_i2c1er();
     __ISR_EXIT_HOOK();
 }
 #endif
 
-#if defined(__ISR_I2C2_EV) && !defined(__N_ISR_I2C2_EV)
+#if defined(__USE_I2C2) || (defined(__ISR_I2C2_EV) && !defined(__N_ISR_I2C2_EV))
 void I2C2_EV_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_i2c2ev();
@@ -801,7 +803,7 @@ void I2C2_EV_IRQHandler(void) {
 }
 #endif
 
-#if defined(__ISR_I2C2_ER) && !defined(__N_ISR_I2C2_ER)
+#if defined(__USE_I2C2) || (defined(__ISR_I2C2_ER) && !defined(__N_ISR_I2C2_ER))
 void I2C2_ER_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_i2c2er();

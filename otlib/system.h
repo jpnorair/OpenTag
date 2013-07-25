@@ -69,8 +69,6 @@ typedef enum {
 #endif
 #if (OT_FEATURE(MPIPE))
     TASK_mpipe,
-#elif (OT_FEATURE(IAP))
-    TASK_iap,
 #endif
 #if defined(OT_PARAM_USER_EXOTASKS)
     OT_PARAM_USER_EXOTASKS,
