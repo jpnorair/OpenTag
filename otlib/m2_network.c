@@ -31,7 +31,7 @@
 
 #include "OT_config.h"
 #include "OT_platform.h"
-#if OT_FEATURE(M2)
+#if (OT_FEATURE(SERVER) && OT_FEATURE(M2))
 
 #include "m2_network.h"
 #include "m2_transport.h"

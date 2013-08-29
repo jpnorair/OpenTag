@@ -331,7 +331,7 @@ ot_int mpipe_init(void* port_id) {
     mpipe.sequence.ushort   = 0;          //not actually necessary
     mpipe.state             = MPIPE_Idle;
 
-    alp_init(&mpipe_alp, &dir_in, &dir_out);
+    alp_init(&mpipe_alp, &otmpin, &otmpout);
     mpipe_alp.inq->back    -= 10;
     mpipe_alp.outq->back   -= 10;
 

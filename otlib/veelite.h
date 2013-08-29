@@ -468,6 +468,10 @@ ot_u8 vl_store( vlFILE* fp, ot_uint length, ot_u8* data );
 
 
 
+ot_u8 vl_append( vlFILE* fp, ot_uint length, ot_u8* data );
+
+
+
 
 /** @brief  Crops (or erases) a file contents without deleting the file
   * @param  fp          (vlFILE*) file pointer of open file

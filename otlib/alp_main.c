@@ -119,6 +119,10 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
     }
     else
 #   else
+        //*hdr_position++ = alp->outrec.flags;
+        //*hdr_position++ = alp->outrec.plength;
+        //*hdr_position++ = alp->outrec.id;
+        //*hdr_position   = alp->outrec.cmd;
         platform_memcpy(hdr_position, &alp->outrec.flags, 4);
 #   endif
 
@@ -170,7 +174,7 @@ void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payl
 #   if (OT_FEATURE(NDEF))
 	alp->outrec.flags &= ~(ALP_FLAG_ME | ALP_FLAG_CF | NDEF_IL);
 #   else
-    alp->outrec.flags &= ALP_FLAG_MB;
+    alp->outrec.flags &= (ALP_FLAG_MB | NDEF_SR);
 #   endif
 
     // NDEF TNF needs to be 5 (with ID) on MB=1 and 6 (no ID) or MB=0

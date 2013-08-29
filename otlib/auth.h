@@ -1,4 +1,4 @@
-/*  Copyright 2010-2011, JP Norair
+/*  Copyright 2013, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/auth.h
+  * @file       /otlib/auth.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       09 July 2010
+  * @version    R100
+  * @date       12 Aug 2013
   * @brief      Authentication & Cryptography Functionality
   * @defgroup   Authentication (Authentication Module)
   * @ingroup    Authentication
@@ -41,6 +41,7 @@
 
 /// Default user types
 #define AUTH_GUEST  (id_tmpl*)auth_guest
+#define AUTH_USER   (id_tmpl*)auth_user
 #define AUTH_ROOT   NULL
 
 #define AUTH_FLAG_ISGLOBAL  0x80
@@ -50,7 +51,8 @@
 ///@todo bring this into OT_config.h eventually, when the feature gets supported
 #define AUTH_NUM_ELEMENTS 0
 
-
+extern const id_tmpl*   auth_root;      // this is self-root, uses local root key
+extern const id_tmpl*   auth_user;      // this is self-user, uses local user key
 extern const id_tmpl*   auth_guest;
 
 
@@ -86,12 +88,21 @@ void auth_init();
 
 
 
-/** @brief Returns True if the supplied user has root access
+/** @brief Returns True if the supplied ID has root access
   * @param user_id      (id_tmpl*) pointer to a UID/VID template
-  * @retval ot_bool     True when user is root
+  * @retval ot_bool     True when ID is root
   * @ingroup Authentication
   */
 ot_bool auth_isroot(id_tmpl* user_id);
+
+
+
+/** @brief Returns True if the supplied ID has user access (root passes this)
+  * @param user_id      (id_tmpl*) pointer to a UID/VID template
+  * @retval ot_bool     True when ID is user or root
+  * @ingroup Authentication
+  */
+ot_bool auth_isuser(id_tmpl* user_id);
 
 
 
@@ -131,11 +142,12 @@ auth_entry* auth_search_user(id_tmpl* user_id, ot_u8 mod_flags);
 
 /** @brief Returns the stored User or Root key that matches the protocol ID
   * @param protocol (ot_u8) Protocol ID of the DLLS method
+  * @param options  (ot_u8) Protocol-specific options
   * @param header   (ot_u8*) optional header data (defined by protocol ID) 
   * @retval ot_u8*  Key Data
   * @ingroup Authentication
 
-ot_u8* auth_get_dllskey(ot_u8 protocol, ot_u8* header);
+ot_u8* auth_get_dllskey(ot_u8 protocol, ot_u8 options, ot_u8* header);
   */
 
 

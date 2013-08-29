@@ -387,8 +387,8 @@ ot_int mpipe_init(void* port_id) {
     mpipe.priority  = MPIPE_Low;
 #endif
     mpipe.state     = MPIPE_Idle;
-    mpipe_alp.inq   = &dir_in;
-    mpipe_alp.outq  = &dir_out;
+    mpipe_alp.inq   = &otmpin;
+    mpipe_alp.outq  = &otmpout;
 
     //mpipe.sequence.ushort   = 0;          //not actually necessary
     

@@ -658,7 +658,7 @@ ot_int mpipedrv_init(void* port_id) {
     mpmac.seq.ushort        = 0;                //not actually necessary
     mpipe.state             = MPIPE_Null;	    // Disconnected
 
-	alp_init(&mpipe.alp, &dir_in, &dir_out);
+	alp_init(&mpipe.alp, &otmpin, &otmpout);
 	mpipe.alp.inq->back    -= 10;
     mpipe.alp.outq->back   -= 10;
     

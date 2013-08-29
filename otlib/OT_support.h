@@ -1,4 +1,4 @@
-/* Copyright 2009-2011 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/OT_support.h
+  * @file       /otlib/OT_support.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
-  * @date       1 Jan 2011
+  * @version    R100
+  * @date       19 Aug 2013
   * @brief      Indexed List of Supported Applications and Platforms, which are
   *             included into other configuration files.
   *

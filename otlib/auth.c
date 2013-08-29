@@ -1,4 +1,4 @@
-/* Copyright 2010 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/auth.c
+  * @file       /otlib/auth.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       12 June 2010
+  * @version    R100
+  * @date       12 Aug 2013
   * @brief      Authentication & Crypto Functionality
   * @ingroup    Authentication
   *
@@ -43,6 +43,9 @@
 
 #define AUTH_HEAP_SIZE 0
 
+
+const id_tmpl*   auth_root;
+const id_tmpl*   auth_user;
 const id_tmpl*   auth_guest;
 
 
@@ -66,18 +69,30 @@ typedef struct {
 #define _SEC_TABLESIZE  2   //OT_PARAM(AUTH_TABLE_SIZE)
 
 typedef struct {
-    ot_int free_space;
-    ot_int end;
-    ot_u8  data[_SEC_HEAPSIZE];
+    ot_int  free_space;
+    ot_int  end;
+    ot_u8   data[_SEC_HEAPSIZE];
 } auth_heap_struct;
 
+typedef struct {
+    ot_u8   reserved00;
+    ot_u8   reserved01;
+    ot_u8   length;
+    ot_u8   protocol;
+    ot_u32  cache[4];
+} auth_dlls_struct;
 
-#if (_SEC_ANY)
-    auth_entry        auth_table[_SEC_TABLESIZE];
-    auth_heap_struct  auth_heap;
+
+
+#if (_SEC_NLS)
+    auth_entry          auth_table[_SEC_TABLESIZE];
+    auth_heap_struct    auth_heap;
 #endif
 
-
+#if (_SEC_DLL)
+/// Presently, AES128 is the only type supported
+    auth_dlls_struct    auth_key[4];
+#endif
 
 
 
@@ -113,7 +128,18 @@ void crypto_clean();
 
 
 
-void auth_init() { 
+void auth_init() {
+#if (_SEC_DLL)
+    /// Load key files into cache for faster access.  We assume that there is
+    /// only one type of crypto, which is AES128
+    for (i=ISF_ID(root_authentication_key); i<ISF_ID(root_authentication_key)+2; i++) {
+        fp  = isf_open_su(i);
+        vl_load(fp, &(auth_key[i].length), 18);
+        ///@todo Do decryption key processing
+        vl_close(fp);
+    }
+    
+#endif
 #if (_SEC_NLS)
 ///@todo
 #endif
@@ -123,33 +149,47 @@ void auth_init() {
 
 
 ot_bool sub_idcmp(id_tmpl* user_id, auth_entry* auth_id) {
-    //ot_int i;
-    ot_bool id_check = True;
+    ot_bool id_check;
     
     if (user_id->length != auth_id->id->length) {
         return False;
     }
-    
-    if (user_id->length == 8) {
-    	id_check &= (((ot_u16*)user_id->value)[3] == ((ot_u16*)auth_id->id->value)[3]);
-        id_check &= (((ot_u16*)user_id->value)[2] == ((ot_u16*)auth_id->id->value)[2]);
-        id_check &= (((ot_u16*)user_id->value)[1] == ((ot_u16*)auth_id->id->value)[1]);
+    if (user_id->length == 2) {
+        return (((ot_u16*)user_id->value)[0] == ((ot_u16*)auth_id->id->value)[0]);
     }
-    id_check &= (((ot_u16*)user_id->value)[0] == ((ot_u16*)auth_id->id->value)[0]);
-    
+
+    id_check    = (((ot_u32*)user_id->value)[0] == ((ot_u32*)auth_id->id->value)[0]);
+    id_check   &= (((ot_u32*)user_id->value)[1] == ((ot_u32*)auth_id->id->value)[1]);
     return id_check;
 }
 
 
+ot_bool sub_authcmp(id_tmpl* user_id, id_tmpl* comp_id, ot_u8 mod_flags) {
+    if ((user_id == NULL) || (user_id == comp_id)) 
+        return True;
+        
+    return (ot_bool)auth_search_user(user_id, mod_flags);
+}
+
 
 ot_bool auth_isroot(id_tmpl* user_id) {
 /// NULL is how root is implemented in internal calls
-#if (_SEC_ANY)
-    if (user_id == NULL) {
-        return True;
-    }
-    return (ot_bool)auth_search_user(user_id, AUTH_FLAG_ISROOT);
-    
+#if (_SEC_NLS)
+    return sub_authcmp(user_id, auth_root, AUTH_FLAG_ISROOT)
+#elif (_SEC_DLL)
+    return (ot_bool)((user_id == NULL) || (user_id == auth_root)) 
+#else
+    return (ot_bool)(user_id == NULL);
+#endif
+}
+
+
+ot_bool auth_isuser(id_tmpl* user_id) {
+/// NULL is how root is implemented in internal calls
+#if (_SEC_NLS)
+    return sub_authcmp(user_id, auth_user, AUTH_FLAG_ISUSER)
+#elif (_SEC_DLL)
+    return (ot_bool)((user_id == NULL) || (user_id == auth_user))
 #else
     return (ot_bool)(user_id == NULL);
 #endif
@@ -192,16 +232,26 @@ auth_entry* auth_search_user(id_tmpl* user_id, ot_u8 mod_flags) {
             }
         }
     }
-
-
-
 #endif
     return NULL;
 }
 
 
-ot_u8* auth_get_dllskey(ot_u8 protocol, ot_u8* header) {
+ot_u8* auth_get_dllskey(ot_u8 protocol, ot_u8 options, ot_u8* header) {
 #if (_SEC_DLL)
+    /// This implementation assumes that AES128 is the only supported crypto.
+    /// DASH7 AES128 has protocol-id = xx000000.
+    if (protocol & 0x3F) {
+        return NULL;
+    }
+    options    &= 2;
+    options    += ((protocol & AUTH_FLAG_ISROOT) == 0);
+    return (ot_u8*)auth_key.[options].cache;
+
+#elif 0 //(_SEC_DLL)
+    /// This implementation looks up a protocol-specific key in the appropriate
+    /// ISF Key file.  It is over-engineered for implementations with only one
+    /// type of DLLS crypto (e.g. AES128).
     ot_u8 offset;
     ot_u8 cursor;
     vlFILE* fp;
@@ -219,10 +269,10 @@ ot_u8* auth_get_dllskey(ot_u8 protocol, ot_u8* header) {
           
         if (scratch.ubyte[1] == protocol) {
             for (offset=0; offset<scratch.ubyte[0]; offset+=2, cursor+=2) {
-                *((ot_u16*)(keybuf+offset)) = vl_read(fp, cursor);
+                *((ot_u16*)(auth_keybuf+offset)) = vl_read(fp, cursor);
             }
             vl_close(fp);
-            return keybuf;
+            return (ot_u8*)auth_keybuf;
         }
         cursor += scratch.ubyte[0];
     }

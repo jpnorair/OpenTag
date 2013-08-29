@@ -276,7 +276,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
     }
 #   endif
 
-    return False;
+    return False; 
 }
 #endif
 
@@ -339,6 +339,7 @@ void ext_systask(ot_task task) {
     session_tmpl    s_tmpl;
     advert_tmpl     adv_tmpl;
 
+    
     if (task->event == 1) {
         //task->event = 0;
         
@@ -368,6 +369,7 @@ void ext_systask(ot_task task) {
         //otapi_task_advertise(&adv_tmpl, &s_tmpl, &applet_send_query);
         otapi_task_immediate(&s_tmpl, &applet_send_query);
     }
+
     
     // Turn off the task after 512 ticks (what is set above)
     // Note that this task will not be activated by the button press or ALP

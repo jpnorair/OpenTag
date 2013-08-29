@@ -42,7 +42,7 @@
 #include "OT_config.h"
 
 // Don't compile this if m2 is not enabled
-#if OT_FEATURE(M2)
+#if (OT_FEATURE(M2) == ENABLED)
 
 #include "OT_types.h"
 #include "OT_utils.h"
@@ -411,7 +411,7 @@ void sub_dll_flush() {
         task->latency  = 255;
         task->nextevent= 0;
         task++;
-	} while (task < &sys.task[BTS_INDEX+1]);
+	} while (task < &sys.task[SSS_INDEX+1]);
 
     session_init();
 
@@ -444,13 +444,10 @@ void dll_idle() {
     radio_sleep();
     
     /// Assure all DLL tasks are in IDLE
-    sys.task_RFA.event = 0;
-
+    sys.task_RFA.event  = 0;
     scan_evt_ptr        = (ot_u8*)&scan_events[dll.idle_state<<1];
     sys.task_HSS.event  = *scan_evt_ptr;
-#   if (M2_FEATURE(ENDPOINT) == ENABLED)
     sys.task_SSS.event  = *(++scan_evt_ptr);
-#   endif
     
 #   if (M2_FEATURE(BEACONS) == ENABLED)
     sys.task_BTS.event  = ((dll.netconf.b_attempts != 0) \
@@ -472,9 +469,11 @@ void dll_idle() {
   * ========================================================================<BR>
   */
 #ifdef OT_FEATURE_LISTEN_ALLOWANCE
-#   define _RX_LATENCY  OT_FEATURE_LISTEN_ALLOWANCE
+#   define _REQRX_LATENCY   OT_PARAM_LISTEN_ALLOWANCE
+#   define _RESPRX_LATENCY  OT_PARAM_RECEIVE_ALLOWANCE
 #else
-#   define _RX_LATENCY  40
+#   define _REQRX_LATENCY   40
+#   define _RESPRX_LATENCY  2
 #endif
 
 void dll_block() {
@@ -482,7 +481,7 @@ void dll_block() {
 }
 
 void dll_unblock() {
-	sys.task_RFA.latency = _RX_LATENCY;
+	sys.task_RFA.latency = _REQRX_LATENCY;
 }
 
 
@@ -564,7 +563,7 @@ void sub_processing() {
     if (proc_score >= 0) {
         sub_fceval(proc_score);
         sys.task_HSS.cursor = 0;
-        dll.counter         = 0;
+        dll.counter         = dll.netconf.hold_limit;
         dll.idle_state      = M2_DLLIDLE_HOLD;
 
         if (session->flags & M2FI_LISTEN) {
@@ -598,25 +597,17 @@ void dll_systask_holdscan(ot_task task) {
 /// checks on switching between hold and sleep modes.  Namely, it increments
 /// the hold_cycle parameter, and if this is over the limit it will return into
 /// sleep mode.
-#if ((SYS_RECEIVE == ENABLED) && (M2_FEATURE(ENDPOINT) == ENABLED))
-    dll.counter += (sys.task_HSS.cursor == 0);
     
     // Do holdscan (top) or go back into sleep mode (bottom)
-    if (((dll.netconf.active & M2_SET_CLASSMASK) != M2_SET_ENDPOINT) | \
-        (dll.counter >= dll.netconf.hold_limit)) {
+    if (dll.counter != 0) {
+        dll.counter -= (sys.task_HSS.cursor == 0);
         dll_systask_sleepscan(task);
     }
     else {
-        dll.counter         = 0;
         sys.task_HSS.event  = 0;
         sys.task_HSS.cursor = 0;
         sys.task_SSS.event  = 5;
     }
-    
-#else
-    // SLEEP state is not enabled on the device, so it will use HOLD always.
-    dll_systask_sleepscan(task);
-#endif
 }
 
 
@@ -625,19 +616,17 @@ void dll_systask_sleepscan(ot_task task) {
 /// The Sleep Scan process runs as an independent task.  It is very similar
 /// to the Hold Scan process, which actually calls this same routine.  They
 /// use independent task markers, however, so they behave differently.
-#if ((M2_FEATURE(GATEWAY) == ENABLED) || \
-     (M2_FEATURE(SUBCONTROLLER) == ENABLED) || \
-     (M2_FEATURE(ENDPOINT) == ENABLED))
-    ot_u8   s_channel;
-    ot_u8   s_flags;
-    ot_u8   new_netstate;
-    ot_uni16  scratch;
-    vlFILE* fp;
+    ot_u8       s_channel;
+    ot_u8       s_flags;
+    ot_u8       new_netstate;
+    ot_uni16    scratch;
+    vlFILE*     fp;
 
     if (task->event == 0) return;
 
     fp = ISF_open_su( task->event );
-    ///@todo assert fp
+    ///@note fp doesn't really need to be asserted unless you are mucking 
+    ///      with things in test builds.
 
     /// Pull channel ID and Scan flags
     scratch.ushort  = vl_read(fp, task->cursor);
@@ -673,7 +662,6 @@ void dll_systask_sleepscan(ot_task task) {
     dll_set_defaults( session_new(NULL, 0, new_netstate, s_channel) );
     dll.comm.rx_timeout     = otutils_calc_timeout(s_flags);
     dll.comm.csmaca_params  = 0;
-#endif
 }
 
 
@@ -727,7 +715,6 @@ void dll_systask_beacon(ot_task task) {
         scratch.ushort = vl_read(fp, task->cursor+=2);
         scratch.ushort = PLATFORM_ENDIAN16(scratch.ushort);
 #   endif
-    //task->nextevent = scratch.ushort;
     sys_task_setnext(task, scratch.ushort);
 
     /// Beacon List Management:
@@ -796,12 +783,10 @@ void sub_activate() {
     m2session* session;
 
     sys.task_HSS.event = 0;
-#   if (M2_FEATURE(ENDPOINT) == ENABLED)
-    sys.task_SSS.event = 0;
-#   endif
 #   if (M2_FEATURE(BEACONS) == ENABLED)
     sys.task_BTS.event = 0;
 #   endif
+    sys.task_SSS.event = 0;
 
     session_drop();
     dll.idle_state  = sub_default_idle();
@@ -872,25 +857,22 @@ void sub_init_rx(ot_u8 is_brx) {
 ///
 /// @todo A more adaptive method for scanning is planned, in which the latency 
 /// drops to 1 only after a sync word is detected.
+    static const ot_sig2 rfevt_cb[2] = { &rfevt_bscan, &rfevt_frx };
+    m2session* this_session;
+
 	sys_task_setnext(&sys.task[TASK_radio], dll.comm.rx_timeout);
 
-    sys.task_RFA.latency    = _RX_LATENCY;
-  //sys.task_RFA.reserved   = 10;    //un-necessary, RFA is max priority
+    this_session            = &session.heap[session.top];
     sys.task_RFA.event      = 3;
-    
+  //sys.task_RFA.reserved   = 10;   //un-necessary, RFA is max priority
+    sys.task_RFA.latency    = (this_session->netstate & M2_NETSTATE_RESP) ? \
+                                _RESPRX_LATENCY : _REQRX_LATENCY;
+    // E.g. lights a LED
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
-#if (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER) || M2_FEATURE(ENDPOINT))
-    {   // is_brx is inverted to 0=brx, 1=frx
-    	static const ot_sig2 rfevt_cb[2] = { &rfevt_bscan, &rfevt_frx };
-    	is_brx = (is_brx == 0);
-    	rm2_rxinit(session.heap[session.top].channel, is_brx, rfevt_cb[is_brx]);
-    }
-#else
-    rm2_rxinit(session.heap[session.top].channel, 1, &rfevt_frx);
-#endif
-
-#undef _RX_LATENCY
+    // "is_brx" is inverted to 0=brx, 1=frx
+    is_brx = (is_brx==0);
+    rm2_rxinit(this_session->channel, is_brx, rfevt_cb[is_brx]);
 }
 
 
@@ -906,7 +888,7 @@ void sub_init_tx(ot_u8 is_btx) {
 
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
-#if (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER))
+#if (SYS_FLOOD == ENABLED)
     dll.counter = 0;
     if (is_btx) {
         dll.counter = session.heap[session.top-1].counter;
@@ -1242,22 +1224,24 @@ void dll_quit_rf() {
 
 
 ot_u8 sub_default_idle() {
-#if (M2_FEATURE(ENDPOINT) == ENABLED)
-#ifdef __BIG_ENDIAN__
-#   define _SETTING_SHIFT   9
-#else
-#   define _SETTING_SHIFT   1
-#endif
-    ot_u16 setting;
-    setting = (dll.netconf.active & M2_SET_CLASSMASK) >> _SETTING_SHIFT;
-    if (setting > 1) {
-        setting = M2_DLLIDLE_HOLD;
-    }    
-    return (ot_u8)setting;
-#else
+    return M2_DLLIDLE_SLEEP;
     
-    return (dll.netconf.active & M2_SET_CLASSMASK) ? M2_DLLIDLE_HOLD : M2_DLLIDLE_OFF;
-#endif
+//#if (M2_FEATURE(ENDPOINT) == ENABLED)
+//#ifdef __BIG_ENDIAN__
+//#   define _SETTING_SHIFT   9
+//#else
+//#   define _SETTING_SHIFT   1
+//#endif
+//    ot_u16 setting;
+//    setting = (dll.netconf.active & M2_SET_CLASSMASK) >> _SETTING_SHIFT;
+//    if (setting > 1) {
+//        setting = M2_DLLIDLE_HOLD;
+//    }    
+//    return (ot_u8)setting;
+//#else
+    
+//    return (dll.netconf.active & M2_SET_CLASSMASK) ? M2_DLLIDLE_HOLD : M2_DLLIDLE_OFF;
+//#endif
 }
 
 
@@ -1415,6 +1399,15 @@ CLK_UNIT sub_aind_nextslot() {
     return TI2CLK(rm2_pkt_duration(txq.front[0]));
 }
 */
+
+
+
+
+
+
+#undef _REQRX_LATENCY
+#undef _RESPRX_LATENCY
+
 
 #endif
 

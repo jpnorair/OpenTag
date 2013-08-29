@@ -6,7 +6,7 @@
 #include "queue.h"
 
 
-Queue dir_out;
+Queue otmpout;
 ot_u8 buffer[256];
 
 
@@ -236,8 +236,8 @@ void otapi_log_header(ot_u8 id_subcode, ot_int payload_length) {
     header[2]       = (ot_u8)payload_length;
     header[5]       = id_subcode;
 
-    q_empty(&dir_out);  // output buffer
-    q_writestring(&dir_out, header, 6);
+    q_empty(&otmpout);  // output buffer
+    q_writestring(&otmpout, header, 6);
 }
 
 void otapi_log_direct(ot_u8* data) {
@@ -366,8 +366,8 @@ ot_bool app_udp_request(id_tmpl* id, ot_int payload_length, ot_u8* payload) {
     }
 
     otapi_log_header(1, 0);   //Text is subcode 1, dummy length is 0
-    dir_out.putcursor      += slistf(dir_out.putcursor, "ID:", 'x', id->length, id->value);
-    *dir_out.putcursor++    = '\n';
+    otmpout.putcursor      += slistf(otmpout.putcursor, "ID:", 'x', id->length, id->value);
+    *otmpout.putcursor++    = '\n';
     payload                += 2;
     payload_length         -= 2;
     payload_end             = payload + payload_length;
@@ -375,36 +375,36 @@ ot_bool app_udp_request(id_tmpl* id, ot_int payload_length, ot_u8* payload) {
     while (payload < payload_end) {
         switch (*payload++) {
         // PaLFi data load: 8 bytes
-        case 'D':   dir_out.putcursor  += slistf(dir_out.putcursor, "Data:", 'x', 8, payload);
+        case 'D':   otmpout.putcursor  += slistf(otmpout.putcursor, "Data:", 'x', 8, payload);
                     payload            += 8;
                     break;
 
         // Event-type information (1 byte)
-        case 'E':   dir_out.putcursor  += slistf(dir_out.putcursor, "Event:", 'b', 1, payload);
+        case 'E':   otmpout.putcursor  += slistf(otmpout.putcursor, "Event:", 'b', 1, payload);
                     payload++;
                     break;
 
         // PaLFi RSSI bytes (3 bytes)
-        case 'R':   dir_out.putcursor  += slistf(dir_out.putcursor, "RSSI:", 'b', 3, payload);
+        case 'R':   otmpout.putcursor  += slistf(otmpout.putcursor, "RSSI:", 'b', 3, payload);
                     payload            += 3
                     break;
 
         // Temperature (2 bytes)
-        case 'T':   dir_out.putcursor  += slistf(dir_out.putcursor, "Temp:", 's', 1, payload);
+        case 'T':   otmpout.putcursor  += slistf(otmpout.putcursor, "Temp:", 's', 1, payload);
                     payload            += 2; 
                     break;
 
-        case 'V':   dir_out.putcursor  += slistf(dir_out.putcursor, "Volt:", 's', 1, payload);
+        case 'V':   otmpout.putcursor  += slistf(otmpout.putcursor, "Volt:", 's', 1, payload);
                     payload            += 2;
                     break;
 
         default:    continue;
         }
-        *dir_out.putcursor++   = '\n';
+        *otmpout.putcursor++   = '\n';
     }
 
-    dir_out.front[2] = dir_out.putcursor - dir_out.front - 6;
-    otapi_log_direct(dir_out.front);
+    otmpout.front[2] = otmpout.putcursor - otmpout.front - 6;
+    otapi_log_direct(otmpout.front);
 
     return True;
 }
@@ -435,7 +435,7 @@ void test_app_udp_request() {
 int main(void) {
 
 
-    q_init(&dir_out, buffer, 256);
+    q_init(&otmpout, buffer, 256);
     
     test_app_udp_request();
     

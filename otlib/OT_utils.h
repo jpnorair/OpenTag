@@ -48,6 +48,8 @@ ot_u16 otutils_calc_timeout(ot_u8 timeout_code);
 // Exp-Mantissa expansion for common 7-bit field
 ot_u8 otutils_encode_timeout(ot_u16 timeout_ticks);
 
+// 1 byte to 2 hex chars
+ot_u16 otutils_byte2hex(ot_u8 input);
 
 // Binary data to hex-text
 ot_int otutils_bin2hex(ot_u8* src, ot_u8* dst, ot_int size);

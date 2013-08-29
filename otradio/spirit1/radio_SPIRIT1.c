@@ -54,14 +54,16 @@
   ******************************************************************************
   */
 
-#include "radio.h"
-#include "radio_SPIRIT1.h"
-#include "SPIRIT1_interface.h"
+#include "OT_platform.h"
+#if (OT_FEATURE(M2) == ENABLED)
 
 #include "OT_types.h"
 #include "OT_config.h"
 #include "OT_utils.h"
-#include "OT_platform.h"
+
+#include "radio.h"
+#include "radio_SPIRIT1.h"
+#include "SPIRIT1_interface.h"
 
 #include "veelite.h"
 #include "session.h"
@@ -1654,5 +1656,5 @@ void subrfctl_offset_rxtimeout() {
 }
 
 
-
+#endif
 

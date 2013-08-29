@@ -46,8 +46,8 @@ ot_u8 otbuf[OT_PARAM_BUFFER_SIZE];
 #endif
 
 #if (DIR_ENABLED)
-    Queue dir_in;
-    Queue dir_out;
+    Queue otmpin;
+    Queue otmpout;
 #endif
 
 
@@ -59,8 +59,8 @@ void buffers_init() {
     q_init(&txq,    otbuf+TXRX_SIZE,    TXRX_SIZE);    
 #   endif
 #   if (DIR_ENABLED)
-    q_init(&dir_in,     otbuf+(TXRX_SIZE*2),            DIR_SIZE );
-    q_init(&dir_out,    otbuf+(TXRX_SIZE*2)+DIR_SIZE,   DIR_SIZE );
+    q_init(&otmpin,     otbuf+(TXRX_SIZE*2),            DIR_SIZE );
+    q_init(&otmpout,    otbuf+(TXRX_SIZE*2)+DIR_SIZE,   DIR_SIZE );
 #   endif
 }
 #endif

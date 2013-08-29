@@ -24,7 +24,7 @@
   */
 
 #include "OT_config.h"
-#if OT_FEATURE(M2)
+#if (OT_FEATURE(SERVER) && OT_FEATURE(M2))
 
 #include "m2_transport.h"
 #include "OT_utils.h"
@@ -692,14 +692,14 @@ void sub_opgroup_dstransport(void) {
     
     /// If this is a Pull, run the ALP processor.
     /// Direct ALP-output from request to txq. Direct ALP-output from response
-    /// to dir_out.  On response, most ALPs just do a copy from rxq->dir_out,
+    /// to otmpout.  On response, most ALPs just do a copy from rxq->otmpout,
     /// but you could make an ALP that works differently.  
     if (is_push == 0) {
         ot_u8   status;
         ot_u8*  out_marker;
         ot_u8*  in_marker;
         
-        m2qp.dsalp.outq = (is_response) ? &dir_out : &txq;
+        m2qp.dsalp.outq = (is_response) ? &otmpout : &txq;
         out_marker      = m2qp.dsalp.outq->putcursor;
         in_marker       = 
         status          = is_response;

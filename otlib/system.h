@@ -76,11 +76,11 @@ typedef enum {
 #if (1)
     TASK_hold,
 #endif
-#if (M2_FEATURE(ENDPOINT))
-    TASK_sleep,
-#endif
 #if (M2_FEATURE(BEACONS))
     TASK_beacon,
+#endif    
+#if (1)
+    TASK_sleep,
 #endif
 #if defined(OT_PARAM_USER_KERNELTASKS)
     OT_PARAM_USER_KERNELTASKS,
@@ -173,14 +173,14 @@ extern sys_struct sys;
 #define task_MPA        task[MPA_INDEX]
 
 #define HSS_INDEX       TASK_hold
-#define SSS_INDEX       (HSS_INDEX+(M2_FEATURE(ENDPOINT) == ENABLED))
-#define BTS_INDEX       (SSS_INDEX+(M2_FEATURE(BEACONS) == ENABLED))
-#define EXT_INDEX       (BTS_INDEX+(OT_FEATURE(EXT_TASK) == ENABLED))
+#define BTS_INDEX       (HSS_INDEX+(M2_FEATURE(BEACONS) == ENABLED))
+#define SSS_INDEX       (BTS_INDEX+1)
+#define EXT_INDEX       (SSS_INDEX+(OT_FEATURE(EXT_TASK) == ENABLED))
 #define IDLE_TASKS      ((EXT_INDEX-HSS_INDEX)+1)
 #define task_idle(x)    task[IO_TASKS+x]
 #define task_HSS        task[HSS_INDEX]
-#define task_SSS        task[SSS_INDEX]
 #define task_BTS        task[BTS_INDEX]
+#define task_SSS        task[SSS_INDEX]
 #define task_EXT        task[EXT_INDEX]
 
 #define SYS_TASKS       TASK_terminus

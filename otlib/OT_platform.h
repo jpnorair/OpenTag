@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/OT_platform.h
+  * @file       /otlib/OT_platform.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Jan 2011
+  * @version    R100
+  * @date       19 Aug 2013
   * @brief      Platform Library functions
   * @defgroup   Platform (Platform Module)
   * @ingroup    Platform
@@ -504,12 +504,12 @@ void platform_trig2_toggle();
 
 
 
-#if (MCU_FEATURE(CRC) == ENABLED)
-    ot_u16 platform_crc_init();
-    ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size);
-    void platform_crc_byte(ot_u8 databyte);
-    ot_u16 platform_crc_result();
-#endif
+
+ot_u16 platform_crc_init();
+ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size);
+void platform_crc_byte(ot_u8 databyte);
+ot_u16 platform_crc_result();
+
 
 
 

@@ -352,10 +352,8 @@ void sub_voltage_config(ot_u16 pwr_cr_vos_x) {
 /// Input must be: POWER_1V2, POWER_1V5, POWER_1V8
 /// Additionally, PWR_CR_DBP can be ORed in for RTC hacking
     ot_u16 scratch;
-    
     // Power should be enabled by periphclk function, not here
     //RCC->APB1ENR   |= RCC_APB1ENR_PWREN;    
-    
     scratch     = PWR->CR & ~(ot_u32)((3<<11) | (3<<5));
     scratch    |= pwr_cr_vos_x;
     PWR->CR     = scratch;
@@ -368,7 +366,6 @@ void sub_voltage_config(ot_u16 pwr_cr_vos_x) {
 void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
     ///@todo figure out a way to do this with WFE
     // Wait for Oscillator to get ready, counter goes to 0 on failure
-    
     RCC->CR    |= osc_mask;
     osc_mask  <<= 1; 
     while ( ((RCC->CR & osc_mask) == 0) && (--counter) );
@@ -382,13 +379,36 @@ void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
 
 void sub_osc_setclock(ot_u32 clock_mask) {
     ot_u32 scratch;
-    
     scratch         = RCC->CFGR & ~3;
     scratch        |= clock_mask;
     clock_mask    <<= 2; 
     RCC->CFGR       = scratch;
     while ( (RCC->CFGR & clock_mask) != clock_mask);
 }
+
+
+void sub_save_error(ot_u16 vector_code) {
+/// Save the high-level code and low-level code in backup RAM, and then reset
+    ot_u32 error_code;
+    error_code  = ((ot_u32)platform.error_code << 16) | (ot_u32)vector_code;
+    RTC->BKP19R = error_code;
+    RTC->BKP18R = get_PSP();
+    RTC->BKP17R = get_MSP();
+    
+    NVIC_SystemReset();     //see core_cm3.h in CMSIS
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -476,43 +496,56 @@ void NMI_Handler(void) {
 
 void HardFault_Handler(void) {
 /// If you have traced the code here, most likely the problem is stack overrun.
-/// You need to allocate a bigger stack for SSTACK or your thread.
+/// You need to allocate a bigger stack for SSTACK or your thread, or fix some
+/// other serious problem (possibly interrupt storm)
 #ifdef __DEBUG__
     while (1);
 #else
-    ///@todo log HardFault and Reset
+    /// Log HardFault by saving an error code to Backup RAM, then resetting.
+    /// The startup routine will check this sector of backup RAM and do the
+    /// actual logging.
+    /// @note Backup RAM *MUST* be enabled (normally done in RTC/GPTIM init)
+    /// @todo Finish this implementation, it is not tested yet
+    sub_save_error(1);
 #endif
 }
 
 
 void MemManage_Handler(void) {
+/// MemManage Fault is analagous to Segmentation Fault.  OpenTag doesn't use
+/// Protected memory spaces at this time, so MemManage fault should never occur.
 #ifdef __DEBUG__
     while (1);
 #else
-    ///@todo log MemManage Error and Reset
+    sub_save_error(11);
 #endif
 }
 
 
 void BusFault_Handler(void) {
+/// BusFault is analagous to Bus Error.
 #ifdef __DEBUG__
     while (1);
 #else
-    ///@todo log Bus Fault Error and Reset
+    sub_save_error(7);
 #endif
 }
 
 
 void UsageFault_Handler(void) {
+/// UsageFault is the "kitchen sink" error.  Mostly, it will happen on 
+/// misaligned memory access, but also on divide by zero operations.
 #ifdef __DEBUG__
     while (1);
 #else
-    ///@todo log Usage Fault Error and Reset
+    sub_save_error(10);
 #endif
 }
 
 
-void DebugMon_Handler(void) { }
+void DebugMon_Handler(void) { 
+/// Not really applicable
+}
 
 
 
@@ -520,7 +553,9 @@ void DebugMon_Handler(void) { }
   * =================
   */
 void SVC_Handler(void) { 
-/// SVC Handler runs potentially some future system calls.
+/// At present, the only protected system call is the call to the scheduler.
+/// (sys_event_manager()).  Future system calls might make-use of the SVC
+/// vectoring, however.
     sys_event_manager();
     
 #if 0 //(OT_PARAM_SYSTHREADS != 0)
@@ -598,7 +633,8 @@ void WWDG_IRQHandler(void) {
 #ifndef EXTF_platform_poweron
 void platform_poweron() {
     
-    ///1. Set runtime in P-stack
+    ///1. Set cooperative task runtime in P-stack,
+    ///   Interrupts and protected system calls run in M-stack
     __set_PSP( __get_MSP() );
     __set_CONTROL(2);
     __set_MSP( (ot_u32)&platform_ext.sstack[(OT_PARAM_SSTACK_ALLOC/4)-1] );
@@ -608,8 +644,8 @@ void platform_poweron() {
     BOARD_POWER_STARTUP();
     
     ///3. Clock Setup: On startup, all clocks are 2.1 MHz MSI
-    platform_init_periphclk();
     platform_init_busclk();
+    platform_init_periphclk();
     
     /// 4. Debugging setup
 #   if defined(__DEBUG__) || defined(__PROTO__)
@@ -669,12 +705,34 @@ void platform_init_OT() {
         platform_init_rtc(364489200);
 #   endif
     
-    /// 3. Initialize the System (Kernel & more).  The System initializer must
+    /// 3. Look for errors, report them, and make sure to clear the error RAM.
+    /// @note This is a decent place to put a breakpoint when debugging.
+    if (RTC->BKP19R != 0) {
+        vlFILE*     fp;
+        ot_uni16    resets;
+        ot_uni16    faults;
+        ot_uni32    error;
+        
+        error.ulong     = RTC->BKP19R;
+        RTC->BKP19R     = 0;
+        fp              = ISF_open_su(ISF_ID(hardware_fault_status));
+        resets.ushort   = vl_read(fp, 0);
+        faults.ushort   = vl_read(fp, 2);
+        resets.ubyte[0]+= (error.ushort[LOWER] != 0);
+        resets.ubyte[1]+= (error.ushort[UPPER] != 0);
+        faults.ubyte[1]+= (error.ushort[LOWER] == 11) << 1; //Memory Fault
+        
+        vl_write(fp, 0, resets.ushort);
+        vl_write(fp, 2, faults.ushort);
+        vl_close(fp);
+    }    
+    
+    /// 4. Initialize the System (Kernel & more).  The System initializer must
     ///    initialize all modules that are built onto the kernel.  These include
     ///    the DLL and MPipe.
     sys_init();
     
-    /// 4. If debugging, copy the UNIQUE ID that ST writes into the ROM into
+    /// 5. If debugging, copy the UNIQUE ID that ST writes into the ROM into
     ///    the lower 48 bits of the Mode 2 UID (Device Settings ISF)
     ///
     /// @note the ID is inserted via Veelite, so it is abstracted from the 
@@ -803,31 +861,43 @@ void platform_init_periphclk() {
 /// Turn-on LSE or LSI, it is used by some peripherals.  In particular,
 /// OpenTag likes having a 32768Hz clock for timing purposes.  TIM9, 10, 11,
 /// and the RTC are all driven by the LF clock.
-    
+   
+/*    
 #   define CSR_BYTE2_ADDRESS        ((uint32_t)0x40023835)
 #   define RCC_LSE_OFF              ((uint8_t)0x00)
 #   define RCC_LSE_ON               ((uint8_t)0x01)
 #   define RCC_LSE_Bypass           ((uint8_t)0x05)
 #   define RCC_LSE_RDY              ((uint8_t)0x02)
+#   define RCC_LSI_OFF              ((uint8_t))
+#   define RCC_LSI_ON               ((uint8_t))
+#   define RCC_LSI_Bypass           ((uint8_t))
+#   define RCC_LSI_RDY              ((uint8_t))
     
 #define CR_OFFSET                (PWR_OFFSET + 0x00)
 #define DBP_BitNumber            0x08
 #define CR_DBP_BB                (PERIPH_BB_BASE + (CR_OFFSET * 32) + (DBP_BitNumber * 4))
+*/
     
 #   if (BOARD_FEATURE_LFXTAL == ENABLED)
-    //RCC->APB1ENR   |= RCC_APB1ENR_PWREN; 
     PWR->CR         = ((1 << 11) | PWR_CR_DBP);
     RCC->CSR       |= RCC_CSR_LSEON | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSE;
     while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
-    //*((__IO ot_u8*)CSR_BYTE2_ADDRESS) = RCC_LSE_ON;
-    //while ((*((__IO ot_u8*)CSR_BYTE2_ADDRESS) & RCC_LSE_RDY) == 0);
     
-#   else
-    ///@todo do this
+#   else // enable LSI
+    PWR->CR         = ((1 << 11) | PWR_CR_DBP);
+    RCC->CSR       |= RCC_CSR_LSION | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSI;
+    while ((RCC->CSR & RCC_CSR_LSIRDY) == 0);
+    
 #   endif
    
 }
 #endif
+
+
+
+
+
+
 
 
   
@@ -1134,15 +1204,19 @@ void platform_init_interruptor() {
 #define _KERNEL_GROUP   b0000
 
 #   if (__CM3_NVIC_GROUPS == 1)
+#       define _HIPRI_BASE  b0000
 #       define _LOPRI_BASE  b0000
 #       define _SUB_LIMIT   b1111
 #   elif (__CM3_NVIC_GROUPS == 2)
+#       define _HIPRI_BASE  b1000
 #       define _LOPRI_BASE  b1000
 #       define _SUB_LIMIT   b0111
 #   elif (__CM3_NVIC_GROUPS == 4)
+#       define _HIPRI_BASE  b0100
 #       define _LOPRI_BASE  b1100
 #       define _SUB_LIMIT   b0011
 #   elif (__CM3_NVIC_GROUPS == 8)
+#       define _HIPRI_BASE  b0010
 #       define _LOPRI_BASE  b1110
 #       define _SUB_LIMIT   b0001
 #   endif
@@ -1208,6 +1282,47 @@ void platform_init_interruptor() {
     
     
     /// 5. Setup other external interrupts
+    /// @todo set these up in priority 1 (2nd priority).  Also, make sure board
+    /// files set-up the __USE_EXTIX definitions
+#   ifdef __USE_EXTI0
+    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
+#   endif
+#   ifdef __USE_EXTI1
+    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
+#   endif
+#   ifdef __USE_EXTI2
+    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
+#   endif
+#   ifdef __USE_EXTI3
+    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
+#   endif
+#   ifdef __USE_EXTI4
+    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
+#   endif
+#   if (  defined(__USE_EXTI5) \
+       || defined(__USE_EXTI6) \
+       || defined(__USE_EXTI7) \
+       || defined(__USE_EXTI8) \
+       || defined(__USE_EXTI9) )
+    NVIC->IP[(uint32_t)(EXTI9_5_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI9_5_IRQn)>>5)] = (1 << ((uint32_t)(EXTI9_5_IRQn) & 0x1F));
+#   endif
+#   if (  defined(__USE_EXTI15) \
+       || defined(__USE_EXTI14) \
+       || defined(__USE_EXTI13) \
+       || defined(__USE_EXTI12) \
+       || defined(__USE_EXTI11) \
+       || defined(__USE_EXTI10) )
+    NVIC->IP[(uint32_t)(EXTI15_10_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI15_10_IRQn)>>5)] = (1 << ((uint32_t)(EXTI15_10_IRQn) & 0x1F));
+#   endif
+
+
     
 }
 #endif

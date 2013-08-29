@@ -290,7 +290,7 @@ ot_int mpipedrv_init(void* port_id) {
     tty.seq.ushort  = 0;          //not actually necessary
     mpipe.state     = MPIPE_Idle;
 
-    alp_init(&mpipe.alp, &dir_in, &dir_out);
+    alp_init(&mpipe.alp, &otmpin, &otmpout);
     mpipe.alp.inq->back    -= 10;
     mpipe.alp.outq->back   -= 10;
 

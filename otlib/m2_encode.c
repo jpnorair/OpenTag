@@ -25,7 +25,7 @@
   */
 
 #include "OT_config.h"
-#if OT_FEATURE(M2)
+#if (OT_FEATURE(SERVER) && OT_FEATURE(M2))
 
 #include "OT_platform.h"
 

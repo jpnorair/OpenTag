@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/queue.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       15 July 2011
+  * @version    R100
+  * @date       19 Aug 2013
   * @brief      A module and ADT for buffering data packets.
   * @ingroup    Queue
   *
@@ -80,8 +80,8 @@ ot_u8* q_start(ot_queue* q, ot_uint offset, ot_u16 options) {
     if (offset >= q->alloc) 
         return NULL;  
     
-    q->length          = offset;
     q->options.ushort  = options;
+    q->length          = offset;
     q->putcursor      += offset;
     q->getcursor      += offset;
     return q->getcursor;

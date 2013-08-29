@@ -59,18 +59,7 @@ typedef enum {
 #   define BOARD_FEATURE_RFXTALOUT 0
 #endif
   
-typedef struct {
-#   if (BOARD_FEATURE_RFXTALOUT)
-    ot_bool         clkreq;
-#   endif
-    SPIRIT1_IMode   imode;
-    ot_u16          status;
-    ot_u8           busrx[24];
-} spirit1_struct;
-
-extern spirit1_struct spirit1;
-
-
+  
 /** @typedef spirit1_link
   * A data element for returning link quality parameters other than RSSI.  RSSI
   * can be retrieved by upper layers, universally for all different types of
@@ -82,6 +71,24 @@ typedef struct {
     ot_u8 lqi;
     ot_u8 agc;
 } spirit1_link;
+  
+
+typedef struct {
+#   if (1)
+    spirit1_link    link;
+#   endif    
+#   if (BOARD_FEATURE_RFXTALOUT)
+    ot_bool         clkreq;
+#   endif
+    SPIRIT1_IMode   imode;
+    ot_u16          status;
+    ot_u8           busrx[24];
+} spirit1_struct;
+
+
+extern spirit1_struct spirit1;
+
+
 
 
 

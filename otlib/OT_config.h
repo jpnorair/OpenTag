@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/OT_config.h
+  * @file       /otlib/OT_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    V1.0
-  * @date       22 August 2011
+  * @version    R100
+  * @date       19 August 2013
   * @brief      OpenTag Master Configuration Header that aggregates external 
   *             Platform & App headers.
   *

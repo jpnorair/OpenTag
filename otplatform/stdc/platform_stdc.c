@@ -31,16 +31,49 @@
 #include "OTAPI.h"
 #include "OT_platform.h"
 
+
+/** Feature Configuration Macros <BR>
+ * ========================================================================<BR>
+ * These should be defined in apps/.../app_config.h.  If one or more are
+ * missing, use the defaults.
+ */
+#ifndef OT_FEATURE_RTC
+#   define OT_FEATURE_RTC       DISABLED
+#endif
+#ifndef OT_FEATURE_MPIPE
+#   define OT_FEATURE_MPIPE     DISABLED
+#endif
+//#ifndef OT_FEATURE_STDGPIO
+//#   define OT_FEATURE_STDGPIO   DISABLED
+//#endif
+
+
+
+
 // OT low-level modules that need initialization
-#include "veelite_core.h"
-#include "mpipe.h"
-#include "radio.h"
+#if (OT_FEATURE(VEELITE) == ENABLED)
+#   include "veelite_core.h"
+#endif
+#if (OT_FEATURE(MPIPE) == ENABLED)
+#   include "mpipe.h"
+#endif
+#if (OT_FEATURE(SERVER) == ENABLED)
+#   include "radio.h"
+#endif
 
 //#include "auth.h"         //should be initialized via system (sys_init())
 //#include "session.h"      //should be initialized via system (sys_init())
 
 
-flash_heap  platform_flash;
+
+
+
+#if (OT_FEATURE(VEELITE) == ENABLED)
+    flash_heap  platform_flash;
+#endif
+
+
+
 
 
 
@@ -141,20 +174,7 @@ void otapi_led2_off() {
 
 
 
-/** Feature Configuration Macros <BR>
-  * ========================================================================<BR>
-  * These should be defined in apps/.../app_config.h.  If one or more are
-  * missing, use the defaults.
-  */
-#ifndef OT_FEATURE_RTC
-#   define OT_FEATURE_RTC       DISABLED
-#endif
-#ifndef OT_FEATURE_MPIPE
-#   define OT_FEATURE_MPIPE     DISABLED
-#endif
-//#ifndef OT_FEATURE_STDGPIO
-//#   define OT_FEATURE_STDGPIO   DISABLED
-//#endif
+
 
 
 
@@ -296,20 +316,35 @@ void platform_ot_run() {
   */
 
 void platform_poweron() {
-    /// 2. Initialize OpenTag platform peripherals
-    platform_init_busclk();
-    platform_init_interruptor();
-
-    platform_init_gptim(0);
-    platform_init_gpio();
+    /// 1. Stack preparation
+    ///@todo this
+    
+    /// 2. Board-specific power-up
+    ///@todo this
     platform_init_memcpy();
     platform_init_prand(0);
+    
+    /// 3. Initialize OpenTag platform peripherals
+    platform_init_periphclk();
+    platform_init_busclk();
+    
+    /// 4. Debugger setup
+    ///@todo this
+    
+    /// 5. Final initialization
+#   if (OT_FEATURE(SERVER) == ENABLED)    
+    platform_init_gpio();
+    platform_init_interruptor();
+    platform_init_gptim(0);
+#   endif
 
-    /// 3. Initialize Low-Level Drivers (worm, mpipe)
+    /// 6. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
-    vworm_init();
+#   if (OT_FEATURE(VEELITE) == ENABLED)
+        vworm_init();
+#   endif
 
-    // Mpipe (message pipe) typically used for serial-line comm.
+    /// 7. Mpipe (message pipe) typically used for serial-line comm.
 #   if (OT_FEATURE(MPIPE) == ENABLED)
         mpipe_init(NULL);
 #   endif
@@ -317,20 +352,30 @@ void platform_poweron() {
 
 
 void platform_poweroff() {
-/// 2. Put any mirror data into the flash <BR>
-/// 3. Save the vworm mapping table
+/// - Put any mirror data into the flash
+/// - Save the vworm mapping table
+#if (OT_FEATURE(VEELITE) == ENABLED)
     ISF_syncmirror();
     vworm_save();
+#endif
 }
 
 
 void platform_init_OT() {
+#   if (OT_FEATURE(SERVER) == ENABLED)
 	buffers_init(); //buffers init must be first in order to do core dumps
+#   endif
+#   if (OT_FEATURE(VEELITE) == ENABLED)
 	vl_init();      //Veelite init must be second
-	radio_init();   //radio init third
+#   endif
+#   if (OT_FEATURE(RTC) == ENABLED)
+    platform_init_rtc(364489200);
+#   endif
+#   if (OT_FEATURE(SERVER) == ENABLED)
 	sys_init();     //system init last
+#   endif
 	
-#   if (defined(__DEBUG__) || defined(__PROTO__))
+#   if (OT_FEATURE(VEELITE) && (defined(__DEBUG__) || defined(__PROTO__)))
     /// If debugging, find the Chip ID and use 6 out of 8 bytes of it to yield
     /// the UID.  This ID might not be entirely unique -- technically, there is
     /// 1/65536 chance of non-uniqueness, but practically the chance is much
@@ -354,11 +399,6 @@ void platform_init_OT() {
         vl_close(fpid);
     }
 #   endif
-}
-
-
-void platform_fastinit_OT() {
-    platform_init_OT();
 }
 
 

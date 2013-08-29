@@ -26,7 +26,7 @@
 
 #include "OTAPI.h"
 
-#if (1)
+#if (OT_FEATURE(M2) && OT_FEATURE(SERVER))
 
 
 

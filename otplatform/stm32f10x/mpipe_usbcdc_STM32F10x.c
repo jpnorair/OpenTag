@@ -1370,8 +1370,8 @@ ot_int mpipe_init(void* port_id) {
 
     mpipe.sequence.ushort   = 0;          //not actually necessary
     mpipe.state             = MPIPE_Idle;
-    mpipe_alp.inq           = &dir_in;
-    mpipe_alp.outq          = &dir_out;
+    mpipe_alp.inq           = &otmpin;
+    mpipe_alp.outq          = &otmpout;
     
     mpipe_setspeed(MPIPE_115200bps);     //default baud rate
     sub_usb_portsetup();

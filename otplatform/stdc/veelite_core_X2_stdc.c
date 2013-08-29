@@ -21,6 +21,8 @@
   * @brief      X2 Method for Veelite Core Functions
   * @ingroup    Veelite
   *
+  * The Standard C version of Veelite is useful for test and simulation.
+  * If your goal is to implement Veelite in POSIX, there are better ways.
   *
   ******************************************************************************
   */

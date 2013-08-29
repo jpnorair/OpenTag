@@ -29,6 +29,8 @@
 #include "OT_platform.h"
 #if defined(__STM32L__)
 
+#include "isr_config_STM32L.h"
+
 #include "OTAPI.h"
 
 
@@ -60,11 +62,6 @@
 #undef __ISR_RTC_Alarm
 #undef __N_ISR_RTC_Alarm
 #define __ISR_RTC_Alarm
-
-/// RTC Wakeup interrupt is required by OpenTag for advertisement flooding
-#undef __ISR_RTC_WKUP
-#undef __N_ISR_RTC_WKUP
-#define __ISR_RTC_WKUP
 
 
 /// ISRs that can bring the system out of STOP mode have __ISR_WAKEUP_HOOK().
@@ -180,10 +177,15 @@
 
 
 /// Enable RF Module interrupts: 
-/// In every known case, these are 
+/// In every known case, these are :
+/// RTC Wakeup interrupt is required by OpenTag for advertisement flooding
 #if (OT_FEATURE(M2))
 #   undef __ISR_RF1A
 #   define __ISR_RF1A
+
+#   undef __ISR_RTC_WKUP
+#   undef __N_ISR_RTC_WKUP
+#   define __ISR_RTC_WKUP
 #endif
 
 
@@ -366,18 +368,39 @@ void RCC_IRQHandler(void) {
 #endif
 
 
-#define __EXTI_MACRO_LOW(NUM);  \
+#if (OT_FEATURE(M2))
+#   define __EXTI_MACRO_LOW(NUM);  \
     EXTI->PR = (1<<NUM);  \
     BOARD_RADIO_EXTI##NUM##_ISR(); \
+    BOARD_COM_EXTI##NUM##_ISR(); \
     APPLICATION_EXTI##NUM##_ISR();
-
-#define __EXTI_MACRO(NUM);   \
+    
+#   define __EXTI_MACRO(NUM);   \
     if (EXTI->PR & (1<<NUM)) { \
         EXTI->PR = (1<<NUM);  \
         BOARD_RADIO_EXTI##NUM##_ISR(); \
+        BOARD_COM_EXTI##NUM##_ISR(); \
         APPLICATION_EXTI##NUM##_ISR(); \
     } \
     else
+        
+#else
+#   define __EXTI_MACRO_LOW(NUM);  \
+    EXTI->PR = (1<<NUM);  \
+    BOARD_COM_EXTI##NUM##_ISR(); \
+    APPLICATION_EXTI##NUM##_ISR();
+    
+#   define __EXTI_MACRO(NUM);   \
+    if (EXTI->PR & (1<<NUM)) { \
+        EXTI->PR = (1<<NUM);  \
+        BOARD_COM_EXTI##NUM##_ISR(); \
+        APPLICATION_EXTI##NUM##_ISR(); \
+    } \
+    else
+    
+#endif
+
+
 
 #if (defined(__ISR_EXTI0) || defined(__USE_EXTI0)) && !defined(__N_ISR_EXTI0)
 void EXTI0_IRQHandler(void) {

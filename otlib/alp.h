@@ -78,8 +78,8 @@ typedef struct {
 typedef struct {
     alp_record  inrec;
     alp_record  outrec;
-    Queue*      inq;
-    Queue*      outq;
+    ot_queue*   inq;
+    ot_queue*   outq;
 } alp_tmpl;
 
 

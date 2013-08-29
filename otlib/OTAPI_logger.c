@@ -46,11 +46,7 @@
 
 #if (OT_FEATURE(MPIPE))
 
-//#include "OT_types.h"
-//#include "OT_utils.h"
 #include "OTAPI.h"
-//#include "alp.h"
-//#include "buffers.h"
 #include "OT_platform.h"
 
 

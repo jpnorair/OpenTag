@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       OTlib/OT_utils.c
+  * @file       /otlib/OT_utils.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Jan 2011
+  * @version    R101
+  * @date       1 Aug 2013
   * @brief      Utility functions
   *
   ******************************************************************************
@@ -32,6 +32,11 @@ void otutils_sig_null(ot_int a)             { }
 void otutils_sig2_null(ot_int a, ot_int b)  { }
 void otutils_sigv_null(void* a)             { }
 void otutils_applet_null(m2session* a)      { }
+
+
+// Constant arrays used within
+const ot_u8 otutils_hexlut[16] = "0123456789ABCDEF";
+
 
 
 
@@ -76,25 +81,40 @@ ot_u8 otutils_encode_timeout(ot_u16 timeout_ticks) {
 
 
 
+#ifndef EXTF_otutils_byte2hex
+ot_u16 otutils_byte2hex(ot_u8 input) {
+    ot_u8 out[2];
+    out[1]  = otutils_hexlut[(input & 0xF)];
+    out[0]  = otutils_hexlut[(input >> 4)];
+    
+    return *((ot_u16*)out);
+}
+#endif
+
+
 // Binary data to hex-text
 #ifndef EXTF_otutils_bin2hex
 ot_int otutils_bin2hex(ot_u8* dst, ot_u8* src, ot_int size) {
     ot_u8* src_end;
-    ot_u8* dst_start;
+    //ot_u8* dst_start;
     src_end     = src + size;
-    dst_start   = dst;
+    //dst_start   = dst;
     
     while (src != src_end) {
-        ot_u8 scratch;
-        scratch     = *src >> 4;
-        scratch    += (scratch >= 10) ? ('A'-10) : '0';
-        *dst++      = scratch;
-        scratch     = *src++ & 0x0F;
-        scratch    += (scratch >= 10) ? ('A'-10) : '0';
-        *dst++      = scratch;
+        //ot_u8 scratch;
+        //scratch     = *src >> 4;
+        //scratch    += (scratch >= 10) ? ('A'-10) : '0';
+        //*dst++      = scratch;
+        //scratch     = *src++ & 0x0F;
+        //scratch    += (scratch >= 10) ? ('A'-10) : '0';
+        //*dst++      = scratch;
+        *dst++  = otutils_hexlut[(*src >> 4)];
+        *dst++  = otutils_hexlut[(*src & 0x0F)];
+        src++;
     }
     
-    return (ot_int)(dst - dst_start);
+    //return (ot_int)(dst - dst_start);
+    return (size<<1);
 }
 #endif
 

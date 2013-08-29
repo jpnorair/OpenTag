@@ -81,15 +81,17 @@
 
 #define OT_FEATURE_SERVER               ENABLED                             // "Server" is a build containing the OpenTag stack
 #define OT_FEATURE_CLIENT               (OT_FEATURE_SERVER != ENABLED)      // "Client" is a command console (typ. PC)
+#define OT_FEATURE_M1                   NOT_AVAILABLE                       // Mode 1 Featureset: Generally not implemented
+#define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
 #define OT_FEATURE_CAPI                 ENABLED                             // "otapi" C function usage in server-side apps
 #define OT_FEATURE_C_SERVER             (OT_FEATURE_CAPI)                   // "otapi" C function usage in server-side apps
 #define OT_FEATURE_DASHFORTH            NOT_AVAILABLE                       // DASHFORTH Applet VM (server-side), or JIT (client-side)
 #define OT_FEATURE_LOGGER               ENABLED                             // Mpipe-based data logging & printing
 #define OT_FEATURE_ALP                  (ENABLED || (OT_FEATURE_CLIENT))    // Application Layer Protocol Support
-#define OT_FEATURE_ALPAPI               (ENABLED && (OT_FEATURE_ALP))       // Application Layer Protocol callable API's
+#define OT_FEATURE_ALPAPI               (OT_FEATURE_M2 && OT_FEATURE_ALP)   // Application Layer Protocol callable API's
 #define OT_FEATURE_ALPEXT               ENABLED
-#define OT_FEATURE_MPIPE                ENABLED //DISABLED
-#define OT_FEATURE_IAP                  DISABLED //ENABLED
+#define OT_FEATURE_MPIPE                DISABLED    //ENABLED
+#define OT_FEATURE_IAP                  ENABLED     //DISABLED
 #define OT_FEATURE_NDEF                 (OT_FEATURE_MPIPE)                  // NDEF wrapper for Messaging API
 #define OT_FEATURE_VEELITE              ENABLED                             // Veelite DASH7 File System
 #define OT_FEATURE_VLFPS                OT_PARAM_VLFPS
@@ -105,8 +107,6 @@
 #define OT_FEATURE_CRC_TXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
 #define OT_FEATURE_CRC_RXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
 #define OT_FEATURE_RTC                  DISABLED                            // Do you have a precise 32768 Hz clock?
-#define OT_FEATURE_M1                   NOT_AVAILABLE                       // Mode 1 Featureset: Generally not implemented
-#define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
 #define OT_FEATURE_SESSION_DEPTH        OT_PARAM_SESSION_DEPTH
 #define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE
 #define OT_FEATURE_EXT_TASK             ENABLED

@@ -38,6 +38,77 @@
 gptim_struct gptim;
 
 
+
+
+
+
+ot_u16 sub_get_lsitrim() {
+    ot_u16 lsi_hz;
+    ot_u16 flag;
+    
+    // Check EEPROM for LSI trimming.  If it's not there, it is 0
+    DATA_EEPROM_Unlock();
+    lsi_hz = *((ot_u16*)0x08000FFE);
+    
+    // If LSI has already been measured, return the stored measurement
+    if (lsi_hz != 0) {
+        return lsi_hz;
+    }
+    
+    // Enable TIM10 with:
+    // - LSI as measurement input capture 1
+    // - No prescaler
+    // - Immediate Reload   
+    RCC->APB2ENR   |= RCC_APB2ENR_TIM10EN;
+    //TIM10->CR1      = 0;
+    //TIM10->SMCR     = 0;
+    //TIM10->DIER     = 0;                    // TIM interrupts unused
+    //TIM10->SR       = 0;                    // clear update flags
+    TIM10->CCMR1    = 1;                    // Set Input to line-1
+    TIM10->CCER     = TIM_CCER_CC1E;        // Enable Input Capture
+    //TIM10->PSC      = 0;                    // No prescaling
+    TIM10->ARR      = 65535;
+    TIM10->OR       = 1;                    // LSI is being measured
+    TIM10->CR1      = TIM_CR1_CEN;
+    
+    // Wait for rising edge 1, then count HS pulses until rising edge 2
+    ///@todo WFE?
+    sub_get_lsitrim_TOP:
+    do {                                // Wait for edge
+        flag = TIM10->SR; 
+    } while (flag == 0);
+    
+    if ((flag & TIM_SR_CC1IF) == 0) {    // something is wrong, assume 37000 Hz
+        lsi_hz  = 37000;
+        goto sub_get_lsitrim_END;
+    }
+    if (lsi_hz == 0) {                  // First Edge
+        lsi_hz  = TIM10->CCR1;
+        goto sub_get_lsitrim_TOP;
+    }
+    
+    // Compute LSI Hz from counter pulses during one LSI period,
+    // and save this value to the last address of EEPROM
+    lsi_hz  = TIM10->CCR1 - lsi_hz;
+    lsi_hz  = BOARD_PARAM_HFHz / lsi_hz;
+    vworm_mark_physical((ot_u16*)0x08000FFE, lsi_hz);
+    
+    // Turn-off timer and disable clocking to it
+    sub_get_lsitrim_END:
+    TIM10->CR1      = 0;
+    RCC->APB2ENR   &= ~RCC_APB2ENR_TIM10EN;
+    
+    return lsi_hz;
+}
+
+
+
+
+
+
+
+
+
 #if defined(__DEBUG__)
 /** Debug Implementation <BR>
   * ========================================================================<BR>
@@ -53,9 +124,11 @@ void platform_isr_tim9() {
     test        = TIM9->SR;
     TIM9->SR    = 0;
 
+#   if (OT_FEATURE(M2))
     if (test & TIM_SR_CC2IF) {
         radio_mac_isr();
     }
+#   endif
     if (test & TIM_SR_CC1IF) {
         gptim.flags = 0;
     }
@@ -100,7 +173,6 @@ void platform_init_gptim(ot_uint prescaler) {
     TIM9->CR1   = (TIM_CR1_UDIS | TIM_CR1_CEN);
     TIM9->EGR   = TIM_EGR_UG;
     
-    
     /// Configure the RTC WKUP for usage as Advertising flood counter
     
     // Unlock RTC as a whole, put into INIT mode 
@@ -112,7 +184,19 @@ void platform_init_gptim(ot_uint prescaler) {
     // Wait for init to be ready, the set to 1-ti (1s/1024) update period.
     while((RTC->ISR & RTC_ISR_INITF) == 0);
     RTC->TR     = 0;
-    RTC->PRER   = (31 << 16) | 0;
+    
+#   if (BOARD_FEATURE_LFXTAL == ENABLED)    
+        RTC->PRER   = (31 << 16) | 0;
+#   else
+    {   ot_u16 lsi_hz;
+        ot_u16 remainder;
+        lsi_hz      = sub_get_lsihz();
+        remainder   = (lsi_hz & 512) >> 9;
+        lsi_hz    >>= 10;
+        lsi_hz     += remainder;
+        RTC->PRER   = (lsi_hz << 16) | 0;
+    }
+#   endif
     RTC->WUTR   = 0;
 
     // Calibration could be here
@@ -344,7 +428,18 @@ void platform_init_gptim(ot_uint prescaler) {
     // Wait for init to be ready, the set to 1-ti (1s/1024) update period.
     while((RTC->ISR & RTC_ISR_INITF) == 0);
     RTC->TR     = 0;
-    RTC->PRER   = (31 << 16) | 0;
+#   if (BOARD_FEATURE_LFXTAL == ENABLED)    
+        RTC->PRER   = (31 << 16) | 0;
+#   else
+    {   ot_u16 lsi_hz;
+        ot_u16 remainder;
+        lsi_hz      = sub_get_lsihz();
+        remainder   = (lsi_hz & 512) >> 9;
+        lsi_hz    >>= 10;
+        lsi_hz     += remainder;
+        RTC->PRER   = (lsi_hz << 16) | 0;
+    }
+#   endif
     RTC->WUTR   = 0;
 
     // Calibration could be here
@@ -538,8 +633,8 @@ void platform_disable_gptim2() {
   * ========================================================================<BR>
   * Unfortunately the STM32L does not have a suitable low-power timer.  Also
   * unfortunately, it has an inflexible RTC.  Fortunately, however, it has an 
-  * ALU that can annihilate anything short of a MIPS R4000.  The ALU is used 
-  * here to __quickly__ transform binary ticks into the RTC alarm time format.
+  * ALU that can annihilate anything short of a PowerPC 6xx, so this seemingly
+  * elaborate conversion actually happens in under 3us at 16 MHz.
   */
 
 #define _BCD(T,O)   ((T<<4) | O)

@@ -1,4 +1,4 @@
-/* Copyright 2009-2012 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /otplatform/stdc/platform_stdc.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       2 Feb 2012
+  * @date       19 Aug 2013
   * @brief      Platform Library Macros and Functions for STD C
   * @ingroup    Platform
   *
@@ -29,7 +29,7 @@
 #define __PLATFORM_STDC_H
 
 #include "build_config.h"
-#include "OT_support.h"
+#include "OT_config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -101,11 +101,10 @@
 
 
 
-
-typedef ot_u8 flash_heap[FLASH_FS_ALLOC]; 
-
-extern flash_heap  platform_flash;
-
+#if (OT_FEATURE(VEELITE) == ENABLED)
+    typedef ot_u8       flash_heap[FLASH_FS_ALLOC];
+    extern  flash_heap  platform_flash;
+#endif
 
 
 

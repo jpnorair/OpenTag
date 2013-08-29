@@ -42,7 +42,7 @@
 #include "external.h"
 
 #if (OT_FEATURE(IAP))
-#   include "iap.hdo.h"
+#   include "iap.h"
 #endif
 
 
@@ -88,7 +88,7 @@ typedef void (*fnvv)(void);
   * Just used to make the code nice-looking or for code-reuse
   */
 static const systask_fn systask_call[]   = { 
-#if (1)
+#if (OT_FEATURE(M2))
     &dll_systask_rf,
 #endif
 #if (OT_FEATURE(MPIPE))
@@ -96,14 +96,14 @@ static const systask_fn systask_call[]   = {
 #elif (OT_FEATURE(IAP))
     &iap_systask,
 #endif
-#if (1)
+#if (OT_FEATURE(M2))
     &dll_systask_holdscan,
 #endif
-#if (M2_FEATURE(ENDPOINT))
-    &dll_systask_sleepscan,
-#endif
-#if (M2_FEATURE(BEACONS))
+#if (OT_FEATURE(M2) && M2_FEATURE(BEACONS))
     &dll_systask_beacon,
+#endif
+#if (OT_FEATURE(M2))
+    &dll_systask_sleepscan,
 #endif
 #if (OT_FEATURE(EXT_TASK))
     &ext_systask,
@@ -157,7 +157,9 @@ void sys_init() {
     
     /// Initialize DLL, which also initializes the rest of the protocol stack.
     /// In some HW, the radio must be initialized before MPipe.
-    dll_init();
+#   if (OT_FEATURE(M2))
+        dll_init();
+#   endif
     
     /// Initialize MPipe if enabled
 #   if (OT_FEATURE(MPIPE) == ENABLED)
@@ -171,9 +173,12 @@ void sys_init() {
 #ifndef EXTF_sys_panic
 void sys_panic(ot_u8 err_code) {
 /// Go to OFF state
-    dll.idle_state = 0;
-    session_flush();
-    dll_idle();
+#   if (OT_FEATURE(M2))
+        dll.idle_state = 0;
+        session_flush();
+        dll_idle();
+#   endif
+    
     platform_disable_ktim();
 
 #   if defined(EXTF_sys_sig_panic)
@@ -366,6 +371,21 @@ void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
 
 
 
+
+#ifndef EXTF_sys_task_enable
+void sys_task_enable(ot_u8 task_id, ot_u8 task_ctrl, ot_u16 sleep) {
+#if (OT_FEATURE(EXT_TASK))
+    ot_task task;
+    task        = &sys.task[TASK_external+task_id];
+    task->event = task_ctrl;
+    sys_task_setnext(task, sleep);
+	platform_ot_preempt();
+#endif
+}
+#endif
+
+
+
 #ifndef EXTF_sys_task_disable
 void sys_task_disable(ot_u8 task_id) {
 #if (OT_FEATURE(EXT_TASK))
@@ -375,7 +395,7 @@ void sys_task_disable(ot_u8 task_id) {
 //    {
 //        sys.task[task_id].event  = 0;
 //    }
-    sys.task[TASK_external].event    = 0;
+    sys.task[TASK_external+task_id].event = 0;
 
 #endif
 }
@@ -423,7 +443,9 @@ ot_uint sys_event_manager() {
     /// <LI> If a pending task is selected, loop through higher priority 
     ///      tasks than the one selected to find if they need to block the
     ///      invocation of the pending task. </LI>
+#   if (OT_FEATURE(M2))
     dll_clock(elapsed);
+#   endif
         
     nextevent   = OT_GPTIM_LIMIT;
     task_i      = &sys.task[TASK_terminus];

@@ -1176,7 +1176,7 @@ ot_int mpipedrv_init(void* port_id) {
 /// <LI> USB is disconnected at startup in order to clear the host USB driver,
 ///        which will get stuck during debugging or other sleeping processes.   </LI>
 
-    alp_init(&mpipe.alp, &dir_in, &dir_out);
+    alp_init(&mpipe.alp, &otmpin, &otmpout);
     mpipe.alp.inq->back    -= 10;
     mpipe.alp.outq->back   -= 10;
     cdcacm.pkt              = mpipe.alp.outq->front;

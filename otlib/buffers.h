@@ -78,8 +78,8 @@ extern ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
         (OT_FEATURE(MPIPE) == ENABLED) )
     /// Directive Queues: optional, used for ALP processing and usually also 
     /// NDEF record usage (if enabled)
-    extern Queue dir_in;
-    extern Queue dir_out;
+    extern Queue otmpin;
+    extern Queue otmpout;
 #endif
 
 
@@ -90,7 +90,7 @@ extern ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
   * @retval none
   * @ingroup Buffers
   *
-  * The System Queues (rxq, txq, dir_in, dir_out) can be manipulated to point
+  * The System Queues (rxq, txq, otmpin, otmpout) can be manipulated to point
   * to different data elements during the course of their usage.  This function
   * will reset them to their defaults.  Use it whenever you want to reset the
   * queues or during boot-up.
