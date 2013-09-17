@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /otlib/alp_api_server.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       20 July 2012
+  * @date       17 Sept 2013
   * @brief      Application Layer Protocol for API calls
   * @ingroup    ALP
   *
@@ -250,27 +250,26 @@ ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id ) {
     
     //alp->outrec.plength = 0;
     
-    if ( (lookup_cmd >= OTAPI_M2QP_FUNCTIONS) || (auth_isroot(user_id) == False) )
-        return False;
-    
-    /// Load template from ALP dir cmd into C datatype
-    bdtmpl_cmd[argmap[lookup_cmd]](alp->inq, (void*)dt_buf);
-    
-    /// Run ALP command, using input template
-    txq_len = m2qp_cmd[lookup_cmd](&status, (void*)dt_buf);
-    
-    /// Response to ALP query command includes three bytes:
-    /// byte 1 - status (0 is error)
-    /// bytes 2 & 3 - 16 bit integer, length of TXQ
-    if (respond) {
-        alp->outrec.flags   &= ~ALP_FLAG_CF;
-        alp->outrec.cmd     |= 0x40;
-        alp->outrec.plength  = 3;
-        q_writebyte(alp->outq, status);
-        q_writeshort(alp->outq, txq_len);
+    if ((lookup_cmd < OTAPI_M2QP_FUNCTIONS) && auth_isroot(user_id)) {
+        /// Load template from ALP dir cmd into C datatype
+        bdtmpl_cmd[argmap[lookup_cmd]](alp->inq, (void*)dt_buf);
+        
+        /// Run ALP command, using input template
+        txq_len = m2qp_cmd[lookup_cmd](&status, (void*)dt_buf);
+        
+        /// Response to ALP query command includes three bytes:
+        /// byte 1 - status (0 is error)
+        /// bytes 2 & 3 - 16 bit integer, length of TXQ
+        if (respond) {
+            alp->outrec.flags   &= ~ALP_FLAG_CF;
+            alp->outrec.cmd     |= 0x40;
+            alp->outrec.plength  = 3;
+            q_writebyte(alp->outq, status);
+            q_writeshort(alp->outq, txq_len);
+        }
     }
     
-    return respond;
+    return True;
 }
 
 

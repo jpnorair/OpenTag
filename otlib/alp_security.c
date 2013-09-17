@@ -101,7 +101,7 @@
 
 
 #ifndef EXTF_alp_proc_sec
-void alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
+ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
 /// At present, only DLLS features are supported, no NLS
     ot_u8       errcode = 0;
     ot_int      key_index;
@@ -185,6 +185,7 @@ void alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
         }
     }
     
+    return True;
 #   endif
 }
 #endif

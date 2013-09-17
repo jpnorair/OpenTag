@@ -14,9 +14,9 @@
   *
   */
 /**
-  * @file       /OTlib/alp_dashforth.c
+  * @file       /otlib/alp_dashforth.c
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       1 July 2011
   * @brief      ALP to DASHForth applet extractor
   * @ingroup    ALP

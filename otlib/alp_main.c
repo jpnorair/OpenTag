@@ -1,4 +1,4 @@
-/*  Copyright 2010-2012, JP Norair
+/*  Copyright 2013, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /otlib/alp_main.c
   * @author     JP Norair
   * @version    V1.0
-  * @date       20 July 2012
+  * @date       17 Sept 2013
   * @brief      Application Layer Protocol Main Processor
   * @ingroup    ALP
   *
@@ -219,8 +219,11 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
     /// Loop through records in the input message.  Each input message can
     /// generate 0 or 1 output messages.
     do {
+        ot_u8*  input_position;
         ot_u8*  hdr_position;
+        ot_bool atomic;
         ot_u8   hdr_len;
+        ot_int  bytes;
         
         /// Safety check: make sure both queues have room remaining for the
         /// most minimal type of message, an empty message
@@ -236,6 +239,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// the input record to the output record.  alp_proc() will adjust
         /// the output payload length and flags, as necessary.
         if (alp->outrec.flags & ALP_FLAG_ME) {
+            input_position = alp->inq->getcursor;
             if (alp_parse_header(alp) == False) {
                 return MSG_Null;
             }
@@ -256,8 +260,9 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// <LI> NDEF_CF if the output record is chunking </LI>
         /// <LI> NDEF_ME if the output record is the last in the message </LI>
         /// <LI> The output record payload length </LI>
-        if (alp_proc(alp, user_id) == False) {
-            // Remove header and any output data if return is false
+        atomic = alp_proc(alp, user_id);
+        if (alp->outrec.plength == 0) {
+            // Remove header and any output data if no data written
             // Also, remove output chunking flag
             alp->outq->putcursor   = hdr_position;
             alp->outrec.flags     &= ~NDEF_CF;
@@ -269,7 +274,11 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// This version of ALP does not support nested messages.  It will
         /// terminate processing and return when the input message is ended.
         if (alp->inrec.flags & ALP_FLAG_ME) {
-            q_empty(alp->inq);
+            if (atomic) {
+                alp->inq->length   -= (alp->inq->putcursor - input_position);
+                alp->inq->putcursor = input_position;
+                alp->inq->getcursor = input_position;
+            }
             exit_code = MSG_End;
         }
     }

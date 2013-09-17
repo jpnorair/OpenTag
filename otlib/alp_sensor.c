@@ -39,8 +39,8 @@
 
 
 // No implementaton yet!
-void alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id    ) {
-    
+ot_bool alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id) {
+    return True;
 }
 
 

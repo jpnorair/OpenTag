@@ -229,7 +229,7 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval);
 /** @brief  Process a received ALP record (vectors to all supported ALP's)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval ot_bool     True if there is output
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   *
   * ID values (from spec)
@@ -253,7 +253,7 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Used by parser when ALP ID is unsupported (returns False)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval ot_bool		Always False
+  * @retval ot_bool		Always True
   * @ingroup ALP
   */
 ot_bool alp_proc_null(alp_tmpl* alp, id_tmpl* user_id);
@@ -262,7 +262,7 @@ ot_bool alp_proc_null(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received filesystem ALP record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval ot_bool		True if output
+  * @retval ot_bool		True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id);
@@ -274,7 +274,7 @@ ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id);
 /* @brief  Process a received sensor configurator ALP record (not implemented)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id);
@@ -291,7 +291,7 @@ ot_bool alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received DASHFORTH ALP record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_dashforth(alp_tmpl* alp, id_tmpl* user_id);
@@ -306,7 +306,7 @@ ot_bool alp_proc_dashforth(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received logger ALP record (typically client only)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id);
@@ -325,7 +325,7 @@ ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received Session API record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_api_session(alp_tmpl* alp, id_tmpl* user_id);
@@ -333,7 +333,7 @@ ot_bool alp_proc_api_session(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received System API record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_api_system(alp_tmpl* alp, id_tmpl* user_id);
@@ -341,7 +341,7 @@ ot_bool alp_proc_api_system(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received Query API record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id);
@@ -358,10 +358,10 @@ ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received Security/Auth ALP record (not implemented)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
-ot_bool alp_proc_sec_example(alp_tmpl* alp, id_tmpl* user_id);
+ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id);
 #endif
 
 
@@ -371,23 +371,39 @@ ot_bool alp_proc_sec_example(alp_tmpl* alp, id_tmpl* user_id);
 
 
 
-void alp_breakdown_u8(Queue* in_q, void* data_type);
-void alp_breakdown_u16(Queue* in_q, void* data_type);
-void alp_breakdown_u32(Queue* in_q, void* data_type);
-void alp_breakdown_queue(Queue* in_q, void* data_type);
-void alp_breakdown_session_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_advert_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_command_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_id_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_routing_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_dialog_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_query_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_ack_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_error_tmpl(Queue* in_q, void* data_type);   //Client only? 
-void alp_breakdown_udp_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_isfcomp_tmpl(Queue* in_q, void* data_type);
-void alp_breakdown_isfcall_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_u8(ot_queue* in_q, void* data_type);
+void alp_breakdown_u16(ot_queue* in_q, void* data_type);
+void alp_breakdown_u32(ot_queue* in_q, void* data_type);
+void alp_breakdown_queue(ot_queue* in_q, void* data_type);
+void alp_breakdown_session_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_advert_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_command_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_id_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_routing_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_dialog_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_query_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_ack_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_error_tmpl(ot_queue* in_q, void* data_type);   //Client only? 
+void alp_breakdown_udp_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_isfcomp_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_isfcall_tmpl(ot_queue* in_q, void* data_type);
 
+void alp_stream_u8(ot_queue* out_q, void* data_type);
+void alp_stream_u16(ot_queue* out_q, void* data_type);
+void alp_stream_u32(ot_queue* out_q, void* data_type);
+void alp_stream_queue(ot_queue* out_q, void* data_type);
+void alp_stream_session_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_advert_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_command_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_id_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_routing_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_dialog_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_query_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_ack_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_error_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_udp_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_isfcomp_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_isfcall_tmpl(ot_queue* out_q, void* data_type);
 
 
 

@@ -128,7 +128,7 @@ ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id) {
     ot_bool respond = (ot_bool)(alp->inrec.cmd & 0x80);
     
     // Return value is the number of bytes of output the command has produced
-    data_out = cmd_fn[alp->inrec.cmd & 0x0F](alp, user_id, respond);
+    alp->outrec.plength = cmd_fn[alp->inrec.cmd & 0x0F](alp, user_id, respond);
     
     if (respond) {        
         //Transform input cmd to error or data return variant for response
@@ -138,10 +138,14 @@ ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id) {
         alp->outrec.cmd    &= ~0x80;
         alp->outrec.cmd    |= (alp->inrec.cmd & 0x02) ? 0x0F : 0x01;
     }
-    
-    alp->outrec.plength = data_out;
-    
-    return (ot_bool)(data_out);
+    else {
+        ///@todo find if this is even necessary.  I don't think it is.  It is
+        /// here now for safety purposes.
+        alp->outq->putcursor   -= alp->outrec.plength;
+        alp->outq->length      -= alp->outrec.plength;
+    }
+
+    return True;
 }
 
 
