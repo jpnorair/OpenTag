@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_network.h
   * @author     JP Norair
-  * @version    R100
-  * @date       2 November 2011
+  * @version    R101
+  * @date       11 Sep 2013
   * @brief      Network Layer interface for DASH7 Mode 2
   * @ingroup    Network
   *
@@ -44,14 +44,13 @@
   */
 
 // Mode 2 Frame Info Field
-#define M2FI_FRTYPEMASK         (0x03)
-#define M2FI_FRDIALOG           (0x00)
-#define M2FI_FRNACK             (0x01)
-#define M2FI_STREAM             (0x02)
-#define M2FI_RFU                (0x03)
-#define M2FI_NM2                (0x04)
-#define M2FI_CRC32              (0x08)
-#define M2FI_FRCONT             (0x10)
+#define M2FI_BLOCKCODE          (0x07)
+#define M2FI_FRTYPEMASK         (3<<3)
+#define M2FI_FRDIALOG           (0<<3)
+#define M2FI_FRNACK             (1<<3)
+#define M2FI_STREAM             (2<<3)
+#define M2FI_RFU                (3<<3)
+//#define M2FI_FRCONT             (0x10)
 #define M2FI_ENADDR             (0x20)
 #define M2FI_DLLS               (0x40)
 #define M2FI_LISTEN             (0x80)

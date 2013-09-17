@@ -70,8 +70,8 @@ typedef enum {
 #if (OT_FEATURE(MPIPE))
     TASK_mpipe,
 #endif
-#if defined(OT_PARAM_USER_EXOTASKS)
-    OT_PARAM_USER_EXOTASKS,
+#if (OT_PARAM(EXOTASKS) > 0)
+    OT_PARAM_EXOTASK_IDS,
 #endif
 #if (1)
     TASK_hold,

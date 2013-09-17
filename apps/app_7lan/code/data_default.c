@@ -41,6 +41,15 @@
 
 
 
+#define _BG                     0x80
+#define _FG                     0x00
+#define SCAN(FGBG, BASE, TICKS) (FGBG | (BASE) | TICKS)
+
+
+
+
+
+
 /** Default File data allocations
   * ============================================================================
   * - Veelite also uses an additional 1536 bytes for wear leveling
@@ -463,8 +472,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* hold scan periods: id=0x04, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x90, 0x40, 0x02, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */ //FIX
-    0x90, 0x40, 0x02, 0x00,
+    0x90, 0x20, 0x01, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */ //FIX
+    0x90, 0x20, 0x01, 0x00,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
@@ -474,7 +483,7 @@ const ot_u8 isf_stock_files[] = {
 
     /* sleep scan periods: id=0x05, len=4, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x90, 0x50, 0x0C, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
+    0x90, 0x43, 0x00, 0x08,                             /* Channel X scan, Scan Code, Next Scan ms */
     0xFF, 0xFF, 0xFF, 0xFF,                             /* NOTE: Scan Code should be less than     */
     0xFF, 0xFF, 0xFF, 0xFF,                             /*       Next Scan, or else you will be    */
     0xFF, 0xFF, 0xFF, 0xFF,                             /*       doing nothing except scanning!    */
@@ -485,8 +494,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240
-    0x10, 0x06, 0x20, 0x00, 0x00, 0x08, 0x0C, 0x00,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
-    0x10, 0x06, 0x0C, 0x0A, 0x00, 0x08, 0x04, 0x00, 
+    0x90, 0x06, 0x20, 0x00, 0x00, 0x08, 0x01, 0x00,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
+    0x10, 0x06, 0x20, 0x00, 0x00, 0x08, 0x01, 0x00, 
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* App Protocol List: id=0x07, len=4, alloc=16 */

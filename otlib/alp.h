@@ -243,12 +243,21 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id);
 
 
 
-
 /** @note Subprotocol processing functions
   * The functions below are exposed, but they never should be called unless you
-  * are writing some sort of hack or optimized version.  Instead, call the
-  * alp_proc() function with the ID parameter set appropriately.
+  * are writing a patch function for alp_proc().  Otherwise, just use the 
+  * built-in alp_proc() function with the parameters set appropriately.
   */
+  
+
+/** @brief  Used by parser when ALP ID is unsupported (returns False)
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @param  user_id     (id_tmpl*) user id for performing the record 
+  * @retval ot_bool		Always False
+  * @ingroup ALP
+  */
+ot_bool alp_proc_null(alp_tmpl* alp, id_tmpl* user_id);
+  
 
 /** @brief  Process a received filesystem ALP record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
@@ -354,6 +363,32 @@ ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id);
   */
 ot_bool alp_proc_sec_example(alp_tmpl* alp, id_tmpl* user_id);
 #endif
+
+
+
+
+
+
+
+
+void alp_breakdown_u8(Queue* in_q, void* data_type);
+void alp_breakdown_u16(Queue* in_q, void* data_type);
+void alp_breakdown_u32(Queue* in_q, void* data_type);
+void alp_breakdown_queue(Queue* in_q, void* data_type);
+void alp_breakdown_session_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_advert_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_command_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_id_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_routing_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_dialog_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_query_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_ack_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_error_tmpl(Queue* in_q, void* data_type);   //Client only? 
+void alp_breakdown_udp_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_isfcomp_tmpl(Queue* in_q, void* data_type);
+void alp_breakdown_isfcall_tmpl(Queue* in_q, void* data_type);
+
+
 
 
 

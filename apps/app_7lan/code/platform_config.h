@@ -38,7 +38,8 @@
 /// the default if you wish.
 
 #if (   !defined(BOARD_IKR001)          \
-    &&  !defined(BOARD_Jupiter) \
+    &&  !defined(BOARD_Jupiter)         \
+    &&  !defined(BOARD_HayTag_USB)      \
     &&  !defined(BOARD_HayTag_R1)       \
     &&  !defined(BOARD_HayTag_R1T)      \
     &&  !defined(BOARD_HayTag_R1A)      \
@@ -59,13 +60,17 @@
 #   include "isr_config_STM32L.h"
 #   include "stm32l1xx/board_Jupiter_R1.h"
 
+#elif (defined(BOARD_HayTag_USB))
+#   include "isr_config_STM32L.h"
+#   include "stm32l1xx/board_HayTag_USB.h"
+
 #elif (defined(BOARD_HayTag_R1) || defined(BOARD_HayTag_R1T))
 #   include "isr_config_STM32L.h"
-#   include "stm32l1xx/board_HayTag_R1.h"
+#   include "stm32l1xx/board_HayTag_R1.hdo.h"
 
 #elif (defined(BOARD_HayTag_R1A))
 #   include "isr_config_STM32L.h"
-#   include "stm32l1xx/board_HayTag_R1A.h"
+#   include "stm32l1xx/board_HayTag_R1A.hdo.h"
 
 #else
 #   error "No supported BOARD is defined"

@@ -89,23 +89,6 @@ ot_u16 icmd_sys_openrequest(Queue* in_q);
 ot_u16 icmd_sys_closerequest(Queue* in_q);
 ot_u16 icmd_sys_startdialog(Queue* in_q);
 
-void sub_breakdown_u8(Queue* in_q, void* data_type);
-void sub_breakdown_u16(Queue* in_q, void* data_type);
-void sub_breakdown_u32(Queue* in_q, void* data_type);
-void sub_breakdown_queue(Queue* in_q, void* data_type);
-void sub_breakdown_session_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_advert_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_command_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_id_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_routing_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_dialog_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_query_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_ack_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_error_tmpl(Queue* in_q, void* data_type);   //Client only? 
-void sub_breakdown_udp_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_isfcomp_tmpl(Queue* in_q, void* data_type);
-void sub_breakdown_isfcall_tmpl(Queue* in_q, void* data_type);
-
 
 ot_u16 icmd_session_number(Queue* in_q) {
     return otapi_session_number();
@@ -117,7 +100,7 @@ ot_u16 icmd_session_flush(Queue* in_q) {
 
 ot_u16 icmd_session_isblocked(Queue* in_q) {
     ot_u8 channel_id;
-    sub_breakdown_u8(in_q, &channel_id);
+    alp_breakdown_u8(in_q, &channel_id);
     return otapi_is_session_blocked(channel_id);
 }
 
@@ -127,30 +110,30 @@ ot_u16 icmd_sys_init(Queue* in_q) {
 
 ot_u16 icmd_sys_newdialog(Queue* in_q) {
     session_tmpl new_session;
-    sub_breakdown_session_tmpl(in_q, &new_session);
+    alp_breakdown_session_tmpl(in_q, &new_session);
     return otapi_new_dialog(&new_session, NULL);    ///@todo put in grabber applet (?)
 }
 
 ot_u16 icmd_sys_newadvdialog(Queue* in_q) {
     session_tmpl    new_session;
     advert_tmpl     new_adv;
-    sub_breakdown_session_tmpl(in_q, &new_session);
-    sub_breakdown_advert_tmpl(in_q, &new_adv);
+    alp_breakdown_session_tmpl(in_q, &new_session);
+    alp_breakdown_advert_tmpl(in_q, &new_adv);
     return otapi_new_advdialog(&new_adv, &new_session, NULL); 
 }
 
 ot_u16 icmd_sys_openrequest(Queue* in_q) {
     ot_u8 addr_byte;
     ot_u8 routing[sizeof(routing_tmpl)];
-    sub_breakdown_u8(in_q, &addr_byte);
+    alp_breakdown_u8(in_q, &addr_byte);
     
     // Use routing_tmpl for unicast or anycast and additionally grab
     // target id for unicast
     if ((addr_byte & 0x40) == 0) {
         if ((addr_byte & 0x80) == 0) {
-            sub_breakdown_id_tmpl(in_q, &((routing_tmpl*)routing)->dlog);
+            alp_breakdown_id_tmpl(in_q, &((routing_tmpl*)routing)->dlog);
         }
-        sub_breakdown_routing_tmpl(in_q, routing);
+        alp_breakdown_routing_tmpl(in_q, routing);
     }
     return otapi_open_request( (addr_type)addr_byte, (routing_tmpl*)routing );
 }
@@ -161,176 +144,32 @@ ot_u16 icmd_sys_closerequest(Queue* in_q) {
 
 ot_u16 icmd_sys_startdialog(Queue* in_q) {
     ot_u16 timeout;
-    sub_breakdown_u16(in_q, (void*)&timeout);
+    alp_breakdown_u16(in_q, (void*)&timeout);
     return otapi_start_dialog(timeout);
 }
 
 
 
 
-void sub_breakdown_u8(Queue* in_q, void* data_type) {
-    *(ot_u8*)data_type = q_readbyte(in_q); 
-}
-
-void sub_breakdown_u16(Queue* in_q, void* data_type) {
-    *(ot_u16*)data_type = q_readshort(in_q);
-}
-
-void sub_breakdown_u32(Queue* in_q, void* data_type) {
-    *(ot_u32*)data_type = q_readlong(in_q);
-}
-
-void sub_breakdown_queue(Queue* in_q, void* data_type) {
-    ot_u16 queue_length;
-    ot_u8* queue_front;
-    queue_length                    = q_readshort(in_q);
-    ((Queue*)data_type)->alloc      = queue_length;
-    ((Queue*)data_type)->options    = in_q->options;
-    ((Queue*)data_type)->length     = queue_length;
-    queue_front                     = q_markbyte(in_q, queue_length);
-    ((Queue*)data_type)->front      = queue_front;
-    ((Queue*)data_type)->back       = queue_front+queue_length;
-    ((Queue*)data_type)->getcursor  = queue_front;
-    ((Queue*)data_type)->putcursor  = queue_front;
-}
-
-void sub_breakdown_session_tmpl(Queue* in_q, void* data_type) {
-    q_readstring(in_q, (ot_u8*)data_type, 6);
-    //((session_tmpl*)data_type)->reserved    = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->channel     = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->subnet      = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->subnetmask  = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->flags       = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->flagmask    = q_readbyte(in_q);
-}
-
-void sub_breakdown_advert_tmpl(Queue* in_q, void* data_type) {
-    q_readstring(in_q, (ot_u8*)data_type, 4);
-    ((advert_tmpl*)data_type)->duration     = q_readshort(in_q);
-}
-
-void sub_breakdown_command_tmpl(Queue* in_q, void* data_type) {
-    q_readstring(in_q, (ot_u8*)data_type, 3);
-    //((command_tmpl*)data_type)->type        = q_readbyte(in_q);
-    //((command_tmpl*)data_type)->opcode      = q_readbyte(in_q);
-    //((command_tmpl*)data_type)->extension   = q_readbyte(in_q);
-}
-
-void sub_breakdown_routing_tmpl(Queue* in_q, void* data_type) {
-    ot_u8 id_length;
-    ot_u8 code_mask;
-    ((routing_tmpl*)data_type)->hop_code = q_readbyte(in_q);
-    
-    if (((routing_tmpl*)data_type)->hop_code > 1) {
-        ((routing_tmpl*)data_type)->hop_ext     = q_readbyte(in_q);
-        code_mask                               = (((routing_tmpl*)data_type)->hop_ext != 0) << 7;
-        id_length                               = q_readbyte(in_q);
-        ((routing_tmpl*)data_type)->orig.length = id_length;
-        code_mask                              |= (id_length != 0) << 6;
-        code_mask                              |= (id_length == 2) << 4;
-        ((routing_tmpl*)data_type)->orig.value  = q_markbyte(in_q, id_length);
-        id_length                               = q_readbyte(in_q);
-        ((routing_tmpl*)data_type)->dest.length = id_length;
-        code_mask                              |= (id_length != 0) << 5;
-        code_mask                              |= (id_length == 2) << 4;
-        ((routing_tmpl*)data_type)->dest.value  = q_markbyte(in_q, id_length);
-        ((routing_tmpl*)data_type)->hop_code   |= code_mask;
-    }
-}
-
-void sub_breakdown_id_tmpl(Queue* in_q, void* data_type) {
-    ot_int id_length;
-    id_length                       = q_readbyte(in_q);
-    ((id_tmpl*)data_type)->length   = id_length;
-    ((id_tmpl*)data_type)->value    = q_markbyte(in_q, id_length);
-}
-
-void sub_breakdown_dialog_tmpl(Queue* in_q, void* data_type) {
-    ((dialog_tmpl*)data_type)->timeout = q_readbyte(in_q);
-    
-    if (((dialog_tmpl*)data_type)->timeout & 0x80) {
-        ((dialog_tmpl*)data_type)->channels = q_readbyte(in_q);
-        ((dialog_tmpl*)data_type)->chanlist = \
-            q_markbyte(in_q, ((dialog_tmpl*)data_type)->channels);
-    }
-}
-
-void sub_breakdown_query_tmpl(Queue* in_q, void* data_type) {
-    ot_u8   query_length;
-    ot_u8   query_code;
-    ot_u8*  query_mask;
-    
-    query_code      = q_readbyte(in_q);
-    query_length    = q_readbyte(in_q);
-    query_mask      = NULL;
-    
-    if (query_code & 0x80) {
-        query_mask  = q_markbyte(in_q, query_length);
-    }
-    
-    ((query_tmpl*)data_type)->code      = query_code;
-    ((query_tmpl*)data_type)->length    = query_length;
-    ((query_tmpl*)data_type)->mask      = query_mask;
-    ((query_tmpl*)data_type)->value     = q_markbyte(in_q, query_length);
-}
-
-
-void sub_breakdown_ack_tmpl(Queue* in_q, void* data_type) {
-    ot_int ack_id_count;
-    ot_int ack_id_length;
-    ack_id_count                    = q_readbyte(in_q);
-    ack_id_length                   = q_readbyte(in_q);
-    ((ack_tmpl*)data_type)->count   = (ot_u8)ack_id_count;
-    ((ack_tmpl*)data_type)->length  = (ot_u8)ack_id_length;
-    ((ack_tmpl*)data_type)->list    = q_markbyte(in_q, ack_id_count*ack_id_length);
-}
-
-void sub_breakdown_error_tmpl(Queue* in_q, void* data_type) {
-    ((error_tmpl*)data_type)->code      = q_readbyte(in_q);
-    ((error_tmpl*)data_type)->subcode   = q_readbyte(in_q);
-    ((error_tmpl*)data_type)->data      = in_q->getcursor;  ///@todo build a routine for code:subcode --> data length
-}
-
-void sub_breakdown_udp_tmpl(Queue* in_q, void* data_type) {
-    ot_int udp_data_length;
-    ((udp_tmpl*)data_type)->src_port      = q_readbyte(in_q);
-    ((udp_tmpl*)data_type)->dst_port      = q_readbyte(in_q);
-    udp_data_length                       = q_readbyte(in_q);
-    ((udp_tmpl*)data_type)->data_length   = udp_data_length;
-    ((udp_tmpl*)data_type)->data          = q_markbyte(in_q, udp_data_length);
-}
-
-void sub_breakdown_isfcomp_tmpl(Queue* in_q, void* data_type) {
-    ((isfcomp_tmpl*)data_type)->is_series   = q_readbyte(in_q);
-    ((isfcomp_tmpl*)data_type)->isf_id      = q_readbyte(in_q);
-    ((isfcomp_tmpl*)data_type)->offset      = q_readshort(in_q);
-}
-
-void sub_breakdown_isfcall_tmpl(Queue* in_q, void* data_type) {
-    sub_breakdown_isfcomp_tmpl(in_q, data_type);
-    ((isfcall_tmpl*)data_type)->max_return  = q_readshort(in_q);
-}
-
-
 ///@todo This is only used by M2QP, so it could be truncated to only have tmpls
 ///      that are included in M2QP API calls.
 static const sub_bdtmpl bdtmpl_cmd[16] = {
-    &sub_breakdown_u8,            //0
-    &sub_breakdown_u16,           //1
-    &sub_breakdown_u32,           //2
-    &sub_breakdown_queue,         //3
-    &sub_breakdown_session_tmpl,  //4
-    &sub_breakdown_advert_tmpl,   //5
-    &sub_breakdown_command_tmpl,  //6
-    &sub_breakdown_id_tmpl,       //7
-    &sub_breakdown_routing_tmpl,  //8
-    &sub_breakdown_dialog_tmpl,   //9
-    &sub_breakdown_query_tmpl,    //10
-    &sub_breakdown_ack_tmpl,      //11
-    &sub_breakdown_error_tmpl,    //12
-    &sub_breakdown_isfcomp_tmpl,  //13
-    &sub_breakdown_isfcall_tmpl,  //14
-    &sub_breakdown_udp_tmpl     //15
+    &alp_breakdown_u8,            //0
+    &alp_breakdown_u16,           //1
+    &alp_breakdown_u32,           //2
+    &alp_breakdown_queue,         //3
+    &alp_breakdown_session_tmpl,  //4
+    &alp_breakdown_advert_tmpl,   //5
+    &alp_breakdown_command_tmpl,  //6
+    &alp_breakdown_id_tmpl,       //7
+    &alp_breakdown_routing_tmpl,  //8
+    &alp_breakdown_dialog_tmpl,   //9
+    &alp_breakdown_query_tmpl,    //10
+    &alp_breakdown_ack_tmpl,      //11
+    &alp_breakdown_error_tmpl,    //12
+    &alp_breakdown_isfcomp_tmpl,  //13
+    &alp_breakdown_isfcall_tmpl,  //14
+    &alp_breakdown_udp_tmpl     //15
 };
 
 static const otapi_icmd session_cmd[3] = {

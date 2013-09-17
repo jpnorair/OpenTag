@@ -267,13 +267,13 @@ void spirit1_load_defaults() {
     }
 
     // Early debugging test to make sure data was written (look at first write block)
-//    {
-//        volatile ot_u8 test;
-//        ot_u8 i;
-//        for (i=0x01; i<=0x0D; ++i) {
-//            test = spirit1_read(i);
-//        }
-//    }
+    //{
+    //    volatile ot_u8 test;
+    //    ot_u8 i;
+    //    for (i=0x01; i<=0x0D; ++i) {
+    //        test = spirit1_read(i);
+    //    }
+    //}
 }
 
 

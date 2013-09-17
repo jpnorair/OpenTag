@@ -316,7 +316,7 @@ typedef struct {
 typedef struct {
     ot_u8   src_port;
     ot_u8   dst_port;
-    ot_u8   data_length;
+    ot_u16  data_length;
     ot_u8*  data;
 } udp_tmpl;
 

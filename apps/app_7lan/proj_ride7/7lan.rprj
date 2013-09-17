@@ -1,0 +1,4 @@
+
+<Project Header="Project '7lan'" Path=".\7lan.rprj" Project="Yes" OutputFile="" sate="96" ActiveApp="7lan" >
+	<ApplicationBuild Header="7lan" Extern=".\7lan.rapp" Path=".\7lan.rapp" OutputFile=".\build\7lan.elf" sate="96" Config="R1_Adapter" />
+</Project>

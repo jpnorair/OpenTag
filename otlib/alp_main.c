@@ -65,16 +65,8 @@ typedef ot_bool (*sub_proc)(alp_tmpl*, id_tmpl*);
 
 
 // Subroutines
-ot_bool sub_proc_null(alp_tmpl* a0, id_tmpl* a1);
 ot_u8   sub_get_headerlen(ot_u8 tnf);
 void    sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len);
-
-
-
-
-ot_bool sub_proc_null(alp_tmpl* a0, id_tmpl* a1) {
-	return False;
-}
 
 
 
@@ -128,8 +120,6 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
 
     alp->outrec.flags  &= ~ALP_FLAG_MB;     
 }
-
-
 
 
 #ifndef EXTF_alp_init
@@ -217,14 +207,13 @@ void alp_new_message(alp_tmpl* alp, ot_u8 payload_limit, ot_int payload_remainin
 
 
 
+
 #ifndef EXTF_alp_parse_message
 ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
-/// @note OpenTag may not completely support record chunking.  This function
-///       should be able to support input and output chunking, but the ALP
-///       processors themselves might not.  Don't assume that OpenTag supports
-///       chunking until this message goes away.
-
-#if (OT_FEATURE(ALP) == ENABLED)
+#if (OT_FEATURE(ALP) != ENABLED)
+    return MSG_Null;
+    
+#else
     ALP_status exit_code = MSG_Null;
     
     /// Loop through records in the input message.  Each input message can
@@ -250,7 +239,9 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
             if (alp_parse_header(alp) == False) {
                 return MSG_Null;
             }
-            platform_memcpy(&alp->outrec.flags, &alp->inrec.flags, 4);
+            //platform_memcpy(&alp->outrec.flags, &alp->inrec.flags, 4);
+            *((ot_u32*)&alp->outrec.flags) = *((ot_u32*)&alp->inrec.flags);
+            q_empty(alp->outq);
         }
                    
         /// Reserve space in alp->outq for header data.  It is updated later.
@@ -275,22 +266,11 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
             sub_insert_header(alp, hdr_position, hdr_len);
         }
             
-        /// alp_parse_message() should return to caller when:
-        /// <LI> Output and Input Messages are done (MSG_End) </LI>
-        /// <LI> Output data is exceeding the output queue (MSG_Chunking_Out) </LI>
-        /// <LI> Input data is exceeding the input queue (MSG_Chunking_In) </LI>
-        /// <LI> There is an error, or no data (MSG_Null) </LI>
-        { 
-            register ot_u8 scratch = MSG_Null;
-            
-            if (alp->inrec.flags & NDEF_CF) 
-                scratch = MSG_Chunking_In;
-            if (alp->outrec.flags & NDEF_CF) 
-                scratch = MSG_Chunking_Out;
-            else if (alp->outrec.flags & alp->inrec.flags & NDEF_ME) 
-                scratch = MSG_End;
-                
-            exit_code = (ALP_status)scratch;
+        /// This version of ALP does not support nested messages.  It will
+        /// terminate processing and return when the input message is ended.
+        if (alp->inrec.flags & ALP_FLAG_ME) {
+            q_empty(alp->inq);
+            exit_code = MSG_End;
         }
     }
     while (exit_code != MSG_End);
@@ -375,21 +355,21 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
 #ifndef EXTF_alp_proc
 ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
     static const sub_proc proc[] = {
-        &sub_proc_null,
+        &alp_proc_null,
 #   if (ALP_FILESYSTEM)
         &alp_proc_filedata,
 #   endif
 #   if (ALP_SENSORS)
-        &sub_proc_null,         //Not implemented yet
+        &alp_proc_null,         //Not implemented yet
 #   endif
 #   if (ALP_SECURITY)
-        &sub_proc_null,         //Not implemented yet
+        &alp_proc_null,         //Not implemented yet
 #   endif
 #   if (ALP_LOGGER)
         &alp_proc_logger,
 #   endif
 #   if (ALP_DASHFORTH)
-        &sub_proc_null,         //Not implemented yet
+        &alp_proc_null,         //Not implemented yet
 #   endif
 #   if (ALP_API)
         &alp_proc_api_session,
@@ -399,31 +379,20 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
 #   if (ALP_EXT)
         &otapi_alpext_proc,
 #   else
-        &sub_proc_null
+        &alp_proc_null
 #   endif
     };
 
-    ot_u8 alp_id;
+    ot_u8 alp_handle;
     
     // Always flush payload length of output before any data is written
     alp->outrec.plength = 0;
     
-    /// <LI> IDs in range 0-to-ALP_FUNCTIONS are standardized, or psuedo-standardized </LI>
-    /// <LI> IDs in range 128-to-(128+ALP_API) are mapped OTAPI functions </LI>
-    /// <LI> IDs outside this range get pushed to ALP_EXT </LI>
-    alp_id = alp->inrec.id;
-    
-    if (alp_id >= 0x80) {
-        alp_id -= (0x80-(ALP_FUNCTIONS-ALP_API));
-    }
-    if (alp_id > (ALP_FUNCTIONS+1)) {
-        alp_id = (ALP_FUNCTIONS+1);
-    }
-    
     /// The proc function must set alp->outrec.plength based on how much
     /// data it writes to the output queue.  It must return False if the output
     /// should be canceled.
-    alp_id = (ot_u8)proc[alp_id](alp, user_id);
+    alp_handle  = sub_get_alphandle(alp->inrec.id);
+    alp_handle  = (ot_u8)proc[alp_handle](alp, user_id);
     
     /// If the output bookmark is non-Null, there is output chunking.  Else, 
     /// the output message is complete (ended)
@@ -432,9 +401,22 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
     alp->outrec.flags   |= (alp->outrec.bookmark) ? ALP_FLAG_CF : ALP_FLAG_ME;
 
     // Return 0 length (False) or non-zero length (True)
-    return (ot_bool)alp_id;
+    return (ot_bool)alp_handle;
 }
 #endif
+
+
+
+
+
+
+#ifndef EXTF_alp_proc_null
+ot_bool alp_proc_null(alp_tmpl* a0, id_tmpl* a1) {
+	return False;
+}
+#endif
+
+
 
 
 #endif

@@ -31,9 +31,6 @@
 #include "OTAPI.h"
 #include "OT_platform.h"
 
-#if (OT_FEATURE(IAP) == ENABLED)
-#   include "iap.hdo.h"
-#endif
 
 /** Data Mapping <BR>
   * ===========================================================================
@@ -541,11 +538,8 @@ void main(void) {
     otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 #   endif
     
-    ///3. If you have any custom tasks to initialize, here is a good place
-#   if (OT_FEATURE(IAP) == ENABLED)
-    dll_goto_off();
-    iap_connect(NULL);
-#   endif
+    ///4. If you have any custom tasks to initialize, here is a good place
+
     
     ///5. Initialize the User Applet & interrupts
     app_init();

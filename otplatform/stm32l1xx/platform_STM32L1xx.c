@@ -392,8 +392,8 @@ void sub_save_error(ot_u16 vector_code) {
     ot_u32 error_code;
     error_code  = ((ot_u32)platform.error_code << 16) | (ot_u32)vector_code;
     RTC->BKP19R = error_code;
-    RTC->BKP18R = get_PSP();
-    RTC->BKP17R = get_MSP();
+    RTC->BKP18R = __get_PSP();
+    RTC->BKP17R = __get_MSP();
     
     NVIC_SystemReset();     //see core_cm3.h in CMSIS
 }
@@ -456,6 +456,156 @@ void platform_ext_plloff() {
     RCC->CR &= ~RCC_CR_PLLON;
     BOARD_HSXTAL_OFF();
 #endif
+}
+#endif
+
+
+#ifndef EXTF_platform_ext_hsitrim
+///@todo HDO only
+void platform_ext_hsitrim() {
+/// Measure the HSI agaist the LSE and set trim value
+#   define _TARGET      (16000000/BOARD_PARAM_LFHz)
+#   define _TARGETDEV   (ot_u16)((16000000.f/BOARD_PARAM_LFHz)*(0.01f))
+    ot_u16 hsi_dev      = 0;
+    ot_u16 hsi_trim     = 0;
+    ot_u16 best_dev     = 256;
+    ot_u16 best_trim    = 0;
+
+    // Enable TIM10 with:
+    // - LSE as measurement input capture 1
+    // - No prescaler
+    // - Immediate Reload   
+    RCC->APB2ENR   |= RCC_APB2ENR_TIM10EN;
+    TIM10->CR1      = 0;
+    TIM10->SMCR     = 0;
+    TIM10->DIER     = 0;                    // TIM interrupts unused
+    TIM10->SR       = 0;                    // clear update flags
+    TIM10->CCMR1    = 1;                    // Set Input to line-1
+    TIM10->CCER     = TIM_CCER_CC1E;        // Enable Input Capture
+    TIM10->PSC      = 0;                    // No prescaling
+    TIM10->ARR      = 65535;
+    TIM10->OR       = 2;                    // LSE
+    TIM10->CR1      = TIM_CR1_CEN;
+
+    // Wait for rising edge 1, then count HS pulses until rising edge 2
+    ///@todo WFE?
+    while (1) {
+        ot_u16 flag;
+        do { flag = TIM10->SR; } while (flag == 0); //wait for edge
+
+        if ((flag & TIM_SR_CC1IF) == 0) {           // something is wrong, revert to best
+            break;
+        }
+        if (hsi_dev == 0) {                         // First Edge, must wait for 2nd
+            hsi_dev = TIM10->CCR1;
+            continue;
+        }
+    
+        // Compute HSI deviation in terms of HSI periods per one LSE period
+        hsi_dev = TIM10->CCR1 - hsi_dev;
+        hsi_dev = (hsi_dev < _TARGET) ? (_TARGET-hsi_dev) : (hsi_dev-_TARGET);
+        
+        // If HSI is sufficiently accurate, then exit the process
+        // Else, if HSI is better than best so far, save it
+        if (hsi_dev > _TARGETDEV) {
+            goto platform_ext_hsitrim_EXIT;
+        }
+        if (hsi_dev > best_dev) {
+            best_dev    = hsi_dev;
+            best_trim   = hsi_trim;
+        }
+        
+        // There are 32 possible values for HSITRIM.  Don't exceed!
+        // Else, set HW for next HSITRIM value
+        RCC->ICSCR &= ~(31<<8);
+        hsi_trim   += (1<<8);
+        if (hsi_trim & (1<<13) ) {
+            break;
+        }
+        RCC->ICSCR |= hsi_trim;
+        hsi_dev     = 0;
+    }
+
+    // Set best trim value (if vectored to EXIT, it is already there)
+    RCC->ICSCR |= best_trim;
+    
+    // Turn-off TIM10
+    ///@todo TIM10 may be used in future as Chronometer, so make potentially TIM9
+    platform_ext_hsitrim_EXIT:
+    TIM10->CR1      = 0;
+    RCC->APB2ENR   &= ~RCC_APB2ENR_TIM10EN;
+    
+#   undef _TARGET
+#   undef _TARGETDEV
+}
+#endif
+
+
+
+#ifndef EXTF_platform_ext_lsihz
+///@todo HDO only
+ot_u16 platform_ext_lsihz() {
+/// @note To measure LSI, only TIM10 can be used.  So, since TIM10 may be used
+/// for OpenTag during runtime, this function should ONLY be run at startup.
+/// This isn't a problem, because LSI only needs to be trimmed once during the 
+/// lifetime of the device.
+    ot_u16 lsi_hz;
+    ot_u16 flag;
+
+    // Check EEPROM for LSI trimming.  If it's not there, it is 0
+    DATA_EEPROM_Unlock();
+    lsi_hz = *((ot_u16*)0x08080FFE);
+
+    // If LSI has already been measured, return the stored measurement
+    if (lsi_hz != 0) {
+        return lsi_hz;
+    }
+
+    // Enable TIM10 with:
+    // - LSI as measurement input capture 1
+    // - No prescaler
+    // - Immediate Reload   
+    RCC->APB2ENR   |= RCC_APB2ENR_TIM10EN;
+
+    //TIM10->CR1      = 0;
+    //TIM10->SMCR     = 0;
+    //TIM10->DIER     = 0;                    // TIM interrupts unused
+    //TIM10->SR       = 0;                    // clear update flags
+    TIM10->CCMR1    = 1;                    // Set Input to line-1
+    TIM10->CCER     = TIM_CCER_CC1E;        // Enable Input Capture
+    //TIM10->PSC      = 0;                    // No prescaling
+    TIM10->ARR      = 65535;
+    TIM10->OR       = 1;                    // LSI is being measured
+    TIM10->CR1      = TIM_CR1_CEN;
+
+    // Wait for rising edge 1, then count HS pulses until rising edge 2
+    ///@todo WFE?
+    sub_get_lsihz_TOP:
+    do {                                // Wait for edge
+        flag = TIM10->SR; 
+    } while (flag == 0);
+
+    if ((flag & TIM_SR_CC1IF) == 0) {    // something is wrong, assume 37000 Hz
+        lsi_hz  = 37000;
+        goto sub_get_lsihz_END;
+    }
+    if (lsi_hz == 0) {                  // First Edge
+        lsi_hz  = TIM10->CCR1;
+        goto sub_get_lsihz_TOP;
+    }
+
+    // Compute LSI Hz from counter pulses during one LSI period,
+    // and save this value to the last address of EEPROM
+    lsi_hz  = TIM10->CCR1 - lsi_hz;
+    lsi_hz  = BOARD_PARAM_HFHz / lsi_hz;
+    vworm_mark_physical((ot_u16*)0x08080FFE, lsi_hz);
+
+    // Turn-off timer and disable clocking to it
+    sub_get_lsihz_END:
+    TIM10->CR1      = 0;
+    RCC->APB2ENR   &= ~RCC_APB2ENR_TIM10EN;
+
+    return lsi_hz;
 }
 #endif
 
@@ -639,15 +789,19 @@ void platform_poweron() {
     __set_CONTROL(2);
     __set_MSP( (ot_u32)&platform_ext.sstack[(OT_PARAM_SSTACK_ALLOC/4)-1] );
     
-    ///2. Board Specific powering up (usually default port setup)
+    /// 3. Board-Specific power-up configuration
     BOARD_PERIPH_INIT();
     BOARD_POWER_STARTUP();
     
-    ///3. Clock Setup: On startup, all clocks are 2.1 MHz MSI
+    ///2. Configure GPIO
+    //platform_init_gpio();
+    BOARD_PORT_STARTUP();
+    
+    /// 3. Configure Clocks
     platform_init_busclk();
     platform_init_periphclk();
     
-    /// 4. Debugging setup
+    /// 5. Debugging setup
 #   if defined(__DEBUG__) || defined(__PROTO__)
     DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP \
                       | DBGMCU_CR_DBG_STOP \
@@ -662,17 +816,17 @@ void platform_poweron() {
                       | DBGMCU_APB2_FZ_DBG_TIM11_STOP);
 #   endif
 
-    /// 5. Final initialization of OpenTag system resources
-    platform_init_gpio();           // Set up connections on the board
+    /// 6. Final initialization of OpenTag system resources
+               // Set up connections on the board
     platform_init_interruptor();    // Interrupts OpenTag cares about
     platform_init_gptim(0);         // Initialize GPTIM (to 1024 Hz)
     
-    /// 6. Start the chronometer if not in debug mode
+    /// 7. Start the chronometer if not in debug mode
 #   if !defined(__DEBUG__)
     gptim_start_chrono();
 #   endif
     
-    /// 7. Initialize Low-Level Drivers (worm, mpipe)
+    /// 8. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
     vworm_init();
 }
@@ -812,7 +966,7 @@ void platform_init_busclk() {
 #       endif
 
         // Setup the Bus Dividers as specified (MSI already selected as system clock)
-        platform_ext.cpu_khz    = (PLATFORM_MSCLOCK_HZ/1000);
+        platform_ext.cpu_khz     = PLATFORM_MSCLOCK_HZ;
 
 
     ///3b. Use HSE or HSI without PLL as Full-Speed clock
@@ -962,7 +1116,7 @@ void platform_standard_speed() {
 #   endif
 
     // Update stored CPU speed
-    platform_ext.cpu_khz = (PLATFORM_MSCLOCK_HZ/1000);
+    platform_ext.cpu_khz = PLATFORM_MSCLOCK_HZ;
 #endif
 }
 #endif
@@ -993,7 +1147,7 @@ void platform_full_speed() {
 #       endif
         
         RCC->CR &= ~RCC_CR_MSION;
-        platform_ext.cpu_khz = (PLATFORM_HSCLOCK_HZ/1000);
+        platform_ext.cpu_khz = PLATFORM_HSCLOCK_HZ;
     }
 #endif
 }
@@ -1030,7 +1184,7 @@ void platform_flank_speed() {
     }
     
     RCC->CR &= ~RCC_CR_MSION;
-    platform_ext.cpu_khz = (PLATFORM_PLLCLOCK_HZ/1000);
+    platform_ext.cpu_khz = PLATFORM_PLLCLOCK_HZ;
     
 #else
     platform_full_speed();
@@ -1855,9 +2009,9 @@ void platform_swdelay_ms(ot_u16 n) {
 #ifndef EXTF_platform_swdelay_us
 void platform_swdelay_us(ot_u16 n) {
     ot_long c;
-    c   = platform_ext.cpu_khz;         // Set cycles per ms
+    c   = (platform_ext.cpu_khz);       // Set cycles per ms
     c  *= n;                            // Multiply by number of us
-    c >>= 10;                           // divide by 1024 (~1024us/ms)
+    c >>= 10;                           // Divide into cycles per us
     do { 
         c -= 7;                         // 7 cycles per loop (measured)
     } while (c > 0);

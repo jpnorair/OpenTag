@@ -16,8 +16,8 @@
 /**
   * @file       /otkernel/hicculp/system_hicculp.c
   * @author     JP Norair
-  * @version    R103
-  * @date       25 Jan 2013
+  * @version    R104
+  * @date       29 Aug 2013
   * @brief      OpenTag HICCULP kernel
   * @ingroup    System
   *
@@ -41,8 +41,12 @@
 #include "mpipe.h"
 #include "external.h"
 
-#if (OT_FEATURE(IAP))
+
+/// IAP inclusion: a hack.  Fix this later with some extension header
+#if (BOARD_FEATURE(IAP) == ENABLED)
 #   include "iap.h"
+#elif (BOARD_FEATURE(IAP2) == ENABLED)
+#   include "iap2.h"
 #endif
 
 
@@ -93,8 +97,9 @@ static const systask_fn systask_call[]   = {
 #endif
 #if (OT_FEATURE(MPIPE))
     &mpipe_systask,
-#elif (OT_FEATURE(IAP))
-    &iap_systask,
+#endif
+#if (OT_PARAM(EXOTASKS) > 0)
+    OT_PARAM_EXOTASK_HANDLES,
 #endif
 #if (OT_FEATURE(M2))
     &dll_systask_holdscan,

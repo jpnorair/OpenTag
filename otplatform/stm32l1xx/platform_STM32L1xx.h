@@ -377,7 +377,8 @@ void gptim_stop_chrono();
 void platform_ext_pllon();
 void platform_ext_plloff();
 void platform_ext_wakefromstop();
-
+void platform_ext_hsitrim();
+ot_u16 platform_ext_lsihz();
 
 
 

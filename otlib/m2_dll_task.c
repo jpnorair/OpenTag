@@ -560,6 +560,7 @@ void sub_processing() {
     ///      loop (immediately) if no response </LI>
 
     /// Response is prepared already, so setup holdstate and flow control
+    /// @todo make sure proc_score is < 0 for responses that were received
     if (proc_score >= 0) {
         sub_fceval(proc_score);
         sys.task_HSS.cursor = 0;
@@ -793,9 +794,8 @@ void sub_activate() {
     session         = session_top();
 
     if (session->applet != NULL) {
-        ot_app this_applet;
-        this_applet     = session->applet;
-        session->applet = NULL;
+        ot_app this_applet  = session->applet;
+        session->applet     = NULL;
         dll_set_defaults(session);
         this_applet(session);
     }

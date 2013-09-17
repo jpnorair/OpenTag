@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /OTlib/OTAPI_c.h
+  * @file       /otlib/OTAPI_c.h
   * @author     JP Norair
   * @version    V1.0
   * @date       26 May 2011

@@ -10,7 +10,6 @@ SEARCH_DIR("B:\apps\app_7lan\proj_ride7\build")
 SEARCH_DIR("C:\Program Files\Raisonance\Ride\Lib\ARM")
 INPUT("B:\apps\app_7lan\proj_ride7\build\main.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\dll_sig_rfinit.o")
-INPUT("B:\apps\app_7lan\proj_ride7\build\mpipe_sig_done.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\network_sig_route.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\sys_sig_panic.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\sys_sig_powerdown_[stm32lp].o")
@@ -59,10 +58,6 @@ INPUT("B:\apps\app_7lan\proj_ride7\build\stm32l1xx_flash.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\veelite_core_EE_STM32L1xx.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\radio_SPIRIT1.o")
 INPUT("B:\apps\app_7lan\proj_ride7\build\SPIRIT1_STM32L1xx.o")
-INPUT("B:\apps\app_7lan\proj_ride7\build\iap_auth_STM32L1xx.hdo.o")
-INPUT("B:\apps\app_7lan\proj_ride7\build\iap_commands.hdo.o")
-INPUT("B:\apps\app_7lan\proj_ride7\build\iap_task.hdo.o")
-INPUT("B:\apps\app_7lan\proj_ride7\build\iap_uart_STM32L1xx.hdo.o")
 GROUP(
 "std_sbrk_thumb.lib"
 "smallprintf_thumb.a"
@@ -71,4 +66,4 @@ GROUP(
 
 )
 INCLUDE "B:\apps\app_7lan\proj_ride7\stm32l1xx_64_10.ld"
-OUTPUT("B:\apps\app_7lan\proj_ride7\build\ponglt.elf")
+OUTPUT("B:\apps\app_7lan\proj_ride7\build\7lan.elf")

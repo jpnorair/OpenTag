@@ -351,9 +351,7 @@ void radio_calibrate() {
 #ifndef EXTF_radio_set_mactimer
 void radio_set_mactimer(ot_u16 clocks) {
 /// Used for high-accuracy TX/CSMA slot insertion, and flooding.
-#if (SYS_FLOOD == ENABLED)
     platform_set_gptim2(clocks);
-#endif
 }
 #endif
 

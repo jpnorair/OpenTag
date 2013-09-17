@@ -72,8 +72,12 @@
 
 // User/App task lists: comment-out if none.  
 // Use comma separated with TASK_xxx nomenclature (e.g. TASK_0, TASK_1, TASK_2)
-#define OT_PARAM_USER_EXOTASKS          TASK_iap
-#define OT_PARAM_USER_KERNELTASKS       TASK_external
+#define OT_PARAM_EXOTASKS               0
+#define OT_PARAM_EXOTASK_IDS            
+#define OT_PARAM_EXOTASK_HANDLES        
+#define OT_PARAM_KERNELTASKS            0
+#define OT_PARAM_KERNELTASK_IDS         
+#define OT_PARAM_KERNELTASK_HANDLES     
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          6                                   // Max simultaneous sessions (i.e. tasks)
 #define OT_PARAM_BUFFER_SIZE            (512+2080)                          // Typically, must be at least 512 bytes    
@@ -90,8 +94,7 @@
 #define OT_FEATURE_ALP                  (ENABLED || (OT_FEATURE_CLIENT))    // Application Layer Protocol Support
 #define OT_FEATURE_ALPAPI               (OT_FEATURE_M2 && OT_FEATURE_ALP)   // Application Layer Protocol callable API's
 #define OT_FEATURE_ALPEXT               ENABLED
-#define OT_FEATURE_MPIPE                DISABLED    //ENABLED
-#define OT_FEATURE_IAP                  ENABLED     //DISABLED
+#define OT_FEATURE_MPIPE                ENABLED
 #define OT_FEATURE_NDEF                 (OT_FEATURE_MPIPE)                  // NDEF wrapper for Messaging API
 #define OT_FEATURE_VEELITE              ENABLED                             // Veelite DASH7 File System
 #define OT_FEATURE_VLFPS                OT_PARAM_VLFPS
