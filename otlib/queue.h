@@ -58,7 +58,7 @@ extern "C" {
   */
 typedef struct {
     ot_u16      alloc;
-    ot_u16      length;
+    ot_u16      length;     ///@todo length field is deprecated and being replaced with q_length()
     Twobytes    options;
     ot_u8*      getcursor;
     ot_u8*      putcursor;
@@ -93,8 +93,22 @@ void q_init(ot_queue* q, ot_u8* buffer, ot_u16 alloc);
 void q_rebase(ot_queue* q, ot_u8* buffer);
 
 
+/** @brief Copies one Queue "object" to another, without copying the data
+  * @param q1       (ot_queue*) Queue to copy into
+  * @param q2       (ot_queue*) Queue to copy from
+  * @retval none
+  * @ingroup Queue
+  */
+void q_copy(ot_queue* q1, ot_queue* q2);
 
-void q_copy(ot_queue* q1, Queue* q2);
+
+
+/** @brief Returns the length of the queue
+  * @param q        (ot_queue*) Queue to determine length 
+  * @retval none
+  * @ingroup Queue
+  */
+ot_int q_length(ot_queue* q);
 
 
 

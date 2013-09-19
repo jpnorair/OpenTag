@@ -47,7 +47,7 @@ void q_init(ot_queue* q, ot_u8* buffer, ot_u16 alloc) {
 
 
 #ifndef EXTF_q_rebase
-void q_rebase(ot_queue *q, ot_u8* buffer) {
+void q_rebase(ot_queue* q, ot_u8* buffer) {
     q->front        = buffer;
     q->getcursor    = buffer;
     q->putcursor    = buffer;
@@ -56,10 +56,18 @@ void q_rebase(ot_queue *q, ot_u8* buffer) {
 
 
 #ifndef EXTF_q_copy
-void q_copy(ot_queue* q1, Queue* q2) {
-    platform_memcpy((ot_u8*)q1, (ot_u8*)q2, sizeof(Queue));
+void q_copy(ot_queue* q1, ot_queue* q2) {
+    platform_memcpy((ot_u8*)q1, (ot_u8*)q2, sizeof(ot_queue));
 }
 #endif
+
+
+#ifndef EXTF_q_length
+void q_length(ot_queue* q) {
+    return (q->putcursor-q->front);
+}
+#endif
+
 
 
 #ifndef EXTF_q_empty

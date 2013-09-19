@@ -242,6 +242,18 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id);
 
 
 
+/** @brief  Purge one type of ALP ID records from an ALP Queue
+  * @param  alpq        (ot_queue*) ALP Queue to purge
+  * @param  id          (ot_u8) target ALP ID of records to purge
+  * @retval None
+  * @ingroup ALP
+  */
+void alp_purge(ot_queue* alpq, ot_u8 id);
+
+
+
+
+
 
 /** @note Subprotocol processing functions
   * The functions below are exposed, but they never should be called unless you

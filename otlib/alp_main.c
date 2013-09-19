@@ -361,6 +361,98 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
 
 
 
+void alp_purge(ot_queue* alpq, ot_u8 id) {
+    ot_u8* acursor;
+    ot_u8* bcursor;
+    ot_u8* ccursor;
+    ot_int total_purge_bytes;s
+
+#   if (OT_FEATURE(NDEF))
+#       warnining "NDEF not yet supported for non-atomic alps"
+#   endif
+    
+    /// 1. Quickly handle special cases: no target alps in queue, or queue 
+    ///    contains only targeted alps.  Also, mark targeted alps for deletion
+    ///    by setting flags bits to 0.
+    {   ot_u8 other_alps    = 0;
+        ot_u8 this_alp      = 0;
+        ot_u8* cursor;
+        
+        for (cursor=alp->front; cursor<alpq->putcursor; cursor+=(4+cursor[1])) {
+            ot_u8 id_diff;
+            id_diff     = (start[2] - id);
+            other_alps |= id_diff;
+            if (id_diff == 0) {
+                if (this_alp == 0) {
+                    acursor = cursor;
+                }
+                this_alp    = 1;
+                cursor[0]   = 0;
+            }
+        }
+        if (other_alps == 0) {
+            q_empty(alpq);
+            return;
+        }
+        if (this_alp == 0) {
+            return;
+        }
+    }
+    
+    /// 2. Progress through Queue, purging targeted ALPs by shifting later 
+    /// contents over them.  "acursor" has been set, in part 1, to the first
+    /// instance of a targeted ALP.
+    total_purge_bytes = 0;
+    
+    while (1) {
+        ot_int move_bytes;
+        ot_int purge_bytes;
+    
+        // Go past consecutive instances of the ALPs marked for purging.  If
+        // the cursor reaches the end, retract the queue cursors and exit
+        bcursor = acursor;
+        while ((bcursor[0] == 0) && (bcursor < alpq->putcursor))  {
+            bcursor += (4 + bcursor[1]);
+        }
+
+        // Go past consecutive instances of the non-targeted ALPs.  If the
+        // cursor reaches the end, ...
+        ccursor = bcursor;
+        while ((ccursor[0] != 0) && (ccursor < alpq->putcursor)) {
+            ccursor += (4 + ccursor[1]);
+        }
+        
+        // getcursor management: 
+        // - if getcursor is less than acursor, leave alone
+        // - else if getcursor is between acursor and bcursor, set to acursor
+        // - else subtract purge_bytes.
+        purge_bytes         = (bcursor-acursor);
+        total_purge_bytes  += purge_bytes;
+        if (alpq->getcursor > acursor) {
+            if (alp->getcursor < bcursor)   alp->getcursor = acursor;
+            else                            alp->getcursor -= purge_bytes;
+        }
+        
+        // Exit the loop if there is no more data to move.  Else, shift the 
+        // non-targeted ALPs back over the targeted ones.
+        move_bytes = (ccursor-bcursor);
+        if (move_bytes == 0) {
+            break;
+        }
+        platform_memcpy(acursor, bcursor, (ccursor-bcursor));   
+    }
+    
+    ///3. Finally, retract the putcursor and length by the total number of 
+    ///   purged bytes
+    alpq->putcursor -= total_purge_bytes;
+    alpq->length    -= total_purge_bytes;
+        
+#   endif
+}
+
+
+
+
 #ifndef EXTF_alp_proc
 ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
     static const sub_proc proc[] = {
