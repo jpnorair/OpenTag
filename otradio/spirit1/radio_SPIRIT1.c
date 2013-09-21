@@ -602,12 +602,12 @@ void em2_decode_newpacket() {
 void em2_encode_newframe() {
     /// 1. Prepare the CRC, also adding 2 bytes to the frame length
     if (txq.options.ubyte[UPPER] != 0) {
-        crc_init_stream(txq.length, txq.getcursor);
-        txq.length += 2;
+        crc_init_stream(q_span(&txq), txq.getcursor);
+        //#txq.length += 2;
 	}
 
     /// 2. Align encoder control variables with tx frame
-    em2.bytes   = txq.length;
+    em2.bytes   = q_span(&txq);
     em2.fr_info = &txq.getcursor[3];
 }
 #endif
@@ -759,7 +759,7 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     ///     <LI> Set SPIRIT1 RX timer to a small amount (~250 us) </LI>
     ///     <LI> Set SPIRIT1 to pause RX timer on carrier sense </LI>
     if (rfctl.flags & RADIO_FLAG_FLOOD) {
-        rxq.length          = 9;
+     //#rxq.length          = 9;
         rxq.getcursor       = rxq.front;
         pktlen              = 7;
         *rxq.getcursor++    = 7;
@@ -1179,7 +1179,7 @@ void rm2_txcsma_isr() {
             // Set other TX Buffering & Packet parameters, and also save the
             // Peristent-TX attribute for floods, which is written later
             if (rfctl.flags & RADIO_FLAG_FLOOD) {
-                txq.length  = 5;
+             //#txq.length  = 5;
                 em2.bytes   = 5;
                 type        = MODE_bg;
                 timcfg      = (ot_u8*)timcfg_flood;
@@ -1195,7 +1195,7 @@ void rm2_txcsma_isr() {
             em2_encode_newpacket();
             em2_encode_newframe();
             
-            subrfctl_buffer_config(type, txq.length);
+            subrfctl_buffer_config(type, q_span(&txq));
             spirit1_int_off();
             spirit1_iocfg_tx();
             

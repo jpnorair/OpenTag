@@ -662,7 +662,7 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     }
 #   endif
 
-    return __MPIPE_TIMEOUT(mpipe.alp.outq->length);
+    return __MPIPE_TIMEOUT( q_length(mpipe.alp.outq));
 }
 #endif
 
@@ -680,10 +680,8 @@ void sub_tx(ot_bool blocking, mpipe_priority data_priority) {
 #   if (MPIPE_USE_MAC)
     {   // Write the footer (sequence + CRC) onto this packet
         ot_u16 crc16;
-        ot_u16 length;
         q_writeshort(mpipe.alp.outq, uart.seq.ushort++);
-        length  = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;
-        crc16   = platform_crc_block(mpipe.alp.outq->getcursor, length);
+        crc16 = platform_crc_block(mpipe.alp.outq->getcursor, q_span(mpipe.alp.outq));
         q_writeshort(mpipe.alp.outq, crc16);
     }
 #   endif
@@ -800,7 +798,8 @@ void mpipedrv_isr() {
             ot_int payload_len;
             mpipe.state             = MPIPE_RxPayload;
             payload_len             = mpipe.alp.inq->front[2];
-            mpipe.alp.inq->length   = payload_len + MPIPE_OVERHEADBYTES;
+         //#mpipe.alp.inq->length   = payload_len + MPIPE_OVERHEADBYTES;
+         	mpipe.alp.inq->putcursor= payload_len + MPIPE_OVERHEADBYTES;
             next_data               = mpipe.alp.inq->front + MPIPE_OVERHEADBYTES;
             mpipe.alp.inq->back     = next_data - MPIPE_FOOTERBYTES;
             
@@ -823,7 +822,7 @@ void mpipedrv_isr() {
             
             // CRC is Good (==0) or bad (!=0) Discard the packet if bad
 #           if (BOARD_FEATURE_USBCONVERTER != ENABLED)
-            crc_result = platform_crc_block(mpipe.alp.inq->front, mpipe.alp.inq->length);
+            crc_result = platform_crc_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
 #           endif
             
 #           if (MPIPE_USE_ACKS)

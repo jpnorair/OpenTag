@@ -1043,7 +1043,7 @@ void rfevt_txcsma(ot_int pcode, ot_int tcode) {
 #       endif
         {
             radio.evtdone   = &rfevt_ftx;
-            event_ticks     = (ot_uint)(rm2_pkt_duration(txq.length) + 4);
+            event_ticks     = (ot_uint)(rm2_pkt_duration(q_length(&txq)) + 4);
         }
     }
 
@@ -1251,7 +1251,7 @@ void dll_set_defaults(m2session* session) {
     if (session->flags & M2FI_LISTEN) {
         // Reduce effective Tc by the duration of a packet Tx so that listening 
         // can occur precisely following actual Tc
-        dll.comm.tc -= TI2CLK(rm2_pkt_duration(txq.length));
+        dll.comm.tc -= TI2CLK(rm2_pkt_duration(q_length(&txq)));
     }
     else if (session->netstate & M2_NETSTATE_INIT) {
         // Default for new session is beacon request.  These parameters often

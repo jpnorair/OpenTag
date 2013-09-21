@@ -78,6 +78,8 @@
   ******************************************************************************
   */
 
+///@todo this is untested code.  The Auth module is incomplete and must be 
+///      augmented to include functions & data elements referenced in this code.
 
 #include "alp.h"
 
@@ -204,3 +206,4 @@ void alp_push_sec(alp_tmpl* alp, id_tmpl* user_id) {
 }
 #endif
 
+#endif

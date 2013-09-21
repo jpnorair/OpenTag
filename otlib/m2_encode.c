@@ -94,7 +94,7 @@ fn_codec    em2_decode_data;
     void em2_decode_data_HWCRC() {
         if (em2.state == 0) {
             em2.state--;
-            rxq.length++;
+         //#rxq.length++;
             *rxq.putcursor  = radio_getbyte();
             em2.bytes       = (ot_int)*rxq.putcursor /* - 1 */;		//new spec is non-inclusive length byte
             crc_init_stream(1+em2.bytes, rxq.putcursor++);		//new spec adds +1, as it is non-inclusive
@@ -155,7 +155,7 @@ fn_codec    em2_decode_data;
     void em2_decode_data_PN9() {
         if (em2.state == 0) {
             em2.state--;
-            rxq.length++;
+         //#rxq.length++;
             *rxq.putcursor  = (radio_getbyte() ^ get_PN9());
             em2.bytes       = (ot_int)*rxq.putcursor/* - 1*/;
             crc_init_stream(em2.bytes+1 /*rxq.front[0]*/, rxq.putcursor++);
@@ -585,14 +585,14 @@ void em2_encode_newframe() {
     /// 1. Prepare the CRC, also adding 2 bytes to the frame length
 #   if (RF_FEATURE(CRC) != ENABLED)
 		if (txq.options.ubyte[UPPER] != 0) {
-			crc_init_stream(txq.length, txq.getcursor);
+			crc_init_stream(q_span(&txq), txq.getcursor);
 			//txq.putcursor   += 2;
-        	txq.length      += 2;
+            //#txq.length      += 2;
 		}
 #   endif
 
     /// 2. Align encoder control variables with tx frame
-    em2.bytes   = txq.length;
+    em2.bytes   = q_span(&txq);
     em2.fr_info = &txq.getcursor[3];
     
     /// 3. Prepare frame encoder, depending on frame type and supported methods.

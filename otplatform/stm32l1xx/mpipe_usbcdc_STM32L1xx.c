@@ -1290,17 +1290,12 @@ void mpipedrv_setspeed(mpipe_speed speed) {
 
 #ifndef EXTF_mpipedrv_txndef
 ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
-    ot_u16  crc16;
-    ot_u16  length;
-    
     // Adding a packet is an atomic operation
     ///@todo disable USB interrupt(s)
     
     // add sequence id & crc to end of the datastream
     q_writeshort(mpipe.alp.outq, cdcacm.seq.ushort++);
-    length  = (mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor);
-    crc16   = platform_crc_block(mpipe.alp.outq->getcursor, length);
-    q_writeshort(mpipe.alp.outq, crc16);
+    q_writeshort(mpipe.alp.outq, platform_crc_block(mpipe.alp.outq->getcursor, q_span(mpipe.alp.outq)));
     
     // Move getcursor to end of packet, to allow another packet to be added
     cdcacm.pkt                  = mpipe.alp.outq->getcursor;
@@ -1319,7 +1314,7 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     
     ///@todo enable USB interrupt(s)
     
-    return (10 + (mpipe.alp.outq->length >> 8));
+    return (10 + (q_length(mpipe.alp.outq) >> 8));
 }
 #endif
 
@@ -1357,8 +1352,10 @@ void mpipedrv_isr() {
         case MPIPE_RxHeader: {
             mpipe.state                 = MPIPE_RxPayload;
             cdcacm.pktlen              += mpipe.alp.inq->front[2];
-            mpipe.alp.inq->length       = cdcacm.pktlen + MPIPE_OVERHEADBYTES;
-            mpipe.alp.inq->back         = mpipe.alp.inq->front + mpipe.alp.inq->length;
+         //#mpipe.alp.inq->length       = cdcacm.pktlen + MPIPE_OVERHEADBYTES;
+         	mpipe.alp.inq->putcursor	= cdcacm.pktlen + MPIPE_OVERHEADBYTES;
+         //#mpipe.alp.inq->back         = mpipe.alp.inq->front + mpipe.alp.inq->length;
+         	mpipe.alp.inq->back         = mpipe.alp.inq->putcursor;
             mpipeevt_rxdetect(0);
             return;
         }

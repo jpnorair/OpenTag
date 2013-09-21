@@ -492,7 +492,8 @@ void mpipedrv_isr() {
             payload_front           = mpipe.alp.inq->front + 6;
             mpipe.alp.inq->back     = payload_front + payload_len;
             payload_len            += MPIPE_FOOTERBYTES;
-            mpipe.alp.inq->length   = payload_len + 6;
+         //#mpipe.alp.inq->length   = payload_len + 6;
+         	mpipe_alp.inq->putcursor= payload_len + 6;
             MPIPE_DMA_RXCONFIG(payload_front, payload_len, ON);
             mpipeevt_rxdetect(30);      ///@todo make dynamic: this is relevant for 115200bps
         }   return;
@@ -505,7 +506,7 @@ void mpipedrv_isr() {
             
             // CRC is Good (==0) or bad (!=0) Discard the packet if bad
 #           if (BOARD_FEATURE_USBCONVERTER != ENABLED)
-            crc_result = platform_crc_block(mpipe.alp.inq->front, mpipe.alp.inq->length);
+            crc_result = platform_crc_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
 #           endif
             
 #           if (MPIPE_USE_ACKS)

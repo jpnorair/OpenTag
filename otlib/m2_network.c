@@ -574,7 +574,7 @@ void m2dp_append() {
     *txq.putcursor++    = 0;                                        // TX EIRP placeholder
     *txq.putcursor++    = subnet;
     *txq.putcursor++    = m2np.header.fr_info;
-    txq.length         += 4;
+ //#txq.length         += 4;
     
     ///@todo not sure how much of this stuff below could be subroutined
     

@@ -98,11 +98,11 @@ void sub_print_queue(Queue* q) {
             debug_printf("[31m"); // for rxq printing: red foreground on rx failure
     }
 
-    debug_printf("Printing Queue: length=%d\r\n", q->length);
+    debug_printf("Printing Queue: length=%d\r\n", q_length(q));
     
-    for (i=0; i<q->length; ) {
+    for (i=0; i<q_length(q); ) {
         debug_printf("%04X: ", i); 
-        for (j=0; (j<16) && (i<q->length); j++, i++) {
+        for (j=0; (j<16) && (i<q_length(q)); j++, i++) {
             debug_printf("%02X ", q->front[i]);
         }
         debug_printf("\r\n");
@@ -265,7 +265,7 @@ test_radio_bgtx(char rand_pkt)
     txq.front[2]    = session->subnet;
     txq.front[3]    = (session->flags & 0xC0) | (0x20) | (0x02);
     txq.putcursor   = &txq.front[4];
-    txq.length      = 4;
+ //#txq.length      = 4;
     
     /// write the rest of the data to the queue
     for (i=0; i<(data_length-4); i++) {

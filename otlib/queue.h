@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,19 +14,18 @@
   *
   */
 /**
-  * @file       OTlib/queue.h
+  * @file       otlib/queue.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       15 July 2011
-  * @brief      A module and ADT for buffering data packets.
+  * @version    R101
+  * @date       18 Sept 2013
+  * @brief      A module and ADT for data stream management
   * @defgroup   Queue (Queue Module)
   * @ingroup    Queue
   *
-  * The queue mechanism explicitly specifies two queues: a transmit queue and a 
-  * receive queue.  There is no facilty for dynamic queue allocation, which 
-  * shouldn't be a problem given the purpose-built, embedded nature of the 
-  * platform.  Even so, it wouldn't take a lot of effort to work dynamic 
-  * functionality into it.
+  * The queue mechanism is for storage and management of data streams. There is 
+  * no facilty for dynamic queue allocation, which shouldn't be a problem given 
+  * the purpose-built, embedded nature of the platform.  Even so, it wouldn't 
+  * take a lot of effort to work dynamic functionality into it.
   ******************************************************************************
   */
 
@@ -50,7 +49,7 @@ extern "C" {
   * ot_u16 alloc        Allocation of the queue data, in bytes
   *
   * ot_u16 length       The current extent of the queue data, in bytes
-  * Twobytes options    User flags
+  * ot_uni16 options    User flags
   * ot_u8* front        First address of queue data
   * ot_u8* back         Used for boundary checking (user adjustable)
   * ot_u8* getcursor    Cursor address for reading from queue
@@ -58,8 +57,8 @@ extern "C" {
   */
 typedef struct {
     ot_u16      alloc;
-    ot_u16      length;     ///@todo length field is deprecated and being replaced with q_length()
-    Twobytes    options;
+  //ot_u16      length;     ///@todo length field is replaced with q_length()
+    ot_uni16    options;
     ot_u8*      getcursor;
     ot_u8*      putcursor;
     ot_u8*      front;
@@ -109,6 +108,10 @@ void q_copy(ot_queue* q1, ot_queue* q2);
   * @ingroup Queue
   */
 ot_int q_length(ot_queue* q);
+
+ot_int q_span(ot_queue* q);
+
+ot_int q_space(ot_queue* q);
 
 
 

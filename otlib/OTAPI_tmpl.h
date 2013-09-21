@@ -110,7 +110,7 @@ typedef enum {
 typedef struct {
     ot_u8  duty_off;
     ot_u8  duty_on;
-    ot_u8  reserved;
+    ot_u8  subnet;
     ot_u8  channel;
     ot_u16 duration;
 } advert_tmpl;
@@ -312,7 +312,8 @@ typedef struct {
 } query_tmpl;
 
 
-#define __SIZEOF_shell_tmpl (1+1+1+(1*PLATFORM_POINTER_SIZE))
+#define __SIZEOF_shell_tmpl (1+1+2+(1*PLATFORM_POINTER_SIZE))   //deprecated
+#define __SIZEOF_udp_tmpl (1+1+2+(1*PLATFORM_POINTER_SIZE))
 typedef struct {
     ot_u8   src_port;
     ot_u8   dst_port;

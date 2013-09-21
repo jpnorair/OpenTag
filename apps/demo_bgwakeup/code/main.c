@@ -277,7 +277,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
             }
             
             mpipe.alp.outq->putcursor  += scratch;
-            mpipe.alp.outq->length     += scratch;
+         //#mpipe.alp.outq->length     += scratch;
         }
 
         // Close the log file, send it out, return success

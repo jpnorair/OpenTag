@@ -216,7 +216,7 @@ void network_sig_route(void* route, void* session) {
     }
     
     // Log the received packet data (with 10 character label)
-    otapi_log_msg(MSG_raw, 10, rxq.length, label, rxq.front);
+    otapi_log_msg(MSG_raw, 10, q_length(&rxq), label, rxq.front);
     
     // Turn on Green LED to indicate received packet
     // Activate the app task, which will turn off the LED in 30 ticks

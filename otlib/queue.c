@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/queue.c
   * @author     JP Norair
-  * @version    R100
-  * @date       19 Aug 2013
+  * @version    R101
+  * @date       18 Sept 2013
   * @brief      A module and ADT for buffering data packets.
   * @ingroup    Queue
   *
@@ -63,16 +63,29 @@ void q_copy(ot_queue* q1, ot_queue* q2) {
 
 
 #ifndef EXTF_q_length
-void q_length(ot_queue* q) {
-    return (q->putcursor-q->front);
+ot_int q_length(ot_queue* q) {
+    return (q->putcursor - q->front);
 }
 #endif
 
 
+#ifndef EXTF_q_span
+ot_int q_span(ot_queue* q) {
+    return (q->putcursor - q->getcursor);
+}
+#endif
+
+
+#ifndef EXTF_q_space
+ot_int q_space(ot_queue* q) {
+    return (q->back - q->putcursor);
+} 
+#endif
+
 
 #ifndef EXTF_q_empty
 void q_empty(ot_queue* q) {
-    q->length           = 0;
+    //#q->length           = 0;
     q->options.ushort   = 0;
     q->back             = q->front + q->alloc;
     q->putcursor        = q->front;
@@ -89,7 +102,7 @@ ot_u8* q_start(ot_queue* q, ot_uint offset, ot_u16 options) {
         return NULL;  
     
     q->options.ushort  = options;
-    q->length          = offset;
+    //#q->length          = offset;
     q->putcursor      += offset;
     q->getcursor      += offset;
     return q->getcursor;
@@ -109,9 +122,8 @@ ot_u8* q_markbyte(ot_queue* q, ot_int shift) {
 
 #ifndef EXTF_q_writebyte
 void q_writebyte(ot_queue* q, ot_u8 byte_in) {
-    *(q->putcursor) = byte_in;
-    q->putcursor++;
-    q->length++;
+    *q->putcursor++ = byte_in;
+    //#q->length++;
 }
 #endif
 
@@ -122,15 +134,14 @@ void q_writeshort(ot_queue* q, ot_uint short_in) {
     data = (ot_u8*)&short_in;
 
 #   ifdef __BIG_ENDIAN__
-        q->putcursor[0] = data[0];
-        q->putcursor[1] = data[1];
+        *q->putcursor++ = data[0];
+        *q->putcursor++ = data[1];
 #   else
-        q->putcursor[0] = data[1];
-        q->putcursor[1] = data[0];
+        *q->putcursor++ = data[1];
+        *q->putcursor++ = data[0];
 #   endif
     
-    q->putcursor  += 2;
-    q->length     += 2;
+    //#q->length     += 2;
 }
 #endif
 
@@ -142,13 +153,11 @@ void q_writeshort_be(ot_queue* q, ot_uint short_in) {
 
 #   else
         ot_u8* data;
-        data = (ot_u8*)&short_in;
-    
-        q->putcursor[0] = data[0];
-        q->putcursor[1] = data[1];
+        data            = (ot_u8*)&short_in;
+        *q->putcursor++ = data[0];
+        *q->putcursor++ = data[1];
         
-        q->putcursor  += 2;
-        q->length     += 2;
+        //#q->length     += 2;
 #   endif    
 }
 #endif
@@ -161,43 +170,43 @@ void q_writelong(ot_queue* q, ot_ulong long_in) {
     data = (ot_u8*)&long_in;
 
 #   ifdef __BIG_ENDIAN__
-        q->putcursor[0] = data[0];
-        q->putcursor[1] = data[1];
-        q->putcursor[2] = data[2];
-        q->putcursor[3] = data[3];
+        *q->putcursor++ = data[0];
+        *q->putcursor++ = data[1];
+        *q->putcursor++ = data[2];
+        *q->putcursor++ = data[3];
 #   else
-        q->putcursor[0] = data[3];
-        q->putcursor[1] = data[2];
-        q->putcursor[2] = data[1];
-        q->putcursor[3] = data[0];
+        *q->putcursor++ = data[3];
+        *q->putcursor++ = data[2];
+        *q->putcursor++ = data[1];
+        *q->putcursor++ = data[0];
 #   endif
     
-    q->putcursor  += 4;
-    q->length     += 4;
+    //q->putcursor  += 4;
+    //#q->length     += 4;
 }
 #endif
 
 
 #ifndef EXTF_q_readbyte
 ot_u8 q_readbyte(ot_queue* q) {
-    return *(q->getcursor++);
+    return *q->getcursor++;
 }
 #endif
 
 
 #ifndef EXTF_q_readshort
 ot_u16 q_readshort(ot_queue* q) {
-    Twobytes data;
+    ot_uni16 data;
 
 #   ifdef __BIG_ENDIAN__
-        data.ubyte[0]   = q->getcursor[0];
-        data.ubyte[1]   = q->getcursor[1];
+        data.ubyte[0]   = *q->getcursor++;
+        data.ubyte[1]   = *q->getcursor++;
 #   else
-        data.ubyte[1]   = q->getcursor[0];
-        data.ubyte[0]   = q->getcursor[1];
+        data.ubyte[1]   = *q->getcursor++;
+        data.ubyte[0]   = *q->getcursor++;
 #   endif
     
-    q->getcursor  += 2;
+    //q->getcursor  += 2;
     return data.ushort;
 }
 #endif
@@ -208,10 +217,10 @@ ot_u16 q_readshort_be(ot_queue* q) {
 #   ifdef __BIG_ENDIAN__
         return q_readshort(q);
 #   else
-        Twobytes data;
-        data.ubyte[0]   = q->getcursor[0];
-        data.ubyte[1]   = q->getcursor[1];
-        q->getcursor  += 2;
+        ot_uni16 data;
+        data.ubyte[0]   = *q->getcursor++;
+        data.ubyte[1]   = *q->getcursor++;
+
         return data.ushort;
 #   endif
 }
@@ -220,21 +229,20 @@ ot_u16 q_readshort_be(ot_queue* q) {
 
 #ifndef EXTF_q_readlong
 ot_u32 q_readlong(ot_queue* q)  {
-    Fourbytes data;
+    ot_uni32 data;
 
 #   ifdef __BIG_ENDIAN__
-        data.ubyte[0]   = q->getcursor[0];
-        data.ubyte[1]   = q->getcursor[1];
-        data.ubyte[2]   = q->getcursor[2];
-        data.ubyte[3]   = q->getcursor[3];
+        data.ubyte[0]   = *q->getcursor++;
+        data.ubyte[1]   = *q->getcursor++;
+        data.ubyte[2]   = *q->getcursor++;
+        data.ubyte[3]   = *q->getcursor++;
 #   else
-        data.ubyte[3]   = q->getcursor[0];
-        data.ubyte[2]   = q->getcursor[1];
-        data.ubyte[1]   = q->getcursor[2];
-        data.ubyte[0]   = q->getcursor[3];
+        data.ubyte[3]   = *q->getcursor++;
+        data.ubyte[2]   = *q->getcursor++;
+        data.ubyte[1]   = *q->getcursor++;
+        data.ubyte[0]   = *q->getcursor++;
 #   endif
     
-    q->getcursor  += 4;
     return data.ulong;
 }
 #endif
@@ -243,7 +251,7 @@ ot_u32 q_readlong(ot_queue* q)  {
 #ifndef EXTF_q_writestring
 void q_writestring(ot_queue* q, ot_u8* string, ot_int length) {
     platform_memcpy(q->putcursor, string, length);
-    q->length      += length;
+    //#q->length      += length;
     q->putcursor   += length;
 }
 #endif

@@ -537,7 +537,8 @@ void mpipe_isr() {
         case MPIPE_RxHeader: 
         	///@note DMA doesn't seem to need intermediate disabling here
             mpipe.state             = MPIPE_RxPayload;
-            mpipe_alp.inq->length   = mpipe_alp.inq->front[2] + 10;
+         //#mpipe_alp.inq->length   = mpipe_alp.inq->front[2] + 10;
+         	mpipe_alp.inq->putcursor= mpipe_alp.inq->front[2] + 10;
             mpipe_alp.inq->back     = mpipe_alp.inq->front + mpipe_alp.inq->front[2] + 6;
             MPIPE_DMA_RXCONFIG( mpipe_alp.inq->front+10, \
             		            mpipe_alp.inq->front[2], \
@@ -555,12 +556,12 @@ void mpipe_isr() {
                     ot_u8* scratch;
                     mpipe.state = MPIPE_TxAck_Done; //MPIPE_TxAck_Wait;
                     scratch     = \
-                    	mpipe_alp.inq->front[mpipe_alp.inq->length-MPIPE_FOOTERBYTES];
+                    	mpipe_alp.inq->front[q_length(mpipe_alp.inq)-MPIPE_FOOTERBYTES];
                     mpipe.sequence.ubyte[UPPER] = *scratch++;
                     mpipe.sequence.ubyte[LOWER] = *scratch;
                 }
                 sub_txack_header();
-                if (platform_crc_block(mpipe_alp.inq->front, mpipe_alp.inq->length)) {
+                if (platform_crc_block(mpipe_alp.inq->front, q_length(mpipe_alp.inq)) {
                 	mpipe.outq->front[5] = 0x7F;
                 }
                 mpipe_txndef(NULL, False, MPIPE_Ack);

@@ -171,12 +171,12 @@ void sub_print_stats() {
     q_writestring(mpipe.alp.outq, (ot_u8*)", RSSI:", 7);
     scratch = otutils_int2dec(mpipe.alp.outq->putcursor, (radio.last_rssi/2));
     mpipe.alp.outq->putcursor  += scratch;
-    mpipe.alp.outq->length     += scratch;
+ //#mpipe.alp.outq->length     += scratch;
         
     q_writestring(mpipe.alp.outq, (ot_u8*)", Link:", 7);
     scratch = otutils_int2dec(mpipe.alp.outq->putcursor, (radio.last_linkloss/2));
     mpipe.alp.outq->putcursor  += scratch;
-    mpipe.alp.outq->length     += scratch;     
+ //#mpipe.alp.outq->length     += scratch;     
 }
 #endif
 
@@ -262,7 +262,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
         q_writestring(mpipe.alp.outq, (ot_u8*)"PongID: ", 8);
         scratch = otutils_bin2hex(mpipe.alp.outq->putcursor, user_id->value, user_id->length );
         mpipe.alp.outq->putcursor  += scratch;
-        mpipe.alp.outq->length     += scratch;
+     //#mpipe.alp.outq->length     += scratch;
         
         // Print out RSSI and N-RSSI
         sub_print_stats();

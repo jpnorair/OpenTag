@@ -224,7 +224,7 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval);
   * device ID via the auth system if the ALP's are being transmitted over the 
   * air (via DASH7).
   */
-
+ot_u8 alp_get_handle(ot_u8 alp_id);
 
 /** @brief  Process a received ALP record (vectors to all supported ALP's)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
@@ -242,13 +242,28 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id);
 
 
 
-/** @brief  Purge one type of ALP ID records from an ALP Queue
-  * @param  alpq        (ot_queue*) ALP Queue to purge
-  * @param  id          (ot_u8) target ALP ID of records to purge
+void alp_load_header(ot_queue* subq, alp_record* rec);
+
+
+ot_bool alp_get_next(alp_tmpl* alp, ot_queue* subq, alp_record* rec, ot_u8 target);
+
+
+
+/** @brief  Purge finished ALP records from an ALP Stream
+  * @param  alp         (alp_tmpl*) ALP stream to purge
   * @retval None
   * @ingroup ALP
+  *
+  * Non-atomic ALPs must set record flags to 0 after they have completed the
+  * input processing of said records.  The ALP module will call alp_purge() 
+  * when the stream gets too full, and it needs to free-up space in the stream
+  * for new input records.  Users can call alp_purge() as well, although it is
+  * not usually necessary.
+  *
+  * The alp_purge() implementation is opportunistic.  It will avoid stream
+  * defragmentation whenever possible (this process is relatively expensive).
   */
-void alp_purge(ot_queue* alpq, ot_u8 id);
+void alp_purge(ot_queue* alp);
 
 
 

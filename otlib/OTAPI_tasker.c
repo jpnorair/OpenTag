@@ -66,36 +66,36 @@ m2session* otapi_task_schedule(session_tmpl* s_tmpl, ot_app applet, ot_u16 offse
 }
 
 
+
 m2session* otapi_task_advertise(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, ot_app applet) {
 /// This is a more complicated process than the others, because it actually 
 /// creates two sessions: one for the flood and one for the request.
 #   define _FLOOD_NETSTATE  (M2_NETFLAG_FLOOD | M2_NETSTATE_INIT | M2_NETSTATE_REQTX)
-    ot_u8 scratch;
-    m2session* session;
+    m2session* com_session;
+    m2session* adv_session;
     
     /// 1.  Clear any sessions between now and the request, and push the 
     ///     request session onto the stack.  If the push failed, exit.  If the
     ///     advertising is 0, also exit and do this session without flood.
     session_crop(adv_tmpl->duration);
-    session = sub_newtask(s_tmpl, applet, adv_tmpl->duration);
-    if ((session == NULL) || (adv_tmpl->duration == 0))
+    com_session = sub_newtask(s_tmpl, applet, adv_tmpl->duration);
+    if ((com_session == NULL) || (adv_tmpl->duration == 0))
         return NULL;
     
     /// 2.  Flood duty cycling is not supported at this time.  All floods 
     ///     are implemented as 100% duty cycle.
     
     /// 3.  Push the Advertising session onto the stack, for immediate running.
-    ///     <LI> Use the same subnet for the advertising as for the request. </LI>
     ///     <LI> For basic flooding, the applet can be empty </LI>
-    scratch = session->subnet;
-    session = session_new(&otutils_applet_null, 0, _FLOOD_NETSTATE, adv_tmpl->channel);
-    if (session == NULL) {
-        session_pop();  //pop the request session from above
+    adv_session = session_new(&otutils_applet_null, 0, _FLOOD_NETSTATE, adv_tmpl->channel);
+    if (adv_session == NULL) {
+        session_pop();  //pop the com session from above
         return NULL;
     }
-    session->subnet = scratch;
+    adv_session->subnet = adv_tmpl->subnet;
     
-    return session;
+    return com_session;
+#   undef _FLOOD_NETSTATE
 }
 
 

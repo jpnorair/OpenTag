@@ -173,7 +173,7 @@ ot_u16 otapi_put_command_tmpl(ot_u8* status, command_tmpl* command) {
     }
     
     *status = 1;
-    return txq.length;
+    return q_length(&txq);
 }
 #endif
 
@@ -200,7 +200,7 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
     }
 
     *status = 1;
-    return txq.length;
+    return q_length(&txq);
 }
 #endif
 
@@ -218,7 +218,7 @@ ot_u16 otapi_put_query_tmpl(ot_u8* status, query_tmpl* query) {
         q_writestring(&txq, query->value, query->length);
     
         *status = 1;
-        return txq.length;
+        return q_length(&txq);
     }
     *status = 0;
     return 0;
@@ -238,7 +238,7 @@ ot_u16 otapi_put_ack_tmpl(ot_u8* status, ack_tmpl* ack) {
     }
     
     *status = (ot_u8)i;
-    return txq.length;
+    return q_length(&txq);
 }
 #endif
 
@@ -261,7 +261,7 @@ ot_u16 otapi_put_isf_comp(ot_u8* status, isfcomp_tmpl* isfcomp) {
     sub_put_isf_offset(isfcomp->is_series, isfcomp->offset);
     
     *status = 1;
-    return txq.length;
+    return q_length(&txq);
 }
 #endif
 
@@ -273,7 +273,7 @@ ot_u16 otapi_put_isf_call(ot_u8* status, isfcall_tmpl* isfcall) {
     sub_put_isf_offset(isfcall->is_series, isfcall->offset);
     
     *status = 1;
-    return txq.length;
+    return q_length(&txq);
 }
 #endif
 
@@ -293,7 +293,7 @@ ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall) {
     ///      layer should perform proper authentication of the user if neeeded.
     *status = (m2qp_isf_call(isfcall->is_series, &local_q, NULL) >= 0);
 
-    return txq.length;
+    return q_length(&txq);
 }
 #endif
 
@@ -307,7 +307,7 @@ ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
     q_writestring(&txq, udp->data, udp->data_length);
     
     *status = 1;
-    return txq.length;
+    return q_length(&txq);
 }
 #endif
 
@@ -318,7 +318,7 @@ ot_u16 otapi_put_error_tmpl(ot_u8* status, error_tmpl* error) {
     q_writebyte(&txq, error->subcode);
     
     *status = 1;
-    return txq.length;
+    return q_length(&txq);
 }
 #endif
 
@@ -994,7 +994,7 @@ ot_int m2qp_isf_call( ot_u8 is_series, Queue* input_q, id_tmpl* user_id ) {
         q_writeshort(&txq, offset );
         clength_ptr     = txq.putcursor;
         txq.putcursor  += 2;
-        txq.length     += 2;
+     //#txq.length     += 2;
         
         for (i=0; i<fp_s->length; i++) {
             if ( (i&1) == 0 ) {

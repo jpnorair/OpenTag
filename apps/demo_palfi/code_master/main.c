@@ -241,7 +241,7 @@ void app_init() {
 
 #ifdef EXTF_m2qp_sig_error
 ot_bool m2qp_sig_error(ot_u8 code, ot_u8 subcode, id_tmpl* user_id) {
-    otapi_log_msg(MSG_raw, 6, rxq.front, (ot_u8*)"RX_ERR", rxq.length);
+    otapi_log_msg(MSG_raw, 6, rxq.front, (ot_u8*)"RX_ERR", q_length(&rxq));
     return False;
 }
 #endif
@@ -283,7 +283,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
                                                 input_len,
                                                 input_data      );
         mpipe.alp.outq->putcursor  += scratch;
-        mpipe.alp.outq->length     += scratch;
+     //#mpipe.alp.outq->length     += scratch;
         q_writebyte(mpipe.alp.outq, '\n');
 
         index = q_readbyte(&rxq);               // Get next index

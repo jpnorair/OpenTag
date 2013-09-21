@@ -252,7 +252,8 @@ int sub_passcomment(FILE* stream) {
 
 int sub_getascii(FILE* stream, Queue* msg) {
     char    next;
-    int     bytes_written = msg->length;
+    int     bytes_written;
+    bytes_written = q_length(msg);
     
     while (1) {
         next = fgetc(stream);
@@ -281,7 +282,7 @@ int sub_getascii(FILE* stream, Queue* msg) {
         q_writebyte(msg, next);
     }
     
-    bytes_written = (msg->length - bytes_written);
+    bytes_written = (q_length(msg) - bytes_written);
     return bytes_written;
 }
 
@@ -290,13 +291,14 @@ int sub_getascii(FILE* stream, Queue* msg) {
 
 int sub_gethexblock(FILE* stream, Queue* msg) {
     int status = 0;
-    int bytes_written = msg->length;
+    int bytes_written;
+    bytes_written = q_length(msg);
 
     while (status == 0) {
         sub_gethexnum(&status, stream, msg);
     }
 
-    bytes_written = msg->length - bytes_written;
+    bytes_written = q_length(msg) - bytes_written;
     return bytes_written;
 }
 
@@ -305,13 +307,14 @@ int sub_gethexblock(FILE* stream, Queue* msg) {
 
 int sub_getdecblock(FILE* stream, Queue* msg) {
     int status = 0;
-    int bytes_written = msg->length;
+    int bytes_written;
+    bytes_written = q_length(msg);
 
     while (status == 0) {
         sub_getdecnum(&status, stream, msg);
     }
 
-    bytes_written = msg->length - bytes_written;
+    bytes_written = q_length(msg) - bytes_written;
     return bytes_written;
 }
 

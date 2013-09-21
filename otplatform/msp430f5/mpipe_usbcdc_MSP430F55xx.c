@@ -449,7 +449,7 @@ void mpipedrv_isr() {
             payload_front           = mpipe.alp.inq->front + 6;
             mpipe.alp.inq->back     = payload_front + payload_len;
             payload_len            += MPIPE_FOOTERBYTES;
-            mpipe.alp.inq->length   = payload_len + 6;
+         //#mpipe.alp.inq->length   = payload_len + 6;
 
             // if the packet is actually done, go to done state (don't break)
             if (usbcdc_rxdata(payload_front, payload_len, CDC0_INTFNUM) != 0) {
@@ -469,7 +469,7 @@ void mpipedrv_isr() {
             tty.seq.ubyte[UPPER]    = *footer++;
             tty.seq.ubyte[LOWER]    = *footer;
 
-            //crc_result = platform_crc_block(mpipe.alp.inq->front, mpipe.alp.inq->length);
+            //crc_result = platform_crc_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
             //mpipeevt_rxdone((ot_int)crc_result);
             mpipeevt_rxdone(0);
         }   break;

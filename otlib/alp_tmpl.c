@@ -74,7 +74,6 @@ void alp_breakdown_queue(ot_queue* in_q, void* data_type) {
     queue_length                    = q_readshort(in_q);
     ((ot_queue*)data_type)->alloc      = queue_length;
     ((ot_queue*)data_type)->options    = in_q->options;
-    ((ot_queue*)data_type)->length     = queue_length;
     queue_front                     = q_markbyte(in_q, queue_length);
     ((ot_queue*)data_type)->front      = queue_front;
     ((ot_queue*)data_type)->back       = queue_front+queue_length;
@@ -84,10 +83,12 @@ void alp_breakdown_queue(ot_queue* in_q, void* data_type) {
 
 void alp_stream_queue(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
+    	ot_int length;
+    	length = q_length((ot_queue*)data_type);
         q_writeshort(out_q, ((ot_queue*)data_type)->alloc);
-        q_writeshort(out_q, ((ot_queue*)data_type)->options);
-        q_writeshort(out_q, ((ot_queue*)data_type)->length);
-        q_writestring(out_q, ((ot_queue*)data_type)->front, ((ot_queue*)data_type)->length);     
+        q_writeshort(out_q, ((ot_queue*)data_type)->options.ushort);
+        q_writeshort(out_q, length);
+        q_writestring(out_q, ((ot_queue*)data_type)->front, length);     
     }
 }
 
@@ -195,7 +196,7 @@ void alp_breakdown_id_tmpl(ot_queue* in_q, void* data_type) {
 void alp_stream_id_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         q_writebyte(out_q, ((id_tmpl*)data_type)->length);
-        q_writestring(out_q, ((id_tmpl*)data_type)->value);
+        q_writestring(out_q, ((id_tmpl*)data_type)->value, ((id_tmpl*)data_type)->length);
     }
 }
 
@@ -213,7 +214,7 @@ void alp_breakdown_dialog_tmpl(ot_queue* in_q, void* data_type) {
 }
 
 void alp_stream_dialog_tmpl(ot_queue* out_q, void* data_type) { 
-    if _PTR_TEST(data_type)
+    if _PTR_TEST(data_type) {
         q_writeshort(out_q, ((dialog_tmpl*)data_type)->timeout);
         q_writeshort(out_q, ((dialog_tmpl*)data_type)->channels);
         q_writestring(out_q, ((dialog_tmpl*)data_type)->chanlist, ((dialog_tmpl*)data_type)->channels); 
@@ -347,7 +348,7 @@ void alp_breakdown_isfcall_tmpl(ot_queue* in_q, void* data_type) {
 void alp_stream_isfcall_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         alp_breakdown_isfcomp_tmpl(out_q, data_type);
-        q_writeshort(out_q, ((isfcall_tmpl*)data_type)->max_return));
+        q_writeshort(out_q, ((isfcall_tmpl*)data_type)->max_return);
     }
 }
 

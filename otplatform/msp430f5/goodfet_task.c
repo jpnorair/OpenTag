@@ -1250,7 +1250,7 @@ void serclear(fifo_t *fp);
 //}
 
 ot_int gf_available() {
-    return gfet.inq.length;
+    return q_length(&gfet.inq);
 }
 
 

@@ -142,7 +142,7 @@ ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id) {
         ///@todo find if this is even necessary.  I don't think it is.  It is
         /// here now for safety purposes.
         alp->outq->putcursor   -= alp->outrec.plength;
-        alp->outq->length      -= alp->outrec.plength;
+     //#alp->outq->length      -= alp->outrec.plength;
     }
 
     return True;

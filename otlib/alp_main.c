@@ -94,7 +94,7 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
         hdr_position            = alp->outq->putcursor;
         alp->outq->putcursor   += hdr_len;
     }
-    alp->outq->length  += hdr_len;
+ //#alp->outq->length  += hdr_len;
     
 #   if (OT_FEATURE(NDEF) == ENABLED)
     if (hdr_len != 4) {
@@ -275,7 +275,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// terminate processing and return when the input message is ended.
         if (alp->inrec.flags & ALP_FLAG_ME) {
             if (atomic) {
-                alp->inq->length   -= (alp->inq->putcursor - input_position);
+             //#alp->inq->length   -= (alp->inq->putcursor - input_position);
                 alp->inq->putcursor = input_position;
                 alp->inq->getcursor = input_position;
             }
@@ -285,8 +285,6 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
     while (exit_code != MSG_End);
         
     return exit_code;
-#else
-    return MSG_Null;
 #endif
 }
 #endif
@@ -360,41 +358,63 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
 
 
 
+void alp_load_header(ot_queue* subq, alp_record* rec) {
+    rec->flags      = q_readbyte(q);
+    rec->plength    = q_readbyte(q);
+    rec->id         = q_readbyte(q);
+    rec->cmd        = q_readbyte(q);
+    //q_readstring(q, (ot_u8*)&rec->flags, 4);  //works only on packed structs
+}
 
-void alp_purge(ot_queue* alpq, ot_u8 id) {
+
+
+#ifndef EXTF_alp_get_next
+ot_bool alp_get_next(alp_tmpl* alp, ot_queue* subq, alp_record* rec, ot_u8 target) {
+    while ((alp->inq->putcursor - subq->getcursor) > 0) {
+        alp_load_header(subq, rec);
+        if ((rec->flags != 0) && (rec->id == target)) {
+            return True;
+        }
+        subq->getcursor += rec->plength;
+    }
+    
+    return False;
+}
+#endif
+
+
+
+#ifndef EXTF_alp_purge
+void alp_purge(alp_tmpl* alp) {
     ot_u8* acursor;
     ot_u8* bcursor;
     ot_u8* ccursor;
-    ot_int total_purge_bytes;s
+    ot_int total_purge_bytes;
 
 #   if (OT_FEATURE(NDEF))
 #       warnining "NDEF not yet supported for non-atomic alps"
 #   endif
     
-    /// 1. Quickly handle special cases: no target alps in queue, or queue 
-    ///    contains only targeted alps.  Also, mark targeted alps for deletion
-    ///    by setting flags bits to 0.
-    {   ot_u8 other_alps    = 0;
-        ot_u8 this_alp      = 0;
+    /// 1. An ALP processor that has non-atomic handling ability must mark all
+    ///    record flags to 0, after that record is processed.  In the special
+    ///    case where all records are marked to 0, just empty the queue.  In
+    ///    the special case where no records are markeds to 0, bail out.
+    {   ot_u8 other_recs    = 0;
+        ot_u8 marked_recs   = 0;
         ot_u8* cursor;
         
-        for (cursor=alp->front; cursor<alpq->putcursor; cursor+=(4+cursor[1])) {
-            ot_u8 id_diff;
-            id_diff     = (start[2] - id);
-            other_alps |= id_diff;
-            if (id_diff == 0) {
-                if (this_alp == 0) {
-                    acursor = cursor;
-                }
-                this_alp    = 1;
-                cursor[0]   = 0;
+        for (cursor=alp->inq->front; cursor<alp->inq->putcursor; cursor+=(4+cursor[1])) {
+            other_recs |= cursor[0];
+            if ((cursor[0] | marked_recs) == 0) {   // first marked record
+                marked_recs = 1;
+                acursor     = cursor;
             }
         }
-        if (other_alps == 0) {
-            q_empty(alpq);
+        if (other_recs == 0) {
+            q_empty(alp->inq);
             return;
         }
-        if (this_alp == 0) {
+        if (marked_recs == 0) {
             return;
         }
     }
@@ -408,29 +428,28 @@ void alp_purge(ot_queue* alpq, ot_u8 id) {
         ot_int move_bytes;
         ot_int purge_bytes;
     
-        // Go past consecutive instances of the ALPs marked for purging.  If
-        // the cursor reaches the end, retract the queue cursors and exit
+        // Go past consecutive instances of records marked for purging.
         bcursor = acursor;
-        while ((bcursor[0] == 0) && (bcursor < alpq->putcursor))  {
+        while ((bcursor[0] == 0) && (bcursor < alp->inq->putcursor))  {
             bcursor += (4 + bcursor[1]);
         }
 
-        // Go past consecutive instances of the non-targeted ALPs.  If the
-        // cursor reaches the end, ...
+        // Go past consecutive instances of unmarked records.
         ccursor = bcursor;
-        while ((ccursor[0] != 0) && (ccursor < alpq->putcursor)) {
+        while ((ccursor[0] != 0) && (ccursor < alp->inq->putcursor)) {
             ccursor += (4 + ccursor[1]);
         }
         
         // getcursor management: 
         // - if getcursor is less than acursor, leave alone
         // - else if getcursor is between acursor and bcursor, set to acursor
-        // - else subtract purge_bytes.
+        // - else (getcursor > bcursor) subtract purge_bytes.
         purge_bytes         = (bcursor-acursor);
         total_purge_bytes  += purge_bytes;
-        if (alpq->getcursor > acursor) {
-            if (alp->getcursor < bcursor)   alp->getcursor = acursor;
-            else                            alp->getcursor -= purge_bytes;
+        if (alp->inq->getcursor > acursor) {
+            alp->inq->getcursor -= purge_bytes;
+            if (alp->inq->getcursor < acursor)
+                alp->inq->getcursor = acursor;
         }
         
         // Exit the loop if there is no more data to move.  Else, shift the 
@@ -444,12 +463,25 @@ void alp_purge(ot_queue* alpq, ot_u8 id) {
     
     ///3. Finally, retract the putcursor and length by the total number of 
     ///   purged bytes
-    alpq->putcursor -= total_purge_bytes;
-    alpq->length    -= total_purge_bytes;
-        
-#   endif
+    alp->inq->putcursor -= total_purge_bytes;
+    //#alpq->length    -= total_purge_bytes;
 }
+#endif
 
+
+
+#ifndef EXTF_alp_get_handle
+ot_u8 alp_get_handle(ot_u8 alp_id) {
+#   if (ALP_API)
+    if (alp_id >= 0x80) {
+        alp_id -= (0x80-(ALP_FUNCTIONS-ALP_ASAPI-ALP_API));
+    }
+#   endif
+    if (alp_id > (ALP_FUNCTIONS+1)) {
+        alp_id = (ALP_FUNCTIONS+1);
+    }
+}
+#endif
 
 
 
@@ -492,7 +524,7 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
     /// The proc function must set alp->outrec.plength based on how much
     /// data it writes to the output queue.  It must return False if the output
     /// should be canceled.
-    alp_handle  = sub_get_alphandle(alp->inrec.id);
+    alp_handle  = alp_get_handle(alp->inrec.id);
     alp_handle  = (ot_u8)proc[alp_handle](alp, user_id);
     
     /// If the output bookmark is non-Null, there is output chunking.  Else, 

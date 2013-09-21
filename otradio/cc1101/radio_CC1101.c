@@ -481,7 +481,7 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate) {
         //pktlen = (phymac[0].channel & 0x80) ? 16 : 7;     //This is for SW FEC
 
         /// Queue manipulation to fit background frame into common model
-        rxq.length      = pktlen + 2;
+     //#rxq.length      = pktlen + 2;
         rxq.front[0]    = pktlen;
         rxq.front[1]    = 0;
         rxq.getcursor   = &rxq.front[2];
