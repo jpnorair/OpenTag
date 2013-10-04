@@ -81,7 +81,7 @@
 #define MCU_FEATURE_MEMCPYDMA           DISABLED
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
-#define MCU_PARAM_POINTERSIZE           2
+#define MCU_PARAM_POINTERSIZE           sizeof(void*)
 
 #define PLATFORM_FEATURE_USBCONVERTER    ENABLED
 
@@ -118,7 +118,8 @@
 #define FLASH_WORD_BYTES            2
 #define FLASH_WORD_BITS             (FLASH_WORD_BYTES*8)
 #define FLASH_NUM_PAGES             64
-#define FLASH_FS_ALLOC              (512*8)     //allocating total of 8 blocks (4KB)
+#define FLASH_FS_PAGES              8
+#define FLASH_FS_ALLOC              (FLASH_PAGE_SIZE*FLASH_FS_PAGES)     //allocating total of 8 blocks (4KB)
 #define FLASH_FS_ADDR               0x8000
 #define FLASH_FS_FALLOWS            3
 

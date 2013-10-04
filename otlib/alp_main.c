@@ -16,21 +16,16 @@
 /**
   * @file       /otlib/alp_main.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       17 Sept 2013
+  * @version    R102
+  * @date       26 Sept 2013
   * @brief      Application Layer Protocol Main Processor
   * @ingroup    ALP
   *
-  * Application Layer protocols (ALP's) are directive-based protocols that
-  * interface only with the application layer.  Other protocols supported by
-  * DASH7 Mode 2 exist at lower levels, even though they may interact with
-  * higher level data (this is done to improve size and performance).  
+  * ALP is a library, not a task!
   *
-  * Some ALP's are defined in the DASH7 Mode 2 Specification.
-  * - Filesystem access (Veelite)
-  * - Sensor Configuration (pending draft of ISO 21451-7)
-  * - Security Configuration (pending draft of ISO 29167-7)
-  *
+  * The functions implemented in this file are for "main ALP."  Individual
+  * protocol processing routines are implemented in other files named alp...c,
+  * which should be in the same directory as this alp_main.c.
   *
   ******************************************************************************
   */
@@ -122,6 +117,17 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
 }
 
 
+
+
+
+
+
+/** Main Library Functions <BR>
+  * ========================================================================<BR>
+  * These are the functions that OpenTag and your OpenTag-based code should be
+  * calling.
+  */
+
 #ifndef EXTF_alp_init
 void alp_init(alp_tmpl* alp, ot_queue* inq, ot_queue* outq) {
 	alp->inrec.flags    = 0;
@@ -132,78 +138,47 @@ void alp_init(alp_tmpl* alp, ot_queue* inq, ot_queue* outq) {
 #endif
 
 
-
-#ifndef EXTF_alp_break
-void alp_break(alp_tmpl* alp) {
-/// Break a running stream, and manually put a break record onto the stream
-#if (OT_FEATURE(NDEF) == ENABLED)
-    ot_u8 tnf;
-    tnf = (alp->outrec.flags & 7);
-#else
-#   define tnf 0
-#endif
-    alp->outrec.flags   = (ALP_FLAG_MB | ALP_FLAG_ME | NDEF_SR | NDEF_IL) | tnf;
-    alp->outrec.plength = 0;
-    alp->outrec.id      = 0;
-    alp->outrec.cmd     = 0;
+#ifndef EXTF_alp_is_available
+ot_bool alp_is_available(alp_tmpl* alp, ot_int length) {
+    ot_bool is_available;
     
-    sub_insert_header(alp, NULL, sub_get_headerlen(tnf));
-}
-#endif
-
-
-
-
-#ifndef EXTF_alp_new_record
-void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payload_remaining) {
-    // Clear control flags (begin, end, chunk)
-	// Chunk and End will be intelligently set in this function, but Begin must
-	// be set by the caller, AFTER this function.
-	alp->outrec.flags |= flags;
-	alp->outrec.flags |= NDEF_SR;
-#   if (OT_FEATURE(NDEF))
-	alp->outrec.flags &= ~(ALP_FLAG_ME | ALP_FLAG_CF | NDEF_IL);
-#   else
-    alp->outrec.flags &= (ALP_FLAG_MB | NDEF_SR);
-#   endif
-
-    // NDEF TNF needs to be 5 (with ID) on MB=1 and 6 (no ID) or MB=0
-	// Pure ALP should always have IL=0 and TNF=0
-#   if (OT_FEATURE(NDEF))
-    if (alp->outrec.flags & 7) {
-        alp->outrec.flags &= ~7;
-        alp->outrec.flags |= (alp->outrec.flags & ALP_FLAG_MB) ? (NDEF_IL+5) : 6;
+    // Check if input queue is presently owned by some other app
+    if (alp->inq->options.ubyte[0] != 0) {
+        return False;
     }
-#   endif
-
-	// Automatically set Chunk or End.
-	// "payload_remaining" is re-purposed to contain the number of bytes loaded
-	// Chunk Flag is ignored by pure-ALP
-	if (payload_remaining > payload_limit) {
-		payload_remaining   = payload_limit;
-#       if (OT_FEATURE(NDEF))
-		alp->outrec.flags  |= ALP_FLAG_CF;
-#       endif
-	}
-	else {
-		alp->outrec.flags  |= ALP_FLAG_ME;
-	}
-
-	alp->outrec.plength = (ot_u8)payload_remaining;
-	sub_insert_header(alp, NULL, sub_get_headerlen(alp->outrec.flags&7));
+    
+    // Check if there is sufficient space available.  If not, try purging the
+    // input and check again.
+    is_available = (q_space(alp->inq) >= length);
+    if (is_available == False) {
+        alp_purge(alp);
+        is_available = (q_space(alp->inq) >= length);
+    }
+    return is_available;
 }
 #endif
 
 
 
-
-#ifndef EXTF_alp_new_message
-void alp_new_message(alp_tmpl* alp, ot_u8 payload_limit, ot_int payload_remaining) {
-/// Prepare the flags and payload length for the first record in a message
-	alp_new_record(alp, ALP_FLAG_MB, payload_limit, payload_remaining);
+#ifndef EXTF_alp_load
+ot_bool alp_load(alp_tmpl* alp, ot_u8* src, ot_int length) {
+    if (alp_is_available(alp, length)) {
+        alp->inq->options.ubyte[0] = 1;
+        q_writestring(alp->inq, src, length);
+        alp->inq->options.ubyte[0] = 0;
+        return True;
+    }
+    return False;
 }
 #endif
 
+
+
+#ifndef EXTF_alp_notify
+void alp_notify(alp_tmpl* alp, ot_sig callback) {
+///@todo To be completed when transformation of ALP is complete
+}
+#endif
 
 
 
@@ -292,95 +267,32 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
 
 
 
-#ifndef EXTF_alp_parse_header
-ot_bool alp_parse_header(alp_tmpl* alp) {
-    // ALP & NDEF Universal Field (Flags)
-    alp->inrec.flags = *alp->inq->getcursor++;
-
-    // Clear bookmarks on new message input
-    if (alp->inrec.flags & ALP_FLAG_MB) {
-    	alp->inrec.bookmark     = NULL;
-    	alp->outrec.bookmark    = NULL;
-    }
-
-    // ALP type
-    if ((alp->inrec.flags & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) {
-    	ot_u8* qdata;
-    	qdata                   = alp->inq->getcursor;
-    	alp->inq->getcursor    += 3;
-    	platform_memcpy(&alp->inrec.plength, qdata, 3);
-    	return True;
-    }
-
-#if (OT_FEATURE(NDEF) == ENABLED)
-    // NDEF Universal Fields
-    alp->inq->getcursor++;	                            //bypass type length
-    alp->inrec.plength  = *alp->inq->getcursor++;       //get payload length
-    
-    // NDEF Type Unchanged (for Chunking)
-    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_SR+6)) {
-        return True;
-    }
-    
-    // NDEF Type Unknown (for MB==1)
-    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_MB+NDEF_SR+NDEF_IL+5)) {
-    	if (*alp->inq->getcursor++ == 2) {
-    		alp->inrec.id   = *alp->inq->getcursor++;
-            alp->inrec.cmd  = *alp->inq->getcursor++;
-            return True;
-    	}
-    }
-#endif
-
-    return False;
-}
-#endif
-
-
-
-
-#ifndef EXTF_alp_load_retval
-ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
-/// This function is for writing a two-byte integer to the return record.  It
-/// is useful for some types of API return sequences
-    ot_bool respond = (ot_bool)(alp->outrec.cmd & 0x80);
-
-    if (respond)  {
-      //alp->outrec.flags          &= ~ALP_FLAG_CF;
-        alp->outrec.plength = 2;
-        alp->outrec.cmd    |= 0x40;
-        q_writeshort(alp->outq, retval);
-    }
-    
-    return respond;
-}
-#endif
-
-
-
-void alp_load_header(ot_queue* subq, alp_record* rec) {
-    rec->flags      = q_readbyte(q);
-    rec->plength    = q_readbyte(q);
-    rec->id         = q_readbyte(q);
-    rec->cmd        = q_readbyte(q);
-    //q_readstring(q, (ot_u8*)&rec->flags, 4);  //works only on packed structs
-}
-
-
-
-#ifndef EXTF_alp_get_next
-ot_bool alp_get_next(alp_tmpl* alp, ot_queue* subq, alp_record* rec, ot_u8 target) {
-    while ((alp->inq->putcursor - subq->getcursor) > 0) {
-        alp_load_header(subq, rec);
-        if ((rec->flags != 0) && (rec->id == target)) {
-            return True;
+#ifndef EXTF_alp_goto_next
+ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* subq, ot_u8 target) {
+    while ((alp->inq->putcursor - subq->back) > 0) {
+        subq->getcursor = subq->back;
+        subq->back      = subq->getcursor + subq->getcursor[1];
+        if ((subq->getcursor[0] != 0) && (subq->getcursor[2] == target)) {
+            return subq->getcursor[0];
         }
-        subq->getcursor += rec->plength;
     }
-    
-    return False;
+    return 0;
 }
 #endif
+
+
+
+#ifndef EXTF_alp_retrieve_cmd
+ot_u8 alp_retrieve_cmd(alp_tmpl* alp) {
+    ot_u8 cmd_value;
+    alp->inq->getcursor[0]  = 0;                        // Mark as read
+    cmd_value               = alp->inq->getcursor[3];   // Get command value
+    alp->inq->getcursor    += 4;                        // Go past Header
+    
+    return cmd_value;
+}
+#endif
+
 
 
 
@@ -470,6 +382,35 @@ void alp_purge(alp_tmpl* alp) {
 
 
 
+#ifndef EXTF_alp_kill
+void alp_kill(alp_tmpl* alp, ot_u8 kill_id) {
+    ot_u8*  cursor;
+    
+    for (cursor=alp->inq->front; cursor<alp->inq->putcursor; cursor+=(4+cursor[1])) {
+        if (cursor[2] == kill_id) {
+            cursor[0]   = 0;
+        }
+    }
+    alp_purge(alp);
+}
+#endif
+
+
+
+
+
+
+
+
+
+/** Internal Module Routines <BR>
+  * ========================================================================<BR>
+  * Under normal software design models, these functions likely would not be 
+  * exposed.  However, we expose pretty much everything in OpenTag.
+  *
+  * Use with caution.
+  */
+
 #ifndef EXTF_alp_get_handle
 ot_u8 alp_get_handle(ot_u8 alp_id) {
 #   if (ALP_API)
@@ -482,7 +423,6 @@ ot_u8 alp_get_handle(ot_u8 alp_id) {
     }
 }
 #endif
-
 
 
 #ifndef EXTF_alp_proc
@@ -543,9 +483,199 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
 
 
 
+
+
+
+
+/** Functions Under Review <BR>
+  * ========================================================================<BR>
+  * These are legacy functions.  They might get bundled into different 
+  * functions, changed, or removed.  
+  */
+
+
+#ifndef EXTF_alp_break
+/// @note This function is used in a presently-disabled block of code for
+/// parsing multiframe M2DP streams.  That whole piece of functionality --
+/// multiframe M2DP -- is getting rearchitected.  alp_break() is likely to be
+/// removed in future versions of OpenTag
+
+void alp_break(alp_tmpl* alp) {
+/// Break a running stream, and manually put a break record onto the stream
+#if (OT_FEATURE(NDEF) == ENABLED)
+    ot_u8 tnf;
+    tnf = (alp->outrec.flags & 7);
+#else
+#   define tnf 0
+#endif
+    alp->outrec.flags   = (ALP_FLAG_MB | ALP_FLAG_ME | NDEF_SR | NDEF_IL) | tnf;
+    alp->outrec.plength = 0;
+    alp->outrec.id      = 0;
+    alp->outrec.cmd     = 0;
+    
+    sub_insert_header(alp, NULL, sub_get_headerlen(tnf));
+}
+#endif
+
+
+
+
+#ifndef EXTF_alp_new_record
+/// @note This function is used by the logger (OTAPI_logger.c), but nowhere 
+/// else.  The ability to create a new output record/message is required, but 
+/// the method of doing it may likely get re-architected.
+
+void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payload_remaining) {
+    // Clear control flags (begin, end, chunk)
+	// Chunk and End will be intelligently set in this function, but Begin must
+	// be set by the caller, AFTER this function.
+	alp->outrec.flags |= flags;
+	alp->outrec.flags |= NDEF_SR;
+#   if (OT_FEATURE(NDEF))
+	alp->outrec.flags &= ~(ALP_FLAG_ME | ALP_FLAG_CF | NDEF_IL);
+#   else
+    alp->outrec.flags &= (ALP_FLAG_MB | NDEF_SR);
+#   endif
+
+    // NDEF TNF needs to be 5 (with ID) on MB=1 and 6 (no ID) or MB=0
+	// Pure ALP should always have IL=0 and TNF=0
+#   if (OT_FEATURE(NDEF))
+    if (alp->outrec.flags & 7) {
+        alp->outrec.flags &= ~7;
+        alp->outrec.flags |= (alp->outrec.flags & ALP_FLAG_MB) ? (NDEF_IL+5) : 6;
+    }
+#   endif
+
+	// Automatically set Chunk or End.
+	// "payload_remaining" is re-purposed to contain the number of bytes loaded
+	// Chunk Flag is ignored by pure-ALP
+	if (payload_remaining > payload_limit) {
+		payload_remaining   = payload_limit;
+#       if (OT_FEATURE(NDEF))
+		alp->outrec.flags  |= ALP_FLAG_CF;
+#       endif
+	}
+	else {
+		alp->outrec.flags  |= ALP_FLAG_ME;
+	}
+
+	alp->outrec.plength = (ot_u8)payload_remaining;
+	sub_insert_header(alp, NULL, sub_get_headerlen(alp->outrec.flags&7));
+}
+#endif
+
+
+
+/* PENDING REMOVAL
+
+#ifndef EXTF_alp_new_message
+void alp_new_message(alp_tmpl* alp, ot_u8 payload_limit, ot_int payload_remaining) {
+/// Prepare the flags and payload length for the first record in a message
+	alp_new_record(alp, ALP_FLAG_MB, payload_limit, payload_remaining);
+}
+#endif
+*/
+
+
+/* alp_parse_header PENDING REMOVAL */
+
+#ifndef EXTF_alp_parse_header
+ot_bool alp_parse_header(alp_tmpl* alp) {
+    // ALP & NDEF Universal Field (Flags)
+    alp->inrec.flags = *alp->inq->getcursor++;
+
+    // Clear bookmarks on new message input
+    if (alp->inrec.flags & ALP_FLAG_MB) {
+    	alp->inrec.bookmark     = NULL;
+    	alp->outrec.bookmark    = NULL;
+    }
+
+    // ALP type
+    if ((alp->inrec.flags & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) {
+    	ot_u8* qdata;
+    	qdata                   = alp->inq->getcursor;
+    	alp->inq->getcursor    += 3;
+    	platform_memcpy(&alp->inrec.plength, qdata, 3);
+    	return True;
+    }
+
+#if (OT_FEATURE(NDEF) == ENABLED)
+    // NDEF Universal Fields
+    alp->inq->getcursor++;	                            //bypass type length
+    alp->inrec.plength  = *alp->inq->getcursor++;       //get payload length
+    
+    // NDEF Type Unchanged (for Chunking)
+    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_SR+6)) {
+        return True;
+    }
+    
+    // NDEF Type Unknown (for MB==1)
+    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_MB+NDEF_SR+NDEF_IL+5)) {
+    	if (*alp->inq->getcursor++ == 2) {
+    		alp->inrec.id   = *alp->inq->getcursor++;
+            alp->inrec.cmd  = *alp->inq->getcursor++;
+            return True;
+    	}
+    }
+#endif
+
+    return False;
+}
+#endif
+
+
+
+
+#ifndef EXTF_alp_load_retval
+///@note alp_load_retval() is something of a special-purpose routine for a 
+/// legacy API.  Very likely it will be refactored.
+
+ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
+/// This function is for writing a two-byte integer to the return record.  It
+/// is useful for some types of API return sequences
+    ot_bool respond = (ot_bool)(alp->outrec.cmd & 0x80);
+
+    if (respond)  {
+      //alp->outrec.flags          &= ~ALP_FLAG_CF;
+        alp->outrec.plength = 2;
+        alp->outrec.cmd    |= 0x40;
+        q_writeshort(alp->outq, retval);
+    }
+    
+    return respond;
+}
+#endif
+
+
+
+
+///@note this function is a recent inclusion, but it's not used.  Don't use it
+/// until new ALP is stable, if it is still here.
+void alp_load_header(ot_queue* subq, alp_record* rec) {
+    rec->flags      = q_readbyte(subq);
+    rec->plength    = q_readbyte(subq);
+    rec->id         = q_readbyte(subq);
+    rec->cmd        = q_readbyte(subq);
+    //q_readstring(subq, (ot_u8*)&rec->flags, 4);  //works only on packed structs
+}
+
+
+
+
+
+
+
+
+
+/** Protocol Processors <BR>
+  * ========================================================================<BR>
+  * The Null Processor is implemented here.  The rest of the processors are
+  * implemented in separate C files, named alp_...c
+  */
+
 #ifndef EXTF_alp_proc_null
 ot_bool alp_proc_null(alp_tmpl* a0, id_tmpl* a1) {
-	return False;
+	return True;   // Atomic, with no payload data
 }
 #endif
 

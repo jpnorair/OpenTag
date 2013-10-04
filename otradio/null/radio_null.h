@@ -35,7 +35,9 @@
 #ifndef __radio_NULL_H
 #define __radio_NULL_H
 
+#include "OT_config.h"
 #include "OT_support.h"
+#include "OT_types.h"
 
 
 #ifndef ENABLED
@@ -91,8 +93,8 @@
 
 
 // Change these settings depending on your radio buffer
-#define RADIO_BUFFER_TXMIN      RADIO_BUFFER_TXMAX
-#define RADIO_BUFFER_RXMIN      RADIO_BUFFER_RXMAX
+#define RADIO_BUFFER_TXMAX        RF_FEATURE(TXFIFO_BYTES)
+#define RADIO_BUFFER_RXMAX        RF_FEATURE(RXFIFO_BYTES)
 
 
 
@@ -157,34 +159,15 @@
 
 
 
-/** Radio Module Data
-  * Data that is useful for the internal use of this module.  The list below is
-  * comprehensive, and it may not be needed in entirety for all implementations.
-  * For implementations that don't use the values, comment out.
-  *
-  * state       Radio State, used with multi-call functions (RX/TX)
-  * flags       A local store for usage flags
-  * txlimit     An interrupt/event comes when tx buffer gets below this number of bytes
-  * rxlimit     An interrupt/event comes when rx buffer gets above this number of bytes
-  * last_rssi   Experimental, used to buffer the last-read RSSI value
-  * evtdone     A callback that is used when RX or TX is completed (i.e. done)
-  * txcursor    holds some data about tx buffer position (MCU-based buffer only)
-  * rxcursor    holds some data about rx buffer position (MCU-based buffer only)
-  * buffer[]    buffer data.  (MCU-based buffer only)
-  * last_rssi   The most recent value of the rss (not always needed)
-  */
 typedef struct {
     ot_u8   state;
     ot_u8   flags;
+    ot_int  nextcal;
     ot_int  txlimit;
     ot_int  rxlimit;
-    ot_int  last_rssi;
-    ot_sig2 evtdone;
-} radio_struct;
+} rfctl_struct;
 
-extern radio_struct radio;
-
-
+extern rfctl_struct rfctl;
 
 
 void null_radio_isr(void);

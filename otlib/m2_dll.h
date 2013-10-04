@@ -16,7 +16,7 @@
 /**
   * @file       /otlib/m2_dll.h
   * @author     JP Norair
-  * @version    V1.0
+  * @version    R100
   * @date       1 Oct 2012
   * @brief      Data Link Layer for DASH7
   * @defgroup   DLL (Data Link Layer Module)
@@ -27,7 +27,7 @@
 
 
 
-#if (!defined(__M2_DLL_H) && OT_FEATURE(M2))
+#if !defined(__M2_DLL_H) /* && OT_FEATURE(M2) */
 #define __M2_DLL_H
 
 #include "OT_types.h"

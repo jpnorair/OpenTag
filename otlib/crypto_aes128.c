@@ -1,4 +1,35 @@
-/* Copyright 2008 STMicroelectronics
+/**
+  * @file       /otlib/crypto_aes128.c
+  * @author     JP Norair & STMicro MCD Application Team 
+  * @version    R101
+  * @date       23 Sept 2013
+  * @brief      AES128 Driver
+  * @ingroup    AES128
+  *
+  * @note This code module uses the V1.0 (10 June 2008) AES128-ECB package 
+  * developed by STMicro for the STM32.  I (JP Norair) found this code freely
+  * published on the internet, bearing no licensing information other than a
+  * copyright and disclaimer shown immediately below:
+  *
+  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS 
+  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE 
+  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY 
+  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
+  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
+  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS. 
+  *
+  *
+  ******************************************************************************
+  */
+
+#include "crypto_aes128.h"  
+
+/** High level user functions  <BR>
+  * ========================================================================<BR>
+  * Code in this section (High level user functions) has the following 
+  * copyright and licensing restrictions:
+  *
+  * Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -13,23 +44,103 @@
   * limitations under the License.
   *
   */
-/**
-  * @file       /otlib/crypto_aes128.c
-  * @author     STMicro MCD Application Team 
-  * @version    V1.0 (10 June 2008)
-  * @date       17 November 2011
-  * @brief      AES128 Driver
-  * @ingroup    AES128
+
+#if (AES_EXPKEYS == 0)
+ot_u32 aes_expkey[(44/4)];
+#endif
+
+void AES_encrypt_cbc(ot_u32* stream, ot_u32* key, ot_int length, ot_u16 options) {
+    ot_u32* next;
+
+    ///1. Option 0 means the provided key is not actually the expkey
+#   if (AES_EXPKEYS == 0)
+    if (options == 0) {
+        AES_expand_enckey(key, aes_expkey);
+        key = aes_expkey;
+    }
+#   endif
+    
+    ///2. divide length into blocks.
+    length >>= 4;
+    
+    ///3. XOR the last 16 bytes with the next.  At first, this uses the IV, 
+    ///   which is why length=1 should exit without doing the loop at all.
+    while (--length > 0) {
+        next        = &stream[4];
+        next[0]    ^= stream[0];
+        next[1]    ^= stream[1];
+        next[2]    ^= stream[2];
+        next[3]    ^= stream[3];
+        stream      = next;
+
+        AES_encrypt_block(next, next, key);
+    }
+}
+
+
+void AES_decrypt_cbc(ot_u32* stream, ot_u32* key, ot_int length, ot_u16 options) {
+    ot_u32* next;
+    
+    ///1. Option 0 means the provided key is not actually the expkey
+#   if (AES_EXPKEYS == 0)
+    if (options == 0) {
+        AES_expand_deckey(key, aes_expkey);
+        key = aes_expkey;
+    }
+#   endif
+    
+    ///1. divide length into blocks.
+    length >>= 4;
+    
+    ///2. XOR the last 16 bytes with the next.  At first, this uses the IV, 
+    ///   which is why length=1 should exit without doing the loop at all.
+    next = &stream[4];
+    while (--length > 0) {
+        AES_decrypt_block(next, next, key);
+        
+        next[0]    ^= stream[0];
+        next[1]    ^= stream[1];
+        next[2]    ^= stream[2];
+        next[3]    ^= stream[3];
+        stream      = next;
+        next        = &stream[4];
+    }
+}
+
+
+
+//void AES_load_static_key(ot_u8 key_id, ot_u32* key) {
+//    ot_int i;
+//    vlFILE* fp;
+//    
+//    fp = ISF_open_su(key_id);
+//    for (i=0; i<16; i+=2) {
+//        *(ot_u16*)((ot_u8*)key+i) = vl_read(fp, i);
+//    }
+//    vl_close(fp);
+//}
+
+
+
+
+
+
+
+
+/** Low Level Software AES128 Engine <BR>
+  * ========================================================================<BR>
+  * Code in this section (Low Level Software AES128 Engine) has the following 
+  * copyright and licensing restrictions:
   *
-  * @todo This Module is just a placeholder.  This specific code must be 
-  * rewritten somewhat.
-  * 
-  ******************************************************************************
+  * Copyright 2008 STMicroelectronics
+  *
+  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS 
+  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE 
+  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY 
+  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
+  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
+  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS. 
   */
-
-#include "crypto_aes128.h"   
-#include "veelite.h"
-
 
 // These operations extract a byte from an ot_u32 data:
 #define byte3(x) (x & 0xff)         /* first byte from right  */       
@@ -287,39 +398,21 @@ static const ot_u32 dec_table[256] = {
 
    
 
-   
-/* Private variables ---------------------------------------------------------*/   
-/* Private function prototypes -----------------------------------------------*/   
-/* Private functions ---------------------------------------------------------*/   
-   
-
-
-void AES_load_static_key(ot_u8 key_id, ot_u32* key) {
-    ot_int i;
-    vlFILE* fp;
-    
-    fp = ISF_open_su(key_id);
-    for (i=0; i<16; i+=2) {
-        *(ot_u16*)((ot_u8*)key+i) = vl_read(fp, i);
-    }
-    vl_close(fp);
-}
-
-
 
    
 /*******************************************************************************  
-* Function Name  : AES_keyschedule_enc  
+* Function Name  : AES_expand_enckey  
 * Description    : According to key computes the expanded key exp for AES128   
 *                  encryption.  
 * Input          : key: user key (128 bits / 16 bytes)
 * Output         : expkey: expanded key (352 bits / 44 bytes)
 * Return         : None  
 *******************************************************************************/   
-void AES_keyschedule_enc(ot_u32* key, ot_u32* expkey) {
-#if (AES_USEHW == ENABLED)
+void AES_expand_enckey(ot_u32* key, ot_u32* expkey) {
+#if (AES_USEHW)
+    platform_expand_enckey(key, expkey);
 
-#elif ((AES_USEFAST == ENABLED) || (AES_USELITE == ENABLED))
+#elif  ((AES_USEFAST == ENABLED) || (AES_USELITE == ENABLED))
     register ot_u32* local_pointer = expkey;   
     register int i = 0;   
     register ot_u32 copy0;   
@@ -357,17 +450,18 @@ void AES_keyschedule_enc(ot_u32* key, ot_u32* expkey) {
 
 
 /*******************************************************************************  
-* Function Name  : AES_keyschedule_dec  
+* Function Name  : AES_expand_deckey  
 * Description    : According to key computes the expanded key (expkey) for AES128   
 *                  decryption.  
 * Input          : key: user key (128 bits / 16 bytes)
 * Output         : expkey: expanded key (320 bits / 40 bytes)
 * Return         : None  
 *******************************************************************************/   
-void AES_keyschedule_dec(ot_u32* key, ot_u32* expkey) {
-#if (AES_USEHW == ENABLED)
+void AES_expand_deckey(ot_u32* key, ot_u32* expkey) {
+#if (AES_USEHW)
+    platform_expand_deckey(key, expkey);
 
-#elif (AES_USEFAST == ENABLED)
+#elif (AES_USEFAST)
     register ot_u32* local_pointer;// = expkey;   
     register int i; // = 0;   
     register ot_u32 copy0;   
@@ -375,7 +469,7 @@ void AES_keyschedule_dec(ot_u32* key, ot_u32* expkey) {
     register ot_u32 copy2;   
     register ot_u32 copy3;   
    
-    AES_keyschedule_enc(key,expkey);   
+    AES_expand_enckey(key,expkey);   
     
     local_pointer       = expkey;
     local_pointer[0]    = key[0];   
@@ -412,7 +506,7 @@ void AES_keyschedule_dec(ot_u32* key, ot_u32* expkey) {
   }
   
 #elif (AES_USELITE == ENABLED)
-    AES_keyschedule_enc(key, exp);
+    AES_expand_enckey(key, exp);
 #endif
 }   
 
@@ -420,15 +514,16 @@ void AES_keyschedule_dec(ot_u32* key, ot_u32* expkey) {
 
 
 /*******************************************************************************  
-* Function Name  : AES_encrypt  
+* Function Name  : AES_encrypt_block  
 * Description    : Encrypts one block of 16 bytes  
 * Input          : - input_pointer: input block address  
 *                  - expkey: encryption key  
 * Output         : output_pointer  
 * Return         : None  
 *******************************************************************************/   
-void AES_encrypt(ot_u32* input_pointer, ot_u32* output_pointer, ot_u32* expkey) {
-#if (AES_USEHW == ENABLED)
+void AES_encrypt_block(ot_u32* input_pointer, ot_u32* output_pointer, ot_u32* expkey) {
+#if (AES_USEHW)
+    platform_encrypt_block(input_pointer, output_pointer, expkey);
 
 #elif (AES_USEFAST == ENABLED)
   register ot_u32 s0;   
@@ -601,15 +696,16 @@ void AES_encrypt(ot_u32* input_pointer, ot_u32* output_pointer, ot_u32* expkey) 
 
 
 /*******************************************************************************  
-* Function Name  : AES_decrypt  
+* Function Name  : AES_decrypt_block  
 * Description    : Decrypts one block of 16 bytes  
 * Input          : - input_pointer: input block address  
 *                  - expkey: decryption key   
 * Output         : output_pointer: output block address  
 * Return         : None  
 *******************************************************************************/   
-void AES_decrypt(ot_u32* input_pointer, ot_u32* output_pointer, ot_u32* expkey) {
-#if (AES_USEHW == ENABLED)
+void AES_decrypt_block(ot_u32* input_pointer, ot_u32* output_pointer, ot_u32* expkey) {
+#if (AES_USEHW)
+    platform_decrypt_block(input_pointer, output_pointer, expkey);
 
 #elif (AES_USEFAST == ENABLED)   
   register ot_u32 s0;   

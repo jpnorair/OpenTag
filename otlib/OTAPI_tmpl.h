@@ -105,6 +105,8 @@ typedef enum {
     ADDR_multicast  = 0xC0
 } addr_type;
 
+#define ADDR_Type   addr_type
+
 
 #define __SIZEOF_adv_tmpl (1+1+1+1+2)
 typedef struct {
@@ -236,10 +238,10 @@ typedef struct {
 } error_tmpl;
 
 
-#define __SIZEOF_dialog_tmpl (2+2+(1*PLATFORM_POINTER_SIZE))
+#define __SIZEOF_dialog_tmpl (1+1+(1*PLATFORM_POINTER_SIZE))
 typedef struct {
-    ot_u16 timeout;
-    ot_u16 channels;
+    ot_u8  timeout;
+    ot_u8  channels;
     ot_u8* chanlist;
 } dialog_tmpl; 
 
@@ -292,14 +294,15 @@ typedef struct {
 
 typedef enum {
     QCODE_ismasked          = 0x80,
-    QCODE_nonnull           = 0,
+    QCODE_null              = 0x00,
+    QCODE_nonnull           = 0x01,
     QCODE_notequal          = 0x20,
     QCODE_equal             = 0x21,
     QCODE_lessthan          = 0x22,
     QCODE_lessthan_equal    = 0x23,
     QCODE_greaterthan       = 0x24,
     QCODE_greaterthan_equal = 0x25,
-    QCODE_search            = 0x26
+    QCODE_search            = 0x40
 } query_codes;
 
 

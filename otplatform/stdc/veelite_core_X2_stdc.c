@@ -43,7 +43,7 @@
 
 /// Name conversion (nothing special)
 ot_u8 NAND_erase_page(ot_u16* page_addr) {
-    platform_memset(page_addr, 0xFF, FLASH_PAGE_SIZE);
+    platform_memset((ot_u8*)page_addr, 0xFF, FLASH_PAGE_SIZE);
     return 0;
 }
 
@@ -253,10 +253,10 @@ vas_loc vas_check(vaddr addr) {
 ///      this define (below), which will run a routine during init that touches 
 ///      all the FS arrays.    
 
-#if (CC_SUPPORT == GCC)
-#   warn "Make sure to use KEEP() around filesystem arrays in your linker script.  If you can't, uncomment _TOUCH_FILEDATA in veelite_core_X2...c"
-//#   define _TOUCH_FILEDATA
-#endif
+//#if (CC_SUPPORT == GCC)
+//#   warn "Make sure to use KEEP() around filesystem arrays in your linker script.  If you can't, uncomment _TOUCH_FILEDATA in veelite_core_X2...c"
+// //#   define _TOUCH_FILEDATA
+//#endif
 
 #if defined(_TOUCH_FILEDATA)
     extern volatile const ot_u8 overhead_files[];

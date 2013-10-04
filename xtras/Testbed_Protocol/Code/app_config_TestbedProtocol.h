@@ -45,6 +45,9 @@
 #endif
 #define NOT_AVAILABLE   DISABLED
 
+#define OT_PARAM(VAL)                   OT_PARAM_##VAL
+#define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
+#define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    
 
 
 /** Top Level Featureset
@@ -74,8 +77,6 @@
 #define OT_FEATURE_RTC                  ENABLED
 #define OT_FEATURE_M1                   NOT_AVAILABLE                       // Mode 1 Featureset: Generally not implemented
 #define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
-#define OT_FEATURE_SESSION_DEPTH        4                                   // Max simultaneous sessions (i.e. tasks)
-#define OT_FEATURE_BUFFER_SIZE          1024                                // Typically, must be at least 512 bytes    
 #define OT_FEATURE_SYSTEM_CALLBACKS     ENABLED                             // Signal callbacks from system layer
 #define OT_FEATURE_M2NP_CALLBACKS       ENABLED                             // Signal callbacks from Network (M2NP) layer
 #define OT_FEATURE_M2QP_CALLBACKS       ENABLED                             // Signal callbacks from Transport (M2QP) layer

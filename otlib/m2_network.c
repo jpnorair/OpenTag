@@ -153,7 +153,7 @@ ot_int network_route_ff(m2session* session) {
     
     /// Acquire Flags and Protocol from the Frame Info Field
     rxq.getcursor       = &rxq.front[3];
-    session->protocol   = (*rxq.getcursor & M2FI_FRTYPEMASK);
+    session->extra      = (*rxq.getcursor & M2FI_FRTYPEMASK);
     session->flags      = *rxq.getcursor & 0xC0;
     m2np.header.fr_info = *rxq.getcursor++;
         
@@ -172,9 +172,10 @@ ot_int network_route_ff(m2session* session) {
     /// Address Control Header (Present in M2NP)
     /// Session Connection and Dialog Filtering:
     /// - if unassociated, connect now
-    /// - if already connected, make sure the dialog IDs are equal
+    /// - if already connected, make sure the incremented dialog IDs are equal
     if (m2np.header.fr_info & M2FI_ENADDR) {
         if (session->netstate & M2_NETSTATE_CONNECTED) {
+            session->dialog_id++;
             if (session->dialog_id != q_readbyte(&rxq)) {
                 return -1;
             }
@@ -218,7 +219,7 @@ ot_int network_route_ff(m2session* session) {
     /// Most network protocols don't do anything except broadcast.  M2NP is the
     /// exception, and it manages various types of routing at the network layer.
     route_val = -1;
-    if ((session->protocol & M2FI_FRTYPEMASK) < M2FI_STREAM) {
+    if ((session->extra & M2FI_FRTYPEMASK) < M2FI_STREAM) {
         // Reset routing template
         m2np.rt.hop_code    = 0;
         m2np.rt.hop_ext     = 0;
@@ -245,12 +246,13 @@ ot_int network_route_ff(m2session* session) {
     }
     
     /// M2DP gets parsed just like M2NP, but it uses the Network data
-    /// stored from the last M2NP frame
+    /// stored from the last M2NP frame.  m2qp_parse_frame must return negative
+    /// values for bad parsed requests as well as ALL parsed responses
     route_val = m2qp_parse_frame(session);
     
     /// Attach footer to response, if necessary
     if (route_val >= 0) {
-        m2np_footer(session);
+        m2np_footer( /* session */);
     }
 
 #   if defined(EXTF_network_sig_route)

@@ -40,13 +40,13 @@
 
 #define BUF0_ALLOC  256
 #define BUF1_ALLOC  256
-#define BUF2_ALLOC  (OT_FEATURE(BUFFER_SIZE) - 512)
+#define BUF2_ALLOC  (OT_PARAM(BUFFER_SIZE) - 512)
 
 
 /// Buffer Partitions
 /// Number of partitions allowed is the total allocated size divided by 256.
 /// Partitions, hence, are always 256 bytes.
-#define BUF_PARTITIONS      (OT_FEATURE(BUFFER_SIZE)/256)
+#define BUF_PARTITIONS      (OT_PARAM(BUFFER_SIZE)/256)
 #define BUF_PARTITION(VAL)  (otbuf+(256*VAL))
 
 
@@ -63,7 +63,7 @@
 
 
 /// Main Buffer (encapsulates buffers for all supported Queues)
-extern ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
+extern ot_u8 otbuf[OT_PARAM(BUFFER_SIZE)];
 
 
 

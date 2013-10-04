@@ -108,6 +108,7 @@ void otapi_led2_off();
 #if (OT_FEATURE(CAPI) == ENABLED)
 
 #include "OTAPI_tmpl.h"
+#include "OTAPI.h"
 
 /*
 #if (M2_FEATURESET == ENABLED)
@@ -481,7 +482,7 @@ ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall);
 
 /** @brief  Writes the request datastream command, including read directives
   * @param  status      (ot_u8*) returns a status code (0 = error)
-  * @param  dsq         (Queue*) Queue where the request datastream is stored
+  * @param  dsq         (ot_queue*) Queue where the request datastream is stored
   * @retval ot_u16      post-op length of the TX queue
   * @ingroup OTAPI_c
   *
@@ -499,13 +500,13 @@ ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall);
   * automatically.  The complete, received datastream will be loaded into the
   * internal datastream queue, and it can be logged if desired.
   */
-ot_u16 otapi_put_reqds(ot_u8* status, Queue* dsq);
+ot_u16 otapi_put_reqds(ot_u8* status, ot_queue* dsq);
 
 
 
 /** @brief  Writes the propose datastream command, including optional write directives
   * @param  status      (ot_u8*) returns a status code (0 = error)
-  * @param  dsq         (Queue*) Queue where the propose [write] datastream is stored
+  * @param  dsq         (ot_queue*) Queue where the propose [write] datastream is stored
   * @retval ot_u16      post-op length of the TX queue
   * @ingroup OTAPI_c
   *
@@ -522,7 +523,7 @@ ot_u16 otapi_put_reqds(ot_u8* status, Queue* dsq);
   * internal datastream queue prior to transmission.  The recipient of the 
   * datastream typically writes it to veelite.
   */
-ot_u16 otapi_put_propds(ot_u8* status, Queue* dsq);
+ot_u16 otapi_put_propds(ot_u8* status, ot_queue* dsq);
 
 
 

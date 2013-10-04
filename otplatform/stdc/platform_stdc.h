@@ -29,7 +29,8 @@
 #define __PLATFORM_STDC_H
 
 #include "build_config.h"
-#include "OT_config.h"
+#include "OT_support.h"
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -102,7 +103,8 @@
 
 
 #if (OT_FEATURE(VEELITE) == ENABLED)
-    typedef ot_u8       flash_heap[FLASH_FS_ALLOC];
+  //typedef ot_u8       flash_heap[FLASH_FS_ALLOC];
+    typedef ot_u8       flash_heap[4096];
     extern  flash_heap  platform_flash;
 #endif
 

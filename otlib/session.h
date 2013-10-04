@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 /**
   * @file       /otlib/session.h
   * @author     JP Norair
-  * @version    R100
-  * @date       24 November 2012
-  * @brief      DASH7 M2 (ISO 18000-7.4) Session Framework
+  * @version    R101
+  * @date       26 Sept 2013
+  * @brief      Mode 2 Session Framework
   * @defgroup   Session (Session Layer)
   * @ingroup    Session
   *
   * The DASH7 Mode 2 specification describes a Session Layer, and this layer is
-  * implemented completely by this module.  This module also implements some 
+  * implemented partially by this module.  This module also implements some 
   * additional features.
   * 
   * If the application has not enabled DASH7 Mode 2 features, the session 
@@ -136,10 +136,9 @@
   * netstate    (ot_u8) Control code for Mode 2 network behavior.  Applets can
   *             usually ignore this, except for setting SCRAP to kill a session.
   *
-  * protocol    (ot_u8) Unused by DASH7, but it is possible to use 'protocol'
-  *             together with 'dialog_id' to hold a 16 bit ID value.  This can
-  *             allow transparent integration of the session module into app
-  *             protocol layers like CoAP.
+  * extra       (ot_u8) Extra information about the session.  Most commonly it
+  *             is used to specify a method of encryption, when encryption is
+  *             enabled in the session flags.
   *
   * dialog_id   (ot_u8) Each session has a one-byte Dialog ID used for basic
   *             matching of request & response in a dialog sequence.  It should
@@ -158,7 +157,7 @@ typedef struct m2session {
     ot_u16  counter;
     ot_u8   channel;
     ot_u8   netstate;
-    ot_u8   protocol;
+    ot_u8   extra;      ///@todo see if this can be aligned with flags
     ot_u8   dialog_id;
     ot_u8   subnet;
     ot_u8   flags;
@@ -184,7 +183,7 @@ typedef void (*ot_app)(m2session*);
 typedef struct {
     ot_s8       top;
     ot_u8       seq_number;
-    m2session   heap[OT_FEATURE(SESSION_DEPTH)];
+    m2session   heap[OT_PARAM(SESSION_DEPTH)];
 } session_struct;
 
 extern session_struct session;
@@ -264,12 +263,16 @@ void session_crop(ot_u16 threshold);
 
 
 
-/** @brief  Flushes (pops) expired sessions out of the stack, but not the top session.
+/** @brief  Drop expired sessions and move to the ready session
   * @param  none
-  * @retval none
+  * @retval m2session*  The new top session pointer
   * @ingroup Session
+  *
+  * This function should only be used in a session activation routine or in
+  * session applets, as in these cases it is implictly known that the top
+  * session is either ready or expired.
   */
-void session_drop();
+m2session* session_drop();
 
 
 
@@ -300,5 +303,18 @@ m2session* session_top();
   */
 ot_u8 session_netstate();
 
+
+
+
+#if (defined(__STDC__) || defined (__POSIX__))
+
+/** @brief  Test function to print the session stack to stdout (POSIX/STD-C only)
+  * @param  none
+  * @retval None
+  * @ingroup Session
+  */
+void session_print();
+
 #endif
 
+#endif

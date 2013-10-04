@@ -32,6 +32,15 @@
 #include "OT_platform.h"
 
 
+#include <time.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/types.h>
+
+
+
+
 /** Feature Configuration Macros <BR>
  * ========================================================================<BR>
  * These should be defined in apps/.../app_config.h.  If one or more are
@@ -242,7 +251,7 @@ OT_INTERRUPT void platform_sysnmi_isr(void) {
 
 
 
-OT_INTERRUPT void platform_gptim_isr() {
+OT_INTERRUPT void platform_ktim_isr() {
     platform_ot_run();
 }
 
@@ -277,14 +286,14 @@ void platform_ot_preempt() {
 /// Also, save the current value of the timer so that the kernel can subtract
 /// whatever time passed since the last event.
     ot_u16 scratch;
-    scratch = platform_get_gptim();
-    platform_set_gptim(scratch);
+    scratch = platform_get_ktim();
+    platform_set_ktim(scratch);
     ///@todo do something here
 }
 
 void platform_ot_pause() {
     platform_ot_preempt();
-    platform_flush_gptim();
+    platform_flush_ktim();
 }
 
 void platform_ot_run() {
@@ -294,15 +303,15 @@ void platform_ot_run() {
 /// 4. Put the next scheduled call into the timer, and turn it back on
     ot_u16 next_event;
     ot_u16 elapsed_time;
-    elapsed_time    = platform_get_gptim();
-    next_event      = sys_event_manager( elapsed_time );
+    elapsed_time    = platform_get_ktim();
+    next_event      = 200; //sys_event_manager( elapsed_time );
 
 #   if (OT_PARAM(KERNEL_LIMIT) > 0)
         if (next_event > OT_PARAM(KERNEL_LIMIT))
             next_event = OT_PARAM(KERNEL_LIMIT);
 #   endif
 
-    platform_set_gptim( next_event );
+    platform_set_ktim( next_event );
 }
 
 
@@ -372,7 +381,7 @@ void platform_init_OT() {
     platform_init_rtc(364489200);
 #   endif
 #   if (OT_FEATURE(SERVER) == ENABLED)
-	sys_init();     //system init last
+	//sys_init();     //system init last
 #   endif
 	
 #   if (OT_FEATURE(VEELITE) && (defined(__DEBUG__) || defined(__PROTO__)))
@@ -421,11 +430,11 @@ void platform_init_gpio() {
 struct itimerval tconfig;
 
 void platform_init_gptim(ot_uint prescaler) {
-    struct sigaction timer_action;
-    timer_action.sa_handler = timer_handler;
-    sigemptyset(&timer_action.sa_mask);
-    timer_action.sa_flags = 0;
-    sigaction( SIGALRM, &timer_action, NULL );
+//    struct sigaction timer_action;
+//    timer_action.sa_handler = timer_handler;
+//    sigemptyset(&timer_action.sa_mask);
+//    timer_action.sa_flags = 0;
+//    sigaction( SIGALRM, &timer_action, NULL );
 }
 
 
@@ -461,7 +470,7 @@ void platform_init_memcpy() { }
   * ========================================================================<BR>
   */
 
-ot_u16 platform_get_gptim() {
+ot_u32 platform_get_ktim() {
 /// Have to do a lot of hackery, because unix itimer is a downcounter with a
 /// highly annoying setup
 
@@ -483,7 +492,7 @@ ot_u16 platform_get_gptim() {
     return time1;
 }
 
-void platform_set_gptim(ot_u16 value) {
+void platform_set_ktim(ot_u16 value) {
 /// Have to do a lot of hackery, because unix itimer is a downcounter with a
 /// highly annoying setup
 
@@ -497,8 +506,8 @@ void platform_set_gptim(ot_u16 value) {
     }
 }
 
-void platform_flush_gptim() {
-    platform_set_gptim(65535);
+void platform_flush_ktim() {
+    platform_set_ktim(65535);
 }
 
 void platform_run_watchdog() {
@@ -537,18 +546,12 @@ void platform_set_time(ot_u32 utc_time) {
 #endif
 }
 
-void platform_set_rtc_alarm(ot_u8 alarm_i, ot_u16 mask, ot_u16 value) {
+void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
 #if (OT_FEATURE(RTC) == ENABLED)
-    otrtc.alarm[alarm_i].mask     = mask;
-    otrtc.alarm[alarm_i].value    = value;
+
 #endif
 }
 
-void platform_enable_rtc_alarm(ot_u8 alarm_id, ot_bool enable) {
-#if (OT_FEATURE(RTC) == ENABLED)
-    otrtc.alarm[alarm_i].active   = enable;
-#endif
-}
 
 
 

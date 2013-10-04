@@ -40,11 +40,23 @@
 
 // Pick the kernel that was built-in
 #include "build_config.h"
+
 #if defined(__KERNEL_HICCULP__)
 #   include "hicculp/system_hicculp.h"
-#else
+
+#elif defined(__KERNEL_GULP__)
 #   include "gulp/system_gulp.h"
+
+#else
+//#   warning "No Kernel Defined, OK for some testbeds."
+#   ifndef __KERNEL_NONE__
+#   define __KERNEL_NONE__
+#   endif
+    typedef void*    ot_task;
+    typedef ot_u32   ot_task_struct;
+
 #endif
+
 
 
 #ifndef OT_GPTIM_SHIFT
@@ -545,7 +557,6 @@ void sys_sig_extprocess(void* event_data);
   * a successful transfer of a packet.
   */
 //void sys_sig_rfaterminate(ot_int pcode, ot_int scode);
-
 
 
 

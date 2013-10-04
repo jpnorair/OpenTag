@@ -219,6 +219,15 @@ void q_readstring(ot_queue* q, ot_u8* string, ot_int length);
 
 
 
+#if (defined(__STDC__) || defined (__POSIX__))
+void q_print();
+
+#endif
+
+
+
+
+
 #ifdef __cplusplus
 }
 #endif

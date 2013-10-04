@@ -3,8 +3,8 @@ Readme for: Random Number generator testing
 
 If you are doing cryptography or collision avoidance (OpenTag does both) it is 
 good to have a random number generator.  For cryptography in particular, you 
-want a really-fucking-good random number generator, or else your crypto system 
-can be exploited.
+want a really good random number generator, or else your crypto system might be
+able to be exploited.
 
 This supplement contains a POSIX C program called "ent" that runs on a POSIX 
 shell.  This program is by John Walker of fourmilab.ch (and incidentally the 
@@ -12,7 +12,7 @@ founder of AutoCAD), but I have added the part that takes-in hex files.
 
 As I have found, the entropy of the least-significant 4 bits of a 12bit ADC 
 capture of a floating pin is really high, and suitable as a random number 
-generator.  The onchip temperature sensor is not really good enough.
+generator.  Usually the onchip temperature sensor is not good enough.
 
 
 THE BASICS

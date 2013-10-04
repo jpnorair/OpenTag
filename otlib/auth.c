@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/auth.c
   * @author     JP Norair
-  * @version    R100
-  * @date       12 Aug 2013
+  * @version    R101
+  * @date       23 Sept 2013
   * @brief      Authentication & Crypto Functionality
   * @ingroup    Authentication
   *
@@ -32,66 +32,90 @@
 
 #include "auth.h"
 #include "veelite.h"
-
 #include "crypto_aes128.h"
 
 
 #define _SEC_NL     0 //OT_FEATURE(NLSECURITY)
-#define _SEC_DLL    0 //OT_FEATURE(DLLSECURITY)
+#define _SEC_DLL    0 //OT_FEATURE(DLL_SECURITY)
 #define _SEC_ALL    0 //(_SEC_NL && _SEC_DLL)
 #define _SEC_ANY    0 //(_SEC_NL || _SEC_DLL)
 
-#define AUTH_HEAP_SIZE 0
 
 
+/// User aliases for sandboxed processes only
 const id_tmpl*   auth_root;
 const id_tmpl*   auth_user;
 const id_tmpl*   auth_guest;
 
 
 
+#if !defined(OT_PARAM_MAX_CRYPTO_KEYS)
+#   define _SEC_KEYS    16
+#elif (OT_PARAM(MAX_CRYPTO_KEYS) < 2)
+#   define _SEC_KEYS    2
+#else
+#   define _SEC_KEYS    OT_PARAM(MAX_CRYPTO_KEYS)
+#endif
+
+#if (AES_EXPKEYS && AES_USELITE)
+#   define _SEC_TWINKEYS    0
+#   define _SEC_CACHESIZE   _SEC_KEYSIZE
+#elif (AES_EXPKEYS && AES_USEFAST)
+#   define _SEC_TWINKEYS    1
+#   define _SEC_CACHESIZE   (_SEC_KEYSIZE*2)
+#else
+#   define _SEC_CACHESIZE   16
+#endif
 
 
-/** @typedef crypto_Heap_Type
-  * Struct used for the Key Heap Data Type
-  *
-  * ot_uint end:            byte offset to end of heap where there is free space
-  * ot_u8   heapdata[]:     heap data storage.  Stores crypto_Entries mixed with
-  *                         key data. 
-  */
-typedef struct {
-    ot_u8   alloc;
-    id_tmpl id;
-} heap_item;
 
 
-#define _SEC_HEAPSIZE   ((16+sizeof(heap_item))*2)  //OT_PARAM(AUTH_HEAP_SIZE)
-#define _SEC_TABLESIZE  2   //OT_PARAM(AUTH_TABLE_SIZE)
-
-typedef struct {
-    ot_int  free_space;
-    ot_int  end;
-    ot_u8   data[_SEC_HEAPSIZE];
-} auth_heap_struct;
 
 typedef struct {
-    ot_u8   reserved00;
-    ot_u8   reserved01;
-    ot_u8   length;
-    ot_u8   protocol;
-    ot_u32  cache[4];
+    auth_info   info;
+    ot_u32      cache[_SEC_CACHESIZE];
 } auth_dlls_struct;
 
 
-
-#if (_SEC_NLS)
-    auth_entry          auth_table[_SEC_TABLESIZE];
-    auth_heap_struct    auth_heap;
-#endif
-
 #if (_SEC_DLL)
 /// Presently, AES128 is the only type supported
-    auth_dlls_struct    auth_key[4];
+    auth_dlls_struct    auth_key[_SEC_KEYS];
+#endif
+
+
+
+
+
+// Maybe in the future, but probably some type of malloc will get implemented
+// instead of this special-purpose heap
+#if 0
+
+    /** @typedef crypto_Heap_Type
+      * Struct used for the Key Heap Data Type
+      *
+      * ot_uint end:            byte offset to end of heap where there is free space
+      * ot_u8   heapdata[]:     heap data storage.  Stores crypto_Entries mixed with
+      *                         key data. 
+      */
+    typedef struct {
+        ot_u8   alloc;
+        id_tmpl id;
+    } heap_item;
+    
+    typedef struct {
+        ot_int  free_space;
+        ot_int  end;
+        ot_u8   data[_SEC_HEAPSIZE];
+    } auth_heap_struct;
+    
+#   define _SEC_HEAPSIZE   ((16+sizeof(heap_item))*2)  //OT_PARAM(AUTH_HEAP_SIZE)
+#   define _SEC_TABLESIZE  2   //OT_PARAM(AUTH_TABLE_SIZE)
+    
+#   if (_SEC_NLS)
+        auth_ctl          auth_table[_SEC_TABLESIZE];
+        auth_heap_struct    auth_heap;
+#   endif
+
 #endif
 
 
@@ -128,38 +152,40 @@ void crypto_clean();
 
 
 
-void auth_init() {
-#if (_SEC_DLL)
-    /// Load key files into cache for faster access.  We assume that there is
-    /// only one type of crypto, which is AES128
-    for (i=ISF_ID(root_authentication_key); i<ISF_ID(root_authentication_key)+2; i++) {
-        fp  = isf_open_su(i);
-        vl_load(fp, &(auth_key[i].length), 18);
-        ///@todo Do decryption key processing
-        vl_close(fp);
-    }
-    
-#endif
-#if (_SEC_NLS)
-///@todo
+/** Subroutines <BR>
+  * ========================================================================<BR>
+  */
+#if (_SEC_DLL || _SEC_NL)
+void sub_expand_key(auth_dlls_struct* key) {
+#if (_SEC_TWINKEYS == 0)
+    key->info.options = 0;
+    key->info.length  = 44;
+    AES_expand_enckey(key->cache, key->cache);
+#else
+    ot_u32* enckey;
+    key->info.options = 1;
+    key->info.length  = 44;
+    enckey = key->cache + 44;
+    AES_expand_enckey(key->cache, enckey);
+    AES_expand_deckey(key->cache, key->cache);
 #endif
 }
 
 
 
-
-ot_bool sub_idcmp(id_tmpl* user_id, auth_entry* auth_id) {
+///@todo Bring this into OT Utils?
+ot_bool sub_idcmp(id_tmpl* user_id, auth_id* auth_id) {
     ot_bool id_check;
     
-    if (user_id->length != auth_id->id->length) {
+    if (user_id->length != auth_id->length) {
         return False;
     }
     if (user_id->length == 2) {
-        return (((ot_u16*)user_id->value)[0] == ((ot_u16*)auth_id->id->value)[0]);
+        return (((ot_u16*)user_id->value)[0] == ((ot_u16*)auth_id->value)[0]);
     }
 
-    id_check    = (((ot_u32*)user_id->value)[0] == ((ot_u32*)auth_id->id->value)[0]);
-    id_check   &= (((ot_u32*)user_id->value)[1] == ((ot_u32*)auth_id->id->value)[1]);
+    id_check    = (((ot_u32*)user_id->value)[0] == ((ot_u32*)auth_id->value)[0]);
+    id_check   &= (((ot_u32*)user_id->value)[1] == ((ot_u32*)auth_id->value)[1]);
     return id_check;
 }
 
@@ -170,8 +196,120 @@ ot_bool sub_authcmp(id_tmpl* user_id, id_tmpl* comp_id, ot_u8 mod_flags) {
         
     return (ot_bool)auth_search_user(user_id, mod_flags);
 }
+#endif
 
 
+
+
+
+
+
+
+/** High Level Cryptographic Interface Functions <BR>
+  * ========================================================================<BR>
+  * init, encrypt, decrypt
+  */
+
+#ifndef EXTF_auth_init
+void auth_init() {
+#if (_SEC_DLL)
+    /// Load key files into cache for faster access.  We assume that there is
+    /// only one type of crypto, which is AES128
+    for (i=0; i<2; i++) {
+        vlFILE* fp;
+        fp = isf_open_su(i+ISF_ID(root_authentication_key));
+        vl_load(fp, &(auth_key[i].info.length), 18);
+        vl_close(fp);
+        sub_expand_key(&auth_key[i]);
+    }
+#endif
+#if (_SEC_NLS)
+    ///@todo
+#endif
+}
+#endif
+
+
+
+#ifndef EXTF_auth_encrypt_q
+void auth_encrypt_q(ot_queue* q, ot_u8 key_index, ot_u8 options) {
+    auth_encrypt(q->front, q_length(q), key_index, options);
+}
+#endif
+
+
+
+#ifndef EXTF_auth_decrypt_q
+void auth_decrypt_q(ot_queue* q, ot_u8 key_index, ot_u8 options) {
+    auth_decrypt(q->front, q_length(q), key_index, options);
+}
+#endif
+
+
+
+#ifndef EXTF_auth_encrypt
+void auth_encrypt(ot_u8* iostream, ot_int length, ot_u8 key_index, ot_u8 options) {
+/// "options" not presently used.  In the future, option-0 can mean using the
+/// first N bytes in the queue as initialization vector.
+#if (_SEC_DLL)
+    iostream &= ~3;
+    AES_encrypt_cbc((ot_u32*)iostream, (ot_u32*)auth_get_enckey(key_index), length);
+#endif
+}
+#endif
+
+
+
+#ifndef EXTF_auth_decrypt
+void auth_decrypt(ot_u8* iostream, ot_int length, ot_u8 key_index, ot_u8 options) {
+/// "options" not presently used.  In the future, option-0 can mean using the
+/// first N bytes in the queue as initialization vector.
+#if (_SEC_DLL)
+    iostream &= ~3;
+    AES_decrypt_cbc((ot_u32*)iostream, (ot_u32*)auth_get_deckey(key_index), length);
+#endif
+}
+#endif
+
+
+#ifndef EXTF_auth_get_deckey
+void* auth_get_deckey(ot_u8 index) {
+#if (_SEC_DLL)
+    return (void*)auth_key[index].cache;
+#endif
+}
+#endif
+
+
+#ifndef EXTF_auth_get_enckey
+void* auth_get_enckey(ot_u8 index) {
+#if (_SEC_TWINKEYS)
+    ot_u32* enckey;
+    enckey  = auth_key[index].cache;
+    enckey += (auth_key[index].info.options) ? auth_key[index].info.length : 0;
+    return (void*)enckey;
+#else
+    return auth_get_deckey(index);
+#endif
+}
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+/** User Authentication Routines <BR>
+  * ========================================================================<BR>
+  * Specifically, the Auth-Sec ALP should have hooks into these functions.
+  */
 ot_bool auth_isroot(id_tmpl* user_id) {
 /// NULL is how root is implemented in internal calls
 #if (_SEC_NLS)
@@ -213,7 +351,91 @@ ot_u8 auth_check(ot_u8 data_mod, ot_u8 req_mod, id_tmpl* user_id) {
 
 
 
-auth_entry* auth_new_nlsuser(auth_entry* new_user, ot_u8* new_data) {
+
+
+
+
+
+
+/** Functions Typically Used with ALP <BR>
+  * ========================================================================<BR>
+  * Specifically, the Auth-Sec ALP should have hooks into these functions.
+  * @todo implement!
+  */
+
+ot_u8 auth_find_keyindex(auth_handle* handle, id_tmpl* user_id) {
+    return 255;
+}
+
+ot_u8 auth_read_key(auth_handle* handle, ot_u16 key_index) {
+    return 255;
+}
+
+ot_u8 auth_update_key(auth_handle* handle, ot_u16 key_index) {
+    return 255;
+}
+
+ot_u8 auth_create_key(ot_u16* key_index, auth_handle* handle) {
+    return 255;
+}
+
+ot_u8 auth_delete_key(ot_u16 key_index) {
+    return 255;
+}
+
+
+
+
+
+/** @todo these are old and should be worked-into above
+
+ot_int auth_load_keydata(ot_u8* dst, ot_int limit, ot_u8 index) {
+    ot_int data_size;
+    auth_key[index].info.index  = index;
+    data_size                   = 4 + (auth_key[index].info.length << auth_key[index].info.options);
+
+    if (limit < data_size) {
+        return 0;
+    }
+    platform_memcpy(dst, (ot_u8*)auth_key[index], data_size);
+    return data_size;
+}
+
+ot_u8 auth_store_keydata(auth_info* info, ot_u8* keydata) {
+    auth_dlls_struct* local_key;
+
+    if (info->protocol != 0)                                    return 1;
+    if ((info->index < 2) || (info->index > _SEC_CACHESIZE))    return 2;
+    if (info->length != 16)                                     return 3;
+    
+    local_key = &auth_key[info->index];
+    
+    platform_memcpy(    (ot_u8*)&local_key->info, \
+                        (ot_u8*)info, \
+                        sizeof(auth_info)    );
+    
+    platform_memcpy(    (ot_u8*)local_key->cache, \
+                        (ot_u8*)keydata, \
+                        16    );
+    
+    sub_expand_key(local_key);
+    
+    return 0;
+}
+*/
+
+
+
+
+
+
+
+
+
+/** @todo NLS is not supported any time soon, but refactor according to new prototypes
+
+ot_u8 auth_new_nlsuser(auth_handle* handle, id_tmpl* new_user, auth_info* new_info, ot_u8* new_key);
+auth_ctl* auth_new_nlsuser(auth_ctl* new_user, ot_u8* new_data) {
 #if (_SEC_NLS)
 #endif
     return NULL;
@@ -221,7 +443,8 @@ auth_entry* auth_new_nlsuser(auth_entry* new_user, ot_u8* new_data) {
 
 
 
-auth_entry* auth_search_user(id_tmpl* user_id, ot_u8 mod_flags) {
+ot_u8 auth_search_user(auth_handle* handle, id_tmpl* user_id, ot_u8 mod_flags
+auth_ctl* auth_search_user(id_tmpl* user_id, ot_u8 mod_flags) {
 #if (_SEC_ANY)
     ot_int i;
 
@@ -235,12 +458,21 @@ auth_entry* auth_search_user(id_tmpl* user_id, ot_u8 mod_flags) {
 #endif
     return NULL;
 }
+*/
 
+
+
+
+
+
+
+/** @todo this function is very legacy and I don't know where it belongs in the
+   refactored auth.c
 
 ot_u8* auth_get_dllskey(ot_u8 protocol, ot_u8 options, ot_u8* header) {
 #if (_SEC_DLL)
     /// This implementation assumes that AES128 is the only supported crypto.
-    /// DASH7 AES128 has protocol-id = xx000000.
+    /// DASH7 AES128 has protocol-id = x0000000.
     if (protocol & 0x3F) {
         return NULL;
     }
@@ -284,6 +516,6 @@ ot_u8* auth_get_dllskey(ot_u8 protocol, ot_u8 options, ot_u8* header) {
     return NULL;
 #endif
 }
-
+*/
 
 

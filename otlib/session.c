@@ -40,7 +40,7 @@
 #include "OT_platform.h"
 
 
-#define SESSION_STACK_DEPTH     OT_FEATURE(SESSION_DEPTH)
+#define SESSION_STACK_DEPTH     OT_PARAM(SESSION_DEPTH)
 //#define SESSION_STACK_DEPTH     4
 
 
@@ -90,16 +90,11 @@ m2session* session_new(ot_app applet, ot_uint new_counter, ot_u8 new_netstate, o
         for (i=session.top; i>=0; i--) {
             // Set the position for the new session, by ascending order
             pos -= (new_counter > session.heap[i].counter);
-            
-            // Discontinued feature: fail if there is already a session on this channel
-            //if (new_channel == session.heap[i].channel) {
-            //    return NULL;
-            //}
         }
     }
 
     /// If the session stack is not full, shift prioritized sessions up
-    if (session.top < (OT_FEATURE(SESSION_DEPTH)-1)) {
+    if (session.top < (OT_PARAM(SESSION_DEPTH)-1)) {
         ot_s8 i;
         session.top++;
 
@@ -136,8 +131,8 @@ m2session* session_new(ot_app applet, ot_uint new_counter, ot_u8 new_netstate, o
     session.heap[pos].applet    = applet;
     session.heap[pos].counter   = new_counter;
     session.heap[pos].channel   = new_channel;
-    session.heap[pos].netstate  = new_netstate;     ///@note, may need to OR with M2_NETSTATE_INIT
-  //session.heap[pos].protocol  = 0;                ///session.protocol is deprecated  
+    session.heap[pos].netstate  = new_netstate;     ///@note may consider OR with M2_NETSTATE_INIT
+    session.heap[pos].extra     = 0;
     session.heap[pos].dialog_id = ++session.seq_number;
     
     return &session.heap[pos];
@@ -189,15 +184,17 @@ void session_crop(ot_u16 threshold) {
 
 
 #ifndef EXTF_session_drop
-void session_drop() {
-    ot_u16 temp = Session0.counter;
-    
-    Session0.counter = 1;
-    session_flush();
-    Session0.counter = temp;
+m2session* session_drop() {
+    while (session.top > 0) {
+        session.top--;
+        if (Session0.counter != 0) {
+            session.top++;
+            break;
+        }
+    }
+    return &Session0;
 }
 #endif
-
 
 
 #ifndef EXTF_session_count
@@ -223,55 +220,10 @@ ot_u8 session_netstate() {
 
 
 
-#if (OT_FEATURE(CAPI) == ENABLED)
-
-/** OTAPI Server Functions
-  * Only compiled with builds that leverage OTAPI Server, either in C, LLDP, or
-  * DASHForthVM form
-  */
-
-#ifndef EXTF_otapi_session_number
-ot_u16 otapi_session_number() {
-
-    if (session.top >= 0) {
-        return *((ot_u16*)&Session0.channel);
-        //return ((ot_u16)Session0.channel << 8) | (ot_u16)Session0.dialog_id;
-    }
-    return 0;
-}
-#endif
-
-
-#ifndef EXTF_otapi_flush_sessions
-ot_u16 otapi_flush_sessions() {
-    session_flush();
-    return session.top+1;
-}
-#endif
-
-
-#ifndef EXTF_otapi_is_session_blocked
-ot_u16 otapi_is_session_blocked(ot_u8 chan_id) {
-    return (ot_u16)session_occupied(chan_id);
-}
-#endif
-
-
-#endif
-
-
-
-
-
-
-/* For your amusement, if you want to test this module on its own.
-   (make sure to change the STACK_SIZE constant up top to a fixed value, and
-   comment out OT_config.h)
-
+#if (defined(__STDC__) || defined (__POSIX__))
 #include <stdio.h>
 
-
-void print_stack() {
+void session_print() {
     ot_int i;
     
     printf("Number of Sessions: %d\n", session.top+1);
@@ -286,7 +238,7 @@ void print_stack() {
             session.heap[i].dialog_id, 
             session.heap[i].netstate,
             session.heap[i].subnet, 
-            session.heap[i].protocol, 
+            session.heap[i].extra, 
             session.heap[i].flags);
     }
     
@@ -294,6 +246,10 @@ void print_stack() {
 }
 
 
+
+/* For your amusement, if you want to test this module on its own.
+   (make sure to change the STACK_SIZE constant up top to a fixed value, and
+   comment out OT_config.h)
 
 int main(void) {
     m2session* session;
@@ -304,19 +260,19 @@ int main(void) {
     session = session_new(0x0000, 0x32, 0x10);
     session = session_new(0x5678, 0x24, 0x14);
     session = session_new(0x0000, 0x04, 0x12);
-    print_stack();
+    session_print();
     
     session = session_new(0x0700, 0x34, 0x2D);
-    print_stack();
+    session_print();
     
     session_refresh(0x0100);
-    print_stack();
+    session_print();
     
     session_flush();
-    print_stack();
+    session_print();
     
     session = session_new(0x0100, 0x04, 0x16);
-    print_stack();
+    session_print();
     
     printf("session channel 0x%02X occupied?  (%d)\n", 0x13, session_occupied(0x13) );
     printf("session channel 0x%02X occupied?  (%d)\n", 0x12, session_occupied(0x12) );
@@ -330,5 +286,9 @@ int main(void) {
 }
 
 */
+
+#endif
+
+
 
 

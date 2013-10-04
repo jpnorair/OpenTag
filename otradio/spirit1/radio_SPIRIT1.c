@@ -76,7 +76,7 @@
 
 
 //#define RFCORE_DEBUG
-ot_u8 dump[256];
+//ot_u8 dump[256];
 
 #ifdef RFCORE_DEBUG
 #   define __CORE_DUMP()   spirit1_coredump()

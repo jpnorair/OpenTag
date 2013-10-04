@@ -47,7 +47,7 @@ ot_u8 ext_get_m2appflags() {
 
 
 #ifndef EXTF_ext_systask
-void ext_systask(task_marker* task) {
+void ext_systask(ot_task task) {
 /// See comments from external.h.  BEST PRACTICE is to leave this impl empty.
 }
 #endif

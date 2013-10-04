@@ -20,6 +20,11 @@
   * @date       2 October 2012
   * @brief      Mode 2 Query Protocol Implementation (Transport Layer)
   * @ingroup    M2QP
+  *
+  * @todo Move the ISF comp and call templates before the query template(s) in
+  * the M2QP template ordering.  Requires reorganization of sub_load_query() 
+  * and m2qp_isf_comp.
+  *
   ******************************************************************************
   */
 
@@ -137,214 +142,6 @@ ot_int sub_load_return(ot_int* cursor, ot_u8 data_byte);
   * @retval ot_int      always returns 0
   */
 ot_int sub_load_nonnull(ot_int* cursor, ot_u8 data_byte);
-
-
-
-
-
-
-
-/** M2QP OTAPI Functions    
-  * ============================================================================
-  * -
-  */
- 
-#if (OT_FEATURE(CAPI) == ENABLED)
-
-#ifndef EXTF_otapi_put_command_tmpl
-ot_u16 otapi_put_command_tmpl(ot_u8* status, command_tmpl* command) {    
-    /// Check Opcodes to make sure this one is supported
-    /// @todo base this on app_config.h settings.  Currently this is rudimentary
-    ///       and hard-coded.  It just filters out Datastream and non-existing codes
-    if (command->opcode > 15) {
-        // command extension, not present at the moment
-        *status = 0;
-        return 0;
-    }
-    
-    dll.comm.csmaca_params |= command->type & M2_CSMACA_A2P;
-    m2qp.cmd.code           = command->type | command->opcode;
-    m2qp.cmd.code          |= (command->extension != 0) << 7;
-    m2qp.cmd.ext            = command->extension;
-    q_writebyte(&txq, m2qp.cmd.code);
-    
-    if (m2qp.cmd.ext != 0) {
-        q_writebyte(&txq, m2qp.cmd.ext);
-    }
-    
-    *status = 1;
-    return q_length(&txq);
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_dialog_tmpl
-ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
-    if (dialog == NULL) {
-        ///@todo "15" is hard-coded timeout.  Have this be a constant
-        dll.comm.rx_timeout = (m2qp.cmd.ext & 2) ? 0 : 15;
-        q_writebyte(&txq, 0);
-    }
-    else {
-        // Calculate actual timeout and write timeout code field
-        dll.comm.rx_timeout = otutils_calc_timeout(dialog->timeout);
-        dialog->timeout    |= (dialog->channels == 0) ? 0 : 0x80;
-        q_writebyte(&txq, dialog->timeout);
-    
-        // Write response list
-        if (dialog->channels != 0) {
-            dll.comm.rx_channels = dialog->channels;
-            dll.comm.rx_chanlist = dialog->chanlist;
-            q_writestring(&txq, dialog->chanlist, dialog->channels);
-        }
-    }
-
-    *status = 1;
-    return q_length(&txq);
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_query_tmpl
-ot_u16 otapi_put_query_tmpl(ot_u8* status, query_tmpl* query) {
-    /// Test for Anycast and Multicast addressing (query needs one of these)    
-    if (m2np.header.addr_ctl & 0x80) {
-        q_writebyte(&txq, query->length);
-        q_writebyte(&txq, query->code);
-    
-        if (query->code & 0x80) {
-            q_writestring(&txq, query->mask, query->length);
-        }
-        q_writestring(&txq, query->value, query->length);
-    
-        *status = 1;
-        return q_length(&txq);
-    }
-    *status = 0;
-    return 0;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_ack_tmpl
-ot_u16 otapi_put_ack_tmpl(ot_u8* status, ack_tmpl* ack) {
-    ot_int  i;
-    ot_u8*  data_ptr    = ack->list;
-    ot_u8*  limit       = txq.back - ack->length;
-    
-    for (i=0; (i < ack->count) && (txq.putcursor < limit); \
-            i+=ack->length, data_ptr+=ack->length ) {
-        q_writestring(&txq, data_ptr, ack->length);
-    }
-    
-    *status = (ot_u8)i;
-    return q_length(&txq);
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_isf_offset
-void sub_put_isf_offset(ot_u8 is_series, ot_u16 offset) {
-    if (is_series) {
-        q_writeshort(&txq, (ot_u8)offset);
-    }
-    else {
-        q_writebyte(&txq, (ot_u8)offset);
-    }
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_isf_comp
-ot_u16 otapi_put_isf_comp(ot_u8* status, isfcomp_tmpl* isfcomp) {
-    q_writebyte(&txq, isfcomp->isf_id);
-    sub_put_isf_offset(isfcomp->is_series, isfcomp->offset);
-    
-    *status = 1;
-    return q_length(&txq);
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_isf_call
-ot_u16 otapi_put_isf_call(ot_u8* status, isfcall_tmpl* isfcall) {
-    q_writebyte(&txq, isfcall->max_return);
-    q_writebyte(&txq, isfcall->isf_id);
-    sub_put_isf_offset(isfcall->is_series, isfcall->offset);
-    
-    *status = 1;
-    return q_length(&txq);
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_isf_return
-ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall) {
-    Queue   local_q;
-    ot_u8   lq_data[4];
-    
-    q_init(&local_q, lq_data, 4);
-    q_writebyte(&local_q, (ot_u8)isfcall->max_return);
-    q_writebyte(&local_q, (ot_u8)isfcall->isf_id);
-    sub_put_isf_offset(isfcall->is_series, isfcall->offset);
-    
-    ///@note user_id is set to NULL here.  This stipulates that the API is not
-    ///      ever going to be called by a non root user.  So, the application
-    ///      layer should perform proper authentication of the user if neeeded.
-    *status = (m2qp_isf_call(isfcall->is_series, &local_q, NULL) >= 0);
-
-    return q_length(&txq);
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_udp_tmpl
-ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
-/// There is no error/exception handling in this implementation, but it is
-/// possible to add in the future
-    q_writebyte(&txq, udp->src_port);
-    q_writebyte(&txq, udp->dst_port);
-    q_writestring(&txq, udp->data, udp->data_length);
-    
-    *status = 1;
-    return q_length(&txq);
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_error_tmpl
-ot_u16 otapi_put_error_tmpl(ot_u8* status, error_tmpl* error) {
-    q_writebyte(&txq, error->code);
-    q_writebyte(&txq, error->subcode);
-    
-    *status = 1;
-    return q_length(&txq);
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_reqds
-ot_u16 otapi_put_reqds(ot_u8* status, Queue* dsq) {
-/// Write values stored from configuration
-/// @todo implement this in next version
-    *status = 0;
-    return 0;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_propds
-ot_u16 otapi_put_propds(ot_u8* status, Queue* dsq) {
-/// Write values stored from configuration
-/// @todo implement this in next version
-    *status = 0;
-    return 0;
-}
-#endif
-
-#endif
-
-
 
 
 
@@ -479,7 +276,7 @@ ot_int sub_parse_response(m2session* session) {
         /// If using A2P, put this responder's ID onto the ACK chain, reserve 
         /// 48 bytes at the back for query scratchpad, increment "Number of
         /// ACKs" on each ACK generation (txq.getcursor[0]), and do callback.  
-        if (((req_cmdcode & 0x60)==0x40) && ((txq.back-txq.putcursor)>48)) {
+        if (((req_cmdcode & 0x60) == 0x40) && (q_space(&txq) > 48)) {
             ///@todo check to make sure NumACKs is 0 on 1st run (might be done)
             ///@todo Might put in some type of return scoring, later
             txq.getcursor[0]++;
@@ -492,7 +289,7 @@ ot_int sub_parse_response(m2session* session) {
             opgroup_proc[((req_cmdcode>>1) & 7)]();
         }
     }
-    return (ot_int)test - 1;
+    return -1; //(ot_int)test - 1;
 #else
     return -1;
 #endif
@@ -554,7 +351,7 @@ ot_int sub_parse_request(m2session* session) {
         }
     }
     
-    /// 3. Handle Command Queries (filtering): 
+    /// 3. Handle Global Queries (filtering): 
     /// Multicast and anycast addressed requests include queries
     if (m2np.header.addr_ctl & 0x80) {
         score = sub_process_query(session);
@@ -815,7 +612,7 @@ ot_int sub_process_query(m2session* session) {
 ///Frame Info field.
     ot_u8 cmd_type = m2qp.cmd.code & 0x70;
 
-    /// ACK check: Non-initial Multicast only
+    /// ACK check: Non-initial A2P only
     /// Look through the ack list for this host's device ID.  If it is
     /// there, then the query can exit.
     if (cmd_type > 0x40) {
@@ -830,7 +627,7 @@ ot_int sub_process_query(m2session* session) {
         while ((number_of_acks >= 0) && (id_test == False));
         
         if (number_of_acks != 0) {
-            goto sub_process_query_exit;
+            goto sub_process_query_EXITA2P;
         }
     }
 
@@ -839,10 +636,11 @@ ot_int sub_process_query(m2session* session) {
     /// query (all multicast, all anycast)
     sub_load_query();
     
-    /// Local Query: Initial Multicast only
+    /// Local Query: Multicast only
     /// Save a pointer to the local query, if this is an initial multicast
     /// request.  This query will be run later.
-    if (cmd_type == 0x40) {
+    //if (cmd_type == 0x40) {
+    if (m2np.header.addr_ctl & 0x40) {
         ot_int  query_size;
         ot_u8*  local_ptr;
         
@@ -853,9 +651,8 @@ ot_int sub_process_query(m2session* session) {
         rxq.getcursor  += query_size;
         
         /// run the first query... this will actually be the global query
-        /// on commands that also contain a local query.
         if (m2qp_isf_comp((m2qp.cmd.code & 1), &m2np.rt.dlog) < 0) {
-            goto sub_process_query_exit;
+            goto sub_process_query_EXITA2P;
         }
         
         /// Backtrace the queue to run the Local query
@@ -867,7 +664,7 @@ ot_int sub_process_query(m2session* session) {
     return m2qp_isf_comp((m2qp.cmd.code & 1), &m2np.rt.dlog);
 
     /// Exit case
-    sub_process_query_exit:
+    sub_process_query_EXITA2P:
     session->flags &= ~M2FI_LISTEN;
     return -1;
 }

@@ -764,7 +764,7 @@ static const ot_u8 isf_stock_files[] = {
     SPLIT_SHORT(GFB_TOTAL_BYTES-GFB_HEAP_BYTES),        /* GFB Available Memory */
     SPLIT_SHORT(GFB_FILE_BYTES),                        /* GFB File Size */
     0,                                                  /* RFU */
-    OT_FEATURE(SESSION_DEPTH),                          /* Session Stack Depth */
+    OT_PARAM(SESSION_DEPTH),                          /* Session Stack Depth */
     'O','T','v',BV0,' ',' ',
     BT0,BC0,BC1,BC2,BC3,BC4,BC5,BC6,BC7, 0,             /* Firmware & Version as C-string */
     

@@ -24,7 +24,7 @@
   ******************************************************************************
   */
 
-#if !defined(__M2QP_H) && OT_FEATURE(M2)
+#if !defined(__M2QP_H) /* && OT_FEATURE(M2) */
 #define __M2QP_H
 
 #include "OT_types.h"
@@ -55,6 +55,7 @@
 #define M2TT_RESPONSE           0x00
 #define M2TT_ERROR              0x10
 #define M2TT_REQNA2P            0x20        //NA2P Request (Normal)
+#define M2TT_REQA2P             0x40
 #define M2TT_REQA2P_I           0x40        //Initial A2P Request
 #define M2TT_REQA2P_X           0x50        //Intermediate A2P Request
 #define M2TT_REQA2P_T           0x70        //Terminal (Final) A2P Request

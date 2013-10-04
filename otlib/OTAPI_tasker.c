@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/OTAPI_tasker.c
   * @author     JP Norair
-  * @version    R100
-  * @date       31 Sep 2012
+  * @version    R101
+  * @date       27 Sep 2013
   * @brief      Default implementation of OTAPI communication tasker functions
   * @ingroup    OTAPI
   *
@@ -79,20 +79,22 @@ m2session* otapi_task_advertise(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, ot_
     ///     advertising is 0, also exit and do this session without flood.
     session_crop(adv_tmpl->duration);
     com_session = sub_newtask(s_tmpl, applet, adv_tmpl->duration);
-    if ((com_session == NULL) || (adv_tmpl->duration == 0))
+    if (com_session == NULL)
         return NULL;
     
-    /// 2.  Flood duty cycling is not supported at this time.  All floods 
-    ///     are implemented as 100% duty cycle.
-    
-    /// 3.  Push the Advertising session onto the stack, for immediate running.
-    ///     <LI> For basic flooding, the applet can be empty </LI>
-    adv_session = session_new(&otutils_applet_null, 0, _FLOOD_NETSTATE, adv_tmpl->channel);
-    if (adv_session == NULL) {
-        session_pop();  //pop the com session from above
-        return NULL;
+    if (adv_tmpl->duration != 0) {
+        /// 2.  Flood duty cycling is not supported at this time.  All floods 
+        ///     are implemented as 100% duty cycle.
+        
+        /// 3.  Push the Advertising session onto the stack, for immediate running.
+        ///     <LI> For basic flooding, the applet can be empty </LI>
+        adv_session = session_new(&otutils_applet_null, 0, _FLOOD_NETSTATE, adv_tmpl->channel);
+        if (adv_session == NULL) {
+            session_pop();  //pop the com session from above
+            return NULL;
+        }
+        adv_session->subnet = adv_tmpl->subnet;
     }
-    adv_session->subnet = adv_tmpl->subnet;
     
     return com_session;
 #   undef _FLOOD_NETSTATE

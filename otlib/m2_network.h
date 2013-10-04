@@ -31,7 +31,7 @@
 
 
 #include "OT_config.h"
-#if !defined(__M2_NETWORK_H) && OT_FEATURE(M2)
+#if !defined(__M2_NETWORK_H) /* && OT_FEATURE(M2) */
 #define __M2_NETWORK_H
 
 #include "OT_types.h"

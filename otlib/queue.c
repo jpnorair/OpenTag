@@ -265,3 +265,27 @@ void q_readstring(ot_queue* q, ot_u8* string, ot_int length) {
 #endif
 
 
+
+#if (defined(__STDC__) || defined (__POSIX__))
+#include <stdio.h>
+
+void q_print(ot_queue* q) {
+    int length;
+    int i;
+    unsigned int row;
+    length = q_length(q);
+    
+    printf("Queue Length/Alloc: %d/%d\n", length, q->alloc);
+    
+    for (row=0; row<length; row+=8) {
+        printf("%04X: ", row);
+        for (i=row; i<length; i++) {
+            printf("%02X ", q->front[i]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+#endif
+

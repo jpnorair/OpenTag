@@ -1,4 +1,4 @@
-/* Copyright 2012 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,11 +16,17 @@
 /**
   * @file       /otlib/crypto_aes128.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       17 November 2011
-  * @brief      AES128 Driver
+  * @version    R101
+  * @date       23 Sept 2013
+  * @brief      AES128 Library
   * @defgroup   AES128
   *
+  * Includes library functions for AES128-CBC encryption and decryption, as
+  * well as low-level software function for implementing the AES128 block
+  * encryption/decryption itself.  The library functions may be used with the
+  * low-level software back-end, or alternatively with an set of routines
+  * defined in the platform layer, using the same functional interfaces.
+  * 
   ******************************************************************************
   */
  
@@ -33,22 +39,91 @@
 #include "OT_platform.h" 
 
 
-/** @note Note on AES configuration <BR>
+/** AES128 High-level Library Functions <BR>
   * ========================================================================<BR>
-  * There are two possible AES implementations: "fast" is faster than "lite" but
-  * "lite" uses much less Flash to store the lookup tables.  
+  * AES_encrypt_cbc, AES_decrypt_cbc
+  */
+
+/** @brief High-level function for encrypting a stream in-place with AES128-CBC
+  * @author JP Norair
+  * @param stream   (ot_u32*) Word-pointer to I/O stream
+  * @param expkey   (ot_u32*) Word-pointer to expanded key
+  * @param length   (ot_int) Number of BYTES of the stream.
+  * @retval None
+  * @ingroup AES128
+  * @sa AES_decrypt_cbc()
+  *
+  * This implementation will assume that the first 16 bytes (128 bits) of the
+  * stream is the initialization vector (IV).  The IV will not be encrypted in
+  * the output stream.  The length parameter should be 16-byte aligned.  If it
+  * is not, the remainder of the input will not be encrypted.
   * 
-  * lite - version with unique key-schedule using:
+  * The options value is presently defined only as 0/1.  In systems with
+  * OT_FEATURE(AES128_EXPKEY) not enabled, you can pass-in an expanded key or
+  * a standard key, which this function will expand before encrypting. 
+  * <LI> Option = 0: the key is a standard, 128 bit key </LI>
+  * <LI> Option = 1: the key is an expanded, 352 bit key </LI>
+  */
+void AES_encrypt_cbc(ot_u32* stream, ot_u32* key, ot_int length, ot_u16 options);
+
+
+
+/** @brief High-level function for decrypting a stream in-place with AES128-CBC
+  * @author JP Norair
+  * @param stream   (ot_u32*) Word-pointer to I/O stream
+  * @param expkey   (ot_u32*) Word-pointer to expanded key
+  * @param length   (ot_int) Number of BYTES of the stream.
+  * @param options  (ot_u16) Operational options
+  * @retval None
+  * @ingroup AES128
+  * @sa AES_encrypt_cbc()
+  *
+  * This implementation will assume that the first 16 bytes (128 bits) of the
+  * stream is the initialization vector (IV).  The IV will not be encrypted in
+  * the output stream.  The length parameter should be 16-byte aligned.  If it
+  * is not, the remainder of the input will not be encrypted.
+  *
+  * The options value is presently defined only as 0/1.  In systems with
+  * OT_FEATURE(AES128_EXPKEY) not enabled, you can pass-in an expanded key or
+  * a standard key, which this function will expand before decrypting. 
+  * <LI> Option = 0: the key is a standard, 128 bit key </LI>
+  * <LI> Option = 1: the key is an expanded, 320 bit key </LI>
+  */
+void AES_decrypt_cbc(ot_u32* stream, ot_u32* key, ot_int length, ot_u16 options);
+
+
+
+
+
+
+
+
+
+
+
+/** AES software codec <BR>
+  * ========================================================================<BR>
+  * There are two possible soft-AES implementations: "fast" and "lite."
+  * Fast is optimized for speed, Lite is optimized for flash size. 
+  * 
+  * lite - version with unique key-expansion using:
   *        256 + 256 + 10*4 bytes data = 552 bytes of look-up tables.  
   *      
-  * fast - version with different key-schedule for encryption/decryption using: 
+  * fast - version with different key-expansion for encryption/decryption using: 
   *        256 + 256 + 10*4 + 256*4*2 bytes data = 2058 bytes of look-up table.
+  *
+  * Expanded keys are larger than stored keys are.  It may be practical to 
+  * store expanded keys in order to improve encryption and decryption speed.
+  * Note that using Lite-mode with pre-computed expanded keys is often faster
+  * than using Fast-mode without pre-computed keys, especially for decryption.
   */
 
 #define AES_NEEDED      (OT_FEATURE(DLL_SECURITY) || OT_FEATURE(VL_SECURITY))
+#define AES_EXPKEYS     (AES_NEEDED && OT_FEATURE(AES128_EXPKEYS))
 #define AES_USEHW       (AES_NEEDED && MCU_FEATURE(AES128))
-#define AES_USEFAST     (AES_NEEDED && (MCU_FEATURE(AES128)==DISABLED))
-#define AES_USELITE     (AES_NEEDED && (MCU_FEATURE(AES128)==DISABLED) && MCU_FEATURE(AES128_LITE))
+#define AES_USELITE     (AES_NEEDED && (MCU_FEATURE(AES128)==DISABLED))
+#define AES_USEFAST     (AES_NEEDED && (MCU_FEATURE(AES128)==DISABLED) && OT_FEATURE(AES128_FAST))
+
 
 
 // Number of 32 bit words to store an AES128 block
@@ -57,45 +132,60 @@
 // Number of 32 bit words to store an AES128 key
 #define AES_KEY_SIZE    4  
 
-// Number of 32bits words to store in an AES128 expanded key ...
-// The expanded key is the key after the keyschedule.
+// Number of *BYTES* to allocate for an AES128 expanded key ...
+// Encryption key is 44 bytes (352 bits)
+// Decryption key is 40 bytes (320 bits)
 #define AES_EXPKEY_SIZE 44 
                            
 
 
 
-void AES_load_static_key(ot_u8 key_id, ot_u32* key);
 
- 
-/** @brief According to key computes the expanded key exp for AES128 encryption. 
+
+/** @brief Computes 352 bit expanded encryption key based on 128 bit stored key
+  * @author STMicro MCD Applications Team
+  * @param key              (ot_u32*) stored key (128 bits)
+  * @param exp              (ot_u32*) expanded encryption key (352 bits)
+  * @retval None
+  * @ingroup AES128
   * @ingroup AES128
   */ 
-void AES_keyschedule_enc(ot_u32* key, ot_u32* exp);
+void AES_expand_enckey(ot_u32* key, ot_u32* exp);
 
 
 
-/** @brief According to key computes the expanded key exp for AES128 decryption.
+/** @brief Computes 320 bit expanded decryption key based on 128 bit stored key
+  * @author STMicro MCD Applications Team
+  * @param key              (ot_u32*) stored key (128 bits)
+  * @param exp              (ot_u32*) expanded decryption key (320 bits)
+  * @retval None
   * @ingroup AES128
   */
-void AES_keyschedule_dec(ot_u32* key, ot_u32* exp); 
+void AES_expand_deckey(ot_u32* key, ot_u32* exp); 
  
  
- 
-/** @brief Encrypts, according to the expanded key expkey, one block of 16 bytes  
-  *        at address 'input_pointer' into the block at address 'output_pointer'
-  *        (they can be the same).
+
+/** @brief Encrypts one 128 bit block of data with supplied, expanded key
+  * @author STMicro MCD Applications Team
+  * @param input_pointer    (ot_u32*) input data block pointer (128 bits)
+  * @param output_pointer   (ot_u32*) output data block pointer (128 bits)
+  * @param expkey           (ot_u32*) expanded encryption key (352 bits)
+  * @retval None
   * @ingroup AES128
   */
-void AES_encrypt(ot_u32* input_pointer, ot_u32* output_pointer, ot_u32* expkey); 
+void AES_encrypt_block(ot_u32* input_pointer, ot_u32* output_pointer, ot_u32* expkey); 
  
  
  
-/** @brief Decrypts, according to the expanded key expkey, one block of 16 bytes  
-  *        at address 'input_pointer' into the block at address 'output_pointer'
-  *        (they can be the same).
+/** @brief Decrypts one 128 bit block of data with supplied, expanded key
+  * @author STMicro MCD Applications Team
+  * @param input_pointer    (ot_u32*) input data block pointer (128 bits)
+  * @param output_pointer   (ot_u32*) output data block pointer (128 bits)
+  * @param expkey           (ot_u32*) expanded decryption key (320 bits)
+  * @retval None
   * @ingroup AES128
   */
-void AES_decrypt(ot_u32* input_pointer, ot_u32* output_pointer, ot_u32* expkey); 
+void AES_decrypt_block(ot_u32* input_pointer, ot_u32* output_pointer, ot_u32* expkey); 
  
  
 
