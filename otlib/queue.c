@@ -272,14 +272,18 @@ void q_readstring(ot_queue* q, ot_u8* string, ot_int length) {
 void q_print(ot_queue* q) {
     int length;
     int i;
-    unsigned int row;
+    int row;
     length = q_length(q);
     
     printf("Queue Length/Alloc: %d/%d\n", length, q->alloc);
+    printf("Queue Getcursor:    %d\n", (int)(q->getcursor-q->front));
+    printf("Queue Putcursor:    %d\n", (int)(q->putcursor-q->front));
     
-    for (row=0; row<length; row+=8) {
-        printf("%04X: ", row);
-        for (i=row; i<length; i++) {
+    for (i=0, row=0; length>0; ) {
+        length -= 8;
+        row    += (length>0) ? 8 : 8+length;
+        printf("%04X: ", i);
+        for (; i<row; i++) {
             printf("%02X ", q->front[i]);
         }
         printf("\n");

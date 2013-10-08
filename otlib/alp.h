@@ -183,19 +183,39 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id);
 
 
 
+
+/** @brief  Setup a new Application queue from the main alp input queue
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @param  appq        (ot_queue*) subordinate queue used by Application
+  * @param  front       (ot_u8*) pointer to use as front of appq
+  * @retval ot_u8       Record Flags for next matching record.  0 if none found
+  * @ingroup ALP
+  * @sa alp_goto_next
+  *
+  * Non-atomic applications that run from a shared ALP usually need to maintain
+  * an independent application queue.  The function alp_goto_next will draw
+  * from said queue, and before using that function, you should prepare your
+  * application queue using this function.
+  */
+void alp_new_appq(alp_tmpl* alp, ot_queue* appq, ot_u8* front);
+
+
+
+
 /** @brief  Application Traversal Function for ALP input
   * @param  alp         (alp_tmpl*) ALP I/O control structure
-  * @param  subq        (ot_queue*) subordinate queue used by Application
+  * @param  appq        (ot_queue*) subordinate queue used by Application
   * @param  target      (ot_u8) ALP ID used by the Application
   * @retval ot_u8       Record Flags for next matching record.  0 if none found
   * @ingroup ALP
   * @sa alp_retrieve_cmd
+  * @sa alp_new_appq
   *
   * This function is important for Applications that require non-atomic
   * processing of ALP messages.  Since an ALP stream can be shared by multiple
   * applications, this function will traverse the ALP input stream
   */
-ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* subq, ot_u8 target);
+ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target);
 
 
 
@@ -409,7 +429,7 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval);
 
 
 
-void alp_load_header(ot_queue* subq, alp_record* rec);
+void alp_load_header(ot_queue* appq, alp_record* rec);
 
 
 

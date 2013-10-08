@@ -112,7 +112,7 @@
 #define SRAM_SIZE                   (16*1024)
 #define EEPROM_START_ADDR           0
 #define EEPROM_SIZE                 0
-#define FLASH_START_ADDR            0x8000
+#define FLASH_START_ADDR            (&platform_flash[0])
 #define FLASH_START_PAGE            0
 #define FLASH_PAGE_SIZE             512
 #define FLASH_WORD_BYTES            2
@@ -120,7 +120,7 @@
 #define FLASH_NUM_PAGES             64
 #define FLASH_FS_PAGES              8
 #define FLASH_FS_ALLOC              (FLASH_PAGE_SIZE*FLASH_FS_PAGES)     //allocating total of 8 blocks (4KB)
-#define FLASH_FS_ADDR               0x8000
+#define FLASH_FS_ADDR               (&platform_flash[0])
 #define FLASH_FS_FALLOWS            3
 
 #define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )

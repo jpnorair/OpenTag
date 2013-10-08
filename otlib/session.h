@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/session.h
   * @author     JP Norair
-  * @version    R101
-  * @date       26 Sept 2013
+  * @version    R102
+  * @date       7 Oct 2013
   * @brief      Mode 2 Session Framework
   * @defgroup   Session (Session Layer)
   * @ingroup    Session
@@ -181,7 +181,8 @@ typedef void (*ot_app)(m2session*);
 
 
 typedef struct {
-    ot_s8       top;
+    ot_int      top;
+    ot_u8       reserved;
     ot_u8       seq_number;
     m2session   heap[OT_PARAM(SESSION_DEPTH)];
 } session_struct;

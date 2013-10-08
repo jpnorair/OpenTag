@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/session.c
   * @author     JP Norair
-  * @version    R100
-  * @date       8 Aug 2012
+  * @version    R101
+  * @date       7 Oct 2013
   * @brief      DASH7 M2 (ISO 18000-7.4) Session Framework
   * @ingroup    Session
   *
@@ -133,7 +133,7 @@ m2session* session_new(ot_app applet, ot_uint new_counter, ot_u8 new_netstate, o
     session.heap[pos].channel   = new_channel;
     session.heap[pos].netstate  = new_netstate;     ///@note may consider OR with M2_NETSTATE_INIT
     session.heap[pos].extra     = 0;
-    session.heap[pos].dialog_id = ++session.seq_number;
+    session.heap[pos].dialog_id = platform_prand_u8();
     
     return &session.heap[pos];
 }
@@ -144,7 +144,7 @@ m2session* session_new(ot_app applet, ot_uint new_counter, ot_u8 new_netstate, o
 
 #ifndef EXTF_session_occupied
 ot_bool session_occupied(ot_u8 chan_id) {
-    ot_s8 i;
+    ot_int i;
     
     for (   i=session.top; 
             (i>=0) && (chan_id != session.heap[i].channel); 

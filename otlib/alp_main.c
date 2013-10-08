@@ -131,7 +131,7 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
 #ifndef EXTF_alp_init
 void alp_init(alp_tmpl* alp, ot_queue* inq, ot_queue* outq) {
 	alp->inrec.flags    = 0;
-	alp->outrec.flags   = 0;
+	alp->outrec.flags   = (ALP_FLAG_MB | ALP_FLAG_ME | ALP_FLAG_SR);
 	alp->inq            = inq;
 	alp->outq           = outq;
 }
@@ -182,6 +182,7 @@ void alp_notify(alp_tmpl* alp, ot_sig callback) {
 
 
 
+#include <stdio.h>
 
 #ifndef EXTF_alp_parse_message
 ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
@@ -190,6 +191,8 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
     
 #else
     ALP_status exit_code = MSG_Null;
+    
+    ///@todo engage ALP locks
     
     /// Loop through records in the input message.  Each input message can
     /// generate 0 or 1 output messages.
@@ -202,8 +205,8 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         
         /// Safety check: make sure both queues have room remaining for the
         /// most minimal type of message, an empty message
-        if (((alp->inq->back - alp->inq->getcursor) < 6) || \
-            ((alp->outq->back - alp->outq->putcursor) < 6)) {
+        if (((alp->inq->back - alp->inq->getcursor) < 4) || \
+            ((alp->outq->back - alp->outq->putcursor) < 4)) {
             break;
         }
 
@@ -216,19 +219,22 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         if (alp->outrec.flags & ALP_FLAG_ME) {
             input_position = alp->inq->getcursor;
             if (alp_parse_header(alp) == False) {
-                return MSG_Null;
+                break;
             }
             //platform_memcpy(&alp->outrec.flags, &alp->inrec.flags, 4);
             *((ot_u32*)&alp->outrec.flags) = *((ot_u32*)&alp->inrec.flags);
-            q_empty(alp->outq);
         }
-                   
+        
+        ///@todo transform output creation part to a separate function call the
+        ///      application should use when building response messages.  That
+        ///      function should handle chunking.
+        
         /// Reserve space in alp->outq for header data.  It is updated later.
         /// The flags and payload length are determined by processing, so this
         /// method is necessary.
-        hdr_len                 = sub_get_headerlen(alp->outrec.flags & 7);
+        //OBSOLETE: hdr_len = sub_get_headerlen(alp->outrec.flags & 7);
         hdr_position            = alp->outq->putcursor;
-        alp->outq->putcursor   += hdr_len;
+        alp->outq->putcursor   += 4; //OBSOLETE: hdr_len;
         
         /// ALP Proc must write appropriate data to alp->outrec, and it must
         /// make sure not to overrun the output queue.  It must write:
@@ -243,22 +249,34 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
             alp->outrec.flags     &= ~NDEF_CF;
         }
         else {
-            sub_insert_header(alp, hdr_position, hdr_len);
+            //OBSOLETE: sub_insert_header(alp, hdr_position, hdr_len);
+            platform_memcpy(hdr_position, &alp->outrec.flags, 4);
+            alp->outrec.flags  &= ~ALP_FLAG_MB;
         }
             
         /// This version of ALP does not support nested messages.  It will
         /// terminate processing and return when the input message is ended.
+        /// The if-else serves to auto-purge the last message, if possible
         if (alp->inrec.flags & ALP_FLAG_ME) {
-            if (atomic) {
-             //#alp->inq->length   -= (alp->inq->putcursor - input_position);
+            ot_u8* nextrecord;
+            nextrecord  = input_position + input_position[1] + 4;
+            if (atomic && (nextrecord == alp->inq->putcursor)) {
                 alp->inq->putcursor = input_position;
                 alp->inq->getcursor = input_position;
             }
+            else {
+                input_position[0]   = 0;
+                alp->inq->getcursor = nextrecord;
+            }
+            
             exit_code = MSG_End;
+            break;
         }
     }
-    while (exit_code != MSG_End);
-        
+    while (exit_code != MSG_Null);
+    
+    ///@todo release ALP locks
+    
     return exit_code;
 #endif
 }
@@ -266,14 +284,26 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
 
 
 
+#ifndef EXTF_alp_new_appq
+void alp_new_appq(alp_tmpl* alp, ot_queue* appq, ot_u8* front) {
+    //DEBUG_ASSERT
+    appq->alloc     = alp->inq->alloc;
+    appq->front     = front;
+    appq->back      = front + front[1] + 4;
+    appq->getcursor = front;
+    appq->putcursor = alp->inq->putcursor;
+}
+#endif
+
 
 #ifndef EXTF_alp_goto_next
-ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* subq, ot_u8 target) {
-    while ((alp->inq->putcursor - subq->back) > 0) {
-        subq->getcursor = subq->back;
-        subq->back      = subq->getcursor + subq->getcursor[1];
-        if ((subq->getcursor[0] != 0) && (subq->getcursor[2] == target)) {
-            return subq->getcursor[0];
+ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target) {
+    //DEBUG_ASSERT
+    while ((alp->inq->putcursor - appq->back) > 0) {
+        appq->getcursor = appq->back;
+        appq->back      = appq->getcursor + appq->getcursor[1] + 4;
+        if ((appq->getcursor[0] != 0) && (appq->getcursor[2] == target)) {
+            return appq->getcursor[0];
         }
     }
     return 0;
@@ -581,45 +611,64 @@ void alp_new_message(alp_tmpl* alp, ot_u8 payload_limit, ot_int payload_remainin
 
 #ifndef EXTF_alp_parse_header
 ot_bool alp_parse_header(alp_tmpl* alp) {
-    // ALP & NDEF Universal Field (Flags)
-    alp->inrec.flags = *alp->inq->getcursor++;
-
-    // Clear bookmarks on new message input
+    ot_u8* msgfront;
+    msgfront                = alp->inq->getcursor;
+    alp->inq->getcursor    += 4;
+    platform_memcpy(&alp->inrec.flags, msgfront, 4);
+    
+    ///@todo this is legacy code.  Bookmark should get removed in future
     if (alp->inrec.flags & ALP_FLAG_MB) {
-    	alp->inrec.bookmark     = NULL;
+        alp->inrec.bookmark     = NULL;
     	alp->outrec.bookmark    = NULL;
     }
 
+    ///@todo could do some checking here, not sure if necessary though.
+    return True;
+
+    ///@note Old, Obsolete code is below
+    
+    // ALP & NDEF Universal Field (Flags)
+//    alp->inrec.flags = *alp->inq->getcursor++;
+
+    // OBSOLETE: Clear bookmarks on new message input 
+//    if (alp->inrec.flags & ALP_FLAG_MB) {
+//    	alp->inrec.bookmark     = NULL;
+//    	alp->outrec.bookmark    = NULL;
+//    }
+
     // ALP type
-    if ((alp->inrec.flags & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) {
-    	ot_u8* qdata;
-    	qdata                   = alp->inq->getcursor;
-    	alp->inq->getcursor    += 3;
-    	platform_memcpy(&alp->inrec.plength, qdata, 3);
-    	return True;
-    }
+//    if ((alp->inrec.flags & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) {
+//    	ot_u8* qdata;
+//    	qdata                   = alp->inq->getcursor;
+//    	alp->inq->getcursor    += 3;
+//    	platform_memcpy(&alp->inrec.plength, qdata, 3);
+//    	return True;
+//    }
 
-#if (OT_FEATURE(NDEF) == ENABLED)
-    // NDEF Universal Fields
-    alp->inq->getcursor++;	                            //bypass type length
-    alp->inrec.plength  = *alp->inq->getcursor++;       //get payload length
     
-    // NDEF Type Unchanged (for Chunking)
-    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_SR+6)) {
-        return True;
-    }
-    
-    // NDEF Type Unknown (for MB==1)
-    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_MB+NDEF_SR+NDEF_IL+5)) {
-    	if (*alp->inq->getcursor++ == 2) {
-    		alp->inrec.id   = *alp->inq->getcursor++;
-            alp->inrec.cmd  = *alp->inq->getcursor++;
-            return True;
-    	}
-    }
-#endif
 
-    return False;
+// Obsolete
+//#if (OT_FEATURE(NDEF) == ENABLED)
+//    // NDEF Universal Fields
+//    alp->inq->getcursor++;	                            //bypass type length
+//    alp->inrec.plength  = *alp->inq->getcursor++;       //get payload length
+//    
+//    // NDEF Type Unchanged (for Chunking)
+//    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_SR+6)) {
+//        return True;
+//    }
+//    
+//    // NDEF Type Unknown (for MB==1)
+//    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_MB+NDEF_SR+NDEF_IL+5)) {
+//    	if (*alp->inq->getcursor++ == 2) {
+//    		alp->inrec.id   = *alp->inq->getcursor++;
+//            alp->inrec.cmd  = *alp->inq->getcursor++;
+//            return True;
+//    	}
+//    }
+//#endif
+//
+//    return False;
 }
 #endif
 
@@ -651,12 +700,12 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
 
 ///@note this function is a recent inclusion, but it's not used.  Don't use it
 /// until new ALP is stable, if it is still here.
-void alp_load_header(ot_queue* subq, alp_record* rec) {
-    rec->flags      = q_readbyte(subq);
-    rec->plength    = q_readbyte(subq);
-    rec->id         = q_readbyte(subq);
-    rec->cmd        = q_readbyte(subq);
-    //q_readstring(subq, (ot_u8*)&rec->flags, 4);  //works only on packed structs
+void alp_load_header(ot_queue* appq, alp_record* rec) {
+    rec->flags      = q_readbyte(appq);
+    rec->plength    = q_readbyte(appq);
+    rec->id         = q_readbyte(appq);
+    rec->cmd        = q_readbyte(appq);
+    //q_readstring(appq, (ot_u8*)&rec->flags, 4);  //works only on packed structs
 }
 
 

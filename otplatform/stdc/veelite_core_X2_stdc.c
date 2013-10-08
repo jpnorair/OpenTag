@@ -54,9 +54,6 @@ ot_u8 NAND_write_short(ot_u16* addr, ot_u16 data) {
 }
 
 
-#define NAND_erase_page(page_addr)      (ot_u8)FLASH_EraseSegment(page_addr)
-#define NAND_write_short(addr, data)    (ot_u8)FLASH_WriteShort(addr, data)
-
 /// VLX2 Debugging
 /// This driver is quite stable, so debugging features are not implemented
 /// even when __DEBUG__ is active
@@ -300,26 +297,8 @@ ot_u8 vworm_init( ) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE(VLNVWRITE) == ENABLED))
     ot_u8   test    = 0;
     ot_u16* s_ptr;
-
-#   if defined(_TOUCH_FILEDATA)
-        /* access const files here to prevent linker discarding them */
-        if (overhead_files != (ot_u8 *)(FLASH_FS_ADDR + OVERHEAD_START_VADDR)) {
-            return 1;
-        }
-        if (isfs_stock_codes != (ot_u8 *)(FLASH_FS_ADDR + ISFS_START_VADDR) ) {
-            for (;;) __nop();
-        }
-#       if (GFB_TOTAL_BYTES > 0)
-            if (gfb_stock_files != (ot_u8 *)(FLASH_FS_ADDR + GFB_START_VADDR) ) {
-                for (;;) __nop();
-            }
-#       endif
-        if (isf_stock_files != (ot_u8 *)(FLASH_FS_ADDR + ISF_START_VADDR) ) {
-            for (;;) __nop();
-        }
-#   endif
-
-    s_ptr = (ot_u16*)(VWORM_BASE_PHYSICAL + (VWORM_PAGESIZE*(VWORM_NUM_PAGES-1)));
+            
+    s_ptr = (ot_u16*)&platform_flash[VWORM_PAGESIZE*(VWORM_NUM_PAGES-1)];
 
     /// 1. If the last block starts with FFFF, assume that a format just
     ///    happened, in which case we can ignore doing anything.

@@ -42,7 +42,7 @@
 #include "external.h"
 
 
-/// IAP inclusion: a hack.  Fix this later with some extension header
+///@todo IAP inclusion: a hack.  Fix this later with some extension header
 #if (BOARD_FEATURE(IAP) == ENABLED)
 #   include "iap.h"
 #elif (BOARD_FEATURE(IAP2) == ENABLED)

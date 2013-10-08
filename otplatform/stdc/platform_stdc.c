@@ -330,7 +330,7 @@ void platform_poweron() {
     
     /// 2. Board-specific power-up
     ///@todo this
-    platform_init_memcpy();
+    platform_init_memcpy(); 
     platform_init_prand(0);
     
     /// 3. Initialize OpenTag platform peripherals
@@ -351,11 +351,6 @@ void platform_poweron() {
     // Restore vworm (following save on shutdown)
 #   if (OT_FEATURE(VEELITE) == ENABLED)
         vworm_init();
-#   endif
-
-    /// 7. Mpipe (message pipe) typically used for serial-line comm.
-#   if (OT_FEATURE(MPIPE) == ENABLED)
-        mpipe_init(NULL);
 #   endif
 }
 
@@ -380,8 +375,18 @@ void platform_init_OT() {
 #   if (OT_FEATURE(RTC) == ENABLED)
     platform_init_rtc(364489200);
 #   endif
-#   if (OT_FEATURE(SERVER) == ENABLED)
-	//sys_init();     //system init last
+#   if !defined(__KERNEL_NONE__)
+	sys_init();     //system init last
+#   else
+#       if (OT_FEATURE(EXT_TASK) == ENABLED)
+        //ext_init();
+#       endif
+#       if (OT_FEATURE(M2))
+        dll_init();
+#       endif
+#       if (OT_FEATURE(MPIPE) == ENABLED)
+        mpipe_connect(NULL);
+#       endif
 #   endif
 	
 #   if (OT_FEATURE(VEELITE) && (defined(__DEBUG__) || defined(__PROTO__)))
@@ -397,6 +402,7 @@ void platform_init_OT() {
 		vlFILE*   fpid;
 		ot_u16*   hwid;
 		uint64_t  number; 
+		ot_int    i;
 
         fpid    = ISF_open_su(1);
         number  = rand();
