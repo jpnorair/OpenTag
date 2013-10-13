@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /OTlib/buffers.h
+  * @file       /otlib/buffers.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 June 2011
-  * @brief      An inline, volatile set of stream buffers used with Queues
+  * @version    R100
+  * @date       8 Oct 2013
+  * @brief      An inline, volatile set of stream buffers used with OT Queues
   * @defgroup   Buffers (Buffers Module)
   * @ingroup    Buffers
   *
@@ -67,19 +67,18 @@ extern ot_u8 otbuf[OT_PARAM(BUFFER_SIZE)];
 
 
 
-#if (OT_FEATURE(SERVER) == ENABLED)
+#if (OT_FEATURE(SERVER) && OT_FEATURE(M2))
     /// Required Queues (on server side): rxq and txq are used for DASH7 I/O
-    extern Queue rxq;
-    extern Queue txq;
+    extern ot_queue rxq;
+    extern ot_queue txq;
 #endif
 
-#if (   (OT_FEATURE(NDEF)  == ENABLED) || \
-        (OT_FEATURE(ALP)   == ENABLED) || \
-        (OT_FEATURE(MPIPE) == ENABLED) )
-    /// Directive Queues: optional, used for ALP processing and usually also 
-    /// NDEF record usage (if enabled)
-    extern Queue otmpin;
-    extern Queue otmpout;
+#if (OT_FEATURE(NDEF) || OT_FEATURE(ALP) || OT_FEATURE(MPIPE))
+    /// Analagous to stdin/stdout.  Frequently used ALP application queues
+    extern ot_queue otmpin;
+    extern ot_queue otmpout;
+    
+    
 #endif
 
 

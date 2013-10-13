@@ -603,6 +603,7 @@ void em2_encode_newframe() {
     /// 1. Prepare the CRC, also adding 2 bytes to the frame length
     if (txq.options.ubyte[UPPER] != 0) {
         crc_init_stream(q_span(&txq), txq.getcursor);
+        txq.putcursor += 2;
         //#txq.length += 2;
 	}
 
@@ -682,7 +683,10 @@ void em2_decode_data() {
         
         if (em2.state == 0) {
             em2.state--;
-            em2.bytes = 1 + (ot_int)rxq.front[0];
+            ///@todo Check with ST if manual trellis-terminator accomodation is required.
+            //rfctl.txlimit   = (phymac[0].channel >> 7);     //trellis terminator
+            //rfctl.txlimit  += rxq.front[0] & 1;             //trellis terminator
+            em2.bytes       = 1 + (ot_int)rxq.front[0];
             crc_init_stream(em2.bytes, rxq.getcursor);
         }
         
@@ -774,7 +778,7 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     else {
         //spirit1_write(RFREG(PCKTCTRL4), DRF_PCKTCTRL4+3);
         pktlen          = 0x100;                       ///@todo should be MAXPKTLEN
-        rfctl.flags    |= (phymac[0].channel >> 7);     // include FEC flag
+        //rfctl.flags    |= (phymac[0].channel >> 7);     // include FEC flag
         //buffer_mode     = ((rfctl.flags & 3) != 0) + MODE_fgauto;
         //buffer_mode     = ((rfctl.flags & 2) != 0) + MODE_fgpage; 
         buffer_mode     = MODE_fgpage;
@@ -941,7 +945,7 @@ void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     else {
         netstate    = session_netstate();
 #       if (M2_FEATURE(MULTIFRAME) == ENABLED)
-        rfctl.flags |= ((netstate & M2_NETSTATE_DSDIALOG) != 0); //sets RADIO_FLAG_FRCONT
+        rfctl.flags |= ((session_netstate() & M2_NETSTATE_DSDIALOG) >> 1); //sets RADIO_FLAG_FRCONT
 #       endif
     }
 
@@ -1036,6 +1040,12 @@ void rm2_rxdata_isr() {
             if (em2.bytes <= 0) {
                 goto rm2_rxdata_isr_DONE;
             }
+            ///@todo see if manual trellis termination is required.  I don't think so.
+            //if (em2.bytes <= 94) {
+            //    rfctl.rxlimit   = ((94+rfctl.txlimit) - em2.bytes);
+            //    rfctl.state     = RADIO_STATE_RXDONE;
+            //    goto rm2_rxdata_isr_RESIZE; 
+            //}
             if (em2.bytes <= 96) {
                 rfctl.rxlimit   = (96-em2.bytes);
                 rfctl.state     = RADIO_STATE_RXDONE;
@@ -1103,7 +1113,8 @@ void rm2_rxend_isr() {
 #ifndef EXTF_rm2_txinit
 void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
 #if (SYS_FLOOD == ENABLED)
-    rfctl.flags    |= (psettings != 0) ? RADIO_FLAG_FLOOD : 0;
+    //rfctl.flags    |= (psettings != 0) ? RADIO_FLAG_FLOOD : 0;
+    rfctl.flags     |= (psettings != 0) << 2;   //sets RADIO_FLAG_FLOOD
 #endif
 #if (M2_FEATURE(MULTIFRAME) == ENABLED)
     rfctl.flags    |= ((session_netstate() & M2_NETSTATE_DSDIALOG) >> 1); //sets RADIO_FLAG_FRCONT
@@ -1517,6 +1528,7 @@ void subrfctl_chan_config(ot_u8 old_chan, ot_u8 old_eirp) {
 
     ot_u8 fc_i;
 
+///@note this flag no longer used
 //#   if (M2_FEATURE(FEC) == ENABLED)
 //    rfctl.flags |= phymac[0].channel >> 7;
 //#   endif

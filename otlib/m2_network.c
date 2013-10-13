@@ -145,7 +145,7 @@ void network_mark_ff() {
 
 
 #ifndef EXTF_network_route_ff
-ot_int network_route_ff(m2session* session) {
+ot_int network_route_ff(m2session* active) {
     ot_int route_val;
 
     /// Strip CRC (-2 bytes)
@@ -153,8 +153,8 @@ ot_int network_route_ff(m2session* session) {
     
     /// Acquire Flags and Protocol from the Frame Info Field
     rxq.getcursor       = &rxq.front[3];
-    session->extra      = (*rxq.getcursor & M2FI_FRTYPEMASK);
-    session->flags      = *rxq.getcursor & 0xC0;
+    active->extra       = (*rxq.getcursor & M2FI_FRTYPEMASK);
+    active->flags       = *rxq.getcursor & 0xC0;
     m2np.header.fr_info = *rxq.getcursor++;
         
     /// Data Link Layer Security
@@ -174,21 +174,21 @@ ot_int network_route_ff(m2session* session) {
     /// - if unassociated, connect now
     /// - if already connected, make sure the incremented dialog IDs are equal
     if (m2np.header.fr_info & M2FI_ENADDR) {
-        if (session->netstate & M2_NETSTATE_CONNECTED) {
-            session->dialog_id++;
-            if (session->dialog_id != q_readbyte(&rxq)) {
+        if (active->netstate & M2_NETSTATE_CONNECTED) {
+            active->dialog_id++;
+            if (active->dialog_id != q_readbyte(&rxq)) {
                 return -1;
             }
         }
         else {
-            session->netstate  |= M2_NETSTATE_CONNECTED;
-            session->subnet     = rxq.front[2];
-            session->dialog_id  = q_readbyte(&rxq);
+            active->netstate  |= M2_NETSTATE_CONNECTED;
+            active->subnet     = rxq.front[2];
+            active->dialog_id  = q_readbyte(&rxq);
         }
         
         /// Grab global flags from Address Control
         m2np.header.addr_ctl    = q_readbyte(&rxq);
-        session->flags         |= m2np.header.addr_ctl & 0x3F;
+        active->flags         |= m2np.header.addr_ctl & 0x3F;
         
         /// Grab Source Address from this packet (dialog address), which is 
         /// converted to the target address in the response.
@@ -208,7 +208,7 @@ ot_int network_route_ff(m2session* session) {
         /// the same length as the source address, and it needs to match this
         /// device's device ID (VID or UID)
         if ((m2np.header.addr_ctl & 0xC0) == 0) {
-            session->netstate |= M2_NETFLAG_FIRSTRX;
+            active->netstate |= M2_NETFLAG_FIRSTRX;
             if ( m2np_idcmp(m2np.rt.dlog.length, q_markbyte(&rxq, m2np.rt.dlog.length)) == False ) {
                 return -1;
             }
@@ -219,7 +219,7 @@ ot_int network_route_ff(m2session* session) {
     /// Most network protocols don't do anything except broadcast.  M2NP is the
     /// exception, and it manages various types of routing at the network layer.
     route_val = -1;
-    if ((session->extra & M2FI_FRTYPEMASK) < M2FI_STREAM) {
+    if ((active->extra & M2FI_FRTYPEMASK) < M2FI_STREAM) {
         // Reset routing template
         m2np.rt.hop_code    = 0;
         m2np.rt.hop_ext     = 0;
@@ -248,17 +248,17 @@ ot_int network_route_ff(m2session* session) {
     /// M2DP gets parsed just like M2NP, but it uses the Network data
     /// stored from the last M2NP frame.  m2qp_parse_frame must return negative
     /// values for bad parsed requests as well as ALL parsed responses
-    route_val = m2qp_parse_frame(session);
+    route_val = m2qp_parse_frame(active);
     
     /// Attach footer to response, if necessary
     if (route_val >= 0) {
-        m2np_footer( /* session */);
+        m2np_footer( /* active */);
     }
 
 #   if defined(EXTF_network_sig_route)
-        network_sig_route((void*)&route_val, (void*)session);
+        network_sig_route((void*)&route_val, (void*)active);
 #   elif (OT_FEATURE(M2NP_CALLBACKS) == ENABLED)
-        m2np.signal.route((void*)&route_val, (void*)session);
+        m2np.signal.route((void*)&route_val, (void*)active);
 #   endif
     
     return route_val;
@@ -275,10 +275,11 @@ ot_int network_route_ff(m2session* session) {
   * - M2NP = Mode 2 Network Protocol.
   * - Routable, primary data-networking protocol for DASH7 Mode 2.
   * @todo Make sure rxq.back is set to end of the M2QP payload
+  * @todo rearrange some elements from "extra" and "flags."
   */
 
 #ifndef EXTF_m2np_header
-void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack) {
+void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
 /// Build an M2NP header, which gets forwarded in all cases to M2QP at the 
 /// transport layer, and which has NM2=0, Frame_Type={0,1}
 
@@ -290,13 +291,13 @@ void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack) {
     q_writebyte(&txq, 0);                           // null length (placeholder only)
     q_writebyte(&txq, 0);                           // Dummy TX EIRP setting (placeholder only)
     //q_writeshort(&txq, 0x0000);
-    q_writebyte(&txq, session->subnet);
-    session->netstate      |= (addressing) ? 0 : M2_NETFLAG_FIRSTRX;    //Set FIRSTRX mode on Unicast
-    m2np.header.fr_info     = (session->flags & 0xC0);
-    addressing             |= (session->flags & 0x3F);
-    m2np.header.addr_ctl    = addressing;
-    m2np.header.fr_info    |= M2FI_ENADDR;
-    m2np.header.fr_info    |= nack;             ///@todo make nack include more flags??
+    q_writebyte(&txq, active->subnet);
+    active->netstate       |= (addressing) ? 0 : M2_NETFLAG_FIRSTRX;    //Set FIRSTRX mode on Unicast
+    m2np.header.addr_ctl    = addressing | (active->flags & 0x3F);
+    m2np.header.fr_info     = (active->extra & M2_EXTRA_RFU) ? \
+                                (M2FI_BLOCKCODE+M2FI_ENADDR) : M2FI_ENADDR;
+    m2np.header.fr_info    |= nack;
+    m2np.header.fr_info    |= (active->flags & 0xC0);
     q_writebyte(&txq, m2np.header.fr_info);
     
     /// 2. The DLL/PHY firmware should resolve the Block Code field to 0 or !0, 
@@ -321,7 +322,7 @@ void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack) {
 #   endif
     
     /// 4. Write Dialog, Addr Ctrl, and Source Address (always included in M2NP)
-    q_writebyte(&txq, session->dialog_id);
+    q_writebyte(&txq, active->dialog_id);
     q_writebyte(&txq, m2np.header.addr_ctl);
     m2np_put_deviceid( (ot_bool)(m2np.header.addr_ctl & M2AC_VID) );
 
@@ -455,7 +456,7 @@ ot_bool m2np_idcmp(ot_int length, void* id) {
 
 
 #ifndef EXTF_m2advp_open
-void m2advp_open(m2session* session, ot_u16 duration) {
+void m2advp_open(m2session* active, ot_u16 duration) {
     //q_start(&txq, 1, 0);
     //txq.front[0] = 7;
     
@@ -468,10 +469,10 @@ void m2advp_open(m2session* session, ot_u16 duration) {
     q_writebyte(&txq, 6);
     
     /// This byte is two nibbles: Subnet specifier and AdvP ID (F)
-    q_writebyte(&txq, (session->subnet | 0x0F));
+    q_writebyte(&txq, (active->subnet | 0x0F));
     
     /// The rest is the AdvP payload
-    q_writebyte(&txq, session->channel);
+    q_writebyte(&txq, active->channel);
     q_writeshort(&txq, duration);
 }
 #endif
@@ -498,7 +499,7 @@ void m2advp_close() {
 
 
 #if (0) //ifndef EXTF_m2advp_init_flood
-ot_int m2advp_init_flood(m2session* session, advert_tmpl* adv_tmpl) {
+ot_int m2advp_init_flood(m2session* active, advert_tmpl* adv_tmpl) {
 #if (SYS_FLOOD == ENABLED) 
 #   ifdef _NETWORK_DEBUG
         // Bug catcher
@@ -509,7 +510,7 @@ ot_int m2advp_init_flood(m2session* session, advert_tmpl* adv_tmpl) {
 #   endif
 
     /// Set Netstate to match advertising type
-    session->netstate = (   M2_NETFLAG_FLOOD | M2_NETSTATE_REQTX | \
+    active->netstate = (   M2_NETFLAG_FLOOD | M2_NETSTATE_REQTX | \
                             M2_NETSTATE_INIT /* | M2_NETSTATE_SYNCED */   );
 
     // Store existing TXQ (bit of a hack)
@@ -519,9 +520,9 @@ ot_int m2advp_init_flood(m2session* session, advert_tmpl* adv_tmpl) {
     /// same for all packets in the flood.
     //q_init(&txq, txadv_buffer, 10);
     
-    txq.front[0]    = session->subnet;
+    txq.front[0]    = active->subnet;
     txq.front[1]    = M2_PROTOCOL_M2ADVP;
-    txq.front[2]    = session->channel;
+    txq.front[2]    = active->channel;
     txq.front[3]    = ((ot_u8*)&adv_tmpl->duration)[UPPER];
     txq.front[4]    = ((ot_u8*)&adv_tmpl->duration)[LOWER];
  

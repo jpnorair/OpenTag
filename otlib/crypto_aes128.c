@@ -506,7 +506,7 @@ void AES_expand_deckey(ot_u32* key, ot_u32* expkey) {
   }
   
 #elif (AES_USELITE == ENABLED)
-    AES_expand_enckey(key, exp);
+    AES_expand_enckey(key, expkey);
 #endif
 }   
 

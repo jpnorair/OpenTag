@@ -83,7 +83,11 @@
 
 
 m2dll_struct    dll;
-ot_queue        beacon_queue;
+
+#if (M2_FEATURE(BEACONS))
+    //ot_queue        beacon_queue;
+    ot_uni32        bq_data;
+#endif
 
 void sub_dll_flush();
 void sub_scan_channel(ot_u8 task_offset);
@@ -579,8 +583,6 @@ void dll_systask_beacon(ot_task task) {
 /// The beacon rountine runs as an idependent systask.
     vlFILE*     fp;
     m2session*  b_session;
-    
-    ot_uni32    bq_data;
     ot_uni16    scratch;
 
     if (task->event == 0) return;
@@ -601,7 +603,7 @@ void dll_systask_beacon(ot_task task) {
     //   (ad hoc sessions never return NULL)
     // - Assure cmd code is always Broadcast & Announcement
     scratch.ushort      = vl_read(fp, task->cursor);
-    b_session           = session_new(  sub_beacon_applet, 0,
+    b_session           = session_new(  &sub_beacon_applet, 0,
                                         (M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX),
                                         scratch.ubyte[0]  );
     b_session->subnet   = dll.netconf.b_subnet;
@@ -610,7 +612,6 @@ void dll_systask_beacon(ot_task task) {
     b_session->flags   |= (b_session->extra & 0x30);
 
     // Second & Third 2 bytes: ISF Call Template
-    q_init(&beacon_queue, &bq_data.ubyte[0], 4);
     bq_data.ushort[0]   = vl_read(fp, task->cursor+=2);
     bq_data.ushort[1]   = vl_read(fp, task->cursor+=2);
 
@@ -680,6 +681,7 @@ void sub_scan_applet(m2session* active) {
 void sub_beacon_applet(m2session* active) {
 /// Beaconing is a Request-TX operation, and the value for Tc is the amount of
 /// time to spend in CSMA before quitting the beacon.
+    ot_queue beacon_queue;
     ot_u8 b_params;
     b_params        = active->extra;
     active->extra   = 0;
@@ -687,7 +689,7 @@ void sub_beacon_applet(m2session* active) {
     /// Start building the beacon packet:
     /// <LI> Calling m2np_header() will write most of the front of the frame </LI>
     /// <LI> Add the command byte and optional command-extension byte </LI>
-    m2np_header(active, 0x40, 0);
+    m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
     q_writebyte(&txq, 0x20 + (b_params & 1));
     if (b_params & 0x04) {
         q_writebyte(&txq, (b_params & 0x04));
@@ -711,6 +713,7 @@ void sub_beacon_applet(m2session* active) {
 
     /// If the beacon data is missing or otherwise not accessible by the 
     /// GUEST user, scrap this session.  Else, finish the M2NP frame.
+    q_init(&beacon_queue, &bq_data.ubyte[0], 4);
     if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
         active->netstate = M2_NETFLAG_SCRAP;
     }

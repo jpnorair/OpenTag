@@ -1,4 +1,4 @@
-/*  Copyright 2010-2012, JP Norair
+/*  Copyright 2010-2013, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       otlib/external.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       10 October 2012
+  * @version    R100
+  * @date       12 Oct 2013
   * @brief      External Data & Event Wrappers
   * @defgroup   External (External Module)
   * @ingroup    External

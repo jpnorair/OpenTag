@@ -369,7 +369,7 @@ ot_int sub_parse_request(m2session* session) {
             session->netstate  |= M2_NETSTATE_RESPTX;
             addressing          = ext_get_m2appflags();
             addressing         |= m2np.header.addr_ctl & 0x30;  // make unicast, retain VID & NLS                               
-            m2np_header(session, addressing, 0);                // Create M2QP header
+            m2np_header(session, addressing, M2FI_FRDIALOG);    // Create M2QP header
             q_writebyte(&txq, (M2TT_RESPONSE | cmd_opcode));    // Write Cmd code byte
         }
         

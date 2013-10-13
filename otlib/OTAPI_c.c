@@ -27,7 +27,7 @@
 #include "OT_types.h"
 #include "OT_config.h"
 
-#if (OT_FEATURE(CAPI) == ENABLED)
+#if (OT_FEATURE(CAPI) && OT_FEATURE(M2))
 
 #include "OTAPI_tmpl.h"
 #include "OTAPI_c.h"
@@ -50,7 +50,7 @@
 #include "session.h"
 
 ot_u16 sub_session_handle(m2session* session) {
-    return (session == NULL) ? 0 : *((ot_u16*)&session->extra);
+    return (session == NULL) ? 0 : *((ot_u16*)&session->channel);
 }
 
 
@@ -98,8 +98,8 @@ ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
             platform_memcpy((ot_u8*)&m2np.rt, (ot_u8*)routing, sizeof(routing_tmpl));
         }
 
-        // Load the header: last argument is for NACK (0 means normal request)
-        m2np_header(s_active, (ot_u8)addr, 0);
+        // Load the header
+        m2np_header(s_active, (ot_u8)addr, M2FI_FRDIALOG);
         return 1;
     }
     return 0;

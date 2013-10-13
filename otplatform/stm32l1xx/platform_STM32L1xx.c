@@ -1443,20 +1443,20 @@ void platform_init_interruptor() {
     NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
 #   endif
 #   ifdef __USE_EXTI1
-    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
-    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
+    NVIC->IP[(uint32_t)(EXTI1_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI1_IRQn)>>5)] = (1 << ((uint32_t)(EXTI1_IRQn) & 0x1F));
 #   endif
 #   ifdef __USE_EXTI2
-    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
-    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
+    NVIC->IP[(uint32_t)(EXTI2_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI2_IRQn)>>5)] = (1 << ((uint32_t)(EXTI2_IRQn) & 0x1F));
 #   endif
 #   ifdef __USE_EXTI3
-    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
-    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
+    NVIC->IP[(uint32_t)(EXTI3_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI3_IRQn)>>5)] = (1 << ((uint32_t)(EXTI3_IRQn) & 0x1F));
 #   endif
 #   ifdef __USE_EXTI4
-    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
-    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
+    NVIC->IP[(uint32_t)(EXTI4_IRQn)]        = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(EXTI4_IRQn)>>5)] = (1 << ((uint32_t)(EXTI4_IRQn) & 0x1F));
 #   endif
 #   if (  defined(__USE_EXTI5) \
        || defined(__USE_EXTI6) \

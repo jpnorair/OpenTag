@@ -235,8 +235,8 @@ void session_print() {
         printf("%d: 0x%04X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n", i,
             session.heap[i].counter, 
             session.heap[i].channel, 
-            session.heap[i].dialog_id, 
             session.heap[i].netstate,
+            session.heap[i].dialog_id, 
             session.heap[i].subnet, 
             session.heap[i].extra, 
             session.heap[i].flags);

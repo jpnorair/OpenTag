@@ -82,8 +82,8 @@
 #define M2_NETFLAG_FIRSTRX          0x02            // Stops receiving after first RX found.
 
 
-/** Session power configuration
-  * Used in the m2session.cs_rssi, .cca_rssi, .tx_eirp containers to 
+/** Session power configuration (deprecated)
+  * Used in .cs_rssi, .cca_rssi, .tx_eirp containers to 
   * move power configurations between layers.
   */
 #define M2_RSSI_AUTOSCALE           b10000000
@@ -95,16 +95,6 @@
 #define M2_EIRP_0p5DBM(VAL)         (ot_int)(-80 + (VAL))
 
 
-/** Protocols (Deprecated)
-  */
-#define M2_PROTOCOL_M2NP            0x0
-#define M2_PROTOCOL_M2QP            0x0
-#define M2_PROTOCOL_M2DP            0x2
-#define M2_PROTOCOL_M2ADVP          0xF0
-#define M2_PROTOCOL_M2RESP          0xF1
-
-
-
 /** Session persistent flags
   * Used in the m2session.flags, to pass common flags between layers.
   * The flag values are consistent with the ones used for M2NP/M2QP, but they
@@ -114,6 +104,14 @@
 #define M2_FLAG_DLLS                b01000000
 #define M2_FLAG_VID                 b00100000
 #define M2_FLAG_NLS                 b00010000
+
+
+/** "Extra" Information
+  */
+#define M2_EXTRA_USERFLAGS          0x0F
+#define M2_EXTRA_RFU                0xF0
+
+
 
 
 
@@ -157,7 +155,7 @@ typedef struct m2session {
     ot_u16  counter;
     ot_u8   channel;
     ot_u8   netstate;
-    ot_u8   extra;      ///@todo see if this can be aligned with flags
+    ot_u8   extra;      ///@todo see if there is benefit in re-aligning this element
     ot_u8   dialog_id;
     ot_u8   subnet;
     ot_u8   flags;

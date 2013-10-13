@@ -43,9 +43,9 @@
 
 
 ///@todo IAP inclusion: a hack.  Fix this later with some extension header
-#if (BOARD_FEATURE(IAP) == ENABLED)
+#if (OT_FEATURE(IAP) == ENABLED)
 #   include "iap.h"
-#elif (BOARD_FEATURE(IAP2) == ENABLED)
+#elif (OT_FEATURE(IAP2) == ENABLED)
 #   include "iap2.h"
 #endif
 

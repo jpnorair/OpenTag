@@ -1,4 +1,4 @@
-/* Copyright 2009-2011 JP Norair
+/* Copyright 2009-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,21 +14,17 @@
   *
   */
 /**
-  * @file       OTlib/crc16_table.h
+  * @file       otlib/crc16_table.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       3 Jan 2011
+  * @version    R100
+  * @date       8 Oct 2013
   * @brief      Constants to use for a CRC computation table
   * @ingroup    CRC16   
   *
   * This is a header defining a table that can optionally be used to compute a
   * CRC16 CCITT value.  This is much faster than the bitwise computation method,
-  * although it is not tremendously faster than the optimized computation method
-  * used in the OpenTag CRC SW, and it is slower than using CRC in hardware
-  * (although HW CRC is not always available).  It also consumes 512 bytes of
-  * program memory, which you might not want to give up.  If you have a surplus
-  * of program memory and no working HW CRC (the MSP430 HW CRC doesn't really
-  * work) then this is a good option.
+  * although it is slower than using CRC in hardware (if you have it).
+  *
   ******************************************************************************
   */
 
@@ -36,9 +32,20 @@
 #ifndef __CRC16_TABLE_H
 #define __CRC16_TABLE_H
 
-#include "OT_types.h"
-#include "OT_config.h"
+//#include "OT_types.h"
+//#include "OT_config.h"
 
+
+///Reference SW bytewise impls
+#define CRC8_CALCBYTE(TABLE, CHECKSUM, INPUT)  \
+    do { INPUT ^= CHECKSUM; CHECKSUM ^= TABLE[INPUT]; } while(0)
+
+#define CRC16_CALCBYTE(TABLE, CHECKSUM, INPUT)  \
+    do { INPUT   ^= ((ot_u8*)&CHECKSUM)[UPPER]; \
+         CHECKSUM = (CHECKSUM<<8) ^ TABLE[INPUT]; } while(0)
+
+
+///CRC16 CCITT Table
 #define CRC_TABLE_LENGTH    256
 #define CRC_TABLE_SIZE      512
 
@@ -298,5 +305,272 @@
 #define CRCxFD 0x3EB2
 #define CRCxFE 0x0ED1
 #define CRCxFF 0x1EF0
+
+
+
+
+
+///CRC8 Table (Poly=0x07, no reversing)
+#define CRC8_TABLE_LENGTH    256
+#define CRC8_TABLE_SIZE      256
+
+#define CRC8x00 0x00
+#define CRC8x01 0x07
+#define CRC8x02 0x0E
+#define CRC8x03 0x09
+#define CRC8x04 0x1C
+#define CRC8x05 0x1B
+#define CRC8x06 0x12
+#define CRC8x07 0x15
+#define CRC8x08 0x38
+#define CRC8x09 0x3F
+#define CRC8x0A 0x36
+#define CRC8x0B 0x31
+#define CRC8x0C 0x24
+#define CRC8x0D 0x23
+#define CRC8x0E 0x2A
+#define CRC8x0F 0x2D
+#define CRC8x10 0x70
+#define CRC8x11 0x77
+#define CRC8x12 0x7E
+#define CRC8x13 0x79
+#define CRC8x14 0x6C
+#define CRC8x15 0x6B
+#define CRC8x16 0x62
+#define CRC8x17 0x65
+#define CRC8x18 0x48
+#define CRC8x19 0x4F
+#define CRC8x1A 0x46
+#define CRC8x1B 0x41
+#define CRC8x1C 0x54
+#define CRC8x1D 0x53
+#define CRC8x1E 0x5A
+#define CRC8x1F 0x5D
+#define CRC8x20 0xE0
+#define CRC8x21 0xE7
+#define CRC8x22 0xEE
+#define CRC8x23 0xE9
+#define CRC8x24 0xFC
+#define CRC8x25 0xFB
+#define CRC8x26 0xF2
+#define CRC8x27 0xF5
+#define CRC8x28 0xD8
+#define CRC8x29 0xDF
+#define CRC8x2A 0xD6
+#define CRC8x2B 0xD1
+#define CRC8x2C 0xC4
+#define CRC8x2D 0xC3
+#define CRC8x2E 0xCA
+#define CRC8x2F 0xCD
+#define CRC8x30 0x90
+#define CRC8x31 0x97
+#define CRC8x32 0x9E
+#define CRC8x33 0x99
+#define CRC8x34 0x8C
+#define CRC8x35 0x8B
+#define CRC8x36 0x82
+#define CRC8x37 0x85
+#define CRC8x38 0xA8
+#define CRC8x39 0xAF
+#define CRC8x3A 0xA6
+#define CRC8x3B 0xA1
+#define CRC8x3C 0xB4
+#define CRC8x3D 0xB3
+#define CRC8x3E 0xBA
+#define CRC8x3F 0xBD
+#define CRC8x40 0xC7
+#define CRC8x41 0xC0
+#define CRC8x42 0xC9
+#define CRC8x43 0xCE
+#define CRC8x44 0xDB
+#define CRC8x45 0xDC
+#define CRC8x46 0xD5
+#define CRC8x47 0xD2
+#define CRC8x48 0xFF
+#define CRC8x49 0xF8
+#define CRC8x4A 0xF1
+#define CRC8x4B 0xF6
+#define CRC8x4C 0xE3
+#define CRC8x4D 0xE4
+#define CRC8x4E 0xED
+#define CRC8x4F 0xEA
+#define CRC8x50 0xB7
+#define CRC8x51 0xB0
+#define CRC8x52 0xB9
+#define CRC8x53 0xBE
+#define CRC8x54 0xAB
+#define CRC8x55 0xAC
+#define CRC8x56 0xA5
+#define CRC8x57 0xA2
+#define CRC8x58 0x8F
+#define CRC8x59 0x88
+#define CRC8x5A 0x81
+#define CRC8x5B 0x86
+#define CRC8x5C 0x93
+#define CRC8x5D 0x94
+#define CRC8x5E 0x9D
+#define CRC8x5F 0x9A
+#define CRC8x60 0x27
+#define CRC8x61 0x20
+#define CRC8x62 0x29
+#define CRC8x63 0x2E
+#define CRC8x64 0x3B
+#define CRC8x65 0x3C
+#define CRC8x66 0x35
+#define CRC8x67 0x32
+#define CRC8x68 0x1F
+#define CRC8x69 0x18
+#define CRC8x6A 0x11
+#define CRC8x6B 0x16
+#define CRC8x6C 0x03
+#define CRC8x6D 0x04
+#define CRC8x6E 0x0D
+#define CRC8x6F 0x0A
+#define CRC8x70 0x57
+#define CRC8x71 0x50
+#define CRC8x72 0x59
+#define CRC8x73 0x5E
+#define CRC8x74 0x4B
+#define CRC8x75 0x4C
+#define CRC8x76 0x45
+#define CRC8x77 0x42
+#define CRC8x78 0x6F
+#define CRC8x79 0x68
+#define CRC8x7A 0x61
+#define CRC8x7B 0x66
+#define CRC8x7C 0x73
+#define CRC8x7D 0x74
+#define CRC8x7E 0x7D
+#define CRC8x7F 0x7A
+#define CRC8x80 0x89
+#define CRC8x81 0x8E
+#define CRC8x82 0x87
+#define CRC8x83 0x80
+#define CRC8x84 0x95
+#define CRC8x85 0x92
+#define CRC8x86 0x9B
+#define CRC8x87 0x9C
+#define CRC8x88 0xB1
+#define CRC8x89 0xB6
+#define CRC8x8A 0xBF
+#define CRC8x8B 0xB8
+#define CRC8x8C 0xAD
+#define CRC8x8D 0xAA
+#define CRC8x8E 0xA3
+#define CRC8x8F 0xA4
+#define CRC8x90 0xF9
+#define CRC8x91 0xFE
+#define CRC8x92 0xF7
+#define CRC8x93 0xF0
+#define CRC8x94 0xE5
+#define CRC8x95 0xE2
+#define CRC8x96 0xEB
+#define CRC8x97 0xEC
+#define CRC8x98 0xC1
+#define CRC8x99 0xC6
+#define CRC8x9A 0xCF
+#define CRC8x9B 0xC8
+#define CRC8x9C 0xDD
+#define CRC8x9D 0xDA
+#define CRC8x9E 0xD3
+#define CRC8x9F 0xD4
+#define CRC8xA0 0x69
+#define CRC8xA1 0x6E
+#define CRC8xA2 0x67
+#define CRC8xA3 0x60
+#define CRC8xA4 0x75
+#define CRC8xA5 0x72
+#define CRC8xA6 0x7B
+#define CRC8xA7 0x7C
+#define CRC8xA8 0x51
+#define CRC8xA9 0x56
+#define CRC8xAA 0x5F
+#define CRC8xAB 0x58
+#define CRC8xAC 0x4D
+#define CRC8xAD 0x4A
+#define CRC8xAE 0x43
+#define CRC8xAF 0x44
+#define CRC8xB0 0x19
+#define CRC8xB1 0x1E
+#define CRC8xB2 0x17
+#define CRC8xB3 0x10
+#define CRC8xB4 0x05
+#define CRC8xB5 0x02
+#define CRC8xB6 0x0B
+#define CRC8xB7 0x0C
+#define CRC8xB8 0x21
+#define CRC8xB9 0x26
+#define CRC8xBA 0x2F
+#define CRC8xBB 0x28
+#define CRC8xBC 0x3D
+#define CRC8xBD 0x3A
+#define CRC8xBE 0x33
+#define CRC8xBF 0x34
+#define CRC8xC0 0x4E
+#define CRC8xC1 0x49
+#define CRC8xC2 0x40
+#define CRC8xC3 0x47
+#define CRC8xC4 0x52
+#define CRC8xC5 0x55
+#define CRC8xC6 0x5C
+#define CRC8xC7 0x5B
+#define CRC8xC8 0x76
+#define CRC8xC9 0x71
+#define CRC8xCA 0x78
+#define CRC8xCB 0x7F
+#define CRC8xCC 0x6A
+#define CRC8xCD 0x6D
+#define CRC8xCE 0x64
+#define CRC8xCF 0x63
+#define CRC8xD0 0x3E
+#define CRC8xD1 0x39
+#define CRC8xD2 0x30
+#define CRC8xD3 0x37
+#define CRC8xD4 0x22
+#define CRC8xD5 0x25
+#define CRC8xD6 0x2C
+#define CRC8xD7 0x2B
+#define CRC8xD8 0x06
+#define CRC8xD9 0x01
+#define CRC8xDA 0x08
+#define CRC8xDB 0x0F
+#define CRC8xDC 0x1A
+#define CRC8xDD 0x1D
+#define CRC8xDE 0x14
+#define CRC8xDF 0x13
+#define CRC8xE0 0xAE
+#define CRC8xE1 0xA9
+#define CRC8xE2 0xA0
+#define CRC8xE3 0xA7
+#define CRC8xE4 0xB2
+#define CRC8xE5 0xB5
+#define CRC8xE6 0xBC
+#define CRC8xE7 0xBB
+#define CRC8xE8 0x96
+#define CRC8xE9 0x91
+#define CRC8xEA 0x98
+#define CRC8xEB 0x9F
+#define CRC8xEC 0x8A
+#define CRC8xED 0x8D
+#define CRC8xEE 0x84
+#define CRC8xEF 0x83
+#define CRC8xF0 0xDE
+#define CRC8xF1 0xD9
+#define CRC8xF2 0xD0
+#define CRC8xF3 0xD7
+#define CRC8xF4 0xC2
+#define CRC8xF5 0xC5
+#define CRC8xF6 0xCC
+#define CRC8xF7 0xCB
+#define CRC8xF8 0xE6
+#define CRC8xF9 0xE1
+#define CRC8xFA 0xE8
+#define CRC8xFB 0xEF
+#define CRC8xFC 0xFA
+#define CRC8xFD 0xFD
+#define CRC8xFE 0xF4
+#define CRC8xFF 0xF3
+
+
 
 #endif

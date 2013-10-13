@@ -334,7 +334,7 @@ void alp_purge(alp_tmpl* alp) {
     ot_int total_purge_bytes;
 
 #   if (OT_FEATURE(NDEF))
-#       warnining "NDEF not yet supported for non-atomic alps"
+#       warning "NDEF not yet supported for non-atomic alps"
 #   endif
     
     /// 1. An ALP processor that has non-atomic handling ability must mark all

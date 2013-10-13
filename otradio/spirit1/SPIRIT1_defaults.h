@@ -17,7 +17,7 @@
   * @file       /otradio/spirit1/SPIRIT1_defaults.h
   * @author     JP Norair
   * @version    R100
-  * @date       4 Jan 2013
+  * @date       10 Oct 2013
   * @brief      SPIRIT1 Radio register default definitions & macros.
   * @ingroup    SPIRIT1
   *
