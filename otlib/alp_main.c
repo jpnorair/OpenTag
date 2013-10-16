@@ -182,7 +182,7 @@ void alp_notify(alp_tmpl* alp, ot_sig callback) {
 
 
 
-#include <stdio.h>
+
 
 #ifndef EXTF_alp_parse_message
 ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
@@ -265,7 +265,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
                 alp->inq->getcursor = input_position;
             }
             else {
-                input_position[0]   = 0;
+                //input_position[0]   = 0;          //non-atomic app should wipe flags!
                 alp->inq->getcursor = nextrecord;
             }
             
@@ -284,42 +284,69 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
 
 
 
+
 #ifndef EXTF_alp_new_appq
-void alp_new_appq(alp_tmpl* alp, ot_queue* appq, ot_u8* front) {
+void alp_new_appq(alp_tmpl* alp, ot_queue* appq) {
     //DEBUG_ASSERT
-    appq->alloc     = alp->inq->alloc;
-    appq->front     = front;
-    appq->back      = front + front[1] + 4;
-    appq->getcursor = front;
-    appq->putcursor = alp->inq->putcursor;
+    appq->alloc         = alp->inq->alloc;
+    
+    ///@todo temporary -4 until alp_parse_header is fully refactored
+    appq->front         = alp->inq->getcursor - 4;  //appq->front = alp->inq->getcursor
+    
+    // This section will stay the same even after alp_parse_header is fully refactored
+    appq->getcursor     = appq->front;
+    appq->back          = appq->front + appq->front[1] + 4;
+    appq->putcursor     = appq->back;
+    
+    //alp_parse_message() will manage this, no need to do it here
+    //alp->inq->getcursor = appq->back;     
 }
 #endif
+
+
+#ifndef EXTF_alp_append_appq
+void alp_append_appq(alp_tmpl* alp, ot_queue* appq) {
+    ot_u8* next_alp;
+    //DEBUG_ASSERT
+    
+    ///@todo temporary offset until alp_parse_header is fully refactored
+    next_alp = alp->inq->getcursor + alp->inq->getcursor[-3];
+    //next_alp = alp->inq->getcursor + alp->inq->getcursor[1] + 4;
+    
+    if (next_alp <= alp->inq->putcursor) {
+        appq->putcursor     = next_alp;
+    }
+}
+#endif
+
 
 
 #ifndef EXTF_alp_goto_next
 ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target) {
     //DEBUG_ASSERT
     while ((alp->inq->putcursor - appq->back) > 0) {
-        appq->getcursor = appq->back;
-        appq->back      = appq->getcursor + appq->getcursor[1] + 4;
         if ((appq->getcursor[0] != 0) && (appq->getcursor[2] == target)) {
             return appq->getcursor[0];
         }
+        appq->getcursor = appq->back;
+        appq->back      = appq->getcursor + appq->getcursor[1] + 4;
     }
     return 0;
 }
 #endif
 
 
-
 #ifndef EXTF_alp_retrieve_cmd
-ot_u8 alp_retrieve_cmd(alp_tmpl* alp) {
-    ot_u8 cmd_value;
-    alp->inq->getcursor[0]  = 0;                        // Mark as read
-    cmd_value               = alp->inq->getcursor[3];   // Get command value
-    alp->inq->getcursor    += 4;                        // Go past Header
+ot_bool alp_retrieve_cmd(alp_record* apprec, ot_queue* appq, ot_u8 target) {
+    platform_memcpy((ot_u8*)&apprec->flags, appq->getcursor, 4);
     
-    return cmd_value;
+    if (apprec->id != target) {
+        return False;
+    }
+    appq->getcursor[0]  = 0;                                // Mark as read
+    appq->getcursor    += 4;
+    appq->back          = appq->getcursor + apprec->plength;
+    return True;
 }
 #endif
 

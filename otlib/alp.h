@@ -187,17 +187,38 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Setup a new Application queue from the main alp input queue
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  appq        (ot_queue*) subordinate queue used by Application
-  * @param  front       (ot_u8*) pointer to use as front of appq
-  * @retval ot_u8       Record Flags for next matching record.  0 if none found
+  * @retval None
   * @ingroup ALP
+  * @sa alp_append_appq
   * @sa alp_goto_next
   *
   * Non-atomic applications that run from a shared ALP usually need to maintain
-  * an independent application queue.  The function alp_goto_next will draw
-  * from said queue, and before using that function, you should prepare your
-  * application queue using this function.
+  * an independent application queue.  The functions alp_goto_next() and 
+  * alp_retrieve_cmd() will will draw records from said queue, but before you
+  * can use these, you must setup an Application queue in the first place.
   */
-void alp_new_appq(alp_tmpl* alp, ot_queue* appq, ot_u8* front);
+void alp_new_appq(alp_tmpl* alp, ot_queue* appq);
+
+
+
+/** @brief  Refresh an Application queue from the main alp input queue
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @param  appq        (ot_queue*) subordinate queue used by Application
+  * @retval None
+  * @ingroup ALP
+  * @sa alp_new_appq
+  *
+  * After an Application queue has been created, you can append more parts of
+  * the ALP input queue to the App queue.  alp_append_appq() will move the 
+  * getcursor of the ALP input queue past this latest-read record, and as such
+  * the App queue putcursor is extended to this new position, to include this
+  * latest-read record.
+  *
+  * @note Do not call alp_append_appq() immediately after alp_new_appq() unless
+  * you want to append a second record into the App queue.  alp_new_appq() 
+  * automatically appends the first record into the App Queue.
+  */
+void alp_append_appq(alp_tmpl* alp, ot_queue* appq);
 
 
 
@@ -221,8 +242,10 @@ ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target);
 
 
 /** @brief  Read ALP record command value and mark record as read
-  * @param  alp         (alp_tmpl*) ALP I/O control structure
-  * @retval ot_u8       Command Value
+  * @param  apprec      (alp_record*) output alp record header
+  * @param  appq        (ot_queue*) Application Queue
+  * @param  target      (ot_u8) ALP ID used by Application
+  * @retval ot_bool     True on successful retrieval 
   * @ingroup ALP
   * @sa alp_goto_next
   *
@@ -230,7 +253,7 @@ ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target);
   * return the Command (cmd) value of the new record and also to mark the new
   * record as read.
   */
-ot_u8 alp_retrieve_cmd(alp_tmpl* alp);
+ot_bool alp_retrieve_cmd(alp_record* apprec, ot_queue* appq, ot_u8 target);
 
 
 
