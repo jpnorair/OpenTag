@@ -160,7 +160,7 @@
 /** Internal Radio Flags (lots of room remaining)
 */
 //#define RADIO_FLAG_FEC          (1 << 0)
-#define RADIO_FLAG_HEADER       (1 << 0)
+#define RADIO_FLAG_CRC5         (1 << 0)
 #define RADIO_FLAG_FRCONT       (1 << 1)
 #define RADIO_FLAG_FLOOD        (1 << 2)
 #define RADIO_FLAG_RESIZE       (1 << 3)

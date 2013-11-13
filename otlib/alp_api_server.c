@@ -34,6 +34,8 @@
   ******************************************************************************
   */
 
+///@todo replace INREC calls with direct access from input
+
 #include "alp.h"
 
 #if (   (OT_FEATURE(SERVER) == ENABLED) \
@@ -48,7 +50,6 @@
 #define F_OFFSET2   OTAPI_SYSTEM_FUNCTIONS
 #define F_OFFSET3   (F_OFFSET2 + OTAPI_SESSION_FUNCTIONS)
 #define F_TOTAL     (F_OFFSET3 + OTAPI_M2QP_FUNCTIONS)
-
 
 typedef enum {
     sysindex_null           = 0,
@@ -207,8 +208,9 @@ static const otapi_cmd m2qp_cmd[11] = {
 
 ot_bool sub_proc_api_irregular(alp_tmpl* alp, id_tmpl* user_id, otapi_icmd* cmd, ot_u8 cmd_limit) {
     ot_u16  retval;
-    ot_u8   respond     = (alp->inrec.cmd & 0x80);
-    ot_u8   lookup_cmd  = (alp->inrec.cmd & ~0x80) - 1;
+    ot_u8   rec_cmd     = alp->INREC(_CMD);
+    ot_u8   respond     = (rec_cmd & 0x80);
+    ot_u8   lookup_cmd  = (rec_cmd & ~0x80) - 1;
     
     /// Do boundary check, and make sure caller is root
     if ( (lookup_cmd >= cmd_limit) || (auth_isroot(user_id) == False) )
@@ -244,11 +246,9 @@ ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id ) {
     //sub_bdtmpl  get_tmpl;
     ot_u8   dt_buf[24];   // 24 bytes is a safe amount, although less might suffice
     ot_u16  txq_len;
-    ot_u8   status;
-    ot_u8   lookup_cmd      = (alp->inrec.cmd & ~0x80) - 1;
-    ot_bool respond         = (ot_bool)(alp->inrec.cmd & 0x80);
-    
-    //alp->outrec.plength = 0;
+    ot_u8   status          = alp->INREC(_CMD);    // temporary use as record cmd
+    ot_u8   lookup_cmd      = (status & ~0x80) - 1;
+    ot_bool respond         = (ot_bool)(status & 0x80);
     
     if ((lookup_cmd < OTAPI_M2QP_FUNCTIONS) && auth_isroot(user_id)) {
         /// Load template from ALP dir cmd into C datatype
@@ -261,9 +261,12 @@ ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id ) {
         /// byte 1 - status (0 is error)
         /// bytes 2 & 3 - 16 bit integer, length of TXQ
         if (respond) {
-            alp->outrec.flags   &= ~ALP_FLAG_CF;
-            alp->outrec.cmd     |= 0x40;
-            alp->outrec.plength  = 3;
+            //alp->outrec.flags   &= ~ALP_FLAG_CF;
+            //alp->outrec.cmd     |= 0x40;
+            //alp->outrec.plength  = 3;
+            alp->OUTREC(_FLAGS)   &= ~ALP_FLAG_CF;
+            alp->OUTREC(_PLEN)     = 3;
+            alp->OUTREC(_CMD)     |= 0x40;
             q_writebyte(alp->outq, status);
             q_writeshort(alp->outq, txq_len);
         }

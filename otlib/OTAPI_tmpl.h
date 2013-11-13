@@ -99,10 +99,10 @@ typedef struct {
 
 /// Mode 2 MAC/Protocol Templates
 typedef enum {
-    ADDR_unicast    = 0x00,
-    ADDR_broadcast  = 0x40,
-    ADDR_anycast    = 0x80,
-    ADDR_multicast  = 0xC0
+    ADDR_unicast    = 0,
+    ADDR_broadcast  = 1,
+    ADDR_anycast    = 2,
+    ADDR_multicast  = 3
 } addr_type;
 
 #define ADDR_Type   addr_type

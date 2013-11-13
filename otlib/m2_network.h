@@ -43,35 +43,38 @@
   * @todo adjust to lastest spec
   */
 
-// Mode 2 Frame Info Field
-#define M2FI_BLOCKCODE          (0x07)
-#define M2FI_FRTYPEMASK         (3<<3)
-#define M2FI_FRDIALOG           (0<<3)
-#define M2FI_FRNACK             (1<<3)
-#define M2FI_STREAM             (2<<3)
-#define M2FI_RFU                (3<<3)
-//#define M2FI_FRCONT             (0x10)
-#define M2FI_ENADDR             (0x20)
-#define M2FI_DLLS               (0x40)
-#define M2FI_LISTEN             (0x80)
+#define M2LC_FRCONT             (1<<7)
+#define M2LC_RSCODE             (1<<6)
+#define M2LC_DMGMARK            (1<<5)
+#define M2LC_CRC5               (31<<0)
 
-// Official Mode 2 Network Protocol IDs
-#define M2PID_M2NPv0            (0x50)
-#define M2PID_M2NPv1            (0x51)
-#define M2PID_M2DP              (0x60)
-#define M2PID_M2ADVP            (0xF0)
-#define M2PID_M2RESP            (0xF1)
+#define M2FI_LISTEN             (1<<7)
+#define M2FI_DLLS               (1<<6)
+#define M2FI_NLS                (1<<5)
+#define M2FI_VID                (1<<4)
+#define M2FI_EXT                (1<<3)
+#define M2FI_STREAM             (1<<2)
+#define M2FI_ADDRMASK           (3<<0)
+#define M2FI_UNICAST            (0<<0)
+#define M2FI_BROADCAST          (1<<0) 
+#define M2FI_ANYCAST            (2<<0)
+#define M2FI_MULTICAST          (3<<0)
 
-// M2NP Routing Types
-#define M2RT_UNICAST            (0x00 << 6)
-#define M2RT_BROADCAST          (0x01 << 6) 
-#define M2RT_ANYCAST            (0x02 << 6)
-#define M2RT_MULTICAST          (0x03 << 6)
-#define M2RT_MASK               (0x03 << 6)
+// Routing Aliases
+#define M2FI_FRDIALOG           0
+#define M2RT_UNICAST            M2FI_UNICAST
+#define M2RT_BROADCAST          M2FI_BROADCAST
+#define M2RT_ANYCAST            M2FI_ANYCAST
+#define M2RT_MULTICAST          M2FI_MULTICAST
 
-// M2NP Address Control Flags
-#define M2AC_VID                (0x01 << 5)
-#define M2AC_NLS                (0x01 << 4)
+// Query Aliases
+#define M2QUERY_GLOBAL          M2FI_ANYCAST
+#define M2QUERY_LOCAL           M2FI_BROADCAST
+
+
+// EXT stuff, rarely used
+#define M2EXT_APPFLAGS          (15<<0)
+#define M2EXT_RFU               (15<<4)
 
 // M2NP Command Code Options
 #define M2CC_SLEEP              (0x01 << 4) 
@@ -100,7 +103,7 @@
 
 typedef struct {
     ot_u8   fr_info;
-    ot_u8   addr_ctl;
+    ot_u8   ext_info;
 } header_struct;
 
 
@@ -185,7 +188,7 @@ void network_mark_ff();
 
 
 /** @brief  parses and routes a foreground frame
-  * @param  session     (m2session*) Pointer to active session
+  * @param  active     (m2session*) Pointer to active session
   * @retval ot_int      -1 on ignore, non-negative is Routing Index of the
   *                     device/host that should be forwarded the message.
   * @ingroup Network
@@ -195,13 +198,32 @@ void network_mark_ff();
   * other positive return value is the index of the routing table which 
   * corresponds to the host that shall be forwarded the frame.
   */
-ot_int network_route_ff(m2session* session);
+ot_int network_route_ff(m2session* active);
+
+
+
+/** @brief  Continues a dialog/session by cloning the existing session
+  * @param  applet      (ot_app) Applet pointer for new session
+  * @param  wait        (ot_uint) Number of ticks to wait following dll-idle
+  * @retval m2session*  Pointer to newly cloned session
+  * @ingroup Network
+  *
+  * You must pass a valid applet into the "applet" argument, or NULL.  NULL
+  * will follow the default session behavior, which is simply to respond
+  * appropriately to requests.  Passing-in session_top()->applet will use 
+  * the applet from the current session.
+  *
+  * The "wait" argument is a tail-chained number of ticks that starts 
+  * counting after the DLL goes to idle.  For example, the DLL goes to
+  * idle after the response window expires.
+  */
+m2session* network_cont_dialog(ot_app applet, ot_uint wait);
 
 
 
 /** @brief  Optional static callback function for network router
   * @param  route       (void*) Pointer to routing status information (ot_int*)
-  * @param  session     (void*) Pointer to active session
+  * @param  active      (void*) Pointer to active session
   * @retval None
   * @ingroup Network
   * @sa network_route_ff()
@@ -214,7 +236,7 @@ ot_int network_route_ff(m2session* session);
   * In applications that do not need dynamic callbacks, some program code and
   * global memory can be saved by using static callbacks.
   */
-void network_sig_route(void* route, void* session);
+void network_sig_route(void* route, void* active);
 
 
 
@@ -229,7 +251,7 @@ void network_sig_route(void* route, void* session);
   */
 
 /** @brief  Loads Mode 2 DLL and Network layer frame headers into the TX queue
-  * @param  session     (m2session*) Pointer to active session
+  * @param  active      (m2session*) Pointer to active session
   * @param  addressing  (ot_u8) forced addressing flags per Mode 2 DLL spec
   * @param  nack        (ot_u8) set to 1 to declare frame as NACK, else set to 0
   * @retval None
@@ -238,7 +260,7 @@ void network_sig_route(void* route, void* session);
   * Call this function when you have the session allocated, and you are 
   * beginning the process of generating an M2NP-type transmission.
   */
-void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack);
+void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack);
 
 
 
@@ -295,7 +317,7 @@ ot_bool m2np_idcmp(ot_int length, void* id);
   */
 
 /** @brief  Prepares an M2AdvP flood from a session container
-  * @param  session     (m2session*) Pointer to active session
+  * @param  session     (active*) Pointer to active session
   * @param  duration    (ot_u16) Number of ticks to run advertising
   * @retval none
   * @ingroup Network
@@ -306,7 +328,7 @@ ot_bool m2np_idcmp(ot_int length, void* id);
   * in order to begin an M2AdvP flood process.  It reconfigures the TX Queue
   * to transmit background frames.
   */
-void m2advp_open(m2session* session, ot_u16 duration);
+void m2advp_open(m2session* active, ot_u16 duration);
 
 
 

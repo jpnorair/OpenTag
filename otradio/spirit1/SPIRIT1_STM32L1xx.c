@@ -1,4 +1,4 @@
-/* Copyright 2009-2011 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -303,6 +303,13 @@ void spirit1_waitforready() {
 /// Wait for the Ready Pin to go high (reset pin is remapped in init).
 /// STANDBY->READY should take about 75us
     while ((_READY_PORT->IDR & _READY_PIN) == 0);
+}
+
+
+void spirit1_waitforstandby() {
+/// Wait for the Ready Pin to go high (reset pin is remapped in init).
+/// STANDBY->READY should take about 75us
+    while ((_READY_PORT->IDR & _READY_PIN) != 0);
 }
 
 

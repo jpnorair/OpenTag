@@ -134,13 +134,31 @@ m2session* network_parse_bf() {
 
 #ifndef EXTF_network_mark_ff
 void network_mark_ff() {
-/// Mark a received frame as damaged by setting the frametype to 3 (11).
-/// Typically, this is done only for frames in multiframe packets, which can
-/// use this feature to provide selective acking.
-    rxq.front[3] |= 3;
+/// Mark a received frame as damaged by using the reserved position in the
+/// Link Control bits.  This will never be transmitted over the air.
+    rxq.front[1] |= M2LC_DMGMARK;
 }
 #endif
 
+
+
+
+#ifndef EXTF_network_cont_dialog
+m2session* network_cont_dialog(ot_app applet, ot_uint wait) {
+    m2session* next;
+    m2session* active;
+    active  = session_top();
+    next    = session_new(  applet, 
+                            CLK2TI(dll.comm.tc) + wait,
+                            (M2_NETSTATE_REQRX | M2_NETSTATE_ASSOCIATED),
+                            active->channel     );
+    
+    next->extra     = active->extra;
+    next->dialog_id = active->dialog_id++;
+    next->subnet    = active->subnet;
+    next->flags     = active->flags;
+}
+#endif
 
 
 
@@ -148,15 +166,26 @@ void network_mark_ff() {
 ot_int network_route_ff(m2session* active) {
     ot_int route_val;
 
-    /// Strip CRC (-2 bytes)
-    rxq.front[0] -= 2;
+    /// Strip CRC bytes from the end of the message.  RS bytes are stripped by
+    /// the decoder, if RS is enabled/used.
+    rxq.front[0]       -= 2;
     
-    /// Acquire Flags and Protocol from the Frame Info Field
-    rxq.getcursor       = &rxq.front[3];
-    active->extra       = (*rxq.getcursor & M2FI_FRTYPEMASK);
-    active->flags       = *rxq.getcursor & 0xC0;
+    /// Acquire RSCODE flag from LC byte (0x40) and transpose to its position
+    /// for session flags (0x08)
+    active->flags       = (rxq.front[1] & M2LC_RSCODE) >> 3;
+    
+    /// Acquire Frame-Info flags from Frame-Info byte. (LISTEN, DLLS, NLS, VID, 
+    /// XXX, STREAM, ADDR bits).  XXX is RSCODE from above.
+    rxq.getcursor       = &rxq.front[4];
     m2np.header.fr_info = *rxq.getcursor++;
-        
+    active->flags      |= (m2np.header.fr_info & ~M2_FLAG_RSCODE);     
+
+    /// Acquire EXT byte information
+    m2np.header.ext_info = 0;
+    if (m2np.header.fr_info & M2FI_EXT) {
+        m2np.header.ext_info = *rxq.getcursor++;
+    }
+    
     /// Data Link Layer Security
     if (m2np.header.fr_info & M2FI_DLLS) {
 #   if (OT_FEATURE(DLL_SECURITY))
@@ -169,11 +198,11 @@ ot_int network_route_ff(m2session* active) {
 #   endif
     }
     
-    /// Address Control Header (Present in M2NP)
+    /// Handle M2NP
     /// Session Connection and Dialog Filtering:
     /// - if unassociated, connect now
     /// - if already connected, make sure the incremented dialog IDs are equal
-    if (m2np.header.fr_info & M2FI_ENADDR) {
+    if ((m2np.header.fr_info & M2FI_STREAM) == 0) {
         if (active->netstate & M2_NETSTATE_CONNECTED) {
             active->dialog_id++;
             if (active->dialog_id != q_readbyte(&rxq)) {
@@ -182,53 +211,43 @@ ot_int network_route_ff(m2session* active) {
         }
         else {
             active->netstate  |= M2_NETSTATE_CONNECTED;
-            active->subnet     = rxq.front[2];
+            active->subnet     = rxq.front[3];
             active->dialog_id  = q_readbyte(&rxq);
         }
         
-        /// Grab global flags from Address Control
-        m2np.header.addr_ctl    = q_readbyte(&rxq);
-        active->flags         |= m2np.header.addr_ctl & 0x3F;
-        
         /// Grab Source Address from this packet (dialog address), which is 
         /// converted to the target address in the response.
-        m2np.rt.dlog.length = (m2np.header.addr_ctl & M2_FLAG_VID) ? 2 : 8;
+        m2np.rt.dlog.length = (m2np.header.fr_info & M2_FLAG_VID) ? 2 : 8;
         m2np.rt.dlog.value  = q_markbyte(&rxq, m2np.rt.dlog.length);
         
         /// Network Layer Security
         /// @note Network Layer Security not supported at this time
-        if (m2np.header.addr_ctl & M2_FLAG_NLS) {
+        if (m2np.header.fr_info & M2_FLAG_NLS) {
 #       if (OT_FEATURE(NL_SECURITY))
 #       else
             return -1;
 #       endif
         }
         
-        /// If unicasting, the next data is the target address, which will have
-        /// the same length as the source address, and it needs to match this
-        /// device's device ID (VID or UID)
-        if ((m2np.header.addr_ctl & 0xC0) == 0) {
-            active->netstate |= M2_NETFLAG_FIRSTRX;
-            if ( m2np_idcmp(m2np.rt.dlog.length, q_markbyte(&rxq, m2np.rt.dlog.length)) == False ) {
-                return -1;
-            }
-        }
-    }
-
-    /// Vector to the appropriate Network Layer Protocol Parser
-    /// Most network protocols don't do anything except broadcast.  M2NP is the
-    /// exception, and it manages various types of routing at the network layer.
-    route_val = -1;
-    if ((active->extra & M2FI_FRTYPEMASK) < M2FI_STREAM) {
-        // Reset routing template
+        /// Routing Information defaults
         m2np.rt.hop_code    = 0;
         m2np.rt.hop_ext     = 0;
         m2np.rt.orig.value  = NULL;
         m2np.rt.dest.value  = NULL;
         
-        /// Unicast and Anycast Requests have a routing template
-        /// (Not currently supported, so just move the cursor ahead)
-        if ((m2np.header.addr_ctl & 0x40) == 0) {
+        /// Routing information present in Unicast and Anycast frames.
+        /// Target Address present in Unicast frames
+        if ((m2np.header.fr_info & 1) == 0) {
+            if ((m2np.header.fr_info & 3) == 0) {
+                active->netstate |= M2_NETFLAG_FIRSTRX;
+                
+                // Bail-out on target address mismatch
+                if ( m2np_idcmp(m2np.rt.dlog.length, q_markbyte(&rxq, m2np.rt.dlog.length)) == False ) {
+                    return -1;
+                }
+            }
+            
+            /// Multihop Routing is not currently supported, so just move the cursor ahead
             m2np.rt.hop_code    = q_readbyte(&rxq);
             m2np.rt.orig.length = 8 >> ((m2np.rt.hop_code & M2HC_VID) >> 3);                       
             m2np.rt.dest.length = m2np.rt.orig.length;
@@ -275,7 +294,6 @@ ot_int network_route_ff(m2session* active) {
   * - M2NP = Mode 2 Network Protocol.
   * - Routable, primary data-networking protocol for DASH7 Mode 2.
   * @todo Make sure rxq.back is set to end of the M2QP payload
-  * @todo rearrange some elements from "extra" and "flags."
   */
 
 #ifndef EXTF_m2np_header
@@ -283,71 +301,82 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
 /// Build an M2NP header, which gets forwarded in all cases to M2QP at the 
 /// transport layer, and which has NM2=0, Frame_Type={0,1}
 
-    /// 1. Prep txq, and write Frame Info & Addr Ctrl Fields (universal)
+    /// Prep txq 
     q_empty(&txq);
     //q_start(&txq, 0, 0);
     
-    txq.back                = txq.getcursor + 254; 
-    q_writebyte(&txq, 0);                           // null length (placeholder only)
-    q_writebyte(&txq, 0);                           // Dummy TX EIRP setting (placeholder only)
-    //q_writeshort(&txq, 0x0000);
-    q_writebyte(&txq, active->subnet);
-    active->netstate       |= (addressing) ? 0 : M2_NETFLAG_FIRSTRX;    //Set FIRSTRX mode on Unicast
-    m2np.header.addr_ctl    = addressing | (active->flags & 0x3F);
-    m2np.header.fr_info     = (active->extra & M2_EXTRA_RFU) ? \
-                                (M2FI_BLOCKCODE+M2FI_ENADDR) : M2FI_ENADDR;
-    m2np.header.fr_info    |= nack;
-    m2np.header.fr_info    |= (active->flags & 0xC0);
+    /// If blockcoding not enabled, don't let it get used.
+    /// max frame with blockcoding is 192 data bytes, max with CRC is 254.
+    {   ot_int maxframe;
+#       if (M2_FEATURE(RSCODE))
+        maxframe        = (active->flags & M2_FLAG_RSCODE) ? 192 : 254;
+#       else
+        active->flags  &= ~M2_FLAG_RSCODE;
+        maxframe        = 254;
+#       endif
+        txq.back        = txq.getcursor + maxframe;
+    }
+    
+    /// Write early header bytes:
+    /// <LI> Null Length (Actual length is deposited after frame done) </LI>
+    /// <LI> Null LC bits (FR-Cont, Blockcode, CRC5 deposited in encoder)
+    /// <LI> Null TX EIRP (Actual value deposited in PHY) </LI>
+    /// <LI> Subnet Value </LI>
+    q_writelong(&txq, (ot_u32)active->subnet);
+    
+    /// Set FIRSTRX mode on Unicast
+    active->netstate       |= (addressing) ? 0 : M2_NETFLAG_FIRSTRX;
+    
+    /// Save & Write Frame Info Byte
+    m2np.header.fr_info     = (active->flags & ~M2_FLAG_RSCODE);
+    m2np.header.fr_info    |= (active->extra & 0x0F) ? M2FI_EXT : 0;
     q_writebyte(&txq, m2np.header.fr_info);
     
-    /// 2. The DLL/PHY firmware should resolve the Block Code field to 0 or !0, 
-    ///    process the CRC8 field that we are stepping over here, and of course 
-    ///    process the RS block coding.
-#   if (M2_FEATURE(BLOCKCODING))
-    if (m2np.header.fr_info & M2FI_BLOCKCODE) {
-        q_readbyte(&rxq);
+    /// Write Extra Flags Byte, if set
+    if (m2np.header.fr_info & M2FI_EXT) {
+        q_writebyte(&txq, active->extra);
     }
-#   endif
     
-    /// 3. If required, enable DLLS encryption.  AES128 is the only currently
-    ///    supported crypto in OpenTag.  It will be applied in m2np_footer().
-    ///    If DLLS is enabled, NLS will be forced-off, because both of them
-    ///    cannot be active on the same frame.
-    ///    @todo Experimental!
+    /// If required, enable DLLS encryption.  AES128 is the only currently
+    /// supported crypto in OpenTag.  It will be applied in m2np_footer().  If
+    /// DLLS is enabled, NLS will be forced-off, because both of them cannot
+    /// be active on the same frame.
+    /// @todo Experimental!
 #   if (OT_FEATURE(DLL_SECURITY))
     if (m2np.header.fr_info & M2FI_DLLS) {
+        m2np.header.fr_info &= ~M2FI_NLS;
         auth_setup(&txq, b00100000, 249);
-        m2np.header.addr_ctl &= ~M2_FLAG_NLS;
     }
 #   endif
-    
-    /// 4. Write Dialog, Addr Ctrl, and Source Address (always included in M2NP)
-    q_writebyte(&txq, active->dialog_id);
-    q_writebyte(&txq, m2np.header.addr_ctl);
-    m2np_put_deviceid( (ot_bool)(m2np.header.addr_ctl & M2AC_VID) );
 
-    /// 5. If required, enabled NLS.  The rules are basically the same as DLLS.
-    ///    @todo Experimental!
+    /// Write Dialog ID (always present in M2NP)
+    q_writebyte(&txq, active->dialog_id);
+    
+    /// Write This Device ID (always present in M2NP)
+    m2np_put_deviceid( (ot_bool)(m2np.header.fr_info & M2FI_VID) );
+
+    /// If required, enabled NLS.  The rules are basically the same as DLLS.
+    /// @todo Experimental!
 #   if (OT_FEATURE(NL_SECURITY))
-    if (m2np.header.addr_ctl & M2_FLAG_NLS) {
+    if (m2np.header.fr_info & M2FI_NLS) {
         auth_setup(&txq, b00100000, (txq.putcursor-txq.getcursor));
     }
 #   endif
-        
-    /// 6. Apply target address, if unicast enabled, and rebase it from the TX 
-    ///    Queue, which remains for the duration of the dialog
-    if ((m2np.header.addr_ctl & 0xC0) == 0) {
-        q_writestring(&txq, m2np.rt.dlog.value, m2np.rt.dlog.length);
-        m2np.rt.dlog.value = (txq.putcursor - m2np.rt.dlog.length);
-    }
-        
-    /// 7. Apply Multihop routing template, if unicast or anycast enabled
-    if ((m2np.header.addr_ctl & 0x40) == 0) {
-#   if (M2_FEATURE(MULTIHOP))
-        ot_u8   hopmask = M2HC_ORIG;
-        ot_u8   id_num  = 1;
+    
+    /// Apply target address, if unicast enabled, and rebase it from the TX 
+    /// Queue, which remains for the duration of the dialog.  Also apply 
+    /// Multihop routing template, if unicast or anycast enabled.
+    if ((m2np.header.fr_info & 1) == 0) {
+        ot_u8 hopmask   = M2HC_ORIG;
+        ot_u8 id_num    = 1;
         id_tmpl* id     = &m2np.rt.orig;
-            
+    
+        if ((m2np.header.fr_info & 2) == 0) {
+            q_writestring(&txq, m2np.rt.dlog.value, m2np.rt.dlog.length);
+            m2np.rt.dlog.value = (txq.putcursor - m2np.rt.dlog.length);
+        }
+        
+#       if (M2_FEATURE(MULTIHOP))
         q_writebyte(&txq, m2np.rt.hop_code);
         if ((m2np.rt.hop_code & M2HC_EXT) != 0) {
             q_writebyte(&txq, m2np.rt.hop_ext);
@@ -362,9 +391,9 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
             id     += 1;            //moves to next id_tmpl (dest)
             id_num -= 1;
         }
-#   else
+#       else
         q_writebyte(&txq, 0);
-#   endif
+#       endif
     } 
 }
 #endif
@@ -373,26 +402,27 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
 
 #ifndef EXTF_m2np_footer
 void m2np_footer() {
+    ot_int block_bytes;
+
 #   if (OT_FEATURE(DLL_SECURITY))
     /// Add DLLS Padding and run encryption
-    if (m2np.header.fr_info & M2_FLAG_DLLS) {
+    if (txq.getcursor[4] & M2FI_DLLS) {
         ///@todo Implement AES128 DLLS stuff
-        auth_userkey_encrypt(&txq.getcursor[4], &txq);
+        auth_userkey_encrypt(&txq.getcursor[5], &txq);
         goto m2np_footer_END;
     }
 #   endif    
 #   if (OT_FEATURE(NL_SECURITY))
-    if (m2np.header.addr_ctl & M2_FLAG_NLS) {
+    if (txq.getcursor[4] & M2FI_NLS) {
         ///@todo Put footer: NLS not currently supported
-        auth_userkey_encrypt(&txq.getcursor[6], &txq);
+        auth_userkey_encrypt(&txq.getcursor[??], &txq);
     }
 #   endif
 
+    /// RS and CRC will be appended during encoding, and their extra length
+    /// will be added to the frame length field
     m2np_footer_END:
-
-    /// Load frame size into length byte, including -1 for length byte and +2
-    /// for CRC (total, +1).
-    txq.getcursor[0] = (txq.putcursor - txq.getcursor) + 1;
+    txq.getcursor[0] = q_span(&txq);
 }
 #endif
 
@@ -553,11 +583,11 @@ void m2dp_append() {
     ///      being managed.
     ot_u8 subnet;
 
-    m2np.header.fr_info    &= ~(M2FI_ENADDR | M2FI_FRTYPEMASK);
-    m2np.header.fr_info    |= (M2FI_STREAM);
+    m2np.header.fr_info |= M2FI_STREAM;
 
     // M2DP will use DLLS on an existing key, such as one specified by NLS from
     // the M2NP Frame before it.
+    
 #   if (OT_FEATURE(NL_SECURITY))
     if (m2np.header.addr_ctl & M2_FLAG_NLS) {
         m2np.header.addr_ctl &= ~M2_FLAG_NLS;
@@ -568,11 +598,13 @@ void m2dp_append() {
     ///@todo sort out FRCONT stuff
     
     // Basic header stuff:
-    subnet              = txq.getcursor[2];
-    //txq.getcursor[3]   |= M2FI_FRCONT;
+    subnet              = txq.getcursor[3];
     txq.getcursor[1]   |= (1<<7);           // FRCONT as presently defined
     txq.getcursor       = txq.putcursor;
+    
+    /// @todo need to account for blockcoding
     txq.back            = txq.putcursor + (M2_PARAM_MAXFRAME-2);    // save 2 bytes for CRC16
+    
     *txq.putcursor++    = 0;                                        // length placeholder
     *txq.putcursor++    = 0;                                        // TX EIRP placeholder
     *txq.putcursor++    = subnet;
@@ -580,13 +612,6 @@ void m2dp_append() {
  //#txq.length         += 4;
     
     ///@todo not sure how much of this stuff below could be subroutined
-    
-    // Block code information
-#   if (M2_FEATURE(BLOCKCODING))
-    if (m2np.header.fr_info & M2FI_BLOCKCODE) {
-    }
-#   endif
-    
     // DLLS header information (gets adjusted on m2dp_close())
 #   if (OT_FEATURE(DLL_SECURITY))
     if (m2np.header.fr_info & M2FI_DLLS) {

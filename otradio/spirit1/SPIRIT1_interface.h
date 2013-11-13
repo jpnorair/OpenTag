@@ -136,6 +136,8 @@ void spirit1_waitforreset();
   * @ingroup SPIRIT1
   */
 void spirit1_waitforready();
+void spirit1_waitforstandby();
+
 
 
 /** @brief  Manually refreshes chip status bits (16 bits)

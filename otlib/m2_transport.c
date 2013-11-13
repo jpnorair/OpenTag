@@ -351,9 +351,9 @@ ot_int sub_parse_request(m2session* session) {
         }
     }
     
-    /// 3. Handle Global Queries (filtering): 
+    /// 3. Handle Global Queries: (Anycast
     /// Multicast and anycast addressed requests include queries
-    if (m2np.header.addr_ctl & 0x80) {
+    if (m2np.header.fr_info & M2QUERY_GLOBAL) {
         score = sub_process_query(session);
     }
     
@@ -368,9 +368,9 @@ ot_int sub_parse_request(m2session* session) {
             ot_u8 addressing;
             session->netstate  |= M2_NETSTATE_RESPTX;
             addressing          = ext_get_m2appflags();
-            addressing         |= m2np.header.addr_ctl & 0x30;  // make unicast, retain VID & NLS                               
-            m2np_header(session, addressing, M2FI_FRDIALOG);    // Create M2QP header
-            q_writebyte(&txq, (M2TT_RESPONSE | cmd_opcode));    // Write Cmd code byte
+            addressing         |= m2np.header.fr_info & M2FI_ADDRMASK;  // make unicast, retain VID & NLS                               
+            m2np_header(session, addressing, M2FI_FRDIALOG);            // Create M2QP header
+            q_writebyte(&txq, (M2TT_RESPONSE | cmd_opcode));            // Write Cmd code byte
         }
         
         //else if ((session->netstate & M2_NETSTATE_DSDIALOG) == 0) {
@@ -636,11 +636,10 @@ ot_int sub_process_query(m2session* session) {
     /// query (all multicast, all anycast)
     sub_load_query();
     
-    /// Local Query: Multicast only
+    /// Local Query: Multicast only.
     /// Save a pointer to the local query, if this is an initial multicast
     /// request.  This query will be run later.
-    //if (cmd_type == 0x40) {
-    if (m2np.header.addr_ctl & 0x40) {
+    if (m2np.header.fr_info & M2QUERY_LOCAL) {
         ot_int  query_size;
         ot_u8*  local_ptr;
         

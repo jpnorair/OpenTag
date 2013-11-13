@@ -55,6 +55,7 @@
                           + ALP_API )
 
 
+
 typedef ot_bool (*sub_proc)(alp_tmpl*, id_tmpl*);
 
 
@@ -93,27 +94,27 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
     
 #   if (OT_FEATURE(NDEF) == ENABLED)
     if (hdr_len != 4) {
-        *hdr_position++ = alp->outrec.flags;        //Flags byte (always)
+        *hdr_position++ = alp->OUTREC(FLAGS);        //Flags byte (always)
         *hdr_position++ = 0;                        //Type Len (NDEF only)
-        *hdr_position++ = alp->outrec.plength;      //Payload len
-        if (alp->outrec.flags & ALP_FLAG_MB) {
-            alp->outrec.flags  &= ~(NDEF_IL | 7);
-            alp->outrec.flags  |= TNF_Unchanged;    // Make next record "Unchanged"
+        *hdr_position++ = alp->OUTREC(PLEN);      //Payload len
+        if (alp->OUTREC(FLAGS) & ALP_FLAG_MB) {
+            alp->OUTREC(FLAGS)  &= ~(NDEF_IL | 7);
+            alp->OUTREC(FLAGS)  |= TNF_Unchanged;    // Make next record "Unchanged"
             *hdr_position++     = 2;                //NDEF ID Len
-            *hdr_position++     = alp->outrec.id;   //ALP-ID    (ID 1)
-            *hdr_position       = alp->outrec.cmd;  //ALP-CMD   (ID 2)
+            *hdr_position++     = alp->OUTREC(ID);   //ALP-ID    (ID 1)
+            *hdr_position       = alp->OUTREC(CMD);  //ALP-CMD   (ID 2)
         }
     }
     else
 #   else
-        //*hdr_position++ = alp->outrec.flags;
-        //*hdr_position++ = alp->outrec.plength;
-        //*hdr_position++ = alp->outrec.id;
-        //*hdr_position   = alp->outrec.cmd;
-        platform_memcpy(hdr_position, &alp->outrec.flags, 4);
+        //*hdr_position++ = alp->OUTREC(FLAGS);
+        //*hdr_position++ = alp->OUTREC(PLEN);
+        //*hdr_position++ = alp->OUTREC(ID);
+        //*hdr_position   = alp->OUTREC(CMD);
+        platform_memcpy(hdr_position, &alp->OUTREC(FLAGS), 4);
 #   endif
 
-    alp->outrec.flags  &= ~ALP_FLAG_MB;     
+    alp->OUTREC(FLAGS)  &= ~ALP_FLAG_MB;     
 }
 
 
@@ -130,8 +131,8 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
 
 #ifndef EXTF_alp_init
 void alp_init(alp_tmpl* alp, ot_queue* inq, ot_queue* outq) {
-	alp->inrec.flags    = 0;
-	alp->outrec.flags   = (ALP_FLAG_MB | ALP_FLAG_ME | ALP_FLAG_SR);
+	alp->INREC(FLAGS)    = 0;
+	alp->OUTREC(FLAGS)   = (ALP_FLAG_MB | ALP_FLAG_ME | ALP_FLAG_SR);
 	alp->inq            = inq;
 	alp->outq           = outq;
 }
@@ -216,13 +217,13 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// OpenTag requirement, bypass it and go to the next.  Else, copy
         /// the input record to the output record.  alp_proc() will adjust
         /// the output payload length and flags, as necessary.
-        if (alp->outrec.flags & ALP_FLAG_ME) {
+        if (alp->OUTREC(FLAGS) & ALP_FLAG_ME) {
             input_position = alp->inq->getcursor;
             if (alp_parse_header(alp) == False) {
                 break;
             }
-            //platform_memcpy(&alp->outrec.flags, &alp->inrec.flags, 4);
-            *((ot_u32*)&alp->outrec.flags) = *((ot_u32*)&alp->inrec.flags);
+            //platform_memcpy(&alp->OUTREC(FLAGS), &alp->INREC(FLAGS), 4);
+            *((ot_u32*)&alp->OUTREC(FLAGS)) = *((ot_u32*)&alp->INREC(FLAGS));
         }
         
         ///@todo transform output creation part to a separate function call the
@@ -232,7 +233,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// Reserve space in alp->outq for header data.  It is updated later.
         /// The flags and payload length are determined by processing, so this
         /// method is necessary.
-        //OBSOLETE: hdr_len = sub_get_headerlen(alp->outrec.flags & 7);
+        //OBSOLETE: hdr_len = sub_get_headerlen(alp->OUTREC(FLAGS) & 7);
         hdr_position            = alp->outq->putcursor;
         alp->outq->putcursor   += 4; //OBSOLETE: hdr_len;
         
@@ -242,22 +243,22 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// <LI> NDEF_ME if the output record is the last in the message </LI>
         /// <LI> The output record payload length </LI>
         atomic = alp_proc(alp, user_id);
-        if (alp->outrec.plength == 0) {
+        if (alp->OUTREC(PLEN) == 0) {
             // Remove header and any output data if no data written
             // Also, remove output chunking flag
             alp->outq->putcursor   = hdr_position;
-            alp->outrec.flags     &= ~NDEF_CF;
+            alp->OUTREC(FLAGS)     &= ~NDEF_CF;
         }
         else {
             //OBSOLETE: sub_insert_header(alp, hdr_position, hdr_len);
-            platform_memcpy(hdr_position, &alp->outrec.flags, 4);
-            alp->outrec.flags  &= ~ALP_FLAG_MB;
+            platform_memcpy(hdr_position, &alp->OUTREC(FLAGS), 4);
+            alp->OUTREC(FLAGS)  &= ~ALP_FLAG_MB;
         }
             
         /// This version of ALP does not support nested messages.  It will
         /// terminate processing and return when the input message is ended.
         /// The if-else serves to auto-purge the last message, if possible
-        if (alp->inrec.flags & ALP_FLAG_ME) {
+        if (alp->INREC(FLAGS) & ALP_FLAG_ME) {
             ot_u8* nextrecord;
             nextrecord  = input_position + input_position[1] + 4;
             if (atomic && (nextrecord == alp->inq->putcursor)) {
@@ -516,19 +517,20 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
     ot_u8 alp_handle;
     
     // Always flush payload length of output before any data is written
-    alp->outrec.plength = 0;
+    alp->OUTREC(PLEN) = 0;
     
-    /// The proc function must set alp->outrec.plength based on how much
+    /// The proc function must set alp->OUTREC(PLEN) based on how much
     /// data it writes to the output queue.  It must return False if the output
     /// should be canceled.
-    alp_handle  = alp_get_handle(alp->inrec.id);
+    alp_handle  = alp_get_handle(alp->INREC(ID));
     alp_handle  = (ot_u8)proc[alp_handle](alp, user_id);
     
     /// If the output bookmark is non-Null, there is output chunking.  Else, 
     /// the output message is complete (ended)
-    ///@todo Output bookmark is not implemented yet in any ALP.
-    alp->outrec.flags   &= ~ALP_FLAG_ME;
-    alp->outrec.flags   |= (alp->outrec.bookmark) ? ALP_FLAG_CF : ALP_FLAG_ME;
+    ///@todo Bookmarked has been refactored, and is not currently supported... sort it.
+    //alp->OUTREC(FLAGS)   &= ~ALP_FLAG_ME;
+    //alp->OUTREC(FLAGS)   |= (alp->BOOKMARK_OUT) ? ALP_FLAG_CF : ALP_FLAG_ME;
+    alp->OUTREC(FLAGS)   |= ALP_FLAG_ME;   //Temporary fix
 
     // Return 0 length (False) or non-zero length (True)
     return (ot_bool)alp_handle;
@@ -561,14 +563,14 @@ void alp_break(alp_tmpl* alp) {
 /// Break a running stream, and manually put a break record onto the stream
 #if (OT_FEATURE(NDEF) == ENABLED)
     ot_u8 tnf;
-    tnf = (alp->outrec.flags & 7);
+    tnf = (alp->OUTREC(FLAGS) & 7);
 #else
 #   define tnf 0
 #endif
-    alp->outrec.flags   = (ALP_FLAG_MB | ALP_FLAG_ME | NDEF_SR | NDEF_IL) | tnf;
-    alp->outrec.plength = 0;
-    alp->outrec.id      = 0;
-    alp->outrec.cmd     = 0;
+    alp->OUTREC(FLAGS)   = (ALP_FLAG_MB | ALP_FLAG_ME | NDEF_SR | NDEF_IL) | tnf;
+    alp->OUTREC(PLEN) = 0;
+    alp->OUTREC(ID)      = 0;
+    alp->OUTREC(CMD)     = 0;
     
     sub_insert_header(alp, NULL, sub_get_headerlen(tnf));
 }
@@ -586,20 +588,20 @@ void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payl
     // Clear control flags (begin, end, chunk)
 	// Chunk and End will be intelligently set in this function, but Begin must
 	// be set by the caller, AFTER this function.
-	alp->outrec.flags |= flags;
-	alp->outrec.flags |= NDEF_SR;
+	alp->OUTREC(FLAGS) |= flags;
+	alp->OUTREC(FLAGS) |= NDEF_SR;
 #   if (OT_FEATURE(NDEF))
-	alp->outrec.flags &= ~(ALP_FLAG_ME | ALP_FLAG_CF | NDEF_IL);
+	alp->OUTREC(FLAGS) &= ~(ALP_FLAG_ME | ALP_FLAG_CF | NDEF_IL);
 #   else
-    alp->outrec.flags &= (ALP_FLAG_MB | NDEF_SR);
+    alp->OUTREC(FLAGS) &= (ALP_FLAG_MB | NDEF_SR);
 #   endif
 
     // NDEF TNF needs to be 5 (with ID) on MB=1 and 6 (no ID) or MB=0
 	// Pure ALP should always have IL=0 and TNF=0
 #   if (OT_FEATURE(NDEF))
-    if (alp->outrec.flags & 7) {
-        alp->outrec.flags &= ~7;
-        alp->outrec.flags |= (alp->outrec.flags & ALP_FLAG_MB) ? (NDEF_IL+5) : 6;
+    if (alp->OUTREC(FLAGS) & 7) {
+        alp->OUTREC(FLAGS) &= ~7;
+        alp->OUTREC(FLAGS) |= (alp->OUTREC(FLAGS) & ALP_FLAG_MB) ? (NDEF_IL+5) : 6;
     }
 #   endif
 
@@ -609,15 +611,15 @@ void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payl
 	if (payload_remaining > payload_limit) {
 		payload_remaining   = payload_limit;
 #       if (OT_FEATURE(NDEF))
-		alp->outrec.flags  |= ALP_FLAG_CF;
+		alp->OUTREC(FLAGS)  |= ALP_FLAG_CF;
 #       endif
 	}
 	else {
-		alp->outrec.flags  |= ALP_FLAG_ME;
+		alp->OUTREC(FLAGS)  |= ALP_FLAG_ME;
 	}
 
-	alp->outrec.plength = (ot_u8)payload_remaining;
-	sub_insert_header(alp, NULL, sub_get_headerlen(alp->outrec.flags&7));
+	alp->OUTREC(PLEN) = (ot_u8)payload_remaining;
+	sub_insert_header(alp, NULL, sub_get_headerlen(alp->OUTREC(FLAGS)&7));
 }
 #endif
 
@@ -641,13 +643,13 @@ ot_bool alp_parse_header(alp_tmpl* alp) {
     ot_u8* msgfront;
     msgfront                = alp->inq->getcursor;
     alp->inq->getcursor    += 4;
-    platform_memcpy(&alp->inrec.flags, msgfront, 4);
+    platform_memcpy(&alp->INREC(FLAGS), msgfront, 4);
     
     ///@todo this is legacy code.  Bookmark should get removed in future
-    if (alp->inrec.flags & ALP_FLAG_MB) {
-        alp->inrec.bookmark     = NULL;
-    	alp->outrec.bookmark    = NULL;
-    }
+    //if (alp->INREC(FLAGS) & ALP_FLAG_MB) {
+        //alp->BOOKMARK_IN     = NULL;
+    	//alp->BOOKMARK_OUT    = NULL;
+    //}
 
     ///@todo could do some checking here, not sure if necessary though.
     return True;
@@ -655,20 +657,20 @@ ot_bool alp_parse_header(alp_tmpl* alp) {
     ///@note Old, Obsolete code is below
     
     // ALP & NDEF Universal Field (Flags)
-//    alp->inrec.flags = *alp->inq->getcursor++;
+//    alp->INREC(FLAGS) = *alp->inq->getcursor++;
 
     // OBSOLETE: Clear bookmarks on new message input 
-//    if (alp->inrec.flags & ALP_FLAG_MB) {
-//    	alp->inrec.bookmark     = NULL;
-//    	alp->outrec.bookmark    = NULL;
+//    if (alp->INREC(FLAGS) & ALP_FLAG_MB) {
+//    	alp->BOOKMARK_IN     = NULL;
+//    	alp->BOOKMARK_OUT    = NULL;
 //    }
 
     // ALP type
-//    if ((alp->inrec.flags & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) {
+//    if ((alp->INREC(FLAGS) & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) {
 //    	ot_u8* qdata;
 //    	qdata                   = alp->inq->getcursor;
 //    	alp->inq->getcursor    += 3;
-//    	platform_memcpy(&alp->inrec.plength, qdata, 3);
+//    	platform_memcpy(&alp->INREC(PLEN), qdata, 3);
 //    	return True;
 //    }
 
@@ -678,18 +680,18 @@ ot_bool alp_parse_header(alp_tmpl* alp) {
 //#if (OT_FEATURE(NDEF) == ENABLED)
 //    // NDEF Universal Fields
 //    alp->inq->getcursor++;	                            //bypass type length
-//    alp->inrec.plength  = *alp->inq->getcursor++;       //get payload length
+//    alp->INREC(PLEN)  = *alp->inq->getcursor++;       //get payload length
 //    
 //    // NDEF Type Unchanged (for Chunking)
-//    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_SR+6)) {
+//    if ((alp->INREC(FLAGS) & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_SR+6)) {
 //        return True;
 //    }
 //    
 //    // NDEF Type Unknown (for MB==1)
-//    if ((alp->inrec.flags & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_MB+NDEF_SR+NDEF_IL+5)) {
+//    if ((alp->INREC(FLAGS) & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_MB+NDEF_SR+NDEF_IL+5)) {
 //    	if (*alp->inq->getcursor++ == 2) {
-//    		alp->inrec.id   = *alp->inq->getcursor++;
-//            alp->inrec.cmd  = *alp->inq->getcursor++;
+//    		alp->INREC(ID)   = *alp->inq->getcursor++;
+//            alp->INREC(CMD)  = *alp->inq->getcursor++;
 //            return True;
 //    	}
 //    }
@@ -709,12 +711,12 @@ ot_bool alp_parse_header(alp_tmpl* alp) {
 ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
 /// This function is for writing a two-byte integer to the return record.  It
 /// is useful for some types of API return sequences
-    ot_bool respond = (ot_bool)(alp->outrec.cmd & 0x80);
+    ot_bool respond = (ot_bool)(alp->OUTREC(CMD) & 0x80);
 
     if (respond)  {
-      //alp->outrec.flags          &= ~ALP_FLAG_CF;
-        alp->outrec.plength = 2;
-        alp->outrec.cmd    |= 0x40;
+      //alp->OUTREC(FLAGS)          &= ~ALP_FLAG_CF;
+        alp->OUTREC(PLEN) = 2;
+        alp->OUTREC(CMD)    |= 0x40;
         q_writeshort(alp->outq, retval);
     }
     

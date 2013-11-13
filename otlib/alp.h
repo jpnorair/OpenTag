@@ -61,6 +61,23 @@
 #define ALP_FLAG_SR     0x10
 
 
+/// Temporary, for transitioning some alp code that is being refactored
+#define _O_CMD          cmd
+#define _O_ID           id
+#define _O_PLEN         plength
+#define _O_FLAGS        flags
+#define _I_CMD          -1
+#define _I_ID           -2
+#define _I_PLEN         -3
+#define _I_FLAGS        -4
+
+#define INREC(X)        inq->getcursor[_I_##X]
+#define OUTREC(X)       outrec._O_##X
+#define BOOKMARK_IN     bookmark_in
+#define BOOKMARK_OUT    outrec.bookmark
+
+
+
 typedef enum {
     MSG_Null        = 0,
     MSG_Chunking_Out= 2,
@@ -77,7 +94,7 @@ typedef struct {
     ot_u8   plength;            // Payload Length
     ot_u8   id;                 // ALP ID (Similar to Destination Port)
     ot_u8   cmd;                // ALP CMD (ID-specific Command)
-    void*   bookmark;           // Internal use only (private)
+//    void*   bookmark;           // Internal use only (private)
 } alp_record;
 
 typedef struct {
@@ -85,7 +102,7 @@ typedef struct {
     ///      will be removed, and the application processors will be responsible
     ///      for managing their own record headers, with functional assitance
     ///      from the ALP module.
-    alp_record  inrec;
+//    alp_record  inrec;
     alp_record  outrec;
     ot_queue*   inq;
     ot_queue*   outq;

@@ -81,6 +81,8 @@
 ///@todo this is untested code.  The Auth module is incomplete and must be 
 ///      augmented to include functions & data elements referenced in this code.
 
+///@todo replace INREC calls with direct access from input
+
 #include "alp.h"
 
 #if (   (OT_FEATURE(ALP) == ENABLED) \
@@ -114,7 +116,7 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
 #   if (OT_FEATURE(CLIENT))
     /// Put your client code in here, which handles the response.  Response
     /// is noted by having the Status bit set.
-    if (alp->inrec.cmd & ALP_SEC_STATUS) {
+    if (alp->INREC(_CMD) & ALP_SEC_STATUS) {
         alp_push_sec(alp, user_id);
     }
 #   endif
@@ -127,14 +129,14 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
     }
     
     // Only support RFUMASK = 000
-    if (alp->inrec.cmd & ALP_SEC_RFUMASK) {
+    if (alp->INREC(_CMD) & ALP_SEC_RFUMASK) {
         errcode = 255;
         goto alp_proc_sec_RESPONSE;
     }
     
     // If ID is used, breakdown the ID tmpl and use it to find the Key index.
     // else, just use the damn key index.
-    if (alp->inrec.cmd & ALP_SEC_IDTMPL) {
+    if (alp->INREC(_CMD) & ALP_SEC_IDTMPL) {
         alp_breakdown_id_tmpl(alp->inq, (void*)&id_data);
         id_ptr      = &id_data;
         key_index   = auth_find_keyindex(&id_data);
@@ -149,10 +151,10 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
     // Read (01) and Create (11) include a key in the response.
     
     // Create/Update a key.  When creating a new key, key_index is replaced.
-    if (alp->inrec.cmd & 2) {
+    if (alp->INREC(_CMD) & 2) {
         alp_breakdown_key_tmpl(alp->inq, (void*)&key_data);
     
-        if (alp->inrec.cmd & 1) {
+        if (alp->INREC(_CMD) & 1) {
             errcode = auth_create_key(&key_index, &key_data, id_ptr);
         }
         else {
@@ -161,12 +163,12 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
     }
     
     // Delete a key
-    else if ((alp->inrec.cmd & 3) == 0) {
+    else if ((alp->INREC(_CMD) & 3) == 0) {
         errcode = auth_delete_key(key_index);
     }
     
     // Do read operation if no errors and command is read or create
-    if ((alp->inrec.cmd & 1) && (errcode == 0)) {
+    if ((alp->INREC(_CMD) & 1) && (errcode == 0)) {
         errcode = alp_read_key(key_index, &key_data);
     }
 
@@ -175,15 +177,15 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
     // Always include key index when status==0
     // Include id and key data conditionally
     alp_proc_sec_RESPONSE:
-    if (alp->inrec.cmd & ALP_SEC_RESPOND) {
-        alp->outrec.cmd    &= 0x3F;
-        alp->outrec.cmd    |= ALP_SEC_STATUS;
+    if (alp->INREC(_CMD) & ALP_SEC_RESPOND) {
+        alp->OUTREC(_CMD)    &= 0x3F;
+        alp->OUTREC(_CMD)    |= ALP_SEC_STATUS;
         q_writebyte(alp->outq, errcode);
         
         if (errcode == 0) {
             q_writeshort(key_index);
-            if (alp->inrec.cmd & ALP_SEC_IDTMPL)    alp_stream_id_tmpl(alp->outq, &auth_data);
-            if (alp->inrec.cmd & 1)                 alp_stream_key_tmpl(alp->outq, &key_data);
+            if (alp->INREC(_CMD) & ALP_SEC_IDTMPL)    alp_stream_id_tmpl(alp->outq, &auth_data);
+            if (alp->INREC(_CMD) & 1)                 alp_stream_key_tmpl(alp->outq, &key_data);
         }
     }
     

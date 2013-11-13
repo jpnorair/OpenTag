@@ -100,16 +100,24 @@
   * The flag values are consistent with the ones used for M2NP/M2QP, but they
   * can be used for other protocols, too, since they are pretty generic.
   */
-#define M2_FLAG_LISTEN              b10000000
-#define M2_FLAG_DLLS                b01000000
-#define M2_FLAG_VID                 b00100000
-#define M2_FLAG_NLS                 b00010000
+#define M2_FLAG_LISTEN              (1<<7)
+#define M2_FLAG_DLLS                (1<<6)
+#define M2_FLAG_NLS                 (1<<5)
+#define M2_FLAG_VID                 (1<<4)
+#define M2_FLAG_RSCODE              (1<<3)
+#define M2_FLAG_STREAM              (1<<2)
+#define M2_FLAG_UCAST               (0<<0)
+#define M2_FLAG_BCAST               (1<<0)
+#define M2_FLAG_ACAST               (2<<0)
+#define M2_FLAG_MCAST               (3<<0)
 
 
 /** "Extra" Information
   */
-#define M2_EXTRA_USERFLAGS          0x0F
-#define M2_EXTRA_RFU                0xF0
+#define M2_EXTRA_USERAUTH           (1<<6)
+#define M2_EXTRA_CRYPTO             (3<<4)
+#define M2_EXTRA_APPFLAGS           (15<<0)
+
 
 
 

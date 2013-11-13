@@ -474,16 +474,7 @@ void sub_processing() {
         /// <LI> The current session is popped after response, or on next kernel
         ///      loop (immediately) if no response </LI>
         if (active->flags & M2_FLAG_LISTEN) {
-            m2session* clone;
-            clone = session_new(  active->applet, 
-                                    CLK2TI(dll.comm.tc),
-                                    (M2_NETSTATE_REQRX | M2_NETSTATE_ASSOCIATED),
-                                    active->channel     );
-            
-            clone->extra        = active->extra;
-            clone->dialog_id    = active->dialog_id;
-            clone->subnet       = active->subnet;
-            clone->flags        = active->flags;
+            network_cont_dialog(active->applet, 0);
         }
     }
 

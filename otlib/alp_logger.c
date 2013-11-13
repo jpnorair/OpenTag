@@ -38,16 +38,18 @@
 #include "auth.h"
 #include "queue.h"
 
+///@todo replace INREC calls with direct access from input
+
 ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
 /// Logger ALP is like ECHO.  The input is copied to the output.
     
     // Only root can log directly (this is an important security firewall)
     if (auth_isroot(user_id)) {
-        alp->outrec.flags   = alp->inrec.flags;
-        alp->outrec.plength = alp->inrec.plength;
+        alp->OUTREC(FLAGS) = alp->INREC(FLAGS);
+        alp->OUTREC(PLEN)  = alp->INREC(PLEN);
         
         if (alp->inq != alp->outq) {
-            q_writestring(alp->outq, alp->inq->getcursor, alp->inrec.plength);
+            q_writestring(alp->outq, alp->inq->getcursor, alp->INREC(PLEN));
         }
     }
     return True;

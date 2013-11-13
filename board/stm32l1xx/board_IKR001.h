@@ -1,4 +1,4 @@
-/* Copyright 2009-2012 JP Norair
+/* Copyright 2012-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /board/stm32l1xx/board_IKR001.h
   * @author     JP Norair
-  * @version    R100
-  * @date       24 Jan 2013
+  * @version    R101
+  * @date       12 Nov 2013
   * @brief      Board Configuration for STEVAL-IKR001
   * @ingroup    Platform
   *
@@ -34,7 +34,7 @@
 #ifndef __board_IKR001_H
 #define __board_IKR001_H
 
-#include "build_config.h"
+#include "app_config.h"
 #include "platform_STM32L1xx.h"
 
 #ifdef __NULL_RADIO__
@@ -66,12 +66,17 @@
 
 /** Additional RF Front End Parameters and Settings <BR>
   * ========================================================================<BR>
-  * The IKR001V3 uses 433 MHz band plus a lousy antenna
+  * The IKR001V3 uses 433 MHz band SPIRIT1 Module and a really poorly-matched
+  * included antenna.  The included antenna is about 5% effcient, so we use 
+  * 13 dB attenuation figure for RX and 14 dB attenuation for TX.  You can 
+  * alternatively use a better antenna, which I have as 2/3 dB attentuation. 
   */
-#define RF_PARAM_BAND   433
-#define RF_HDB_ATTEN    8       //Half dB attenuation (units = 0.5dB), used to scale TX power
-#define RF_HDB_RXATTEN  6
-#define RF_RSSI_OFFSET  6       //Offset applied to RSSI calculation
+#define RF_PARAM_BAND       433
+#define _ATTEN_DB           2
+//#define _ATTEN_DB           13
+#define RF_HDB_ATTEN        (2*(_ATTEN_DB+1))   //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_HDB_RXATTEN      (2*_ATTEN_DB)       //Half dB attenuation for RX
+#define RF_RSSI_OFFSET      (2*_ATTEN_DB)       //Offset applied to RSSI calculation
 
 
 
@@ -82,18 +87,19 @@
 
 //From platform_STM32L1xx.h
 //#define MCU_FEATURE(VAL)              MCU_FEATURE_##VAL   // FEATURE 
+#define MCU_FEATURE_MULTISPEED          DISABLED        // Allows usage of MF-HF clock boosting
 #define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPECDC            DISABLED            // USB-CDC MPipe implementation
-#define MCU_FEATURE_MPIPEUART           ENABLED             // UART MPipe Implementation
-#define MCU_FEATURE_MPIPEI2C            DISABLED            // I2C MPipe Implementation
-#define MCU_FEATURE_MEMCPYDMA           ENABLED             // MEMCPY DMA should be lower priority than MPIPE DMA
+#define MCU_FEATURE_MPIPECDC            ENABLED         // USB-CDC MPipe implementation
+#define MCU_FEATURE_MPIPEUART           DISABLED        // UART MPipe Implementation
+#define MCU_FEATURE_MPIPEI2C            DISABLED        // I2C MPipe Implementation
+#define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 
 #define MCU_FEATURE_USB                 ((MCU_FEATURE_MPIPECDC == ENABLED) || 0)
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_PORTS                 6               // This STM32L has ports A, B, C, D, E, H
 #define MCU_PARAM_VOLTLEVEL             2               // 3=1.2, 2=1.5V, 1=1.8V
-#define MCU_PARAM_POINTERSIZE           2
+#define MCU_PARAM_POINTERSIZE           4               // Pointers are 4 bytes
 
 
 
@@ -111,15 +117,16 @@
   * of the Flash space because this seems to work best with the debugger HW.
   */
 
-
+#define SRAM_SIZE               (16*1024)
 #define EEPROM_SIZE             (4*1024)
-#if 1
-#   define SRAM_SIZE            (16*1024)
-#   define FLASH_SIZE           (64*1024)
-#else
-#   define FLASH_SIZE           (128*1024)   //chip actually has 128KB
-#   define SRAM_SIZE            (16*1024)   //chip actually has 16KB
-#endif
+#define FLASH_SIZE              (64*1024)   //chip actually has 128KB
+#define EEPROM_SAVE_SIZE        (64)
+
+// EEPROM LOCAL DATA
+#define EEPROM_LOCAL_ADDR       (EEPROM_START_ADDR + EEPROM_SIZE - EEPROM_SAVE_SIZE)
+#define EEPROM_LOCAL_U8         (ot_u8*)EEPROM_LOCAL_ADDR
+#define EEPROM_LOCAL_U16        (ot_u16*)EEPROM_LOCAL_ADDR
+#define EEPROM_LOCAL_U32        (ot_u32*)EEPROM_LOCAL_ADDR
 
 // Using EEPROM: Pages figure is irrelevant
 #define FLASH_NUM_PAGES         (FLASH_SIZE/FLASH_PAGE_SIZE)
@@ -127,8 +134,6 @@
 #define FLASH_FS_PAGES          0
 #define FLASH_FS_FALLOWS        0 
 #define FLASH_FS_ALLOC          (EEPROM_SIZE) 
-
-
 
 
 
@@ -150,12 +155,12 @@
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
 #define BOARD_FEATURE_USBCONVERTER      ENABLED                // Is UART/I2C connected via USB converter?
+#define BOARD_FEATURE_MPIPE             ENABLED
 #define BOARD_FEATURE_MPIPE_DIRECT      ENABLED                 // Direct implementation (UART, I2C)
 #define BOARD_FEATURE_MPIPE_BREAK       DISABLED                 // Send/receive leading break for wakeup (I2C)
 #define BOARD_FEATURE_MPIPE_CS          DISABLED                 // Chip-Select / DTR wakeup control (UART)
 #define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                 // RTS/CTS style flow control (UART)
 
-#define BOARD_FEATURE_MPIPE_QMGMT       ENABLED                 // (possibly defunct)
 #define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL attached
 #define BOARD_FEATURE_HFXTAL            (MCU_FEATURE_USB != ENABLED)                 // HF XTAL attached
 #define BOARD_FEATURE_HFBYPASS          DISABLED
@@ -178,6 +183,8 @@
 #define BOARD_PARAM_MFdiv               1
 #define BOARD_PARAM_MFtol               0.02
 #define BOARD_PARAM_HFHz                16000000
+#define BOARD_PARAM_HFmult              1                       // Turbo CLK = HFHz * (HFmult/HFdiv)
+#define BOARD_PARAM_HFdiv               1
 #define BOARD_PARAM_HFtol               0.02
 #define BOARD_PARAM_HFppm               20000
 #define BOARD_PARAM_RFHz                50000000
@@ -580,18 +587,20 @@ static inline void BOARD_DMA_CLKOFF(void) {
 ///@note BOARD Macro for EXTI initialization.  See also EXTI macros at the
 ///      bottom of the page.
 static inline void BOARD_EXTI_STARTUP(void) {
-    // EXTI0-3 
-    //SYSCFG->EXTICR[1]  |= 
+    // EXTI0-3: Unused, Unused, Unused, UART-RX-Detect
+#   if (BOARD_FEATURE(MPIPE_BREAK))
+    SYSCFG->EXTICR[0]   = (BOARD_UART_PORTNUM << 12);
+#   endif
     
-    // EXTI4-7 (SW1 = EXTI6, RF_IRQ0 = EXTI7, )
-    SYSCFG->EXTICR[1]  |= (BOARD_SW1_PORTNUM << 8) \
+    // EXTI4-7: Unused, Unused, SW1, RFGPIO0
+    SYSCFG->EXTICR[1]   = (BOARD_SW1_PORTNUM << 8) \
                         | (BOARD_RFGPIO_PORTNUM << 12);
     
-    // EXTI8-11 (RF_IRQ1 = EXTI8, RF_IRQ2 = EXTI9)
-    SYSCFG->EXTICR[2]  |= ( (BOARD_RFGPIO_PORTNUM << 0) \
-                          | (BOARD_RFGPIO_PORTNUM << 4));
+    // EXTI8-11: RFGPIO1, RFGPIO2, Unused, Unused
+    SYSCFG->EXTICR[2]   = ( (BOARD_RFGPIO_PORTNUM << 0) \
+                        | (BOARD_RFGPIO_PORTNUM << 4));
     
-    // EXTI12-15 
+    // EXTI12-15: Unused, Unused, Unused, Unused
     //SYSCFG->EXTICR[3]  |= 
 }
 
@@ -936,23 +945,31 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define BOARD_RADIO_EXTI15_ISR();
 
 
-///@note BOARD Macros for Kernel Timer interrupt vectoring
-#define BOARD_KTIM_EXTI0_ISR();
-#define BOARD_KTIM_EXTI1_ISR();
-#define BOARD_KTIM_EXTI2_ISR();
-#define BOARD_KTIM_EXTI3_ISR();
-#define BOARD_KTIM_EXTI4_ISR();
-#define BOARD_KTIM_EXTI5_ISR();      
-#define BOARD_KTIM_EXTI6_ISR();
-#define BOARD_KTIM_EXTI7_ISR();
-#define BOARD_KTIM_EXTI8_ISR();
-#define BOARD_KTIM_EXTI9_ISR();
-#define BOARD_KTIM_EXTI10_ISR();
-#define BOARD_KTIM_EXTI11_ISR();
-#define BOARD_KTIM_EXTI12_ISR();    
-#define BOARD_KTIM_EXTI13_ISR();
-#define BOARD_KTIM_EXTI14_ISR();
-#define BOARD_KTIM_EXTI15_ISR();
+
+///@note BOARD Macros for Com module interrupt vectoring.  Connect these to
+///      the Com interface driver you are using.  Check the schematic of your
+///      board to see where the Com IRQ lines are routed. 
+#define BOARD_COM_EXTI0_ISR();
+#define BOARD_COM_EXTI1_ISR();
+#define BOARD_COM_EXTI2_ISR();
+#if (MCU_FEATURE(MPIPEUART) && BOARD_FEATURE(MPIPE_BREAK))
+#   define BOARD_COM_EXTI3_ISR();
+#else
+#   define BOARD_COM_EXTI3_ISR();
+#endif
+#define BOARD_COM_EXTI4_ISR();
+#define BOARD_COM_EXTI5_ISR();
+#define BOARD_COM_EXTI6_ISR();     
+#define BOARD_COM_EXTI7_ISR();     
+#define BOARD_COM_EXTI8_ISR();     
+#define BOARD_COM_EXTI9_ISR();
+#define BOARD_COM_EXTI10_ISR();
+#define BOARD_COM_EXTI11_ISR();
+#define BOARD_COM_EXTI12_ISR();
+#define BOARD_COM_EXTI13_ISR();
+#define BOARD_COM_EXTI14_ISR();
+#define BOARD_COM_EXTI15_ISR();
+
 
 
 
@@ -1111,14 +1128,22 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #if (MCU_FEATURE_USB == ENABLED)
 // USB is mostly independent from OT, but the startup code does need to know 
 // how to boost the crystal
+#   if (BOARD_PARAM_HFHz != 2000000) && (BOARD_PARAM_HFHz != 3000000) \
+      && (BOARD_PARAM_HFHz != 4000000) && (BOARD_PARAM_HFHz != 6000000) \
+      && (BOARD_PARAM_HFHz != 8000000) && (BOARD_PARAM_HFHz != 12000000) \
+      && (BOARD_PARAM_HFHz != 16000000) && (BOARD_PARAM_HFHz != 24000000) \
+      && (BOARD_PARAM_RFHz != 24000000) && (BOARD_PARAM_RFHz != 48000000)
+#       error "USB requires 2, 3, 4, 6, 8, 12, 16, or 24 MHz HSE XTAL, or alternatively 24 or 48 MHz RF crystal."
+#   endif
 #   define MPIPE_USB_ID         0
 #   define MPIPE_USB            USB0
 #   define MPIPE_USBDP_PORT     BOARD_USB_PORT
 #   define MPIPE_USBDM_PORT     BOARD_USB_PORT
 #   define MPIPE_USBDP_PIN      BOARD_USB_DPPIN
 #   define MPIPE_USBDM_PIN      BOARD_USB_DMPIN
+#endif
 
-#else
+#if (MCU_FEATURE_MPIPEUART == ENABLED)
 #   define MPIPE_DMANUM         1
 #   define MPIPE_DMA            DMA1
 #   define MPIPE_UART_ID        BOARD_UART_ID
@@ -1162,7 +1187,6 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #   else
 #       error "MPIPE_UART_ID is defined out of range"
 #   endif
-
 #endif
 
 
@@ -1316,6 +1340,7 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #endif
 #if (!defined(__USE_EXTI3) && ( \
         (OT_SWITCH1_PINNUM == 3) || \
+        (BOARD_FEATURE_MPIPE_BREAK && (BOARD_UART_RXPINNUM == 3)) || \
         (RADIO_IRQ0_SRCLINE == 3) || (RADIO_IRQ1_SRCLINE == 3) || (RADIO_IRQ2_SRCLINE == 3) || (RADIO_IRQ3_SRCLINE == 3) \
     ))
 #   define __USE_EXTI3
@@ -1339,13 +1364,13 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #   define __USE_EXTI6
 #endif
 #if (!defined(__USE_EXTI7) && ( \
-        (OT_SWITCH1_PINNUM == 6) || \
+        (OT_SWITCH1_PINNUM == 7) || \
         (RADIO_IRQ0_SRCLINE == 7) || (RADIO_IRQ1_SRCLINE == 7) || (RADIO_IRQ2_SRCLINE == 7) || (RADIO_IRQ3_SRCLINE == 7) \
     ))
 #   define __USE_EXTI7
 #endif
 #if (!defined(__USE_EXTI8) && ( \
-        (OT_SWITCH1_PINNUM == 6) || \
+        (OT_SWITCH1_PINNUM == 8) || \
         (RADIO_IRQ0_SRCLINE == 8) || (RADIO_IRQ1_SRCLINE == 8) || (RADIO_IRQ2_SRCLINE == 8) || (RADIO_IRQ3_SRCLINE == 8) \
     ))
 #   define __USE_EXTI8
@@ -1395,59 +1420,6 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 
 
 
-
-
-
-
-
-/******* ALL SHIT BELOW HERE IS SUBJECT TO REDEFINITION **********/
-
-
-
-
-/** Flash Memory Setup: 
-  * "OTF" means "Open Tag Flash," but if flash is not used, it just means 
-  * storage memory.  Unfortunately this does not begin with F.
- 
-#define OTF_VWORM_PAGES         (FLASH_FS_ALLOC/FLASH_PAGE_SIZE)
-#define OTF_VWORM_FALLOW_PAGES  3
-#define OTF_VWORM_PAGESIZE      FLASH_PAGE_SIZE
-#define OTF_VWORM_WORD_BYTES    FLASH_WORD_BYTES
-#define OTF_VWORM_WORD_BITS     FLASH_WORD_BITS
-#define OTF_VWORM_SIZE          (OTF_VWORM_PAGES * OTF_VWORM_PAGESIZE)
-#define OTF_VWORM_START_PAGE    ((FLASH_FS_ADDR-FLASH_START_ADDR)/FLASH_PAGE_SIZE)
-#define OTF_VWORM_START_ADDR    FLASH_FS_ADDR
-
-#define OTF_CRC_TABLE           DISABLED
-#define OTF_UHF_TABLE           DISABLED
-#define OTF_UHF_TABLESIZE       0
-#define OTF_M1_ENCODE_TABLE     DISABLED
-#define OTF_M2_ENCODE_TABLE     ENABLED
-
-// Total number of pages taken from program memory
-#define OTF_TOTAL_PAGES         (OTF_VWORM_PAGES)
-
- */
-
-
-
-
-/** Abstracted Flash Organization: 
-  * OpenTag uses Flash to store 2 kinds of data.  The default setup puts 
-  * Filesystem memory in the back.
-  * 1. Program code (obviously)
-  * 2. Filesystem Memory
-  *
-  * FLASH_xxx constants are defined in the platform_config_xxx.h file.  
-
-#define OTF_TOTAL_SIZE          FLASH_FS_ALLOC
-#define OTF_START_PAGE          OTF_VWORM_START_PAGE
-#define OTF_START_ADDR          FLASH_FS_ADDR
-
-#define OTF_VWORM_LAST_PAGE     (OTF_VWORM_START_PAGE + OTF_VWORM_PAGES - 1)
-#define OTF_VWORM_END_ADDR      (FLASH_FS_ADDR + FLASH_FS_ALLOC - 1)
-
-  */
 
 
 #endif

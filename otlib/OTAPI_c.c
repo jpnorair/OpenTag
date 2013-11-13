@@ -94,7 +94,7 @@ ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
         dll_set_defaults(s_active);
     
         // Unicast/Anycast support routing, so copy the supplied template
-        if ((addr & 0x40) == 0) {   
+        if ((addr & M2QUERY_GLOBAL) == 0) {   
             platform_memcpy((ot_u8*)&m2np.rt, (ot_u8*)routing, sizeof(routing_tmpl));
         }
 
@@ -217,8 +217,7 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
         q_writebyte(&txq, 0);
     }
     else {
-        // Calculate actual timeout and write timeout code field
-        dll.comm.rx_timeout = otutils_calc_timeout(dialog->timeout);
+        // Place dialog with timeout
         dialog->timeout    |= (dialog->channels == 0) ? 0 : 0x80;
         q_writebyte(&txq, dialog->timeout);
     
@@ -239,7 +238,7 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
 #ifndef EXTF_otapi_put_query_tmpl
 ot_u16 otapi_put_query_tmpl(ot_u8* status, query_tmpl* query) {
     /// Test for Anycast and Multicast addressing (query needs one of these)    
-    if (m2np.header.addr_ctl & 0x80) {
+    if (m2np.header.fr_info & M2QUERY_GLOBAL) {
         q_writebyte(&txq, query->length);
         q_writebyte(&txq, query->code);
     
