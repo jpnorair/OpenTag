@@ -139,6 +139,7 @@ typedef enum {
 ot_bool subrfctl_test_channel(ot_u8 channel);
 void    subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate);
 
+void    subrfctl_kill(ot_int errcode);
 void    subrfctl_finish(ot_int main_err, ot_int frame_err);
 //ot_bool subrfctl_lowrssi_reenter();
 
@@ -463,7 +464,7 @@ ot_bool subrfctl_mac_filter() {
     // Link Quality Filter      = (Link Loss <= Link Loss Limit)
     ot_u8 qualifier = (ot_u8)(radio.last_linkloss <= ((ot_int)phymac[0].link_qual)<<1);
     {   ot_u8 fr_subnet, dsm, specifier, mask;
-        fr_subnet   = rxq.front[2];
+        fr_subnet   = rxq.front[3];
         dsm         = dll.netconf.subnet & 0x0F;
         mask        = fr_subnet & dsm;
         specifier   = (fr_subnet ^ dll.netconf.subnet) & 0xF0;
@@ -639,6 +640,7 @@ void em2_encode_newframe() {
 
     /// 2. Prepare the CRC, also adding 2 bytes to the frame length
     if (txq.options.ubyte[UPPER] != 0) {
+        txq.front[0] += 2;
         em2_add_crc5(txq.front);
         crc_init_stream(q_span(&txq), txq.getcursor);
         txq.putcursor += 2;
@@ -724,9 +726,8 @@ void em2_decode_data() {
             }
             crc_init_stream(em2.bytes, rxq.getcursor);
         }
-        if ((em2.lctl & 0x40) == 0) {
-            crc_calc_nstream(grab);
-        }
+        crc_calc_nstream(grab);
+
         em2.bytes -= grab;
         if (em2.bytes > 0) {
             goto em2_decode_data_TOP;
@@ -771,12 +772,12 @@ ot_bool subrfctl_test_channel(ot_u8 channel) {
 
 ///@note maccfg[5] should be 1 for release, and higher (i.e. 10) for bgrx test
 void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
-    ot_u8 maccfg[7] = { 0, RFREG(PROTOCOL2), 
-                        ((DRF_PROTOCOL2 & 0x1F) | _SQI_TIMEOUT_MASK),
+    ot_u8 maccfg[8] = { 0, RFREG(PROTOCOL2), 
+                        (DRF_PROTOCOL2 & 0x1F) | _SQI_TIMEOUT_MASK,
                         DRF_PROTOCOL1, 
                         DRF_PROTOCOL0,
-                        1,
-                        0 };
+                        DRF_TIMERS5, 0,     // RX Termination timer (default off)
+                        0 };                // Alignment Dummy
     MODE_enum   buffer_mode;
     ot_u16      pktlen;
     
@@ -794,7 +795,7 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     ///    RX-RX happens during Response listening, unless FIRSTRX is high
     //netstate &= (M2_NETFLAG_FIRSTRX | M2_NETSTATE_RESP);
     //if ((netstate ^ M2_NETSTATE_RESP) == 0) {
-    //    maccfg[4] = _PERS_RX;
+    //    maccfg[4] = _PERS_RX | _NACK_TX;
     //}
 
     /// 4a. Setup RX for Background detection (if FLOOD):
@@ -804,13 +805,14 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     /// 4b. Setup RX for Foreground detection (ELSE): 
     ///     <LI> Set Foreground paging and tentative packet-len to max </LI>
     if (rfctl.flags & RADIO_FLAG_FLOOD) {
+        spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cs_thr );
         rxq.getcursor       = rxq.front;
-        *rxq.getcursor++    = 8;
-        *rxq.getcursor++    = 0;            ///@todo some CRC5 magic value
+        *rxq.getcursor++    = 6;
+        *rxq.getcursor++    = 3;            // 00011 is CRC5 for 0000011000
         rxq.putcursor       = rxq.getcursor;
         rfctl.state         = RADIO_STATE_RXAUTO;
-        maccfg[2]           = ((DRF_PROTOCOL2 & 0x1F) | _CS_TIMEOUT_MASK);
-        maccfg[6]           = (5 << (BOARD_PARAM_RFHz > 26000000));
+        maccfg[2]           = (DRF_PROTOCOL2 & 0x1F) | _SQI_TIMEOUT_MASK | _CS_TIMEOUT_MASK;
+        maccfg[6]           = 5;           // 1 unit = ~48us
         buffer_mode         = MODE_bg;
         pktlen              = 7;
     }
@@ -823,7 +825,6 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     /// 5.  Send Configuration data to SPIRIT1
     subrfctl_buffer_config(buffer_mode, pktlen);                // packet configuration
     spirit1_spibus_io(7, 0, maccfg);                            // MAC configuration
-    spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cs_thr );     // RX CS threshold
 
     /// 6.  Prepare Decoder to receive, then receive
     em2_decode_newpacket();
@@ -955,11 +956,11 @@ void rm2_resend(ot_sig2 callback) {
 #endif
 
 
+
+
 #ifndef EXTF_rm2_kill
 void rm2_kill() {
-    radio_gag();
-    radio_idle();
-    subrfctl_finish(RM2_ERR_KILL, 0);
+    subrfctl_kill(RM2_ERR_KILL);
 }
 #endif
 
@@ -1021,9 +1022,7 @@ void subrfctl_unsync_isr() {
 
 #ifndef EXTF_rm2_rxtimeout_isr
 void rm2_rxtimeout_isr() {
-    radio_gag();
-    radio_idle();
-    subrfctl_finish(RM2_ERR_TIMEOUT, 0);
+    subrfctl_kill(RM2_ERR_TIMEOUT);
 }
 #endif
 
@@ -1206,15 +1205,22 @@ void rm2_txcsma_isr() {
         case (RADIO_STATE_TXINIT >> RADIO_STATE_TXSHIFT): {
             MODE_enum   type;
             ot_u16      pktlen;
-            ot_u8       timcfg[7] = {   0, RFREG(PROTOCOL0), DRF_PROTOCOL0, 
-                                        1, 5,           // RX Timer @ ~240us
-                                        33, 1   };      // LDC First Interval (default 2 ticks)
+            ot_u8       timcfg[8] = {   0, RFREG(PROTOCOL0), DRF_PROTOCOL0, 
+                                        DRF_TIMERS5, 5, // RX Timer @ ~240us
+                                        33, 1,          // LDC First Interval (default 2 ticks)
+                                        0 };            // Alignment Dummy
             
             // Find a usable channel from the TX channel list.  If none, error.
             if (subrfctl_chanscan() == False) {
                 radio.evtdone(RM2_ERR_BADCHANNEL, 0);
                 break;
             }
+            
+            // Configure encoder.  On SPIRIT1 TX, this needs to be done before
+            // calling subrfctl_buffer_config().
+            subrfctl_prep_q(&txq);
+            em2_encode_newpacket();
+            em2_encode_newframe();
             
             // Set TX PATABLE values if different than pre-existing values
             if (rfctl.flags & RADIO_FLAG_SETPWR) {
@@ -1226,18 +1232,11 @@ void rm2_txcsma_isr() {
             // Peristent-TX attribute for floods, which is written later
             type = MODE_fgpage;
             if (rfctl.flags & RADIO_FLAG_FLOOD) {
-                type        = MODE_bg;
                 timcfg[2]  |= _PERS_TX;
-                em2.bytes   = 5;            // bit of a hack
+                //em2.bytes   = 5;            // bit of a hack (?)
+                type        = MODE_bg;
             }
-            
-            // Configure encoder.  On SPIRIT1 TX, this needs to be done before
-            // calling subrfctl_buffer_config().
-            subrfctl_prep_q(&txq);
-            em2_encode_newpacket();
-            em2_encode_newframe();
-            
-            subrfctl_buffer_config(type, q_span(&txq));
+            subrfctl_buffer_config(type, em2.bytes /*q_span(&txq)*/);
             spirit1_int_off();
             spirit1_iocfg_tx();
             
@@ -1245,7 +1244,8 @@ void rm2_txcsma_isr() {
             __CALIBRATE();
 
             // No CSMA enabled, so jump to transmit
-            if (dll.comm.csmaca_params & M2_CSMACA_NOCSMA) {
+            if (1) {
+            //if (dll.comm.csmaca_params & M2_CSMACA_NOCSMA) {
                 spirit1_spibus_io(3, 0, timcfg);
                 goto rm2_txcsma_START;
             }
@@ -1253,7 +1253,7 @@ void rm2_txcsma_isr() {
             // Setup CSMA/CCA parameters for this channel and fall through
             spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cca_thr );
             
-            timcfg[6]   = (phymac[0].tg - 1);
+            timcfg[6] = (phymac[0].tg - 1);
             spirit1_spibus_io(7, 0, timcfg);
         }
         
@@ -1287,7 +1287,7 @@ void rm2_txcsma_isr() {
             // This is small-enough that the TX state machine doesn't need
             // special conditions, and less initial data = less latency.
             rfctl.txlimit   = 7;
-            txq.front[1]    = (phymac[0].tx_eirp & 0x7f);
+            txq.front[2]    = (phymac[0].tx_eirp & 0x7f);
             
             sub_force_idle(); 
             radio_flush_tx();
@@ -1428,6 +1428,12 @@ void subrfctl_txend_isr() {
 
 void subrfctl_null(ot_int arg1, ot_int arg2) { }
 
+
+void subrfctl_kill(ot_int errcode) {
+    radio_gag();
+    radio_idle();
+    subrfctl_finish(errcode, 0);
+}
 
 
 void subrfctl_finish(ot_int main_err, ot_int frame_err) {

@@ -1,4 +1,4 @@
-/* Copyright 2010-2013 JP Norair
+/* Copyright 2010-2012 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/stm32l1xx/mpipe_usbcdc_STM32L.c
   * @author     JP Norair
-  * @version    R101
-  * @date       14 Nov 2013
+  * @version    R100
+  * @date       14 Apr 2013
   * @brief      Message Pipe (MPIPE) USB CDC ACM implementation for STM32L
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
@@ -41,13 +41,10 @@
   * Duplex:             Half
   * Flow control:       None
   * 
-  * MPipe Protocol for USB-CDC-ACM:
+  * Implemented Mpipe Protocol: The Mpipe protocol is a simple wrapper to NDEF.
   * <PRE>
-  * +-------+-----------+-------+-----------+----------+---------+---------+
-  * | Field | Sync Word | CRC16 | P. Length | Sequence | Control | Payload |
-  * | Bytes |     2     |   2   |     2     |     1    |    1    |    N    |
-  * | Value |   FF55    |       |     N     |  0-255   |   RFU   |   ALP   |
-  * +-------+-----------+-------+-----------+----------+---------+---------+
+  * Legend: [ NDEF Header ] [ NDEF Payload ] [ Seq. Number ] [ CRC16 ]
+  * Bytes:        6             <= 255             2             2 
   * </PRE>
   *
   * The protocol includes an ACK/NACK feature, although this is only of any
@@ -61,6 +58,13 @@
   * <PRE>
   * [ Seq ID ] 0xDD 0x00 0x00 0x02 0x00 0xYY  [ CRC16 ]
   * </PRE>
+  *
+  * The MPipe driver also supports a Raw-ALP build.  MPIPE_USE_MAC can be set
+  * to zero through the board config header or in this file (Default is ON).
+  * Raw ALP does not include NDEF-compliant header or any footer.  Therefore,
+  * there is no ACK ability.  Raw ALP has a 4-byte ALP header, identical to 
+  * NDEF header except Type Length and ID Length are removed.  Type Length is
+  * implicitly 0 and ID Length is implicitly 2.
   * 
   ******************************************************************************
   */
@@ -85,12 +89,25 @@
 
 
 
-/** Packet structure constants for MPipe over USB-CDC-ACM  <BR>
+/** Mpipe Module Data (used by all Mpipe implementations)   <BR>
   * ========================================================================<BR>
+  * At present this consumes 24 bytes of SRAM.  6 bytes could be freed by
+  * removing the callbacks, which might not be used.
   */
-#define MPIPE_HEADERBYTES       8
-#define MPIPE_FOOTERBYTES       0
-#define MPIPE_OVERHEADBYTES     (MPIPE_HEADERBYTES + MPIPE_FOOTERBYTES)
+  
+#ifndef MPIPE_USE_MAC
+#   define MPIPE_USE_MAC        1
+#endif
+
+#if (MPIPE_USE_MAC)
+#   define MPIPE_HEADERBYTES    6
+#   define MPIPE_FOOTERBYTES    4
+#else
+#   define MPIPE_HEADERBYTES    4
+#   define MPIPE_FOOTERBYTES    0
+#endif
+
+#define MPIPE_OVERHEADBYTES (MPIPE_HEADERBYTES + MPIPE_FOOTERBYTES)
 
 
 
@@ -140,21 +157,12 @@
 /** Mpipe Driver Data  <BR>
   * ========================================================================<BR>
   */
-
+  
 typedef struct {
-    ot_u8       syncFF;
-    ot_u8       sync55;
-    ot_u16      crc16;
-    ot_u16      plen;
-    ot_u8       seq;
-    ot_u8       ctl;
-} mpipe_header;
-
-typedef struct {
-    ot_int          packets;
-    ot_u8*          pkt;
-    ot_u8*          pktend;
-    mpipe_header    header;
+    ot_uni16 seq;
+    ot_int  packets;
+    ot_int  pktlen;
+    ot_u8*  pkt;
 } cdcacm_struct;
 
 
@@ -177,8 +185,7 @@ static const ot_u32 br_hssel[] = {
 /** Mpipe Main Subroutine Prototypes   <BR>
   * ========================================================================
   */
-void sub_usb_loadheader();
-void sub_usb_loadtx(ot_int pad_bytes);
+void sub_usb_loadtx();
 void sub_usb_portsetup();
 
 
@@ -1092,47 +1099,17 @@ void EP1_IN_Callback (void) {
 void EP3_OUT_Callback(void) {
 /// Copy data from the USB HW buffer into the SW pipe, and also
 /// Advance the position of the pipe cursor for the next call.
-
-///@note Sync Word is not checked to equal FF55 because it doesn't matter for
-///      USB transfer.  You could add sync word checking if you want to be
-///      exhaustively compliant.  Do it in the if() block.
-
     ot_int  rxbytes;
-    ot_int  maxbytes;
     ot_u8*  cursor;
-        
-    // Get amount of bytes in the Endpoint
-    rxbytes = GetEPRxCount(ENDP3);
 
-    // The first block contains the header, which is cropped.
-    ///@todo check against max packet length (maybe in mpipedrv_isr())
-    if (cdcacm.pktend == NULL) {
-        rxbytes -= 8;
-        PMAToUserBufferCopy(&cdcacm.header.syncFF, ENDP3_RXADDR, 8);
-        
-        // Get partial CRC and endian-ize the payload length
-        cdcacm.header.crc16 = platform_crc_block((ot_u8*)&cdcacm.header.crc16, 6);
-        cdcacm.header.plen  = PLATFORM_ENDIAN_16(cdcacm.header.plen);
-        
-        // Protect against too-long packets (they get cropped)
-        cdcacm.pktend = cdcacm.pkt + cdcacm.header.plen;
-        if (cdcacm.pktend > mpipe.alp.inq->back) {
-            cdcacm.pktend = mpipe.alp.inq->back;
-        }
-    }
+    ///@todo Find how to get the USB HW buffer size before loading the
+    ///      data, in order to avoid pipe overflow.
+    rxbytes         = GetEPRxCount(ENDP3);
+    cursor          = cdcacm.pkt;
+    cdcacm.pkt     += rxbytes;
+    cdcacm.pktlen  += rxbytes;
     
-    // Protect against pending overflow
-    maxbytes = cdcacm.pktend - cdcacm.pkt;
-    if (rxbytes > maxbytes) {
-        rxbytes = maxbytes;
-    }
-    
-    // Load the packet and advance cursors
-    cursor      = cdcacm.pkt;
-    cdcacm.pkt += rxbytes;
     PMAToUserBufferCopy(cursor, ENDP3_RXADDR, rxbytes);
-    
-    // call virtual ISR to frame the data
     mpipedrv_isr();
 }
 
@@ -1160,38 +1137,22 @@ void platform_isr_fswkup() {
   */
 void sub_txopen();
 
-void sub_usb_loadheader() {
-    UserToPMABufferCopy( &cdcacm.header.syncFF, ENDP1_TXADDR, 8 );
-}
-
-void sub_usb_loadtx(ot_int pad_bytes) {
-    ot_int transfer_size;
-    ot_int remaining_bytes;
+void sub_usb_loadtx() {
+    ot_u16 transfer_size;
     ot_u8* transfer_start;
         
     transfer_start  = cdcacm.pkt;
-    remaining_bytes = cdcacm.pktend - cdcacm.pkt;
-    transfer_size   = CDCACM_DATA_SIZE - pad_bytes;
-    if (remaining_bytes < transfer_size) {
-        transfer_size = remaining_bytes;
-    }
-    cdcacm.pkt += transfer_size;
+    transfer_size   = (cdcacm.pktlen > CDCACM_DATA_SIZE) ? \
+                                    CDCACM_DATA_SIZE : cdcacm.pktlen;
+    cdcacm.pktlen  -= transfer_size;
+    cdcacm.pkt     += transfer_size;
 
     UserToPMABufferCopy(transfer_start, ENDP1_TXADDR, transfer_size);
     SetEPTxCount(ENDP1, transfer_size);
     SetEPTxValid(ENDP1); 
 }
 
-void sub_gen_mpipecrc() {
-    cdcacm.header.crc16 = platform_crc_block_manual((ot_u8*)&cdcacm.header.plen, 
-                                                    4, 
-                                                    0xFFFF  );
-                                                    
-    cdcacm.header.crc16 = platform_crc_block_manual((ot_u8*)mpipe.alp.outq->getcursor, 
-                                                    cdcacm.header.plen, 
-                                                    cdcacm.header.crc16 );
-    
-}
+
 
 
 
@@ -1216,10 +1177,10 @@ ot_int mpipedrv_init(void* port_id) {
 ///        which will get stuck during debugging or other sleeping processes.   </LI>
 
     alp_init(&mpipe.alp, &otmpin, &otmpout);
-    mpipe.alp.inq->back    -= MPIPE_OVERHEADBYTES;
-    mpipe.alp.outq->back   -= MPIPE_OVERHEADBYTES;
+    mpipe.alp.inq->back    -= 10;
+    mpipe.alp.outq->back   -= 10;
     cdcacm.pkt              = mpipe.alp.outq->front;
-    cdcacm.header.seq       = 0;                        // not actually necessary
+    cdcacm.seq.ushort       = 0;                        // not actually necessary
     mpipe.state             = MPIPE_Null;               // Disconnected
     
     mpipedrv_setspeed(MPIPE_115200bps);     //default baud rate
@@ -1302,7 +1263,8 @@ void mpipedrv_kill() {
     mpipe.state = MPIPE_Idle;
 	
 	q_empty(mpipe.alp.outq);
-	cdcacm.pkt = mpipe.alp.outq->front; 
+	cdcacm.pkt             = mpipe.alp.outq->front; 
+	mpipe.alp.outq->back  -= 10;
 }
 #endif
 
@@ -1331,6 +1293,10 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     // Adding a packet is an atomic operation
     ///@todo disable USB interrupt(s)
     
+    // add sequence id & crc to end of the datastream
+    q_writeshort(mpipe.alp.outq, cdcacm.seq.ushort++);
+    q_writeshort(mpipe.alp.outq, platform_crc_block(mpipe.alp.outq->getcursor, q_span(mpipe.alp.outq)));
+    
     // Move getcursor to end of packet, to allow another packet to be added
     cdcacm.pkt                  = mpipe.alp.outq->getcursor;
     mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
@@ -1339,7 +1305,7 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     // If MPipe is not doing something else now, initiate the TX
     if (mpipe.state == MPIPE_Idle) {
         sub_txopen();
-        ///@todo enable USB interrupt(s)
+        /// Todo: enable USB interrupt(s)
         
         if (blocking) {
             mpipedrv_wait();   
@@ -1352,23 +1318,11 @@ ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
 }
 #endif
 
-void sub_txopen() {  
-    ot_u16 length;
-    
+void sub_txopen() {
     mpipe.state     = MPIPE_Tx_Wait;
     cdcacm.packets -= 1;
-    
-    // Setup Header information
-    length                  = mpipe.alp.outq->getcursor[1] + 4;
-    cdcacm.header.syncFF    = 0xff;
-    cdcacm.header.sync55    = 0x55;
-    cdcacm.header.seq      += 1;
-    cdcacm.header.ctl       = 0;
-    cdcacm.header.plen      = PLATFORM_ENDIAN_16(length);
-    sub_gen_mpipecrc();
-    
-    sub_usb_loadheader();
-    sub_usb_loadtx(8);
+    cdcacm.pktlen   = cdcacm.pkt[2] + MPIPE_OVERHEADBYTES;
+    sub_usb_loadtx();
 }
 
 
@@ -1381,15 +1335,12 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
         mpipedrv_wait();
     }
     if (mpipe.state == MPIPE_Idle) {
-        //mpipe.state = MPIPE_Idle;
+        mpipe.state     = MPIPE_Idle;
+        cdcacm.pktlen   = MPIPE_OVERHEADBYTES;
         cdcacm.pkt      = mpipe.alp.inq->front;
-        cdcacm.pktend   = NULL;
     }
 }
 #endif
-
-
-
 
 
 
@@ -1398,42 +1349,40 @@ void mpipedrv_isr() {
     switch (mpipe.state) {
         case MPIPE_Idle: //note, case doesn't break!
         
-        /// The first page is received, so change state.  Fall through if there
-        /// is an empty payload
-        case MPIPE_RxHeader: 
-            if (cdcacm.header.plen != 0) {
-                mpipe.state = MPIPE_RxPayload;
-                mpipeevt_rxdetect(10);
-                break;
-            }
+        case MPIPE_RxHeader: {
+            mpipe.state                 = MPIPE_RxPayload;
+            cdcacm.pktlen              += mpipe.alp.inq->front[2];
+         //#mpipe.alp.inq->length       = cdcacm.pktlen + MPIPE_OVERHEADBYTES;
+         	mpipe.alp.inq->putcursor	= cdcacm.pktlen + MPIPE_OVERHEADBYTES;
+         //#mpipe.alp.inq->back         = mpipe.alp.inq->front + mpipe.alp.inq->length;
+         	mpipe.alp.inq->back         = mpipe.alp.inq->putcursor;
+            mpipeevt_rxdetect(0);
+            return;
+        }
         
-        /// The reception is completely done.  Move the putcursor to account for
-        /// new data, while cropping the footer.  Go to Idle and do callback.
         case MPIPE_RxPayload: 
-            if (cdcacm.pkt == cdcacm.pktend) {
-                if (platform_crc_block_manual(cdcacm.pkt, cdcacm.header.plen, cdcacm.header.crc16) == 0) {
-                    mpipe.alp.inq->putcursor    = cdcacm.pktend;
-                    mpipe.state                 = MPIPE_Idle;
-                    mpipeevt_rxdone(0);
-                }
-                mpipedrv_rxndef(False, 0);
+            if (cdcacm.pkt >= mpipe.alp.inq->back) {
+                /// The reception is completely done.  Go to Idle and do callback.
+                mpipe.alp.inq->back    -= MPIPE_FOOTERBYTES;
+                mpipe.state             = MPIPE_Idle;
+                mpipeevt_rxdone(0);
             }
             break;
         
-        /// Transmit another page of the outbound packet
         case MPIPE_Tx_Wait:
-            sub_usb_loadtx(0);
-            mpipe.state += (cdcacm.pktend == cdcacm.pkt);
+            sub_usb_loadtx();
+            mpipe.state += (cdcacm.pktlen >= 0);
             break;
         
-        /// The last transmission is done.  If there are additional packets
-        /// in the queue, send them without returning to the kernel.
         case MPIPE_Tx_Done: {
+            /// The last transmission is done.  If there are additional packets
+            /// in the queue, send them without returning to the kernel.
             if (cdcacm.packets > 0) {
                 sub_txopen();
             }
             else {
-                mpipedrv_rxndef(False, 0);
+                mpipe.state = MPIPE_Idle;
+                mpipedrv_kill();
                 mpipeevt_txdone(0);
             }
         } break;

@@ -25,13 +25,18 @@
 
 #include "OT_utils.h"
 #include "OT_platform.h"
+#include "OTAPI.h"
 
 // Null Signals
 void otutils_null(void)                     { }
 void otutils_sig_null(ot_int a)             { }
 void otutils_sig2_null(ot_int a, ot_int b)  { }
 void otutils_sigv_null(void* a)             { }
-void otutils_applet_null(m2session* a)      { }
+
+///@todo alias this to a DLL function
+void otutils_applet_null(m2session* a) {
+    dll_set_defaults(a);
+}
 
 
 // Constant arrays used within

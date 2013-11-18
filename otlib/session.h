@@ -291,6 +291,13 @@ m2session* session_drop();
 ot_int session_count();
 
 
+/** @brief  Approximate arrival of session following the current one
+  * @param  none
+  * @retval ot_u16      Number of ticks until following session
+  * @ingroup Session
+  */
+ot_u16 session_follower();
+
 
 /** @brief  Returns the session at the top of the stack.
   * @param  none

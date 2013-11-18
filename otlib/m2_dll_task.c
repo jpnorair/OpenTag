@@ -102,10 +102,6 @@ void sub_init_tx(ot_u8 is_btx);
 void sub_timeout_scan();
 void sub_dll_txcsma();
 
-void sub_null_applet(m2session* s_active);
-void sub_scan_applet(m2session* s_active);
-void sub_beacon_applet(m2session* s_active);
-
 void sub_processing();
 void sub_activate();
 
@@ -216,6 +212,15 @@ ot_uint sub_aind_nextslot();
 /** Initializers state management functions <BR>
   * ========================================================================<BR>
   */
+void dll_block_idletasks() {
+    sys.task_HSS.event  = 0;
+#   if (M2_FEATURE(BEACONS) == ENABLED)
+    sys.task_BTS.event  = 0;
+#   endif
+    sys.task_SSS.event  = 0;
+}
+
+
 void sub_dll_flush() {
 /// (1) Put System states into the right place and flush existing events.
 /// (2) Reset sessions.
@@ -558,7 +563,7 @@ void dll_systask_sleepscan(ot_task task) {
     /// Choosing Background-Scan or Foreground-Scan is based on flags.  If b7
     /// is set, do a Background-Scan.  At the session level, the "Flood" select
     /// uses b6, which is why there is a >> 1.
-    s_session   = session_new(  &sub_scan_applet, 0, 
+    s_session   = session_new(  &dll_scan_applet, 0, 
                                 ((M2_NETSTATE_REQRX | M2_NETSTATE_INIT) | (s_flags & 0x80) >> 1), 
                                 s_channel   );
     
@@ -594,7 +599,7 @@ void dll_systask_beacon(ot_task task) {
     //   (ad hoc sessions never return NULL)
     // - Assure cmd code is always Broadcast & Announcement
     scratch.ushort      = vl_read(fp, task->cursor);
-    b_session           = session_new(  &sub_beacon_applet, 0,
+    b_session           = session_new(  &dll_beacon_applet, 0,
                                         (M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX),
                                         scratch.ubyte[0]  );
     b_session->subnet   = dll.netconf.b_subnet;
@@ -637,7 +642,7 @@ void dll_systask_beacon(ot_task task) {
   * ========================================================================<BR>
   */
 
-void sub_null_applet(m2session* active) {
+void dll_response_applet(m2session* active) {
 /// If this is a response transmission of a session with "Listen" active, it
 /// means the contention period (Tc) is followed immediately with a subsequent
 /// request.  We must not overlap that request with the tail-end of our own
@@ -657,7 +662,7 @@ void sub_null_applet(m2session* active) {
 }
 
 
-void sub_scan_applet(m2session* active) {
+void dll_scan_applet(m2session* active) {
 /// Scanning is a Request-RX operation, so Tc is not important.
     ot_u8 scan_code;
     dll_set_defaults(active);
@@ -665,11 +670,11 @@ void sub_scan_applet(m2session* active) {
     scan_code               = active->extra;
     active->extra           = 0;
     dll.comm.rx_timeout     = otutils_calc_timeout(scan_code);
-    dll.comm.csmaca_params  = 0;
+    //dll.comm.csmaca_params  = 0;
 }
 
 
-void sub_beacon_applet(m2session* active) {
+void dll_beacon_applet(m2session* active) {
 /// Beaconing is a Request-TX operation, and the value for Tc is the amount of
 /// time to spend in CSMA before quitting the beacon.
     ot_queue beacon_queue;
@@ -732,16 +737,12 @@ void sub_activate() {
     m2session*  s_active;
     ot_app      s_applet;
     
-    sys.task_HSS.event  = 0;
-#   if (M2_FEATURE(BEACONS) == ENABLED)
-    sys.task_BTS.event  = 0;
-#   endif
-    sys.task_SSS.event  = 0;
-
+    dll_block_idletasks();
+    
     dll.idle_state      = sub_default_idle();
     s_active            = session_drop();
     s_applet            = (s_active->applet == NULL) ? \
-                            &sub_null_applet : s_active->applet;
+                            &dll_response_applet : s_active->applet;
     s_active->applet    = NULL;
     s_applet(s_active);
     
@@ -831,20 +832,18 @@ void sub_init_tx(ot_u8 is_btx) {
 /// initialization as well.
     sys_task_setnext_clocks(&sys.task[TASK_radio], dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
+    dll.counter             = 0;            // Default value, sometimes changed in m2advp_open()
     sys.task_RFA.latency    = 1; 
     sys.task_RFA.event      = 4;
 
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
 #if (SYS_FLOOD == ENABLED)
-    dll.counter = 0;
     if (is_btx) {
-        dll.counter = session.heap[session.top-1].counter;
-        m2advp_open(session_top(), dll.counter);
+        m2advp_open(&session.heap[session.top-1]);
     }
     rm2_txinit(is_btx, &rfevt_txcsma);
 #else
-    dll.counter = 0;
     rm2_txinit(0, &rfevt_txcsma);
 #endif
 }
@@ -868,25 +867,37 @@ void rfevt_bscan(ot_int scode, ot_int fcode) {
 
     // CRC Failure (or init), retry
     if ((scode == -1) && (dll.comm.redundants != 0)) {
-        rm2_rxinit(dll.comm.rx_chanlist[0], 0, &rfevt_bscan);    //non-blocking
+        //rm2_rxinit(dll.comm.rx_chanlist[0], 0, &rfevt_bscan);    //non-blocking
+        rm2_reenter_rx(&rfevt_bscan);   //non-blocking
         return;
     }
     
-    // A valid packet was received:
-    // network_parse_bf() must update the top session
-    if (scode >= 0) {
-    	scode = radio_mac_filter() - 1;
-    	if (scode == 0) {
-    		network_parse_bf();
-    	}
-    }
-
-    // Either a timeout or a background packet sent to a different subnet
+    // Pop the Scan Session that got us here
+    session_pop();
+    
+    // General Error: usually a timeout
     if (scode < 0) {
-    	session_pop();
-    	dll_idle();
+    	goto rfevt_FAILURE;
+    }
+    
+    // A valid packet was received:
+    // - Check subnet and EIRP filters
+    // - network_parse_bf() will update the session stack as needed
+    if (radio_mac_filter()) {
+        if (network_parse_bf()) {
+            goto rfevt_SUCCESS;
+        }
     }
 
+    // A failure, due to one or more of the following reasons:
+    // - Timeout
+    // - BG Packet sent to different subnet
+    // - Session stack is full
+    // - parsing error
+    rfevt_FAILURE:
+    dll_idle();
+    
+    rfevt_SUCCESS:
     DLL_SIG_RFTERMINATE(3, scode);
 
     sys.task_RFA.event = 0;
@@ -1111,8 +1122,8 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
         case 2: {
             ot_int countdown;
-            countdown = (ot_int)radio_get_countdown();
             ///@todo make faster function for bg packet duration lookup
+            countdown = (ot_int)radio_get_countdown();
             if (countdown < rm2_pkt_duration(7)) {
                 m2advp_close();
                 rm2_txstop_flood();
@@ -1168,8 +1179,10 @@ void dll_quit_rf() {
 
 #ifndef EXTF_dll_default_csma
 ot_u8 dll_default_csma(ot_u8 chan_id) {
-    chan_id &= 0x30;
-    return (((chan_id == 0x00) || (chan_id == 0x30)) << 2);
+    ///@todo revisit if there's merit to having unguarded channels like this
+    //chan_id &= 0x30;
+    //return (((chan_id == 0x00) || (chan_id == 0x30)) << 2);
+    return 0;
 }
 #endif
 
@@ -1177,9 +1190,11 @@ ot_u8 dll_default_csma(ot_u8 chan_id) {
 #ifndef EXTF_dll_set_defaults
 void dll_set_defaults(m2session* s_active) {
 /// Set some DLL parameters that are important as general purpose
-    dll.comm.tc             = 65535;
-    dll.comm.rx_timeout     = 65535;
-    dll.comm.csmaca_params  = dll_default_csma(s_active->channel);
+    ot_u16 follower         = session_follower();
+    dll.comm.tc             = follower >> 3;
+    dll.comm.rx_timeout     = follower;
+    //dll.comm.csmaca_params  = dll_default_csma(s_active->channel);
+    dll.comm.csmaca_params  = M2_CSMACA_MACCA;
     dll.comm.redundants     = ((s_active->netstate & M2_NETSTATE_RX) == 0);
     dll.comm.tx_channels    = 1;
     dll.comm.rx_channels    = 1;

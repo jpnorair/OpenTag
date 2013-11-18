@@ -317,8 +317,7 @@ ot_bool m2np_idcmp(ot_int length, void* id);
   */
 
 /** @brief  Prepares an M2AdvP flood from a session container
-  * @param  session     (active*) Pointer to active session
-  * @param  duration    (ot_u16) Number of ticks to run advertising
+  * @param  follower    (m2session*) pointer to session after advertising
   * @retval none
   * @ingroup Network
   * @sa m2advp_close()
@@ -328,7 +327,7 @@ ot_bool m2np_idcmp(ot_int length, void* id);
   * in order to begin an M2AdvP flood process.  It reconfigures the TX Queue
   * to transmit background frames.
   */
-void m2advp_open(m2session* active, ot_u16 duration);
+void m2advp_open(m2session* follower);
 
 
 

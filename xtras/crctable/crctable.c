@@ -43,9 +43,9 @@
 /*    #define TB_POLY   0x8005L                                               */
 /*    #define TB_REVER  TRUE                                                  */
 
-#define TB_FILE   "crctable_CRC8.txt"
-#define TB_WIDTH  1
-#define TB_POLY   0x07
+#define TB_FILE   "crctable_CRC16.txt"
+#define TB_WIDTH  2
+#define TB_POLY   0x8005L
 #define TB_REVER  FALSE
 
 /******************************************************************************/

@@ -410,7 +410,7 @@
 #define DRF_AFC0                (__AFC_FAST_GAIN(2) | __AFC_SLOW_GAIN(5))
 
 //R21 (using power-up defaults)
-#define DRF_RSSI_FLT            (__RSSI_FLT(14) | _CS_MODE_STATIC)
+#define DRF_RSSI_FLT            (__RSSI_FLT(14) | _CS_MODE_STATIC | 0)
 
 //R22: It is set in the driver when picking a channel
 #define DRF_RSSI_TH             __RSSI_TH(-130)
@@ -527,10 +527,10 @@
 
 //R53-54: Set during RX or CSMA configuration
 //RX_TIMEOUT 16bit timer.  Needs more investigation
-#if (defined(_24MHz) || defined(_48MHz))
+#if (defined(_24MHz) || defined(_25MHz) || defined(_26MHz))
 #   define DRF_TIMERS5          (1)
 #else
-#   define DRF_TIMERS5          (1)
+#   define DRF_TIMERS5          (2)
 #endif
 #define DRF_TIMERS4             (0)
 

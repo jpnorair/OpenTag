@@ -67,6 +67,7 @@ m2session* otapi_task_schedule(session_tmpl* s_tmpl, ot_app applet, ot_u16 offse
 
 
 
+
 m2session* otapi_task_advertise(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, ot_app applet) {
 /// This is a more complicated process than the others, because it actually 
 /// creates two sessions: one for the flood and one for the request.

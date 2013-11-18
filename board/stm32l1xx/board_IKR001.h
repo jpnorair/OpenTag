@@ -72,11 +72,11 @@
   * alternatively use a better antenna, which I have as 2/3 dB attentuation. 
   */
 #define RF_PARAM_BAND       433
-#define _ATTEN_DB           2
-//#define _ATTEN_DB           13
-#define RF_HDB_ATTEN        (2*(_ATTEN_DB+1))   //Half dB attenuation (units = 0.5dB), used to scale TX power
-#define RF_HDB_RXATTEN      (2*_ATTEN_DB)       //Half dB attenuation for RX
-#define RF_RSSI_OFFSET      (2*_ATTEN_DB)       //Offset applied to RSSI calculation
+//#define RF_BASE_ATTEN           2
+#define RF_BASE_ATTEN       13
+#define RF_HDB_ATTEN        (2*(RF_BASE_ATTEN+1))   //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_HDB_RXATTEN      (2*RF_BASE_ATTEN)       //Half dB attenuation for RX
+#define RF_RSSI_OFFSET      (2*RF_BASE_ATTEN)       //Offset applied to RSSI calculation
 
 
 
@@ -89,8 +89,8 @@
 //#define MCU_FEATURE(VAL)              MCU_FEATURE_##VAL   // FEATURE 
 #define MCU_FEATURE_MULTISPEED          DISABLED        // Allows usage of MF-HF clock boosting
 #define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPECDC            ENABLED         // USB-CDC MPipe implementation
-#define MCU_FEATURE_MPIPEUART           DISABLED        // UART MPipe Implementation
+#define MCU_FEATURE_MPIPECDC            DISABLED         // USB-CDC MPipe implementation
+#define MCU_FEATURE_MPIPEUART           ENABLED        // UART MPipe Implementation
 #define MCU_FEATURE_MPIPEI2C            DISABLED        // I2C MPipe Implementation
 #define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 

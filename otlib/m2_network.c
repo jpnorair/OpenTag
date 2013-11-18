@@ -85,47 +85,57 @@ void network_init() {
 #ifndef EXTF_network_parse_bf
 m2session* network_parse_bf() {
 /// Background Frame parsing: fill-in some stuff and treat it as foreground
+// ========================================================================
+/// General Background frame design
+/// <PRE>   +---------+--------+---------+-------+
+///         | TX EIRP | Subnet | Payload | CRC16 |
+///         |   B0    |   B1   |  B2:4   | B5:6  |
+///         +---------+--------+---------+-------+   </PRE>
+// ========================================================================
+    m2session*  s_next  = NULL;
+    ot_u8       bgpid   = rxq.getcursor[1] & 0x0F;
     
-    /// Vector to the appropriate Background protocol
-    switch ( rxq.getcursor[1] & 1) {
+    /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
+    if (bgpid == 15) {
+        ot_int  offset;
+        ot_u16  count;
+        ot_int  slop;
+        static const ot_u8 s_params[4] = { 
+            0x80, 0x0C, (M2_NETSTATE_REQRX | M2_NETSTATE_INIT | M2_NETFLAG_FLOOD),
+            (M2_NETSTATE_REQRX | M2_NETSTATE_INIT) 
+        };
         
-        /// M2AdvP
-        /// B0:     Subnet
-        /// B1:     PID (F0)
-        /// B2:     Channel for Wakeup
-        /// B3-4:   Wakeup Duration
-        /// B5-6:   CRC16
-        case (0): {
-            Twobytes    scratch;
-            ot_int      slop;
-            ot_u8       netstate;
-            
-            scratch.ubyte[UPPER]    = rxq.getcursor[3];
-            scratch.ubyte[LOWER]    = rxq.getcursor[4];
-            netstate                = (M2_NETSTATE_REQRX | M2_NETSTATE_INIT);
-            
-            // Wakeup needs to lock-on to a time offset in the future.  The
-            // lock-on performance depends on the crystal accuracy, so if the
-            // accuracy is not high, the background scan will need to happen
-            // again, closer to the wakeup event.
-            slop    = scratch.ushort / OT_GPTIM_ERRDIV;
-            slop   += scratch.ushort / M2_ADV_ERRDIV;
-            if (slop > M2_ADV_SLOP) {
-                scratch.ushort -= slop;
-                netstate       |= M2_NETFLAG_FLOOD;
-            }
-            
-            return session_new(NULL, scratch.ushort, netstate, rxq.getcursor[2]);
-            ///@todo need to put in session subnet?
-        }
+        // Get the counter-ETA information from the inbound frame
+        ((ot_u8*)&count)[UPPER] = rxq.getcursor[3];
+        ((ot_u8*)&count)[LOWER] = rxq.getcursor[4];
         
-        /// M2ResP: Not currently supported!
-        case (1): {
-            break;
+        // "slop" is accounting for timing error and deviation, due to 
+        // precision of the timer, process latency, and other such things.
+        slop    = count / OT_GPTIM_ERRDIV;
+        slop   += count / M2_ADV_ERRDIV;
+        count  -= slop;
+        offset  = (slop <= M2_ADV_SLOP);
+        
+        // Block DLL idle tasks while waiting for this next session
+        dll_block_idletasks();
+        
+        // Create the follow-up session, which is either a secondary bg scan
+        // because slop is too much, or listening for the request
+        s_next = session_new(   &dll_scan_applet, 
+                                count, 
+                                s_params[2+offset], 
+                                rxq.getcursor[2]    );
+        if (s_next != NULL) {
+            s_next->extra = s_params[0+offset];
         }
     }
     
-    return NULL;
+    /// Reservation Protocol has subnet = 0xY3
+    ///@todo Not presently supported
+    else if (bgpid == 3) {
+    }
+    
+    return s_next;
 }
 #endif
 
@@ -305,6 +315,13 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
     q_empty(&txq);
     //q_start(&txq, 0, 0);
     
+    ///@todo consider updating m2np_header()... not sure addressing & nack are useful anymore
+    active->flags      &= ~3;
+    active->flags      |= addressing;
+    
+    /// Set FIRSTRX mode on Unicast
+    active->netstate   |= (addressing) ? 0 : M2_NETFLAG_FIRSTRX;
+    
     /// If blockcoding not enabled, don't let it get used.
     /// max frame with blockcoding is 192 data bytes, max with CRC is 254.
     {   ot_int maxframe;
@@ -323,9 +340,6 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
     /// <LI> Null TX EIRP (Actual value deposited in PHY) </LI>
     /// <LI> Subnet Value </LI>
     q_writelong(&txq, (ot_u32)active->subnet);
-    
-    /// Set FIRSTRX mode on Unicast
-    active->netstate       |= (addressing) ? 0 : M2_NETFLAG_FIRSTRX;
     
     /// Save & Write Frame Info Byte
     m2np.header.fr_info     = (active->flags & ~M2_FLAG_RSCODE);
@@ -486,44 +500,43 @@ ot_bool m2np_idcmp(ot_int length, void* id) {
 
 
 #ifndef EXTF_m2advp_open
-void m2advp_open(m2session* active, ot_u16 duration) {
-    //q_start(&txq, 1, 0);
-    //txq.front[0] = 7;
-    
+void m2advp_open(m2session* follower) {
     q_empty(&txq);
-    txq.getcursor++;
-    q_writebyte(&txq, 7);
+    txq.getcursor += 2;     //Bypass unused length and Link CTL bytes
     
-    /// This byte gets overwritten in the driver with EIRP value.
-    /// The value 6 is needed by some sniffers during test, otherwise.
-    q_writebyte(&txq, 6);
+    q_writebyte(&txq, 6);   //Dummy Length value (not actually sent)
+    q_writebyte(&txq, 0);   //Dummy Link-Control (not actually sent)
+    q_writebyte(&txq, 0);   //Dummy TX-EIRP (updated by RF driver)
     
-    /// This byte is two nibbles: Subnet specifier and AdvP ID (F)
-    q_writebyte(&txq, (active->subnet | 0x0F));
+    // This byte is two nibbles: Subnet specifier and AdvP ID (F)
+    q_writebyte(&txq, (follower->subnet | 0x0F));
     
-    /// The rest is the AdvP payload
-    q_writebyte(&txq, active->channel);
-    q_writeshort(&txq, duration);
+    // Follower session channel
+    q_writebyte(&txq, follower->channel);
+    
+    // Follower wait time is set to dll counter
+    dll.counter = follower->counter;
+    q_writeshort(&txq, follower->counter);
 }
 #endif
 
 
 #ifndef EXTF_m2advp_update
 void m2advp_update(ot_u16 countdown) {
-    txq.getcursor       = &txq.front[1];
-    txq.getcursor[3]    = ((ot_u8*)&countdown)[UPPER];
-    txq.getcursor[4]    = ((ot_u8*)&countdown)[LOWER];
-    //txq.putcursor       = &txq.getcursor[5];
+///@note In this function we manually reset the txq cursors to the places
+///      they need to be for the encoder.  The encoder implementation may or
+///      may not do this automatically, but it is safer to be redundant.
+    txq.getcursor       = &txq.front[2];                //No length, link-CTL bytes in BG Frame
+    txq.putcursor       = txq.getcursor;
+    txq.putcursor      += 3;                            //Skip EIRP, Subnet, Channel bytes
+    *txq.putcursor++    = ((ot_u8*)&countdown)[UPPER];  //Countdown (upper 8 bits)
+    *txq.putcursor++    = ((ot_u8*)&countdown)[UPPER];  //Countdown (lower 8 bits)
 }
 #endif
 
 
 #ifndef EXTF_m2advp_close
 void m2advp_close() {
-#if (SYS_FLOOD == ENABLED)
-    /// Restore original TXQ
-    //q_copy(&txq, &advq);
-#endif
 }
 #endif
 

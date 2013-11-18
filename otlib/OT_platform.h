@@ -507,6 +507,8 @@ void platform_trig2_toggle();
 
 ot_u16 platform_crc_init();
 ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size);
+ot_u16 platform_crc_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init);
+
 void platform_crc_byte(ot_u8 databyte);
 ot_u16 platform_crc_result();
 
@@ -556,6 +558,17 @@ ot_u8 platform_prand_u8();
   * A quickly generated 16 bit random number, not recommended for crypto.
   */
 ot_u16 platform_prand_u16();
+
+
+
+/** @brief Quick and dirty 32 bit pseudo-random value
+  * @param None
+  * @retval ot_u32       32 bit pseudo random number
+  * @ingroup Platform
+  *
+  * A quickly generated 32 bit random number, not recommended for crypto.
+  */
+ot_u32 platform_prand_u32();
 
 
 

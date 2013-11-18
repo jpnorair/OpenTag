@@ -45,22 +45,44 @@
 * Output         : None.
 * Return         : None	.
 *******************************************************************************/
-void UserToPMABufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes)
-{
-  uint32_t n = (wNBytes + 1) >> 1;   /* n = (wNBytes + 1) / 2 */
-  uint32_t i, temp1, temp2;
-  uint16_t *pdwVal;
-  pdwVal = (uint16_t *)(wPMABufAddr * 2 + PMAAddr);
-  for (i = n; i != 0; i--)
-  {
-    temp1 = (uint16_t) * pbUsrBuf;
-    pbUsrBuf++;
-    temp2 = temp1 | (uint16_t) * pbUsrBuf << 8;
-    *pdwVal++ = temp2;
-    pdwVal++;
-    pbUsrBuf++;
-  }
+//void UserToPMABufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes)
+//{
+//  uint32_t n = (wNBytes + 1) >> 1;   /* n = (wNBytes + 1) / 2 */
+//  uint32_t i, temp1, temp2;
+//  uint16_t *pdwVal;
+//  
+//  pdwVal = (uint16_t *)(wPMABufAddr * 2 + PMAAddr);
+//  for (i = n; i != 0; i--)
+//  {
+//    temp1 = (uint16_t) * pbUsrBuf;
+//    pbUsrBuf++;
+//    temp2 = temp1 | (uint16_t) * pbUsrBuf << 8;
+//    *pdwVal++ = temp2;
+//    pdwVal++;
+//    pbUsrBuf++;
+//  }
+//}
+
+
+void UserToPMABufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes) {
+    int16_t     count   = (wNBytes >> 1) + 1;
+    uint16_t*   pdwVal  = (uint16_t *)((wPMABufAddr<<1) + PMAAddr);
+    uint32_t    temp1;
+    uint32_t    temp2;
+  
+    while (--count) {
+        temp1       = (uint16_t)*pbUsrBuf;
+        pbUsrBuf++;
+        temp2       = temp1 | (uint16_t)*pbUsrBuf << 8;
+        pbUsrBuf++;
+        *pdwVal++   = temp2;
+        pdwVal++;
+    }
 }
+
+
+
+
 
 /*******************************************************************************
 * Function Name  : PMAToUserBufferCopy
@@ -71,17 +93,32 @@ void UserToPMABufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNByt
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
-void PMAToUserBufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes)
-{
-  uint32_t n = (wNBytes + 1) >> 1;/* /2*/
-  uint32_t i;
-  uint32_t *pdwVal;
-  pdwVal = (uint32_t *)(wPMABufAddr * 2 + PMAAddr);
-  for (i = n; i != 0; i--)
-  {
-    *(uint16_t*)pbUsrBuf++ = *pdwVal++;
-    pbUsrBuf++;
-  }
+//void PMAToUserBufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes)
+//{
+//  uint32_t n = (wNBytes + 1) >> 1;/* /2*/
+//  uint32_t i;
+//  uint32_t *pdwVal;
+//  pdwVal = (uint32_t *)(wPMABufAddr * 2 + PMAAddr);
+//  for (i = n; i != 0; i--)
+//  {
+//    *(uint16_t*)pbUsrBuf++ = *pdwVal++;
+//    pbUsrBuf++;
+//  }
+//}
+
+
+void PMAToUserBufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes) {
+    int16_t     count   = (wNBytes >> 1) + 1;
+    uint32_t*   pdwVal  = (uint32_t *)((wPMABufAddr<<1) + PMAAddr);
+    
+    while (--count) {
+        uint16_t scratch    = *pdwVal++;
+        *pbUsrBuf++         = ((uint8_t*)&scratch)[0];
+        *pbUsrBuf++         = ((uint8_t*)&scratch)[1];
+    }
 }
+
+
+
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

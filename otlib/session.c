@@ -45,6 +45,7 @@
 
 
 #define Session0    session.heap[session.top]
+#define Session1    session.heap[session.top-1]
 
 session_struct session;
 
@@ -204,6 +205,16 @@ ot_int session_count() {
 #endif
 
 
+#ifndef EXTF_session_follower
+ot_u16 session_follower() {
+    if (session.top > 0) {
+        return Session1.counter;
+    }
+    return 65535;
+}
+#endif
+
+
 #ifndef EXTF_session_top
 m2session* session_top() {
     return &Session0;
@@ -229,10 +240,10 @@ void session_print() {
     printf("Number of Sessions: %d\n", session.top+1);
     
     if (session.top >= 0)
-        printf("=======================================\n");
+        printf("===  SCHED CHAN N.ST D.ID SNET EXTR FLAG\n");
     
     for (i=session.top; i>=0; i--) {
-        printf("%d: 0x%04X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n", i,
+        printf("%02d: 0x%04X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n", i,
             session.heap[i].counter, 
             session.heap[i].channel, 
             session.heap[i].netstate,
