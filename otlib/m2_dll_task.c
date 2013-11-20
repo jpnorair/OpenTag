@@ -102,6 +102,7 @@ void sub_init_tx(ot_u8 is_btx);
 void sub_timeout_scan();
 void sub_dll_txcsma();
 
+
 void sub_processing();
 void sub_activate();
 
@@ -212,13 +213,22 @@ ot_uint sub_aind_nextslot();
 /** Initializers state management functions <BR>
   * ========================================================================<BR>
   */
+
 void dll_block_idletasks() {
+
     sys.task_HSS.event  = 0;
+
 #   if (M2_FEATURE(BEACONS) == ENABLED)
+
     sys.task_BTS.event  = 0;
+
 #   endif
+
     sys.task_SSS.event  = 0;
+
 }
+
+
 
 
 void sub_dll_flush() {
@@ -397,14 +407,13 @@ void dll_clock(ot_uint clocks) {
   //dll.comm.tca   -= clocks;
   //dll.comm.tc    -= clocks;
     clocks          = CLK2TI(clocks);
-    session_refresh(clocks);
     
     if (sys.task_RFA.event != 0) {
         dll.comm.rx_timeout -= clocks;
     }
-    else if (session_count() >= 0) {
+    else if (session_notempty()) {
         sys.task_RFA.event      = 2;
-        sys.task_RFA.nextevent  = TI2CLK(session.heap[session.top].counter);
+        sys.task_RFA.nextevent  = session_getnext();
     }
 }
 #endif
@@ -638,6 +647,14 @@ void dll_systask_beacon(ot_task task) {
 
 
 
+/** External DLL applets <BR>
+  * ========================================================================<BR>
+  */
+void dll_default_applet(m2session* active) {
+    dll_set_defaults(active);
+}
+
+
 /** Internal DLL applets <BR>
   * ========================================================================<BR>
   */
@@ -721,6 +738,7 @@ void dll_beacon_applet(m2session* active) {
 
 
 
+
 /** DLL Systask RF I/O routines   <BR>
   * ========================================================================<BR>
   * These routines & subroutines are called from the dll_systack() function.
@@ -730,17 +748,19 @@ void dll_beacon_applet(m2session* active) {
 void sub_activate() {
 /// Do session creation
 /// 1. Block DLL Idle-time tasks: they get reactivated by dll_idle()
-/// 2. Drop expired sessions (but top session is kept)
+/// 2. Get top session
 /// 3. Associated Applet can construct packet, or control parameters
 /// 4. Session is terminated if "SCRAP" bit is 1
 /// 5. Session is processed otherwise
     m2session*  s_active;
     ot_app      s_applet;
     
+
     dll_block_idletasks();
+
     
     dll.idle_state      = sub_default_idle();
-    s_active            = session_drop();
+    s_active            = session_top();
     s_applet            = (s_active->applet == NULL) ? \
                             &dll_response_applet : s_active->applet;
     s_active->applet    = NULL;
@@ -811,7 +831,7 @@ void sub_init_rx(ot_u8 is_brx) {
 
 	sys_task_setnext(&sys.task[TASK_radio], dll.comm.rx_timeout);
 
-    this_session            = &session.heap[session.top];
+    this_session            = session_top();
     sys.task_RFA.event      = 3;
   //sys.task_RFA.reserved   = 10;   //un-necessary, RFA is max priority
     sys.task_RFA.latency    = (this_session->netstate & M2_NETSTATE_RESP) ? \
@@ -832,6 +852,7 @@ void sub_init_tx(ot_u8 is_btx) {
 /// initialization as well.
     sys_task_setnext_clocks(&sys.task[TASK_radio], dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
+
     dll.counter             = 0;            // Default value, sometimes changed in m2advp_open()
     sys.task_RFA.latency    = 1; 
     sys.task_RFA.event      = 4;
@@ -840,7 +861,7 @@ void sub_init_tx(ot_u8 is_btx) {
     
 #if (SYS_FLOOD == ENABLED)
     if (is_btx) {
-        m2advp_open(&session.heap[session.top-1]);
+        m2advp_open( session_follower() );
     }
     rm2_txinit(is_btx, &rfevt_txcsma);
 #else
@@ -869,34 +890,60 @@ void rfevt_bscan(ot_int scode, ot_int fcode) {
     if ((scode == -1) && (dll.comm.redundants != 0)) {
         //rm2_rxinit(dll.comm.rx_chanlist[0], 0, &rfevt_bscan);    //non-blocking
         rm2_reenter_rx(&rfevt_bscan);   //non-blocking
+
         return;
     }
     
+
     // Pop the Scan Session that got us here
+
     session_pop();
+
     
+
     // General Error: usually a timeout
+
     if (scode < 0) {
+
     	goto rfevt_FAILURE;
-    }
-    
-    // A valid packet was received:
-    // - Check subnet and EIRP filters
-    // - network_parse_bf() will update the session stack as needed
-    if (radio_mac_filter()) {
-        if (network_parse_bf()) {
-            goto rfevt_SUCCESS;
-        }
+
     }
 
-    // A failure, due to one or more of the following reasons:
-    // - Timeout
-    // - BG Packet sent to different subnet
-    // - Session stack is full
-    // - parsing error
-    rfevt_FAILURE:
-    dll_idle();
     
+
+    // A valid packet was received:
+
+    // - Check subnet and EIRP filters
+
+    // - network_parse_bf() will update the session stack as needed
+
+    if (radio_mac_filter()) {
+
+        if (network_parse_bf()) {
+
+            goto rfevt_SUCCESS;
+
+        }
+
+    }
+
+
+    // A failure, due to one or more of the following reasons:
+
+    // - Timeout
+
+    // - BG Packet sent to different subnet
+
+    // - Session stack is full
+
+    // - parsing error
+
+    rfevt_FAILURE:
+
+    dll_idle();
+
+    
+
     rfevt_SUCCESS:
     DLL_SIG_RFTERMINATE(3, scode);
 
@@ -1024,11 +1071,13 @@ void rfevt_txcsma(ot_int pcode, ot_int tcode) {
     /// have an applet attached to it, the applet can adjust the netstate and 
     /// try again if it chooses.
     else {
+        m2session* active;
         DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
         
-        session.heap[session.top].netstate |= M2_NETFLAG_SCRAP;
-        sys.task_RFA.event                  = 0;
-        event_ticks                         = 0;
+        active              = session_top();
+        active->netstate   |= M2_NETFLAG_SCRAP;
+        sys.task_RFA.event  = 0;
+        event_ticks         = 0;
     }
     
     sys_preempt(&sys.task_RFA, event_ticks);
@@ -1094,11 +1143,11 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         case 0: {
             // assure request hits NOW & assure it doesn't init dll.comm
             // Tweak dll.comm for request (2 ti is a token, small amount)
-            sys.task_RFA.event                      = 0;
-            session.heap[session.top-1].counter     = 0;    
-            session.heap[session.top-1].netstate   &= ~M2_NETSTATE_INIT;
-            dll.comm.tc                             = TI2CLK(2);
-            dll.comm.csmaca_params                  = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
+
+            session_invite_follower();
+            sys.task_RFA.event      = 0;
+            dll.comm.tc             = TI2CLK(2);
+            dll.comm.csmaca_params  = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
         } break;
         
         /// Begin Flood:
@@ -1190,7 +1239,7 @@ ot_u8 dll_default_csma(ot_u8 chan_id) {
 #ifndef EXTF_dll_set_defaults
 void dll_set_defaults(m2session* s_active) {
 /// Set some DLL parameters that are important as general purpose
-    ot_u16 follower         = session_follower();
+    ot_u16 follower         = session_follower_wait();
     dll.comm.tc             = follower >> 3;
     dll.comm.rx_timeout     = follower;
     //dll.comm.csmaca_params  = dll_default_csma(s_active->channel);

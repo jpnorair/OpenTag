@@ -51,12 +51,9 @@ m2session* sub_newtask(session_tmpl* s_tmpl, ot_app applet, ot_u16 offset) {
 
 
 m2session* otapi_task_immediate(session_tmpl* s_tmpl, ot_app applet) {
-/// Make sure the radio is stopped, flush any interfering sessions,
-/// and create the new session to occur immediately (offset = 0).
-    if (radio.state != RADIO_Idle) {
-        rm2_kill();
-    }
-    session_flush();
+/// This call doesn't actually cause the session to occur immediately,
+/// but it will happen immediately following any sessions happenning 
+/// at this very moment.
     return sub_newtask(s_tmpl, applet, 0);
 }
 
@@ -68,36 +65,26 @@ m2session* otapi_task_schedule(session_tmpl* s_tmpl, ot_app applet, ot_u16 offse
 
 
 
+
 m2session* otapi_task_advertise(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, ot_app applet) {
 /// This is a more complicated process than the others, because it actually 
 /// creates two sessions: one for the flood and one for the request.
 #   define _FLOOD_NETSTATE  (M2_NETFLAG_FLOOD | M2_NETSTATE_INIT | M2_NETSTATE_REQTX)
-    m2session* com_session;
-    m2session* adv_session;
-    
-    /// 1.  Clear any sessions between now and the request, and push the 
-    ///     request session onto the stack.  If the push failed, exit.  If the
-    ///     advertising is 0, also exit and do this session without flood.
-    session_crop(adv_tmpl->duration);
-    com_session = sub_newtask(s_tmpl, applet, adv_tmpl->duration);
-    if (com_session == NULL)
+
+    /// Make sure there are at least two free sessions
+    if (session_numfree() < 2) {
         return NULL;
-    
+    }
+
+    /// Only add the flood if the user isn't an idiot (or an algorithm of some sort)
     if (adv_tmpl->duration != 0) {
-        /// 2.  Flood duty cycling is not supported at this time.  All floods 
-        ///     are implemented as 100% duty cycle.
-        
-        /// 3.  Push the Advertising session onto the stack, for immediate running.
-        ///     <LI> For basic flooding, the applet can be empty </LI>
-        adv_session = session_new(&otutils_applet_null, 0, _FLOOD_NETSTATE, adv_tmpl->channel);
-        if (adv_session == NULL) {
-            session_pop();  //pop the com session from above
-            return NULL;
-        }
+        m2session* adv_session;
+        adv_session         = session_new(&dll_default_applet, 0, _FLOOD_NETSTATE, adv_tmpl->channel);
         adv_session->subnet = adv_tmpl->subnet;
     }
     
-    return com_session;
+    return session_new(applet, adv_tmpl->duration, M2_NETSTATE_REQTX, s_tmpl->channel);
+
 #   undef _FLOOD_NETSTATE
 }
 

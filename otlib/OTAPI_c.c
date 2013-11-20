@@ -86,7 +86,7 @@ ot_u16 otapi_new_advdialog(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, void* ap
 ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
 /// Set the header if the session is valid.  Also conditionally write the header
 /// depending on the address type (a parameter).  
-    if (session_count() >= 0) {
+    if (session_notempty()) {
         m2session* s_active;
         s_active = session_top();
         
@@ -108,7 +108,7 @@ ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
 
 ot_u16 otapi_close_request() {
 /// Set the footer if the session is valid
-    if (session_count() >= 0) {
+    if (session_notempty()) {
         m2np_footer( /* session_top() */ );
         return 1;
     }
@@ -148,9 +148,9 @@ ot_u16 otapi_start_dialog(ot_u16 timeout) {
 
 #ifndef EXTF_otapi_session_number
 ot_u16 otapi_session_number() {
-    if (session.top >= 0) {
-        return *((ot_u16*)&session.heap[session.top].channel);
-        //return ((ot_u16)Session0.channel << 8) | (ot_u16)Session0.dialog_id;
+    if (session_notempty()) {
+        m2session* active = session.top;
+        return *((ot_u16*)&(active->channel));
     }
     return 0;
 }
@@ -160,7 +160,7 @@ ot_u16 otapi_session_number() {
 #ifndef EXTF_otapi_flush_sessions
 ot_u16 otapi_flush_sessions() {
     session_flush();
-    return session.top+1;
+    return session_numfree();
 }
 #endif
 

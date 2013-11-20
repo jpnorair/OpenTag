@@ -51,6 +51,15 @@
 #include "OT_config.h"
 
 
+#ifndef OT_PARAM_SESSION_DEPTH
+#   define OT_PARAM_SESSION_DEPTH   4
+#endif
+
+#if (OT_PARAM_SESSION_DEPTH < 3)
+#   error "OT_PARAM_SESSION_DEPTH is less than 3."
+#elif (OT_PARAM_SESSION_DEPTH > 8)
+#   warning "OT_PARAM_SESSION_DEPTH is greater than 8.  This can slow things down."
+#endif
 
 
 
@@ -183,13 +192,8 @@ typedef struct m2session {
   */
 typedef void (*ot_app)(m2session*);
 
-
-
-
 typedef struct {
-    ot_int      top;
-    ot_u8       reserved;
-    ot_u8       seq_number;
+    m2session*  top;
     m2session   heap[OT_PARAM(SESSION_DEPTH)];
 } session_struct;
 
@@ -207,28 +211,62 @@ void session_init();
 
 
 
-/** @brief  Reduces the session counters uniformly, and alerts if a session is beginning
-  * @param  elapsed_ti      (ot_uint) ti to reduce all session counters by
-  * @retval ot_bool         True when a session is ready
-  * @ingroup Session
-  */
-ot_bool session_refresh(ot_uint elapsed_ti);
-
-
-
-/** @brief  Adds a session element to the heap, pushes it to stack, and sorts
-  *         the stack so the session at the top is the one happening soonest.
-  * @param  applet          (ot_app) applet bound to session
-  * @param  new_counter     (ot_u16) new session initial counter value
-  * @param  new_netstate    (ot_u8) new session netstate value
-  * @param  new_channel     (ot_u8) new session channel id
-  * @retval m2session*      Pointer to added session struct
+/** @brief  Activates the next session and returns its wait time
+  * @param  None
+  * @retval ot_uint     Ticks until next session event
   * @ingroup Session
   *
-  * Additional session data not supplied as parameters to this function must be
-  * loaded-in by the user, via the returned pointer.
+  * @note this function is not inherently safe.  You must first get "True" from 
+  *       session_notempty() in order to be safe.
+  *
+  * Don't use this function unless you are building a Link Layer integrated as
+  * an exotask, and in that case just copy how it is used in m2_dll_task.c.
   */
-m2session* session_new(ot_app applet, ot_u16 new_counter, ot_u8 new_netstate, ot_u8 new_channel);
+ot_uint session_getnext();
+
+
+
+/** @brief  Adds a session to the back of the list
+  * @param  applet      (ot_app) applet bound to session
+  * @param  wait        (ot_u16) new session wait counter value
+  * @param  netstate    (ot_u8) new session netstate value
+  * @param  channel     (ot_u8) new session channel id
+  * @retval m2session*  Pointer to added session struct
+  * @ingroup Session
+  * @sa session_extend()
+  *
+  * Create a new session at the end of the session list/queue.  Returns NULL if
+  * there is not enough room to add a new session.
+  *
+  * "Flags" and "Extra" session elements must be supplied by the user after
+  * this function returns.  The other session elements are loaded-in by this
+  * function.
+  */
+m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel);
+
+
+/** @brief  Extends an active session with another session
+  * @param  applet      (ot_app) applet bound to session
+  * @param  wait        (ot_u16) new session wait counter value
+  * @param  netstate    (ot_u8) new session netstate value
+  * @param  channel     (ot_u8) new session channel id
+  * @retval m2session*  Pointer to added session struct
+  * @ingroup Session
+  * @sa session_new()
+  *
+  * Calling this function will insert a new session into the session list, in
+  * between the end of the joined session sequence at the top of the list and
+  * the first unjoined session sequence.  A "joined session sequence" is some
+  * number of contiguous sessions that starts with M2_NETSTATE_INIT flag set,
+  * and all subsequent sessions have this flag clear.  The session at the top
+  * of the list is implicitly assumed to be part of a sequence, so it does not
+  * need to have M2_NETSTATE_INIT set.
+  *
+  * "Flags" and "Extra" session elements must be supplied by the user after
+  * this function returns.  The other session elements are loaded-in by this
+  * function.
+  */
+m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel);
 
 
 
@@ -251,52 +289,12 @@ ot_bool session_occupied(ot_u8 chan_id);
 void session_pop();
 
 
-
 /** @brief  Flushes (pops) expired sessions out of the stack.
   * @param  none
   * @retval none
   * @ingroup Session
   */
 void session_flush();
-
-
-
-/** @brief  Pops sessions out of the stack that are below a scheduling threshold.
-  * @param  threshold       (ot_u16) scheduling threshold
-  * @retval none
-  * @ingroup Session
-  */
-void session_crop(ot_u16 threshold);
-
-
-
-/** @brief  Drop expired sessions and move to the ready session
-  * @param  none
-  * @retval m2session*  The new top session pointer
-  * @ingroup Session
-  *
-  * This function should only be used in a session activation routine or in
-  * session applets, as in these cases it is implictly known that the top
-  * session is either ready or expired.
-  */
-m2session* session_drop();
-
-
-
-/** @brief  Returns the number of sessions in the stack (zero indexed)
-  * @param  none
-  * @retval ot_int		Number of sessions in the stack.  -1 = empty
-  * @ingroup Session
-  */
-ot_int session_count();
-
-
-/** @brief  Approximate arrival of session following the current one
-  * @param  none
-  * @retval ot_u16      Number of ticks until following session
-  * @ingroup Session
-  */
-ot_u16 session_follower();
 
 
 /** @brief  Returns the session at the top of the stack.
@@ -309,10 +307,64 @@ ot_u16 session_follower();
 m2session* session_top();
 
 
-
-/** @brief  Fast session netstate function, but not safe
+/** @brief  Returns Number of free sessions slots
   * @param  none
-  * @retval ot_u8    Netstate of session at the top of the stack
+  * @retval ot_int  Number of free sessions slots
+  * @ingroup Session
+  */
+ot_int session_numfree();
+
+
+/** @brief  Returns True if the session list is not empty
+  * @param  none
+  * @retval ot_bool     True if session list is not empty
+  * @ingroup Session
+  */
+ot_bool session_notempty();
+
+
+/** @brief  Returns session following the one at the top of the stack
+  * @param  none
+  * @retval m2session*  Session pointer or NULL if list is less than two sessions
+  * @ingroup Session
+  */
+m2session* session_follower();
+
+
+
+/** @brief  Approximate arrival of session following the current one
+  * @param  none
+  * @retval ot_u16      Number of ticks until following session
+  * @ingroup Session
+  */
+ot_u16 session_follower_wait();
+
+
+
+/** @brief  Allows follower session to happen right away
+  * @param  None
+  * @retval None
+  * @ingroup Session
+  */
+void session_invite_follower();
+
+
+
+/** @brief  Postpones all non-sequential sessions by some amount
+  * @param  postponement    (ot_u16) number of ticks to postpone, 0-65535
+  * @retval None
+  * @ingroup Session
+  *
+  * Note that the session wait time is clipped at 65535 ticks, so sessions
+  * cannot be postponed beyond that.
+  */
+void session_postpone_inactives(ot_u16 postponement);
+
+
+
+/** @brief  Returns netstate of session at top of list
+  * @param  none
+  * @retval ot_u8    Netstate value
   * @ingroup Session
   */
 ot_u8 session_netstate();
@@ -328,7 +380,6 @@ ot_u8 session_netstate();
   * @ingroup Session
   */
 void session_print();
-
 #endif
 
 #endif

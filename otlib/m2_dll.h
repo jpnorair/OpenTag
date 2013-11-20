@@ -316,6 +316,9 @@ void dll_systask_sleepscan();
 void dll_systask_beacon();
 
 void dll_block_idletasks();
+
+void dll_default_applet(m2session* active);
+
 void dll_response_applet(m2session* s_active);
 void dll_scan_applet(m2session* s_active);
 void dll_beacon_applet(m2session* s_active);

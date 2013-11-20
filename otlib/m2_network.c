@@ -83,6 +83,7 @@ void network_init() {
 
 
 #ifndef EXTF_network_parse_bf
+
 m2session* network_parse_bf() {
 /// Background Frame parsing: fill-in some stuff and treat it as foreground
 // ========================================================================
@@ -94,21 +95,20 @@ m2session* network_parse_bf() {
 // ========================================================================
     m2session*  s_next  = NULL;
     ot_u8       bgpid   = rxq.getcursor[1] & 0x0F;
-    
+
     /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
     if (bgpid == 15) {
         ot_int  offset;
         ot_u16  count;
         ot_int  slop;
         static const ot_u8 s_params[4] = { 
-            0x80, 0x0C, (M2_NETSTATE_REQRX | M2_NETSTATE_INIT | M2_NETFLAG_FLOOD),
-            (M2_NETSTATE_REQRX | M2_NETSTATE_INIT) 
+            0x80, 0x0C, (M2_NETSTATE_REQRX | M2_NETFLAG_FLOOD), (M2_NETSTATE_REQRX) 
         };
         
         // Get the counter-ETA information from the inbound frame
         ((ot_u8*)&count)[UPPER] = rxq.getcursor[3];
         ((ot_u8*)&count)[LOWER] = rxq.getcursor[4];
-        
+
         // "slop" is accounting for timing error and deviation, due to 
         // precision of the timer, process latency, and other such things.
         slop    = count / OT_GPTIM_ERRDIV;
@@ -121,7 +121,7 @@ m2session* network_parse_bf() {
         
         // Create the follow-up session, which is either a secondary bg scan
         // because slop is too much, or listening for the request
-        s_next = session_new(   &dll_scan_applet, 
+        s_next = session_extend(&dll_scan_applet, 
                                 count, 
                                 s_params[2+offset], 
                                 rxq.getcursor[2]    );
@@ -153,16 +153,19 @@ void network_mark_ff() {
 
 
 
+
+
+
+
 #ifndef EXTF_network_cont_dialog
 m2session* network_cont_dialog(ot_app applet, ot_uint wait) {
     m2session* next;
     m2session* active;
     active  = session_top();
-    next    = session_new(  applet, 
-                            CLK2TI(dll.comm.tc) + wait,
-                            (M2_NETSTATE_REQRX | M2_NETSTATE_ASSOCIATED),
-                            active->channel     );
-    
+    next    = session_extend(   applet, 
+                                CLK2TI(dll.comm.tc) + wait,
+                                (M2_NETSTATE_REQRX | M2_NETSTATE_ASSOCIATED),
+                                active->channel     );
     next->extra     = active->extra;
     next->dialog_id = active->dialog_id++;
     next->subnet    = active->subnet;
@@ -500,6 +503,7 @@ ot_bool m2np_idcmp(ot_int length, void* id) {
 
 
 #ifndef EXTF_m2advp_open
+
 void m2advp_open(m2session* follower) {
     q_empty(&txq);
     txq.getcursor += 2;     //Bypass unused length and Link CTL bytes
@@ -518,7 +522,11 @@ void m2advp_open(m2session* follower) {
     dll.counter = follower->counter;
     q_writeshort(&txq, follower->counter);
 }
+
 #endif
+
+
+
 
 
 #ifndef EXTF_m2advp_update
@@ -532,6 +540,7 @@ void m2advp_update(ot_u16 countdown) {
     *txq.putcursor++    = ((ot_u8*)&countdown)[UPPER];  //Countdown (upper 8 bits)
     *txq.putcursor++    = ((ot_u8*)&countdown)[UPPER];  //Countdown (lower 8 bits)
 }
+
 #endif
 
 
