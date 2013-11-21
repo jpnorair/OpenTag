@@ -36,18 +36,21 @@
 #include "session.h"
 #include "OT_platform.h"
 
-#define _1FREE  (OT_PARAM(SESSION_DEPTH)-1)
-#define _2FREE  (OT_PARAM(SESSION_DEPTH)-2)
-
+#define _1ST    1
+#define _2ND    2
+#define _LAST   (OT_PARAM(SESSION_DEPTH)-1)
+#define _END    (OT_PARAM(SESSION_DEPTH))
 
 
 session_struct session;
 
 
 
+
+
 #ifndef EXTF_session_init
 void session_init() {
-    session.top = &session.heap[-1];
+    session.top = &session.heap[_END];
 }
 #endif
 
@@ -84,16 +87,16 @@ m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 chan
     m2session* extend;
     
     // If not one free session, there's no room!
-    if (session.top >= &session.heap[_1FREE]) {
+    if (session.top <= &session.heap[_1ST]) {
         return NULL;
     }
     
     // We're adding a new session...
-    session.top++;
+    session.top--;
     
     // If the heap is empty, just push it (push it good)
     if (session_notempty() == False) {
-        extend = &session.heap[0];
+        extend = &session.heap[_LAST];
     }
     
     // Heap is not empty, but heap also not full, so go through the session 
@@ -101,21 +104,25 @@ m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 chan
     else {
         extend = session.top;
         do {
-            // Move the session that was here up one
-            m2session* dst = extend;
-            m2session* src = extend--;
-            platform_memcpy((ot_u8*)dst, (ot_u8*)src, sizeof(m2session));
-            
-            // Check the session after this one.  If it is INIT, then we extend
-            // this one here.  Else, this session is still part of the current 
-            // session sequence, so we keep looking.
-            if (extend[-1].netstate & M2_NETSTATE_INIT) {
+            // Increment session, noting that first increment simply counters
+            // "session.top--" above.
+            extend++;
+        
+            // Inspect following session. If it is INIT, then we extend the 
+            // session sequence below this point.  Else, following session is 
+            // still part of the current session sequence, so keep looking.
+            if (extend[1].netstate & M2_NETSTATE_INIT) {
                 break;
             }
             
-            // If we are at the last place in the session heap, that's OK!
-            // Notice the if condition above
-        } while (extend > &session.heap[0]);
+            // The above "if (session.top <= &session.heap[_1ST])" make it OK
+            // if we are at the 1st place in the session heap
+        } while (extend < &session.heap[_LAST]);
+        
+        // Shift the stack down one notch, from top to extension point.
+        platform_memcpy(    (ot_u8*)session.top, 
+                            (ot_u8*)&session.top[1], 
+                            (ot_uint)((ot_u8*)extend - (ot_u8*)&session.top[1]) );
     }
 
     return sub_store_session(extend, applet, wait, netstate, channel);
@@ -125,24 +132,26 @@ m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 chan
 
 #ifndef EXTF_session_new
 m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel) {
-    m2session* dst;
+    ot_u8* src;
+    ot_uint length;
     
     // Always reserve an extra session for extension.
     // i.e. There must be two or more free sessions to do session_new()
-    if (session.top >= &session.heap[_2FREE] ) {
+    if (session.top <= &session.heap[_2ND] ) {
         return NULL;
     }
     
     // We're adding a new session to the bottom of the heap/stack/queue...
-    session.top++;
-    dst = session.top;
+    src         = (ot_u8*)session.top;
+    session.top--;
+    length      = (ot_uint)((ot_u8*)&session.heap[_END] - src);
     
-    while (dst > &session.heap[0]) {
-        m2session* src = dst--;
-        platform_memcpy((ot_u8*)dst, (ot_u8*)src, sizeof(m2session));
+    // Only do the copy if the size is not zero
+    if (length != 0) {
+        platform_memcpy( (ot_u8*)session.top, src, length);
     }
     
-    return sub_store_session(dst, applet, wait, netstate, channel);
+    return sub_store_session(&session.heap[_LAST], applet, wait, netstate, channel);
 }
 
 #endif
@@ -154,10 +163,10 @@ ot_bool session_occupied(ot_u8 chan_id) {
     m2session* next;
     next = session.top;
     
-    while (next >= &session.heap[0]) {
-        next--;
+    while (next < &session.heap[_END]) {
+        next++;
     }
-    return (ot_bool)(next >= &session.heap[0]);
+    return (ot_bool)(next < &session.heap[_END]);
 }
 #endif
 
@@ -165,7 +174,7 @@ ot_bool session_occupied(ot_u8 chan_id) {
 
 #ifndef EXTF_session_pop
 void session_pop() {
-    session.top--;
+    session.top++;
 }
 #endif
 
@@ -192,8 +201,8 @@ m2session* session_top() {
 
 #ifndef EXTF_session_numfree
 ot_int session_numfree() {
-    ot_long block;
-    block   = (ot_ulong)&session.heap[_1FREE] - (ot_ulong)session.top;
+    ot_uint block;
+    block   = (ot_uint)((ot_u8*)session.top - (ot_u8*)&session.heap[_1ST]);
     block  /= sizeof(m2session);
     block  -= 1;            //because we always keep one free for extensions
     
@@ -204,7 +213,7 @@ ot_int session_numfree() {
 
 #ifndef EXTF_session_notempty
 ot_bool session_notempty() {
-    return (session.top >= &session.heap[0]);
+    return (session.top < &session.heap[_END]);
 }
 #endif
 
@@ -212,8 +221,8 @@ ot_bool session_notempty() {
 
 #ifndef EXTF_session_follower
 m2session* session_follower() {
-    if (session.top >= &session.heap[1]) {
-        return &session.top[-1];
+    if (session.top < &session.heap[_LAST]) {
+        return &session.top[1];
     }
     return NULL;
 }
@@ -222,8 +231,8 @@ m2session* session_follower() {
 
 #ifndef EXTF_session_follower_wait
 ot_u16 session_follower_wait() {
-    if (session.top >= &session.heap[1]) {
-        return session.top[-1].counter;
+    if (session.top < &session.heap[_LAST]) {
+        return session.top[1].counter;
     }
     return 65535;
 }
@@ -232,8 +241,10 @@ ot_u16 session_follower_wait() {
 
 #ifndef EXTF_session_invite_follower
 void session_invite_follower() {
-    session.top[-1].counter     = 0;
-    session.top[-1].netstate   &= ~M2_NETSTATE_INIT;    ///@todo this shouldn't be here... check INIT
+    if (session.top < &session.heap[_LAST]) {
+        session.top[1].counter      = 0;
+        session.top[1].netstate    &= ~M2_NETSTATE_INIT;
+    }
 }
 #endif
 
@@ -244,14 +255,14 @@ void session_postpone_inactives(ot_u16 postponement) {
     m2session* next;
     next = session.top;
     
-    while (next >= &session.heap[0]) {
+    while (next < &session.heap[_END]) {
         if (next->netstate & M2_NETSTATE_INIT) {
             ot_long scratch;
             scratch         = next->counter + postponement;
             next->counter   = (scratch < 65535) ? (ot_u16)scratch : 65535;
             break;
         }
-        next--;
+        next++;
     }
 }
 #endif
@@ -274,12 +285,11 @@ void session_print() {
     ot_int i;
     m2session* test;
     
-    printf("Number of Sessions: %d\n", session_count());
+    i = (ot_int)((ot_u8*)&session.heap[_END] - (ot_u8*)session.top);
+    printf("Number of Sessions: %d\n", i);
     
-    if (session.top >= &session.heap[0]) {
+    if (i > 0) {
         printf("===  SCHED CHAN N.ST D.ID SNET EXTR FLAG\n");
-        
-        i = 0;
         test = session.top;
         do {
             printf("%02d: 0x%04X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n", i++,
@@ -291,8 +301,8 @@ void session_print() {
                 test->extra, 
                 test->flags);
                 
-            test--;
-        } while (test >= &session.heap[0]);
+            test++;
+        } while (test < &session.heap[_END]);
     }
     
     printf("\n");
