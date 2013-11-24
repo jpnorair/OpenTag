@@ -422,6 +422,9 @@ void dll_clock(ot_uint clocks) {
 
 #ifndef EXTF_dll_systask_rf
 void dll_systask_rf(ot_task task) {
+    ///Block callbacks while this runs (?)
+    //radio_gag();
+    
     //do {
         switch (sys.task_RFA.event) {
             // Do Nothing
@@ -443,6 +446,8 @@ void dll_systask_rf(ot_task task) {
            default: rm2_kill();             break;
         }
     //} while ((task->event != 0) && (task->nextevent <= 0));
+        
+    //radio_ungag();
 }
 #endif
 
@@ -755,9 +760,7 @@ void sub_activate() {
     m2session*  s_active;
     ot_app      s_applet;
     
-
     dll_block_idletasks();
-
     
     dll.idle_state      = sub_default_idle();
     s_active            = session_top();
@@ -826,10 +829,10 @@ void sub_init_rx(ot_u8 is_brx) {
 ///
 /// @todo A more adaptive method for scanning is planned, in which the latency 
 /// drops to 1 only after a sync word is detected.
-    static const ot_sig2 rfevt_cb[2] = { &rfevt_bscan, &rfevt_frx };
     m2session* this_session;
+    ot_sig2 callback;
 
-	sys_task_setnext(&sys.task[TASK_radio], dll.comm.rx_timeout);
+	sys_task_setnext(&sys.task[TASK_radio], (ot_u16)dll.comm.rx_timeout);
 
     this_session            = session_top();
     sys.task_RFA.event      = 3;
@@ -840,8 +843,8 @@ void sub_init_rx(ot_u8 is_brx) {
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
     // "is_brx" is inverted to 0=brx, 1=frx
-    is_brx = (is_brx==0);
-    rm2_rxinit(this_session->channel, is_brx, rfevt_cb[is_brx]);
+    callback = (is_brx) ? &rfevt_bscan : &rfevt_frx;
+    rm2_rxinit(this_session->channel, is_brx, callback);
 }
 
 
@@ -890,59 +893,33 @@ void rfevt_bscan(ot_int scode, ot_int fcode) {
     if ((scode == -1) && (dll.comm.redundants != 0)) {
         //rm2_rxinit(dll.comm.rx_chanlist[0], 0, &rfevt_bscan);    //non-blocking
         rm2_reenter_rx(&rfevt_bscan);   //non-blocking
-
         return;
     }
     
-
     // Pop the Scan Session that got us here
-
     session_pop();
-
     
-
     // General Error: usually a timeout
-
     if (scode < 0) {
-
     	goto rfevt_FAILURE;
-
     }
-
     
-
     // A valid packet was received:
-
     // - Check subnet and EIRP filters
-
     // - network_parse_bf() will update the session stack as needed
-
     if (radio_mac_filter()) {
-
         if (network_parse_bf()) {
-
             goto rfevt_SUCCESS;
-
         }
-
     }
-
 
     // A failure, due to one or more of the following reasons:
-
     // - Timeout
-
     // - BG Packet sent to different subnet
-
     // - Session stack is full
-
     // - parsing error
-
     rfevt_FAILURE:
-
     dll_idle();
-
-    
 
     rfevt_SUCCESS:
     DLL_SIG_RFTERMINATE(3, scode);
@@ -1037,7 +1014,7 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
 void rfevt_txcsma(ot_int pcode, ot_int tcode) {
     ot_uint event_ticks;
 
-    /// ON CSMA SUCCESS: pcode == 0, tcode == 0/1 for BG/FG
+    /// ON CSMA SUCCESS: pcode == 0, tcode == 1/0 for BG/FG
     if (pcode == 0) {
         sys.task_RFA.latency    = 0;
         sys.task_RFA.event      = 5;
@@ -1101,7 +1078,7 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
     else {
         session = session_top();
         scratch = ((session->netstate & M2_NETSTATE_RESPTX) \
-        		|| ((ot_int)dll.comm.rx_timeout <= 0));
+        		|| (dll.comm.rx_timeout <= 0));
         
         /// Send redundant TX immediately, but only if no response window or if
         /// this packet is a response.
@@ -1143,7 +1120,6 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         case 0: {
             // assure request hits NOW & assure it doesn't init dll.comm
             // Tweak dll.comm for request (2 ti is a token, small amount)
-
             session_invite_follower();
             sys.task_RFA.event      = 0;
             dll.comm.tc             = TI2CLK(2);

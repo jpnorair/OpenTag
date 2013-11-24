@@ -39,8 +39,6 @@
   * Design Assumptions:
   * <LI> The peripheral bus clock is of high-enough frequency to cleanly 
   *         generate 115200 baud -- 1.8432 MHz or higher is recommended.  </LI>
-  * <LI> If changing the input frequency, changes may need to be made to 
-  *         implementation of setspeed function. </LI>
   * 
   * MPipe Protocol for Serial:
   * <PRE>
@@ -162,8 +160,6 @@
   * Use the correct UART and DMA, depending on Board settings.
   */
 #if (MPIPE_UART_ID == 1)
-#   define _UARTCLK         (((ot_u32)platform_ext.cpu_khz*1000)/BOARD_PARAM_APB2CLKDIV)
-#   define _UARTCLK_HS      (PLATFORM_HSCLOCK_HZ/BOARD_PARAM_APB2CLKDIV)
 #   define _UART_IRQ        USART1_IRQn
 #   define _DMARX           DMA1_Channel5
 #   define _DMATX           DMA1_Channel4
@@ -174,12 +170,11 @@
 #   define __UART_ISR       platform_isr_usart1
 #   define __DMARX_ISR      platform_isr_dma1ch5
 #   define __DMATX_ISR      platform_isr_dma1ch4
+#   define __UART_CLKHZ()   platform_get_clockhz(2)
 #   define __UART_CLKON()   (RCC->APB2ENR |= RCC_APB2ENR_USART1EN)
 #   define __UART_CLKOFF()  (RCC->APB2ENR &= ~RCC_APB2ENR_USART1EN)
 
 #elif (MPIPE_UART_ID == 2)
-#   define _UARTCLK         (((ot_u32)platform_ext.cpu_khz*1000)/BOARD_PARAM_APB1CLKDIV)
-#   define _UARTCLK_HS      (PLATFORM_HSCLOCK_HZ/BOARD_PARAM_APB1CLKDIV)
 #   define _UART_IRQ        USART2_IRQn
 #   define _DMARX           DMA1_Channel6
 #   define _DMATX           DMA1_Channel7
@@ -190,12 +185,11 @@
 #   define __UART_ISR       platform_isr_usart2
 #   define __DMARX_ISR      platform_isr_dma1ch6
 #   define __DMATX_ISR      platform_isr_dma1ch7
+#   define __UART_CLKHZ()   platform_get_clockhz(1)
 #   define __UART_CLKON()   (RCC->APB1ENR |= RCC_APB1ENR_USART2EN)
 #   define __UART_CLKOFF()  (RCC->APB1ENR &= ~RCC_APB1ENR_USART2EN)
 
 #elif (MPIPE_UART_ID == 3)
-#   define _UARTCLK         (((ot_u32)platform_ext.cpu_khz*1000)/BOARD_PARAM_APB1CLKDIV)
-#   define _UARTCLK_HS      (PLATFORM_HSCLOCK_HZ/BOARD_PARAM_APB1CLKDIV)
 #   define _UART_IRQ        USART3_IRQn
 #   define _DMARX           DMA1_Channel3
 #   define _DMATX           DMA1_Channel2
@@ -206,6 +200,7 @@
 #   define __UART_ISR       platform_isr_usart3
 #   define __DMARX_ISR      platform_isr_dma1ch3
 #   define __DMATX_ISR      platform_isr_dma1ch2
+#   define __UART_CLKHZ()   platform_get_clockhz(1)
 #   define __UART_CLKON()   (RCC->APB1ENR |= RCC_APB1ENR_USART3EN)
 #   define __UART_CLKOFF()  (RCC->APB1ENR &= ~RCC_APB1ENR_USART3EN)
 
@@ -315,6 +310,9 @@ typedef struct {
 #if (MPIPE_USE_ACKS)
     mpipe_priority  priority;
 #endif
+#if (MCU_FEATURE(MULTISPEED))
+    mpipe_speed     baudrate;
+#endif
     ot_int          packets;
     ot_u8*          pkt;
     ot_u8           rxbuffer[260];
@@ -323,19 +321,6 @@ typedef struct {
 
 uart_struct uart;
 
-
-
-
-
-///@note the MANT+FRAC baud rate selection can be achieved by the div16 term
-static const ot_u16 br_hssel[6] = { 
-        (_UARTCLK_HS / (9600) ), 
-        (_UARTCLK_HS / (28800) ), 
-        (_UARTCLK_HS / (57600) ), 
-        (_UARTCLK_HS / (115200) ),
-        (_UARTCLK_HS / (250000) ),
-        (_UARTCLK_HS / (500000) )
-    };
 
 
   
@@ -385,6 +370,9 @@ void sub_mpipe_open() {
     __SYS_CLKON();
     __UART_CLKON();
    
+#   if (MCU_FEATURE(MULTISPEED))
+    MPIPE->BRR              = __UART_CLKHZ() / uart.baudrate;
+#   endif
     scratch                 = BOARD_UART_PORT->MODER;
     scratch                &= ~((3 << (BOARD_UART_TXPINNUM*2)) | (3 << (BOARD_UART_RXPINNUM*2)));
     scratch                |= (2 << (BOARD_UART_TXPINNUM*2)) | (2 << (BOARD_UART_RXPINNUM*2));
@@ -492,7 +480,7 @@ ot_u8 mpipedrv_footerbytes() {
 
 
 #ifndef EXTF_mpipedrv_init
-ot_int mpipedrv_init(void* port_id) {
+ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 /// 1. "port_id" is unused in this impl, and it may be NULL
 /// 2. Prepare the HW, which in this case is a UART
 /// 3. Set default speed, which in this case is 115200 bps
@@ -503,12 +491,14 @@ ot_int mpipedrv_init(void* port_id) {
 
     /// UART Setup (RX & TX setup takes place at time of startup)
     __UART_CLKON();
-    MPIPE_UART->BRR = br_hssel[3];
+#   if (MCU_FEATURE(MULTISPEED) != ENABLED)
+    MPIPE_UART->BRR = __UART_CLKHZ() / baud_rate;
+#   endif
     MPIPE_UART->CR3 = USART_CR3_DMAR | USART_CR3_DMAT;
     MPIPE_UART->CR2 = 0;
     MPIPE_UART->CR1 = 0;
     __UART_CLKOFF();
-    
+
     /// Set up DMA channels for RX and TX
 //  _DMARX->CCR     = 0;
 //  _DMATX->CCR     = 0;
@@ -598,15 +588,6 @@ void mpipedrv_kill() {
 #ifndef EXTF_mpipedrv_wait
 void mpipedrv_wait() {
     while (mpipe.state != MPIPE_Idle);
-}
-#endif
-
-
-#ifndef EXTF_mpipedrv_setspeed
-void mpipedrv_setspeed(mpipe_speed speed) {
-    __UART_CLKON();
-    MPIPE_UART->BRR = br_hssel[speed];
-    __UART_CLKOFF();
 }
 #endif
 

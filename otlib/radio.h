@@ -338,6 +338,8 @@ void radio_off();
   */
 void radio_gag();
 
+void radio_ungag();
+
 
 
 /** @brief  Puts the transceiver core in the sleep mode.

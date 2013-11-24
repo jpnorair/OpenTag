@@ -138,10 +138,10 @@
 #define _SYNT_D7_52MHz          0x00C7EC11  
 #define _DR_M_D7LS_24MHz        47          // 47.407
 #define _DR_E_D7LS_24MHz        11
-//#define _DR_M_D7LS_25MHz        35          // 35.27
-//#define _DR_E_D7LS_25MHz        11
-#define _DR_M_D7LS_25MHz        163         // 163.4
-#define _DR_E_D7LS_25MHz        9
+#define _DR_M_D7LS_25MHz        35          // 35.27
+#define _DR_E_D7LS_25MHz        11
+    //#define _DR_M_D7LS_25MHz        163         // 163.4  //Some low-rate testing
+    //#define _DR_E_D7LS_25MHz        9
 #define _DR_M_D7LS_26MHz        24          // 24.068
 #define _DR_E_D7LS_26MHz        11
 #define _DR_M_D7HS_24MHz        17          // 17.067
@@ -392,8 +392,8 @@
 #   define _CRC_MODE            (7<<5)
 #   define _CRC_MODE_NONE       (0<<5)
 #   define _CRC_MODE_07         (1<<5)
-#   define _CRC_MODE_8005       (2<<5)
-#   define _CRC_MODE_1021       (3<<5)      //DASH7 variant, although not proven to work on this chip
+#   define _CRC_MODE_8005       (2<<5)      //DASH7 variant, although not proven to work on this chip
+#   define _CRC_MODE_1021       (3<<5)      
 #   define _CRC_MODE_864CBF     (4<<5)
 #   define _WHIT_EN             (1<<4)
 #   define _TXSOURCE            (3<<2)

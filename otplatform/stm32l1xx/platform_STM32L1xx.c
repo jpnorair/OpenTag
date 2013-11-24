@@ -966,7 +966,7 @@ void platform_init_busclk() {
 #       endif
 
         // Setup the Bus Dividers as specified (MSI already selected as system clock)
-        platform_ext.cpu_khz     = PLATFORM_MSCLOCK_HZ;
+        sub_set_clockhz(PLATFORM_MSCLOCK_HZ);
 
 
     ///3b. Use HSE or HSI without PLL as Full-Speed clock
@@ -1075,6 +1075,34 @@ void platform_enable_interrupts() {
 
 
 
+void sub_set_clockhz(ot_ulong cpu_clock_hz) {
+/// In interest of speed and size, you need to setup your clock dividers as
+/// constants in the board configuration file.
+    ///@todo map these 0 shifts to derived constants
+    platform_ext.clock_hz[0]    = cpu_clock_hz >> 0;    //AHB
+    platform_ext.clock_hz[1]    = cpu_clock_hz >> 0;    //APB1
+    platform_ext.clock_hz[2]    = cpu_clock_hz >> 0;    //APB2
+}
+
+
+ot_ulong platform_get_clockhz(ot_uint clock_index) {
+#   if defined(__DEBUG__)
+    if (clock_index > 2) {
+        while(1);   //trap in debugging
+    }
+#   elif defined(__API__)
+    if (clock_index > 2) {
+        return 0;   //result for dumb APIs
+    }
+#   endif
+    return platform_ext.clock_hz[clock_index];
+}
+
+
+
+
+
+
 
 /** Platform Speed Control <BR>
   * ========================================================================<BR>
@@ -1116,7 +1144,7 @@ void platform_standard_speed() {
 #   endif
 
     // Update stored CPU speed
-    platform_ext.cpu_khz = PLATFORM_MSCLOCK_HZ;
+    sub_set_clockhz(PLATFORM_MSCLOCK_HZ);
 #endif
 }
 #endif
@@ -1147,7 +1175,7 @@ void platform_full_speed() {
 #       endif
         
         RCC->CR &= ~RCC_CR_MSION;
-        platform_ext.cpu_khz = PLATFORM_HSCLOCK_HZ;
+        sub_set_clockhz(PLATFORM_HSCLOCK_HZ);
     }
 #endif
 }
@@ -1184,7 +1212,7 @@ void platform_flank_speed() {
     }
     
     RCC->CR &= ~RCC_CR_MSION;
-    platform_ext.cpu_khz = PLATFORM_PLLCLOCK_HZ;
+    sub_set_clockhz(PLATFORM_PLLCLOCK_HZ);
     
 #else
     platform_full_speed();
@@ -1997,8 +2025,8 @@ void platform_delay(ot_u16 n) {
 #ifndef EXTF_platform_swdelay_ms
 void platform_swdelay_ms(ot_u16 n) {
     ot_long c;
-    c   = (platform_ext.cpu_khz);       // Set cycles per ms
-    c  *= n;                            // Multiply by number of ms                   
+    c   = (platform_ext.clock_hz[0]>>10);   // Set cycles per ms
+    c  *= n;                                // Multiply by number of ms                   
     do { 
         c -= 7;                         // 7 cycles per loop (measured)
     } while (c > 0);
@@ -2009,9 +2037,9 @@ void platform_swdelay_ms(ot_u16 n) {
 #ifndef EXTF_platform_swdelay_us
 void platform_swdelay_us(ot_u16 n) {
     ot_long c;
-    c   = (platform_ext.cpu_khz);       // Set cycles per ms
-    c  *= n;                            // Multiply by number of us
-    c >>= 10;                           // Divide into cycles per us
+    c   = (platform_ext.clock_hz[0]>>10);   // Set cycles per ms
+    c  *= n;                                // Multiply by number of us
+    c >>= 10;                               // Divide into cycles per us
     do { 
         c -= 7;                         // 7 cycles per loop (measured)
     } while (c > 0);

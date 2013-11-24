@@ -98,33 +98,36 @@ m2session* network_parse_bf() {
 
     /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
     if (bgpid == 15) {
-        ot_int  offset;
-        ot_u16  count;
-        ot_int  slop;
+        ot_int      offset;
+        ot_uni16    count;
+        ot_int      slop;
         static const ot_u8 s_params[4] = { 
             0x80, 0x0C, (M2_NETSTATE_REQRX | M2_NETFLAG_FLOOD), (M2_NETSTATE_REQRX) 
         };
         
         // Get the counter-ETA information from the inbound frame
-        ((ot_u8*)&count)[UPPER] = rxq.getcursor[3];
-        ((ot_u8*)&count)[LOWER] = rxq.getcursor[4];
+        count.ubyte[UPPER]  = rxq.getcursor[3];
+        count.ubyte[LOWER]  = rxq.getcursor[4];    
+        count.ushort       &= 0x7FFF;
 
         // "slop" is accounting for timing error and deviation, due to 
         // precision of the timer, process latency, and other such things.
-        slop    = count / OT_GPTIM_ERRDIV;
-        slop   += count / M2_ADV_ERRDIV;
-        count  -= slop;
-        offset  = (slop <= M2_ADV_SLOP);
+        slop            = count.ushort / OT_GPTIM_ERRDIV;
+        offset          = (slop <= M2_ADV_MAXSLOP);
+        count.sshort   -= (slop + M2_ADV_OFFSET);
+        if (count.sshort < 0) {
+            count.sshort = 0;
+        }
         
         // Block DLL idle tasks while waiting for this next session
         dll_block_idletasks();
         
         // Create the follow-up session, which is either a secondary bg scan
         // because slop is too much, or listening for the request
-        s_next = session_extend(&dll_scan_applet, 
-                                count, 
-                                s_params[2+offset], 
-                                rxq.getcursor[2]    );
+        s_next = session_extend(    &dll_scan_applet, 
+                                    count.ushort, 
+                                    s_params[2+offset], 
+                                    rxq.getcursor[2]    );
         if (s_next != NULL) {
             s_next->extra = s_params[0+offset];
         }
@@ -179,9 +182,9 @@ m2session* network_cont_dialog(ot_app applet, ot_uint wait) {
 ot_int network_route_ff(m2session* active) {
     ot_int route_val;
 
-    /// Strip CRC bytes from the end of the message.  RS bytes are stripped by
-    /// the decoder, if RS is enabled/used.
-    rxq.front[0]       -= 2;
+    // Strip CRC bytes from the end of the message.  RS bytes are stripped by
+    // the decoder, if RS is enabled/used.
+    //rxq.front[0]       -= 2;  //done in encoder now
     
     /// Acquire RSCODE flag from LC byte (0x40) and transpose to its position
     /// for session flags (0x08)
@@ -216,7 +219,7 @@ ot_int network_route_ff(m2session* active) {
     /// - if unassociated, connect now
     /// - if already connected, make sure the incremented dialog IDs are equal
     if ((m2np.header.fr_info & M2FI_STREAM) == 0) {
-        if (active->netstate & M2_NETSTATE_CONNECTED) {
+        if (active->netstate & M2_NETSTATE_CONNECTED) {     ///@todo make sure synchronization sets to connected
             active->dialog_id++;
             if (active->dialog_id != q_readbyte(&rxq)) {
                 return -1;
@@ -376,7 +379,7 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
     /// @todo Experimental!
 #   if (OT_FEATURE(NL_SECURITY))
     if (m2np.header.fr_info & M2FI_NLS) {
-        auth_setup(&txq, b00100000, (txq.putcursor-txq.getcursor));
+        auth_setup(&txq, b00100000, q_span(&txq));
     }
 #   endif
     
@@ -437,9 +440,10 @@ void m2np_footer() {
 #   endif
 
     /// RS and CRC will be appended during encoding, and their extra length
-    /// will be added to the frame length field
+    /// will be added to the frame length field.  -1 is because the length
+    /// byte is not included in the length field.
     m2np_footer_END:
-    txq.getcursor[0] = q_span(&txq);
+    txq.getcursor[0] = q_span(&txq) - 1;
 }
 #endif
 
@@ -538,7 +542,7 @@ void m2advp_update(ot_u16 countdown) {
     txq.putcursor       = txq.getcursor;
     txq.putcursor      += 3;                            //Skip EIRP, Subnet, Channel bytes
     *txq.putcursor++    = ((ot_u8*)&countdown)[UPPER];  //Countdown (upper 8 bits)
-    *txq.putcursor++    = ((ot_u8*)&countdown)[UPPER];  //Countdown (lower 8 bits)
+    *txq.putcursor++    = ((ot_u8*)&countdown)[LOWER];  //Countdown (lower 8 bits)
 }
 
 #endif

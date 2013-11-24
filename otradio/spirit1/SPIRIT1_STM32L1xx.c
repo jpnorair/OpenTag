@@ -293,16 +293,31 @@ void spirit1_reset() {
 
 
 void spirit1_waitforreset() {
-/// Wait for POR signal to rise.  
-/// Save non-blocking implementation for a rainy day.
-    while ((RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN) == 0);
+///@todo Save non-blocking implementation for a rainy day.
+/// Blocking implementation: Wait for POR signal to rise using a busy loop.
+/// There is a watchdog variable that should count at least 1ms.  The loop
+/// itself should take at least 9 cycles to execute (by inspection), and we
+/// assume a maximum clock speed of 32MHz.
+    ot_uint watchdog = 3556;
+    
+    while (((RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN) == 0) && (--watchdog));
+    if (watchdog == 0) {
+        ///@todo failure code
+    }
 }
 
 
 void spirit1_waitforready() {
 /// Wait for the Ready Pin to go high (reset pin is remapped in init).
-/// STANDBY->READY should take about 75us
-    while ((_READY_PORT->IDR & _READY_PIN) == 0);
+/// STANDBY->READY should take about 75us, the loop itself should take at
+/// least 9 cycles to execute, and we assume a maximum clock speed of 
+/// 32MHz.  For safety, we also allow 100us.
+    ot_uint watchdog = 356;
+    
+    while (((_READY_PORT->IDR & _READY_PIN) == 0) && (--watchdog));
+    if (watchdog == 0){
+        BOARD_LEDR_PORT->BSRRH  = BOARD_LEDR_PIN;
+    }
 }
 
 
@@ -690,7 +705,6 @@ void spirit1_start_counter() {
 }
 
 void spirit1_stop_counter() {
-    //dll.counter = 0;          // not necessary or helpful
     RTC->CR &= ~RTC_CR_WUTE;
 }
 
@@ -744,6 +758,19 @@ void sub_int_config(ot_u32 ie_sel) {
 }
 
 void spirit1_int_off()      {   sub_int_config(0);   }
+
+void spirit1_int_on() {
+    ot_u32 ie_sel;
+    switch (spirit1.imode) {
+        case MODE_Listen:   ie_sel = RFI_LISTEN;
+        case MODE_RXData:   ie_sel = RFI_RXDATA;
+        case MODE_CSMA:     ie_sel = RFI_CSMA;
+        case MODE_TXData:   ie_sel = RFI_TXFIFO;
+        default:            ie_sel = 0;
+    }
+    sub_int_config(ie_sel);
+}
+
 
 void spirit1_int_listen()   {   spirit1.imode = MODE_Listen;    
                                 sub_int_config(RFI_LISTEN);     }

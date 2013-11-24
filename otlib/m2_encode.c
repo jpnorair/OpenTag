@@ -843,7 +843,7 @@ ot_u16 em2_decode_endframe() {
     }
 #   else
     if (em2.lctl & 0x40) {
-        framebytes -= (framebytes+3)>>2;
+        framebytes -= (framebytes+3)>>2;    ///@todo verify this when RS Code impl complete
     }
 #   endif
 

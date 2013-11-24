@@ -61,12 +61,12 @@
 ///@todo when more hardware is supported by mpipe, variations of this will be
 ///      specified.  In certain implementations, this is superfluous
 typedef enum {
-    MPIPE_9600bps    = 0,
-    MPIPE_28800bps   = 1,
-    MPIPE_57600bps   = 2, 
-    MPIPE_115200bps  = 3,
-    MPIPE_230400bps  = 4,
-    MPIPE_460800bps  = 5
+    MPIPE_9600bps    = MCU_PARAM(UART_9600BPS),
+    MPIPE_28800bps   = MCU_PARAM(UART_28800BPS),
+    MPIPE_57600bps   = MCU_PARAM(UART_57600BPS), 
+    MPIPE_115200bps  = MCU_PARAM(UART_115200BPS),
+    MPIPE_250000bps  = MCU_PARAM(UART_250000BPS),
+    MPIPE_500000bps  = MCU_PARAM(UART_500000BPS)
 } mpipe_speed;
 
 
@@ -298,11 +298,15 @@ ot_u8 mpipedrv_footerbytes();
 
 /** @brief  Initializes Mpipe Driver
   * @param  port_id     (void*) Implementation-dependent port identifier 
+  * @param  baud_rate   (mpipe_speed) baud rate value
   * @retval ot_int      Amount of latency to attribute to this driver
   * @ingroup Mpipe
   * @sa mpipe_connect()
   * @sa mpipedrv_detach()
   *
+  * @note the baud_rate input may differ on each platform.  So, the header
+  * platform_xxx.h must include MCU_PARAM(UART_xxxBPS) constants.
+  * 
   * This function must be implemented in the MPipe driver.  It should be called
   * from inside mpipe_connect().
   * 
@@ -313,7 +317,7 @@ ot_u8 mpipedrv_footerbytes();
   * This value should be 1-255 for the native kernel, but for other kernels it
   * may have different outputs.
   */
-ot_int mpipedrv_init(void* port_id);
+ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate);
 
 
 
@@ -394,18 +398,6 @@ void mpipedrv_unblock();
   */
 void mpipedrv_wait();
 
-
-
-/** @brief  Sets the baud-rate of the mpipe.
-  * @param  speed       (mpipe_speed) baud rate of the pipe
-  * @retval None 
-  * @ingroup Mpipe
-  *
-  * This function sets or resets data rate controlling attributes of the Mpipe.
-  * In certain Mpipe implementations, data rate is irrelevant, and for these all
-  * calls to mpipe_setspeed() will do the same thing.
-  */
-void mpipedrv_setspeed(mpipe_speed speed);
 
 
 

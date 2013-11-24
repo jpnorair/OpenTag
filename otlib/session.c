@@ -36,8 +36,8 @@
 #include "session.h"
 #include "OT_platform.h"
 
-#define _1ST    1
-#define _2ND    2
+#define _1ST    0
+#define _2ND    1
 #define _LAST   (OT_PARAM(SESSION_DEPTH)-1)
 #define _END    (OT_PARAM(SESSION_DEPTH))
 
@@ -93,16 +93,14 @@ m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 chan
     
     // We're adding a new session...
     session.top--;
+    extend = session.top;
     
-    // If the heap is empty, just push it (push it good)
-    if (session_notempty() == False) {
-        extend = &session.heap[_LAST];
-    }
-    
-    // Heap is not empty, but heap also not full, so go through the session 
-    // heap to see where to dump this extended session
-    else {
-        extend = session.top;
+    // If the new session is on the last spot, it means the heap is actually
+    // empty, so no movement is necessary.  If heap is not empty and not full
+    // (we know this by condition above and condition below), go through the
+    // session heap to see where to put this extended session, and move all
+    // higher data one spot up.
+    if (extend < &session.heap[_LAST]) {
         do {
             // Increment session, noting that first increment simply counters
             // "session.top--" above.
@@ -122,7 +120,7 @@ m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 chan
         // Shift the stack down one notch, from top to extension point.
         platform_memcpy(    (ot_u8*)session.top, 
                             (ot_u8*)&session.top[1], 
-                            (ot_uint)((ot_u8*)extend - (ot_u8*)&session.top[1]) );
+                            (ot_uint)((ot_u8*)extend - (ot_u8*)session.top) );
     }
 
     return sub_store_session(extend, applet, wait, netstate, channel);

@@ -139,7 +139,7 @@ typedef enum {
 ot_bool subrfctl_test_channel(ot_u8 channel);
 void    subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate);
 
-void    subrfctl_kill(ot_int errcode);
+//void    subrfctl_kill(ot_int errcode);
 void    subrfctl_finish(ot_int main_err, ot_int frame_err);
 //ot_bool subrfctl_lowrssi_reenter();
 
@@ -228,6 +228,15 @@ void radio_off() {
 #ifndef EXTF_radio_gag
 void radio_gag() {
     spirit1_int_off();
+}
+#endif
+
+
+#ifndef EXTF_radio_ungag
+void radio_ungag() {
+    if (radio.state != RADIO_Idle) {
+        spirit1_int_on();
+    }
 }
 #endif
 
@@ -636,18 +645,19 @@ void em2_encode_newframe() {
 #       else
 #       endif
     }
-    em2.lctl = txq.front[1];
-
-    /// 2. Prepare the CRC, also adding 2 bytes to the frame length
-    if (txq.options.ubyte[UPPER] != 0) {
-        txq.front[0] += 2;
-        em2_add_crc5(txq.front);
-        crc_init_stream(q_span(&txq), txq.getcursor);
-        txq.putcursor += 2;
-	}
-
-    /// 3. Align encoder control variables with tx frame
+    
+    ///2. set initial values of encoder control variables
+    em2.lctl    = txq.front[1];
     em2.bytes   = q_span(&txq);
+
+    ///3. Prepare the CRC, also adding 2 bytes to the frame length
+    if (txq.options.ubyte[UPPER] != 0) {
+        crc_init_stream(em2.bytes, txq.getcursor);
+        em2.bytes      += 2;
+        txq.front[0]   += 2;
+        txq.putcursor  += 2;
+        em2_add_crc5(txq.front);
+	}
 }
 #endif
 
@@ -800,26 +810,26 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
 
     /// 4a. Setup RX for Background detection (if FLOOD):
     ///     <LI> Manipulate Queue to fit bg frame into common model </LI>
-    ///     <LI> Set SPIRIT1 RX timer to a small amount (~250 us) </LI>
+    ///     <LI> Set SPIRIT1 RX timer to a small amount.  The minimum amount
+    ///          depends on ramp-up/down settings, but ~400us is a safe bet </LI>
     ///     <LI> Set SPIRIT1 to pause RX timer on carrier sense </LI>
     /// 4b. Setup RX for Foreground detection (ELSE): 
     ///     <LI> Set Foreground paging and tentative packet-len to max </LI>
     if (rfctl.flags & RADIO_FLAG_FLOOD) {
         spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cs_thr );
         rxq.getcursor       = rxq.front;
-        *rxq.getcursor++    = 6;
-        *rxq.getcursor++    = 3;            // 00011 is CRC5 for 0000011000
+        *rxq.getcursor++    = 8;
+        *rxq.getcursor++    = 2;            // 00010 is CRC5 for 0000100000
         rxq.putcursor       = rxq.getcursor;
-        rfctl.state         = RADIO_STATE_RXAUTO;
         maccfg[2]           = (DRF_PROTOCOL2 & 0x1F) | _SQI_TIMEOUT_MASK | _CS_TIMEOUT_MASK;
-        maccfg[6]           = 5;           // 1 unit = ~48us
+        maccfg[6]           = 8;           // 1 unit = ~48us
         buffer_mode         = MODE_bg;
         pktlen              = 7;
     }
     else {
         //spirit1_write(RFREG(PCKTCTRL4), DRF_PCKTCTRL4+3);
-        pktlen      = _MAXPKTLEN;
         buffer_mode = MODE_fgpage;
+        pktlen      = _MAXPKTLEN;
     }
 
     /// 5.  Send Configuration data to SPIRIT1
@@ -853,18 +863,16 @@ ot_int rm2_default_tgd(ot_u8 chan_id) {
     return (chan_id & 0x80) ? M2_TGD_55HALF : M2_TGD_55FULL;
 
 #elif ((M2_FEATURE(FEC) == ENABLED) && (M2_FEATURE(TURBO) == ENABLED))
-    /// @note This is an incredible hack, but it is fast and compact.
-    /// To understand it, you need to know the way the channel ID works.
-    static const ot_int tgd[4] = {
-        M2_TGD_55FULL,
-        M2_TGD_200FULL,
-        M2_TGD_55HALF,
-        M2_TGD_200HALF
+    // To understand this, you need to know the way the channel ID works.
+    // The "0" elements are RFU.
+    static const ot_u8 tgd[16] = {
+        M2_TGD_55FULL, M2_TGD_55FULL, M2_TGD_200FULL, 0,
+        0, 0, 0, 0,
+        M2_TGD_55HALF, M2_TGD_55HALF, M2_TGD_200HALF, 0,
+        0, 0, 0, 0
     };
 
-    chan_id    += 0x20;
-    chan_id   >>= 6;
-    return      tgd[chan_id];
+    return      (ot_int)tgd[chan_id>>4];
 
 #else
 #   error "Missing definitions of M2_FEATURE(FEC) and/or M2_FEATURE(TURBO)"
@@ -923,23 +931,23 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
 void rm2_reenter_rx(ot_sig2 callback) {
 /// Restart RX using the same settings that are presently in the radio core.
 ///@todo RX internal state configuration might need attention
+    static const ot_u8 rxstates[4] = {
+        RADIO_STATE_RXPAGE, RADIO_STATE_RXAUTO, RADIO_FLAG_CRC5, 0
+    };
+    
     radio.evtdone   = callback;
-    rfctl.flags    |= RADIO_FLAG_CRC5;
+    rfctl.state     = rxstates[(rfctl.flags & RADIO_FLAG_FLOOD)];
+    rfctl.flags    |= rxstates[2 + (rfctl.flags & RADIO_FLAG_FLOOD)];
     rfctl.rxlimit   = (96-8);
     spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit );
     
-    if (rfctl.state != RADIO_STATE_RXAUTO) {
-        //rfctl.state     = (rfctl.flags & 3);  @todo add MFP support here by fixing rfctl.state
-        rfctl.state     = RADIO_STATE_RXPAGE;   
-    }
-    
+    radio_gag();                    // This shouldn't be necessary, but there's a bug in the rxend function.
     radio_idle();
     radio_flush_rx();
     spirit1_strobe( RFSTROBE_RX );
     spirit1_int_listen();
         
     radio.state = RADIO_Listening;
-    //rfctl.state = RADIO_STATE_RXINIT;
 }
 #endif
 
@@ -960,7 +968,9 @@ void rm2_resend(ot_sig2 callback) {
 
 #ifndef EXTF_rm2_kill
 void rm2_kill() {
-    subrfctl_kill(RM2_ERR_KILL);
+    radio_gag();
+    radio_sleep();
+    subrfctl_finish(RM2_ERR_KILL, 0);
 }
 #endif
 
@@ -974,17 +984,21 @@ void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     /// Setup the RX engine for Foreground Frame detection and RX.  Wipe-out
     /// the lower flags (non-persistent flags)
     radio.evtdone   = callback;
-    rfctl.flags    &= (RADIO_FLAG_SETPWR);
-
-    if (psettings == 0) {
-        netstate    = (M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX);
+    rfctl.flags    &= ~(  RADIO_FLAG_RESIZE \
+                        | RADIO_FLAG_FRCONT \
+                        | RADIO_FLAG_FLOOD  \
+                        | RADIO_FLAG_RESIZE );
+    
+    if (psettings != 0) {
         rfctl.flags|= RADIO_FLAG_FLOOD;
+        netstate    = (M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX);
     }
     else {
-        netstate    = session_netstate();
 #       if (M2_FEATURE(MULTIFRAME) == ENABLED)
-        rfctl.flags |= ((session_netstate() & M2_NETSTATE_DSDIALOG) >> 1); //sets RADIO_FLAG_FRCONT
-#       endif
+        //sets RADIO_FLAG_FRCONT
+        rfctl.flags |= ((session_netstate() & M2_NETSTATE_DSDIALOG) >> 1); 
+#       endif        
+        netstate = session_netstate();
     }
 
     subrfctl_launch_rx(channel, netstate);
@@ -1022,7 +1036,9 @@ void subrfctl_unsync_isr() {
 
 #ifndef EXTF_rm2_rxtimeout_isr
 void rm2_rxtimeout_isr() {
-    subrfctl_kill(RM2_ERR_TIMEOUT);
+    radio_gag();
+    radio_sleep();
+    subrfctl_finish(RM2_ERR_TIMEOUT, 0);
 }
 #endif
 
@@ -1036,6 +1052,9 @@ void rm2_rxdata_isr() {
 /// to run fast, which is more important in this I/O ISR than it is for you to
 /// understand it easily.  Deal with it.
 
+    ///@todo speed-up this for background... Just check for RXAUTO, which is
+    ///      only used by BG, and which needs no special cases 1 & 3
+    
     /// 1. special handler for Manual RX-DONE, needed for Foreground packets
     if (rfctl.state == RADIO_STATE_RXDONE) {
         rm2_rxdata_isr_DONE:
@@ -1154,13 +1173,16 @@ void rm2_rxend_isr() {
 
 #ifndef EXTF_rm2_txinit
 void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
-#if (SYS_FLOOD == ENABLED)
-    //rfctl.flags    |= (psettings != 0) ? RADIO_FLAG_FLOOD : 0;
-    rfctl.flags     |= (psettings != 0) << 2;   //sets RADIO_FLAG_FLOOD
-#endif
-#if (M2_FEATURE(MULTIFRAME) == ENABLED)
+    rfctl.flags    &= ~(    RADIO_FLAG_RESIZE   \
+                          | RADIO_FLAG_FLOOD    \
+                          | RADIO_FLAG_FRCONT   \
+                          | RADIO_FLAG_CRC5     );
+#   if (SYS_FLOOD == ENABLED)
+    rfctl.flags    |= (psettings != 0);   //sets RADIO_FLAG_FLOOD
+#   endif
+#   if (M2_FEATURE(MULTIFRAME) == ENABLED)
     rfctl.flags    |= ((session_netstate() & M2_NETSTATE_DSDIALOG) >> 1); //sets RADIO_FLAG_FRCONT
-#endif
+#   endif
     radio.evtdone   = callback;
     radio.state     = RADIO_Csma;
     rfctl.state     = RADIO_STATE_TXINIT;
@@ -1177,13 +1199,13 @@ void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
 
 #ifndef EXTF_rm2_txstop_flood
 void rm2_txstop_flood() {
+/// Stop the MAC counter used to clock advertising flood synchronization.
+/// Then simply configure TX driver state machine to go to TX Done state
+/// as soon as the current packet is finished transmitting.
 #if (SYS_FLOOD == ENABLED)
     rfctl.state = RADIO_STATE_TXDONE;
     spirit1_stop_counter();
-    spirit1_int_txdone();
-    
-    //Disable Persistent TX (might not be necessary)
-    //spirit1_write(RFREG(PROTOCOL0), DRF_PROTOCOL0);     
+    spirit1_int_txdone();     
 #endif
 }
 #endif
@@ -1233,7 +1255,6 @@ void rm2_txcsma_isr() {
             type = MODE_fgpage;
             if (rfctl.flags & RADIO_FLAG_FLOOD) {
                 timcfg[2]  |= _PERS_TX;
-                //em2.bytes   = 5;            // bit of a hack (?)
                 type        = MODE_bg;
             }
             subrfctl_buffer_config(type, em2.bytes /*q_span(&txq)*/);
@@ -1280,7 +1301,7 @@ void rm2_txcsma_isr() {
         case (RADIO_STATE_TXSTART >> RADIO_STATE_TXSHIFT): {
         rm2_txcsma_START:
             // Send TX start (CSMA done) signal to DLL task
-            // arg2: 0 for background, 1 for foreground
+            // arg2: Non-zero for background, 0 for foreground
             radio.evtdone(0, (rfctl.flags & RADIO_FLAG_FLOOD));  
             
             // Preload into TX FIFO a small amount of data (up to 8 bytes)
@@ -1288,6 +1309,7 @@ void rm2_txcsma_isr() {
             // special conditions, and less initial data = less latency.
             rfctl.txlimit   = 7;
             txq.front[2]    = (phymac[0].tx_eirp & 0x7f);
+            //txq.front[2] = 6;     //hack for packet sniff debugging on Chipcon kits
             
             sub_force_idle(); 
             radio_flush_tx();
@@ -1361,7 +1383,6 @@ void rm2_txdata_isr() {
     /// Packet flooding.  Only needed on devices that can send M2AdvP
     /// The radio.evtdone callback here should update the AdvP payload
     if (rfctl.flags & RADIO_FLAG_FLOOD) {
-        //dll.counter -= 3;
         radio.evtdone(2, 0);
         
         if ((rfctl.state & RADIO_STATE_TXMASK) == RADIO_STATE_TXDATA) {
@@ -1403,9 +1424,8 @@ void subrfctl_txend_isr() {
 ///@todo could put (rfctl.state != RADIO_STATE_TXDONE) as an argument, or 
 ///      something that resolves to an appropriate non-zero,as an arg in order 
 ///      to signal an error
-    //radio_idle();
-    //radio_flush_tx();
     radio_gag();
+    radio_idle();
     subrfctl_finish(0, 0);
 }
 
@@ -1429,16 +1449,18 @@ void subrfctl_txend_isr() {
 void subrfctl_null(ot_int arg1, ot_int arg2) { }
 
 
-void subrfctl_kill(ot_int errcode) {
-    radio_gag();
-    radio_idle();
-    subrfctl_finish(errcode, 0);
-}
+//void subrfctl_kill(ot_int errcode) {
+//    radio_gag();
+//    radio_idle();
+//    subrfctl_finish(errcode, 0);
+//}
+
 
 
 void subrfctl_finish(ot_int main_err, ot_int frame_err) {
 /// Reset radio & callback to null state, then run saved callback
     ot_sig2 callback;
+    radio_gag();                            //redundant,
     radio.state     = RADIO_Idle;
     rfctl.state     = 0;
     rfctl.flags    &= RADIO_FLAG_SETPWR;    //clear all other flags
@@ -1643,7 +1665,7 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
     is_fec      = (phymac[0].channel & 0x80) >> 4;      // Sets FEC bit in PCKTCTRL1
     mode      <<= 1;
     mode       += is_fec;                              
-    buf_cfg[3]  = /*_CRC_MODE_1021 |*/ _WHIT_EN | (is_fec >> 3);
+    buf_cfg[3]  = /*_CRC_MODE_8005 |*/ _WHIT_EN | (is_fec >> 3);
     buf_cfg[4]  = ((ot_u8*)&param)[UPPER];
     buf_cfg[5]  = ((ot_u8*)&param)[LOWER];
                                       

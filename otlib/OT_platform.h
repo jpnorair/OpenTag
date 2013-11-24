@@ -120,6 +120,32 @@ void platform_enable_interrupts();
 
 
 
+/** Platform Information Functions <BR>
+  * ========================================================================<BR>
+  */
+/** @brief  Get clock speed in Hz from one of the system clocks
+  * @param  clock_index     (ot_uint) Index of a system clock
+  * @retval None
+  * @ingroup Platform
+  *
+  * The input "clock_index" is always 0 for the main CPU clock, but different
+  * CPUs/MCUs have different bus clock architectures.  See two examples below:
+  *
+  * MSP430F5:
+  * 0: MCLK
+  * 1: SMCLK
+  * 2: ACLK
+  *
+  * Cortex M:
+  * 0: AHB clock
+  * 1: APB2 clock
+  * 2: APB1 clock
+  */
+ot_ulong platform_get_clockhz(ot_uint clock_index); 
+
+
+
+
 /** Platform Speed Control <BR>
   * ========================================================================<BR>
   */

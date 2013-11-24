@@ -87,9 +87,9 @@
   * @todo Connect this to the configuration interface, not just the hardcoded
   * values below.
   */
-#define M2_ADV_OFFSET       (-3)
-#define M2_ADV_LISTEN       6
-#define M2_ADV_SLOP         (M2_ADV_OFFSET * -2)
+#define M2_ADV_OFFSET       (3)
+#define M2_ADV_LISTEN       10                  //must be <= 15
+#define M2_ADV_MAXSLOP      (M2_ADV_OFFSET * 2)
 #define M2_ADV_ERRDIV       16384
 
 
@@ -259,14 +259,14 @@ typedef struct {
 typedef struct {
     ot_long tc;                 // Contention Period (Tc, sometimes also called Tcp)
     ot_long tca;                // Collision avoidance period (Tca)
-    ot_uint rx_timeout;
+    ot_long rx_timeout;
+    ot_u8   scratch[2];         // intended for chanlist storage during ad-hoc single channel dialogs
     ot_u8   csmaca_params;      // (A2P | NA2P) + (RIGD | RAIND | AIND) + CSMA on/off
     ot_u8   redundants;         // number of attempts
     ot_u8   tx_channels;        // num channels on which the tx may be issued
     ot_u8   rx_channels;        // num channels on which the rx may come from (usually 1)
     ot_u8*  tx_chanlist;
     ot_u8*  rx_chanlist;
-    ot_u8   scratch[2];         // intended for chanlist storage during ad-hoc single channel dialogs
 } m2comm_struct;
 
 typedef struct {

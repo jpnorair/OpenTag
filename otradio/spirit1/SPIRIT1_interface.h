@@ -473,6 +473,8 @@ void spirit1_iocfg_tx();
   */ 
 void spirit1_int_off();
 
+void spirit1_int_on();
+
 
 /** @brief  Configures GPIO Interrupts for Listen Mode
   * @param  None

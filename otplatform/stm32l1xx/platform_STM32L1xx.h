@@ -71,6 +71,8 @@
 
 
 
+
+
 /** STM32L family MCU settings     <BR>
   * ========================================================================<BR>
   * STM32L has a peculiar FLASH design where the erased value is 0 instead of
@@ -84,6 +86,12 @@
 
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
 #define MCU_PARAM_ERRPTR                ((ot_s32)-1)
+#define MCU_PARAM_UART_9600BPS          9600
+#define MCU_PARAM_UART_28800BPS         28800
+#define MCU_PARAM_UART_57600BPS         57600
+#define MCU_PARAM_UART_115200BPS        115200
+#define MCU_PARAM_UART_250000BPS        250000
+#define MCU_PARAM_UART_500000BPS        500000
 
 #define MCU_TYPE(VAL)                   MCU_TYPE_##VAL
 #define MCU_TYPE_PTRINT                 ot_s32
@@ -401,9 +409,17 @@ typedef struct {
     // Tasking parameters
     void*   task_exit;
     
-    // Miscellaneous platform parameters and software registers
-    ot_u16  cpu_khz;
+    // Clock speed saves
+    ot_ulong clock_hz[3];
+    
+    //Temporary
+    ot_u16 cpu_khz;
+    
+    // 32bit pseudo-random number feedback register
     ot_u16  prand_reg;
+    //ot_u16  reserved;
+    
+    // crc16 register(s)
     ot_u16  crc16;
     ot_u16  reserved;
     

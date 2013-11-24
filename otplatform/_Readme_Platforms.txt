@@ -1,12 +1,12 @@
 Readme for Platforms Directory
-07 Feb 2012
+22 Nov 2013
 
 
 DEFINITION OF PLATFORMS
 =======================
 
 The Platforms Directory should be located at the path:
-(PROJECT_ROOT)/OTplatform
+(PROJECT_ROOT)/otplatform
 
 This directory should contain the following types of files, ideally grouped 
 into subdirectories based on the platform-type:
@@ -38,15 +38,19 @@ file stored in a subdirectory named the same as this platform.
 AVAILABLE PLATFORMS
 ===================
 
-At the time of writing, OpenTag supports three platforms maturely, all of which
-are microcontrollers with no other prerequisites (i.e. no OS required).
+At the time of writing, OpenTag supports the platforms in the table below. 
+For microcontrollers, there are no other prerequistes or libraries needed, just 
+what is provided in the OpenTag source tree.  For the POSIX-STDC build, you 
+need a POSIX system with STD C libs.
 
-Platform Name   | Description
-----------------|--------------------------------------------------------------
-CC430           | TI CC430 series RF-MCUs
-STM32F10x       | STMicro STM32F10x series MCUs
-STM32L1xx       | STMicro STM32L1xx series MCUs
+Platform Name  | Description                    | Latest stable version
+---------------|--------------------------------|------------------------------
+MSP430F5       | TI MSP430F5 series MCUs        | 0.4.2
+CC430          | TI CC430 series RF-MCUs        | 0.4.2
+STM32F10x      | STMicro STM32F10x series MCUs  | 0.4.2
+STM32L1xx      | STMicro STM32L1xx series MCUs  | 0.5
+POSIX STD-C    | POSIX with STD C               | in development
 
-Certain testbeds and simulators may also support POSIX as a platform, although
-it does not offer complete support of the OpenTag stack at this time.  These
-testbeds and simulators are limited to partial usage of the OpenTag stack.
+Certain, special-purpose testbeds and simulators may also support POSIX as a 
+platform, although they may not offer complete simulation of the OpenTag stack 
+at this time.  Check with the testbed/simulator documentation.

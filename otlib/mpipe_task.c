@@ -40,7 +40,8 @@ mpipe_struct mpipe;
 
 
 void mpipe_connect(void* port_id) {
-    sys.task_MPA.latency = mpipedrv_init(port_id);
+    ///@todo no hard-coded input for second arg
+    sys.task_MPA.latency = mpipedrv_init(port_id, 115200);
 }
 
 void mpipe_disconnect(void* port_id) {

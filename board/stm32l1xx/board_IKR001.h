@@ -1045,7 +1045,28 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #   define OT_GPTIM_ERROR   BOARD_PARAM_HFtol
 #endif
 
-#define OT_GPTIM_ERRDIV         32768 //this needs to be hard-coded
+/// ERRDIV = LFLOOR(1/(DEV*CPT))
+/// DEV:    deviation max of two clock sources (e.g +/-20ppm -> 0.000040)
+/// CPT:    clocks per tick (e.g. 32768Hz -> 32)
+/// LFLOOR: logarithmic floor rounding (e.g. 781.25 -> 512)
+///
+/// LFLOOR is optional, but if your CPU does not have a hardware divider,
+/// it is worth using.  See lookup table below with rounded & unrounded.
+///
+/// The DASH7 spec requires synchronizing devices to have no worse than
+/// +/-40ppm 327678Hz clock, so here are some lookup values based on your
+/// 32768Hz clock deviation:
+///
+/// Deviation       LFLOOR(1/(DEV*CPT))     1/(DEV*CPT)
+/// +/- 20 ppm             512                 (520)
+/// +/- 30 ppm             256                 (446)
+/// +/- 40 ppm             256                 (390)
+/// +/- 50 ppm             256                 (347)
+/// ~~~~~~~~~~
+///     1%                 64                  (100)
+///     2%                 32                   (50)
+///     3%                 32                   (33)
+#define OT_GPTIM_ERRDIV    512
 
 #define OT_KTIM_IRQ_SRCLINE     BOARD_GPTIM1_PINNUM
 #define OT_MACTIM_IRQ_SRCLINE   BOARD_GPTIM2_PINNUM

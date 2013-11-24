@@ -29,23 +29,28 @@
 #if (OT_FEATURE(M2) && OT_FEATURE(SERVER))
 
 
+void sub_apply_subnet_flags(session_tmpl* s_tmpl) {
+    // Apply custom-masked subnet and flags to session (typically unused)
+    s_tmpl->subnet  = (dll.netconf.subnet & ~s_tmpl->subnetmask) | \
+                                        (s_tmpl->subnet & s_tmpl->subnetmask);
+    s_tmpl->flags   = (dll.netconf.dd_flags & ~s_tmpl->flagmask) | \
+                                        (s_tmpl->flags & s_tmpl->flagmask);
+}
+
 
 m2session* sub_newtask(session_tmpl* s_tmpl, ot_app applet, ot_u16 offset) {
-    m2session* session;
+    m2session* next;
     
     /// Create new session and verfy that it was successfully added to the 
     /// stack.  (session always begins with req tx)
-    session = session_new(applet, offset, (M2_NETSTATE_INIT | M2_NETSTATE_REQTX), s_tmpl->channel);
-    
-    if (session != NULL) {
-        // Apply custom-masked subnet and flags to session (typically unused)
-        session->subnet = (dll.netconf.subnet & ~s_tmpl->subnetmask) | \
-                                        (s_tmpl->subnet & s_tmpl->subnetmask);
-        session->flags  = (dll.netconf.dd_flags & ~s_tmpl->flagmask) | \
-                                        (s_tmpl->flags & s_tmpl->flagmask);
+    next = session_new(applet, offset, (M2_NETSTATE_INIT | M2_NETSTATE_REQTX), s_tmpl->channel);
+    if (next != NULL) {
+        sub_apply_subnet_flags(s_tmpl);
+        next->subnet    = s_tmpl->subnet;
+        next->flags     = s_tmpl->flags;
     }
     
-    return session;
+    return next;
 }
 
 
@@ -70,21 +75,29 @@ m2session* otapi_task_advertise(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, ot_
 /// This is a more complicated process than the others, because it actually 
 /// creates two sessions: one for the flood and one for the request.
 #   define _FLOOD_NETSTATE  (M2_NETFLAG_FLOOD | M2_NETSTATE_INIT | M2_NETSTATE_REQTX)
-
+    m2session* next;
+    
     /// Make sure there are at least two free sessions
     if (session_numfree() < 2) {
         return NULL;
     }
 
+    /// Apply session flags
+    sub_apply_subnet_flags(s_tmpl);
+    
     /// Only add the flood if the user isn't an idiot (or an algorithm of some sort)
     if (adv_tmpl->duration != 0) {
-        m2session* adv_session;
-        adv_session         = session_new(&dll_default_applet, 0, _FLOOD_NETSTATE, adv_tmpl->channel);
-        adv_session->subnet = adv_tmpl->subnet;
+        next        = session_new(&dll_default_applet, 0, _FLOOD_NETSTATE, adv_tmpl->channel);
+        next->subnet= s_tmpl->subnet;
+        next->flags = s_tmpl->flags;
     }
     
-    return session_new(applet, adv_tmpl->duration, M2_NETSTATE_REQTX, s_tmpl->channel);
-
+    next        = session_new(applet, adv_tmpl->duration, M2_NETSTATE_REQTX, s_tmpl->channel);
+    next->subnet= s_tmpl->subnet;
+    next->flags = s_tmpl->flags;
+    
+    return next;
+    
 #   undef _FLOOD_NETSTATE
 }
 

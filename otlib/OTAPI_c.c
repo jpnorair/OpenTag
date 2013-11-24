@@ -214,10 +214,11 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
     if (dialog == NULL) {
         ///@todo "15" is hard-coded timeout.  Have this be a constant
         dll.comm.rx_timeout = (m2qp.cmd.ext & 2) ? 0 : 15;
-        q_writebyte(&txq, 0);
+        q_writebyte(&txq, (ot_u8)dll.comm.rx_timeout);
     }
     else {
         // Place dialog with timeout
+        dll.comm.rx_timeout = otutils_calc_timeout(dialog->timeout);
         dialog->timeout    |= (dialog->channels == 0) ? 0 : 0x80;
         q_writebyte(&txq, dialog->timeout);
     
