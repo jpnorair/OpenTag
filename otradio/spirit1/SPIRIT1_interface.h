@@ -65,18 +65,9 @@ typedef enum {
   * can be retrieved by upper layers, universally for all different types of
   * RF transceivers, via radio.last_rssi. 
   */
-typedef struct {
-    ot_u8 pqi;
-    ot_u8 sqi;
-    ot_u8 lqi;
-    ot_u8 agc;
-} spirit1_link;
   
 
 typedef struct {
-#   if (1)
-    spirit1_link    link;
-#   endif    
 #   if (BOARD_FEATURE_RFXTALOUT)
     ot_bool         clkreq;
 #   endif
@@ -185,13 +176,6 @@ ot_u8 spirit1_ldcrtime();
   */
 ot_u8 spirit1_rxtime();
 
-
-/* @brief  Returns link information from LINK_QUALIF[2:0]
-  * @param  link        (spirit1_link*) allocated struct that gets filled with info
-  * @retval None
-  * @ingroup SPIRIT1
-  */
-void spirit1_linkinfo(spirit1_link* link);
 
 
 /** @brief  Returns RSSI value from SPIRIT1 core

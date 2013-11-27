@@ -331,25 +331,6 @@ void platform_init_interruptor();
 void platform_init_gpio();
 
 
-/** @brief Initializes the OpenTag general purpose timer.
-  * @param prescaler    (16 bit) prescaler value.
-  * @retval None
-  * @ingroup Platform
-  *
-  * The formatting of the prescaler value can differ between platforms.  Please
-  * refer to the implementation comments / documentation for more specific 
-  * usage information for the timer_prescaler input parameter.
-  */
-#ifdef PLATFORM_POSIX
-    void platform_init_gptim(ot_u16 prescaler, void (*timer_handler)(int));
-#else 
-    void platform_init_gptim(ot_u16 prescaler);
-#endif
-
-
-void platform_init_watchdog();
-
-
 /** @brief Initializes a reset switch that may be used outside of OpenTag.
   * @param None
   * @retval None
@@ -360,6 +341,20 @@ void platform_init_watchdog();
 void platform_init_resetswitch();
 
 
+void platform_init_memcpy();
+
+
+void platform_init_prand(ot_u16 seed);
+
+
+
+
+
+
+
+/** Platform Timer functions <BR>
+  * ========================================================================<BR>
+  */
 
 /**
   * @brief Initializes a "system tick" peripheral, but doesn't begin running it.
@@ -380,6 +375,10 @@ void platform_init_systick(ot_uint period);
 
 
 
+void platform_init_watchdog();
+
+
+
 /** @brief Initializes a real time clock.
   * @param value: the default RTC value, in seconds
   * @retval None
@@ -390,21 +389,28 @@ void platform_init_systick(ot_uint period);
 void platform_init_rtc(ot_u32 value);
 
 
-void platform_init_memcpy();
 
-
-void platform_init_prand(ot_u16 seed);
-
-
-
-
-
-
-
-
-/** OpenTag Resource Access Routines <BR>
-  * ========================================================================<BR>
+/** @brief Initializes the OpenTag general purpose timer.
+  * @param prescaler    (16 bit) prescaler value.
+  * @retval None
+  * @ingroup Platform
+  *
+  * The formatting of the prescaler value can differ between platforms.  Please
+  * refer to the implementation comments / documentation for more specific 
+  * usage information for the timer_prescaler input parameter.
   */
+#ifdef PLATFORM_POSIX
+    void platform_init_gptim(ot_u16 prescaler, void (*timer_handler)(int));
+#else 
+    void platform_init_gptim(ot_u16 prescaler);
+#endif
+
+
+
+
+
+ot_u32 platform_get_interval(ot_u32* timestamp);
+
 
 /** @brief Starts the process chronometer
   * @param None

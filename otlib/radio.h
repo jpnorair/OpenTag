@@ -56,6 +56,29 @@ typedef enum {
 } radio_state;
 
 
+
+/** Additional link information
+  *
+  */
+#define RADIO_LINK_CORRECTIONS  (1<<6)
+#define RADIO_LINK_PQI          (1<<3)
+#define RADIO_LINK_SQI          (1<<2)
+#define RADIO_LINK_LQI          (1<<1)
+#define RADIO_LINK_AGC          (1<<0)
+
+typedef struct {
+    ot_u8 flags;
+    ot_u8 corrections;  
+    ot_u8 reserved_2;
+    ot_u8 reserved_3;
+    ot_u8 pqi;          // Preamble Quality Index
+    ot_u8 sqi;          // Synchronization Quality Index
+    ot_u8 lqi;          // Link Quality Index
+    ot_u8 agc;          // AGC Parameters
+} radio_link_struct;
+
+
+
 /** Universal Radio Driver Control
   * state       A high-level description of what is happening on the radio
   * last_rssi   Used to buffer the last-read RSSI value -- not always implemented
@@ -66,9 +89,17 @@ typedef struct {
     ot_int      last_rssi;
     ot_int      last_linkloss;
     ot_sig2     evtdone;
+#if (OT_FEATURE(RF_LINKINFO))
+    radio_link_struct link;
+#endif
 } radio_struct;
 
 extern radio_struct radio;
+
+
+
+
+
 
 
 

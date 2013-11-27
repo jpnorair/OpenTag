@@ -294,7 +294,7 @@ void dll_refresh() {
     dll.netconf.dd_flags    = scratch.ubyte[0];
     dll.netconf.b_attempts  = scratch.ubyte[1];
     dll.netconf.active      = vl_read(fp, 4);
-    dll.netconf.hold_limit  = vl_read(fp, 8);   ///@todo endian conversion
+    dll.netconf.hold_limit  = PLATFORM_ENDIAN16(vl_read(fp, 8));
     vl_close(fp);
 
     // Reset the Scheduler (only does anything if scheduler is implemented)
@@ -368,7 +368,9 @@ void dll_idle() {
     		            && (dll.idle_state != M2_DLLIDLE_OFF));
 #   endif
 #   endif
-    
+ 
+    //LATENCY TEST
+    //GPIOA->BSRRL = 3<<0;
 }
 #endif
 
@@ -500,7 +502,9 @@ void sub_processing() {
     // No response (or no listening for responses)
     // Plus bad score: stop the session
     else if ((active->netstate & M2_NETSTATE_RESP) == 0) {
-        active->netstate |= M2_NETFLAG_SCRAP;
+        //active->netstate |= M2_NETFLAG_SCRAP;
+        session_pop();
+        dll_idle();
     }
     
     // Listening for responses (keep listening)
@@ -524,6 +528,7 @@ void dll_systask_holdscan(ot_task task) {
         dll_systask_sleepscan(task);
     }
     else {
+        dll.idle_state      = sub_default_idle();
         sys.task_HSS.event  = 0;
         sys.task_HSS.cursor = 0;
         sys.task_SSS.event  = 5;
@@ -545,7 +550,7 @@ void dll_systask_sleepscan(ot_task task) {
     ot_u8       s_flags;
     ot_uni16    scratch;
     vlFILE*     fp;
-    m2session*  s_session;
+    m2session*  s_new;
 
     if (task->event == 0) return;
 
@@ -577,12 +582,9 @@ void dll_systask_sleepscan(ot_task task) {
     /// Choosing Background-Scan or Foreground-Scan is based on flags.  If b7
     /// is set, do a Background-Scan.  At the session level, the "Flood" select
     /// uses b6, which is why there is a >> 1.
-    s_session   = session_new(  &dll_scan_applet, 0, 
-                                ((M2_NETSTATE_REQRX | M2_NETSTATE_INIT) | (s_flags & 0x80) >> 1), 
-                                s_channel   );
-    
-    // save s_flags here in protocol (to be renamed to options soon)
-    s_session->extra = s_flags;
+    s_new           = session_new(&dll_scan_applet, 0, s_channel,
+                                    ((M2_NETSTATE_REQRX | M2_NETSTATE_INIT) | (s_flags & 0x80) >> 1)  );
+    s_new->extra    = s_flags;
 }
 
 
@@ -613,9 +615,8 @@ void dll_systask_beacon(ot_task task) {
     //   (ad hoc sessions never return NULL)
     // - Assure cmd code is always Broadcast & Announcement
     scratch.ushort      = vl_read(fp, task->cursor);
-    b_session           = session_new(  &dll_beacon_applet, 0,
-                                        (M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX),
-                                        scratch.ubyte[0]  );
+    b_session           = session_new(  &dll_beacon_applet, 0, scratch.ubyte[0],
+                                        (M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX)  );
     b_session->subnet   = dll.netconf.b_subnet;
     b_session->extra    = scratch.ubyte[1];
     b_session->flags    = (dll.netconf.dd_flags & ~0x30);
@@ -733,7 +734,9 @@ void dll_beacon_applet(m2session* active) {
     /// GUEST user, scrap this session.  Else, finish the M2NP frame.
     q_init(&beacon_queue, &bq_data.ubyte[0], 4);
     if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
-        active->netstate = M2_NETFLAG_SCRAP;
+        //active->netstate = M2_NETFLAG_SCRAP;
+        session_pop();
+        dll_idle();
     }
     else {
         m2np_footer();
@@ -762,7 +765,7 @@ void sub_activate() {
     
     dll_block_idletasks();
     
-    dll.idle_state      = sub_default_idle();
+  //dll.idle_state      = sub_default_idle();
     s_active            = session_top();
     s_applet            = (s_active->applet == NULL) ? \
                             &dll_response_applet : s_active->applet;
@@ -773,12 +776,14 @@ void sub_activate() {
         session_pop();
         dll_idle();
     }
-    
-    ///@todo put init_rx and init_tx inline here
     else if (s_active->netstate & M2_NETSTATE_RX) {
         sub_init_rx(s_active->netstate & M2_NETFLAG_FLOOD);
     }
     else {
+        if ((s_active->netstate & M2_NETSTATE_RESP) == 0) {
+            dll.counter     = dll.netconf.hold_limit;
+            dll.idle_state  = M2_DLLIDLE_HOLD;
+        }
         sub_init_tx(s_active->netstate & M2_NETFLAG_FLOOD);
     }
 }
@@ -842,6 +847,9 @@ void sub_init_rx(ot_u8 is_brx) {
     // E.g. lights a LED
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
+    //LATENCY TEST
+    //if (is_brx == 0) GPIOA->BSRRH = 1<<0;
+    
     // "is_brx" is inverted to 0=brx, 1=frx
     callback = (is_brx) ? &rfevt_bscan : &rfevt_frx;
     rm2_rxinit(this_session->channel, is_brx, callback);
@@ -855,17 +863,19 @@ void sub_init_tx(ot_u8 is_btx) {
 /// initialization as well.
     sys_task_setnext_clocks(&sys.task[TASK_radio], dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
-
-    dll.counter             = 0;            // Default value, sometimes changed in m2advp_open()
     sys.task_RFA.latency    = 1; 
     sys.task_RFA.event      = 4;
-
+    
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
 #if (SYS_FLOOD == ENABLED)
     if (is_btx) {
         m2advp_open( session_follower() );
     }
+    
+    //LATENCY TEST
+    //else GPIOA->BSRRH = 1<<1;
+    
     rm2_txinit(is_btx, &rfevt_txcsma);
 #else
     rm2_txinit(0, &rfevt_txcsma);
@@ -896,9 +906,6 @@ void rfevt_bscan(ot_int scode, ot_int fcode) {
         return;
     }
     
-    // Pop the Scan Session that got us here
-    session_pop();
-    
     // General Error: usually a timeout
     if (scode < 0) {
     	goto rfevt_FAILURE;
@@ -919,6 +926,7 @@ void rfevt_bscan(ot_int scode, ot_int fcode) {
     // - Session stack is full
     // - parsing error
     rfevt_FAILURE:
+    session_pop();
     dll_idle();
 
     rfevt_SUCCESS:
@@ -952,7 +960,9 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
             active->netstate  &= ~M2_NETSTATE_TMASK;   // Default to Request-TX   
         }
         else {
-            active->netstate   = M2_NETFLAG_SCRAP;
+            //active->netstate   = M2_NETFLAG_SCRAP;
+            session_pop();
+            dll_idle();
         }
     }
     
@@ -1048,11 +1058,14 @@ void rfevt_txcsma(ot_int pcode, ot_int tcode) {
     /// have an applet attached to it, the applet can adjust the netstate and 
     /// try again if it chooses.
     else {
-        m2session* active;
+        //m2session* active;
         DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
         
-        active              = session_top();
-        active->netstate   |= M2_NETFLAG_SCRAP;
+        //active              = session_top();
+        //active->netstate   |= M2_NETFLAG_SCRAP;
+        session_pop();
+        dll_idle();
+        
         sys.task_RFA.event  = 0;
         event_ticks         = 0;
     }
@@ -1086,24 +1099,40 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
         if ((dll.comm.redundants != 0) && scratch) {
             dll.comm.csmaca_params = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
             rm2_resend( (ot_sig2)&rfevt_txcsma );
+            return;
         }
         
         /// Scrap (End) Session if:
-        /// <LI> There is no redundant TX to send (implicit, via else)</LI>
+        /// <LI> There is no redundant TX to send (implicit)</LI>
         /// <LI> AND (No response window to listen OR This TX itself is a response)</LI>
         /// <LI> OR Some sort of error occurred (pcode != 0) </LI>
-        ///
         /// Otherwise, continue session as listening for response.
+        if (scratch || pcode) {
+            session_pop();
+            dll_idle();
+        }
+        
+        /// Don't scrap the session, instead go for response listening
         else {
-        	//M2_NETFLAG_SCRAP is represented below
-            session->netstate  |= (ot_u8)(((pcode != 0) | scratch) << 7);
             session->netstate  &= ~M2_NETSTATE_TMASK;
             session->netstate  |= M2_NETSTATE_RESPRX;
-
-            DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
-            sys.task_RFA.event = 0;
-        	sys_preempt(&sys.task_RFA, 0);
         }
+        
+        /// Terminate Transmit state
+        DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
+        sys.task_RFA.event = 0;
+        sys_preempt(&sys.task_RFA, 0);
+        
+//        else {
+//        	//M2_NETFLAG_SCRAP is represented below
+//            session->netstate  |= (ot_u8)(((pcode != 0) | scratch) << 7);
+//            session->netstate  &= ~M2_NETSTATE_TMASK;
+//            session->netstate  |= M2_NETSTATE_RESPRX;
+//
+//            DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
+//            sys.task_RFA.event = 0;
+//        	sys_preempt(&sys.task_RFA, 0);
+//        }
     }
 }
 
@@ -1111,6 +1140,12 @@ void rfevt_ftx(ot_int pcode, ot_int scratch) {
 
 void rfevt_btx(ot_int flcode, ot_int scratch) {
 #if ((M2_FEATURE(SUBCONTROLLER) == ENABLED) || (M2_FEATURE(GATEWAY) == ENABLED))
+    ot_int countdown;
+    countdown = (ot_int)radio_get_countdown();
+    if (countdown < 0) {
+        countdown = 0;
+    }
+    
     switch (flcode) {
         /// Flood ends & Request Begins 
         /// <LI> Pop the flood session, it is no longer needed </LI>
@@ -1118,9 +1153,12 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         /// <LI> Pre-empt the kernel to start on the request session.  The 
         ///      kernel will clock other tasks over the flood duration.  </LI>
         case 0: {
+            m2session* follower;
             // assure request hits NOW & assure it doesn't init dll.comm
             // Tweak dll.comm for request (2 ti is a token, small amount)
-            session_invite_follower();
+            //session_invite_follower();
+            follower                = session_follower();
+            follower->counter       = countdown;
             sys.task_RFA.event      = 0;
             dll.comm.tc             = TI2CLK(2);
             dll.comm.csmaca_params  = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
@@ -1146,9 +1184,7 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         /// <LI> The Radio Driver will flood adv packets forever, in parallel
         ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
         case 2: {
-            ot_int countdown;
             ///@todo make faster function for bg packet duration lookup
-            countdown = (ot_int)radio_get_countdown();
             if (countdown < rm2_pkt_duration(7)) {
                 m2advp_close();
                 rm2_txstop_flood();
@@ -1237,11 +1273,6 @@ ot_u8 sub_default_idle() {
     return M2_DLLIDLE_SLEEP;
 
 //#if (M2_FEATURE(ENDPOINT) == ENABLED)
-//#ifdef __BIG_ENDIAN__
-//#   define _SETTING_SHIFT   9
-//#else
-//#   define _SETTING_SHIFT   1
-//#endif
 //    ot_u16 setting;
 //    setting = (dll.netconf.active & M2_SET_CLASSMASK) >> _SETTING_SHIFT;
 //    if (setting > 1) {
@@ -1249,7 +1280,6 @@ ot_u8 sub_default_idle() {
 //    }    
 //    return (ot_u8)setting;
 //#else
-    
 //    return (dll.netconf.active & M2_SET_CLASSMASK) ? M2_DLLIDLE_HOLD : M2_DLLIDLE_OFF;
 //#endif
 }

@@ -183,9 +183,9 @@
 #   undef __ISR_RF1A
 #   define __ISR_RF1A
 
-#   undef __ISR_RTC_WKUP
-#   undef __N_ISR_RTC_WKUP
-#   define __ISR_RTC_WKUP
+//#   undef __ISR_RTC_WKUP
+//#   undef __N_ISR_RTC_WKUP
+//#   define __ISR_RTC_WKUP
 #endif
 
 

@@ -83,7 +83,7 @@ m2session* sub_store_session(m2session* store, ot_app applet, ot_u16 wait, ot_u8
 
 
 #ifndef EXTF_session_extend
-m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel) {
+m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netstate) {
     m2session* extend;
     
     // If not one free session, there's no room!
@@ -123,13 +123,13 @@ m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 chan
                             (ot_uint)((ot_u8*)extend - (ot_u8*)session.top) );
     }
 
-    return sub_store_session(extend, applet, wait, netstate, channel);
+    return sub_store_session(extend, applet, wait, channel, netstate);
 }
 #endif
 
 
 #ifndef EXTF_session_new
-m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel) {
+m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netstate) {
     ot_u8* src;
     ot_uint length;
     

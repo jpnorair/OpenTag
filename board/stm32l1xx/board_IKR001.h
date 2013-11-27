@@ -668,7 +668,7 @@ static inline void BOARD_PORT_STARTUP(void) {
 #   if (MCU_FEATURE(MPIPEUART) == ENABLED)
         BOARD_UART_PORT->PUPDR |= (2 << (BOARD_UART_RXPINNUM*2)) \
                                 | (2 << (BOARD_UART_CTSPINNUM*2));
-        BOARD_UART_PORT->MODER |= (GPIO_MODER_IN  << (BOARD_UART_CTSPINNUM*2)) \
+        BOARD_UART_PORT->MODER |= (GPIO_MODER_OUT << (BOARD_UART_CTSPINNUM*2)) \
                                 | (GPIO_MODER_OUT << (BOARD_UART_RTSPINNUM*2)) \
                                 | (GPIO_MODER_ALT << (BOARD_UART_RXPINNUM*2))  \
                                 | (GPIO_MODER_ALT << (BOARD_UART_TXPINNUM*2));
@@ -1046,7 +1046,7 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #endif
 
 /// ERRDIV = LFLOOR(1/(DEV*CPT))
-/// DEV:    deviation max of two clock sources (e.g +/-20ppm -> 0.000040)
+/// DEV:    deviation max of two clock sources (e.g 2x +/-20ppm -> 0.000040)
 /// CPT:    clocks per tick (e.g. 32768Hz -> 32)
 /// LFLOOR: logarithmic floor rounding (e.g. 781.25 -> 512)
 ///
@@ -1055,7 +1055,7 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 ///
 /// The DASH7 spec requires synchronizing devices to have no worse than
 /// +/-40ppm 327678Hz clock, so here are some lookup values based on your
-/// 32768Hz clock deviation:
+/// 32768Hz clock deviation and the worst case (40ppm):
 ///
 /// Deviation       LFLOOR(1/(DEV*CPT))     1/(DEV*CPT)
 /// +/- 20 ppm             512                 (520)

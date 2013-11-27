@@ -147,6 +147,18 @@ void platform_init_gptim(ot_uint prescaler) {
 
 
 
+ot_u32 platform_get_interval(ot_u32* timestamp) {
+    ot_u16 timer_cnt;
+    timer_cnt = TIM9->CNT >> 2;
+
+    if (timestamp == NULL) {
+        return (ot_u32)timer_cnt;
+    }
+    timer_cnt  -= (ot_u16)*timestamp;
+    timer_cnt  &= 0x3FFF;
+    return timer_cnt;
+}
+
 
 ot_u32 platform_get_ktim() {
     ot_u16 timer_cnt;
@@ -191,6 +203,7 @@ ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
     
     return (ot_u16)nextevent;
 }
+
 
 
 void platform_set_gptim2(ot_u16 value) {
@@ -448,8 +461,6 @@ ot_u32 platform_get_ktim() {
         gptim.chron_stamp   = gptim_get_chrono();
         gptim.flags        |= GPTIM_FLAG_RTCBYPASS;
         
-        
-        
         return (ot_u32)elapsed_time;
     }
 }
@@ -662,7 +673,21 @@ ot_u32 sub_get_nextalarm(ot_u16 next) {
 
 
 
+ot_u32 platform_get_interval(ot_u32* timestamp) {
+    ot_long timer_cnt;
+    timer_cnt = sub_rtc2ticks();
 
+    if (timestamp == NULL) {
+        return ot_u32 timer_cnt;
+    }
+    
+    timer_cnt -= *timestamp;
+    if (timer_cnt < 0) {
+        timer_cnt = 0-timer_cnt;
+    }
+    
+    return timer_cnt;
+}
 
 
 

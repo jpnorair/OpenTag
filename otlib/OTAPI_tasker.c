@@ -41,15 +41,17 @@ void sub_apply_subnet_flags(session_tmpl* s_tmpl) {
 m2session* sub_newtask(session_tmpl* s_tmpl, ot_app applet, ot_u16 offset) {
     m2session* next;
     
-    /// Create new session and verfy that it was successfully added to the 
-    /// stack.  (session always begins with req tx)
-    next = session_new(applet, offset, (M2_NETSTATE_INIT | M2_NETSTATE_REQTX), s_tmpl->channel);
-    if (next != NULL) {
-        sub_apply_subnet_flags(s_tmpl);
-        next->subnet    = s_tmpl->subnet;
-        next->flags     = s_tmpl->flags;
+    /// Make sure there is a free session... it is easiest this way
+    if (session_numfree() < 1) {
+        return NULL;
     }
     
+    /// Create new session (session always begins with req tx)
+    next = session_new(applet, offset, s_tmpl->channel, (M2_NETSTATE_INIT | M2_NETSTATE_REQTX));
+    sub_apply_subnet_flags(s_tmpl);
+    next->subnet    = s_tmpl->subnet;
+    next->flags     = s_tmpl->flags;
+
     return next;
 }
 
@@ -87,12 +89,12 @@ m2session* otapi_task_advertise(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, ot_
     
     /// Only add the flood if the user isn't an idiot (or an algorithm of some sort)
     if (adv_tmpl->duration != 0) {
-        next        = session_new(&dll_default_applet, 0, _FLOOD_NETSTATE, adv_tmpl->channel);
+        next        = session_new(&dll_default_applet, 0, adv_tmpl->channel, _FLOOD_NETSTATE);
         next->subnet= s_tmpl->subnet;
         next->flags = s_tmpl->flags;
     }
     
-    next        = session_new(applet, adv_tmpl->duration, M2_NETSTATE_REQTX, s_tmpl->channel);
+    next        = session_new(applet, adv_tmpl->duration, s_tmpl->channel, M2_NETSTATE_REQTX);
     next->subnet= s_tmpl->subnet;
     next->flags = s_tmpl->flags;
     

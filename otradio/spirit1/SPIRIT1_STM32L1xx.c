@@ -296,26 +296,35 @@ void spirit1_waitforreset() {
 ///@todo Save non-blocking implementation for a rainy day.
 /// Blocking implementation: Wait for POR signal to rise using a busy loop.
 /// There is a watchdog variable that should count at least 1ms.  The loop
-/// itself should take at least 9 cycles to execute (by inspection), and we
-/// assume a maximum clock speed of 32MHz.
-    ot_uint watchdog = 3556;
+/// itself should take 8 cycles to execute (by inspection), and we assume
+/// a clock speed of 16MHz.
+    ot_uint watchdog = 2000;
     
     while (((RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN) == 0) && (--watchdog));
     if (watchdog == 0) {
-        ///@todo failure code
+        ///@todo failure code that logs hardware fault and resets OT
+        
+        //Error Marker: DEBUG ONLY
+        BOARD_LEDB_PORT->BSRRH  = BOARD_LEDB_PIN;
     }
 }
 
 
 void spirit1_waitforready() {
 /// Wait for the Ready Pin to go high (reset pin is remapped in init).
-/// STANDBY->READY should take about 75us, the loop itself should take at
-/// least 9 cycles to execute, and we assume a maximum clock speed of 
-/// 32MHz.  For safety, we also allow 100us.
-    ot_uint watchdog = 356;
+/// STANDBY->READY should take about 75us, although the absolute worst
+/// case is: 220us, 230us, 240us, 440us, 460us, 480us with respective
+/// 52, 50, 48, 26, 25, 24 MHz crystals.  By inspection, the loop takes
+/// 8 cycles to complete one iteration, and we assume a clock speed of 
+/// 16 MHz.
+    ot_uint watchdog = 500;
     
     while (((_READY_PORT->IDR & _READY_PIN) == 0) && (--watchdog));
     if (watchdog == 0){
+        ///@todo failure code that logs firmware fault, kills task,
+        ///      re-inits radio
+        
+        //Error Marker: DEBUG ONLY
         BOARD_LEDR_PORT->BSRRH  = BOARD_LEDR_PIN;
     }
 }
@@ -354,18 +363,7 @@ ot_u8   spirit1_rssi()          { return spirit1_read( RFREG(RSSI_LEVEL) ); }
 
 
 
-void spirit1_linkinfo(spirit1_link* link) {
-    static const ot_u8 cmd[2] = { 0x01, RFREG(LINK_QUALIF2) };
-    
-    // Do Read command on LINK_QUALIF[2:0] and store results in link structure
-    spirit1_spibus_io(2, 3, (ot_u8*)cmd);
-    
-    // Convert 3 byte SPIRIT1 output into 4 byte data structure
-    link->pqi   = spirit1.busrx[0];
-    link->sqi   = spirit1.busrx[1] & ~0x80;
-    link->lqi   = spirit1.busrx[2] >> 4;
-    link->agc   = spirit1.busrx[2] & 0x0f;
-}
+
 
 
 
@@ -695,21 +693,28 @@ ot_bool spirit1_check_cspin(void) {
   *                 TX FIFO threshold:          9 
   */
 
+ot_u32 macstamp;
+
 void platform_isr_rtcwakeup() {
-/// Decrement dll counter... that's it
-    dll.counter--;
+// Decrement dll counter... that's it
+//    dll.counter--;
 }
 
 void spirit1_start_counter() {
-    RTC->CR |= RTC_CR_WUTE;
+    //RTC->CR |= RTC_CR_WUTE;
+    macstamp = platform_get_interval(NULL);
 }
 
 void spirit1_stop_counter() {
-    RTC->CR &= ~RTC_CR_WUTE;
+    //RTC->CR &= ~RTC_CR_WUTE;
 }
 
 ot_u16 spirit1_get_counter() {
-    return dll.counter;
+    ot_u16 value;
+    value = dll.counter - (ot_u16)platform_get_interval(&macstamp);
+    return value;
+    
+    //return dll.counter;
 }
 
 

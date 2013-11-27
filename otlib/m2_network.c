@@ -83,7 +83,6 @@ void network_init() {
 
 
 #ifndef EXTF_network_parse_bf
-
 m2session* network_parse_bf() {
 /// Background Frame parsing: fill-in some stuff and treat it as foreground
 // ========================================================================
@@ -93,44 +92,55 @@ m2session* network_parse_bf() {
 ///         |   B0    |   B1   |  B2:4   | B5:6  |
 ///         +---------+--------+---------+-------+   </PRE>
 // ========================================================================
-    m2session*  s_next  = NULL;
-    ot_u8       bgpid   = rxq.getcursor[1] & 0x0F;
-
+    m2session*  s_next;
+    ot_u8       bgpid;
+    
+    /// Load default attributes
+    s_next  = NULL;
+    bgpid   = rxq.getcursor[1] & 0x0F;
+    
     /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
     if (bgpid == 15) {
-        ot_int      offset;
+        ot_u8       scancode;
+        ot_u8       netstate;
         ot_uni16    count;
         ot_int      slop;
-        static const ot_u8 s_params[4] = { 
-            0x80, 0x0C, (M2_NETSTATE_REQRX | M2_NETFLAG_FLOOD), (M2_NETSTATE_REQRX) 
-        };
         
         // Get the counter-ETA information from the inbound frame
         count.ubyte[UPPER]  = rxq.getcursor[3];
         count.ubyte[LOWER]  = rxq.getcursor[4];    
         count.ushort       &= 0x7FFF;
 
-        // "slop" is accounting for timing error and deviation, due to 
-        // precision of the timer, process latency, and other such things.
-        slop            = count.ushort / OT_GPTIM_ERRDIV;
-        offset          = (slop <= M2_ADV_MAXSLOP);
-        count.sshort   -= (slop + M2_ADV_OFFSET);
+        // Account for "slop" due to clock deviation, process latency, 
+        // and other such things.  Thus the follow-up session is 
+        // either a second BG scan (if too much slop), or it is FG
+        // listening for the request.
+        slop = M2_ADV_OFFSET + (count.ushort / OT_GPTIM_ERRDIV);
+        if (slop <= M2_ADV_MAXSLOP) {
+            scancode    = 0x17;
+            netstate    = M2_NETSTATE_REQRX;
+        }
+        else {
+            scancode    = 0x80;
+            netstate    = M2_NETSTATE_REQRX | M2_NETFLAG_FLOOD;
+        }
+        
+        // Reduce the interval time by the slop amount, also ensuring 
+        // that count value is never negative.
+        count.ushort -= slop;
         if (count.sshort < 0) {
             count.sshort = 0;
         }
         
-        // Block DLL idle tasks while waiting for this next session
-        dll_block_idletasks();
-        
-        // Create the follow-up session, which is either a secondary bg scan
-        // because slop is too much, or listening for the request
-        s_next = session_extend(    &dll_scan_applet, 
-                                    count.ushort, 
-                                    s_params[2+offset], 
-                                    rxq.getcursor[2]    );
-        if (s_next != NULL) {
-            s_next->extra = s_params[0+offset];
-        }
+        // Block DLL idle tasks while waiting for this next session,
+        // and create the session.
+        //dll_block_idletasks();
+        s_next              = session_top();
+        s_next->applet      = &dll_scan_applet;
+        s_next->counter     = count.ushort;
+        s_next->channel     = rxq.getcursor[2];
+        s_next->netstate    = netstate;
+        s_next->extra       = scancode;
     }
     
     /// Reservation Protocol has subnet = 0xY3
@@ -162,13 +172,15 @@ void network_mark_ff() {
 
 #ifndef EXTF_network_cont_dialog
 m2session* network_cont_dialog(ot_app applet, ot_uint wait) {
-    m2session* next;
-    m2session* active;
-    active  = session_top();
-    next    = session_extend(   applet, 
-                                CLK2TI(dll.comm.tc) + wait,
-                                (M2_NETSTATE_REQRX | M2_NETSTATE_ASSOCIATED),
-                                active->channel     );
+    ///@todo If redundant TX goes away, we could just do this in-place and 
+    ///      not bother with session_extend.
+    m2session*  next;
+    m2session*  active;
+    ot_u8       netstate;
+    
+    active          = session_top();
+    netstate        = (active->netstate & 0x0F) | (M2_NETSTATE_REQRX | M2_NETSTATE_CONNECTED);
+    next            = session_extend(applet, (dll.comm.tc + wait), active->channel, netstate);
     next->extra     = active->extra;
     next->dialog_id = active->dialog_id++;
     next->subnet    = active->subnet;
@@ -507,7 +519,6 @@ ot_bool m2np_idcmp(ot_int length, void* id) {
 
 
 #ifndef EXTF_m2advp_open
-
 void m2advp_open(m2session* follower) {
     q_empty(&txq);
     txq.getcursor += 2;     //Bypass unused length and Link CTL bytes

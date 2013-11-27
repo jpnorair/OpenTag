@@ -155,12 +155,14 @@ ot_bool subrfctl_channel_fastcheck(ot_u8 chan_id);
 ot_bool subrfctl_channel_lookup(ot_u8 chan_id, vlFILE* fp);
 void    subrfctl_chan_config(ot_u8 old_chan, ot_u8 old_eirp);
 void    subrfctl_buffer_config(MODE_enum mode, ot_u16 param);
+void    subrfctl_save_linkinfo();
 
 void    subrfctl_prep_q(Queue* q);
 ot_int  subrfctl_eta(ot_int next_int);
 ot_int  subrfctl_eta_rxi();
 ot_int  subrfctl_eta_txi();
 void    subrfctl_offset_rxtimeout();
+
 
 
 #if (RF_FEATURE(AUTOCAL) != ENABLED)
@@ -201,11 +203,12 @@ void spirit1_virtual_isr(ot_u8 code) {
 
 
 
-void radio_mac_isr() {    
-    //if (radio.state == RADIO_Csma)
-    
-    platform_disable_gptim2();
-    rm2_txcsma_isr();
+void radio_mac_isr() {
+    /// Used as CA insertion timer
+    //if (radio.state == RADIO_Csma) {
+        platform_disable_gptim2();
+        rm2_txcsma_isr();
+    //}
 }
     
 
@@ -417,14 +420,32 @@ void radio_init( ) {
 /// Transceiver implementation dependent    
     vlFILE* fp;
     
+    /// Set SPIRIT1-dependent initialization defaults
+    rfctl.flags     = RADIO_FLAG_XOON;
+    rfctl.nextcal   = 0;
+    
+    /// Set universal Radio module initialization defaults
+    radio.state     = RADIO_Idle;
+    radio.evtdone   = &otutils_sig2_null;
+    
+    /// These Radio Link features are available on the SPIRIT1
+#   if (OT_FEATURE(RF_LINKINFO))
+#       if (M2_FEATURE(RSCODE))
+#           define _CORRECTIONS RADIO_LINK_CORRECTIONS
+#       else
+#           define _CORRECTIONS 0
+#       endif
+    radio.link.flags= _CORRECTIONS \
+                    | RADIO_LINK_PQI \
+                    | RADIO_LINK_SQI \
+                    | RADIO_LINK_LQI \
+                    | RADIO_LINK_AGC;
+#   endif
+    
     /// Initialize the bus between SPIRIT1 and MCU, and load defaults.
     /// SPIRIT1 starts-up in Idle (READY), so we set the state and flags
     /// to match that.  Then, init the bus and send RADIO to sleep.
     /// SPIRIT1 can do SPI in Sleep.
-    rfctl.flags     = RADIO_FLAG_XOON;
-    rfctl.nextcal   = 0;
-    radio.state     = RADIO_Idle;
-    radio.evtdone   = &otutils_sig2_null;
     spirit1_init_bus();
     spirit1_load_defaults();
     
@@ -516,6 +537,10 @@ void radio_calc_link() {
     radio.last_rssi     = spirit1_calc_rssi( spirit1_read(RFREG(RSSI_LEVEL)) );
     radio.last_linkloss = (ot_int)(rxq.front[2] & 0x7F) - 80 + RF_HDB_RXATTEN;
     radio.last_linkloss-= radio.last_rssi;
+    
+    // Save additional link parameters.  If OT_FEATURE(RF_LINKINFO) is not
+    // enabled in the app config, nothing will happen in this function.
+    subrfctl_save_linkinfo();
 }
 #endif
 
@@ -1728,6 +1753,22 @@ void subrfctl_offset_rxtimeout() {
 }
 
 
+
+
+void subrfctl_save_linkinfo() {
+#if (OT_FEATURE(RF_LINKINFO))
+    static const ot_u8 cmd[2] = { 0x01, RFREG(LINK_QUALIF2) };
+    
+    // Do Read command on LINK_QUALIF[2:0] and store results in link structure
+    spirit1_spibus_io(2, 3, (ot_u8*)cmd);
+    
+    // Convert 3 byte SPIRIT1 output into 4 byte data structure
+    radio.link.pqi  = spirit1.busrx[0];
+    radio.link.sqi  = spirit1.busrx[1] & ~0x80;
+    radio.link.lqi  = spirit1.busrx[2] >> 4;
+    radio.link.agc  = spirit1.busrx[2] & 0x0f;
+#endif
+}
 
 
 

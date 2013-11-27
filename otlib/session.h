@@ -85,7 +85,6 @@
 #define M2_NETSTATE_INIT            0x08
 #define M2_NETSTATE_DSDIALOG        0x04
 #define M2_NETSTATE_UNASSOC         0x00
-//#define M2_NETSTATE_SYNCED          0x01            // set after valid synchronizer received
 #define M2_NETSTATE_CONNECTED       0x01            // set after connecting to session
 #define M2_NETSTATE_ASSOCIATED      0x03            // Connected, plus uses First-RX mode
 #define M2_NETFLAG_FIRSTRX          0x02            // Stops receiving after first RX found.
@@ -125,7 +124,9 @@
   */
 #define M2_EXTRA_USERAUTH           (1<<6)
 #define M2_EXTRA_CRYPTO             (3<<4)
-#define M2_EXTRA_APPFLAGS           (15<<0)
+#define M2_EXTRA_EPSLEEP            (1<<0)
+
+//#define M2_EXTRA_APPFLAGS           (15<<0)
 
 
 
@@ -242,7 +243,7 @@ ot_uint session_getnext();
   * this function returns.  The other session elements are loaded-in by this
   * function.
   */
-m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel);
+m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netstate);
 
 
 /** @brief  Extends an active session with another session
@@ -266,7 +267,7 @@ m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel
   * this function returns.  The other session elements are loaded-in by this
   * function.
   */
-m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel);
+m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netstate);
 
 
 
