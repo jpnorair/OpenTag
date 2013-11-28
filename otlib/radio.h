@@ -515,9 +515,9 @@ ot_bool radio_txopen_4();
 
 
 /****************************************************************
-  * Mode 2 Radio Functions                                      *
+  * Mode 2 Radio Library Functions                              *
   * - radio I/O specific to the way DASH7 Mode 2 works          *
-  * - called in system.c, probably nowhere else                 *
+  * - Implemented in radio_task.c                               *
   ***************************************************************/
 
 /** @brief  Returns default Tgd (guard period) for the specified channel
@@ -529,11 +529,21 @@ ot_int rm2_default_tgd(ot_u8 chan_id);
 
 
 
-/** @brief  Returns estimated time until the packet is completed
-  * @param  pkt_bytes   (ot_u8) number of bytes left in the packet
+/** @brief  Returns minimum rxtimeout value on pending/active channel
+  * @param  chan_id     (ot_u8) Mode 2 channel ID
+  * @retval ot_u16      minimum timeout in ticks (units: 1/1024 seconds)
+  * @ingroup Radio
+  */
+ot_u16 rm2_rxtimeout_floor(ot_u8 chan_id);
+
+
+
+/** @brief  Returns approximate duration of pending packet, in ticks.
+  * @param  pkt_bytes   (ot_int) total bytes of all frames in the packet
   * @retval ot_int      Duration of packet in ticks (units: 1/1024 seconds)
   * @ingroup Radio
   * @sa rm2_scale_codec()
+  * @sa rm2_bgpkt_duration()
   *
   * Basically identical to rm2_scale_codec(), except that some padding is added
   * to the output in order to account for FIFO lag of the radio.
@@ -542,17 +552,43 @@ ot_int rm2_pkt_duration(ot_int pkt_bytes);
 
 
 
-/** @brief  Returns estimated time until the buffered data is airborne
+/** @brief  Returns approximate duration of BG packet, in ticks
+  * @param  None
+  * @retval ot_int      Duration of packet in ticks (units: 1/1024 seconds)
+  * @ingroup Radio
+  * @sa rm2_pkt_duration()
+  *
+  * This is an optimized version of rm2_pkt_duration(), for background
+  * packets.
+  */
+ot_int rm2_bgpkt_duration();
+
+
+
+/** @brief  Returns transmission duration of X bytes on the active channel
   * @param  pkt_bytes   (ot_u8) number of bytes (or bytes left) in the packet
   * @retval ot_int      Duration of packet in ticks (units: 1/1024 seconds)
   * @ingroup Radio
   * @sa rm2_pkt_duration()
   *
-  * Basically identical to rm2_scale_codec(), except that some padding is added
-  * to the output in order to account for FIFO lag of the radio.
+  * An implicit (internal) parameter to this function is phymac[N].channel
   */
 ot_int rm2_scale_codec(ot_int buf_bytes);
 
+
+
+
+
+
+
+
+
+
+/****************************************************************
+  * Mode 2 Radio Driver Functions                               *
+  * - radio I/O specific to the way DASH7 Mode 2 works          *
+  * - Implemented in radio_task.c                               *
+  ***************************************************************/
 
 
 /** @brief  Instructs radio to re-enter RX mode immediately

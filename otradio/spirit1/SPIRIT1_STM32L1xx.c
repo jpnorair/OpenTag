@@ -305,7 +305,7 @@ void spirit1_waitforreset() {
         ///@todo failure code that logs hardware fault and resets OT
         
         //Error Marker: DEBUG ONLY
-        BOARD_LEDB_PORT->BSRRH  = BOARD_LEDB_PIN;
+        //BOARD_LEDB_PORT->BSRRH  = BOARD_LEDB_PIN;
     }
 }
 
@@ -325,7 +325,7 @@ void spirit1_waitforready() {
         ///      re-inits radio
         
         //Error Marker: DEBUG ONLY
-        BOARD_LEDR_PORT->BSRRH  = BOARD_LEDR_PIN;
+        //BOARD_LEDR_PORT->BSRRH  = BOARD_LEDR_PIN;
     }
 }
 

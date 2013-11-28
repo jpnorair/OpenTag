@@ -678,7 +678,7 @@ ot_u32 platform_get_interval(ot_u32* timestamp) {
     timer_cnt = sub_rtc2ticks();
 
     if (timestamp == NULL) {
-        return ot_u32 timer_cnt;
+        return (ot_u32)timer_cnt;
     }
     
     timer_cnt -= *timestamp;

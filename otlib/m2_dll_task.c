@@ -96,7 +96,7 @@ void sub_init_bscan();
 void sub_init_fscan();
 void sub_init_ftx();
 void sub_init_btx();
-void sub_init_rx(ot_u8 is_brx);
+void sub_init_rx(m2session* active);
 void sub_init_tx(ot_u8 is_btx);
 
 void sub_timeout_scan();
@@ -215,17 +215,11 @@ ot_uint sub_aind_nextslot();
   */
 
 void dll_block_idletasks() {
-
     sys.task_HSS.event  = 0;
-
 #   if (M2_FEATURE(BEACONS) == ENABLED)
-
     sys.task_BTS.event  = 0;
-
 #   endif
-
     sys.task_SSS.event  = 0;
-
 }
 
 
@@ -777,7 +771,7 @@ void sub_activate() {
         dll_idle();
     }
     else if (s_active->netstate & M2_NETSTATE_RX) {
-        sub_init_rx(s_active->netstate & M2_NETFLAG_FLOOD);
+        sub_init_rx(s_active);
     }
     else {
         if ((s_active->netstate & M2_NETSTATE_RESP) == 0) {
@@ -823,7 +817,7 @@ void sub_timeout_scan() {
 
 
 
-void sub_init_rx(ot_u8 is_brx) {
+void sub_init_rx(m2session* active) {
 /// RX initialization is called by the session activation routine, and it is
 /// often the result of an SSS or HSS invocation.  Scanning allows a 1 tick
 /// latency for other tasks, although this could be potentially increased.
@@ -834,25 +828,30 @@ void sub_init_rx(ot_u8 is_brx) {
 ///
 /// @todo A more adaptive method for scanning is planned, in which the latency 
 /// drops to 1 only after a sync word is detected.
-    m2session* this_session;
     ot_sig2 callback;
-
-	sys_task_setnext(&sys.task[TASK_radio], (ot_u16)dll.comm.rx_timeout);
-
-    this_session            = session_top();
+    ot_u16  min_timeout;
+    ot_u8   is_brx;
+    
     sys.task_RFA.event      = 3;
   //sys.task_RFA.reserved   = 10;   //un-necessary, RFA is max priority
-    sys.task_RFA.latency    = (this_session->netstate & M2_NETSTATE_RESP) ? \
+    sys.task_RFA.latency    = (active->netstate & M2_NETSTATE_RESP) ? \
                                 _RESPRX_LATENCY : _REQRX_LATENCY;
+    
+    min_timeout = rm2_rxtimeout_floor(active->channel);
+    if (dll.comm.rx_timeout < min_timeout) {
+        dll.comm.rx_timeout = min_timeout;
+    }
+    
+	sys_task_setnext(&sys.task[TASK_radio], (ot_u16)dll.comm.rx_timeout);
+
     // E.g. lights a LED
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
-    //LATENCY TEST
-    //if (is_brx == 0) GPIOA->BSRRH = 1<<0;
+    is_brx      = (active->netstate & M2_NETFLAG_FLOOD);   
+    //if (is_brx == 0) GPIOA->BSRRH = 1<<0;     //LATENCY TEST
+    callback    = is_brx ? &rfevt_bscan : &rfevt_frx;
     
-    // "is_brx" is inverted to 0=brx, 1=frx
-    callback = (is_brx) ? &rfevt_bscan : &rfevt_frx;
-    rm2_rxinit(this_session->channel, is_brx, callback);
+    rm2_rxinit(active->channel, is_brx, callback);
 }
 
 
@@ -1185,7 +1184,7 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
         case 2: {
             ///@todo make faster function for bg packet duration lookup
-            if (countdown < rm2_pkt_duration(7)) {
+            if (countdown < rm2_bgpkt_duration()) {
                 m2advp_close();
                 rm2_txstop_flood();
             }

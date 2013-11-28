@@ -115,9 +115,13 @@ m2session* network_parse_bf() {
         // and other such things.  Thus the follow-up session is 
         // either a second BG scan (if too much slop), or it is FG
         // listening for the request.
+        
+        ///@todo ADV_OFFSET slop should depend on the duration of an
+        ///      advertising packet (bg packet).
+        
         slop = M2_ADV_OFFSET + (count.ushort / OT_GPTIM_ERRDIV);
         if (slop <= M2_ADV_MAXSLOP) {
-            scancode    = 0x17;
+            scancode    = M2_ADV_LISTEN;
             netstate    = M2_NETSTATE_REQRX;
         }
         else {
@@ -565,40 +569,6 @@ void m2advp_close() {
 #endif
 
 
-#if (0) //ifndef EXTF_m2advp_init_flood
-ot_int m2advp_init_flood(m2session* active, advert_tmpl* adv_tmpl) {
-#if (SYS_FLOOD == ENABLED) 
-#   ifdef _NETWORK_DEBUG
-        // Bug catcher
-        if (adv_tmpl->duration > (32767 /* -RADIO_TURNON_LAG */ )) {
-            //OT_LOGFAIL();
-            return -1;
-        }
-#   endif
-
-    /// Set Netstate to match advertising type
-    active->netstate = (   M2_NETFLAG_FLOOD | M2_NETSTATE_REQTX | \
-                            M2_NETSTATE_INIT /* | M2_NETSTATE_SYNCED */   );
-
-    // Store existing TXQ (bit of a hack)
-    //q_copy(&advq, &txq);
-    
-    /// Reinit txq to the advertising buffer, and load data that will stay the
-    /// same for all packets in the flood.
-    //q_init(&txq, txadv_buffer, 10);
-    
-    txq.front[0]    = active->subnet;
-    txq.front[1]    = M2_PROTOCOL_M2ADVP;
-    txq.front[2]    = active->channel;
-    txq.front[3]    = ((ot_u8*)&adv_tmpl->duration)[UPPER];
-    txq.front[4]    = ((ot_u8*)&adv_tmpl->duration)[LOWER];
- 
-    return 0;
-#else
-    return -1;
-#endif
-}
-#endif
 
 
 
@@ -646,7 +616,6 @@ void m2dp_append() {
     *txq.putcursor++    = 0;                                        // TX EIRP placeholder
     *txq.putcursor++    = subnet;
     *txq.putcursor++    = m2np.header.fr_info;
- //#txq.length         += 4;
     
     ///@todo not sure how much of this stuff below could be subroutined
     // DLLS header information (gets adjusted on m2dp_close())

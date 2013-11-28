@@ -1033,13 +1033,15 @@ void platform_init_periphclk() {
 */
     
 #   if (BOARD_FEATURE_LFXTAL == ENABLED)
-    PWR->CR         = ((1 << 11) | PWR_CR_DBP);
-    RCC->CSR       |= RCC_CSR_LSEON | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSE;
+    PWR->CR     = ((1 << 11) | PWR_CR_DBP);
+    RCC->CSR    = RCC_CSR_RMVF | RCC_CSR_RTCRST;
+    RCC->CSR    = RCC_CSR_LSEON | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSE;
     while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
     
 #   else // enable LSI
-    PWR->CR         = ((1 << 11) | PWR_CR_DBP);
-    RCC->CSR       |= RCC_CSR_LSION | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSI;
+    PWR->CR     = ((1 << 11) | PWR_CR_DBP);
+    RCC->CSR    = RCC_CSR_RMVF | RCC_CSR_RTCRST;
+    RCC->CSR    = RCC_CSR_LSION | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSI;
     while ((RCC->CSR & RCC_CSR_LSIRDY) == 0);
     
 #   endif

@@ -105,7 +105,7 @@
 #define RF_FEATURE_ECC                  DISABLED            // ECC engine               Rare/None yet
 
 #define RF_PARAM(VAL)                   RF_PARAM_##VAL
-#define RF_PARAM_PKT_OVERHEAD           (2+4+2)
+#define RF_PARAM_PKT_OVERHEAD           (2+6+4)
 #define RF_PARAM_RCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
 #define RF_PARAM_VCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
 

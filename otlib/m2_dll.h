@@ -32,6 +32,7 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
+#include "session.h"
 #include "system.h"
 
 
@@ -87,10 +88,10 @@
   * @todo Connect this to the configuration interface, not just the hardcoded
   * values below.
   */
-#define M2_ADV_OFFSET       (3)
-#define M2_ADV_LISTEN       10                  //must be <= 15
-#define M2_ADV_MAXSLOP      (M2_ADV_OFFSET * 2)
-#define M2_ADV_ERRDIV       16384
+#define M2_ADV_OFFSET       (5)
+#define M2_ADV_LISTEN       (10)                 //must be <= 15
+#define M2_ADV_MAXSLOP      (8)
+//#define M2_ADV_ERRDIV       16384
 
 
 
