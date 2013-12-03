@@ -91,6 +91,7 @@
 #define RF_FEATURE_CSMA                 DISABLED            // DASH7 CSMA method        Low
 #define RF_FEATURE_RXTIMER              DISABLED            // RX Timeout capability    Low
 #define RF_FEATURE_TXTIMER              DISABLED            // TX MAC capability        DASH7-specific
+#define RF_FEATURE_CSMATIMER            DISABLED
 
 //More esoteric stuff
 #define RF_FEATURE_SCANCYCLE            DISABLED            // Wake-on scan cycle       DASH7-specific
@@ -158,7 +159,7 @@
 #define RADIO_STATE_TXDATA      (5 << RADIO_STATE_TXSHIFT)
 #define RADIO_STATE_TXDONE      (6 << RADIO_STATE_TXSHIFT)
 
-/** Internal Radio Flags (lots of room remaining)
+/** Internal Radio Flags
 */
 #define RADIO_FLAG_FLOOD        (1 << 0)
 #define RADIO_FLAG_FRCONT       (1 << 1)

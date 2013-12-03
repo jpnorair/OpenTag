@@ -461,151 +461,21 @@ void platform_ext_plloff() {
 
 
 #ifndef EXTF_platform_ext_hsitrim
-///@todo HDO only
 void platform_ext_hsitrim() {
-/// Measure the HSI agaist the LSE and set trim value
-#   define _TARGET      (16000000/BOARD_PARAM_LFHz)
-#   define _TARGETDEV   (ot_u16)((16000000.f/BOARD_PARAM_LFHz)*(0.01f))
-    ot_u16 hsi_dev      = 0;
-    ot_u16 hsi_trim     = 0;
-    ot_u16 best_dev     = 256;
-    ot_u16 best_trim    = 0;
-
-    // Enable TIM10 with:
-    // - LSE as measurement input capture 1
-    // - No prescaler
-    // - Immediate Reload   
-    RCC->APB2ENR   |= RCC_APB2ENR_TIM10EN;
-    TIM10->CR1      = 0;
-    TIM10->SMCR     = 0;
-    TIM10->DIER     = 0;                    // TIM interrupts unused
-    TIM10->SR       = 0;                    // clear update flags
-    TIM10->CCMR1    = 1;                    // Set Input to line-1
-    TIM10->CCER     = TIM_CCER_CC1E;        // Enable Input Capture
-    TIM10->PSC      = 0;                    // No prescaling
-    TIM10->ARR      = 65535;
-    TIM10->OR       = 2;                    // LSE
-    TIM10->CR1      = TIM_CR1_CEN;
-
-    // Wait for rising edge 1, then count HS pulses until rising edge 2
-    ///@todo WFE?
-    while (1) {
-        ot_u16 flag;
-        do { flag = TIM10->SR; } while (flag == 0); //wait for edge
-
-        if ((flag & TIM_SR_CC1IF) == 0) {           // something is wrong, revert to best
-            break;
-        }
-        if (hsi_dev == 0) {                         // First Edge, must wait for 2nd
-            hsi_dev = TIM10->CCR1;
-            continue;
-        }
-    
-        // Compute HSI deviation in terms of HSI periods per one LSE period
-        hsi_dev = TIM10->CCR1 - hsi_dev;
-        hsi_dev = (hsi_dev < _TARGET) ? (_TARGET-hsi_dev) : (hsi_dev-_TARGET);
-        
-        // If HSI is sufficiently accurate, then exit the process
-        // Else, if HSI is better than best so far, save it
-        if (hsi_dev > _TARGETDEV) {
-            goto platform_ext_hsitrim_EXIT;
-        }
-        if (hsi_dev > best_dev) {
-            best_dev    = hsi_dev;
-            best_trim   = hsi_trim;
-        }
-        
-        // There are 32 possible values for HSITRIM.  Don't exceed!
-        // Else, set HW for next HSITRIM value
-        RCC->ICSCR &= ~(31<<8);
-        hsi_trim   += (1<<8);
-        if (hsi_trim & (1<<13) ) {
-            break;
-        }
-        RCC->ICSCR |= hsi_trim;
-        hsi_dev     = 0;
-    }
-
-    // Set best trim value (if vectored to EXIT, it is already there)
-    RCC->ICSCR |= best_trim;
-    
-    // Turn-off TIM10
-    ///@todo TIM10 may be used in future as Chronometer, so make potentially TIM9
-    platform_ext_hsitrim_EXIT:
-    TIM10->CR1      = 0;
-    RCC->APB2ENR   &= ~RCC_APB2ENR_TIM10EN;
-    
-#   undef _TARGET
-#   undef _TARGETDEV
+/// Calibrate the HSI clock against LSE.
+/// This feature is presently only available through Haystack Distribution of
+/// OpenTag (HDO).  Contact Haystack Technologies for more information.
 }
 #endif
 
 
 
 #ifndef EXTF_platform_ext_lsihz
-///@todo HDO only
 ot_u16 platform_ext_lsihz() {
-/// @note To measure LSI, only TIM10 can be used.  So, since TIM10 may be used
-/// for OpenTag during runtime, this function should ONLY be run at startup.
-/// This isn't a problem, because LSI only needs to be trimmed once during the 
-/// lifetime of the device.
-    ot_u16 lsi_hz;
-    ot_u16 flag;
-
-    // Check EEPROM for LSI trimming.  If it's not there, it is 0
-    DATA_EEPROM_Unlock();
-    lsi_hz = *((ot_u16*)0x08080FFE);
-
-    // If LSI has already been measured, return the stored measurement
-    if (lsi_hz != 0) {
-        return lsi_hz;
-    }
-
-    // Enable TIM10 with:
-    // - LSI as measurement input capture 1
-    // - No prescaler
-    // - Immediate Reload   
-    RCC->APB2ENR   |= RCC_APB2ENR_TIM10EN;
-
-    //TIM10->CR1      = 0;
-    //TIM10->SMCR     = 0;
-    //TIM10->DIER     = 0;                    // TIM interrupts unused
-    //TIM10->SR       = 0;                    // clear update flags
-    TIM10->CCMR1    = 1;                    // Set Input to line-1
-    TIM10->CCER     = TIM_CCER_CC1E;        // Enable Input Capture
-    //TIM10->PSC      = 0;                    // No prescaling
-    TIM10->ARR      = 65535;
-    TIM10->OR       = 1;                    // LSI is being measured
-    TIM10->CR1      = TIM_CR1_CEN;
-
-    // Wait for rising edge 1, then count HS pulses until rising edge 2
-    ///@todo WFE?
-    sub_get_lsihz_TOP:
-    do {                                // Wait for edge
-        flag = TIM10->SR; 
-    } while (flag == 0);
-
-    if ((flag & TIM_SR_CC1IF) == 0) {    // something is wrong, assume 37000 Hz
-        lsi_hz  = 37000;
-        goto sub_get_lsihz_END;
-    }
-    if (lsi_hz == 0) {                  // First Edge
-        lsi_hz  = TIM10->CCR1;
-        goto sub_get_lsihz_TOP;
-    }
-
-    // Compute LSI Hz from counter pulses during one LSI period,
-    // and save this value to the last address of EEPROM
-    lsi_hz  = TIM10->CCR1 - lsi_hz;
-    lsi_hz  = BOARD_PARAM_HFHz / lsi_hz;
-    vworm_mark_physical((ot_u16*)0x08080FFE, lsi_hz);
-
-    // Turn-off timer and disable clocking to it
-    sub_get_lsihz_END:
-    TIM10->CR1      = 0;
-    RCC->APB2ENR   &= ~RCC_APB2ENR_TIM10EN;
-
-    return lsi_hz;
+/// Calibrate the LSI clock against HSE or HSI.
+/// This feature is presently only available through Haystack Distribution of
+/// OpenTag (HDO).  Contact Haystack Technologies for more information.
+    return 37000;
 }
 #endif
 
@@ -904,6 +774,10 @@ void platform_init_OT() {
         }
         vl_close(fpid);
     }
+#   else
+    ///@note for production (__RELEASE__) the default UID should be written to
+    ///      the default file location by the manufacturer firmware upload.
+
 #   endif
 
     ///5. This prevents the scheduler from getting called by a preemption
