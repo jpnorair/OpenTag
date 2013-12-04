@@ -28,9 +28,10 @@
 #ifndef __PLATFORM_STM32L1xx_H
 #define __PLATFORM_STM32L1xx_H
 
-#include "build_config.h"
-#include "OT_support.h"
 #include "ST/STM32L1xx/stm32l1xx.h"     //from CMSIS/CM3/DeviceSupport/
+#include "platform_config.h"
+#include "OT_support.h"
+
 
 //#include "stm32l1xx_conf.h"
 
@@ -95,7 +96,7 @@
 
 #define MCU_TYPE(VAL)                   MCU_TYPE_##VAL
 #define MCU_TYPE_PTRINT                 ot_s32
-#define MCU_TYPE_PTRUINT                ot_s32
+#define MCU_TYPE_PTRUINT                ot_u32
 
 #define SRAM_START_ADDR         0x20000000
 #define EEPROM_START_ADDR       0x08080000
@@ -120,7 +121,7 @@
 
 
 
-/** Low Power Mode Macros:
+/** Low Power Mode Macros: (Deprecated)
   * ========================================================================<BR>
   * SLEEP_MCU():        Core off, APB on, SRAM on                       (~50 uA)
   * SLEEP_WHILE_UHF():  Core off, APB on, SRAM on                       (~10 uA)
@@ -134,10 +135,10 @@
 #define MCU_STANDBY()           PWR_EnterSTANDBYMode(void)
 
 //Legacy
-#define SLEEP_WHILE_UHF     MCU_SLEEP
-#define SLEEP_MCU           MCU_SLEEP
-#define STOP_MCU            MCU_STOP
-#define STANDBY_MCU         MCU_STANDBY
+//#define SLEEP_WHILE_UHF     MCU_SLEEP
+//#define SLEEP_MCU           MCU_SLEEP
+//#define STOP_MCU            MCU_STOP
+//#define STANDBY_MCU         MCU_STANDBY
 
 
 
@@ -412,16 +413,20 @@ typedef struct {
     // Clock speed saves
     ot_ulong clock_hz[3];
     
-    //Temporary
-    ot_u16 cpu_khz;
-    
+    // LSI kHz divisor, only needed if LSI is actually used
+//#   if (BOARD_FEATURE(LFXTAL) != ENABLED) //For unknown reasons this causes problems
+#   if (BOARD_FEATURE_LFXTAL != ENABLED)
+    ot_u16 lsi_khz;
+    ot_u16 lsi_remhz;
+#   endif
+
     // 32bit pseudo-random number feedback register
     ot_u16  prand_reg;
-    //ot_u16  reserved;
+    //ot_u16  reserved1;
     
     // crc16 register(s)
     ot_u16  crc16;
-    ot_u16  reserved;
+    //ot_u16  reserved2;
     
     // System stack alloctation: used for ISRs
     ot_u32 sstack[OT_PARAM_SSTACK_ALLOC/4];

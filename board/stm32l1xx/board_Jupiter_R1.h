@@ -467,7 +467,11 @@ static inline void BOARD_PERIPH_INIT(void) {
     // enable/disable their clocks as needed.  SYSCFG and the Chronograph Timer
     // (here, TIM9) are the exceptions.
     // USART1, SPI1, ADC1, TIM11, TIM10, TIM9, SYSCFG.
+#   ifdef __DEBUG__
     RCC->APB2ENR   = (RCC_APB2ENR_TIM9EN | RCC_APB2ENR_SYSCFGEN);
+#   else
+    RCC->APB2ENR   = (RCC_APB2ENR_TIM10EN | RCC_APB2ENR_SYSCFGEN);
+#   endif
 
     // 3. APB1 Clocks in Active Mode.  APB1 is the low-speed peripheral bus.
     // The default is all-off, and it is the job of the peripheral drivers to 

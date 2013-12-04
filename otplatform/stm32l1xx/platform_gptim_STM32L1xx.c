@@ -377,19 +377,16 @@ void platform_init_gptim(ot_uint prescaler) {
     
     // Select LSE or LSI as RTC input clock. If LSI, get the calibrated Hz 
     // value and adjust the RTC prescaling to compensate as well as possible.
-#   if (BOARD_FEATURE(LFXTAL))    
-        RTC->PRER   = (31 << 16) | 0;
+#   if (BOARD_FEATURE(LFXTAL) != ENABLED)    
+    platform_ext.lsi_khz    = platform_ext_lsihz();                 // first returns clocks/Hz
+    platform_ext.lsi_remhz  = (platform_ext.lsi_khz & 1023);        // = remainder for clocks/tick
+    platform_ext.lsi_khz  >>= 10;                                   // = floored clocks/tick
+    platform_ext.lsi_khz   -= (platform_ext.lsi_remhz < 512);       // = rounded-up clocks/tick
+    RTC->PRER               = (ot_u32)platform_ext.lsi_khz << 16;
 #   else
-    {   ot_u16 lsi_hz;
-        ot_u16 roundup;
-        lsi_hz      = platform_ext_lsihz();
-        roundup     = (lsi_hz & 512) >> 9;
-        lsi_hz    >>= 10;
-        lsi_hz     += roundup;
-        RTC->PRER   = (lsi_hz << 16) | 0;
-    }
+    RTC->PRER               = (31 << 16) | 0;
 #   endif
-    RTC->WUTR   = 0;
+    RTC->WUTR               = 0;
 
     ///@todo Calibration could be here
     //RTC->CALIBR = ...
@@ -433,9 +430,14 @@ ot_u32 platform_get_ktim() {
     // RTC is not needed for this get.  Return the elapsed time read from the 
     // chronometer, plus whatever is on the marker.
     if (gptim.flags & GPTIM_FLAG_RTCBYPASS) {
-        ot_u16 elapsed_chrono;
-        elapsed_chrono = gptim_get_chrono() - gptim.chron_stamp;
-        return gptim.evt_span + (elapsed_chrono >> (5-OT_GPTIM_SHIFT));
+        ot_u16 elapsed_chron;
+        elapsed_chron   = gptim_get_chrono() - gptim.chron_stamp;
+#       if (BOARD_FEATURE(LFXTAL))
+        elapsed_chron >>= (5-OT_GPTIM_SHIFT);       // divide by 32 to get ticks
+#       else
+        elapsed_chron  /= platform_ext.lsi_khz;     // divide by something else to get ticks
+#       endif
+        return gptim.evt_span + elapsed_chron;
     }
     
     // RTC is needed for this get.  We need to wait for it to be ready to read.

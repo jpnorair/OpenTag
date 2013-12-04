@@ -105,13 +105,13 @@ void otapi_led2_off() { platform_trig2_low(); }
 #define POWER_1V2   0x1800
   
 // error checks
-#if (BOARD_FEATURE_HFXTAL == ENABLED) && (BOARD_FEATURE_HFBYPASS == ENABLED)
+#if (BOARD_FEATURE(HFXTAL) && BOARD_FEATURE(HFBYPASS))
 #   error "BOARD_FEATURE_HFXTAL and BOARD_FEATURE_HFBYPASS cannot be both ENABLED."
 #endif
-#if (MCU_FEATURE_USB) && (BOARD_FEATURE_PLL != ENABLED)
+#if (MCU_FEATURE(USB) && (BOARD_FEATURE(PLL) != ENABLED))
 #   error "To use built-in USB, you must ENABLE the PLL"
 #endif
-#if (MCU_FEATURE_USB) && (PLATFORM_PLLCLOCK_OUT != 96000000) 
+#if (MCU_FEATURE(USB) && (PLATFORM_PLLCLOCK_OUT != 96000000))
 #   error "STM32L requires PLL output to be 96 MHz when using internal USB."
 #endif
 
@@ -124,36 +124,36 @@ void otapi_led2_off() { platform_trig2_low(); }
 #endif
 
 // Flankspeed uses PLL, which requires 1.8V
-#if ((BOARD_FEATURE_FLANKSPEED == ENABLED) || (BOARD_FEATURE_PLL == ENABLED))
+#if (BOARD_FEATURE(FLANKSPEED) || BOARD_FEATURE(PLL))
 #   define _USE_PLL
-#   define _PLL_SRC             ((BOARD_FEATURE_FLANKXTAL == ENABLED) << 16)
+#   define _PLL_SRC             ((BOARD_FEATURE(FLANKXTAL) == ENABLED) << 16)
 #   define _FLANKSPEED_VOLTAGE  POWER_1V8
-#   if (BOARD_PARAM_PLLmult == 3)
+#   if (BOARD_PARAM(PLLmult) == 3)
 #       define _PLL_MULT    (0<<18)
-#   elif (BOARD_PARAM_PLLmult == 4)
+#   elif (BOARD_PARAM(PLLmult) == 4)
 #       define _PLL_MULT    (1<<18)
-#   elif (BOARD_PARAM_PLLmult == 6)
+#   elif (BOARD_PARAM(PLLmult) == 6)
 #       define _PLL_MULT    (2<<18)
-#   elif (BOARD_PARAM_PLLmult == 8)
+#   elif (BOARD_PARAM(PLLmult) == 8)
 #       define _PLL_MULT    (3<<18)
-#   elif (BOARD_PARAM_PLLmult == 12)
+#   elif (BOARD_PARAM(PLLmult) == 12)
 #       define _PLL_MULT    (4<<18)
-#   elif (BOARD_PARAM_PLLmult == 16)
+#   elif (BOARD_PARAM(PLLmult) == 16)
 #       define _PLL_MULT    (5<<18)
-#   elif (BOARD_PARAM_PLLmult == 24)
+#   elif (BOARD_PARAM(PLLmult) == 24)
 #       define _PLL_MULT    (6<<18)
-#   elif (BOARD_PARAM_PLLmult == 32)
+#   elif (BOARD_PARAM(PLLmult) == 32)
 #       define _PLL_MULT    (7<<18)
-#   elif (BOARD_PARAM_PLLmult == 48)
+#   elif (BOARD_PARAM(PLLmult) == 48)
 #       define _PLL_MULT    (8<<18)
 #   else
 #       error "PLL Multiplier from BOARD_PARAM_PLLmult is out of range"
 #   endif
-#   if (BOARD_PARAM_PLLdiv == 2)
+#   if (BOARD_PARAM(PLLdiv) == 2)
 #       define _PLL_DIV    (1<<22)
-#   elif (BOARD_PARAM_PLLdiv == 3)
+#   elif (BOARD_PARAM(PLLdiv) == 3)
 #       define _PLL_DIV    (2<<22)
-#   elif (BOARD_PARAM_PLLdiv == 4)
+#   elif (BOARD_PARAM(PLLdiv) == 4)
 #       define _PLL_DIV    (3<<22)
 #   else
 #       error "PLL Divider from BOARD_PARAM_PLLdiv is out of range"
@@ -165,10 +165,10 @@ void otapi_led2_off() { platform_trig2_low(); }
 #   else
 #       define _FLANKSPEED_FLASHWAIT DISABLED
 #   endif
-#   if (BOARD_FEATURE_FLANKXTAL == ENABLED)
+#   if BOARD_FEATURE(FLANKXTAL)
 #       define _FLANKOSC_RDYFLAG        RCC_CR_HSERDY
 #       define _FLANKOSC_CLOCKBIT       3
-#       if (BOARD_FEATURE_HFBYPASS == ENABLED)
+#       if BOARD_FEATURE(HFBYPASS)
 #           define _FLANKOSC_ONBIT      (RCC_CR_HSEON | RCC_CR_HSEBYP)
 #           define _FLANKOSC_TIMEOUT    1000
 #       else
@@ -189,7 +189,7 @@ void otapi_led2_off() { platform_trig2_low(); }
 #endif
 
 // Fullspeed uses HSE or HSI without PLL
-#if (BOARD_FEATURE_FULLSPEED == ENABLED)
+#if BOARD_FEATURE(FULLSPEED)
 #   if (PLATFORM_HSCLOCK_HZ > 32000000)
 #       error "High Speed Clock must be less than 32 MHz"
 #   elif (PLATFORM_HSCLOCK_HZ > 16000000)
@@ -208,10 +208,10 @@ void otapi_led2_off() { platform_trig2_low(); }
 #       define _FULLSPEED_VOLTAGE   POWER_1V2
 #       define _FULLSPEED_FLASHWAIT DISABLED
 #   endif
-#   if (BOARD_FEATURE_FULLXTAL == ENABLED)
+#   if BOARD_FEATURE(FULLXTAL)
 #       define _FULLOSC_RDYFLAG         RCC_CR_HSERDY
 #       define _FULLOSC_CLOCKBIT        2
-#       if (BOARD_FEATURE_HFBYPASS == ENABLED)
+#       if BOARD_FEATURE(HFBYPASS)
 #           define _FULLOSC_ONBIT       (RCC_CR_HSEON | RCC_CR_HSEBYP)
 #           define _FULLOSC_TIMEOUT     1000
 #       else
@@ -227,7 +227,7 @@ void otapi_led2_off() { platform_trig2_low(); }
 #endif
 
 // Standard Speed uses the MSI
-#if (BOARD_FEATURE_STDSPEED == ENABLED)
+#if BOARD_FEATURE(STDSPEED)
 #   if (   (PLATFORM_MSCLOCK_HZ != 4200000)   \
         && (PLATFORM_MSCLOCK_HZ != 2100000)   \
         && (PLATFORM_MSCLOCK_HZ != 1050000)   \
@@ -252,9 +252,9 @@ void otapi_led2_off() { platform_trig2_low(); }
 #endif
 
 // For systems with only FLANKSPEED enabled, drop APB clocks by half
-#if ((BOARD_FEATURE_FLANKSPEED == ENABLED) \
-  && (BOARD_FEATURE_STDSPEED != ENABLED) \
-  && (BOARD_FEATURE_FULLSPEED != ENABLED))
+#if ( BOARD_FEATURE(FLANKSPEED)             \
+  && (BOARD_FEATURE(STDSPEED) != ENABLED)   \
+  && (BOARD_FEATURE(FULLSPEED) != ENABLED)  )
 #   undef BOARD_PARAM_AHBCLKDIV
 #   define BOARD_PARAM_AHBCLKDIV 2
 #   define _APB1SCALE    0
@@ -421,11 +421,11 @@ void platform_ext_wakefromstop() {
     gptim_start_chrono();
     
     // Use the lowest allowed speed coming from STOP
-#   if (BOARD_FEATURE_STDSPEED)
+#   if BOARD_FEATURE(STDSPEED)
         platform_standard_speed();
-#   elif (BOARD_FEATURE_FULLSPEED)
+#   elif BOARD_FEATURE(FULLSPEED)
         platform_full_speed();
-#   elif (BOARD_FEATURE_FLANKSPEED)
+#   elif BOARD_FEATURE(FLANKSPEED)
         platform_flank_speed();
 #   endif
 }
@@ -434,7 +434,7 @@ void platform_ext_wakefromstop() {
 
 #ifndef EXTF_platform_ext_pllon
 void platform_ext_pllon() {
-#if (BOARD_FEATURE_PLL)
+#if BOARD_FEATURE(PLL)
     sub_voltage_config((POWER_1V8 | PWR_CR_DBP | 0x0040));
     
     BOARD_HSXTAL_ON();
@@ -449,7 +449,7 @@ void platform_ext_pllon() {
 
 #ifndef EXTF_platform_ext_plloff
 void platform_ext_plloff() {
-#if (BOARD_FEATURE_PLL)
+#if BOARD_FEATURE(PLL)
 /// Don't call this function unless you know what you are doing.  STM32L will
 /// not shut-off an active clock, so you won't kill your app, but worse: the
 /// PLL will stay on even if you probably think it is off.
@@ -708,7 +708,7 @@ void platform_poweroff() {
     ISF_syncmirror();
     vworm_save();
     
-#   if (OT_FEATURE(MPIPE) && MCU_FEATURE_MPIPECDC)
+#   if ( OT_FEATURE(MPIPE) && MCU_FEATURE(MPIPECDC) )
     mpipe_disconnect(NULL);
 #   endif
 }
@@ -820,7 +820,7 @@ void platform_init_busclk() {
     ///    <LI> Specified as PLATFORM_MSCLOCK_HZ in board support header </LI>
     ///    <LI> MSI is only used as standard clock if BOARD_FEATURE_STDSPEED
     ///           is also ENABLED in board support header.
-#   if (BOARD_FEATURE_STDSPEED == ENABLED)
+#   if BOARD_FEATURE(STDSPEED)
         // Change MSI to required frequency
 #       if (PLATFORM_MSCLOCK_HZ == 4200000)
         sub_voltage_config((POWER_1V5 | PWR_CR_DBP));
@@ -849,7 +849,7 @@ void platform_init_busclk() {
     ///    <LI> HSE is used if BOARD_FEATURE_HFXTAL is ENABLED, else HSI used. </LI>
     ///    <LI> Boards using HSE can declare any value into PLATFORM_HSCLOCK_HZ.
     ///           Board using HSI may only declare 2, 4, 8, or 16 MHz</LI>
-#   elif (BOARD_FEATURE_FULLSPEED == ENABLED)
+#   elif BOARD_FEATURE(FULLSPEED)
         // Basic Flash setup, then run normal routine
         FLASH->ACR |= FLASH_ACR_ACC64;
         FLASH->ACR |= FLASH_ACR_PRFTEN;
@@ -862,7 +862,7 @@ void platform_init_busclk() {
     ///           particular PLL configuration.  For example, if using USB
     ///           (BOARD_PARAM_HFHz * BOARD_PARAM_PLLmult) must be 96 MHz, and
     ///           (96 MHz / BOARD_PARAM_PLLdiv) == PLATFORM_HSCLOCK_HZ. </LI>
-#   elif (BOARD_FEATURE_FLANKSPEED == ENABLED)
+#   elif BOARD_FEATURE(FLANKSPEED)
         // Basic Flash setup, then run normal routine
         FLASH->ACR |= FLASH_ACR_ACC64;
         FLASH->ACR |= FLASH_ACR_PRFTEN;
@@ -906,7 +906,7 @@ void platform_init_periphclk() {
 #define CR_DBP_BB                (PERIPH_BB_BASE + (CR_OFFSET * 32) + (DBP_BitNumber * 4))
 */
     
-#   if (BOARD_FEATURE_LFXTAL == ENABLED)
+#   if BOARD_FEATURE(LFXTAL)
     PWR->CR     = ((1 << 11) | PWR_CR_DBP);
     RCC->CSR    = RCC_CSR_RMVF | RCC_CSR_RTCRST;
     RCC->CSR    = RCC_CSR_LSEON | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSE;
@@ -992,12 +992,13 @@ ot_ulong platform_get_clockhz(ot_uint clock_index) {
   * kernel and indeed the hardware itself manage down-speeding when going 
   * into STOP mode.
   */
+
 #ifndef EXTF_platform_standard_speed
 void platform_standard_speed() {
 /// Best efficient speed.  (MSI)
 /// typ config: 4.2 MHz, Power Level 2, 0 wait state.  ~1mA, 5.2 DMIPS
 /// @note Going into STOP will automatically put system into Standard Speed.
-#if (BOARD_FEATURE_STDSPEED == ENABLED)
+#if BOARD_FEATURE(STDSPEED)
     if ((RCC->CR & RCC_CR_MSION) == 0) {
         sub_osc_startup(300, RCC_CR_MSION);
         
@@ -1032,7 +1033,7 @@ void platform_full_speed() {
 /// <LI> typ config: 16MHz, Power Level 2, 1 wait state. ~4mA, 16.5 DMIPS </LI>
 /// <LI> Only enter fullspeed from MSI (stdspeed) </LI>
 /// <LI> In system with attachable USB, check for flank-enable </LI>
-#if (BOARD_FEATURE_FULLSPEED == ENABLED)
+#if BOARD_FEATURE(FULLSPEED)
     if (RCC->CR & RCC_CR_MSION) {
         // Change Voltage to FULLSPEED level, if different than STDSPEED
 #       if ( _FULLSPEED_VOLTAGE != _STDSPEED_VOLTAGE)
@@ -1062,8 +1063,8 @@ void platform_full_speed() {
 void platform_flank_speed() {
 /// Coming in hot!  (HSI or HSE + PLL)
 /// typ config: 32MHz, Power Level 1, 1 wait state.  ~9mA, 33 DMIPS.
-#if (BOARD_FEATURE_FLANKSPEED)
-#   if (BOARD_FEATURE_PLL != ENABLED)
+#if BOARD_FEATURE(FLANKSPEED)
+#   if (BOARD_FEATURE(PLL) != ENABLED)
 #       error "Cannot have Flank Speed without PLL"
 #   endif
     
@@ -1072,7 +1073,7 @@ void platform_flank_speed() {
         platform_disable_interrupts();
         platform_ext_pllon();
     
-#       if (BOARD_FEATURE_STDSPEED || BOARD_FEATURE_FULLSPEED)
+#       if (BOARD_FEATURE(STDSPEED) || BOARD_FEATURE(FULLSPEED))
             RCC->CFGR   = _PLL_SRC | _PLL_MULT | _PLL_DIV \
                         | (8<<4) | (_APB1_DIV+_APB1SCALE) | (_APB2_DIV+_APB2SCALE);  
 #       endif
@@ -1527,7 +1528,7 @@ void platform_disable_rtc() {
 #ifndef EXTF_platform_set_time
 void platform_set_time(ot_u32 utc_time) {
 /// OpenTag's RTC feature on STM32L is entirely managed in software.
-#if (OT_FEATURE(RTC) == ENABLED)
+#if OT_FEATURE(RTC)
     // set to backup register
 #endif
 }
@@ -1537,7 +1538,7 @@ void platform_set_time(ot_u32 utc_time) {
 #ifndef EXTF_platform_get_time
 ot_u32 platform_get_time() {
 /// UTC time is always maintained
-#if (OT_FEATURE(RTC) == ENABLED)
+#if OT_FEATURE(RTC)
     // pull from backup register
 #endif
 }
@@ -1716,6 +1717,13 @@ void platform_init_prand(ot_u16 seed) {
 }
 #endif
 
+#ifndef EXTF_platform_prand_u32
+ot_u32 platform_prand_u32() {
+///@todo Use CRC hardware
+}
+#endif
+
+
 #ifndef EXTF_platform_prand_u8
 ot_u8 platform_prand_u8() {
     return (ot_u8)platform_prand_u16();
@@ -1761,9 +1769,8 @@ ot_u16 platform_prand_u16() {
 
     
 
-#if (MCU_FEATURE(MEMCPYDMA) == ENABLED)  
-    
-#define MEMCPY_DMA_INT  (1 << ((MEMCPY_DMA_CHAN_ID-1)*4))
+#if MCU_FEATURE(MEMCPYDMA)
+#   define MEMCPY_DMA_INT  (1 << ((MEMCPY_DMA_CHAN_ID-1)*4))
 
 void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_int length) {
 /// Use 8, 16, or 32 bit chunks based on detected alignment
@@ -1802,16 +1809,16 @@ void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_int length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
 
-#endif
+#endif  //MCU_FEATURE(MEMCPYDMA)
 
 
 
 
 void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
-#if (OS_FEATURE(MEMCPY) == ENABLED)
+#if OS_FEATURE(MEMCPY)
     memcpy(dest, src, length);
 
-#elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
+#elif MCU_FEATURE(MEMCPYDMA)
     sub_memcpy_dma(dest, src, length);
 //    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
 //    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
@@ -1827,7 +1834,7 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 
 
 void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length) {
-#if (MCU_FEATURE(MEMCPYDMA) == ENABLED)
+#if MCU_FEATURE(MEMCPYDMA)
     sub_memcpy2_dma( (ot_u8*)dest, (ot_u8*)src, length);
 //    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
 //    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
@@ -1845,10 +1852,10 @@ void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length) {
 
 
 void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
-#if (OS_FEATURE(MEMCPY) == ENABLED)
+#if OS_FEATURE(MEMCPY)
     memset(dest, value, length);
 
-#elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
+#elif MCU_FEATURE(MEMCPYDMA)
     MEMCPY_DMACHAN->CCR     = 0;
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;       ///@todo see if this can be globalized
     MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;
