@@ -59,7 +59,7 @@
   * might get optimized-out during compilation.
   */
 
-#if (MCU_FEATURE(MPIPECDC) == ENABLED)
+#if (MCU_CONFIG(MPIPECDC) == ENABLED)
     volatile ot_u8 app_usbhold = 0;
 #endif
 //ot_bool (*app_task)(void);

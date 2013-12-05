@@ -48,7 +48,7 @@
   * are almost always going to be needed.
   */
 
-#if (MCU_FEATURE_USB)
+#if (MCU_CONFIG_USB)
 #   undef __ISR_USB_LP
 #   undef __ISR_USB_FS_WKUP
 #   define __ISR_USB_LP
@@ -98,10 +98,10 @@
 /// Enable MPIPE Interrupts:
 /// DMA interrupts for UART DMA
 #if (OT_FEATURE(MPIPE))
-#   if (MCU_FEATURE(MPIPECDC))
+#   if (MCU_CONFIG(MPIPECDC))
         ///@todo USB MPipe Interrupt settings
    
-#   elif (MCU_FEATURE(MPIPEUART))
+#   elif (MCU_CONFIG(MPIPEUART))
         // MPipe UART Driver only uses RTS/CTS if Board implements them
 #       if (BOARD_FEATURE(MPIPE_FLOWCTL))
         ///@todo CTS/RTS on UART

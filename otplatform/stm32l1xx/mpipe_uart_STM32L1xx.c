@@ -310,7 +310,7 @@ typedef struct {
 #if (MPIPE_USE_ACKS)
     mpipe_priority  priority;
 #endif
-#if (MCU_FEATURE(MULTISPEED))
+#if (MCU_CONFIG(MULTISPEED))
     mpipe_speed     baudrate;
 #endif
     ot_int          packets;
@@ -370,7 +370,7 @@ void sub_mpipe_open() {
     __SYS_CLKON();
     __UART_CLKON();
    
-#   if (MCU_FEATURE(MULTISPEED))
+#   if (MCU_CONFIG(MULTISPEED))
     MPIPE->BRR              = __UART_CLKHZ() / uart.baudrate;
 #   endif
     scratch                 = BOARD_UART_PORT->MODER;
@@ -491,7 +491,7 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 
     /// UART Setup (RX & TX setup takes place at time of startup)
     __UART_CLKON();
-#   if (MCU_FEATURE(MULTISPEED) != ENABLED)
+#   if (MCU_CONFIG(MULTISPEED) != ENABLED)
     MPIPE_UART->BRR = __UART_CLKHZ() / baud_rate;
 #   endif
     MPIPE_UART->CR3 = USART_CR3_DMAR | USART_CR3_DMAT;

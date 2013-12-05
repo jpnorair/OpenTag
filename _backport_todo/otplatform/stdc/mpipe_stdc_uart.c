@@ -315,7 +315,7 @@ ot_int mpipe_init(void* port_id) {
 /// 2. Prepare the HW, which in this case is a UART
 /// 3. Set default speed, which in this case is 115200 bps
 
-#if (MCU_FEATURE(MEMCPYDMA) != ENABLED)
+#if (MCU_CONFIG(MEMCPYDMA) != ENABLED)
     BOARD_DMA_COMMON_INIT();
 #endif
 
@@ -391,7 +391,7 @@ void mpipe_setspeed(mpipe_speed speed) {
                                          0x2B, 0x00, 0x06, 0, \
                                          0x15, 0x00, 0x0A, 0  };
 
-#   if (MCU_FEATURE(MPIPEDMA) == ENABLED)
+#   if (MCU_CONFIG(MPIPEDMA) == ENABLED)
         MPIPE_DMAEN(OFF);
 #   else
 #       error "Mpipe requires a DMA in this implementation"

@@ -85,7 +85,12 @@
 #define MCU_FEATURE_AES128              DISABLED            // AES128 engine            On some MCUs
 #define MCU_FEATURE_ECC                 DISABLED            // ECC engine               Rare
 
+#define MCU_TYPE(VAL)                   MCU_TYPE_##VAL
+#define MCU_TYPE_PTRINT                 ot_s32
+#define MCU_TYPE_PTRUINT                ot_u32
+
 #define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
+#define MCU_PARAM_POINTERSIZE           4
 #define MCU_PARAM_ERRPTR                ((ot_s32)-1)
 #define MCU_PARAM_UART_9600BPS          9600
 #define MCU_PARAM_UART_28800BPS         28800
@@ -94,9 +99,79 @@
 #define MCU_PARAM_UART_250000BPS        250000
 #define MCU_PARAM_UART_500000BPS        500000
 
-#define MCU_TYPE(VAL)                   MCU_TYPE_##VAL
-#define MCU_TYPE_PTRINT                 ot_s32
-#define MCU_TYPE_PTRUINT                ot_u32
+// 48 Pin STM32L's have ports A, B, C   (although C is limited)
+#if (   defined(__STM32L151C6__) \
+    ||  defined(__STM32L151C8__) \
+    ||  defined(__STM32L151CB__) \
+    ||  defined(__STM32L151CC__) \
+    ||  defined(__STM32L152C6__) \
+    ||  defined(__STM32L152C8__) \
+    ||  defined(__STM32L152CB__) \
+    ||  defined(__STM32L151CC__)   )
+#   define MCU_PARAM_PORTS  3
+
+// 63 & 64 Pin STM32L's have ports A, B, C, D    (although D is limited)
+#elif ( defined(__STM32L151R6__) \
+    ||  defined(__STM32L151R8__) \
+    ||  defined(__STM32L151RB__) \
+    ||  defined(__STM32L151RC__) \
+    ||  defined(__STM32L151RD__) \
+    ||  defined(__STM32L151UC__) \
+    ||  defined(__STM32L152R6__) \
+    ||  defined(__STM32L152R8__) \
+    ||  defined(__STM32L152RB__) \
+    ||  defined(__STM32L151RC__) \
+    ||  defined(__STM32L151RD__) \
+    ||  defined(__STM32L162RC__) \
+    ||  defined(__STM32L162RD__)    )
+#   define MCU_PARAM_PORTS  4
+
+// 63 & 64 Pin STM32L's have ports A, B, C, D    (although D is limited)
+#elif ( defined(__STM32L151R6__) \
+    ||  defined(__STM32L151R8__) \
+    ||  defined(__STM32L151RB__) \
+    ||  defined(__STM32L151RC__) \
+    ||  defined(__STM32L151RD__) \
+    ||  defined(__STM32L151UC__) \
+    ||  defined(__STM32L152R6__) \
+    ||  defined(__STM32L152R8__) \
+    ||  defined(__STM32L152RB__) \
+    ||  defined(__STM32L151RC__) \
+    ||  defined(__STM32L151RD__) \
+    ||  defined(__STM32L162RC__) \
+    ||  defined(__STM32L162RD__)    )
+#   define MCU_PARAM_PORTS  4
+
+// 100 Pin STM32L's have ports A, B, C, D, E
+#elif ( defined(__STM32L151V8__) \
+    ||  defined(__STM32L151VB__) \
+    ||  defined(__STM32L151VD__) \
+    ||  defined(__STM32L152V8__) \
+    ||  defined(__STM32L152VB__) \
+    ||  defined(__STM32L152VC__) \
+    ||  defined(__STM32L152VD__) \
+    ||  defined(__STM32L162VC__) \
+    ||  defined(__STM32L162VD__) )
+#   define MCU_PARAM_PORTS  5
+
+// 132 & 144 Pin STM32L's have ports A, B, C, D, E, F, G
+#elif ( defined(__STM32L151QC__) \
+    ||  defined(__STM32L151QD__) \
+    ||  defined(__STM32L151ZC__) \
+    ||  defined(__STM32L151ZD__) \
+    ||  defined(__STM32L152QC__) \
+    ||  defined(__STM32L152QD__) \
+    ||  defined(__STM32L152ZC__) \
+    ||  defined(__STM32L152ZD__) \
+    ||  defined(__STM32L162QD__) \
+    ||  defined(__STM32L162ZD__) )
+#   define MCU_PARAM_PORTS  7
+
+#else
+#   warning "Unknown STM32L defined.  Defaulting to 3 Ports (A, B, C)"
+#   define MCU_PARAM_PORTS  3
+#endif
+
 
 #define SRAM_START_ADDR         0x20000000
 #define EEPROM_START_ADDR       0x08080000

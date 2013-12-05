@@ -108,10 +108,10 @@ void otapi_led2_off() { platform_trig2_low(); }
 #if (BOARD_FEATURE(HFXTAL) && BOARD_FEATURE(HFBYPASS))
 #   error "BOARD_FEATURE_HFXTAL and BOARD_FEATURE_HFBYPASS cannot be both ENABLED."
 #endif
-#if (MCU_FEATURE(USB) && (BOARD_FEATURE(PLL) != ENABLED))
+#if (MCU_CONFIG(USB) && (BOARD_FEATURE(PLL) != ENABLED))
 #   error "To use built-in USB, you must ENABLE the PLL"
 #endif
-#if (MCU_FEATURE(USB) && (PLATFORM_PLLCLOCK_OUT != 96000000))
+#if (MCU_CONFIG(USB) && (PLATFORM_PLLCLOCK_OUT != 96000000))
 #   error "STM32L requires PLL output to be 96 MHz when using internal USB."
 #endif
 
@@ -708,7 +708,7 @@ void platform_poweroff() {
     ISF_syncmirror();
     vworm_save();
     
-#   if ( OT_FEATURE(MPIPE) && MCU_FEATURE(MPIPECDC) )
+#   if ( OT_FEATURE(MPIPE) && MCU_CONFIG(MPIPECDC) )
     mpipe_disconnect(NULL);
 #   endif
 }
@@ -1442,7 +1442,7 @@ void platform_init_rtc(ot_u32 value) {
 
 #ifndef EXTF_platform_init_memcpy
 void platform_init_memcpy() {
-#if (MCU_FEATURE(MEMCPYDMA) == ENABLED)  
+#if (MCU_CONFIG(MEMCPYDMA) == ENABLED)  
 #endif
 }
 #endif
@@ -1769,7 +1769,7 @@ ot_u16 platform_prand_u16() {
 
     
 
-#if MCU_FEATURE(MEMCPYDMA)
+#if MCU_CONFIG(MEMCPYDMA)
 #   define MEMCPY_DMA_INT  (1 << ((MEMCPY_DMA_CHAN_ID-1)*4))
 
 void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_int length) {
@@ -1809,7 +1809,7 @@ void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_int length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
 
-#endif  //MCU_FEATURE(MEMCPYDMA)
+#endif  //MCU_CONFIG(MEMCPYDMA)
 
 
 
@@ -1818,7 +1818,7 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 #if OS_FEATURE(MEMCPY)
     memcpy(dest, src, length);
 
-#elif MCU_FEATURE(MEMCPYDMA)
+#elif MCU_CONFIG(MEMCPYDMA)
     sub_memcpy_dma(dest, src, length);
 //    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
 //    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
@@ -1834,7 +1834,7 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 
 
 void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length) {
-#if MCU_FEATURE(MEMCPYDMA)
+#if MCU_CONFIG(MEMCPYDMA)
     sub_memcpy2_dma( (ot_u8*)dest, (ot_u8*)src, length);
 //    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
 //    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
@@ -1855,7 +1855,7 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
 #if OS_FEATURE(MEMCPY)
     memset(dest, value, length);
 
-#elif MCU_FEATURE(MEMCPYDMA)
+#elif MCU_CONFIG(MEMCPYDMA)
     MEMCPY_DMACHAN->CCR     = 0;
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;       ///@todo see if this can be globalized
     MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;

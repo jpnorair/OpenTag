@@ -98,7 +98,7 @@ static void SetSysClock(void);
 
 
 
-#if (MCU_FEATURE_TURBO == ENABLED)
+#if MCU_CONFIG(MULTISPEED)
 #   define _BASE_CLOCK_HZ   PLATFORM_MSCLOCK_Hz
 #   define _TURBO_CLOCK_HZ  PLATFORM_HZCLOCK_Hz
 #else
@@ -241,14 +241,14 @@ void SystemBoost(void) {
 /// "Boost" is an HSI or HSE based clock mode, using PLL only if necessary.  
 /// In the present implementation, the voltage regime must be constant during
 /// the operation of the device.
-#if (MCU_FEATURE_TURBO == ENABLED)
+#if MCU_CONFIG(MULTISPEED)
     if (RCC->CR & RCC_CR_MSION) {
         // Add a Flash wait state if necessary (but only if necessary)
-#       if (   ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_MSCLOCK_HZ <= 2000000)) \
-        ||  (MCU_PARAM_VOLTLEVEL == 2) || (MCU_PARAM_VOLTLEVEL == 1) )
-#       if (    ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_HSCLOCK_HZ > 2000000)) \
-            ||  ((MCU_PARAM_VOLTLEVEL == 2) && (PLATFORM_HSCLOCK_HZ > 8000000)) \
-            ||  ((MCU_PARAM_VOLTLEVEL == 1) && (PLATFORM_HSCLOCK_HZ > 16000000)))
+#       if (   ((MCU_CONFIG_VOLTLEVEL == 3) && (PLATFORM_MSCLOCK_HZ <= 2000000)) \
+        ||  (MCU_CONFIG_VOLTLEVEL == 2) || (MCU_CONFIG_VOLTLEVEL == 1) )
+#       if (    ((MCU_CONFIG_VOLTLEVEL == 3) && (PLATFORM_HSCLOCK_HZ > 2000000)) \
+            ||  ((MCU_CONFIG_VOLTLEVEL == 2) && (PLATFORM_HSCLOCK_HZ > 8000000)) \
+            ||  ((MCU_CONFIG_VOLTLEVEL == 1) && (PLATFORM_HSCLOCK_HZ > 16000000)))
             FLASH->ACR |= FLASH_ACR_LATENCY;
 #       endif
 #       endif
@@ -268,7 +268,7 @@ void SystemUnboost(void) {
 /// Going into STOP will automatically put system into rest (Boost off)
 /// In the present implementation, the voltage regime must be constant during
 /// the operation of the device.
-#if (MCU_FEATURE_TURBO == ENABLED)
+#if MCU_CONFIG(MULTISPEED)
     if ((RCC->CR & RCC_CR_MSION) == 0) {
         uint32_t counter;
     
@@ -286,11 +286,11 @@ void SystemUnboost(void) {
         RCC->CR    &= ~(RCC_CR_PLLON | RCC_CR_HSEON | RCC_CR_HSION);
         
         // Clear the Flash wait state if necessary (but only if necessary)
-#       if (    ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_HSCLOCK_HZ > 2000000)) \
-            ||  ((MCU_PARAM_VOLTLEVEL == 2) && (PLATFORM_HSCLOCK_HZ > 8000000)) \
-            ||  ((MCU_PARAM_VOLTLEVEL == 1) && (PLATFORM_HSCLOCK_HZ > 16000000)))
-#       if (   ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_MSCLOCK_HZ <= 2000000)) \
-        ||  (MCU_PARAM_VOLTLEVEL == 2) || (MCU_PARAM_VOLTLEVEL == 1) )       
+#       if (    ((MCU_CONFIG_VOLTLEVEL == 3) && (PLATFORM_HSCLOCK_HZ > 2000000)) \
+            ||  ((MCU_CONFIG_VOLTLEVEL == 2) && (PLATFORM_HSCLOCK_HZ > 8000000)) \
+            ||  ((MCU_CONFIG_VOLTLEVEL == 1) && (PLATFORM_HSCLOCK_HZ > 16000000)))
+#       if (   ((MCU_CONFIG_VOLTLEVEL == 3) && (PLATFORM_MSCLOCK_HZ <= 2000000)) \
+        ||  (MCU_CONFIG_VOLTLEVEL == 2) || (MCU_CONFIG_VOLTLEVEL == 1) )       
             FLASH->ACR &= ~FLASH_ACR_LATENCY;
 #       endif
 #       endif
@@ -418,8 +418,8 @@ void sub_msflash_config(void) {
 /// Enable 64-bit flash access (must be done first), and then the 
 /// prefetch buffer + 0 or 1 wait states.
     FLASH->ACR |= FLASH_ACR_ACC64;
-#   if (   ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_MSCLOCK_HZ <= 2000000)) \
-        ||  (MCU_PARAM_VOLTLEVEL == 2) || (MCU_PARAM_VOLTLEVEL == 1) )
+#   if (   ((MCU_CONFIG_VOLTLEVEL == 3) && (PLATFORM_MSCLOCK_HZ <= 2000000)) \
+        ||  (MCU_CONFIG_VOLTLEVEL == 2) || (MCU_CONFIG_VOLTLEVEL == 1) )
         FLASH->ACR |= (FLASH_ACR_PRFTEN);
 #   else
         FLASH->ACR |= (FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY);
@@ -431,9 +431,9 @@ void sub_hsflash_config(void) {
 /// Enable 64-bit flash access (must be done first), and then the 
 /// prefetch buffer + 0 or 1 wait states.
     FLASH->ACR |= FLASH_ACR_ACC64;
-#   if (    ((MCU_PARAM_VOLTLEVEL == 3) && (PLATFORM_HSCLOCK_HZ <= 2000000)) \
-        ||  ((MCU_PARAM_VOLTLEVEL == 2) && (PLATFORM_HSCLOCK_HZ <= 8000000)) \
-        ||  ((MCU_PARAM_VOLTLEVEL == 1) && (PLATFORM_HSCLOCK_HZ <= 16000000)))
+#   if (    ((MCU_CONFIG_VOLTLEVEL == 3) && (PLATFORM_HSCLOCK_HZ <= 2000000)) \
+        ||  ((MCU_CONFIG_VOLTLEVEL == 2) && (PLATFORM_HSCLOCK_HZ <= 8000000)) \
+        ||  ((MCU_CONFIG_VOLTLEVEL == 1) && (PLATFORM_HSCLOCK_HZ <= 16000000)))
         FLASH->ACR |= (FLASH_ACR_PRFTEN);
 #   else
         FLASH->ACR |= (FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY);
@@ -444,14 +444,14 @@ void sub_hsflash_config(void) {
 void sub_voltage_config(void) {
     // Set Power Configuration based on Voltage Level parameters
     RCC->APB1ENR   |= RCC_APB1ENR_PWREN;    // Power enable
-#   if (MCU_PARAM_VOLTLEVEL == 3)
+#   if (MCU_CONFIG_VOLTLEVEL == 3)
     PWR->CR         = PWR_CR_VOS_1V2;
-#   elif (MCU_PARAM_VOLTLEVEL == 2)
+#   elif (MCU_CONFIG_VOLTLEVEL == 2)
     PWR->CR         = PWR_CR_VOS_1V5;
-#   elif (MCU_PARAM_VOLTLEVEL == 1)
+#   elif (MCU_CONFIG_VOLTLEVEL == 1)
     PWR->CR         = PWR_CR_VOS_1V8;
 #   else
-#   error "MCU_PARAM_VOLTLEVEL do not have compatible settings"
+#   error "MCU_CONFIG_VOLTLEVEL do not have compatible settings"
 #   endif 
     
     // Wait Until the Voltage Regulator is ready
@@ -488,7 +488,7 @@ void sub_hsosc_config(void) {
 
 void sub_clock_select() {
     // Configure the System clock frequency, AHB/APBx prescalers and Flash settings
-#   if (MCU_FEATURE_TURBO == ENABLED)
+#   if MCU_CONFIG(MULTISPEED)
 #       if ((PLATFORM_MSCLOCK_HZ == 4200000)   \
          || (PLATFORM_MSCLOCK_HZ == 2100000)   \
          || (PLATFORM_MSCLOCK_HZ == 1050000)   \

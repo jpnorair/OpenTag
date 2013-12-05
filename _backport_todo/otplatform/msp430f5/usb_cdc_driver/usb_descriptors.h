@@ -46,7 +46,7 @@
 
 
 // Needed for CDC inteface
-#if (OT_FEATURE(MPIPE) && (MCU_FEATURE_MPIPECDC == ENABLED))
+#if (OT_FEATURE(MPIPE) && (MCU_CONFIG_MPIPECDC == ENABLED))
 #define _CDC_
 #endif
 

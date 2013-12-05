@@ -70,34 +70,30 @@
   * insertion loss for TX.
   */
 #define RF_PARAM_BAND   433
-#define RF_HDB_ATTEN    8       //Half dB attenuation (units = 0.5dB), used to scale TX power
-#define RF_HDB_RXATTEN  6
-#define RF_RSSI_OFFSET  6       //Offset applied to RSSI calculation
+#define RF_HDB_ATTEN    13       //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_HDB_RXATTEN  12
+#define RF_RSSI_OFFSET  12       //Offset applied to RSSI calculation
 
 
 
-/** MCU Feature settings      <BR>
+
+/** MCU Configuration settings      <BR>
   * ========================================================================<BR>
-  * Implemented capabilities of the STM32L variants, pertaining also to the 
-  * layout of this board.
+  * Implemented capabilities of the STM32L variants on this board/build
   *
   * On this board, the Jupiter DK, there is support for the HCOM bus.  HCOM 
   * allows pin-selectable configuration of USB, UART, or I2C for MPIPE.
   */
-//From platform_STM32L1xx.h
-//#define MCU_FEATURE(VAL)              MCU_FEATURE_##VAL   // FEATURE 
-#define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPECDC            ENABLED         // USB-CDC MPipe implementation
-#define MCU_FEATURE_MPIPEUART           DISABLED         // UART MPipe Implementation
-#define MCU_FEATURE_MPIPEI2C            DISABLED         // I2C MPipe Implementation
-#define MCU_FEATURE_MEMCPYDMA           ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
+#define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
+#define MCU_CONFIG_MULTISPEED           DISABLED         // Allows usage of MF-HF clock boosting
+#define MCU_CONFIG_MAPEEPROM            DISABLED
+#define MCU_CONFIG_MPIPECDC             ENABLED        // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPEUART            DISABLED         // UART MPipe Implementation
+#define MCU_CONFIG_MPIPEI2C             DISABLED        // I2C MPipe Implementation
+#define MCU_CONFIG_MEMCPYDMA            ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
+#define MCU_CONFIG_USB                  ((MCU_CONFIG_MPIPECDC == ENABLED) || 0)
+#define MCU_CONFIG_VOLTLEVEL            2               // 3=1.2, 2=1.5V, 1=1.8V
 
-#define MCU_FEATURE_USB                 ((MCU_FEATURE_MPIPECDC == ENABLED) || 0)
-
-#define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
-#define MCU_PARAM_PORTS                 3               // This STM32L has ports A, B, C
-#define MCU_PARAM_VOLTLEVEL             2               // 3=1.2, 2=1.5V, 1=1.8V
-#define MCU_PARAM_POINTERSIZE           4               // Pointers are 4 bytes
 
 
 
@@ -168,15 +164,15 @@
 
 #define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL used as Clock source
 #define BOARD_FEATURE_HFXTAL            DISABLED                // HF XTAL used as Clock source
-#define BOARD_FEATURE_HFBYPASS          MCU_FEATURE_USB
+#define BOARD_FEATURE_HFBYPASS          MCU_CONFIG_USB
 #define BOARD_FEATURE_RFXTAL            ENABLED                 // XTAL for RF chipset
-#define BOARD_FEATURE_RFXTALOUT         MCU_FEATURE_USB
-#define BOARD_FEATURE_PLL               MCU_FEATURE_USB
+#define BOARD_FEATURE_RFXTALOUT         MCU_CONFIG_USB
+#define BOARD_FEATURE_PLL               MCU_CONFIG_USB
 #define BOARD_FEATURE_STDSPEED          ENABLED
-#define BOARD_FEATURE_FULLSPEED         (MCU_FEATURE_USB != ENABLED)
+#define BOARD_FEATURE_FULLSPEED         (MCU_CONFIG_USB != ENABLED)
 #define BOARD_FEATURE_FULLXTAL          DISABLED
-#define BOARD_FEATURE_FLANKSPEED        MCU_FEATURE_USB
-#define BOARD_FEATURE_FLANKXTAL         MCU_FEATURE_USB
+#define BOARD_FEATURE_FLANKSPEED        MCU_CONFIG_USB
+#define BOARD_FEATURE_FLANKXTAL         MCU_CONFIG_USB
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG2      DISABLED
 
@@ -417,7 +413,7 @@
 // DMA is used in MEMCPY and thus it could be needed at any time during
 // active runtime.  So, the active-clock must be enabled permanently.
 
-#if (MCU_FEATURE_MEMCPYDMA)
+#if (MCU_CONFIG_MEMCPYDMA)
 #   define _DMACLK_N    RCC_AHBENR_DMA1EN
 #else
 #   define _DMACLK_N    0
@@ -698,7 +694,7 @@ static inline void BOARD_PORT_STANDBY() {
     // low-power apps. 
     
     // MPIPE interface on PB6-7, set to output ground.
-#   if (MCU_FEATURE(MPIPEUART) != ENABLED)
+#   if (MCU_CONFIG(MPIPEUART) != ENABLED)
         //GPIOB->PUPDR   &= ~(3 << (6*2)) & ~(7 << (6*2));
         //GPIOB->MODER   &= ~(3 << (6*2)) & ~(7 << (6*2));
         //GPIOB->ODR     &= ~(1 << 6) & ~(1 << 7);
@@ -788,16 +784,16 @@ static inline void BOARD_USBCLK_OFF(void) {
   * OpenTag code tends to abhor branching, so flash wait states have less 
   * affect on OT efficiency than they have on most other codebases.
   */
-#define MCU_PARAM_LFXTALHz          BOARD_PARAM_LFHz
-#define MCU_PARAM_LFXTALtol         BOARD_PARAM_LFtol
-//#define MCU_PARAM_LFOSCHz           BOARD_PARAM_LFHz
-//#define MCU_PARAM_LFOSCtol          BOARD_PARAM_LFtol
-//#define MCU_PARAM_XTALHz            BOARD_PARAM_HFHz
-//#define MCU_PARAM_XTALmult          BOARD_PARAM_HFmult
-//#define MCU_PARAM_XTALtol           BOARD_PARAM_HFtol
-#define MCU_PARAM_OSCHz             BOARD_PARAM_HFHz
-#define MCU_PARAM_OSCmult           BOARD_PARAM_HFmult
-#define MCU_PARAM_OSCtol            BOARD_PARAM_HFtol
+#define MCU_CONFIG_LFXTALHz          BOARD_PARAM_LFHz
+#define MCU_CONFIG_LFXTALtol         BOARD_PARAM_LFtol
+//#define MCU_CONFIG_LFOSCHz           BOARD_PARAM_LFHz
+//#define MCU_CONFIG_LFOSCtol          BOARD_PARAM_LFtol
+//#define MCU_CONFIG_XTALHz            BOARD_PARAM_HFHz
+//#define MCU_CONFIG_XTALmult          BOARD_PARAM_HFmult
+//#define MCU_CONFIG_XTALtol           BOARD_PARAM_HFtol
+#define MCU_CONFIG_OSCHz             BOARD_PARAM_HFHz
+#define MCU_CONFIG_OSCmult           BOARD_PARAM_HFmult
+#define MCU_CONFIG_OSCtol            BOARD_PARAM_HFtol
 
 #define PLATFORM_MCLK_DIV           BOARD_PARAM_MCLKDIV
 #define PLATFORM_SMCLK_DIV          BOARD_PARAM_SMCLKDIV
@@ -933,7 +929,7 @@ static inline void BOARD_USBCLK_OFF(void) {
   * DMA however.  You could implement a driver without a DMA, but DMA makes it 
   * so much cleaner and better.
   */
-#if (MCU_FEATURE_USB == ENABLED)
+#if (MCU_CONFIG_USB == ENABLED)
 // USB is mostly independent from OT, but the startup code does need to know 
 // how to boost the crystal
 #   if (BOARD_PARAM_HFHz != 2000000) && (BOARD_PARAM_HFHz != 3000000) \
@@ -956,7 +952,7 @@ static inline void BOARD_USBCLK_OFF(void) {
 #   define MPIPE_USBDM_PIN      BOARD_HCOMUSB_DMPIN
 #endif
 
-#if (MCU_FEATURE_MPIPEUART == ENABLED)
+#if (MCU_CONFIG_MPIPEUART == ENABLED)
 #   define MPIPE_DMANUM         1
 #   define MPIPE_DMA            DMA1
 #   define MPIPE_UART_ID        BOARD_HCOMUART_ID
@@ -979,7 +975,7 @@ static inline void BOARD_USBCLK_OFF(void) {
 #   define __USE_DMA1_CHAN4
 #endif
 
-#if (MCU_FEATURE_MPIPEI2C == ENABLED)
+#if (MCU_CONFIG_MPIPEI2C == ENABLED)
 #   define MPIPE_I2C_ID         BOARD_HCOMI2C_ID
 #   define MPIPE_I2C            I2C2
 #   define MPIPE_I2C_PORTNUM    BOARD_HCOMI2C_PORTNUM
@@ -1070,7 +1066,7 @@ static inline void BOARD_USBCLK_OFF(void) {
   * of DMA Channel 7, then the potential throughput of that communication
   * interface is limited by the duty time of memcpy.
   */
-#if (MCU_FEATURE_MEMCPYDMA != ENABLED)
+#if (MCU_CONFIG_MEMCPYDMA != ENABLED)
 #   warning "Not using DMA for MEMCPY, a sub-optimal design choice."
 #elif !defined(__USE_DMA1_CHAN7)
 #   define MEMCPY_DMA_CHAN_ID 7

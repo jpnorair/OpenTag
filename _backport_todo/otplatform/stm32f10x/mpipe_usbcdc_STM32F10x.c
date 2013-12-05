@@ -45,7 +45,7 @@
 #include "OT_platform.h"
 
 /// Do not compile if MPIPE is disabled, or MPIPE does not use USB VCOM
-#if ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_FEATURE(MPIPEVCOM) == ENABLED))
+#if ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_CONFIG(MPIPECDC) == ENABLED))
 
 #include "mpipe.h"
 #include "OT_utils.h"

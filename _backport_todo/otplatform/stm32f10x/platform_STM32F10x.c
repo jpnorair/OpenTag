@@ -663,7 +663,7 @@ void platform_init_rtc(ot_u32 value) {
 
 
 void platform_init_memcpy() {
-#if (MCU_FEATURE(MEMCPYDMA) == ENABLED)
+#if (MCU_CONFIG(MEMCPYDMA) == ENABLED)
 #endif
 }
 
@@ -861,7 +861,7 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 #if (OS_FEATURE(MEMCPY) == ENABLED)
     memcpy(dest, src, length);
 
-#elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
+#elif (MCU_CONFIG(MEMCPYDMA) == ENABLED)
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
     MEMCPY_DMA_CHAN->CPAR   = (ot_u32)dest;
     MEMCPY_DMA_CHAN->CMAR   = (ot_u32)src;

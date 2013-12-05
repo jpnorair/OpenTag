@@ -619,36 +619,21 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 #if (OS_FEATURE(MEMCPY) == ENABLED)
     memcpy(dest, src, length);
 
-#elif (MCU_FEATURE(MEMCPYDMA) == ENABLED)
-
+#elif (MCU_CONFIG(MEMCPYDMA) == ENABLED)
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
-
     MEMCPY_DMA_CHAN->CPAR   = (ot_u32)dest;
-
     MEMCPY_DMA_CHAN->CMAR   = (ot_u32)src;
-
     MEMCPY_DMA_CHAN->CNDTR  = length;
-
     MEMCPY_DMA_CHAN->CCR    = DMA_DIR_PeripheralDST       | \
-
                               DMA_Mode_Normal             | \
-
                               DMA_PeripheralInc_Enable    | \
-
                               DMA_MemoryInc_Enable        | \
-
                               DMA_PeripheralDataSize_Byte | \
-
                               DMA_MemoryDataSize_Byte     | \
-
                               DMA_Priority_VeryHigh       | \
-
                               DMA_M2M_Enable              | \
-
                               DMA_CCR1_EN;
-
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
-
 
 #else
     /// Uses the "Duff's Device" for loop unrolling.  If this is incredibly 

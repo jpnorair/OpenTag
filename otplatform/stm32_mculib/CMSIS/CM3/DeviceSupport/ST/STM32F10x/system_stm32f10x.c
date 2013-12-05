@@ -105,29 +105,29 @@
     */
     
 #if defined (STM32F10X_LD_VL) || (defined STM32F10X_MD_VL) || (defined STM32F10X_HD_VL)
-#   if !defined(MCU_PARAM_XTALHz) && !defined(MCU_PARAM_OSCHz)
+#   if !defined(MCU_CONFIG_XTALHz) && !defined(MCU_CONFIG_OSCHz)
 //#     define SYSCLK_FREQ_HSE    HSE_VALUE */
 #       define SYSCLK_FREQ_24MHz  24000000
-#   elif defined(MCU_PARAM_XTALHz)
-#       define SYSCLK_FREQ_HSE  MCU_PARAM_XTALHz
+#   elif defined(MCU_CONFIG_XTALHz)
+#       define SYSCLK_FREQ_HSE  MCU_CONFIG_XTALHz
 #   else
 #       define SYSCLK_FREQ_24MHz  24000000
 #   endif
 
 #else
-#   if !defined(MCU_PARAM_XTALHz) && !defined(MCU_PARAM_OSCHz)
+#   if !defined(MCU_CONFIG_XTALHz) && !defined(MCU_CONFIG_OSCHz)
 //#     define SYSCLK_FREQ_HSE    HSE_VALUE */
 #       define SYSCLK_FREQ_24MHz  24000000
-#   elif (defined MCU_PARAM_XTALHz)
-#       define SYSCLK_FREQ_HSE  MCU_PARAM_XTALHz
-#   elif (MCU_PARAM_OCSHz <= 8000000)
-#   elif (MCU_PARAM_OCSHz <= 24000000)
+#   elif (defined MCU_CONFIG_XTALHz)
+#       define SYSCLK_FREQ_HSE  MCU_CONFIG_XTALHz
+#   elif (MCU_CONFIG_OCSHz <= 8000000)
+#   elif (MCU_CONFIG_OCSHz <= 24000000)
 #       define SYSCLK_FREQ_24MHz  24000000
-#   elif (MCU_PARAM_OCSHz <= 36000000)
+#   elif (MCU_CONFIG_OCSHz <= 36000000)
 #       define SYSCLK_FREQ_36MHz  36000000
-#   elif (MCU_PARAM_OCSHz <= 48000000)
+#   elif (MCU_CONFIG_OCSHz <= 48000000)
 #       define SYSCLK_FREQ_48MHz  48000000
-#   elif (MCU_PARAM_OCSHz <= 56000000)
+#   elif (MCU_CONFIG_OCSHz <= 56000000)
 #       define SYSCLK_FREQ_56MHz  56000000
 #   else
 #       define SYSCLK_FREQ_72MHz  72000000

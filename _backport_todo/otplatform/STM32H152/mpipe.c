@@ -50,14 +50,14 @@
 #else
 #error mpipe_disabled
 #endif
-#if (MCU_FEATURE(MPIPEVCOM) == ENABLED)
+#if (MCU_CONFIG(MPIPECDC) == ENABLED)
 #error mpipe_vcom_enabled
 #else
 #error mpipe_vcom_disabled
 #endif*/
 
 // Compile only when MPipe is enabled, but USB is disabled
-#if ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_FEATURE(MPIPEVCOM) != ENABLED))
+#if ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_CONFIG(MPIPECDC) != ENABLED))
 
 //#include "OT_utils.h"
 #include "crc16.h"
@@ -213,4 +213,4 @@ ot_int mpipe_init(void* port_id) {
     return 0;
 }
 
-#endif /* ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_FEATURE(MPIPEVCOM) != ENABLED))  */
+#endif /* ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_CONFIG(MPIPECDC) != ENABLED))  */
