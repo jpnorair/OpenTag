@@ -489,7 +489,7 @@ void sub_processing() {
         /// <LI> The current session is popped after response, or on next kernel
         ///      loop (immediately) if no response </LI>
         if (active->flags & M2_FLAG_LISTEN) {
-            network_cont_dialog(active->applet, 0);
+            network_cont_session(active->applet, M2_NETSTATE_REQRX, 0);
         }
     }
 

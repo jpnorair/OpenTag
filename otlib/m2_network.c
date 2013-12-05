@@ -174,21 +174,22 @@ void network_mark_ff() {
 
 
 
-#ifndef EXTF_network_cont_dialog
-m2session* network_cont_dialog(ot_app applet, ot_uint wait) {
-    ///@todo If redundant TX goes away, we could just do this in-place and 
-    ///      not bother with session_extend.
+#ifndef EXTF_network_cont_session
+m2session* network_cont_session(ot_app applet, ot_u8 next_state, ot_uint wait) {
     m2session*  next;
     m2session*  active;
     ot_u8       netstate;
     
-    active          = session_top();
-    netstate        = (active->netstate & 0x0F) | (M2_NETSTATE_REQRX | M2_NETSTATE_CONNECTED);
-    next            = session_extend(applet, (dll.comm.tc + wait), active->channel, netstate);
-    next->extra     = active->extra;
-    next->dialog_id = active->dialog_id++;
-    next->subnet    = active->subnet;
-    next->flags     = active->flags;
+    active      = session_top();
+    netstate    = (active->netstate & 0x0F) | M2_NETSTATE_CONNECTED | next_state;
+    next        = session_extend(applet, /*dll.comm.tc +*/ wait, active->channel, netstate);
+    if (next) {
+        next->extra     = active->extra;
+        next->dialog_id = active->dialog_id++;
+        next->subnet    = active->subnet;
+        next->flags     = active->flags;
+    }
+    return next;
 }
 #endif
 

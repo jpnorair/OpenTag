@@ -202,11 +202,13 @@ ot_int network_route_ff(m2session* active);
 
 
 
-/** @brief  Continues a dialog/session by cloning the existing session
+/** @brief  Continues a session by "extending" the existing session
   * @param  applet      (ot_app) Applet pointer for new session
+  * @param  next_state  (ot_u8) next session netstate (e.g. M2_NETSTATE_REQRX)
   * @param  wait        (ot_uint) Number of ticks to wait following dll-idle
   * @retval m2session*  Pointer to newly cloned session
   * @ingroup Network
+  * @sa session_extend
   *
   * You must pass a valid applet into the "applet" argument, or NULL.  NULL
   * will follow the default session behavior, which is simply to respond
@@ -214,10 +216,11 @@ ot_int network_route_ff(m2session* active);
   * the applet from the current session.
   *
   * The "wait" argument is a tail-chained number of ticks that starts 
-  * counting after the DLL goes to idle.  For example, the DLL goes to
-  * idle after the response window expires.
+  * counting as soon as the DLL engages the continued session.  This will occur
+  * the next time the DLL is evaluated by the kernel scheduler (e.g. preempted)
+  * AND the DLL is not busy doing any active RX/TX work (i.e. idle).
   */
-m2session* network_cont_dialog(ot_app applet, ot_uint wait);
+m2session* network_cont_session(ot_app applet, ot_u8 next_state, ot_uint wait);
 
 
 
