@@ -2,15 +2,15 @@
 #   Unix make file for random test program
 
 CC = gcc
-CFLAGS = -g -Wall
-#CFLAGS = -O
+#CFLAGS = -g -Wall
+CFLAGS = -O3
 
 ent:	ent.o iso8859.o randtest.o chisq.o
 	$(CC) $(CFLAGS) ent.o iso8859.o randtest.o chisq.o -o ent -lm
 
 ent.c:	iso8859.h randtest.h
 
-DISTFILES = Makefile ent.c ent.exe ent.html \
+DISTFILES = Makefile ent.c ent ent.html \
 	    entitle.gif entest.bat entestw32.bat entest.mas \
 	    iso8859.c iso8859.h randtest.c randtest.h \
 	    chisq.c \

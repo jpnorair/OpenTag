@@ -773,11 +773,7 @@ void sub_activate() {
     else if (s_active->netstate & M2_NETSTATE_RX) {
         sub_init_rx(s_active);
     }
-    else {
-        if ((s_active->netstate & M2_NETSTATE_RESP) == 0) {
-            dll.counter     = dll.netconf.hold_limit;
-            dll.idle_state  = M2_DLLIDLE_HOLD;
-        }
+    else { 
         sub_init_tx(s_active->netstate & M2_NETFLAG_FLOOD);
     }
 }
@@ -993,16 +989,25 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
         /// <LI> Don't return to kernel for bad frames </LI>
         /// <LI> After receiving good request, turn-off radio subsystem </LI>
         if (pcode == 0) {
+            ot_bool rx_isresp = (active->netstate & M2_NETSTATE_RESP);
+            
             if (frx_code == 0) {
                 sys.task_RFA.reserve = 20;  ///@todo Could have quick evaluator here
                 sys.task_RFA.event   = 1;   ///Process the packet!!!
             }
-            if ((frx_code != 0) || (active->netstate & M2_NETSTATE_RESP)) {
+            if (rx_isresp) {
+                dll.counter     = dll.netconf.hold_limit;
+                dll.idle_state  = M2_DLLIDLE_HOLD;
+            }
+            if (frx_code || rx_isresp) {
                 rm2_reenter_rx(&rfevt_frx);
             }
             else {
                 radio_sleep();
             }
+            
+            // This should follow the above operations, because callback from
+            // DLL_SIG_RFTERMINATE might take a relatively long time.
             if (frx_code != 0) {
                 DLL_SIG_RFTERMINATE(3, frx_code);
                 return;

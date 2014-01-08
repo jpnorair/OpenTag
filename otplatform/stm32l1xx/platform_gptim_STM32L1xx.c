@@ -397,23 +397,31 @@ void platform_init_gptim(ot_uint prescaler) {
     RTC->CR     = _IE_WAKEUP | _IE_ALARMB | b100;
     RTC->ISR    = 0;
     
-    /// 2. Configure TIM10 to use as a ~32768 Hz chronometer.
-    ///    It will get enabled on-demand by platform_flush_gptim().
-    RCC->APB2RSTR  |= RCC_APB2RSTR_TIM10RST;
-    TIM10->PSC      = 7;                // No reason to run sampling domain too hard.
-    TIM10->ARR      = 65535;            // reload automatically after finishing
-    TIM10->CCR1     = 2;                // RTC registers stabilize after 2 LF clock periods.
-#   if (BOARD_FEATURE(LFXTAL))
-    TIM10->SMCR     = TIM_SMCR_ECE;     // External Clock Mode 2, using LSE
-#   else
-    TIM10->SMCR     = (4<<4) | (7<<0);  // External Clock Mode 1, using LSI
-    TIM10->OR       = 1;
-#   endif
-    
     /// 3. Clear local static variables
     gptim.evt_span  = 0;
     gptim.evt_stamp = 0;
     gptim.flags     = 0;
+    
+    /// 4a. If using LF XTAL, configure TIM10 to use the LSE as a clock source,
+    ///     thus becoming a ~32768 Hz chronometer.  It will get enabled on-demand 
+    ///     by platform_flush_gptim().
+    
+    /// 4b. If using LSI, configure TIM10 as a normal timer, driven by HSI/HSE, 
+    ///     with roughly 32768Hz frequency.
+    
+    RCC->APB2RSTR  |= RCC_APB2RSTR_TIM10RST;
+    RCC->APB2RSTR  &= ~RCC_APB2RSTR_TIM10RST;
+    
+#   if (BOARD_FEATURE(LFXTAL))
+    TIM10->SMCR     = TIM_SMCR_ECE;     // External Clock Mode 2, using LSE
+    TIM10->PSC      = 7;                // No reason to run sampling domain too hard.
+    TIM10->CCR1     = 2;                // RTC registers stabilize after 2 LF clock periods.
+    
+#   else
+    TIM10->PSC      = (BOARD_PARAM_HFHz / 32768);
+    
+#   endif
+    
 }
 #endif
 
@@ -432,26 +440,26 @@ ot_u32 platform_get_ktim() {
     if (gptim.flags & GPTIM_FLAG_RTCBYPASS) {
         ot_u16 elapsed_chron;
         elapsed_chron   = gptim_get_chrono() - gptim.chron_stamp;
-#       if (BOARD_FEATURE(LFXTAL))
         elapsed_chron >>= (5-OT_GPTIM_SHIFT);       // divide by 32 to get ticks
-#       else
-        elapsed_chron  /= platform_ext.lsi_khz;     // divide by something else to get ticks
-#       endif
         return gptim.evt_span + elapsed_chron;
     }
     
     // RTC is needed for this get.  We need to wait for it to be ready to read.
     // It might be ready now, depending on how long the process has been 
     // between STOP mode and now (it must be >= 2 RTC Clocks, i.e. 61us).
-    RTC->CR &= ~RTC_CR_ALRAE;
-    //while ((RTC->ISR & RTC_ISR_RSF) == 0);
     
-    while ((TIM10->SR & TIM_SR_CC1IF) == 0) {
-        TIM10->DIER = TIM_DIER_CC1IE;
-        ///@todo get WFE working... now just looping
-        //__WFE();
-    }
-    TIM10->DIER = 0;
+    ///@todo Could use some type of TIM10 input capture method, plus WFE/WFI, to 
+    ///      wait for the signal.  Right now, just busy-looping on RTC RDY signal.
+    
+    RTC->CR &= ~RTC_CR_ALRAE;
+    while ((RTC->ISR & RTC_ISR_RSF) == 0);
+    
+    //while ((TIM10->SR & TIM_SR_CC1IF) == 0) {
+    //    TIM10->DIER = TIM_DIER_CC1IE;
+    //    ///@todo get WFE working... now just looping
+    //    //__WFE();
+    //}
+    //TIM10->DIER = 0;
 
     // Compute the elapsed time from the RTC, but also synchronize the chrono
     // so that it can be used from now-on
