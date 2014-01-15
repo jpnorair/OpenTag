@@ -397,7 +397,7 @@ ot_int auth_load_keydata(ot_u8* dst, ot_int limit, ot_u8 index) {
     if (limit < data_size) {
         return 0;
     }
-    platform_memcpy(dst, (ot_u8*)auth_key[index], data_size);
+    memcpy(dst, (ot_u8*)auth_key[index], data_size);
     return data_size;
 }
 
@@ -410,11 +410,11 @@ ot_u8 auth_store_keydata(auth_info* info, ot_u8* keydata) {
     
     local_key = &auth_key[info->index];
     
-    platform_memcpy(    (ot_u8*)&local_key->info, \
+    memcpy(    (ot_u8*)&local_key->info, \
                         (ot_u8*)info, \
                         sizeof(auth_info)    );
     
-    platform_memcpy(    (ot_u8*)local_key->cache, \
+    memcpy(    (ot_u8*)local_key->cache, \
                         (ot_u8*)keydata, \
                         16    );
     

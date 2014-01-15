@@ -57,7 +57,7 @@ void q_rebase(ot_queue* q, ot_u8* buffer) {
 
 #ifndef EXTF_q_copy
 void q_copy(ot_queue* q1, ot_queue* q2) {
-    platform_memcpy((ot_u8*)q1, (ot_u8*)q2, sizeof(ot_queue));
+    memcpy((ot_u8*)q1, (ot_u8*)q2, sizeof(ot_queue));
 }
 #endif
 
@@ -250,7 +250,7 @@ ot_u32 q_readlong(ot_queue* q)  {
 
 #ifndef EXTF_q_writestring
 void q_writestring(ot_queue* q, ot_u8* string, ot_int length) {
-    platform_memcpy(q->putcursor, string, length);
+    memcpy(q->putcursor, string, length);
     //#q->length      += length;
     q->putcursor   += length;
 }
@@ -259,7 +259,7 @@ void q_writestring(ot_queue* q, ot_u8* string, ot_int length) {
 
 #ifndef EXTF_q_readstring
 void q_readstring(ot_queue* q, ot_u8* string, ot_int length) {
-    platform_memcpy(string, q->getcursor, length);
+    memcpy(string, q->getcursor, length);
     q->getcursor += length;
 }
 #endif

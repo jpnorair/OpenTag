@@ -293,19 +293,31 @@ void spirit1_reset() {
 
 
 void spirit1_waitforreset() {
+
 ///@todo Save non-blocking implementation for a rainy day.
 /// Blocking implementation: Wait for POR signal to rise using a busy loop.
+
 /// There is a watchdog variable that should count at least 1ms.  The loop
+
 /// itself should take 8 cycles to execute (by inspection), and we assume
+
 /// a clock speed of 16MHz.
+
     ot_uint watchdog = 2000;
+
     
     while (((RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN) == 0) && (--watchdog));
+
     if (watchdog == 0) {
+
         ///@todo failure code that logs hardware fault and resets OT
+
         
+
         //Error Marker: DEBUG ONLY
+
         //BOARD_LEDB_PORT->BSRRH  = BOARD_LEDB_PIN;
+
     }
 }
 
@@ -313,19 +325,32 @@ void spirit1_waitforreset() {
 void spirit1_waitforready() {
 /// Wait for the Ready Pin to go high (reset pin is remapped in init).
 /// STANDBY->READY should take about 75us, although the absolute worst
+
 /// case is: 220us, 230us, 240us, 440us, 460us, 480us with respective
+
 /// 52, 50, 48, 26, 25, 24 MHz crystals.  By inspection, the loop takes
+
 /// 8 cycles to complete one iteration, and we assume a clock speed of 
+
 /// 16 MHz.
+
     ot_uint watchdog = 500;
+
     
     while (((_READY_PORT->IDR & _READY_PIN) == 0) && (--watchdog));
+
     if (watchdog == 0){
+
         ///@todo failure code that logs firmware fault, kills task,
+
         ///      re-inits radio
+
         
+
         //Error Marker: DEBUG ONLY
+
         //BOARD_LEDR_PORT->BSRRH  = BOARD_LEDR_PIN;
+
     }
 }
 
@@ -524,7 +549,7 @@ void spirit1_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data) {
     cmd[0]  = 1;
     cmd[1]  = start_addr;
     spirit1_spibus_io(2, length, (ot_u8*)cmd);
-    platform_memcpy(data, spirit1.busrx, length);
+    memcpy(data, spirit1.busrx, length);
 }
 
 void spirit1_write(ot_u8 addr, ot_u8 data) {
@@ -693,7 +718,9 @@ ot_bool spirit1_check_cspin(void) {
   *                 TX FIFO threshold:          9 
   */
 
+
 ot_u32 macstamp;
+
 
 void platform_isr_rtcwakeup() {
 // Decrement dll counter... that's it
@@ -702,6 +729,7 @@ void platform_isr_rtcwakeup() {
 
 void spirit1_start_counter() {
     //RTC->CR |= RTC_CR_WUTE;
+
     macstamp = platform_get_interval(NULL);
 }
 
@@ -710,9 +738,13 @@ void spirit1_stop_counter() {
 }
 
 ot_u16 spirit1_get_counter() {
+
     ot_u16 value;
+
     value = dll.counter - (ot_u16)platform_get_interval(&macstamp);
+
     return value;
+
     
     //return dll.counter;
 }
@@ -764,17 +796,30 @@ void sub_int_config(ot_u32 ie_sel) {
 
 void spirit1_int_off()      {   sub_int_config(0);   }
 
+
+
 void spirit1_int_on() {
+
     ot_u32 ie_sel;
+
     switch (spirit1.imode) {
+
         case MODE_Listen:   ie_sel = RFI_LISTEN;
+
         case MODE_RXData:   ie_sel = RFI_RXDATA;
+
         case MODE_CSMA:     ie_sel = RFI_CSMA;
+
         case MODE_TXData:   ie_sel = RFI_TXFIFO;
+
         default:            ie_sel = 0;
+
     }
+
     sub_int_config(ie_sel);
+
 }
+
 
 
 void spirit1_int_listen()   {   spirit1.imode = MODE_Listen;    

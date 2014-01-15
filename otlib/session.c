@@ -118,9 +118,9 @@ m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netst
         } while (extend < &session.heap[_LAST]);
         
         // Shift the stack down one notch, from top to extension point.
-        platform_memcpy(    (ot_u8*)session.top, 
-                            (ot_u8*)&session.top[1], 
-                            (ot_uint)((ot_u8*)extend - (ot_u8*)session.top) );
+        memcpy( (ot_u8*)session.top, 
+                (ot_u8*)&session.top[1], 
+                (ot_uint)((ot_u8*)extend - (ot_u8*)session.top) );
     }
 
     return sub_store_session(extend, applet, wait, channel, netstate);
@@ -146,7 +146,7 @@ m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netstate
     
     // Only do the copy if the size is not zero
     if (length != 0) {
-        platform_memcpy( (ot_u8*)session.top, src, length);
+        memcpy( (ot_u8*)session.top, src, length);
     }
     
     return sub_store_session(&session.heap[_LAST], applet, wait, netstate, channel);

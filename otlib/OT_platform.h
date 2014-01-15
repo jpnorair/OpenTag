@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2013-14 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /otlib/OT_platform.h
   * @author     JP Norair
   * @version    R100
-  * @date       19 Aug 2013
+  * @date       14 Jan 2014
   * @brief      Platform Library functions
   * @defgroup   Platform (Platform Module)
   * @ingroup    Platform
@@ -26,6 +26,9 @@
   * are optional (and they are marked as such).  When porting to a new platform,
   * these functions need to be implemented, as they are typically not hardware
   * agnostic.
+  *
+  * @todo Break-up OT_platform into its own directory of includes, perhaps like
+  *       inc/otplatform/...
   ******************************************************************************
   */
   
@@ -614,43 +617,55 @@ ot_u16 platform_prand_u16();
 ot_u32 platform_prand_u32();
 
 
-
 /** @brief platform-specific memcpy, in some cases wraps to OS-level memcpy
   * @param  dest        (ot_u8*) destination memory address
   * @param  src         (ot_u8*) source memory address
-  * @param  length      (ot_int) number of bytes to transfer/copy
+  * @param  length      (ot_uint) number of bytes to transfer/copy
   * @retval None
   * @ingroup Platform
   * @sa platform_memcpy_2()
+  * @sa platform_memcpy_4()
   * @sa platform_memset()
+  *
+  * platform_memcpy() is the generic implementation of memcpy, which must 
+  * handle byte-aligned memory copies.
+  *
+  * platform_memcpy_2() and platform_memcpy_4() are two and four byte aligned
+  * variants of platform_memcpy()
   */
-void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length);
-
-
-
-/** @brief platform-specific half-word memcpy, in some cases wraps to OS-level memcpy
-  * @param  dest        (ot_u8*) destination memory address
-  * @param  src         (ot_u8*) source memory address
-  * @param  length      (ot_int) number of half-words to transfer/copy
-  * @retval None
-  * @ingroup Platform
-  * @sa platform_memcpy()
-  * @sa platform_memset()
-  */
-void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length);
+void platform_memcpy(ot_u8* dst, ot_u8* src, ot_uint length);
+void platform_memcpy_2(ot_u16* dst, ot_u16* src, ot_uint length);
+void platform_memcpy_4(ot_u32* dst, ot_u32* src, ot_uint length);
 
 
 
 /** @brief platform-specific memset, in some cases wraps to OS-level memset
   * @param  dest        (ot_u8*) destination memory address
   * @param  value       (ot_u8) byte to put into memory (repeatedly)
-  * @param  length      (ot_int) number of bytes to set
+  * @param  length      (ot_uint) number of bytes to set
   * @retval None
   * @ingroup Platform
   * @sa platform_memcpy()
-  * @sa platform_memcpy_2()
   */
-void platform_memset(ot_u8* dest, ot_u8 value, ot_int length);
+void platform_memset(ot_u8* dst, ot_u8 value, ot_uint length);
+void platform_memset_2(ot_u8* dst, ot_u16 value, ot_uint length);
+void platform_memset_4(ot_u8* dst, ot_u32 value, ot_uint length);
+
+
+/** Map platform_memcpy and platform_memset routines to memcpy, memset in the
+  * case when POSIX is not used.  
+  */
+#if (OS_FEATURE(MEMCPY) == ENABLED)
+#   define memcpy2(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<1)
+#   define memcpy4(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<2)
+#else
+#   define memcpy       platform_memcpy
+#   define memcpy2      platform_memcpy_2
+#   define memcpy4      platform_memcpy_4
+#   define memset       platform_memset
+#   define memset2      platform_memset_2
+#   define memset4      platform_memset_4
+#endif
 
 
 

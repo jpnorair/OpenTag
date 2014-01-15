@@ -250,7 +250,7 @@ void ext_systask(ot_task task) {
                     }
                 }
                 task->event = (palfi.wake_event) ? task->event+4+(i<<1) : 0;
-                platform_memset(&palfi.rssi_info, 0xFF, 6);
+                memset(&palfi.rssi_info, 0xFF, 6);
             }
         }
         goto sys_sig_extprocess_TOP;
@@ -501,7 +501,7 @@ void palfi_init() {
     }
 
     // Clear Status buffer
-    platform_memset(palfi.status, 0, 4);
+    memset(palfi.status, 0, 4);
 
     // init wakeup port (should be P1.0)
     PALFI_WAKE_PORT->DDIR  &= ~PALFI_WAKE_PIN;

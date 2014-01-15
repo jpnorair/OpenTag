@@ -124,7 +124,7 @@ void sys_init() {
     /// Set default values in system tasks.  At a minimum, this is doing a
     /// memset on the task struct to 0.  If dynamic task callbacks are enabled,
     /// also set theses callbacks to the default values.
-    platform_memset((ot_u8*)sys.task, 0, sizeof(task_marker)*SYS_TASKS);
+    memset((ot_u8*)sys.task, 0, sizeof(task_marker)*SYS_TASKS);
     
 #   if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
     {

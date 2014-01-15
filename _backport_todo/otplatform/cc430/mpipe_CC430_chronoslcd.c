@@ -351,7 +351,7 @@ u8 *int_to_array(u32 n, u8 digits, u8 blanks) {
     u8 digits1 = digits;
 
     // Preset result string
-    platform_memcpy(clcd.itoa_str, "0000000", 7);
+    memcpy(clcd.itoa_str, "0000000", 7);
 
     // Return empty string if number of digits is invalid (valid range for digits: 1-7)
     if ((digits-1) > 6)
@@ -360,10 +360,10 @@ u8 *int_to_array(u32 n, u8 digits, u8 blanks) {
     // Numbers 0 .. 180 can be copied from int_to_array_conversion_table without conversion
     if (n <= 180) {
         if (digits >= 3) {
-            platform_memcpy(clcd.itoa_str + (digits - 3), int_to_array_conversion_table[n], 3);
+            memcpy(clcd.itoa_str + (digits - 3), int_to_array_conversion_table[n], 3);
         }
         else {                   // digits == 1 || 2
-            platform_memcpy(clcd.itoa_str, int_to_array_conversion_table[n] + (3 - digits), digits);
+            memcpy(clcd.itoa_str, int_to_array_conversion_table[n] + (3 - digits), digits);
         }
     }
     else {                       // For n > 180 need to calculate string content
@@ -752,14 +752,14 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
     if (message.flag.show) {
         // Select message to display
         line = LINE2;
-        if (message.flag.type_locked)           platform_memcpy(string, "  LO?T", 6);
-        else if (message.flag.type_unlocked)    platform_memcpy(string, "  OPEN", 6);
-        else if (message.flag.type_lobatt)      platform_memcpy(string, "LOBATT", 6);
-        else if (message.flag.type_nomem)       platform_memcpy(string, " NOMEM", 6);   
+        if (message.flag.type_locked)           memcpy(string, "  LO?T", 6);
+        else if (message.flag.type_unlocked)    memcpy(string, "  OPEN", 6);
+        else if (message.flag.type_lobatt)      memcpy(string, "LOBATT", 6);
+        else if (message.flag.type_nomem)       memcpy(string, " NOMEM", 6);   
         else {
             line = LINE1;
-            if (message.flag.type_on)           platform_memcpy(string, "  ON", 4);
-            else if (message.flag.type_off)     platform_memcpy(string, " OFF", 4);
+            if (message.flag.type_on)           memcpy(string, "  ON", 4);
+            else if (message.flag.type_off)     memcpy(string, " OFF", 4);
         }
 
         // Clear previous content

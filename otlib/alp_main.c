@@ -111,7 +111,7 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
         //*hdr_position++ = alp->OUTREC(PLEN);
         //*hdr_position++ = alp->OUTREC(ID);
         //*hdr_position   = alp->OUTREC(CMD);
-        platform_memcpy(hdr_position, &alp->OUTREC(FLAGS), 4);
+        memcpy(hdr_position, &alp->OUTREC(FLAGS), 4);
 #   endif
 
     alp->OUTREC(FLAGS)  &= ~ALP_FLAG_MB;     
@@ -222,7 +222,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
             if (alp_parse_header(alp) == False) {
                 break;
             }
-            //platform_memcpy(&alp->OUTREC(FLAGS), &alp->INREC(FLAGS), 4);
+            //memcpy(&alp->OUTREC(FLAGS), &alp->INREC(FLAGS), 4);
             *((ot_u32*)&alp->OUTREC(FLAGS)) = *((ot_u32*)&alp->INREC(FLAGS));
         }
         
@@ -251,7 +251,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         }
         else {
             //OBSOLETE: sub_insert_header(alp, hdr_position, hdr_len);
-            platform_memcpy(hdr_position, &alp->OUTREC(FLAGS), 4);
+            memcpy(hdr_position, &alp->OUTREC(FLAGS), 4);
             alp->OUTREC(FLAGS)  &= ~ALP_FLAG_MB;
         }
             
@@ -339,7 +339,7 @@ ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target) {
 
 #ifndef EXTF_alp_retrieve_cmd
 ot_bool alp_retrieve_cmd(alp_record* apprec, ot_queue* appq, ot_u8 target) {
-    platform_memcpy((ot_u8*)&apprec->flags, appq->getcursor, 4);
+    memcpy((ot_u8*)&apprec->flags, appq->getcursor, 4);
     
     if (apprec->id != target) {
         return False;
@@ -428,7 +428,7 @@ void alp_purge(alp_tmpl* alp) {
         if (move_bytes == 0) {
             break;
         }
-        platform_memcpy(acursor, bcursor, (ccursor-bcursor));   
+        memcpy(acursor, bcursor, (ccursor-bcursor));   
     }
     
     ///3. Finally, retract the putcursor and length by the total number of 
@@ -643,7 +643,7 @@ ot_bool alp_parse_header(alp_tmpl* alp) {
     ot_u8* msgfront;
     msgfront                = alp->inq->getcursor;
     alp->inq->getcursor    += 4;
-    platform_memcpy(&alp->INREC(FLAGS), msgfront, 4);
+    memcpy(&alp->INREC(FLAGS), msgfront, 4);
     
     ///@todo this is legacy code.  Bookmark should get removed in future
     //if (alp->INREC(FLAGS) & ALP_FLAG_MB) {
@@ -670,7 +670,7 @@ ot_bool alp_parse_header(alp_tmpl* alp) {
 //    	ot_u8* qdata;
 //    	qdata                   = alp->inq->getcursor;
 //    	alp->inq->getcursor    += 3;
-//    	platform_memcpy(&alp->INREC(PLEN), qdata, 3);
+//    	memcpy(&alp->INREC(PLEN), qdata, 3);
 //    	return True;
 //    }
 

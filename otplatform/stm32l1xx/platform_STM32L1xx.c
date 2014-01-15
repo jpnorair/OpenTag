@@ -1772,7 +1772,7 @@ ot_u16 platform_prand_u16() {
 #if MCU_CONFIG(MEMCPYDMA)
 #   define MEMCPY_DMA_INT  (1 << ((MEMCPY_DMA_CHAN_ID-1)*4))
 
-void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_int length) {
+void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
 /// Use 8, 16, or 32 bit chunks based on detected alignment
     static const ot_u16 ccr[4]      = { 0x4AD1, 0x40D1, 0x45D1, 0x40D1 };
     static const ot_u16 len_div[4]  = { 2, 0, 1, 0 };
@@ -1790,7 +1790,7 @@ void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_int length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
 
-void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_int length) {
+void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
 /// Use 16 or 32 bit chunks based on detected alignment
     ot_u16 ccr_val = 0x45D1;
 
@@ -1809,53 +1809,52 @@ void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_int length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
 
+void sub_memcpy4_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
+/// 32 bit chunks based on detected alignment
+    MEMCPY_DMACHAN->CCR     = 0;
+    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
+    MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;
+    MEMCPY_DMACHAN->CMAR    = (ot_u32)src;
+    MEMCPY_DMACHAN->CNDTR   = length;
+    MEMCPY_DMACHAN->CCR     = 0x4AD1;
+    
+    while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
+}
+
+
 #endif  //MCU_CONFIG(MEMCPYDMA)
 
 
 
 
-void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
-#if OS_FEATURE(MEMCPY)
-    memcpy(dest, src, length);
-
-#elif MCU_CONFIG(MEMCPYDMA)
-    sub_memcpy_dma(dest, src, length);
-//    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
-//    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
-//    MEMCPY_DMACHAN->CMAR   = (ot_u32)src;
-//    MEMCPY_DMACHAN->CNDTR  = length;
-//    MEMCPY_DMACHAN->CCR    = 0x40D1;
-//    while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
-
+void platform_memcpy(ot_u8* dst, ot_u8* src, ot_utint length) {
+#if MCU_CONFIG(MEMCPYDMA)
+    sub_memcpy_dma(dst, src, length);
 #else
-    DUFF_DEVICE_8(*dest++, *src++, length);
+    DUFF_DEVICE_8(*dst++, *src++, length);
 #endif
 }
 
-
-void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length) {
+void platform_memcpy_2(ot_u16* dst, ot_u16* src, ot_uint length) {
 #if MCU_CONFIG(MEMCPYDMA)
-    sub_memcpy2_dma( (ot_u8*)dest, (ot_u8*)src, length);
-//    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
-//    MEMCPY_DMACHAN->CPAR   = (ot_u32)dest;
-//    MEMCPY_DMACHAN->CMAR   = (ot_u32)src;
-//    MEMCPY_DMACHAN->CNDTR  = length;
-//    MEMCPY_DMACHAN->CCR    = 0x45D1;
-//    while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
-
+    sub_memcpy2_dma( (ot_u8*)dst, (ot_u8*)src, length);
 #else
-    platform_memcpy((ot_u8*)dest, (ot_u8*)src, length<<1);
-    
+    platform_memcpy((ot_u8*)dst, (ot_u8*)src, length<<1);
+#endif
+}
+
+void platform_memcpy_4(ot_u32* dst, ot_u32* src, ot_uint length) {
+#if MCU_CONFIG(MEMCPYDMA)
+    sub_memcpy4_dma( (ot_u32*)dst, (ot_u32*)src, length);
+#else
+    platform_memcpy((ot_u32*)dst, (ot_u32*)src, length<<2);
 #endif
 }
 
 
 
 void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
-#if OS_FEATURE(MEMCPY)
-    memset(dest, value, length);
-
-#elif MCU_CONFIG(MEMCPYDMA)
+#if MCU_CONFIG(MEMCPYDMA)
     MEMCPY_DMACHAN->CCR     = 0;
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;       ///@todo see if this can be globalized
     MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;

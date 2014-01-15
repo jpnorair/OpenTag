@@ -34,7 +34,7 @@
   * This is the CDC driver adapted by JP Norair from the official TI USB stack
   * code, and targeted for OpenTag.  In this file, there is nothing especially
   * dependent on OpenTag, however there are four references:
-  * <LI> platform_memcpy() is used.  It has the same interface as normal 
+  * <LI> platform_memcpy() is used explicitly.  It has the same interface as normal 
   *          memcpy(), except that platform_memcpy() typically uses DMA.    </LI>
   * <LI> platform_memset() is used, to similar affect as platform_memcpy()  </LI>
   * <LI> Platform Macro "PLATFORM_ENDIAN32()" is used.  On the MSP430, this
@@ -155,7 +155,7 @@ void sub_copy_usbtobuf (ot_u8* pEP, ot_u8* pCT, ot_u8 x) {
 
     //copy data from OEP3 X or Y buffer
     ///@todo this could be made into platform_memcpy2() via (nCount+1)>>1
-    platform_memcpy(CDC_READER(x).qbuf, pEP, nCount);
+    platform_memcpy_2(CDC_READER(x).qbuf, pEP, (nCount+1)>>1);
     
     //update buffer pointer past new bytes
     CDC_READER(x).rxbytes -= nCount;

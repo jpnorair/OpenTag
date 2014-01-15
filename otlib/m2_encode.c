@@ -127,7 +127,7 @@ ot_int em2_rscode_pad(ot_queue* q) {
     if (padbytes != 0) {
         ot_u8* pad      = q->putcursor;
         q->putcursor   += padbytes;
-        platform_memset(pad, padbytes, padbytes);
+        memset(pad, padbytes, padbytes);
     }
     return padbytes;
 }
