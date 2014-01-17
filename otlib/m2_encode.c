@@ -126,9 +126,15 @@ ot_u8 em2_check_crc5() {
                                         em2_rs_init_decode(&rxq); \
                                         em2_rs_encode(2);   \
                                 }   } while (0)
+#else
+#   define RS_ENCODE_1BYTE();
+#   define RS_DECODE_1BYTE();
+#   define RS_DECODE_START();
+
+#endif
 
 #ifndef EXTF_em2_rs_init_decode
-OT_WEAK void em2_rs_init_decode(ot_queue* q) {
+OT_WEAK ot_int em2_rs_init_decode(ot_queue* q) {
 }
 #endif
 
@@ -167,12 +173,6 @@ OT_WEAK void em2_rs_encode(ot_int n_bytes) {
 #endif
 
 
-#else
-#   define RS_ENCODE_1BYTE();
-#   define RS_DECODE_1BYTE();
-#   define RS_DECODE_START();
-
-#endif
 
 
 
@@ -243,18 +243,27 @@ OT_WEAK void em2_rs_encode(ot_int n_bytes) {
         while ( (em2.bytes > 0) && radio_rxopen()) {
             em2.bytes--;
             q_writebyte(&rxq, radio_getbyte() );
+            
             if (em2.state >= 0) {
-                if (--em2.state == 0) {
-                    em2.bytes   = (ot_int)rxq.front[0];         // Byte remaining
-                    crc_init_stream(1+em2.bytes, rxq.front);    // Total bytes
-                }
-                else {
+                if (--em2.state < 0) {
+                    ot_int ext_bytes;
+                    em2.bytes   = (ot_int)rxq.front[0] - 1;         // Bytes remaining
                     em2.crc5    = em2_check_crc5();
                     em2.lctl    = rxq.front[1];
-                    RS_DECODE_START();
+                    ext_bytes   = 2;                                // CRC bytes
+                    
+                    if (em2.lctl & 0x40) {
+                        ext_bytes -= rs_init_decode(&rxq);
+                        rs_decode(2);
+                    }
+                    crc_init_stream(em2.bytes + ext_bytes, rxq.front);    // Total bytes
+                    crc_calc_nstream(2);
                 }
             }
-            crc_calc_stream();
+            else {
+                RS_DECODE_1BYTE();
+                crc_calc_stream();
+            }
         }
     }
 #   endif
@@ -318,21 +327,27 @@ OT_WEAK void em2_rs_encode(ot_int n_bytes) {
             em2.bytes--;
             q_writebyte(&rxq, (radio_getbyte() ^ get_PN9()) );
             rotate_PN9();
+
             if (em2.state >= 0) {
-                if (--em2.state == 0) {
-                    em2.bytes   = (ot_int)rxq.front[0];         //Bytes remaining
-                    crc_init_stream(1+em2.bytes, rxq.front);    //Total bytes
-                }
-                else {
+                if (--em2.state < 0) {
+                    ot_int ext_bytes;
+                    em2.bytes   = (ot_int)rxq.front[0] - 1;         // Bytes remaining
                     em2.crc5    = em2_check_crc5();
                     em2.lctl    = rxq.front[1];
-                    RS_DECODE_START();
+                    ext_bytes   = 2;                                // CRC bytes
+                    
+                    if (em2.lctl & 0x40) {
+                        ext_bytes -= rs_init_decode(&rxq);
+                        rs_decode(2);
+                    }
+                    crc_init_stream(em2.bytes + ext_bytes, rxq.front);    // Total bytes
+                    crc_calc_nstream(2);
                 }
             }
             else {
                 RS_DECODE_1BYTE();
+                crc_calc_stream();
             }
-            crc_calc_stream(); 
         }
     }
 #   endif
@@ -590,25 +605,32 @@ void OT_WEAK em2_decode_data_FEC() {
                 rotate_PN9();
                 q_writebyte(&rxq, new_byte);
                 
-                if (em2.state >= 0) {
-                    if (--em2.state == 0) {
-                        em2.databytes   = rxq.front[0] + 1;
-                        em2.bytes       = ((em2.databytes >> 1) + 1) << 2;
-                        em2.bytes      -= 4;
-                        crc_init_stream(em2.databytes, rxq.front);
+                if (em2.state < 0) {
+                    ot_int fr_bytes;
+                    em2.state  -= 1;
+                    fr_bytes    = rxq.front[0] + 1;
+                    em2.bytes   = ((fr_bytes >> 1) + 1) << 2;
+                    em2.bytes  -= 4;
+                    em2.crc5    = em2_check_crc5();
+                    em2.lctl    = rxq.front[1];
+                    ext_bytes   = 0;
+                        
+                    if (em2.lctl & 0x40) {
+                        fr_bytes -= rs_init_decode(&rxq);
+                        rs_decode(2);
                     }
-                    else {
-                        em2.crc5    = em2_check_crc5();
-                        em2.lctl    = rxq.front[1];
-                        RS_DECODE_START();
-                    }
+                    em2.databytes   = fr_bytes - 2;     // subtract this block
+                    
+                    crc_init_stream(fr_bytes, rxq.front);
+                    crc_calc_nstream(2);
                 }
                 else {
                     RS_DECODE_1BYTE();
+                    crc_calc_stream();
+                    em2.databytes--;
                 }
-                em2.databytes--;
-                crc_calc_stream();
             }
+            
             
             // After having processed 3-symbol trellis terminator, 
             // flush out remaining data (always end-of-frame)
@@ -772,21 +794,24 @@ OT_WEAK void em2_encode_newframe() {
     }
 #   endif
 
-    /// 2. Set encoder total bytes now that all are in the queue
-    em2.bytes = q_span(&txq);
-    
-    /// 3. Handle RS Coding and other link control flags, and initialize
+    /// 2. Handle RS Coding and other link control flags, and initialize
     ///    RS Encoder if it is supported.  Otherwise, kill the flag
 #   if (M2_FEATURE(RSCODE))
     em2.lctl = txq.front[1];
     if (em2.lctl & 0x40) {
-        em2_rs_init_encode(&txq);
+        ot_int parity_bytes;
+        parity_bytes    = em2_rs_init_encode(&txq);
+        txq.front[0]   += parity_bytes;
+        txq.putcursor  += parity_bytes;
     }
 #   else
     em2.lctl        = txq.front[1] & ~0x40;
     txq.front[1]    = em2.lctl;
 #   endif
-    
+
+    /// 3. Set encoder total bytes now that all are in the queue
+    em2.bytes = q_span(&txq);
+
     /// 4. Prepare frame encoder, depending on frame type and supported methods.
     ///    (0) HW Encoder: do nothing. 
     ///    (1) SW PN9 Encoder: init PN9 LFSR -- also used in FEC. 

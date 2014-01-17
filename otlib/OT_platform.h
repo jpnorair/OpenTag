@@ -648,8 +648,8 @@ void platform_memcpy_4(ot_u32* dst, ot_u32* src, ot_uint length);
   * @sa platform_memcpy()
   */
 void platform_memset(ot_u8* dst, ot_u8 value, ot_uint length);
-void platform_memset_2(ot_u8* dst, ot_u16 value, ot_uint length);
-void platform_memset_4(ot_u8* dst, ot_u32 value, ot_uint length);
+void platform_memset_2(ot_u16* dst, ot_u16 value, ot_uint length);
+void platform_memset_4(ot_u32* dst, ot_u32 value, ot_uint length);
 
 
 /** Map platform_memcpy and platform_memset routines to memcpy, memset in the

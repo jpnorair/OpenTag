@@ -1821,13 +1821,30 @@ void sub_memcpy4_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
 
+void sub_memset_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
+    /// Use 8, 16, or 32 bit chunks based on detected alignment
+    static const ot_u16 ccr[4]      = { 0x4AD1, 0x40D1, 0x45D1, 0x40D1 };
+    static const ot_u16 len_div[4]  = { 2, 0, 1, 0 };
+    ot_int align;
+    
+    MEMCPY_DMACHAN->CCR     = 0;
+    MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
+    MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;
+    MEMCPY_DMACHAN->CMAR    = (ot_u32)src;
+    align                   = ((ot_u32)dest | (ot_u32)src | (ot_u32)length) & 3;
+    length                >>= len_div[align];
+    MEMCPY_DMACHAN->CNDTR   = length;
+    MEMCPY_DMACHAN->CCR     = ccr[align];
+    
+    while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
+}
 
 #endif  //MCU_CONFIG(MEMCPYDMA)
 
 
 
 
-void platform_memcpy(ot_u8* dst, ot_u8* src, ot_utint length) {
+void platform_memcpy(ot_u8* dst, ot_u8* src, ot_uint length) {
 #if MCU_CONFIG(MEMCPYDMA)
     sub_memcpy_dma(dst, src, length);
 #else
@@ -1853,11 +1870,11 @@ void platform_memcpy_4(ot_u32* dst, ot_u32* src, ot_uint length) {
 
 
 
-void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
+void platform_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
 #if MCU_CONFIG(MEMCPYDMA)
     MEMCPY_DMACHAN->CCR     = 0;
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;       ///@todo see if this can be globalized
-    MEMCPY_DMACHAN->CPAR    = (ot_u32)dest;
+    MEMCPY_DMACHAN->CPAR    = (ot_u32)dst;
     MEMCPY_DMACHAN->CMAR    = (ot_u32)&value;
     MEMCPY_DMACHAN->CNDTR   = length;
     MEMCPY_DMACHAN->CCR     = DMA_CCR1_DIR      | DMA_CCR1_PINC     | \
@@ -1866,10 +1883,17 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 
 #else
-    DUFF_DEVICE_8(*dest++, value, length);
+    DUFF_DEVICE_8(*dst++, value, length);
 #endif
 }
 
+void platform_memset_2(ot_u16* dst, ot_u16 value, ot_uint length) {
+    platform_memset( (ot_u8*)dst, (ot_u8)value, length<<1 );
+}
+
+void platform_memset_4(ot_u32* dst, ot_u32 value, ot_uint length) {
+    platform_memset( (ot_u8*)dst, (ot_u8)value, length<<2 );
+}
 
 
 

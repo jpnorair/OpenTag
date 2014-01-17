@@ -43,6 +43,7 @@
 
 #include "OT_platform.h"
 #include "OT_types.h"
+#include "queue.h"
 
 
 typedef struct {
@@ -203,7 +204,7 @@ ot_bool em2_complete();
 
 #if (M2_FEATURE(RSCODE))
 
-void em2_rs_init_decode(ot_queue* q);
+ot_int em2_rs_init_decode(ot_queue* q);
 void em2_rs_decode(ot_int n_bytes);
 
 ot_int em2_rs_check(void);

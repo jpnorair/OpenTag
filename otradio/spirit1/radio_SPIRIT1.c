@@ -1,4 +1,4 @@
-/* Copyright 2010-2013 JP Norair
+/* Copyright 2010-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otradio/spirit1/radio_SPIRIT1.c
   * @author     JP Norair
-  * @version    R102
-  * @date       6 Nov 2013
+  * @version    R103
+  * @date       16 Jan 2013
   * @brief      Radio Driver (RF transceiver) for SPIRIT1
   * @defgroup   Radio (Radio Module)
   * @ingroup    Radio
@@ -649,26 +649,31 @@ void em2_decode_newpacket() {
 
 #ifdef EXTF_em2_encode_newframe
 void em2_encode_newframe() {
-    ///1. Handle RS encoding of the frame.
-    if (txq.front[1] & 0x40) {
-#       if (M2_FEATURE(RSCODE) != ENABLED)
-        txq.front[1] ^= 0x40;
-#       else
-#       endif
-    }
-    
-    ///2. set initial values of encoder control variables
-    em2.lctl    = txq.front[1];
-    em2.bytes   = q_span(&txq);
-
-    ///3. Prepare the CRC, also adding 2 bytes to the frame length
+    /// 1. Prepare the CRC, also adding 2 bytes to the frame length
     if (txq.options.ubyte[UPPER] != 0) {
         crc_init_stream(em2.bytes, txq.getcursor);
-        em2.bytes      += 2;
         txq.front[0]   += 2;
         txq.putcursor  += 2;
         em2_add_crc5(txq.front);
 	}
+    
+    /// 2. Handle RS Coding and other link control flags, and initialize
+    ///    RS Encoder if it is supported.  Otherwise, kill the flag
+#   if (M2_FEATURE(RSCODE))
+    em2.lctl = txq.front[1];
+    if (em2.lctl & 0x40) {
+        ot_int parity_bytes;
+        parity_bytes    = em2_rs_init_encode(&txq);
+        txq.front[0]   += parity_bytes;
+        txq.putcursor  += parity_bytes;
+    }
+#   else
+    em2.lctl        = txq.front[1] & ~0x40;
+    txq.front[1]    = em2.lctl;
+#   endif
+    
+    /// 3. set initial values of encoder control variables
+    em2.bytes = q_span(&txq);
 }
 #endif
 
@@ -702,6 +707,12 @@ void em2_encode_data() {
         if (txq.options.ubyte[UPPER] != 0) {
             crc_calc_nstream(fill);
         }
+#       if (M2_FEATURE(RSCODE))
+        if (em2.lctl & 0x40) {
+            em2_rs_encode(fill);
+        }
+#       endif
+        
         cmd     = txq.getcursor;
         save[0] = *(--cmd);
         *cmd    = 0xff;
@@ -738,6 +749,7 @@ void em2_decode_data() {
         q_writestring(&rxq, spirit1.busrx, grab);
         
         if (em2.state == 0) {
+            ot_int ext_bytes;
             em2.state--;
             em2.bytes   = 1 + (ot_int)rxq.front[0];
             em2.lctl    = rxq.front[1];
@@ -745,9 +757,18 @@ void em2_decode_data() {
             if (em2.crc5 != 0) {
                 return;
             }
-            crc_init_stream(em2.bytes, rxq.getcursor);
+            
+            ext_bytes = 0;
+            if (em2.lctl & 0x40) {
+                ext_bytes = em2_rs_init_decode(&rxq);
+            }
+            crc_init_stream(em2.bytes - ext_bytes, rxq.getcursor);
         }
+        
         crc_calc_nstream(grab);
+#       if (M2_FEATURE(RSCODE))
+        if (em2.lctl & 0x40) em2_rs_decode(grab);
+#       endif
 
         em2.bytes -= grab;
         if (em2.bytes > 0) {
