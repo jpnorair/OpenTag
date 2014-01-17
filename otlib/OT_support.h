@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2013-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
 /**
   * @file       /otlib/OT_support.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    R100
-  * @date       19 Aug 2013
-  * @brief      Indexed List of Supported Applications and Platforms, which are
-  *             included into other configuration files.
+  * @version    R101
+  * @date       17 Jan 2014
+  * @brief      Some compilation/configuration flags, constants, and macros
   *
   ******************************************************************************
   */
@@ -27,6 +26,11 @@
 
 #ifndef __OT_SUPPORT_H
 #define __OT_SUPPORT_H
+
+
+#ifndef __OPENTAG__
+#   define __OPENTAG__
+#endif
 
 
 // COMPILERS Officially Supported
@@ -71,19 +75,23 @@
 #if (CC_SUPPORT == GCC)
 #   define OT_INLINE    inline
 #   define OT_INLINE_H  inline
+#   define OT_WEAK      __attribute__((weak)) 
 
 #elif (CC_SUPPORT == CL430)
 #   ifdef __EABI__
 #       define OT_INLINE    inline
 #       define OT_INLINE_H  inline
+#       define OT_WEAK
 #   else
 #       define OT_INLINE
 #       define OT_INLINE_H  __inline
+#       define OT_WEAK
 #   endif
 
 #elif (CC_SUPPORT == IAR_V5)
 #   define OT_INLINE    __inline
 #   define OT_INLINE_H  __inline
+#   define OT_WEAK
 
 #endif
 

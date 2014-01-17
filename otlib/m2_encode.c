@@ -119,47 +119,60 @@ ot_u8 em2_check_crc5() {
   * available on wiki.indigresso.com
   */
 #if (M2_FEATURE(RSCODE))
+#   define RS_ENCODE_1BYTE()    if (em2.lctl & 0x40) em2_rs_encode(1)
+#   define RS_DECODE_1BYTE()    if (em2.lctl & 0x40) em2_rs_encode(1)
+#   define RS_DECODE_START()    do { \
+                                    if ((em2.crc5 == 0) && (em2.lctl & 0x40)) { \
+                                        em2_rs_init_decode(&rxq); \
+                                        em2_rs_encode(2);   \
+                                }   } while (0)
 
-#ifndef EXTF_em2_rscode_pad
-ot_int em2_rscode_pad(ot_queue* q) {
-    ot_int padbytes;
-    padbytes = q_span(q) & 15;
-    if (padbytes != 0) {
-        ot_u8* pad      = q->putcursor;
-        q->putcursor   += padbytes;
-        memset(pad, padbytes, padbytes);
-    }
-    return padbytes;
+#ifndef EXTF_em2_rs_init_decode
+OT_WEAK void em2_rs_init_decode(ot_queue* q) {
+}
+#endif
+
+#ifndef EXTF_em2_rs_decode
+OT_WEAK void em2_rs_decode(ot_int n_bytes) {
+}
+#endif
+
+#ifndef EXTF_em2_rs_check
+OT_WEAK ot_int em2_rs_check(void) {
+    return -1;
+}
+#endif
+
+#ifndef EXTF_em2_rs_postprocess
+OT_WEAK ot_int em2_rs_postprocess(void) {
+    return 0;
+}
+#endif
+
+#ifndef EXTF_em2_rs_paritylength
+OT_WEAK ot_int em2_rs_paritylength(ot_int msg_length) {
+    return 4 + (((msg_length + 13) / 18) << 1);
+}
+#endif
+
+#ifndef EXTF_em2_rs_init_encode
+OT_WEAK ot_int em2_rs_init_encode(ot_queue* q) {
+    return 0;
+}
+#endif
+
+#ifndef EXTF_em2_rs_encode
+OT_WEAK void em2_rs_encode(ot_int n_bytes) {
 }
 #endif
 
 
-#ifndef EXTF_em2_rscode_decode
-void em2_rscode_encode(ot_queue* q) {
-    
-}
-#endif
-
-
-#ifndef EXTF_em2_rscode_decode
-ot_int em2_rscode_decode(ot_queue* q) {
-
-    return 
-}
-#endif
-
-
-#ifndef EXTF_em2rs_get_errors
-ot_int em2rs_get_errors() {
-/// CRC5 repurposed as number of uncorrectable errors
-    return (ot_int)em2.crc5;
-}
-#endif
-
+#else
+#   define RS_ENCODE_1BYTE();
+#   define RS_DECODE_1BYTE();
+#   define RS_DECODE_START();
 
 #endif
-
-
 
 
 
@@ -174,16 +187,17 @@ ot_int em2rs_get_errors() {
       ((RF_FEATURE_FEC == ENABLED) || (M2_FEATURE(FEC) != ENABLED)) )
     
 #   if !defined(EXTF_em2_encode_data_HW)
-    void em2_encode_data_HW() {
+    OT_WEAK void em2_encode_data_HW() {
         while ( (em2.bytes > 0) && radio_txopen() ) {
             em2.bytes--;
+            RS_ENCODE_1BYTE();
             radio_putbyte( q_readbyte(&txq) );
         }
     }
 #   endif
     
 #   if !defined(EXTF_em2_decode_data_HW)
-    void em2_decode_data_HW() {
+    OT_WEAK void em2_decode_data_HW() {
         while ( (em2.bytes > 0) && radio_rxopen() ) {
             em2.bytes--;
             q_writebyte(&rxq, radio_getbyte() );
@@ -191,6 +205,10 @@ ot_int em2rs_get_errors() {
                 em2.bytes   = (ot_int)rxq.front[0];
                 em2.crc5    = em2_check_crc5();
                 em2.lctl    = rxq.front[1];
+                RS_DECODE_START();
+            }
+            else { 
+                RS_DECODE_1BYTE();
             }
         }
     }
@@ -210,9 +228,10 @@ ot_int em2rs_get_errors() {
 #if ((RF_FEATURE(PN9) == ENABLED) && (RF_FEATURE(CRC) != ENABLED))
 
 #   if !defined(EXTF_em2_encode_data_HWCRC)
-    void em2_encode_data_HWCRC() {
+    OT_WEAK void em2_encode_data_HWCRC() {
         while ( (em2.bytes > 0) && radio_txopen() ) {
             crc_calc_stream();
+            RS_ENCODE_1BYTE();
             radio_putbyte( q_readbyte(&txq) );
             em2.bytes--;
         }
@@ -220,7 +239,7 @@ ot_int em2rs_get_errors() {
 #   endif
     
 #   if !defined(EXTF_em2_decode_data_HWCRC)
-    void em2_decode_data_HWCRC() {
+    OT_WEAK void em2_decode_data_HWCRC() {
         while ( (em2.bytes > 0) && radio_rxopen()) {
             em2.bytes--;
             q_writebyte(&rxq, radio_getbyte() );
@@ -232,6 +251,7 @@ ot_int em2rs_get_errors() {
                 else {
                     em2.crc5    = em2_check_crc5();
                     em2.lctl    = rxq.front[1];
+                    RS_DECODE_START();
                 }
             }
             crc_calc_stream();
@@ -279,9 +299,10 @@ ot_int em2rs_get_errors() {
     
 #if (RF_FEATURE(PN9) != ENABLED)
 #   if !defined(EXTF_em2_encode_data_PN9)
-    void em2_encode_data_PN9() {
+    OT_WEAK void em2_encode_data_PN9() {
         while ( (em2.bytes > 0) && (radio_txopen() == True) ) {
             crc_calc_stream();
+            RS_ENCODE_1BYTE();
             radio_putbyte( q_readbyte(&txq) ^ get_PN9() );
             rotate_PN9();
             em2.bytes--;
@@ -292,7 +313,7 @@ ot_int em2rs_get_errors() {
     
 #if (RF_FEATURE(PN9) != ENABLED)
 #   if !defined(EXTF_em2_decode_data_PN9)
-    void em2_decode_data_PN9() {
+    OT_WEAK void em2_decode_data_PN9() {
         while ( (em2.bytes > 0) && (radio_rxopen() == True) ) {
             em2.bytes--;
             q_writebyte(&rxq, (radio_getbyte() ^ get_PN9()) );
@@ -305,7 +326,11 @@ ot_int em2rs_get_errors() {
                 else {
                     em2.crc5    = em2_check_crc5();
                     em2.lctl    = rxq.front[1];
+                    RS_DECODE_START();
                 }
+            }
+            else {
+                RS_DECODE_1BYTE();
             }
             crc_calc_stream(); 
         }
@@ -333,7 +358,7 @@ static const ot_u8 FECtable[16] = {
 }; 
     
 #if !defined(EXTF_em2_encode_data_FEC)
-void em2_encode_data_FEC() {
+void OT_WEAK em2_encode_data_FEC() {
     ot_int      i, j, k;
     ot_u8       scratch;
     ot_u8       input;
@@ -359,6 +384,7 @@ void em2_encode_data_FEC() {
         else {
             em2.bytes--;
             crc_calc_stream();
+            RS_ENCODE_1BYTE();
             input   = q_readbyte(&txq);
             input  ^= get_PN9();
             rotate_PN9();
@@ -461,7 +487,7 @@ ot_u8 min(ot_u8 a, ot_u8 b) {
     
     
 #if !defined(EXTF_em2_decode_data_FEC)
-void em2_decode_data_FEC() {
+void OT_WEAK em2_decode_data_FEC() {
 
     // Two sets of buffers (last, current) for each destination state for holding: 
     ot_u32  path_matrix[2][8];      // Encoder input data (32b window)
@@ -574,7 +600,11 @@ void em2_decode_data_FEC() {
                     else {
                         em2.crc5    = em2_check_crc5();
                         em2.lctl    = rxq.front[1];
+                        RS_DECODE_START();
                     }
+                }
+                else {
+                    RS_DECODE_1BYTE();
                 }
                 em2.databytes--;
                 crc_calc_stream();
@@ -672,7 +702,7 @@ static const fn_codec m2_encoder[ENCODERS] = {
 #endif
 };
     
-void em2_encode_newpacket() {
+OT_WEAK void em2_encode_newpacket() {
 #if (ENCODERS == 1)
     em2_encode_data = m2_encoder[0];
 
@@ -705,7 +735,7 @@ static const fn_codec m2_decoder[DECODERS] = {
 #endif
 };
 
-void em2_decode_newpacket() {
+OT_WEAK void em2_decode_newpacket() {
 #if (DECODERS == 1)
     em2_decode_data = m2_decoder[0];
 
@@ -723,19 +753,9 @@ void em2_decode_newpacket() {
 
 
 #if !defined(EXTF_em2_encode_newframe)
-void em2_encode_newframe() {
-    ///1. Handle RS encoding of the frame.
-    if (txq.front[1] & 0x40) {
-#       if (M2_FEATURE(RSCODE) != ENABLED)
-        txq.front[1] ^= 0x40;
-#       else
-            //Not presently supported in this version
-#           warning "Blockcoding is not presently supported in mainline codebase"
-#       endif
-    }
-    em2.lctl = txq.front[1];
+OT_WEAK void em2_encode_newframe() {
 
-    ///2. CRC management variants:
+    ///1. CRC management variants:
     /// <LI> software CRC5 and software CRC16 </LI>
     /// <LI> software CRC5 and hardware CRC16 </LI>
     /// <LI> hardware CRC5 and software CRC16 </LI>
@@ -752,8 +772,20 @@ void em2_encode_newframe() {
     }
 #   endif
 
-    /// 3. Set encoder total bytes now that all are in the queue
-    em2.bytes   = q_span(&txq);
+    /// 2. Set encoder total bytes now that all are in the queue
+    em2.bytes = q_span(&txq);
+    
+    /// 3. Handle RS Coding and other link control flags, and initialize
+    ///    RS Encoder if it is supported.  Otherwise, kill the flag
+#   if (M2_FEATURE(RSCODE))
+    em2.lctl = txq.front[1];
+    if (em2.lctl & 0x40) {
+        em2_rs_init_encode(&txq);
+    }
+#   else
+    em2.lctl        = txq.front[1] & ~0x40;
+    txq.front[1]    = em2.lctl;
+#   endif
     
     /// 4. Prepare frame encoder, depending on frame type and supported methods.
     ///    (0) HW Encoder: do nothing. 
@@ -785,7 +817,7 @@ void em2_encode_newframe() {
 
 
 #if !defined(EXTF_em2_decode_newframe)
-void em2_decode_newframe() {
+OT_WEAK void em2_decode_newframe() {
     em2.state   = 1;
     em2.bytes   = 8;      // dummy length until actual length is received
     
@@ -818,55 +850,55 @@ void em2_decode_newframe() {
 
 
 #ifndef em2_decode_endframe
-ot_u16 em2_decode_endframe() {
+OT_WEAK ot_u16 em2_decode_endframe() {
 /// Perform block-code error correction if available, strip blockcoding if its
 /// there (after processing), and strip CRC
     ot_u16 framebytes;
-    ot_u16 blockdata;
+    ot_u16 crc_invalid;
 
-    ///1. "framebytes" strips the 2 CRC16 bytes
-    framebytes = rxq.front[0] - 2;
+    ///1. Get the CRC16 information, which is already computed inline.  There 
+    ///   may be no reason to do RS decoding, even if it is available
+    crc_invalid = crc_get();
     
-    ///2. Get the CRC16 information.  There may be no reason to do RS decoding,
-    ///   even if it is available in the build.
-    blockdata = crc_get();
-    
-    ///3a.If RS Coding is supported, do the decoding and let "blockdata" 
-    ///   be used as the block length input, and then repurposed for output as
-    ///   the number of uncorrectable errors.
-    ///3b.If RS Coding is NOT supported, just strip the RS block
-#   if (M2_FEATURE(RSCODE))
-    if ((blockdata != 0) && (em2.lctl & 0x40)) {
-        blockdata   = (framebytes + 3) >> 2;
-        framebytes -= blockdata;
-        blockdata   = em2_rs_decode(framebytes, blockdata);
-    }
-#   else
+    ///2. Remove the RS parity bytes from "framebytes" if RS parity bytes are 
+    ///     present.  If RS decoding is supported, also do postprocess error
+    ///     correction, and re-do the CRC afterwards if it reports no remaining 
+    ///     errors, to verify that indeed all errors were corrected.
     if (em2.lctl & 0x40) {
-        framebytes -= (framebytes+3)>>2;    ///@todo verify this when RS Code impl complete
+        framebytes -= em2_rs_paritylength( q_span(&rxq) );
+        
+#       if (M2_FEATURE(RSCODE))
+        if (crc_invalid) {
+            if (em2_rs_postprocess() == 0) {
+                crc_invalid = platform_crc_block(rxq.getcursor, framebytes);
+            }
+        }
+#       endif
     }
-#   endif
+
+    ///3. Strip the CRC16 bytes from "framebytes"
+    framebytes -= 2;
 
     ///4. Now the Frame Length byte is completely stripped of block data
     ///   (RS and CRC are actually both types of block codes)
     rxq.front[0] = (ot_u8)framebytes;
     
-    ///5. Return the blockcode output, which should be 0 if valid.
-    return blockdata;
+    ///5. If CRC is still invalid, report the packet is uncorrectably broken
+    return crc_invalid;
 }
 #endif
 
 
 
 #ifndef EXTF_em2_length_isvalid
-ot_bool em2_length_isvalid() {
+OT_WEAK ot_bool em2_length_isvalid() {
     return (ot_bool)(em2.crc5 == 0);
 }
 #endif
 
 
 #if !defined(EXTF_em2_remaining_frames)
-ot_u8 em2_remaining_frames() {
+OT_WEAK ot_u8 em2_remaining_frames() {
 /// Returns 0 if no more frames, or non-zero if more frames
     return (em2.lctl & 0x80);
 }
@@ -874,7 +906,7 @@ ot_u8 em2_remaining_frames() {
 
 
 #if !defined(EXTF_em2_remaining_bytes)
-ot_int em2_remaining_bytes() {
+OT_WEAK ot_int em2_remaining_bytes() {
     return em2.bytes;
 }
 #endif
