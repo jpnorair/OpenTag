@@ -67,7 +67,7 @@ m2dp_struct m2dp;
   *   fit more nicely and cleanly in this module, though.
   */
 #ifndef EXTF_network_init
-void network_init() {
+OT_WEAK void network_init() {
 #   if (OT_FEATURE(M2NP_CALLBACKS) == ENABLED)
 #   ifndef EXTF_network_sig_route
         m2np.signal.route = &otutils_sig2_null;
@@ -83,7 +83,7 @@ void network_init() {
 
 
 #ifndef EXTF_network_parse_bf
-m2session* network_parse_bf() {
+OT_WEAK m2session* network_parse_bf() {
 /// Background Frame parsing: fill-in some stuff and treat it as foreground
 // ========================================================================
 /// General Background frame design
@@ -160,7 +160,7 @@ m2session* network_parse_bf() {
 
 
 #ifndef EXTF_network_mark_ff
-void network_mark_ff() {
+OT_WEAK void network_mark_ff() {
 /// Mark a received frame as damaged by using the reserved position in the
 /// Link Control bits.  This will never be transmitted over the air.
     rxq.front[1] |= M2LC_DMGMARK;
@@ -175,7 +175,7 @@ void network_mark_ff() {
 
 
 #ifndef EXTF_network_cont_session
-m2session* network_cont_session(ot_app applet, ot_u8 next_state, ot_uint wait) {
+OT_WEAK m2session* network_cont_session(ot_app applet, ot_u8 next_state, ot_uint wait) {
     m2session*  next;
     m2session*  active;
     ot_u8       netstate;
@@ -196,7 +196,7 @@ m2session* network_cont_session(ot_app applet, ot_u8 next_state, ot_uint wait) {
 
 
 #ifndef EXTF_network_route_ff
-ot_int network_route_ff(m2session* active) {
+OT_WEAK ot_int network_route_ff(m2session* active) {
     ot_int route_val;
 
     // Strip CRC bytes from the end of the message.  RS bytes are stripped by
@@ -330,7 +330,7 @@ ot_int network_route_ff(m2session* active) {
   */
 
 #ifndef EXTF_m2np_header
-void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
+OT_WEAK void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
 /// Build an M2NP header, which gets forwarded in all cases to M2QP at the 
 /// transport layer, and which has NM2=0, Frame_Type={0,1}
 
@@ -346,10 +346,10 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
     active->netstate   |= (addressing) ? 0 : M2_NETFLAG_FIRSTRX;
     
     /// If blockcoding not enabled, don't let it get used.
-    /// max frame with blockcoding is 192 data bytes, max with CRC is 254.
+    /// max frame with blockcoding is 221 data bytes, max with CRC is 254.
     {   ot_int maxframe;
 #       if (M2_FEATURE(RSCODE))
-        maxframe        = (active->flags & M2_FLAG_RSCODE) ? 192 : 254;
+        maxframe        = (active->flags & M2_FLAG_RSCODE) ? 221 : 254;
 #       else
         active->flags  &= ~M2_FLAG_RSCODE;
         maxframe        = 254;
@@ -362,7 +362,8 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
     /// <LI> Null LC bits (FR-Cont, Blockcode, CRC5 deposited in encoder)
     /// <LI> Null TX EIRP (Actual value deposited in PHY) </LI>
     /// <LI> Subnet Value </LI>
-    q_writelong(&txq, (ot_u32)active->subnet);
+    q_writeshort(&txq, (ot_u16)((active->flags & M2_FLAG_RSCODE) << 3) );
+    q_writeshort(&txq, (ot_u16)active->subnet);
     
     /// Save & Write Frame Info Byte
     m2np.header.fr_info     = (active->flags & ~M2_FLAG_RSCODE);
@@ -438,7 +439,7 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
 
 
 #ifndef EXTF_m2np_footer
-void m2np_footer() {
+OT_WEAK void m2np_footer() {
     ot_int block_bytes;
 
 #   if (OT_FEATURE(DLL_SECURITY))
@@ -467,7 +468,7 @@ void m2np_footer() {
 
 
 #ifndef EXTF_m2np_put_device_id
-void m2np_put_deviceid(ot_bool use_vid) {
+OT_WEAK void m2np_put_deviceid(ot_bool use_vid) {
     vlFILE* fp;
     
     //file 0=network_settings, 1=device_features
@@ -487,7 +488,7 @@ void m2np_put_deviceid(ot_bool use_vid) {
 
 
 #ifndef EXTF_m2np_idcmp
-ot_bool m2np_idcmp(ot_int length, void* id) {
+OT_WEAK ot_bool m2np_idcmp(ot_int length, void* id) {
     ot_bool check   = True;
     ot_u8   use_uid = (length == 8);
     vlFILE* fp;
@@ -524,7 +525,7 @@ ot_bool m2np_idcmp(ot_int length, void* id) {
 
 
 #ifndef EXTF_m2advp_open
-void m2advp_open(m2session* follower) {
+OT_WEAK void m2advp_open(m2session* follower) {
     q_empty(&txq);
     txq.getcursor += 2;     //Bypass unused length and Link CTL bytes
     
@@ -550,7 +551,7 @@ void m2advp_open(m2session* follower) {
 
 
 #ifndef EXTF_m2advp_update
-void m2advp_update(ot_u16 countdown) {
+OT_WEAK void m2advp_update(ot_u16 countdown) {
 ///@note In this function we manually reset the txq cursors to the places
 ///      they need to be for the encoder.  The encoder implementation may or
 ///      may not do this automatically, but it is safer to be redundant.
@@ -565,7 +566,7 @@ void m2advp_update(ot_u16 countdown) {
 
 
 #ifndef EXTF_m2advp_close
-void m2advp_close() {
+OT_WEAK void m2advp_close() {
 }
 #endif
 
@@ -582,7 +583,7 @@ void m2advp_close() {
   */
 
 #ifndef EXTF_m2dp_append
-void m2dp_append() {
+OT_WEAK void m2dp_append() {
 ///@note This function is experimental (untested, work-in-progress)
 
     // Mark LAST FRAME to continue to this one, and then move getcursor to the
@@ -632,7 +633,7 @@ void m2dp_append() {
 
 
 #ifndef EXTF_m2dp_footer
-void m2dp_footer() {
+OT_WEAK void m2dp_footer() {
 /// M2DP is similar enough to M2NP that the same footer function may be used.
     m2np_footer();
 }

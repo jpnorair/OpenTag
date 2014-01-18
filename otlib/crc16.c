@@ -1,4 +1,4 @@
-/* Copyright 2010-2013 JP Norair
+/* Copyright 2010-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/crc16.c
   * @author     JP Norair
-  * @version    R101
-  * @date       12 Jan 2013
+  * @version    R102
+  * @date       12 Jan 2014
   * @brief      A streaming object for CRC16
   * @ingroup    CRC16
   *
@@ -110,48 +110,57 @@ void sub_calc_byte() {
 
 
 
-void sub_stream2() {
-    *crc.cursor++   = (ot_u8)crc.val;
-    crc.stream 	    = &otutils_null;
-}
+//void sub_stream2() {
+//    *crc.cursor++   = (ot_u8)crc.val;
+//    crc.stream 	    = &otutils_null;
+//}
 
-void sub_stream1() {
-    *crc.cursor++   = (ot_u8)(crc.val >> 8);
-    crc.stream      = &sub_stream2;
-}
-
-
-#if (CC_SUPPORT == GCC)
-void sub_stream0() __attribute__((flatten));
-#endif
-
-void sub_stream0() {
-    platform_crc_byte( *crc.cursor++ );
-    if (crc.cursor == crc.end) {
-        crc.val    = platform_crc_result();
-        crc.stream = &sub_stream1;
-    }
-}
+//void sub_stream1() {
+//    *crc.cursor++   = (ot_u8)(crc.val >> 8);
+//    crc.stream      = &sub_stream2;
+//}
 
 
+//#if (CC_SUPPORT == GCC)
+//void sub_stream0() __attribute__((flatten));
+//#endif
+
+//void sub_stream0() {
+//    platform_crc_byte( *crc.cursor++ );
+//    if (crc.cursor == crc.end) {
+//        crc.val    = platform_crc_result();
+//        crc.stream = &sub_stream1;
+//    }
+//}
 
 
-void crc_init_stream(ot_int stream_size, ot_u8* stream) {
+
+
+void crc_init_stream(ot_bool writeout, ot_int stream_size, ot_u8* stream) {
+    crc.writeout= writeout;
     crc.cursor  = stream;
-    crc.end     = stream+stream_size;
-    crc.stream  = &sub_stream0;
+    crc.count   = stream_size+1;
+  //crc.stream  = &sub_stream0;
     crc.val     = platform_crc_init();
 }
 
 
 void crc_calc_stream() {
-    crc.stream();
+    //crc.stream();
+    if (--crc.count > 0) {
+        platform_crc_byte( *crc.cursor++ );
+    }
+    else if ((crc.writeout) && (crc.count > -2)) {
+        *crc.cursor++ = (ot_u8)(crc.val >> ((crc.count == 0) << 3));
+    }
+    
 }
 
 
 void crc_calc_nstream(ot_u16 n) {
     do {
-        crc.stream();
+        //crc.stream();
+        crc_calc_stream();
     } while (--n);
 }
 

@@ -256,7 +256,7 @@ OT_WEAK void em2_rs_encode(ot_int n_bytes) {
                         ext_bytes -= rs_init_decode(&rxq);
                         rs_decode(2);
                     }
-                    crc_init_stream(em2.bytes + ext_bytes, rxq.front);    // Total bytes
+                    crc_init_stream(False, em2.bytes + ext_bytes, rxq.front);    // Total bytes
                     crc_calc_nstream(2);
                 }
             }
@@ -340,7 +340,7 @@ OT_WEAK void em2_rs_encode(ot_int n_bytes) {
                         ext_bytes -= rs_init_decode(&rxq);
                         rs_decode(2);
                     }
-                    crc_init_stream(em2.bytes + ext_bytes, rxq.front);    // Total bytes
+                    crc_init_stream(False, em2.bytes + ext_bytes, rxq.front);    // Total bytes
                     crc_calc_nstream(2);
                 }
             }
@@ -621,7 +621,7 @@ void OT_WEAK em2_decode_data_FEC() {
                     }
                     em2.databytes   = fr_bytes - 2;     // subtract this block
                     
-                    crc_init_stream(fr_bytes, rxq.front);
+                    crc_init_stream(False, fr_bytes, rxq.front);
                     crc_calc_nstream(2);
                 }
                 else {
@@ -788,7 +788,7 @@ OT_WEAK void em2_encode_newframe() {
         em2_add_crc5();
 #       endif
 #       if ((RF_FEATURE(CRC16) | RF_FEATURE(CRC)) != ENABLED))
-        crc_init_stream(q_span(&txq), txq.getcursor);
+        crc_init_stream(True, q_span(&txq), txq.getcursor);
         txq.putcursor += 2;
 #       endif
     }

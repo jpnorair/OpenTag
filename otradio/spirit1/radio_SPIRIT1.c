@@ -651,7 +651,7 @@ void em2_decode_newpacket() {
 void em2_encode_newframe() {
     /// 1. Prepare the CRC, also adding 2 bytes to the frame length
     if (txq.options.ubyte[UPPER] != 0) {
-        crc_init_stream(em2.bytes, txq.getcursor);
+        crc_init_stream(True, q_span(&txq), txq.getcursor);
         txq.front[0]   += 2;
         txq.putcursor  += 2;
         em2_add_crc5(txq.front);
@@ -762,7 +762,7 @@ void em2_decode_data() {
             if (em2.lctl & 0x40) {
                 ext_bytes = em2_rs_init_decode(&rxq);
             }
-            crc_init_stream(em2.bytes - ext_bytes, rxq.getcursor);
+            crc_init_stream(False, em2.bytes - ext_bytes, rxq.getcursor);
         }
         
         crc_calc_nstream(grab);
@@ -1349,7 +1349,7 @@ void rm2_txdata_isr() {
         radio.evtdone(2, 0);
         
         if ((rfctl.state & RADIO_STATE_TXMASK) == RADIO_STATE_TXDATA) {
-            crc_init_stream(5, txq.getcursor);
+            crc_init_stream(True, 5, txq.getcursor);
             em2.bytes = 7;
             em2_encode_data();
         }

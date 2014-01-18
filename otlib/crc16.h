@@ -45,8 +45,10 @@
   */
 typedef struct {
     ot_u8*      cursor;
-    ot_u8*      end;
-    void        (*stream)();
+    ot_int      count;
+    ot_bool     writeout;
+    //ot_u8*      end;
+    //void        (*stream)();
     ot_u16      val;
 } crc_struct;
 
@@ -56,6 +58,7 @@ extern crc_struct crc;
 
 
 /** @brief Initializes streaming CRC16 engine
+  * @param writeout     (ot_bool) True/False if CRC should be appended onto stream
   * @param stream_size  (ot_int) Number of bytes in stream
   * @param stream       (ot_u8*) pointer to the data for CRC calculation
   * @retval None
@@ -66,7 +69,7 @@ extern crc_struct crc;
   * CRC on parallel/concurrent data-streams.  init_crc_stream will zero the
   * crc_partial global variable before operating.
   */
-void crc_init_stream(ot_int stream_size, ot_u8* stream);
+void crc_init_stream(ot_bool writeout, ot_int stream_size, ot_u8* stream);
 
 
 

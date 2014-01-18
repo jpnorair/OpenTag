@@ -44,7 +44,7 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
-
+#include "queue.h"
 
 
 typedef enum {
@@ -539,7 +539,7 @@ ot_u16 rm2_rxtimeout_floor(ot_u8 chan_id);
 
 
 /** @brief  Returns approximate duration of pending packet, in ticks.
-  * @param  pkt_bytes   (ot_int) total bytes of all frames in the packet
+  * @param  pkt_q       (ot_queue*) pointer to queue containing packet
   * @retval ot_int      Duration of packet in ticks (units: 1/1024 seconds)
   * @ingroup Radio
   * @sa rm2_scale_codec()
@@ -548,7 +548,7 @@ ot_u16 rm2_rxtimeout_floor(ot_u8 chan_id);
   * Basically identical to rm2_scale_codec(), except that some padding is added
   * to the output in order to account for FIFO lag of the radio.
   */
-ot_int rm2_pkt_duration(ot_int pkt_bytes);
+ot_int rm2_pkt_duration(ot_queue* pkt_q);
 
 
 

@@ -112,7 +112,8 @@
 #define M2_FLAG_DLLS                (1<<6)
 #define M2_FLAG_NLS                 (1<<5)
 #define M2_FLAG_VID                 (1<<4)
-#define M2_FLAG_RSCODE              (1<<3)
+#define M2_FLAG_EXT                 (1<<3)      //Synthetic
+#define M2_FLAG_RSCODE              (1<<3)      
 #define M2_FLAG_STREAM              (1<<2)
 #define M2_FLAG_UCAST               (0<<0)
 #define M2_FLAG_BCAST               (1<<0)

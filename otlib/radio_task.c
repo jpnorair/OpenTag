@@ -92,10 +92,19 @@ ot_u16 rm2_rxtimeout_floor(ot_u8 chan_id) {
 
 
 #ifndef EXTF_rm2_pkt_duration
-ot_int rm2_pkt_duration(ot_int pkt_bytes) {
+ot_int rm2_pkt_duration(ot_queue* pkt_q) {
 /// Wrapper function for rm2_scale_codec that adds some slop overhead
 /// Slop = preamble bytes + sync bytes + ramp-up + ramp-down + padding
+    ot_uint pkt_bytes;
+    
+    pkt_bytes   = q_length(pkt_q);
     pkt_bytes  += RF_PARAM_PKT_OVERHEAD;
+    
+    // If packet is using RS coding, adjust by the nominal rate (4/5).
+    if (pkt_q->front[1] & 0x40) {
+        pkt_bytes += (pkt_bytes+3)>>2;
+    }
+    
     return rm2_scale_codec(pkt_bytes);
 }
 #endif
@@ -134,7 +143,8 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
 /// Hi-Speed + Non-FEC  = 5.24 miti/bit  (200 kbps)
 /// Hi-Speed + FEC      = 10.49 miti/bit (100 kbps)
     
-    static const ot_u8 bit_us[4] = { 19, 38, 6, 11 };
+    ///@todo Find a more intelligent way to include RS coding into this
+    static const ot_u8 bit_us[4] = { 19, 38, 6, 11 };       
     
     ot_u8 index = ((phymac[0].channel & 0x20)>>4) + (phymac[0].channel >> 7);
     buf_bytes  *= bit_us[index];
