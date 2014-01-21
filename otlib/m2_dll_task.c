@@ -696,6 +696,9 @@ OT_WEAK void dll_beacon_applet(m2session* active) {
 /// time to spend in CSMA before quitting the beacon.
     ot_queue beacon_queue;
     ot_u8 b_params;
+    ot_u8 cmd_ext;
+    ot_u8 cmd_code;
+    
     b_params        = active->extra;
     active->extra   = 0;
 
@@ -703,9 +706,12 @@ OT_WEAK void dll_beacon_applet(m2session* active) {
     /// <LI> Calling m2np_header() will write most of the front of the frame </LI>
     /// <LI> Add the command byte and optional command-extension byte </LI>
     m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
-    q_writebyte(&txq, 0x20 + (b_params & 1));
-    if (b_params & 0x04) {
-        q_writebyte(&txq, (b_params & 0x04));
+    
+    cmd_ext     = (b_params & 0x06);
+    cmd_code    = 0x20 | (b_params & 1) | ((cmd_ext!=0) << 7);
+    q_writebyte(&txq, cmd_code);
+    if (cmd_ext) {
+        q_writebyte(&txq, cmd_ext);
     }
 
     /// Setup the comm parameters, if the channel is available:

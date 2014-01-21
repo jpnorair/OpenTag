@@ -77,7 +77,7 @@ static const ot_u16 crc16_table[256] = {
   * initialized with 0xFFFF.  Text string "123456789" yields 0x29B1.
   */
 #ifndef EXTF_platform_crc_init
-ot_u16 platform_crc_init() {
+OT_INLINE ot_u16 platform_crc_init() {
     platform_ext.crc16 = 0xFFFF;
     return 0xFFFF;
 }
@@ -97,7 +97,7 @@ ot_u16 platform_crc_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 in
 
 
 #ifndef EXTF_platform_crc_block
-ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
+OT_INLINE ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
     return platform_crc_block_manual(block_addr, block_size, 0xFFFF);
 }
 #endif
@@ -124,7 +124,7 @@ OT_INLINE void platform_crc_byte(ot_u8 databyte) {
 
 
 #ifndef EXTF_platform_crc_result
-ot_u16 platform_crc_result() {
+OT_INLINE ot_u16 platform_crc_result() {
     return platform_ext.crc16;
 }
 #endif

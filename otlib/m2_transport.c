@@ -359,7 +359,7 @@ ot_int sub_parse_request(m2session* session) {
     
     /// 4. If the query is good (sometimes this is trivial):
     /// <LI> If response enabled, prepare common response header.          </LI>
-    /// <LI> If response disabled, scrap session unless there's a stream   </LI>
+    /// <LI> If response disabled, don't move session to response TX.      </LI>
     /// <LI> Run command-specific dialog data processing                   </LI>
     if (score >= 0) {
         q_empty(&txq); // Flush TX Queue
@@ -372,18 +372,16 @@ ot_int sub_parse_request(m2session* session) {
             m2np_header(session, addressing, M2FI_FRDIALOG);            // Create M2QP header
             q_writebyte(&txq, (M2TT_RESPONSE | cmd_opcode));            // Write Cmd code byte
         }
-        
-        //else if ((session->netstate & M2_NETSTATE_DSDIALOG) == 0) {
-        //    score = -1;
-        //}
            
         opgroup_proc[((cmd_opcode>>1) & 7)]();
     }
     
     /// Return the score, which when negative will cause cancellation of the 
-    /// dialog (but not necessarily the session).  If positive, this can be 
-    /// used to affect the congestion control parameters, which must be passed
-    /// back into the fc function.
+    /// dialog (but not necessarily the session).  Non-negative values cause 
+    /// continuation of the dialog per session rules.  Positive values can be
+    /// be used to adaptively affect the congestion control parameters in the
+    /// data-link-layer, e.g. they can prioritize higher scores by responding
+    /// earlier in the response window.  That is DLL implementation dependent.
     return score;  
 }
 

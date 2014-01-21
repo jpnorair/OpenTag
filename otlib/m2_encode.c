@@ -92,7 +92,9 @@ void em2_add_crc5() {
 }
 
 ot_u8 em2_check_crc5() {
-    return ((rxq.front[1] & 0x1f) - crc0B_table(rxq.front));
+    ot_u8 crc5_val;
+    crc5_val = crc0B_table(rxq.front);
+    return ((rxq.front[1] & 0x1f) - crc5_val);
 }
 
 
@@ -885,6 +887,8 @@ OT_WEAK ot_u16 em2_decode_endframe() {
     ///   may be no reason to do RS decoding, even if it is available
     crc_invalid = crc_get();
     
+    framebytes  = rxq.front[0];
+    
     ///2. Remove the RS parity bytes from "framebytes" if RS parity bytes are 
     ///     present.  If RS decoding is supported, also do postprocess error
     ///     correction, and re-do the CRC afterwards if it reports no remaining 
@@ -895,7 +899,7 @@ OT_WEAK ot_u16 em2_decode_endframe() {
 #       if (M2_FEATURE(RSCODE))
         if (crc_invalid) {
             if (em2_rs_postprocess() == 0) {
-                crc_invalid = platform_crc_block(rxq.getcursor, framebytes);
+                crc_invalid = platform_crc_block(rxq.getcursor, framebytes+1);
             }
         }
 #       endif

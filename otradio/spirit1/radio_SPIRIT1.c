@@ -147,7 +147,7 @@ void    subrfctl_chan_config(ot_u8 old_chan, ot_u8 old_eirp);
 void    subrfctl_buffer_config(MODE_enum mode, ot_u16 param);
 void    subrfctl_save_linkinfo();
 
-void    subrfctl_prep_q(Queue* q);
+void    subrfctl_prep_q(ot_queue* q);
 
 
 
@@ -649,30 +649,32 @@ void em2_decode_newpacket() {
 
 #ifdef EXTF_em2_encode_newframe
 void em2_encode_newframe() {
-    /// 1. Prepare the CRC, also adding 2 bytes to the frame length
+    /// 1. Prepare the CRC and RS encoding, which need to be computed
+    ///    when the upper options byte is set.  That is, it is non-zero
+    ///    on the first packet and 0 for retransmissions.
     if (txq.options.ubyte[UPPER] != 0) {
         crc_init_stream(True, q_span(&txq), txq.getcursor);
         txq.front[0]   += 2;
         txq.putcursor  += 2;
+        
+#       if (M2_FEATURE(RSCODE))
+            em2.lctl = txq.front[1];
+            if (em2.lctl & 0x40) {
+                ot_int parity_bytes;
+                parity_bytes    = em2_rs_init_encode(&txq);
+                txq.front[0]   += parity_bytes;
+                txq.putcursor  += parity_bytes;
+            }
+#       else
+            em2.lctl        = txq.front[1] & ~0x40;
+            txq.front[1]    = em2.lctl;
+#       endif
+        
+        // Only appoint CRC5 when the first ten bits of txq are settled
         em2_add_crc5(txq.front);
 	}
-    
-    /// 2. Handle RS Coding and other link control flags, and initialize
-    ///    RS Encoder if it is supported.  Otherwise, kill the flag
-#   if (M2_FEATURE(RSCODE))
-    em2.lctl = txq.front[1];
-    if (em2.lctl & 0x40) {
-        ot_int parity_bytes;
-        parity_bytes    = em2_rs_init_encode(&txq);
-        txq.front[0]   += parity_bytes;
-        txq.putcursor  += parity_bytes;
-    }
-#   else
-    em2.lctl        = txq.front[1] & ~0x40;
-    txq.front[1]    = em2.lctl;
-#   endif
-    
-    /// 3. set initial values of encoder control variables
+
+    /// 2. set initial values of encoder control variables
     em2.bytes = q_span(&txq);
 }
 #endif
@@ -766,6 +768,7 @@ void em2_decode_data() {
         }
         
         crc_calc_nstream(grab);
+        
 #       if (M2_FEATURE(RSCODE))
         if (em2.lctl & 0x40) em2_rs_decode(grab);
 #       endif
@@ -1149,6 +1152,9 @@ void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
     radio.evtdone   = callback;
     radio.state     = RADIO_Csma;
     rfctl.state     = RADIO_STATE_TXINIT;
+    
+    // initialize the CRC/RS disabling byte
+    txq.options.ubyte[UPPER] = 0;
     
     /// CSMA-CA interrupt based and fully pre-emptive.  This is
     /// possible using CC1 on the GPTIM to clock the intervals.
@@ -1649,7 +1655,7 @@ void subrfctl_buffer_config(MODE_enum mode, ot_u16 param) {
 
 
 
-void subrfctl_prep_q(Queue* q) {
+void subrfctl_prep_q(ot_queue* q) {
 /// Put some special data in the queue options field.
 /// Lower byte is encoding options (i.e. FEC)
 /// Upper byte is processing options (i.e. CRC)
