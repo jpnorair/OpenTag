@@ -232,12 +232,12 @@ platform_struct platform;
   */
 
 // 1. User NMI Interrupt (segmentation faults, i.e. firmware faults)
-OT_INTERRUPT void platform_usernmi_isr(void) {
+void platform_usernmi_isr(void) {
 }
 
 
 // 2. System NMI Interrupt (bus errors and other more serious faults)
-OT_INTERRUPT void platform_sysnmi_isr(void) {
+void platform_sysnmi_isr(void) {
 }
 
 
@@ -251,7 +251,7 @@ OT_INTERRUPT void platform_sysnmi_isr(void) {
 
 
 
-OT_INTERRUPT void platform_ktim_isr() {
+void platform_ktim_isr() {
     platform_ot_run();
 }
 
@@ -261,7 +261,7 @@ void sub_juggle_rtc_alarm() {
 }
 
 
-OT_INTERRUPT void platform_rtc_isr() {
+void platform_rtc_isr() {
 }
 
 
@@ -683,14 +683,14 @@ ot_u16 platform_prand_u16() {
   * Behavior is always blocking
   */
 
-void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
-    memcpy(dest, src, length);
+void platform_memcpy(ot_u8* dst, ot_u8* src, ot_uint length) {
+    memcpy(dst, src, length);
 }
 
 
 
-void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
-    memset(dest, value, length);
+void platform_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
+    memset(dst, value, length);
 }
 
 

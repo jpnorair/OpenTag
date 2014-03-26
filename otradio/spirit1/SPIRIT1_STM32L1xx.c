@@ -247,12 +247,12 @@ void spirit1_load_defaults() {
         4,  0,  0x9E,   DRF_SYNTH_CONFIG1, DRF_SYNTH_CONFIG0,
         3,  0,  0x18,   DRF_PAPOWER0,
         6,  0,  0x1C,   DRF_FDEV0, DRF_CHFLT_LS, DRF_AFC2, DRF_AFC1, 
-        5,  0,  0x25,   DRF_AGCCTRL1, DRF_AGCCTRL0, DRF_ANT_SELECT_CONF, 
+        7,  0,  0x23,   DRF_CLOCKREC, DRF_AGCCTRL2, DRF_AGCCTRL1, DRF_AGCCTRL0, DRF_ANT_SELECT_CONF, 
         3,  0,  0x3A,   DRF_QI,
         3,  0,  0x41,   DRF_FIFO_CONFIG0,
         4,  0,  0x4F,   DRF_PCKT_FLT_OPTIONS, DRF_PROTOCOL2,
       //3,  0,  0x93,   RFINT_TX_FIFO_ERROR,
-        5,  0,  0xA3,   DRF_DEM_ORDER, DRF_PM_CONFIG2, DRF_PM_CONFIG1,
+        6,  0,  0xA3,   DRF_DEM_ORDER, DRF_PM_CONFIG2, DRF_PM_CONFIG1, DRF_PM_CONFIG0,
         0   //Terminating 0
     };
     
@@ -561,19 +561,9 @@ ot_int spirit1_calc_rssi(ot_u8 encoded_value) {
 /// from 0 to 255 and is offset in such a way that -120 dBm corresponds to 
 /// about 20."  In other words, it is linear: { 0 = -130dBm, 255 = -2.5dBm }.
 /// This function turns the coded value into a normal, signed int.
-
-/// @note In future implementations there may be a selection to allow OpenTag
-///       to use half-dBm precision in all areas of the system, but for now it
-///       uses whole-dBm (1dBm) precision.  Most antennas have >1dBm variance,
-///       (often >2dBm) so unless you have an advanced subsampling algorithm 
-///       for range-finding -- probably requiring a kalman filter in the
-///       location engine -- using half-dBm will not yield an improvement.
-
     ot_int rssi_val;
     rssi_val    = (ot_int)encoded_value;    // Convert to signed int
-    //rssi_val  >>= 1;                        // Make whole-dBm (divide by 2)
-    //rssi_val   -= 130;                      // Apply 130 dBm offset
-    rssi_val   -= 260;                      // Apply 130 dBm offset
+    rssi_val   -= 260;                      // Apply 130 dBm offset (260 half-dBm)
     return rssi_val;
 }
 
@@ -598,22 +588,30 @@ ot_u8 spirit1_calc_rssithr(ot_u8 input) {
     return rssi_thr;
 }
 
-    
+
+
+ot_u8 spirit1_clip_txeirp(ot_u8 input_eirp) {    
+    if ( input_eirp > ((22 - RF_HDB_ATTEN) + 80) ) {
+        input_eirp = (22 - RF_HDB_ATTEN) + 80;
+    }
+    return input_eirp;
+}
+
 
 void spirit1_set_txpwr(ot_u8* pwr_code) {
 /// Sets the tx output power.
 /// "pwr_code" is a value, 0-127, that is: eirp_code/2 - 40 = TX dBm
 /// i.e. eirp_code=0 => -40 dBm, eirp_code=80 => 0 dBm, etc
     static const ot_u8 pa_lut[84] = {
-        0x57, 0x57, 0x56, 0x55, 0x54, 0x53, 0x53, 0x52, 0x52, 0x50,     //-30 to -25.5
+          87, 0x57, 0x56, 0x55, 0x54, 0x53, 0x53, 0x52, 0x52, 0x50,     //-30 to -25.5
         0x4F, 0x4E, 0x4D, 0x4C, 0x4B, 0x4B, 0x4A, 0x49, 0x48, 0x47,     //-25 to -20.5
         0x46, 0x45, 0x44, 0x43, 0x42, 0x41, 0x40, 0x3F, 0x3E, 0x3C,     //-20 to -15.5
         0x3B, 0x3A, 0x39, 0x38, 0x37, 0x36, 0x34, 0x33, 0x32, 0x31,     //-15 to -10.5
-        0x30, 0x2F, 0x2D, 0x2C, 0x2B, 0x2A, 0x29, 0x27, 0x26, 0x25,     //-10 to -5.5
+        0x30, 0x2F, 0x2D, 0x2C, 0x2B, 0x2A, 0x29, 0x27,   42, 0x25,     //-10 to -5.5
         0x24, 0x23, 0x22, 0x20, 0x1F, 0x1E, 0x1D, 0x1C, 0x1B, 0x19,     //-5 to -0.5
-        0x18, 0x17, 0x16, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x0F,     // 0 to 4.5
+          30, 0x17, 0x16, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x0F,     // 0 to 4.5
         0x0E, 0x0D, 0x0C, 0x0B, 0x0A, 0x09, 0x08, 0x07, 0x06, 0x05,     // 5 to 9.5
-        0x04, 0x03, 0x02, 0x01                                          // 10 to 11.5
+        0x04, 0x03,    1, 0x01                                          // 10 to 11.5
     };
     
     ot_u8   pa_table[10];
@@ -714,7 +712,6 @@ ot_u16 spirit1_get_counter() {
     ot_u16 value;
     value = dll.counter - (ot_u16)platform_get_interval(&macstamp);
     return value;
-    //return dll.counter;
 }
 
 
@@ -827,6 +824,43 @@ void spirit1_irq3_isr() {
     spirit1_virtual_isr(spirit1.imode + 3);
 }
 
+
+
+void spirit1_wfe() {
+    do {
+        __WFE();
+    } 
+    while((EXTI->PR & RFI_SOURCE2) == 0);
+
+    // clear pending register
+    EXTI->PR = RFI_SOURCE2;     
+    
+    // clear IRQ value in SPIRIT by setting IRQMASK to 0
+    {   ot_u8 cmd[8];
+        *(ot_u32*)&cmd[0]   = 0;
+        *(ot_u32*)&cmd[4]   = 0;
+        cmd[1]              = RFREG(IRQ_MASK3);
+        spirit1_burstwrite(6, 0, cmd);
+    }
+}
+
+
+
+void spirit1_wfe_aes() {
+    // Kill any interrupts and activate the WFE event source (always pin 2)
+    EXTI->IMR  &= (RFI_SOURCE2 | RFI_SOURCE1 | RFI_SOURCE0);
+    EXTI->EMR  |= RFI_SOURCE2;
+    
+    // read-out all IRQ_STATUS bits to clear
+    {   ot_u8 cmd[2];
+        cmd[0]  = 1;
+        cmd[1]  = RFREG(IRQ_STATUS3);
+        spirit1_spibus_io(2, 4, (ot_u8*)cmd);
+    }
+    
+    // write AES to IRQ MASK
+    spirit1_write(0x40, RFREG(IRQ_MASK3));
+}
 
 
 

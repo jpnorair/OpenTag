@@ -905,6 +905,7 @@ void platform_init_periphclk() {
 #define DBP_BitNumber            0x08
 #define CR_DBP_BB                (PERIPH_BB_BASE + (CR_OFFSET * 32) + (DBP_BitNumber * 4))
 */
+    ot_u32  pwr_cr_save = PWR->CR;
     
 #   if BOARD_FEATURE(LFXTAL)
     PWR->CR     = ((1 << 11) | PWR_CR_DBP);
@@ -920,6 +921,7 @@ void platform_init_periphclk() {
     
 #   endif
    
+   PWR->CR = (pwr_cr_save);
 }
 #endif
 
@@ -932,14 +934,14 @@ void platform_init_periphclk() {
 
   
 #ifndef EXTF_platform_disable_interrupts
-void platform_disable_interrupts() {
+OT_INLINE void platform_disable_interrupts() {
     __disable_irq();    // CMSIS intrinsic
 }
 #endif
 
 
 #ifndef EXTF_platform_enable_interrupts
-void platform_enable_interrupts() {
+OT_INLINE void platform_enable_interrupts() {
     __enable_irq();     // CMSIS intrinsic
 }
 #endif
@@ -1290,15 +1292,15 @@ void platform_init_interruptor() {
     NVIC_SetPriorityGrouping(_GROUP_PRIORITY);
     
     /// 3. Setup Cortex-M system interrupts 
-    ///    SysTick is not used by OpenTag, but we set the priority to a low
-    ///    level anyway.  SysTick Interrupt cannot be disabled.
+    ///    SysTick is not used by OpenTag, and it is a bit of a power hog, so
+    ///    it is advisable to never use it.
 //  SCB->SHP[((uint32_t)(MemoryManagement_IRQn)&0xF)-4] = (b0000 << 4);
 //  SCB->SHP[((uint32_t)(BusFault_IRQn)&0xF)-4]         = (b0000 << 4);
 //  SCB->SHP[((uint32_t)(UsageFault_IRQn)&0xF)-4]       = (b0000 << 4);
     SCB->SHP[((uint32_t)(SVC_IRQn)&0xF)-4]              = (b0000 << 4);
 //  SCB->SHP[((uint32_t)(DebugMonitor_IRQn)&0xF)-4]     = (b0000 << 4);
     SCB->SHP[((uint32_t)(PendSV_IRQn)&0xF)-4]           = (b1111 << 4);
-    SCB->SHP[((uint32_t)(SysTick_IRQn)&0xF)-4]          = (_LOPRI_BASE << 4);  
+    //SCB->SHP[((uint32_t)(SysTick_IRQn)&0xF)-4]          = (_LOPRI_BASE << 4);  
     
     /// 4. Setup NVIC for Kernel Interrupts.  Kernel interrupts cannot interrupt
     /// each other, but there are subpriorities.  I/O interrupts should be set 
@@ -1326,8 +1328,9 @@ void platform_init_interruptor() {
     NVIC->IP[(uint32_t)(OT_GPTIM_IRQn)]         = ((_KERNEL_GROUP+_OT_SUB1) << 4);
     NVIC->ISER[((uint32_t)(OT_GPTIM_IRQn)>>5)]  = (1 << ((uint32_t)(OT_GPTIM_IRQn) & 0x1F));
 
-    NVIC->IP[(uint32_t)(OT_SYSTICK_IRQn)]       = ((_KERNEL_GROUP+_OT_SUB2) << 4);
-    NVIC->ISER[((uint32_t)(OT_SYSTICK_IRQn)>>5)]= (1 << ((uint32_t)(OT_SYSTICK_IRQn) & 0x1F));
+    // Systick is a power hog.  Avoid!
+    //NVIC->IP[(uint32_t)(OT_SYSTICK_IRQn)]       = ((_KERNEL_GROUP+_OT_SUB2) << 4);
+    //NVIC->ISER[((uint32_t)(OT_SYSTICK_IRQn)>>5)]= (1 << ((uint32_t)(OT_SYSTICK_IRQn) & 0x1F));
     
 #   elif (RF_FEATURE(TXTIMER) != ENABLED)
     // Setup Wakeup timer used by radio driver

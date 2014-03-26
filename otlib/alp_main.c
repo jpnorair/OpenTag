@@ -60,6 +60,7 @@ typedef ot_bool (*sub_proc)(alp_tmpl*, id_tmpl*);
 
 
 
+
 // Subroutines
 ot_u8   sub_get_headerlen(ot_u8 tnf);
 void    sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len);
@@ -131,8 +132,8 @@ void sub_insert_header(alp_tmpl* alp, ot_u8* hdr_position, ot_u8 hdr_len) {
 
 #ifndef EXTF_alp_init
 void alp_init(alp_tmpl* alp, ot_queue* inq, ot_queue* outq) {
-	alp->INREC(FLAGS)    = 0;
-	alp->OUTREC(FLAGS)   = (ALP_FLAG_MB | ALP_FLAG_ME | ALP_FLAG_SR);
+    alp->purge_id       = 1;
+	alp->OUTREC(FLAGS)  = (ALP_FLAG_MB | ALP_FLAG_ME | ALP_FLAG_SR);   ///@todo this will need to be removed soon
 	alp->inq            = inq;
 	alp->outq           = outq;
 }
@@ -219,11 +220,10 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// the output payload length and flags, as necessary.
         if (alp->OUTREC(FLAGS) & ALP_FLAG_ME) {
             input_position = alp->inq->getcursor;
-            if (alp_parse_header(alp) == False) {
-                break;
-            }
-            //memcpy(&alp->OUTREC(FLAGS), &alp->INREC(FLAGS), 4);
-            *((ot_u32*)&alp->OUTREC(FLAGS)) = *((ot_u32*)&alp->INREC(FLAGS));
+            alp->OUTREC(FLAGS)  = input_position[0];
+            alp->OUTREC(PLEN)   = 0;
+            alp->OUTREC(ID)     = input_position[2];
+            alp->OUTREC(CMD)    = input_position[3];
         }
         
         ///@todo transform output creation part to a separate function call the
@@ -258,7 +258,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// This version of ALP does not support nested messages.  It will
         /// terminate processing and return when the input message is ended.
         /// The if-else serves to auto-purge the last message, if possible
-        if (alp->INREC(FLAGS) & ALP_FLAG_ME) {
+        if (input_position[0] & ALP_FLAG_ME) {
             ot_u8* nextrecord;
             nextrecord  = input_position + input_position[1] + 4;
             if (atomic && (nextrecord == alp->inq->putcursor)) {
@@ -289,10 +289,13 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
 #ifndef EXTF_alp_new_appq
 void alp_new_appq(alp_tmpl* alp, ot_queue* appq) {
     //DEBUG_ASSERT
+    
+    appq->options.ushort= alp->purge_id;
     appq->alloc         = alp->inq->alloc;
     
-    ///@todo temporary -4 until alp_parse_header is fully refactored
-    appq->front         = alp->inq->getcursor - 4;  //appq->front = alp->inq->getcursor
+    ///@note old -4 before alp_parse_header was fully refactored
+    //appq->front         = alp->inq->getcursor - 4;  
+    appq->front         = alp->inq->getcursor;
     
     // This section will stay the same even after alp_parse_header is fully refactored
     appq->getcursor     = appq->front;
@@ -310,12 +313,12 @@ void alp_append_appq(alp_tmpl* alp, ot_queue* appq) {
     ot_u8* next_alp;
     //DEBUG_ASSERT
     
-    ///@todo temporary offset until alp_parse_header is fully refactored
-    next_alp = alp->inq->getcursor + alp->inq->getcursor[-3];
-    //next_alp = alp->inq->getcursor + alp->inq->getcursor[1] + 4;
+    ///@note old offset until alp_parse_header is fully refactored
+    //next_alp = alp->inq->getcursor + alp->inq->getcursor[-3];
+    next_alp = alp->inq->getcursor + alp->inq->getcursor[1] + 4;
     
     if (next_alp <= alp->inq->putcursor) {
-        appq->putcursor     = next_alp;
+        appq->putcursor = next_alp;
     }
 }
 #endif
@@ -325,32 +328,57 @@ void alp_append_appq(alp_tmpl* alp, ot_queue* appq) {
 #ifndef EXTF_alp_goto_next
 ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target) {
     //DEBUG_ASSERT
+    
+    /// 1. If the alp queue has been purged in between operations of this app,
+    ///    the app queue must be rebased.  If the alp purge id has done one lap
+    ///    we also need to do this just to maintain synchronicity.
+    if ((alp->purge_id == 0) || (alp->purge_id != appq->options.ushort)) {
+        appq->options.ushort = alp->purge_id;
+        q_rebase(appq, alp->inq->front);
+    }
+    
+    /// 2. Find the next record with matching ID in the alp queue, and set the
+    ///    app queue getcursor accordingly.
     while ((alp->inq->putcursor - appq->back) > 0) {
         if ((appq->getcursor[0] != 0) && (appq->getcursor[2] == target)) {
             return appq->getcursor[0];
         }
         appq->getcursor = appq->back;
         appq->back      = appq->getcursor + appq->getcursor[1] + 4;
+        //appq->putcursor = appq->back;
     }
+    //q_rebase(appq, appq->inq->front);     //not needed due to event-driven input model
     return 0;
 }
 #endif
 
 
-#ifndef EXTF_alp_retrieve_cmd
-ot_bool alp_retrieve_cmd(alp_record* apprec, ot_queue* appq, ot_u8 target) {
+#ifndef EXTF_alp_retrieve_record
+ot_u8* alp_retrieve_record(alp_record* apprec, ot_queue* appq, ot_u8 target) {
+///@todo If multiple interfaces share a single ALP, I should add a new function
+///      called "alp_retrieve_next" that basically just calls alp_goto_next 
+///      followed by alp_retrieve_record.
+    
     memcpy((ot_u8*)&apprec->flags, appq->getcursor, 4);
     
     if (apprec->id != target) {
-        return False;
+        return NULL;
     }
-    appq->getcursor[0]  = 0;                                // Mark as read
+    appq->front         = appq->getcursor;
+    appq->getcursor[0]  = ALP_FLAG_WORKING;                   // Mark as working
     appq->getcursor    += 4;
     appq->back          = appq->getcursor + apprec->plength;
-    return True;
+    
+    return appq->front;
 }
 #endif
 
+
+#ifndef EXTF_alp_retrieve_record
+void alp_release_record(ot_queue* appq) {
+    appq->front[0] = 0;         // Mark as finished so alp_purge() will clear it
+}
+#endif
 
 
 
@@ -382,6 +410,7 @@ void alp_purge(alp_tmpl* alp) {
         }
         if (other_recs == 0) {
             q_empty(alp->inq);
+            alp->purge_id++;
             return;
         }
         if (marked_recs == 0) {
@@ -389,25 +418,38 @@ void alp_purge(alp_tmpl* alp) {
         }
     }
     
-    /// 2. Progress through Queue, purging targeted ALPs by shifting later 
+    /// 2. Progress through Queue, purging targeted records by shifting later 
     /// contents over them.  "acursor" has been set, in part 1, to the first
-    /// instance of a targeted ALP.
-    total_purge_bytes = 0;
+    /// instance of a record marked for purging.
+    total_purge_bytes   = 0;
+    bcursor             = acursor;
     
+    alp_purge_PURGELOOP:
     while (1) {
         ot_int move_bytes;
         ot_int purge_bytes;
     
         // Go past consecutive instances of records marked for purging.
-        bcursor = acursor;
         while ((bcursor[0] == 0) && (bcursor < alp->inq->putcursor))  {
             bcursor += (4 + bcursor[1]);
         }
 
-        // Go past consecutive instances of unmarked records.
+        // Go past consecutive instances of records not to be deleted.
+        // If we find a working record (i.e. an app is using it now), it must
+        // stay in the same location, it cannot be moved.
         ccursor = bcursor;
         while ((ccursor[0] != 0) && (ccursor < alp->inq->putcursor)) {
+            ot_u8 scratch = ccursor[0];
             ccursor += (4 + ccursor[1]);
+            
+            if (scratch == ALP_FLAG_WORKING) {
+                while ((ccursor[0] == ALP_FLAG_WORKING) && (ccursor < alp->inq->putcursor)) {
+                    ccursor += (4 + ccursor[1]);
+                }
+                bcursor = ccursor;
+                acursor = ccursor;
+                goto alp_purge_PURGELOOP;
+            }
         }
         
         // getcursor management: 
@@ -422,19 +464,32 @@ void alp_purge(alp_tmpl* alp) {
                 alp->inq->getcursor = acursor;
         }
         
-        // Exit the loop if there is no more data to move.  Else, shift the 
-        // non-targeted ALPs back over the targeted ones.
+        // If there is data to move, shift the records that are not to be
+        // purged over the ones being purged.
         move_bytes = (ccursor-bcursor);
-        if (move_bytes == 0) {
-            break;
+        if (move_bytes != 0) {
+            ot_u8*  dst;
+            dst     = acursor;
+            acursor+= move_bytes;   
+            memcpy(dst, bcursor, move_bytes);
         }
-        memcpy(acursor, bcursor, (ccursor-bcursor));   
+        else {
+            acursor = ccursor;
+        }
+        
+        // The next loop starts looking for dead records where the last loop
+        // left-off.  acursor is set (above) to the place where the next group
+        // of records can be moved.
+        bcursor = ccursor;
     }
     
-    ///3. Finally, retract the putcursor and length by the total number of 
-    ///   purged bytes
+    ///3. If any bytes have been purged, the app queues must be notified.  We
+    ///   do this by incrementing the purge counter, which is compared against
+    ///   a value in the app queue options field in alp_goto_next().
+    alp->purge_id       += (total_purge_bytes != 0);
+    
+    ///4. Finally, retract the alp queue putcursor by purged bytes.
     alp->inq->putcursor -= total_purge_bytes;
-    //#alpq->length    -= total_purge_bytes;
 }
 #endif
 
@@ -446,7 +501,7 @@ void alp_kill(alp_tmpl* alp, ot_u8 kill_id) {
     
     for (cursor=alp->inq->front; cursor<alp->inq->putcursor; cursor+=(4+cursor[1])) {
         if (cursor[2] == kill_id) {
-            cursor[0]   = 0;
+            cursor[0] = 0;
         }
     }
     alp_purge(alp);
@@ -470,7 +525,7 @@ void alp_kill(alp_tmpl* alp, ot_u8 kill_id) {
   */
 
 #ifndef EXTF_alp_get_handle
-ot_u8 alp_get_handle(ot_u8 alp_id) {
+OT_WEAK ot_u8 alp_get_handle(ot_u8 alp_id) {
 #   if (ALP_API)
     if (alp_id >= 0x80) {
         alp_id -= (0x80-(ALP_FUNCTIONS-ALP_ASAPI-ALP_API));
@@ -479,12 +534,13 @@ ot_u8 alp_get_handle(ot_u8 alp_id) {
     if (alp_id > (ALP_FUNCTIONS+1)) {
         alp_id = (ALP_FUNCTIONS+1);
     }
+    return alp_id;
 }
 #endif
 
 
 #ifndef EXTF_alp_proc
-ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
+OT_WEAK ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
     static const sub_proc proc[] = {
         &alp_proc_null,
 #   if (ALP_FILESYSTEM)
@@ -522,7 +578,12 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
     /// The proc function must set alp->OUTREC(PLEN) based on how much
     /// data it writes to the output queue.  It must return False if the output
     /// should be canceled.
-    alp_handle  = alp_get_handle(alp->INREC(ID));
+    alp_handle  = alp_get_handle(alp->inq->getcursor[2]);
+    
+    ///@note This below was patchwork code.  Protocol implementations were 
+    ///      revised for getcursor offset = 0.
+    //alp->inq->getcursor += 4;
+    
     alp_handle  = (ot_u8)proc[alp_handle](alp, user_id);
     
     /// If the output bookmark is non-Null, there is output chunking.  Else, 
@@ -559,7 +620,7 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id) {
 /// multiframe M2DP -- is getting rearchitected.  alp_break() is likely to be
 /// removed in future versions of OpenTag
 
-void alp_break(alp_tmpl* alp) {
+OT_WEAK void alp_break(alp_tmpl* alp) {
 /// Break a running stream, and manually put a break record onto the stream
 #if (OT_FEATURE(NDEF) == ENABLED)
     ot_u8 tnf;
@@ -584,7 +645,7 @@ void alp_break(alp_tmpl* alp) {
 /// else.  The ability to create a new output record/message is required, but 
 /// the method of doing it may likely get re-architected.
 
-void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payload_remaining) {
+OT_WEAK void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payload_remaining) {
     // Clear control flags (begin, end, chunk)
 	// Chunk and End will be intelligently set in this function, but Begin must
 	// be set by the caller, AFTER this function.
@@ -639,65 +700,8 @@ void alp_new_message(alp_tmpl* alp, ot_u8 payload_limit, ot_int payload_remainin
 /* alp_parse_header PENDING REMOVAL */
 
 #ifndef EXTF_alp_parse_header
-ot_bool alp_parse_header(alp_tmpl* alp) {
-    ot_u8* msgfront;
-    msgfront                = alp->inq->getcursor;
-    alp->inq->getcursor    += 4;
-    memcpy(&alp->INREC(FLAGS), msgfront, 4);
-    
-    ///@todo this is legacy code.  Bookmark should get removed in future
-    //if (alp->INREC(FLAGS) & ALP_FLAG_MB) {
-        //alp->BOOKMARK_IN     = NULL;
-    	//alp->BOOKMARK_OUT    = NULL;
-    //}
-
-    ///@todo could do some checking here, not sure if necessary though.
+OT_WEAK ot_bool alp_parse_header(alp_tmpl* alp) {
     return True;
-
-    ///@note Old, Obsolete code is below
-    
-    // ALP & NDEF Universal Field (Flags)
-//    alp->INREC(FLAGS) = *alp->inq->getcursor++;
-
-    // OBSOLETE: Clear bookmarks on new message input 
-//    if (alp->INREC(FLAGS) & ALP_FLAG_MB) {
-//    	alp->BOOKMARK_IN     = NULL;
-//    	alp->BOOKMARK_OUT    = NULL;
-//    }
-
-    // ALP type
-//    if ((alp->INREC(FLAGS) & (NDEF_SR+NDEF_IL+7)) == (NDEF_SR+0)) {
-//    	ot_u8* qdata;
-//    	qdata                   = alp->inq->getcursor;
-//    	alp->inq->getcursor    += 3;
-//    	memcpy(&alp->INREC(PLEN), qdata, 3);
-//    	return True;
-//    }
-
-    
-
-// Obsolete
-//#if (OT_FEATURE(NDEF) == ENABLED)
-//    // NDEF Universal Fields
-//    alp->inq->getcursor++;	                            //bypass type length
-//    alp->INREC(PLEN)  = *alp->inq->getcursor++;       //get payload length
-//    
-//    // NDEF Type Unchanged (for Chunking)
-//    if ((alp->INREC(FLAGS) & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_SR+6)) {
-//        return True;
-//    }
-//    
-//    // NDEF Type Unknown (for MB==1)
-//    if ((alp->INREC(FLAGS) & (NDEF_MB+NDEF_SR+NDEF_IL+7)) == (NDEF_MB+NDEF_SR+NDEF_IL+5)) {
-//    	if (*alp->inq->getcursor++ == 2) {
-//    		alp->INREC(ID)   = *alp->inq->getcursor++;
-//            alp->INREC(CMD)  = *alp->inq->getcursor++;
-//            return True;
-//    	}
-//    }
-//#endif
-//
-//    return False;
 }
 #endif
 
@@ -708,7 +712,7 @@ ot_bool alp_parse_header(alp_tmpl* alp) {
 ///@note alp_load_retval() is something of a special-purpose routine for a 
 /// legacy API.  Very likely it will be refactored.
 
-ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
+OT_WEAK ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
 /// This function is for writing a two-byte integer to the return record.  It
 /// is useful for some types of API return sequences
     ot_bool respond = (ot_bool)(alp->OUTREC(CMD) & 0x80);
@@ -729,7 +733,7 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval) {
 
 ///@note this function is a recent inclusion, but it's not used.  Don't use it
 /// until new ALP is stable, if it is still here.
-void alp_load_header(ot_queue* appq, alp_record* rec) {
+OT_WEAK void alp_load_header(ot_queue* appq, alp_record* rec) {
     rec->flags      = q_readbyte(appq);
     rec->plength    = q_readbyte(appq);
     rec->id         = q_readbyte(appq);
@@ -752,7 +756,7 @@ void alp_load_header(ot_queue* appq, alp_record* rec) {
   */
 
 #ifndef EXTF_alp_proc_null
-ot_bool alp_proc_null(alp_tmpl* a0, id_tmpl* a1) {
+OT_WEAK ot_bool alp_proc_null(alp_tmpl* a0, id_tmpl* a1) {
 	return True;   // Atomic, with no payload data
 }
 #endif

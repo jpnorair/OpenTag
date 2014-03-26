@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/alp_api_server.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       17 Sept 2013
+  * @version    R101
+  * @date       25 Mar 2014
   * @brief      Application Layer Protocol for API calls
   * @ingroup    ALP
   *
@@ -33,8 +33,6 @@
   *
   ******************************************************************************
   */
-
-///@todo replace INREC calls with direct access from input
 
 #include "alp.h"
 
@@ -208,9 +206,11 @@ static const otapi_cmd m2qp_cmd[11] = {
 
 ot_bool sub_proc_api_irregular(alp_tmpl* alp, id_tmpl* user_id, otapi_icmd* cmd, ot_u8 cmd_limit) {
     ot_u16  retval;
-    ot_u8   rec_cmd     = alp->INREC(_CMD);
+    ot_u8   rec_cmd     = alp->inq->getcursor[3];   // record command
     ot_u8   respond     = (rec_cmd & 0x80);
     ot_u8   lookup_cmd  = (rec_cmd & ~0x80) - 1;
+    
+    alp->inq->getcursor += 4;
     
     /// Do boundary check, and make sure caller is root
     if ( (lookup_cmd >= cmd_limit) || (auth_isroot(user_id) == False) )
@@ -224,31 +224,33 @@ ot_bool sub_proc_api_irregular(alp_tmpl* alp, id_tmpl* user_id, otapi_icmd* cmd,
 }
 
 
-ot_bool alp_proc_api_session(alp_tmpl* alp, id_tmpl* user_id ) {   
+OT_WEAK ot_bool alp_proc_api_session(alp_tmpl* alp, id_tmpl* user_id ) {
     return sub_proc_api_irregular(alp, user_id, (otapi_icmd*)session_cmd, 3);
 }
 
 
-ot_bool alp_proc_api_system(alp_tmpl* alp, id_tmpl* user_id ) {   
+OT_WEAK ot_bool alp_proc_api_system(alp_tmpl* alp, id_tmpl* user_id ) {
     return sub_proc_api_irregular(alp, user_id, (otapi_icmd*)system_cmd, 6);
 }
 
 
 
-ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id ) {
+OT_WEAK ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id ) {
 /// The M2QP API calls follow the rules that future extensions to the API shall
 /// abide, apart from special cases which *must* be cleared by the developer
 /// community prior to becoming official.
 /// The form is: ot_u16 otapi_function(ot_u8*, void*)
     static const ot_u8 argmap[OTAPI_M2QP_FUNCTIONS] = \
-        { 6, 9, 10, 11, 12, 13, 14, 14, 3, 3, 15 };
+        { 6, 9, 10, 11, 12, 13, 14, 14, 15, 0, 0 };
 
     //sub_bdtmpl  get_tmpl;
     ot_u8   dt_buf[24];   // 24 bytes is a safe amount, although less might suffice
     ot_u16  txq_len;
-    ot_u8   status          = alp->INREC(_CMD);    // temporary use as record cmd
+    ot_u8   status          = alp->inq->getcursor[3];    // record cmd
     ot_u8   lookup_cmd      = (status & ~0x80) - 1;
     ot_bool respond         = (ot_bool)(status & 0x80);
+    
+    alp->inq->getcursor    += 4;
     
     if ((lookup_cmd < OTAPI_M2QP_FUNCTIONS) && auth_isroot(user_id)) {
         /// Load template from ALP dir cmd into C datatype

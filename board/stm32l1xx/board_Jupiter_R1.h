@@ -154,8 +154,11 @@
   * 5. The SPIRIT1 SPI benefits from the highest speed clock up to 20 MHz.
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
-#define BOARD_FEATURE_USBCONVERTER      ENABLED                // Is UART/I2C connected via USB converter?
-#define BOARD_FEATURE_MPIPE_DIRECT      ENABLED                 // Direct implementation (UART, I2C)
+#define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
+
+#define BOARD_FEATURE_MPIPE             DISABLED
+#define BOARD_FEATURE_USBCONVERTER      BOARD_FEATURE_MPIPE                 // Is UART connected via USB converter?
+#define BOARD_FEATURE_MPIPE_DIRECT      BOARD_FEATURE_MPIPE
 #define BOARD_FEATURE_MPIPE_BREAK       DISABLED                 // Send/receive leading break for wakeup (I2C)
 #define BOARD_FEATURE_MPIPE_CS          DISABLED                 // Chip-Select / DTR wakeup control (UART)
 #define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                 // RTS/CTS style flow control (UART)
@@ -176,7 +179,8 @@
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG2      DISABLED
 
-#define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
+
+#define BOARD_PARAM_TRIGS               2
 #define BOARD_PARAM_LFHz                32768
 #define BOARD_PARAM_LFtol               0.00002
 #define BOARD_PARAM_MFHz                4200000
@@ -860,6 +864,8 @@ static inline void BOARD_USBCLK_OFF(void) {
 #define OT_TRIG2_PINNUM     BOARD_LEDO_PINNUM
 #define OT_TRIG2_PIN        BOARD_LEDO_PIN
 #define OT_TRIG2_POLARITY   BOARD_LEDO_POLARITY
+
+#define OT_TRIG(NUM, SET)   OT_TRIG##NUM##_##SET##()
 
 #if (OT_TRIG1_POLARITY != 0)
 #   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRRL = OT_TRIG1_PIN;

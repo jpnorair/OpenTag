@@ -73,11 +73,10 @@ static const ot_u16 crc16_table[256] = {
 /** Platform Default CRC Routine <BR>
   * ========================================================================<BR>
   * Uses the CRC table from the CRC module because STM32L1 does not have a 
-  * standalone CRC16 peripheral.  The standard we use is the CCITT 0x1021 poly,
-  * initialized with 0xFFFF.  Text string "123456789" yields 0x29B1.
+  * standalone CRC16 peripheral.
   */
 #ifndef EXTF_platform_crc_init
-ot_u16 platform_crc_init() {
+OT_INLINE ot_u16 platform_crc_init() {
     platform_ext.crc16 = 0xFFFF;
     return 0xFFFF;
 }
@@ -97,7 +96,7 @@ ot_u16 platform_crc_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 in
 
 
 #ifndef EXTF_platform_crc_block
-ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
+OT_INLINE ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
     return platform_crc_block_manual(block_addr, block_size, 0xFFFF);
 }
 #endif
@@ -113,9 +112,6 @@ OT_INLINE void platform_crc_byte(ot_u8 databyte) {
 //    crc     = (platform_ext.crc16 << 8) ^ (crc << 12) ^ (crc << 5) ^ crc;
 //    platform_ext.crc16 = crc;
     
-    ///@todo validate that the below works:
-    ///CRC16_CALCBYTE(crc16_table, platform_ext.crc16, databyte);
-    
     /// Option 2: uses table
     databyte           ^= ((ot_u8*)&platform_ext.crc16)[UPPER];                 //((platform_ext.crc16>>8) & 0xff);
     platform_ext.crc16  = (platform_ext.crc16<<8) ^ crc16_table[databyte];
@@ -124,7 +120,7 @@ OT_INLINE void platform_crc_byte(ot_u8 databyte) {
 
 
 #ifndef EXTF_platform_crc_result
-ot_u16 platform_crc_result() {
+OT_INLINE ot_u16 platform_crc_result() {
     return platform_ext.crc16;
 }
 #endif

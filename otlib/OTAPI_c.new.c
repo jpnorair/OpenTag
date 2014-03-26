@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/OTAPI_c.c
   * @author     JP Norair
-  * @version    R101
-  * @date       23 Mar 2014
+  * @version    R100
+  * @date       3 Oct 2013
   * @brief      OpenTag C API
   * @ingroup    OTAPI
   *
@@ -32,7 +32,7 @@
 #include "OTAPI_tmpl.h"
 #include "OTAPI_c.h"
 
-#include "alp.h"
+
 #include "buffers.h"
 #include "queue.h"
 
@@ -49,13 +49,13 @@
 #include "m2_network.h"
 #include "session.h"
 
-ot_u16 sub_session_handle(m2session* active) {
-    return (active == NULL) ? 0 : *((ot_u16*)&active->channel);
+ot_u16 sub_session_handle(m2session* session) {
+    return (session == NULL) ? 0 : *((ot_u16*)&session->channel);
 }
 
 
 
-ot_u16 otapi_sysinit() {
+OT_WEAK ot_u16 otapi_sysinit() {
 #   if (OT_FEATURE(M2))
     dll_refresh();
 #   endif
@@ -64,7 +64,7 @@ ot_u16 otapi_sysinit() {
 
 
 
-ot_u16 otapi_new_dialog(session_tmpl* s_tmpl, void* applet) {
+OT_WEAK ot_u16 otapi_new_dialog(session_tmpl* s_tmpl, void* applet) {
 #if (SYS_SESSION == ENABLED)
     return sub_session_handle( otapi_task_immediate(s_tmpl, (ot_app)applet) );
 #else
@@ -74,7 +74,7 @@ ot_u16 otapi_new_dialog(session_tmpl* s_tmpl, void* applet) {
 
 
 
-ot_u16 otapi_new_advdialog(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, void* applet) {
+OT_WEAK ot_u16 otapi_new_advdialog(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, void* applet) {
 #if (SYS_FLOOD == ENABLED)
     return sub_session_handle( otapi_task_advertise(adv_tmpl, s_tmpl, (ot_app)applet) );
 #else
@@ -83,7 +83,7 @@ ot_u16 otapi_new_advdialog(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, void* ap
 }
 
 
-ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
+OT_WEAK ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
 /// Set the header if the session is valid.  Also conditionally write the header
 /// depending on the address type (a parameter).  
     if (session_notempty()) {
@@ -97,10 +97,6 @@ ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
         if ((addr & M2QUERY_GLOBAL) == 0) {   
             platform_memcpy((ot_u8*)&m2np.rt, (ot_u8*)routing, sizeof(routing_tmpl));
         }
-        ///@note updated version of above, using modernized network control
-        //if (addr & M2FI_UCAST) {
-        //    platform_memcpy((ot_u8*)&m2np.rt, (ot_u8*)routing, sizeof(routing_tmpl));
-        //}
 
         // Load the header
         m2np_header(s_active, (ot_u8)addr, M2FI_FRDIALOG);
@@ -110,7 +106,7 @@ ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
 }
 
 
-ot_u16 otapi_close_request() {
+OT_WEAK ot_u16 otapi_close_request() {
 /// Set the footer if the session is valid
     if (session_notempty()) {
         m2np_footer( /* session_top() */ );
@@ -120,7 +116,7 @@ ot_u16 otapi_close_request() {
 }
 
 
-ot_u16 otapi_start_dialog(ot_u16 timeout) {
+OT_WEAK ot_u16 otapi_start_dialog(ot_u16 timeout) {
 /// Stop any ongoing processes and seed the event for the event manager.  The
 /// radio killer will work in all cases, but it is bad form to kill sessions
 /// that are moving data.
@@ -151,7 +147,7 @@ ot_u16 otapi_start_dialog(ot_u16 timeout) {
 
 
 #ifndef EXTF_otapi_session_number
-ot_u16 otapi_session_number() {
+OT_WEAK ot_u16 otapi_session_number() {
     if (session_notempty()) {
         m2session* active = session.top;
         return *((ot_u16*)&(active->channel));
@@ -162,7 +158,7 @@ ot_u16 otapi_session_number() {
 
 
 #ifndef EXTF_otapi_flush_sessions
-ot_u16 otapi_flush_sessions() {
+OT_WEAK ot_u16 otapi_flush_sessions() {
     session_flush();
     return session_numfree();
 }
@@ -170,8 +166,7 @@ ot_u16 otapi_flush_sessions() {
 
 
 #ifndef EXTF_otapi_is_session_blocked
-ot_u16 otapi_is_session_blocked(ot_u8 chan_id) {
-///@todo deprecated
+OT_WEAK ot_u16 otapi_is_session_blocked(ot_u8 chan_id) {
     return (ot_u16)session_occupied(chan_id);
 }
 #endif
@@ -188,7 +183,7 @@ ot_u16 otapi_is_session_blocked(ot_u8 chan_id) {
 #include "m2_transport.h"
 
 #ifndef EXTF_otapi_put_command_tmpl
-ot_u16 otapi_put_command_tmpl(ot_u8* status, command_tmpl* command) {    
+OT_WEAK ot_u16 otapi_put_command_tmpl(ot_u8* status, command_tmpl* command) {    
     /// Check Opcodes to make sure this one is supported
     /// @todo base this on app_config.h settings.  Currently this is rudimentary
     ///       and hard-coded.  It just filters out Datastream and non-existing codes
@@ -215,7 +210,7 @@ ot_u16 otapi_put_command_tmpl(ot_u8* status, command_tmpl* command) {
 
 
 #ifndef EXTF_otapi_put_dialog_tmpl
-ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
+OT_WEAK ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
     if (dialog == NULL) {
         ///@todo "15" is hard-coded timeout.  Have this be a constant
         dll.comm.rx_timeout = (m2qp.cmd.ext & 2) ? 0 : 15;
@@ -224,7 +219,7 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
     else {
         // Place dialog with timeout
         dll.comm.rx_timeout = otutils_calc_timeout(dialog->timeout);
-        dialog->timeout    |= (dialog->channels == 0) ? 0 : 0x80;
+        dialog->timeout    |= (dialog->channels == 0) << 7;     // 0 or 0x80
         q_writebyte(&txq, dialog->timeout);
     
         // Write response list
@@ -242,29 +237,23 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
 
 
 #ifndef EXTF_otapi_put_query_tmpl
-ot_u16 otapi_put_query_tmpl(ot_u8* status, query_tmpl* query) {
-    /// Test for Anycast and Multicast addressing (query needs one of these)    
-    if (m2np.header.fr_info & M2QUERY_GLOBAL) {
-    //if (m2qp.cmd.code & M2TT_MASK) < M2TT_REQ_UB) {     ///@note using modernized approach
-        q_writebyte(&txq, query->length);
-        q_writebyte(&txq, query->code);
+OT_WEAK ot_u16 otapi_put_query_tmpl(ot_u8* status, query_tmpl* query) {
+    q_writebyte(&txq, query->length);
+    q_writebyte(&txq, query->code);
     
-        if (query->code & 0x80) {
-            q_writestring(&txq, query->mask, query->length);
-        }
-        q_writestring(&txq, query->value, query->length);
-    
-        *status = 1;
-        return q_length(&txq);
+    if (query->code & 0x80) {
+        q_writestring(&txq, query->mask, query->length);
     }
-    *status = 0;
-    return 0;
+    q_writestring(&txq, query->value, query->length);
+    
+    *status = 1;
+    return q_length(&txq);
 }
 #endif
 
 
 #ifndef EXTF_otapi_put_ack_tmpl
-ot_u16 otapi_put_ack_tmpl(ot_u8* status, ack_tmpl* ack) {
+OT_WEAK ot_u16 otapi_put_ack_tmpl(ot_u8* status, ack_tmpl* ack) {
     ot_int  i;
     ot_u8*  data_ptr    = ack->list;
     ot_u8*  limit       = txq.back - ack->length;
@@ -281,7 +270,7 @@ ot_u16 otapi_put_ack_tmpl(ot_u8* status, ack_tmpl* ack) {
 
 
 #ifndef EXTF_otapi_put_isf_offset
-void sub_put_isf_offset(ot_u8 is_series, ot_u16 offset) {
+OT_WEAK void sub_put_isf_offset(ot_u8 is_series, ot_u16 offset) {
     if (is_series) {
         q_writeshort(&txq, offset);
     }
@@ -293,7 +282,7 @@ void sub_put_isf_offset(ot_u8 is_series, ot_u16 offset) {
 
 
 #ifndef EXTF_otapi_put_isf_comp
-ot_u16 otapi_put_isf_comp(ot_u8* status, isfcomp_tmpl* isfcomp) {
+OT_WEAK ot_u16 otapi_put_isf_comp(ot_u8* status, isfcomp_tmpl* isfcomp) {
     q_writebyte(&txq, isfcomp->isf_id);
     sub_put_isf_offset(isfcomp->is_series, isfcomp->offset);
     
@@ -304,7 +293,7 @@ ot_u16 otapi_put_isf_comp(ot_u8* status, isfcomp_tmpl* isfcomp) {
 
 
 #ifndef EXTF_otapi_put_isf_call
-ot_u16 otapi_put_isf_call(ot_u8* status, isfcall_tmpl* isfcall) {
+OT_WEAK ot_u16 otapi_put_isf_call(ot_u8* status, isfcall_tmpl* isfcall) {
     q_writebyte(&txq, isfcall->max_return);
     q_writebyte(&txq, isfcall->isf_id);
     sub_put_isf_offset(isfcall->is_series, isfcall->offset);
@@ -316,9 +305,9 @@ ot_u16 otapi_put_isf_call(ot_u8* status, isfcall_tmpl* isfcall) {
 
 
 #ifndef EXTF_otapi_put_isf_return
-ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall) {
-    ot_queue    local_q;
-    ot_u8       lq_data[4];
+OT_WEAK ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall) {
+    ot_queue   local_q;
+    ot_u8   lq_data[4];
     
     q_init(&local_q, lq_data, 4);
     q_writebyte(&local_q, (ot_u8)isfcall->max_return);
@@ -336,39 +325,22 @@ ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall) {
 
 
 #ifndef EXTF_otapi_put_udp_tmpl
-ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
-    ot_u16 space;
-    space = q_space(&txq);
+OT_WEAK ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
+/// There is no error/exception handling in this implementation, but it is
+/// possible to add in the future
+    q_writebyte(&txq, udp->src_port);
+    q_writebyte(&txq, udp->dst_port);
+    q_writestring(&txq, udp->data, udp->data_length);
     
-#   if (M2_FEATURE(MULTIFRAME))
-    ///@todo Multiframe support: it will still return error when the UDP data
-    ///      length is bigger than the max packet payload size, but it will
-    ///      detect boundaries across the packet rather than simply across the
-    ///      frame.  It will probably require a network-layer function to 
-    ///      determine the overhead when supplied payload length.
-#   else
-        space -= 4;
-        if (space < udp->data_length) {
-            *status = 0;
-        }
-        else {
-            *status = 1;
-            q_writebyte(&txq, (ALP_FLAG_MB | ALP_FLAG_ME));
-            q_writebyte(&txq, (ot_u8)udp->data_length);
-            q_writebyte(&txq, udp->dst_port);
-            q_writebyte(&txq, udp->src_port);
-            q_writestring(&txq, udp->data, udp->data_length);
-        }
-#   endif
-
+    *status = 1;
     return q_length(&txq);
 }
 #endif
 
 
 #ifndef EXTF_otapi_put_error_tmpl
-ot_u16 otapi_put_error_tmpl(ot_u8* status, error_tmpl* error) {
-///@todo M2QP native error reporting is deprecated.  Get rid of this.
+OT_WEAK ot_u16 otapi_put_error_tmpl(ot_u8* status, error_tmpl* error) {
+///@todo this feature is being abandoned in DASH7 Mode 2
     q_writebyte(&txq, error->code);
     q_writebyte(&txq, error->subcode);
     
@@ -379,8 +351,9 @@ ot_u16 otapi_put_error_tmpl(ot_u8* status, error_tmpl* error) {
 
 
 #ifndef EXTF_otapi_put_reqds
-ot_u16 otapi_put_reqds(ot_u8* status, ot_queue* dsq) {
-///@todo Datastream delivery is no longer an explicit feature, get rid of this.
+OT_WEAK ot_u16 otapi_put_reqds(ot_u8* status, ot_queue* dsq) {
+/// Write values stored from configuration
+/// @todo implement this in next version
     *status = 0;
     return 0;
 }
@@ -388,8 +361,9 @@ ot_u16 otapi_put_reqds(ot_u8* status, ot_queue* dsq) {
 
 
 #ifndef EXTF_otapi_put_propds
-ot_u16 otapi_put_propds(ot_u8* status, ot_queue* dsq) {
-///@todo Datastream delivery is no longer an explicit feature, get rid of this.
+OT_WEAK ot_u16 otapi_put_propds(ot_u8* status, ot_queue* dsq) {
+/// Write values stored from configuration
+/// @todo implement this in next version
     *status = 0;
     return 0;
 }

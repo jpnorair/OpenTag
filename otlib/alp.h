@@ -1,4 +1,4 @@
-/*  Copyright 2013, JP Norair
+/*  Copyright 2013-2014, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /otlib/alp.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       25 Sept 2013
+  * @date       25 Mar 2014
   * @brief      Application Layer Protocol Management Module
   * @defgroup   ALP
   * @ingroup    ALP
@@ -25,6 +25,10 @@
   * "ALP" stands for Application Layer Protocol.  ALP defines a particular 
   * format for message encapsulation.  Incidentally, this format is also very
   * useful for general purpose message passing in systems like OpenTag.
+  *
+  * @note "ALP" is an old term that doesn't anymore fit the wider scope of  
+  * modern ALP.  The data model will be changed to "CHOMP," meaning "Cascaded, 
+  * Header-Oriented Multi-Port."
   *
   * The ALP Module defines an ALP datatype and functional interface.  The 
   * general usage model is to define an ALP "object" for usage by some number
@@ -55,11 +59,12 @@
   * ALP Records can be used for NDEF and Pure-ALP.
   */
   
-#define ALP_FLAG_MB     0x80    // Message Start bit
-#define ALP_FLAG_ME     0x40    // Message End bit
-#define ALP_FLAG_CF     0x20    // Chunk Flag
-#define ALP_FLAG_SR     0x10
-
+#define ALP_FLAG_MB         0x80    // Message Start bit
+#define ALP_FLAG_ME         0x40    // Message End bit
+#define ALP_FLAG_CF         0x20    // Chunk Flag
+#define ALP_FLAG_SR         0x10
+#define ALP_FLAG_WORKING    0x08    // For internal usage with ALP (no NDEF)
+#define ALP_FLAG_INTRAMSG   0x07    // For internal usage with ALP (no NDEF)
 
 /// Temporary, for transitioning some alp code that is being refactored
 #define _O_CMD          cmd
@@ -97,15 +102,19 @@ typedef struct {
 //    void*   bookmark;           // Internal use only (private)
 } alp_record;
 
+
+///@note The alp_tmpl structure is under redesign.  inrec and outrec will be
+///      removed, and the application processors will be responsible to manage
+///      their own record headers, with functional assitance from ALP module.
 typedef struct {
-    ///@note The alp_tmpl structure is about to be redesigned.  inrec and outrec
-    ///      will be removed, and the application processors will be responsible
-    ///      for managing their own record headers, with functional assitance
-    ///      from the ALP module.
-//    alp_record  inrec;
-    alp_record  outrec;
+    ot_u16      purge_id;       // Internal use only: for garbage collection
+    
+//    alp_record  inrec;        // Legacy: but using Macros [above] as bridge
+    alp_record  outrec;         // Legacy: to be removed soon
     ot_queue*   inq;
     ot_queue*   outq;
+    
+    void*       sstack;         // Use NULL if the ALP is on an interface with no session stack
 } alp_tmpl;
 
 
@@ -262,15 +271,30 @@ ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target);
   * @param  apprec      (alp_record*) output alp record header
   * @param  appq        (ot_queue*) Application Queue
   * @param  target      (ot_u8) ALP ID used by Application
-  * @retval ot_bool     True on successful retrieval 
+  * @retval ot_u8*      Pointer to front of record, or NULL if no record
   * @ingroup ALP
   * @sa alp_goto_next
   *
-  * A protocol processor may use this function following alp_goto_next(), to
+  * A protocol processor should use this function following alp_goto_next(), to
   * return the Command (cmd) value of the new record and also to mark the new
-  * record as read.
+  * record as the working record.
   */
-ot_bool alp_retrieve_cmd(alp_record* apprec, ot_queue* appq, ot_u8 target);
+ot_u8* alp_retrieve_record(alp_record* apprec, ot_queue* appq, ot_u8 target);
+
+
+
+/** @brief  Releases (frees) the record in the buffer
+  * @param  appq        (ot_queue*) Application Queue
+  * @retval None
+  * @ingroup ALP
+  * @sa alp_retrieve_record
+  *
+  * A protocol processor may use this function after it is finished with a 
+  * record.  Issuing alp_retrieve_record() will mark the record as finished, 
+  * allowing the ALP garbage collector (alp_purge()) to reallocate the space 
+  * for future records.
+  */
+void alp_release_record(ot_queue* appq);
 
 
 

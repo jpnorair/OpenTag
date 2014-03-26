@@ -48,7 +48,10 @@
   * are almost always going to be needed.
   */
 
-#if (MCU_CONFIG_USB)
+#define _USB_ON_MPIPE           (OT_FEATURE(MPIPE) && defined(MPIPE_USB))
+#define _USB_ON_SOMETHINGELSE   ...
+
+#if (MCU_CONFIG_USB && (_USB_ON_MPIPE || 0))
 #   undef __ISR_USB_LP
 #   undef __ISR_USB_FS_WKUP
 #   define __ISR_USB_LP
@@ -97,7 +100,7 @@
 
 /// Enable MPIPE Interrupts:
 /// DMA interrupts for UART DMA
-#if (OT_FEATURE(MPIPE))
+#if (OT_FEATURE(MPIPE) && BOARD_FEATURE(MPIPE))
 #   if (MCU_CONFIG(MPIPECDC))
         ///@todo USB MPipe Interrupt settings
    
@@ -123,7 +126,7 @@
 #       endif
 
 #   else
-#       error "MPIPE enabled in app configuration, but not enabled on this board."
+#       error "MPIPE is not enabled on a known communication interface."
 #   endif
 
 #else

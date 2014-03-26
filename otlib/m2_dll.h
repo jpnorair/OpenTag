@@ -149,12 +149,14 @@
 #endif
 
 typedef struct {
-    ot_u8   subnet;             // Device Subnet from UDB 0
+    ot_u8   uid[8];
+    ot_u8   vid[2];
+    ot_u8   subnet;             // Device Subnet from ISF 0
     ot_u8   b_subnet;
-    ot_u8   dd_flags;           // Default Device flags (see M2DF's in protocol_M2.h)
-    ot_u8   b_attempts;         // Beacon Tries from UDB 0
-    ot_u16  active;             // Active settings from UDB 0
-    ot_u16  hold_limit;         // Hold limit from UDB 0
+    ot_u16  active;             // Active settings from ISF 0
+    ot_u8   dd_flags;           // Default Device flags
+    ot_u8   b_attempts;         // Beacon Tries from ISF 0
+    ot_u16  hold_limit;         // Hold limit from ISF 0
 } netconf_struct;
 
 
@@ -326,10 +328,14 @@ void dll_beacon_applet(m2session* s_active);
 
 
 
+/** DLL Default Signal Callers <BR>
+  * ========================================================================<BR>
+  * These are implemented in m2_dll_task.c as empty functions, and they are 
+  * linked with "weak" attribute so you can replace them with your own versions.
+  */
 
 void dll_sig_rfinit(ot_int pcode);
 void dll_sig_rfterminate(ot_int pcode, ot_int scode);
-
 
 
 

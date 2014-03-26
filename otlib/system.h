@@ -52,9 +52,27 @@
 #   ifndef __KERNEL_NONE__
 #   define __KERNEL_NONE__
 #   endif
-    typedef void*    ot_task;
-    typedef ot_u32   ot_task_struct;
+    //typedef void*    ot_task;
+    //typedef ot_u32   ot_task_struct;
 
+    typedef struct task_marker_struct {
+        ot_u8   event;
+        ot_u8   cursor;
+        ot_u8   reserve;
+        ot_u8   latency;
+        ot_long nextevent;
+#       if (OT_PARAM_SYSTHREADS != 0)
+        void*   stack;
+#       endif
+#       if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
+        void    (*call)(struct task_marker_struct *marker);
+#       endif
+    } task_marker;
+
+    typedef task_marker*    ot_task;
+    typedef task_marker     ot_task_struct;
+
+    typedef void (*systask_fn)(ot_task);
 #endif
 
 

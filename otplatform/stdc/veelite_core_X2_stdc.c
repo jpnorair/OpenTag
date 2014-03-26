@@ -271,7 +271,7 @@ ot_u8 vworm_format( ) {
     ot_u8       output = 0;
 
     /// 1. Load default cursor (using embedded method)
-    cursor = (ot_u16*)(OTF_VWORM_START_ADDR);
+    cursor = (ot_u16*)(FLASH_FS_ADDR);
 
     /// 2. Format all Blocks, Put Block IDs into Primary Blocks
     for (i=0; i<VWORM_PRIMARY_PAGES; i++) {
@@ -321,7 +321,7 @@ ot_u8 vworm_init( ) {
     else {
         ot_u16* cursor;
         ot_int i;
-        cursor = (ot_u16*)(OTF_VWORM_START_ADDR);
+        cursor = (ot_u16*)(FLASH_FS_ADDR);
 
         for (i=0; i<VWORM_PRIMARY_PAGES; i++) {
             X2table.block[i].primary    = cursor;
@@ -644,7 +644,7 @@ ot_u16* sub_recombine_block(block_ptr* block_in, ot_int skip, ot_int span) {
 
     /// 2. Combine the old blocks into the fallow block
     span+=skip;
-    for (i=0; i<OTF_VWORM_PAGESIZE; i+=2) {
+    for (i=0; i<VWORM_PAGESIZE; i+=2) {
         if ((i<skip) || (i>=span)) {
             test |= vworm_mark_physical(f_ptr, ~(*p_ptr ^ *a_ptr));
         }

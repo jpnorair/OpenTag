@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2013-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_dll_task.c
   * @author     JP Norair
-  * @version    R102
-  * @date       26 Sept 2013
+  * @version    R103
+  * @date       24 Mar 2014
   * @brief      Data Link Layer Task for DASH7
   * @ingroup    DLL
   *
@@ -280,15 +280,25 @@ OT_WEAK void dll_refresh() {
     
     /// Open Network Features ISF and load the values from that file into the
     /// cached dll.netconf settings.
-    fp = ISF_open_su( 0x00 );
-    scratch.ushort          = vl_read(fp, 2);
-    dll.netconf.subnet      = scratch.ubyte[0];
-    dll.netconf.b_subnet    = scratch.ubyte[1];
-    scratch.ushort          = vl_read(fp, 6);
-    dll.netconf.dd_flags    = scratch.ubyte[0];
-    dll.netconf.b_attempts  = scratch.ubyte[1];
-    dll.netconf.active      = vl_read(fp, 4);
-    dll.netconf.hold_limit  = PLATFORM_ENDIAN16(vl_read(fp, 8));
+//    fp = ISF_open_su( 0x00 );
+//    dll.netconf.vid         = vl_read(fp, 0);
+//    scratch.ushort          = vl_read(fp, 2);
+//    dll.netconf.subnet      = scratch.ubyte[0];
+//    dll.netconf.b_subnet    = scratch.ubyte[1];
+//    scratch.ushort          = vl_read(fp, 4);
+//    dll.netconf.dd_flags    = scratch.ubyte[0];
+//    dll.netconf.b_attempts  = scratch.ubyte[1];
+//    dll.netconf.active      = vl_read(fp, 6);
+//    dll.netconf.hold_limit  = PLATFORM_ENDIAN16(vl_read(fp, 8));
+//    vl_close(fp);
+    
+    fp = ISF_open_su(0);
+    vl_load(fp, 10, dll.netconf.vid);
+    dll.netconf.hold_limit  = PLATFORM_ENDIAN16(dll.netconf.hold_limit);
+    vl_close(fp);
+    
+    fp = ISF_open_su(1);
+    vl_load(fp, 8, dll.netconf.uid);
     vl_close(fp);
 
     // Reset the Scheduler (only does anything if scheduler is implemented)
@@ -373,13 +383,113 @@ OT_WEAK void dll_idle() {
 
 
 
+/** External DLL applets <BR>
+  * ========================================================================<BR>
+  */
+OT_WEAK void dll_default_applet(m2session* active) {
+    dll_set_defaults(active);
+}
+
+
+/** Internal DLL applets <BR>
+  * ========================================================================<BR>
+  */
+
+OT_WEAK void dll_response_applet(m2session* active) {
+/// If this is a response transmission of a session with "Listen" active, it
+/// means the contention period (Tc) is followed immediately with a subsequent
+/// request.  We must not overlap that request with the tail-end of our own
+/// response.  Therefore, we subtract from Tc the duration of this response.
+    if (active->flags & M2_FLAG_LISTEN) {
+        ot_u8 substate = active->netstate & M2_NETSTATE_TMASK;
+        
+        if (substate == M2_NETSTATE_RESPTX) {
+            dll.comm.tc -= TI2CLK(rm2_pkt_duration(&txq));
+        }
+        else if (substate == M2_NETSTATE_REQRX) {
+            sys.task_HSS.cursor     = 0;
+            sys.task_HSS.nextevent  = dll.comm.rx_timeout;
+            dll.comm.rx_timeout     = rm2_default_tgd(active->channel);
+        }
+    }
+}
+
+
+OT_WEAK void dll_scan_applet(m2session* active) {
+/// Scanning is a Request-RX operation, so Tc is not important.
+    ot_u8 scan_code;
+    dll_set_defaults(active);
+    
+    scan_code               = active->extra;
+    active->extra           = 0;
+    dll.comm.rx_timeout     = otutils_calc_timeout(scan_code);
+    //dll.comm.csmaca_params  = 0;
+}
+
+
+OT_WEAK void dll_beacon_applet(m2session* active) {
+/// Beaconing is a Request-TX operation, and the value for Tc is the amount of
+/// time to spend in CSMA before quitting the beacon.
+    ot_queue beacon_queue;
+    ot_u8 b_params;
+    ot_u8 cmd_ext;
+    ot_u8 cmd_code;
+    
+    b_params        = active->extra;
+    active->extra   = 0;
+
+    /// Start building the beacon packet:
+    /// <LI> Calling m2np_header() will write most of the front of the frame </LI>
+    /// <LI> Add the command byte and optional command-extension byte </LI>
+    m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
+    
+    cmd_ext     = (b_params & 0x06);
+    cmd_code    = 0x20 | (b_params & 1) | ((cmd_ext!=0) << 7);
+    q_writebyte(&txq, cmd_code);
+    if (cmd_ext) {
+        q_writebyte(&txq, cmd_ext);
+    }
+
+    /// Setup the comm parameters, if the channel is available:
+    /// <LI> dll.comm values tx_eirp, cs_rssi, and cca_rssi must be set by the
+    ///      radio module during the CSMA-CA process -- don't set them here.
+    ///      The DASH7 spec requires it to happen in this order. </LI>
+    /// <LI> Set CSMA-CA parameters, which are used by the radio module </LI>
+    /// <LI> Set number of redundant TX's we would like to transmit </LI>
+    /// <LI> Set rx_timeout for Default-Tg or 0, if beacon has no response </LI>
+    dll_set_defaults(active);
+    dll.comm.tc             = TI2CLK(M2_PARAM_BEACON_TCA);
+    dll.comm.rx_timeout     = (b_params & 0x02) ? \
+                                0 : rm2_default_tgd(active->channel);
+    dll.comm.csmaca_params |= (b_params & 0x04) | M2_CSMACA_NA2P | M2_CSMACA_MACCA;
+    dll.comm.redundants     = dll.netconf.b_attempts;  
+
+    q_writebyte(&txq, (ot_u8)dll.comm.rx_timeout);
+
+    /// If the beacon data is missing or otherwise not accessible by the 
+    /// GUEST user, scrap this session.  Else, finish the M2NP frame.
+    q_init(&beacon_queue, &bq_data.ubyte[0], 4);
+    if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
+        //active->netstate = M2_NETFLAG_SCRAP;
+        session_pop();
+        dll_idle();
+    }
+    else {
+        m2np_footer();
+    }
+}
+
+
+
+
+
 
 
 
 /** DLL Systask Manager <BR>
   * ========================================================================<BR>
   */
-#ifndef __KERNEL_NONE__
+#if !defined(__KERNEL_NONE__)
   
 #ifdef OT_FEATURE_LISTEN_ALLOWANCE
 #   define _REQRX_LATENCY   OT_PARAM_LISTEN_ALLOWANCE
@@ -471,7 +581,7 @@ void sub_processing() {
     active              = session_top();
     active->counter     = 0;
     proc_score          = network_route_ff(active);
-
+    
     /// Response is prepared already, so setup holdstate and flow control.
     /// proc_score is always negative after parsing a response.
     if (proc_score >= 0) {
@@ -493,17 +603,19 @@ void sub_processing() {
         }
     }
 
-    // No response (or no listening for responses)
-    // Plus bad score: stop the session
+    /// Bad score, plus session indicates no listening or sending response.
+    /// Scrap the session.
     else if ((active->netstate & M2_NETSTATE_RESP) == 0) {
-        //active->netstate |= M2_NETFLAG_SCRAP;
+        goto sub_processing_SCRAP;
+    }
+    
+    /// A protocol parser has scrapped the session, or possibly the above
+    /// condition branched here directly.
+    if (active->netstate & M2_NETFLAG_SCRAP) {
+        sub_processing_SCRAP:
         session_pop();
         dll_idle();
     }
-    
-    // Listening for responses (keep listening)
-    //else {        
-    //}
 }
 
 
@@ -638,106 +750,6 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
     vl_close(fp);
 }
 #endif
-
-
-
-
-
-
-
-
-
-/** External DLL applets <BR>
-  * ========================================================================<BR>
-  */
-OT_WEAK void dll_default_applet(m2session* active) {
-    dll_set_defaults(active);
-}
-
-
-/** Internal DLL applets <BR>
-  * ========================================================================<BR>
-  */
-
-OT_WEAK void dll_response_applet(m2session* active) {
-/// If this is a response transmission of a session with "Listen" active, it
-/// means the contention period (Tc) is followed immediately with a subsequent
-/// request.  We must not overlap that request with the tail-end of our own
-/// response.  Therefore, we subtract from Tc the duration of this response.
-    if (active->flags & M2_FLAG_LISTEN) {
-        ot_u8 substate = active->netstate & M2_NETSTATE_TMASK;
-        
-        if (substate == M2_NETSTATE_RESPTX) {
-            dll.comm.tc -= TI2CLK(rm2_pkt_duration(&txq));
-        }
-        else if (substate == M2_NETSTATE_REQRX) {
-            sys.task_HSS.cursor     = 0;
-            sys.task_HSS.nextevent  = dll.comm.rx_timeout;
-            dll.comm.rx_timeout     = rm2_default_tgd(active->channel);
-        }
-    }
-}
-
-
-OT_WEAK void dll_scan_applet(m2session* active) {
-/// Scanning is a Request-RX operation, so Tc is not important.
-    ot_u8 scan_code;
-    dll_set_defaults(active);
-    
-    scan_code               = active->extra;
-    active->extra           = 0;
-    dll.comm.rx_timeout     = otutils_calc_timeout(scan_code);
-    //dll.comm.csmaca_params  = 0;
-}
-
-
-OT_WEAK void dll_beacon_applet(m2session* active) {
-/// Beaconing is a Request-TX operation, and the value for Tc is the amount of
-/// time to spend in CSMA before quitting the beacon.
-    ot_queue beacon_queue;
-    ot_u8 b_params;
-    b_params        = active->extra;
-    active->extra   = 0;
-
-    /// Start building the beacon packet:
-    /// <LI> Calling m2np_header() will write most of the front of the frame </LI>
-    /// <LI> Add the command byte and optional command-extension byte </LI>
-    m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
-    q_writebyte(&txq, 0x20 + (b_params & 1));
-    if (b_params & 0x04) {
-        q_writebyte(&txq, (b_params & 0x04));
-    }
-
-    /// Setup the comm parameters, if the channel is available:
-    /// <LI> dll.comm values tx_eirp, cs_rssi, and cca_rssi must be set by the
-    ///      radio module during the CSMA-CA process -- don't set them here.
-    ///      The DASH7 spec requires it to happen in this order. </LI>
-    /// <LI> Set CSMA-CA parameters, which are used by the radio module </LI>
-    /// <LI> Set number of redundant TX's we would like to transmit </LI>
-    /// <LI> Set rx_timeout for Default-Tg or 0, if beacon has no response </LI>
-    dll_set_defaults(active);
-    dll.comm.tc             = TI2CLK(M2_PARAM_BEACON_TCA);
-    dll.comm.rx_timeout     = (b_params & 0x02) ? \
-                                0 : rm2_default_tgd(active->channel);
-    dll.comm.csmaca_params |= (b_params & 0x04) | M2_CSMACA_NA2P | M2_CSMACA_MACCA;
-    dll.comm.redundants     = dll.netconf.b_attempts;  
-
-    q_writebyte(&txq, (ot_u8)dll.comm.rx_timeout);
-
-    /// If the beacon data is missing or otherwise not accessible by the 
-    /// GUEST user, scrap this session.  Else, finish the M2NP frame.
-    q_init(&beacon_queue, &bq_data.ubyte[0], 4);
-    if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
-        //active->netstate = M2_NETFLAG_SCRAP;
-        session_pop();
-        dll_idle();
-    }
-    else {
-        m2np_footer();
-    }
-}
-
-
 
 
 
@@ -938,6 +950,7 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
 /// Radio Core event callback, called by the radio driver when a frame is rx'ed
 /// or if there is some type of error.
     ot_int      frx_code= 0;
+    ot_bool     re_init = False;
     m2session*  active  = session_top();
     
     /// If pcode is less than zero, it is because of a listening timeout.
@@ -946,7 +959,6 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
     /// the session persists.  These cases are implemented below.
     if (pcode < 0) {
         sys.task_RFA.event  = 0;
-      //frx_code            = -1;
         if (dll.comm.redundants) {
             active->netstate   = (M2_NETSTATE_REQTX | M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX);
         }
@@ -976,7 +988,7 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
         /// Handle damaged frames (bad CRC)
     	/// Run subnet filtering on frames with good CRC
     	if (fcode != 0) {
-    		frx_code--;
+    		frx_code = -1;
     	}
         else if (radio_mac_filter() == False) {
             frx_code = -4;
@@ -999,27 +1011,25 @@ void rfevt_frx(ot_int pcode, ot_int fcode) {
                 dll.counter     = dll.netconf.hold_limit;
                 dll.idle_state  = M2_DLLIDLE_HOLD;
             }
-            if (frx_code || rx_isresp) {
-                rm2_reenter_rx(&rfevt_frx);
-            }
-            else {
-                radio_sleep();
-            }
             
-            // This should follow the above operations, because callback from
-            // DLL_SIG_RFTERMINATE might take a relatively long time.
-            if (frx_code != 0) {
-                DLL_SIG_RFTERMINATE(3, frx_code);
-                return;
-            }
+            re_init         = (frx_code || rx_isresp);
+            if (re_init)    rm2_reenter_rx(&rfevt_frx);
+            else            radio_sleep();
         }
     }
 
-    /// The RX Termination Callback always uses code = "3"
+    /// The RX Callback Code is always "3"
     DLL_SIG_RFTERMINATE(3, frx_code);
 
+    /// Re-initialize signal, if reinitializing
+    if (re_init) {
+        DLL_SIG_RFINIT(3);
+    }
+    
     /// Pre-empt the Kernel Scheduler on successful packet download or timeout
-    sys_preempt(&sys.task_RFA, 0);
+    if (frx_code == 0) {
+        sys_preempt(&sys.task_RFA, 0);
+    }
 }
 
 

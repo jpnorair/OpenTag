@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_transport.h
   * @author     JP Norair
-  * @version    R100
-  * @date       31 July 2012
+  * @version    R101
+  * @date       20 Mar 2014
   * @brief      DASH7 Mode 2 Query Protocol (Transport Layer)
   * @ingroup    M2QP
   *
@@ -51,14 +51,25 @@
 // A2P  = "Arbitrated 2-Party [Transport]"  
 //      -> Formal behavior is for sequential query casting (or retries).  
 //      -> Can also be hacked to do many very cool things, without violating spec
-#define M2TT_MASK               0x70
-#define M2TT_RESPONSE           0x00
-#define M2TT_ERROR              0x10
-#define M2TT_REQNA2P            0x20        //NA2P Request (Normal)
-#define M2TT_REQA2P             0x40
-#define M2TT_REQA2P_I           0x40        //Initial A2P Request
-#define M2TT_REQA2P_X           0x50        //Intermediate A2P Request
-#define M2TT_REQA2P_T           0x70        //Terminal (Final) A2P Request
+#define M2TT_MASK               (7<<4)      //0x70
+#define M2TT_RESPONSE           (0<<4)      //0x00
+#define M2TT_ERROR              (1<<4)      //0x10
+#define M2TT_REQNA2P            (2<<4)      //0x20        //NA2P Request (Normal)
+#define M2TT_REQA2P             (4<<4)      //0x40
+#define M2TT_REQA2P_I           (4<<4)      //0x40       //Initial A2P Request
+#define M2TT_REQA2P_X           (5<<4)      //0x50        //Intermediate A2P Request
+#define M2TT_REQA2P_T           (7<<4)      //0x70        //Terminal (Final) A2P Request
+
+/// Future updates: mostly nomenclature changes
+#define M2TT_REQ_QUERY          (1<<4)
+#define M2TT_REQ_UB             (2<<4)      // Unicast/Broadcast Request (non arbitrated, no queries)
+#define M2TT_REQ_A              (3<<4)      // Anycast Request (non arbitrated, global query)
+#define M2TT_REQ_M              (4<<4)      // Mask for Multicast requests
+#define M2TT_REQ_M_INIT         (4<<4)      // Initial Multicast Request (global + local queries)
+#define M2TT_REQ_M_MID          (5<<4)      // Intermediate Multicast Request
+#define M2TT_REQ_M_FIN          (7<<4)      // Final Multicast Request
+
+
 
 
 // M2QP Opcodes
@@ -73,22 +84,20 @@
 #define M2OP_COL_SF             0x07        //Collection: Series/File
 #define M2OP_COL_FS             0x08        //Collection: File/Series
 #define M2OP_COL_SS             0x09        //Collection: Series/Series
-#define M2OP_DS_REQUEST         0x0C        //Datastream Request
-#define M2OP_DS_PROPOSE         0x0D        //Datastream Propose
-#define M2OP_DS_ACK             0x0E        //Datastream Acknowledge
+// reserved: 0x0A through 0x0E
 #define M2OP_RFU                0x0F        //Reserved
 
 
 
 // M2QP Command Extension Options
-#define M2CE_NORESP             (0x01 << 1)
-#define M2CE_NOCSMA             (0x01 << 2)
-#define M2CE_CA_MASK            (0x07 << 3)
-#define M2CE_CA_RIGD            (0x00 << 3)
-#define M2CE_CA_RAIND           (0x01 << 3)
-#define M2CE_CA_AIND            (0x02 << 3)
-#define M2CE_SCRAP              (0x01 << 6)
-#define M2CE_NOACK              (0x01 << 7)
+#define M2CE_NORESP             (1 << 1)
+#define M2CE_NOCSMA             (1 << 2)
+#define M2CE_CA_MASK            (7 << 3)
+#define M2CE_CA_RIGD            (0 << 3)
+#define M2CE_CA_RAIND           (1 << 3)
+#define M2CE_CA_AIND            (2 << 3)
+#define M2CE_SCRAP              (1 << 6)
+#define M2CE_NOACK              (1 << 7)
 
 // Mode 2 Query Comparisons 
 #define M2QC_MASKED             (0x80)
@@ -230,7 +239,7 @@ extern m2qp_struct m2qp;
   *
   * The cmd_ext param should be 0 if you are not using it.
   */
-ot_int m2qp_put_beacon(ot_u8 cmd_code, ot_u8 cmd_ext, Queue* input);
+ot_int m2qp_put_beacon(ot_u8 cmd_code, ot_u8 cmd_ext, ot_queue* input);
 
 
 
@@ -243,21 +252,11 @@ ot_int m2qp_put_beacon(ot_u8 cmd_code, ot_u8 cmd_ext, Queue* input);
   *
   * The cmd_ext param should be 0 if you are not using it.
   */
-void m2qp_put_na2ptmpl( ot_u16 rx_timeout, 
-                        ot_u8 rx_channels, 
-                        ot_u8* rx_chanlist);
+void m2qp_put_na2ptmpl(ot_u16 rx_timeout, ot_u8 rx_channels, ot_u8* rx_chanlist);
 
+void m2qp_put_a2ptmpl(ot_u16 rx_timeout, ot_u8 csma_guard, ot_u8 rx_channels, ot_u8* rx_chanlist);
 
-
-void m2qp_put_a2ptmpl(  ot_u16 rx_timeout, 
-                        ot_u8 csma_guard, 
-                        ot_u8 rx_channels, 
-                        ot_u8* rx_chanlist);
-
-
-
-void m2qp_set_suppliedid( ot_bool vid, ot_u8* supplied_addr );
-
+void m2qp_set_suppliedid(ot_bool vid, ot_u8* supplied_addr);
 
 ///@todo I might be able to remove these
 ot_int m2qp_put_isfs( ot_u8* isf_template );
@@ -304,7 +303,7 @@ void m2qp_init();
 
 
 /** @brief  Parses an incoming Protocol Frame (Request, Response, Data)
-  * @param  none
+  * @param  active      (m2session*) Active communication session
   * @retval ot_int      Zero on success, Non-zero on Failure.
   * @ingroup M2QP
   * 
@@ -312,18 +311,18 @@ void m2qp_init();
   * time of calling.  pm2_parse_frame() does not check CRC, but it does perform
   * decryption in cases when the frame is encrypted.
   */
-ot_int m2qp_parse_frame(m2session* session);
+ot_int m2qp_parse_frame(m2session* active);
 
 
 /** @brief  Parses a datastream packet, processes the data in the case where the
   *         packet is error-free, and prepare an ACK response.
-  * @param  none
+  * @param  active      (m2session*) Active communication session
   * @retval none
   * @ingroup M2QP
   * 
   * Run this in the system module when a datastream frame is received with errors.
   */
-void m2qp_parse_dspkt(m2session* session);
+void m2qp_parse_dspkt(m2session* active);
 
 
 /** @brief  Marks a datastream frame as a broken frame, and handles stream processing
@@ -366,7 +365,8 @@ ot_bool m2qp_sig_dsack( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
   */
 
 /** @brief Breaks down ISF Comparison Template, and runs the comparison
-  * @param  is_series: (ot_u8) 0 is for ISF Comp, non-zero for ISFS Comp
+  * @param  is_series   (ot_u8) 0 is for ISF Comp, non-zero for ISFS Comp
+  * @param  user_id      (id_tmpl*) user identifier of this comp
   * @retval ot_int:     Score value for the comparison (see notes below)
   * @ingroup Protocol_Special
   *
@@ -398,14 +398,20 @@ ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id);
 
 
 /** @brief Breaks down ISF Call Template, and queues the ISF Return Template
-  * @param  is_series: (ot_u8) 0 is for ISF Call, non-zero for ISFS Call
-  * @retval ot_int:     Number of total data bytes in the called dataset
+  * @param is_series    (ot_u8) 0 is for ISF Call, non-zero for ISFS Call
+  * @param input_q      (ot_queue*) data queue containing isf call template
+  * @param user_id      (id_tmpl*) user identifier of this call
+  * @retval ot_int      Number of total data bytes in the called dataset
   * @ingroup Protocol_Special
   *
   * Parses and manages a ISF File or ISF List Call Template, writing to the 
   * TX queue the ISF File or ISF List Return Template.
   *
-   * The score value (output) is structured as follows:
+  * The parameter "input_q" is typcially the Mode2 RX queue.  The Mode2 DLL 
+  * also uses this function for beacon generation, though, via a temporary
+  * command queue.
+  *
+  * The score value (output) is structured as follows:
   * - negative values:  An error has occurred.
   *                     The value returned is -1 * [Mode 2 Error Code]
   *
@@ -413,7 +419,7 @@ ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id);
   *                     This does not include ISF header bytes, which are 
   *                     2 bytes for each ISF file in the called dataset.
   */
-ot_int m2qp_isf_call( ot_u8 is_series, Queue* input_q, id_tmpl* user_id );
+ot_int m2qp_isf_call(ot_u8 is_series, ot_queue* input_q, id_tmpl* user_id);
 
 
 

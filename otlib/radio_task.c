@@ -143,12 +143,13 @@ ot_int rm2_scale_codec(ot_int buf_bytes) {
 /// Hi-Speed + Non-FEC  = 5.24 miti/bit  (200 kbps)
 /// Hi-Speed + FEC      = 10.49 miti/bit (100 kbps)
     
-    ///@todo Find a more intelligent way to include RS coding into this
-    static const ot_u8 bit_us[4] = { 19, 38, 6, 11 };       
+    static const ot_u8 bit_us[4] = { 19, 38, 6, 11 };   
     
     ot_u8 index = ((phymac[0].channel & 0x20)>>4) + (phymac[0].channel >> 7);
     buf_bytes  *= bit_us[index];
-    buf_bytes >>= 7;
+    //buf_bytes >>= 7;              ///@note revert this
+    //buf_bytes >>= 2;
+    buf_bytes >>= 4;
 
     return buf_bytes;
 }

@@ -393,47 +393,30 @@ const ot_u8 isf_stock_files[] = {
     'O','T','v',BV0,' ',' ',
     BT0,BC0,BC1,BC2,BC3,BC4,BC5,BC6,BC7, 0,             /* Firmware & Version as C-string */
 
-    /* channel configuration: id=0x02, len=32, alloc=64 */
-    0x07,                                               /* Channel Spectrum ID */
-    0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-85) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-92) + 140 ),                             /* CCA RSSI Threshold*/
-    0x00,                                               /* Regulatory Code */
-    0x01,                                               /* Duty Cycle (100%) */
+    /* channel configuration: id=0x02, len=18, alloc=48 */
+    0x00, 0x00,                                         /* Header: 2 bytes RFU */
+    0x00,                                               /* Header: Regulatory Code */
+    0x00,                                               /* Header: TX Duty Cycle */
+    0x00,                                               /* Header: TX Power Autoscaling Control */
+    0x00,                                               /* Header: RFU */                                               
+    
+    (0x1F), 0x00,                                       /* Channel Spectrum ID & RFU */
+    (ot_u8)(( (-2) + 40 )*2),                           /* Channel TX Power Limit */
+    (ot_u8)( 140 ),                                     /* Channel Link Quality Filter Level */
+    (ot_u8)( (-88) + 140 ),                             /* CS RSSI Threshold */
+    (ot_u8)( (-80) + 140 ),                             /* CCA RSSI Threshold*/
+    
+    (0x2F), 0x00,                                       /* Channel Spectrum ID & RFU */
+    (ot_u8)(( (-2) + 40 )*2),                           /* Channel TX Power Limit */
+    (ot_u8)( 140 ),                                     /* Channel Link Quality Filter Level */
+    (ot_u8)( (-88) + 140 ),                             /* CS RSSI Threshold */
+    (ot_u8)( (-80) + 140 ),                             /* CCA RSSI Threshold*/
 
-    0x1E,                                               /* Channel Spectrum ID */
-    0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-85) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-92) + 140 ),                             /* CCA RSSI Threshold*/
-    0x00,                                               /* Regulatory Code */
-    0x01,                                               /* Duty Cycle (100%) */
-
-    0x19,                                               /* Channel Spectrum ID */
-    0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-85) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-92) + 140 ),                             /* CCA RSSI Threshold*/
-    0x00,                                               /* Regulatory Code */
-    0x01,                                               /* Duty Cycle (100%) */
-
-    0x2A,                                               /* Channel Spectrum ID */
-    0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-80) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-90) + 140 ),                             /* CCA RSSI Threshold*/
-    0x00,                                               /* Regulatory Code */
-    0x01,                                               /* Duty Cycle (100%) */
-
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
 
     /* real time scheduler: id=0x03, len=12, alloc=12 */

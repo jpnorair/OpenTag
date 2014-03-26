@@ -39,7 +39,7 @@
 
 
 // No implementaton yet!
-ot_bool alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id) {
+OT_WEAK ot_bool alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id) {
     return True;
 }
 

@@ -172,29 +172,6 @@ OT_WEAK void network_mark_ff() {
 
 
 
-
-
-#ifndef EXTF_network_cont_session
-OT_WEAK m2session* network_cont_session(ot_app applet, ot_u8 next_state, ot_uint wait) {
-    m2session*  next;
-    m2session*  active;
-    ot_u8       netstate;
-    
-    active      = session_top();
-    netstate    = (active->netstate & 0x0F) | M2_NETSTATE_CONNECTED | next_state;
-    next        = session_extend(applet, /*dll.comm.tc +*/ wait, active->channel, netstate);
-    if (next) {
-        next->extra     = active->extra;
-        next->dialog_id = active->dialog_id++;
-        next->subnet    = active->subnet;
-        next->flags     = active->flags;
-    }
-    return next;
-}
-#endif
-
-
-
 #ifndef EXTF_network_route_ff
 OT_WEAK ot_int network_route_ff(m2session* active) {
     ot_int route_val;

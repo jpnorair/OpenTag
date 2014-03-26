@@ -319,7 +319,6 @@
 #define DRF_MOD1                DRF_MOD1_LS
 
 //R1B: It is set in the driver when picking a channel
-/*
 #if defined(_24MHz)
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_24MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_24MHz)
@@ -338,27 +337,6 @@
 #elif defined(_52MHz)
 #   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_26MHz)
 #   define DRF_MOD0_HS          (_BT_SEL_05 | _MOD_TYPE_GFSK | _DR_E_D7HS_26MHz)
-#endif
-*/
-
-#if defined(_24MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_24MHz)
-#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_E_D7HS_24MHz)
-#elif defined(_25MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_25MHz)
-#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_GSK | _DR_E_D7HS_25MHz)
-#elif defined(_26MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_26MHz)
-#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_M_D7HS_26MHz)
-#elif defined(_48MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_24MHz)
-#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_E_D7HS_24MHz)
-#elif defined(_50MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_GFSK | _DR_E_D7LS_25MHz)
-#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_E_D7HS_25MHz)
-#elif defined(_52MHz)
-#   define DRF_MOD0_LS          (_BT_SEL_1  | _MOD_TYPE_2FSK | _DR_E_D7LS_26MHz)
-#   define DRF_MOD0_HS          (_BT_SEL_1 | _MOD_TYPE_2FSK | _DR_E_D7HS_26MHz)
 #endif
 
 #define DRF_MOD0                DRF_MOD0_LS
@@ -402,7 +380,6 @@
 //R1E 
 #define DRF_AFC2                (_AFC_FREEZE_ON_SYNC | _AFC_ENABLED | \
                                     _AFC_MODE_CLOSE_ON_SLICER | __AFC_PD_LEAKAGE(8))
-
 //R1F 
 #define DRF_AFC1                __AFC_FAST_PERIOD(24)
 
@@ -419,9 +396,9 @@
 ///@todo Evaluate different values for P_GAIN, I_GAIN
 #define DRF_CLOCKREC            (__CLK_REC_P_GAIN(2) | _PSTFLT_LEN | __CLK_REC_I_GAIN(8))
 
-//R24 (using power-up defaults)
+//R24
 ///@todo __MEAS_TIME(2) = 2us AGC clock.  Might be worth trying __MEAS_TIME(3) = 4us
-#define DRF_AGCCTRL2             (0x20 | __MEAS_TIME(2))
+#define DRF_AGCCTRL2             (0x20 | __MEAS_TIME(3))
 
 //R25
 #define DRF_AGCCTRL1            (__THRESHOLD_HI(6) | __THRESHOLD_LO(2))
@@ -432,9 +409,9 @@
 //R27: Target is (100us < RSSI measuring time < 200us)
 ///@note CS_BLANKING doesn't seem to work terribly well
 #if defined(_24MHz) || defined(_25MHz) || defined(_26MHz)
-#   define DRF_ANT_SELECT_CONF  (__AS_MEAS_TIME(4))
-#else
 #   define DRF_ANT_SELECT_CONF  (__AS_MEAS_TIME(5))
+#else
+#   define DRF_ANT_SELECT_CONF  (__AS_MEAS_TIME(6))
 #endif
 
 //R28-R2F (N/A)
@@ -448,13 +425,15 @@
 #define DRF_PCKTCTRL3           (_PCKT_FRMT_BASIC | _RX_MODE_NORMAL | __LEN_WID(8))
 
 //R32: The preamble length & fixed/var is set when picking a channel
-#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(8) | _SYNC_LENGTH_4)
-#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(8) | _SYNC_LENGTH_4)
-#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(8) | _SYNC_LENGTH_4)
-#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(8) | _SYNC_LENGTH_4)
+#define DRF_SYNC_BYTES          3
+#define _SYNC_BYTES             ((DRF_SYNC_BYTES-1) << 1)
+
+#define DRF_PCKTCTRL2_LSFG      (__PREAMBLE_LENGTH(10) | _SYNC_BYTES)
+#define DRF_PCKTCTRL2_LSBG      (__PREAMBLE_LENGTH(10) | _SYNC_BYTES)
+#define DRF_PCKTCTRL2_HSFG      (__PREAMBLE_LENGTH(7) | _SYNC_BYTES)
+#define DRF_PCKTCTRL2_HSBG      (__PREAMBLE_LENGTH(7) | _SYNC_BYTES)
 
 //R33: It is changed when picking a channel
-///@todo observe CRC operation and potentially change this
 #define DRF_PCKTCTRL1           (_CRC_MODE_NONE | _WHIT_EN | _TXSOURCE_NORMAL)
 
 //R34 (using power-up default)
@@ -588,14 +567,16 @@
 //RA3
 #define DRF_DEM_ORDER           (_DEM_RESERVED)
 
-//RA4 (using power-up defaults)
-#define DRF_PM_CONFIG2          (0x0C)
+//RA4 (see below, PM_CONFIG2 depends on some values provides to PM_CONFIG1, PM_CONFIG0)
 
 //RA5 
 #define DRF_PM_CONFIG1          (_EN_RM | __KRM_HI(16))
 
-//RA6 (using power-up defaults)
+//RA6
 #define DRF_PM_CONFIG0          (__KRM_LO(0))
+
+//RA4
+#define DRF_PM_CONFIG2          (_SET_SMPS_VTUNE | _SET_SMPS_PLLBW)
 
 //RA7 (using power-up defaults)
 #define DRF_XO_RCO_CONFIG       (_XO_RCO_RESERVED)
@@ -605,5 +586,14 @@
 
 //RB2 (using power-up defaults)
 #define DRF_PM_TEST             (0x42)
+
+
+
+
+
+#ifdef __EVAL_RF__
+#   include "SPIRIT1_override.h"
+#endif
+
 
 #endif

@@ -1,4 +1,4 @@
-/* Copyright 2009-2013 JP Norair
+/* Copyright 2009-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otradio/spirit1/radio_SPIRIT1.h
   * @author     JP Norair
-  * @version    R100
-  * @date       7 Jan 2013
+  * @version    R101
+  * @date       27 Jan 2014
   * @brief      Radio configuration file for SPIRIT1
   * @ingroup    Platform
   *
@@ -217,6 +217,7 @@ extern rfctl_struct rfctl;
 
 
 
+/** @todo put these two functions into radio.h */
 
 /** @brief  Enables the clock-out for the radio core
   * @param  clk_param       (ot_u8) HW-specific clock parameter

@@ -17,9 +17,9 @@
   * @file       /otradio/null/null_interface.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       5 April 2012
+  * @date       4 Feb 2014
   * @brief      Functions for the Null transceiver interface
-  * @defgroup   Null_RF (Null Radio)
+  * @ingroup    Null_radio
   *
   ******************************************************************************
   */

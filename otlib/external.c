@@ -31,14 +31,14 @@
 
 
 #ifndef EXTF_ext_init
-void ext_init() { 
+OT_WEAK void ext_init() { 
 /// See comments from external.h.  BEST PRACTICE is to leave this impl empty.
 }
 #endif
 
 
 #ifndef EXTF_ext_get_m2appflags
-ot_u8 ext_get_m2appflags() {
+OT_WEAK ot_u8 ext_get_m2appflags() {
 /// See comments from external.h.  BEST PRACTICE is to leave this impl as-is.
     return 0;
 }
@@ -47,7 +47,7 @@ ot_u8 ext_get_m2appflags() {
 
 
 #ifndef EXTF_ext_systask
-void ext_systask(ot_task task) {
+OT_WEAK void ext_systask(ot_task task) {
 /// See comments from external.h.  BEST PRACTICE is to leave this impl empty.
 }
 #endif

@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/session.h
   * @author     JP Norair
-  * @version    R102
-  * @date       7 Oct 2013
+  * @version    R103
+  * @date       20 Mar 2014
   * @brief      Mode 2 Session Framework
   * @defgroup   Session (Session Layer)
   * @ingroup    Session
@@ -64,6 +64,29 @@
 
 
 
+/** General-purpose Session Adaptation
+  * Not supported now, but there is this patch to assist future migration to
+  * a general-purpose session block.  It will require that session fuction 
+  * names are changed slightly (e.g. _session_...()) so that these macros work.
+  *
+  * Here are examples of how this will work:
+  *
+  * #if (M2 is only session user)
+  * #   define session_init(SSTACK) _session_init()
+  * #   define session_new(SSTACK, APPLET, WAIT, CHAN, NSTATE) \
+  *                _session_new(APPLET, WAIT, CHAN, NSTATE)
+  * #else
+  * #   define session_init(SSTACK) _session_init(SSTACK)
+  * #   define session_new(SSTACK, APPLET, WAIT, CHAN, NSTATE) \
+  *                _session_new(SSTACK, APPLET, WAIT, CHAN, NSTATE)
+  * #endif
+  *
+  */
+
+
+
+
+
 /** Session Network State Flags
   * Used in the m2session.netstate container for the unassoc-synced-
   * connected-assoc state transition.  The secondary purpose is for other types 
@@ -90,10 +113,10 @@
 #define M2_NETFLAG_FIRSTRX          0x02            // Stops receiving after first RX found.
 
 
+
 /** Session power configuration (deprecated)
   * Used in .cs_rssi, .cca_rssi, .tx_eirp containers to 
   * move power configurations between layers.
-  */
 #define M2_RSSI_AUTOSCALE           b10000000
 #define M2_RSSI_MASK                b00011111
 #define M2_RSSI_DBM(VAL)            (ot_int)(-140 + ((VAL)*3))
@@ -101,6 +124,7 @@
 #define M2_EIRP_MASK                b01111111
 #define M2_EIRP_DBM(VAL)            (ot_int)(-40 + ((VAL)>>1))
 #define M2_EIRP_0p5DBM(VAL)         (ot_int)(-80 + (VAL))
+  */
 
 
 /** Session persistent flags
@@ -119,6 +143,28 @@
 #define M2_FLAG_BCAST               (1<<0)
 #define M2_FLAG_ACAST               (2<<0)
 #define M2_FLAG_MCAST               (3<<0)
+
+
+/* Future Changes, needing alignment with referential Mode2 code files
+   ASAPI and other APIs that manipulate sessions must be altered to 
+   accept these changes.
+   
+#define M2_FLAG_LISTEN              (1<<7)
+#define M2_FLAG_CRYPTO              (3<<5)      // added since last version
+#define M2_FLAG_DLLS                (2<<5)      // last version is (1<<6), which is the same
+#define M2_FLAG_NLS                 (1<<5)      
+#define M2_FLAG_VID                 (1<<4)      
+#define M2_FLAG_EXT                 (1<<3)      //Synthetic
+#define M2_FLAG_RSCODE              (1<<3)      
+#define M2_FLAG_ROUTE               (1<<2)      // Added since last version, in place of _STREAM
+#define M2_FLAG_STREAM              (0<<0)      // Changed since last version
+#define M2_FLAG_BCAST               (1<<0)      
+#define M2_FLAG_UCAST               (2<<0)      // Changed since last version (0<<0)
+#define M2_FLAG_UCASTVID            (3<<0)      // Added since last version
+
+*/
+
+
 
 
 /** "Extra" Information
@@ -269,6 +315,37 @@ m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netstate
   * function.
   */
 m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netstate);
+
+
+
+/** @brief  Continues a session by "extending" the existing session
+  * @param  applet      (ot_app) Applet pointer for new session
+  * @param  next_state  (ot_u8) next session netstate (e.g. M2_NETSTATE_REQRX)
+  * @param  wait        (ot_uint) Number of ticks to wait following dll-idle
+  * @retval m2session*  Pointer to newly cloned session
+  * @ingroup Session
+  * @sa session_extend(), session_new()
+  *
+  * session_continue() is a particular implementation of session_extend(), 
+  * designed to simplify normal usage by copying common session elements from
+  * the existing session to the extended session (the client code must do this
+  * itself with session_extend()).
+  *
+  * You must pass a valid applet into the "applet" argument, or NULL.  NULL
+  * will follow the default session behavior, which is simply to respond
+  * appropriately to requests.  Passing-in session_top()->applet will use 
+  * the applet from the current session.
+  *
+  * The "wait" argument is a tail-chained number of ticks that starts 
+  * counting as soon as the DLL engages the continued session.  This will occur
+  * the next time the DLL is evaluated by the kernel scheduler (e.g. preempted)
+  * AND the DLL is not busy doing any active RX/TX work (i.e. idle).
+  */
+m2session* session_continue(ot_app applet, ot_u8 next_state, ot_uint wait);
+
+///@note For legacy code: not guaranteed to be here forever
+#define network_cont_session    session_continue
+
 
 
 

@@ -339,6 +339,9 @@ ot_u8 spirit1_calc_rssithr(ot_u8 input);
 
 
 
+ot_u8 spirit1_clip_txeirp(ot_u8 input_eirp);
+
+
 /** @brief Sets the TX output power based on input DASH7 Power Code
   * @param pwr_code     (ot_u8*) pointer to PHYMAC struct tx_eirp value
   * @retval none
@@ -533,4 +536,22 @@ void spirit1_irq0_isr();
 void spirit1_irq1_isr();
 void spirit1_irq2_isr();
 void spirit1_irq3_isr();
+
+
+/** @brief  Wait for event.  i.e. do a blocking wait for something to finish.
+  * @param  None
+  * @retval None
+  * @ingroup SPIRIT1
+  */
+void spirit1_wfe();
+
+
+/** @brief  Prepare WFE (wait for event) for AES process completion
+  * @param  None
+  * @retval None
+  * @ingroup SPIRIT1
+  */
+void spirit1_wfe_aes();
+
+
 

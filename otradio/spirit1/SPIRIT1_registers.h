@@ -1,4 +1,4 @@
-/* Copyright 2009-2013 JP Norair
+/* Copyright 2013-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otradio/spirit1/SPIRIT1_registers.h
   * @author     JP Norair
-  * @version    R100
-  * @date       4 Jan 2013
+  * @version    R101
+  * @date       4 Feb 2014
   * @brief      Register Addressing Constants for SPIRIT1 family
   * @ingroup    SPIRIT1
   *
@@ -135,13 +135,12 @@
 #define _SYNT_D7_26MHz          0x018FD6D2
 #define _SYNT_D7_48MHz          0x00D894A2 
 #define _SYNT_D7_50MHz          0x00CFEAE7 
-#define _SYNT_D7_52MHz          0x00C7EC11  
+#define _SYNT_D7_52MHz          0x00C7EC11
+
 #define _DR_M_D7LS_24MHz        47          // 47.407
 #define _DR_E_D7LS_24MHz        11
 #define _DR_M_D7LS_25MHz        35          // 35.27
 #define _DR_E_D7LS_25MHz        11
-    //#define _DR_M_D7LS_25MHz        163         // 163.4  //Some low-rate testing
-    //#define _DR_E_D7LS_25MHz        9
 #define _DR_M_D7LS_26MHz        24          // 24.068
 #define _DR_E_D7LS_26MHz        11
 #define _DR_M_D7HS_24MHz        17          // 17.067
@@ -262,40 +261,31 @@
 #   define _FDEV_E_D7_52MHz     (6<<4)      // 50.781 kHz
 #   define _CLOCK_REC_ALGO_SEL  (1<<3)
 #   define _FDEV_M              (7<<0)
-#   define _FDEV_M_D7_24MHz     0           // 46.875 kHz
-#   define _FDEV_M_D7_25MHz     0           // 48.828 kHz
-#   define _FDEV_M_D7_26MHz     0           // 50.781 kHz
-#   define _FDEV_M_D7_48MHz     0           // 46.875 kHz 
-#   define _FDEV_M_D7_50MHz     0           // 48.828 kHz 
-#   define _FDEV_M_D7_52MHz     0           // 50.781 kHz
+#   define _FDEV_M_D7_24MHz     2           // 46.875 kHz
+#   define _FDEV_M_D7_25MHz     2           // 48.828 kHz
+#   define _FDEV_M_D7_26MHz     2           // 50.781 kHz
+#   define _FDEV_M_D7_48MHz     2           // 46.875 kHz 
+#   define _FDEV_M_D7_50MHz     2           // 48.828 kHz 
+#   define _FDEV_M_D7_52MHz     2           // 50.781 kHz
 
+///@todo Fine-Tune this filter value to find the narrowest filter bandwidth
+///      that doesn't chop-off too much RF power.
 #define RF_CHFLT                0x1D
 #   define _CHFLT_M             (15<<4)
-#   define _CHFLT_M_D7LS_24MHz  (6<<4)      //150 kHz
-#   define _CHFLT_M_D7LS_25MHz  (6<<4)      //155 kHz
-#   define _CHFLT_M_D7LS_26MHz  (7<<4)      //147 kHz
-#   define _CHFLT_M_D7LS_48MHz  (6<<4)      //150 kHz
-#   define _CHFLT_M_D7LS_50MHz  (6<<4)      //155 kHz
-#   define _CHFLT_M_D7LS_52MHz  (7<<4)      //147 kHz
+#   define _CHFLT_M_D7LS_24MHz  (1<<4)      //196 kHz
+#   define _CHFLT_M_D7LS_25MHz  (1<<4)      //199 kHz
+#   define _CHFLT_M_D7LS_26MHz  (2<<4)      //201 kHz
 #   define _CHFLT_M_D7HS_24MHz  (6<<4)      //300 kHz
 #   define _CHFLT_M_D7HS_25MHz  (6<<4)      //310 kHz
 #   define _CHFLT_M_D7HS_26MHz  (7<<4)      //294 kHz
-#   define _CHFLT_M_D7HS_48MHz  (6<<4)      //300 kHz
-#   define _CHFLT_M_D7HS_50MHz  (6<<4)      //310 kHz
-#   define _CHFLT_M_D7HS_52MHz  (7<<4)      //294 kHz
+
 #   define _CHFLT_E             (15<<0)
-#   define _CHFLT_E_D7LS_24MHz  (2<<0)      //150 kHz
-#   define _CHFLT_E_D7LS_25MHz  (2<<0)      //155 kHz
-#   define _CHFLT_E_D7LS_26MHz  (2<<0)      //147 kHz
-#   define _CHFLT_E_D7LS_48MHz  (2<<0)      //150 kHz
-#   define _CHFLT_E_D7LS_50MHz  (2<<0)      //155 kHz
-#   define _CHFLT_E_D7LS_52MHz  (2<<0)      //147 kHz
+#   define _CHFLT_E_D7LS_24MHz  (2<<0)      //196 kHz
+#   define _CHFLT_E_D7LS_25MHz  (2<<0)      //199 kHz
+#   define _CHFLT_E_D7LS_26MHz  (2<<0)      //201 kHz
 #   define _CHFLT_E_D7HS_24MHz  (1<<0)      //300 kHz
 #   define _CHFLT_E_D7HS_25MHz  (1<<0)      //310 kHz
 #   define _CHFLT_E_D7HS_26MHz  (1<<0)      //294 kHz
-#   define _CHFLT_E_D7HS_48MHz  (1<<0)      //300 kHz
-#   define _CHFLT_E_D7HS_50MHz  (1<<0)      //310 kHz
-#   define _CHFLT_E_D7HS_52MHz  (1<<0)      //294 kHz
 
 #define RF_AFC2                 0x1E
 #   define _AFC_FREEZE_ON_SYNC  (1<<7)
@@ -320,9 +310,9 @@
 #   define _RSSI_FLT            (15<<4)
 #   define __RSSI_FLT(VAL)      ((VAL&15)<<4)
 #   define _CS_MODE             (3<<2)
-#   define _CS_MODE_STATIC      (0<<2)      // Good for DASH7 bscan & general purpose
-#   define _CS_MODE_DYN6dB      (1<<2)      // Possible for DASH7 fscan with FEC
-#   define _CS_MODE_DYN12dB     (2<<2)      // Possible for DASH7 fscan without FEC
+#   define _CS_MODE_STATIC      (0<<2)      // Static required for CSMA usage
+#   define _CS_MODE_DYN6dB      (1<<2)
+#   define _CS_MODE_DYN12dB     (2<<2)
 #   define _CS_MODE_DYN18dB     (3<<2)
 #   define _OOK_PEAK_DECAY      (3<<0)
 
@@ -391,7 +381,7 @@
 #define RF_PCKTCTRL1            0x33
 #   define _CRC_MODE            (7<<5)
 #   define _CRC_MODE_NONE       (0<<5)
-#   define _CRC_MODE_07         (1<<5)
+#   define _CRC_MODE_07         (1<<5)      // CRC8 would be nice for BG frame, but this poly sucks
 #   define _CRC_MODE_8005       (2<<5)      //DASH7 variant, although not proven to work on this chip
 #   define _CRC_MODE_1021       (3<<5)      
 #   define _CRC_MODE_864CBF     (4<<5)
@@ -624,6 +614,9 @@
 
 #define RF_PM_CONFIG2           0xA4
 #   define _EN_TS_BUFFER        (1<<6)
+#   define _DISABLE_SMPS        (1<<5)
+#   define _SET_SMPS_VTUNE      (1<<3)
+#   define _SET_SMPS_PLLBW      (1<<2)
 
 #define RF_PM_CONFIG1           0xA5
 #   define _EN_RM               (1<<7)

@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2013-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/alp_logger.c
   * @author     JP Norair
-  * @version    R100
-  * @date       17 Sept 2013
+  * @version    R101
+  * @date       24 Mar 2014
   * @brief      ALP to Logger processor
   * @ingroup    ALP
   *
@@ -40,16 +40,17 @@
 
 ///@todo replace INREC calls with direct access from input
 
-ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
+OT_WEAK ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
 /// Logger ALP is like ECHO.  The input is copied to the output.
     
     // Only root can log directly (this is an important security firewall)
     if (auth_isroot(user_id)) {
-        alp->OUTREC(FLAGS) = alp->INREC(FLAGS);
-        alp->OUTREC(PLEN)  = alp->INREC(PLEN);
+        alp->OUTREC(FLAGS)  = *alp->inq->getcursor++;
+        alp->OUTREC(PLEN)   = *alp->inq->getcursor++;
+        alp->inq->getcursor+= 2;
         
         if (alp->inq != alp->outq) {
-            q_writestring(alp->outq, alp->inq->getcursor, alp->INREC(PLEN));
+            q_writestring(alp->outq, alp->inq->getcursor, alp->OUTREC(PLEN));
         }
     }
     return True;

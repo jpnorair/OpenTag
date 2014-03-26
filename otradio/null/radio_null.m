@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
   *
   */
 /**
-  * @file       /otradio/null/radio_NULL.c
+  * @file       /otradio/null/radio_null.m
   * @author     JP Norair
-  * @version    V1.0
-  * @date       13 Oct 2011
+  * @version    R100
+  * @date       4 Feb 2014
   * @brief      Radio Driver (RF transceiver) for NULL Radio
-  * @defgroup   Radio (Radio Module)
-  * @ingroup    Radio
+  * @defgroup   Null_Radio (Radio Module)
+  * @ingroup    Null_Radio
   *
   * "NULL Radio" is for testing purposes.  It does not actually map to hardware,
   * but it does all the processes that a normal driver does.

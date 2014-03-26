@@ -276,6 +276,8 @@ void auth_decrypt(ot_u8* iostream, ot_int length, ot_u8 key_index, ot_u8 options
 void* auth_get_deckey(ot_u8 index) {
 #if (_SEC_DLL)
     return (void*)auth_key[index].cache;
+#else
+    return NULL;
 #endif
 }
 #endif

@@ -67,13 +67,13 @@
 /** Additional RF Front End Parameters and Settings <BR>
   * ========================================================================<BR>
   * The IKR001V3 uses 433 MHz band SPIRIT1 Module and a really poorly-matched
-  * included antenna.  The included antenna is about 5% effcient, so we use 
-  * 13 dB attenuation figure for RX and 14 dB attenuation for TX.  You can 
-  * alternatively use a better antenna, which I have as 2/3 dB attentuation. 
+  * included antenna.  The included antenna is about 25% effcient, so we use 
+  * 6 dB attenuation figure for RX and 7 dB attenuation for TX.  You can 
+  * alternatively use a better antenna, which I have as 2 dB attentuation. 
   */
 #define RF_PARAM_BAND       433
 //#define RF_BASE_ATTEN           2
-#define RF_BASE_ATTEN       13
+#define RF_BASE_ATTEN       6
 #define RF_HDB_ATTEN        (2*(RF_BASE_ATTEN+1))   //Half dB attenuation (units = 0.5dB), used to scale TX power
 #define RF_HDB_RXATTEN      (2*RF_BASE_ATTEN)       //Half dB attenuation for RX
 #define RF_RSSI_OFFSET      (2*RF_BASE_ATTEN)       //Offset applied to RSSI calculation
@@ -87,8 +87,8 @@
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED         // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             DISABLED        // USB-CDC MPipe implementation
-#define MCU_CONFIG_MPIPEUART            ENABLED         // UART MPipe Implementation
+#define MCU_CONFIG_MPIPECDC             ENABLED         // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPEUART            DISABLED        // UART MPipe Implementation
 #define MCU_CONFIG_MPIPEI2C             DISABLED        // I2C MPipe Implementation
 #define MCU_CONFIG_MEMCPYDMA            ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 #define MCU_CONFIG_USB                  ((MCU_CONFIG_MPIPECDC == ENABLED) || 0)
@@ -147,9 +147,9 @@
   * 4. The SPIRIT1 SPI benefits from the highest speed clock up to 20 MHz.
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
-#define BOARD_FEATURE_USBCONVERTER      ENABLED                // Is UART/I2C connected via USB converter?
-#define BOARD_FEATURE_MPIPE             ENABLED
-#define BOARD_FEATURE_MPIPE_DIRECT      ENABLED                 // Direct implementation (UART, I2C)
+#define BOARD_FEATURE_MPIPE             DISABLED
+#define BOARD_FEATURE_USBCONVERTER      BOARD_FEATURE_MPIPE                 // Is UART connected via USB converter?
+#define BOARD_FEATURE_MPIPE_DIRECT      BOARD_FEATURE_MPIPE
 #define BOARD_FEATURE_MPIPE_BREAK       DISABLED                 // Send/receive leading break for wakeup (I2C)
 #define BOARD_FEATURE_MPIPE_CS          DISABLED                 // Chip-Select / DTR wakeup control (UART)
 #define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                 // RTS/CTS style flow control (UART)
@@ -169,6 +169,7 @@
 #define BOARD_FEATURE_INVERT_TRIG2      ENABLED
 
 #define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
+#define BOARD_PARAM_TRIGS               4
 #define BOARD_PARAM_LFHz                32768
 #define BOARD_PARAM_LFtol               0.00002
 #define BOARD_PARAM_MFHz                4200000
@@ -1073,6 +1074,15 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define OT_TRIG2_PINNUM     BOARD_LEDO_PINNUM
 #define OT_TRIG2_PIN        BOARD_LEDO_PIN
 #define OT_TRIG2_POLARITY   BOARD_LEDO_POLARITY
+#define OT_TRIG3_PORT       BOARD_LEDB_PORT
+#define OT_TRIG3_PINNUM     BOARD_LEDB_PINNUM
+#define OT_TRIG3_PIN        BOARD_LEDB_PIN
+#define OT_TRIG3_POLARITY   BOARD_LEDB_POLARITY
+#define OT_TRIG4_PORT       BOARD_LEDR_PORT
+#define OT_TRIG4_PINNUM     BOARD_LEDR_PINNUM
+#define OT_TRIG4_PIN        BOARD_LEDR_PIN
+#define OT_TRIG4_POLARITY   BOARD_LEDR_POLARITY
+
 
 #if (OT_TRIG1_POLARITY != 0)
 #   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRRL = OT_TRIG1_PIN;
@@ -1092,6 +1102,26 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #   define OT_TRIG2_ON()    OT_TRIG2_PORT->BSRRH = OT_TRIG2_PIN;
 #   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRRL = OT_TRIG2_PIN;
 #   define OT_TRIG2_TOG()   OT_TRIG2_PORT->ODR  ^= OT_TRIG2_PIN;
+#endif
+
+#if (OT_TRIG3_POLARITY != 0)
+#   define OT_TRIG3_ON()    OT_TRIG3_PORT->BSRRL = OT_TRIG3_PIN;
+#   define OT_TRIG3_OFF()   OT_TRIG3_PORT->BSRRH = OT_TRIG3_PIN;
+#   define OT_TRIG3_TOG()   OT_TRIG3_PORT->ODR  ^= OT_TRIG3_PIN;
+#else 
+#   define OT_TRIG3_ON()    OT_TRIG3_PORT->BSRRH = OT_TRIG3_PIN;
+#   define OT_TRIG3_OFF()   OT_TRIG3_PORT->BSRRL = OT_TRIG2_PIN;
+#   define OT_TRIG3_TOG()   OT_TRIG3_PORT->ODR  ^= OT_TRIG3_PIN;
+#endif
+
+#if (OT_TRIG4_POLARITY != 0)
+#   define OT_TRIG4_ON()    OT_TRIG4_PORT->BSRRL = OT_TRIG2_PIN;
+#   define OT_TRIG4_OFF()   OT_TRIG4_PORT->BSRRH = OT_TRIG2_PIN;
+#   define OT_TRIG4_TOG()   OT_TRIG4_PORT->ODR  ^= OT_TRIG2_PIN;
+#else 
+#   define OT_TRIG4_ON()    OT_TRIG4_PORT->BSRRH = OT_TRIG4_PIN;
+#   define OT_TRIG4_OFF()   OT_TRIG4_PORT->BSRRL = OT_TRIG4_PIN;
+#   define OT_TRIG4_TOG()   OT_TRIG4_PORT->ODR  ^= OT_TRIG4_PIN;
 #endif
 
 

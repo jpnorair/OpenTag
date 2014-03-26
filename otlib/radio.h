@@ -57,7 +57,7 @@ typedef enum {
 
 
 
-/** Additional link information
+/** Additional l information
   *
   */
 #define RADIO_LINK_CORRECTIONS  (1<<6)

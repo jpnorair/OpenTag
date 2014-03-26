@@ -1112,7 +1112,7 @@ void EP3_OUT_Callback(void) {
         
         // Get partial CRC and endian-ize the payload length
         cdcacm.header.crc16 = platform_crc_block((ot_u8*)&cdcacm.header.crc16, 6);
-        cdcacm.header.plen  = PLATFORM_ENDIAN_16(cdcacm.header.plen);
+        cdcacm.header.plen  = PLATFORM_ENDIAN16(cdcacm.header.plen);
         
         // Protect against too-long packets (they get cropped)
         cdcacm.pktend = cdcacm.pkt + cdcacm.header.plen;
@@ -1200,6 +1200,12 @@ void sub_gen_mpipecrc() {
 /** Mpipe Main Public Functions  <BR>
   * ========================================================================
   */
+#ifndef EXTF_mpipedrv_setspeed
+void mpipedrv_setspeed(mpipe_speed speed) {
+    linecoding.bitrate = br_hssel[speed];
+}
+#endif
+
 
 #ifndef EXTF_mpipedrv_footerbytes
 ot_u8 mpipedrv_footerbytes() {
@@ -1209,7 +1215,7 @@ ot_u8 mpipedrv_footerbytes() {
 
 
 #ifndef EXTF_mpipedrv_init
-ot_int mpipedrv_init(void* port_id) {
+ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 /// <LI> "port_id" is unused in this impl, and it may be NULL                   </LI>
 /// <LI> Prepare the HW, which in this case is a USB CDC (i.e. Virtual COM)     </LI>
 /// <LI> USB is disconnected at startup in order to clear the host USB driver,
@@ -1311,16 +1317,8 @@ void mpipedrv_kill() {
 #ifndef EXTF_mpipedrv_wait
 void mpipedrv_wait() {
     while (mpipe.state != MPIPE_Idle) {
-        SLEEP_MCU();
+        MCU_SLEEP();
     }
-}
-#endif
-
-
-
-#ifndef EXTF_mpipedrv_setspeed
-void mpipedrv_setspeed(mpipe_speed speed) {
-    linecoding.bitrate = br_hssel[speed];
 }
 #endif
 
@@ -1364,7 +1362,7 @@ void sub_txopen() {
     cdcacm.header.sync55    = 0x55;
     cdcacm.header.seq      += 1;
     cdcacm.header.ctl       = 0;
-    cdcacm.header.plen      = PLATFORM_ENDIAN_16(length);
+    cdcacm.header.plen      = PLATFORM_ENDIAN16(length);
     sub_gen_mpipecrc();
     
     sub_usb_loadheader();

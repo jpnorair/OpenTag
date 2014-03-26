@@ -16,8 +16,8 @@
 /**
   * @file       otlib/OTAPI_tmpl.h
   * @author     JP Norair
-  * @version    R100
-  * @date       26 Jan 2011
+  * @version    R101
+  * @date       24 Mar 2014
   * @brief      Templates for OTAPI, usually used for organizing ALP-API data 
   *             into queued form that is assimilable by API functions.  Some 
   *             tmpls are also used within the OTlib itself.
@@ -99,11 +99,18 @@ typedef struct {
 
 /// Mode 2 MAC/Protocol Templates
 typedef enum {
-    ADDR_unicast    = 0,
-    ADDR_broadcast  = 1,
-    ADDR_anycast    = 2,
-    ADDR_multicast  = 3
+    ADDR_unicast    = 0,    //2
+    ADDR_broadcast  = 1,    //1
+    ADDR_anycast    = 2,    //removed
+    ADDR_multicast  = 3     //removed
 } addr_type;
+///@todo update to following once new networking updates applied
+//typedef enum {
+//    ADDR_stream     = 0,
+//    ADDR_broadcast  = 1,
+//    ADDR_unicast    = 2,
+//    ADDR_unicastvid = 3
+//} addr_type;
 
 #define ADDR_Type   addr_type
 
@@ -228,6 +235,17 @@ typedef enum {
     CMDTYPE_a2p_inter_request   = (5 << 4),
     CMDTYPE_a2p_final_request   = (7 << 4)
 } command_types;
+/** @todo update to the following once transport changes are applied
+typedef enum {
+    CMDTYPE_response            = 0,
+    CMDTYPE_control             = (1 << 4),
+    CMDTYPE_bcast_request       = (2 << 4),
+    CMDTYPE_acast_request       = (3 << 4),
+    CMDTYPE_mcast_request       = (4 << 4)
+    CMDTYPE_mcast_continue      = (5 << 4),
+    CMDTYPE_mcast_finish        = (7 << 4),
+} command_types;
+*/
 
 
 #define __SIZEOF_error_tmpl (1+1+(1*PLATFORM_POINTER_SIZE))
@@ -318,9 +336,9 @@ typedef struct {
 #define __SIZEOF_shell_tmpl (1+1+2+(1*PLATFORM_POINTER_SIZE))   //deprecated
 #define __SIZEOF_udp_tmpl (1+1+2+(1*PLATFORM_POINTER_SIZE))
 typedef struct {
-    ot_u8   src_port;
-    ot_u8   dst_port;
     ot_u16  data_length;
+    ot_u8   dst_port;
+    ot_u8   src_port;
     ot_u8*  data;
 } udp_tmpl;
 

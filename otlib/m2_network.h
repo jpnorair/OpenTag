@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_network.h
   * @author     JP Norair
-  * @version    R101
-  * @date       11 Sep 2013
+  * @version    R102
+  * @date       20 Mar 2014
   * @brief      Network Layer interface for DASH7 Mode 2
   * @ingroup    Network
   *
@@ -55,21 +55,48 @@
 #define M2FI_EXT                (1<<3)
 #define M2FI_STREAM             (1<<2)
 #define M2FI_ADDRMASK           (3<<0)
-#define M2FI_UNICAST            (0<<0)
-#define M2FI_BROADCAST          (1<<0) 
+#define M2FI_UCAST              (0<<0)
+#define M2FI_BCAST              (1<<0) 
 #define M2FI_ANYCAST            (2<<0)
 #define M2FI_MULTICAST          (3<<0)
 
+/* Future version updates
+#define M2FI_CRYPTO             (3<<5)
+#define M2FI_DLLS               (2<<5)
+#define M2FI_DLLSROOT           (2<<5)
+#define M2FI_DLLSUSER           (3<<5)
+#define M2FI_ROUTE              (1<<2)
+#define M2FI_STREAM             (0<<0)
+#define M2FI_UCAST              (2<<0)
+#define M2FI_BCAST              (1<<0) 
+#define M2FI_UCASTVID           (1<<0)
+
+// These removed!
+//#define M2FI_STREAM Removed
+//#define M2FI_ANYCAST
+//#define M2FI_MULTICAST
+*/
+
+
+
 // Routing Aliases
 #define M2FI_FRDIALOG           0
-#define M2RT_UNICAST            M2FI_UNICAST
-#define M2RT_BROADCAST          M2FI_BROADCAST
-#define M2RT_ANYCAST            M2FI_ANYCAST
-#define M2RT_MULTICAST          M2FI_MULTICAST
+#define M2RT_UNICAST            M2FI_UCAST
+#define M2RT_BROADCAST          M2FI_BCAST
+//#define M2RT_ANYCAST            M2FI_ANYCAST
+//#define M2RT_MULTICAST          M2FI_MULTICAST
+
 
 // Query Aliases
 #define M2QUERY_GLOBAL          M2FI_ANYCAST
-#define M2QUERY_LOCAL           M2FI_BROADCAST
+#define M2QUERY_LOCAL           M2FI_BCAST
+
+/* Future Updates: M2QUERY_GLOBAL and M2QUERY_LOCAL are removed and replaced 
+   with transport layer constructs. Files affected:
+   - m2_transport.c (359, 643)
+   - OTAPI.c (97, 242)
+*/
+
 
 
 // EXT stuff, rarely used
@@ -77,26 +104,24 @@
 #define M2EXT_RFU               (15<<4)
 
 // M2NP Command Code Options
-#define M2CC_SLEEP              (0x01 << 4) 
-#define M2CC_EXT                (0x01 << 5) 
+#define M2CC_SLEEP              (1 << 4) 
+#define M2CC_EXT                (1 << 5) 
 
 // Mode 2 Hop Control Options
-#define M2HC_HOPMASK            (0x0F)
-#define M2HC_VID                (0x01 << 4)
-#define M2HC_DEST               (0x01 << 5)
-#define M2HC_ORIG               (0x01 << 6) 
-#define M2HC_EXT                (0x01 << 7) 
+//#define M2HC_HOPMASK            (0x0F)
+#define M2HC_EXT                (1 << 7) 
+#define M2HC_ORIG               (1 << 6) 
+#define M2HC_DEST               (1 << 5)
+#define M2HC_VID                (1 << 4)
 
-// Application Device Flags
-#define M2DF_EALARM             (0x01 << 3)
-#define M2DF_SALARM             (0x01 << 4)
-#define M2DF_LOWBATT            (0x01 << 5)
-#define M2DF_SYSFAULT           (0x01 << 6)
-#define M2DF_NACK               (0x01 << 7)
+/* Future updates
+#define M2HC_ORIG               (1<<5)
+#define M2HC_VID                (1<<4)
+#define M2HC_HOPEN              (1<<2)
+#define M2HC_DEST               (1<<1)
+*/
 
-// Datastream Flags
-#define M2DS_DISABLE_ACKREQ      (0x01 << 7)
-#define M2DS_DISABLE_ACKRESP     (0x01 << 1)
+
 
 
 
@@ -202,25 +227,8 @@ ot_int network_route_ff(m2session* active);
 
 
 
-/** @brief  Continues a session by "extending" the existing session
-  * @param  applet      (ot_app) Applet pointer for new session
-  * @param  next_state  (ot_u8) next session netstate (e.g. M2_NETSTATE_REQRX)
-  * @param  wait        (ot_uint) Number of ticks to wait following dll-idle
-  * @retval m2session*  Pointer to newly cloned session
-  * @ingroup Network
-  * @sa session_extend
-  *
-  * You must pass a valid applet into the "applet" argument, or NULL.  NULL
-  * will follow the default session behavior, which is simply to respond
-  * appropriately to requests.  Passing-in session_top()->applet will use 
-  * the applet from the current session.
-  *
-  * The "wait" argument is a tail-chained number of ticks that starts 
-  * counting as soon as the DLL engages the continued session.  This will occur
-  * the next time the DLL is evaluated by the kernel scheduler (e.g. preempted)
-  * AND the DLL is not busy doing any active RX/TX work (i.e. idle).
-  */
-m2session* network_cont_session(ot_app applet, ot_u8 next_state, ot_uint wait);
+// moved into session module as session_continue()
+//m2session* network_cont_session(ot_app applet, ot_u8 next_state, ot_uint wait);
 
 
 

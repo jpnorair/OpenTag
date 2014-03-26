@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2010-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_encode.c
   * @author     JP Norair
-  * @version    R101
-  * @date       19 Oct 2013
+  * @version    R102
+  * @date       19 Jan 2014
   * @brief      Mode 2 SW Encoding support
   * @ingroup    Encode
   * 
@@ -92,7 +92,9 @@ void em2_add_crc5() {
 }
 
 ot_u8 em2_check_crc5() {
-    return ((rxq.front[1] & 0x1f) - crc0B_table(rxq.front));
+    ot_u8 crc5_val;
+    crc5_val = crc0B_table(rxq.front);
+    return ((rxq.front[1] & 0x1f) - crc5_val);
 }
 
 
@@ -135,6 +137,7 @@ ot_u8 em2_check_crc5() {
 
 #ifndef EXTF_em2_rs_init_decode
 OT_WEAK ot_int em2_rs_init_decode(ot_queue* q) {
+    return -1;
 }
 #endif
 
@@ -172,8 +175,29 @@ OT_WEAK void em2_rs_encode(ot_int n_bytes) {
 }
 #endif
 
-
-
+#ifndef EXTF_em2_rs_interleave
+OT_WEAK void em2_rs_interleave(ot_u8* start, ot_int numbytes) {
+    while (numbytes < 0) {
+        ot_u16 a, b;
+        if (numbytes == 1) {
+            start[1] = 0x0B;
+        }
+        
+        a   = *(ot_u16*)start;
+        b   = (a <<  0) & 0x1248;   //c963
+        b  |= (a >>  5) & 0x0124;   //da7
+        b  |= (a >> 10) & 0x0012;   //eb
+        b  |= (a >> 15) & 0x0001;   //f
+        b  |= (a <<  5) & 0x2480;   //852
+        b  |= (a << 10) & 0x4800;   //41
+        b  |= (a << 15) & 0x8000;   //0
+        
+        *(ot_u16*)start = b;
+        start          += 2;
+        numbytes       -= 2;
+    }
+}
+#endif
 
 
 
@@ -337,8 +361,8 @@ OT_WEAK void em2_rs_encode(ot_int n_bytes) {
                     ext_bytes   = 2;                                // CRC bytes
                     
                     if (em2.lctl & 0x40) {
-                        ext_bytes -= rs_init_decode(&rxq);
-                        rs_decode(2);
+                        ext_bytes -= em2_rs_init_decode(&rxq);
+                        em2_rs_decode(2);
                     }
                     crc_init_stream(False, em2.bytes + ext_bytes, rxq.front);    // Total bytes
                     crc_calc_nstream(2);
@@ -427,27 +451,6 @@ void OT_WEAK em2_encode_data_FEC() {
             //INToutput.ulong = (INToutput.ulong << 2) | ((scratch >> (2 * ((j & 0x0C) >> 2))) & 0x03);
             INToutput.ulong = (INToutput.ulong << 2) | ((scratch >> (((j & 0x0C) >> 2) << 1)) & 0x03);
         }
-
-//        //Experimental Unrolled Loop from above        
-//        INToutput.ubyte[B3]  = (data_buffer[i+3] & 0x03) << 6;
-//        INToutput.ubyte[B3] |= (data_buffer[i+2] & 0x03) << 4;
-//        INToutput.ubyte[B3] |= (data_buffer[i+1] & 0x03) << 2;
-//        INToutput.ubyte[B3] |= (data_buffer[i+0] & 0x03);
-//        
-//        INToutput.ubyte[B2]  = (data_buffer[i+3] & 0x0C) << 4;
-//        INToutput.ubyte[B2] |= (data_buffer[i+2] & 0x0C) << 2;
-//        INToutput.ubyte[B2] |= (data_buffer[i+1] & 0x0C);
-//        INToutput.ubyte[B2] |= (data_buffer[i+0] & 0x0C) >> 2;
-//        
-//        INToutput.ubyte[B1]  = (data_buffer[i+3] & 0x30) << 2;
-//        INToutput.ubyte[B1] |= (data_buffer[i+2] & 0x30);
-//        INToutput.ubyte[B1] |= (data_buffer[i+1] & 0x30) >> 2;
-//        INToutput.ubyte[B1] |= (data_buffer[i+0] & 0x30) >> 4;
-//        
-//        INToutput.ubyte[B0]  = (data_buffer[i+3] & 0xC0);
-//        INToutput.ubyte[B0] |= (data_buffer[i+2] & 0xC0) >> 2;
-//        INToutput.ubyte[B0] |= (data_buffer[i+1] & 0xC0) >> 4;
-//        INToutput.ubyte[B0] |= (data_buffer[i+0] & 0xC0) >> 6;
         
         radio_putfourbytes(&INToutput.ubyte[0]);
     }
@@ -613,11 +616,11 @@ void OT_WEAK em2_decode_data_FEC() {
                     em2.bytes  -= 4;
                     em2.crc5    = em2_check_crc5();
                     em2.lctl    = rxq.front[1];
-                    ext_bytes   = 0;
+                    fr_bytes    = 0;
                         
                     if (em2.lctl & 0x40) {
-                        fr_bytes -= rs_init_decode(&rxq);
-                        rs_decode(2);
+                        fr_bytes -= em2_rs_init_decode(&rxq);
+                        em2_rs_decode(2);
                     }
                     em2.databytes   = fr_bytes - 2;     // subtract this block
                     
@@ -787,7 +790,7 @@ OT_WEAK void em2_encode_newframe() {
 #       if (RF_FEATURE(CRC5) != ENABLED)
         em2_add_crc5();
 #       endif
-#       if ((RF_FEATURE(CRC16) | RF_FEATURE(CRC)) != ENABLED))
+#       if ((RF_FEATURE(CRC16) | RF_FEATURE(CRC)) != ENABLED)
         crc_init_stream(True, q_span(&txq), txq.getcursor);
         txq.putcursor += 2;
 #       endif
@@ -874,32 +877,40 @@ OT_WEAK void em2_decode_newframe() {
 
 
 
+
 #ifndef em2_decode_endframe
 OT_WEAK ot_u16 em2_decode_endframe() {
 /// Perform block-code error correction if available, strip blockcoding if its
 /// there (after processing), and strip CRC
     ot_u16 framebytes;
     ot_u16 crc_invalid;
+    ot_int corrections;
 
     ///1. Get the CRC16 information, which is already computed inline.  There 
     ///   may be no reason to do RS decoding, even if it is available
     crc_invalid = crc_get();
+    framebytes  = rxq.front[0] + 1;
     
     ///2. Remove the RS parity bytes from "framebytes" if RS parity bytes are 
     ///     present.  If RS decoding is supported, also do postprocess error
     ///     correction, and re-do the CRC afterwards if it reports no remaining 
     ///     errors, to verify that indeed all errors were corrected.
+    corrections = 0;
     if (em2.lctl & 0x40) {
-        framebytes -= em2_rs_paritylength( q_span(&rxq) );
-        
+        framebytes -= em2_rs_paritylength( framebytes ); 
 #       if (M2_FEATURE(RSCODE))
         if (crc_invalid) {
-            if (em2_rs_postprocess() == 0) {
-                crc_invalid = platform_crc_block(rxq.getcursor, framebytes);
+            corrections = em2_rs_postprocess();
+            if (corrections >= 0) {
+                crc_invalid = platform_crc_block(rxq.front, framebytes);
+                corrections = crc_invalid ? -1 : corrections;
             }
         }
 #       endif
     }
+#   if (OT_FEATURE(RF_LINKINFO))
+        radio.link.corrections = corrections;
+#   endif
 
     ///3. Strip the CRC16 bytes from "framebytes"
     framebytes -= 2;

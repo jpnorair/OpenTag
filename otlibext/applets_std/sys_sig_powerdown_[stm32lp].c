@@ -61,23 +61,39 @@ void sys_sig_powerdown(ot_int code) {
     //     missed, but there is nothing that can be done about this.
 #   if !defined(__DEBUG__)
     if (code & 2) {
-        ot_u16 scratch;
-        SCB->SCR   |= SCB_SCR_SLEEPDEEP;
-        scratch     = PWR->CR;
-        scratch    &= ~PWR_CR_PDDS;
-        scratch    |= (PWR_CR_LPSDSR /*| PWR_CR_FWU | PWR_CR_ULP */); 
-        PWR->CR     = scratch;
-        EXTI->PR    = 0;
-        gptim_stop_chrono();
+        BOARD_STOP(code);
+//        ot_u16 scratch;
+//        
+//        // SysTick is the devil.  Don't let it run during STOP.
+//        SysTick->CTRL = 0;
+//        
+//        // Rig the core to go into STOP mode on next WFI
+//        scratch     = PWR->CR;
+//        scratch    &= ~(PWR_CR_DBP | PWR_CR_PDDS | PWR_CR_LPSDSR);
+//        scratch    |= (PWR_CR_LPSDSR /*| PWR_CR_FWU | PWR_CR_ULP */);
+//        PWR->CR     = scratch;
+//        SCB->SCR   |= SCB_SCR_SLEEPDEEP;
+//        
+//        // Flush external interrupt flags and stop chronometer
+//        EXTI->PR    = 0;
+//        gptim_stop_chrono();
+//        platform_enable_interrupts();
+//        __WFI();
+//        
+//        // On Wakeup (from STOP) clear flags
+//        PWR->CR |= (PWR_CR_DBP | PWR_CR_CWUF | PWR_CR_CSBF);
+//    
+//        // On wakeup, immediately reset SLEEPDEEP bit
+//        //SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP);  
     }   
     else 
 #   endif
-    {   // SLEEP mode:
+    {   // Normal Sleeping mode (not deep sleep)
         SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
         PWR->CR    &= ~(PWR_CR_PDDS | PWR_CR_LPSDSR | PWR_CR_ULP);
+        platform_enable_interrupts();
+        __WFI();
     }
-
-    platform_enable_interrupts();
-    __WFI();
+    
 }
 #endif

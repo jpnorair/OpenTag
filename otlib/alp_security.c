@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2013-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/alp_security.c
   * @author     JP Norair
-  * @version    R100
-  * @date       16 Sept 2013
+  * @version    R101
+  * @date       24 Mar 2014
   * @brief      ALP to Security protocol processor
   * @ingroup    ALP
   *
@@ -81,8 +81,6 @@
 ///@todo this is untested code.  The Auth module is incomplete and must be 
 ///      augmented to include functions & data elements referenced in this code.
 
-///@todo replace INREC calls with direct access from input
-
 #include "alp.h"
 
 #if (   (OT_FEATURE(ALP) == ENABLED) \
@@ -105,18 +103,21 @@
 
 
 #ifndef EXTF_alp_proc_sec
-ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
+OT_WEAK ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
 /// At present, only DLLS features are supported, no NLS
-    ot_u8       errcode = 0;
-    ot_int      key_index;
     key_tmpl    key_data;
     id_tmpl     id_data;
     id_tmpl*    id_ptr;
+    ot_int      key_index;
+    ot_u8       errcode = 0;
+    ot_u8       cmd_in  = alp->inq->getcursor[0];
+    
+    alp->inq->getcursor+= 4;
 
 #   if (OT_FEATURE(CLIENT))
     /// Put your client code in here, which handles the response.  Response
     /// is noted by having the Status bit set.
-    if (alp->INREC(_CMD) & ALP_SEC_STATUS) {
+    if (cmd_in & ALP_SEC_STATUS) {
         alp_push_sec(alp, user_id);
     }
 #   endif
@@ -129,14 +130,14 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
     }
     
     // Only support RFUMASK = 000
-    if (alp->INREC(_CMD) & ALP_SEC_RFUMASK) {
+    if (cmd_in & ALP_SEC_RFUMASK) {
         errcode = 255;
         goto alp_proc_sec_RESPONSE;
     }
     
     // If ID is used, breakdown the ID tmpl and use it to find the Key index.
     // else, just use the damn key index.
-    if (alp->INREC(_CMD) & ALP_SEC_IDTMPL) {
+    if (cmd_in & ALP_SEC_IDTMPL) {
         alp_breakdown_id_tmpl(alp->inq, (void*)&id_data);
         id_ptr      = &id_data;
         key_index   = auth_find_keyindex(&id_data);
@@ -151,10 +152,10 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
     // Read (01) and Create (11) include a key in the response.
     
     // Create/Update a key.  When creating a new key, key_index is replaced.
-    if (alp->INREC(_CMD) & 2) {
+    if (cmd_in & 2) {
         alp_breakdown_key_tmpl(alp->inq, (void*)&key_data);
     
-        if (alp->INREC(_CMD) & 1) {
+        if (cmd_in & 1) {
             errcode = auth_create_key(&key_index, &key_data, id_ptr);
         }
         else {
@@ -163,12 +164,12 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
     }
     
     // Delete a key
-    else if ((alp->INREC(_CMD) & 3) == 0) {
+    else if ((cmd_in & 3) == 0) {
         errcode = auth_delete_key(key_index);
     }
     
     // Do read operation if no errors and command is read or create
-    if ((alp->INREC(_CMD) & 1) && (errcode == 0)) {
+    if ((cmd_in & 1) && (errcode == 0)) {
         errcode = alp_read_key(key_index, &key_data);
     }
 
@@ -177,15 +178,15 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
     // Always include key index when status==0
     // Include id and key data conditionally
     alp_proc_sec_RESPONSE:
-    if (alp->INREC(_CMD) & ALP_SEC_RESPOND) {
+    if (cmd_in & ALP_SEC_RESPOND) {
         alp->OUTREC(_CMD)    &= 0x3F;
         alp->OUTREC(_CMD)    |= ALP_SEC_STATUS;
         q_writebyte(alp->outq, errcode);
         
         if (errcode == 0) {
             q_writeshort(key_index);
-            if (alp->INREC(_CMD) & ALP_SEC_IDTMPL)    alp_stream_id_tmpl(alp->outq, &auth_data);
-            if (alp->INREC(_CMD) & 1)                 alp_stream_key_tmpl(alp->outq, &key_data);
+            if (cmd_in & ALP_SEC_IDTMPL)    alp_stream_id_tmpl(alp->outq, &auth_data);
+            if (cmd_in & 1)                 alp_stream_key_tmpl(alp->outq, &key_data);
         }
     }
     
@@ -197,7 +198,7 @@ ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id) {
 
 
 #if (OT_FEATURE(CLIENT) && !defined(EXTF_alp_push_sec))
-void alp_push_sec(alp_tmpl* alp, id_tmpl* user_id) {
+OT_WEAK void alp_push_sec(alp_tmpl* alp, id_tmpl* user_id) {
 /// Client function, simply pushes the response data to some upper layer.
 /// You'll want to write this yourself.  This one here is an empty function
 /// that does nothing, and it only exists to present this warning and prevent

@@ -51,6 +51,7 @@ void q_rebase(ot_queue* q, ot_u8* buffer) {
     q->front        = buffer;
     q->getcursor    = buffer;
     q->putcursor    = buffer;
+    q->back         = buffer;
 }
 #endif
 

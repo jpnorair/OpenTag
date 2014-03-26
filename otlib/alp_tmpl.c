@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/alp_tmpl.c
   * @author     JP Norair
-  * @version    R100
-  * @date       16 Sept 2013
+  * @version    R101
+  * @date       23 Mar 2014
   * @brief      ALP to template conversion functions
   * @ingroup    ALP
   *
@@ -40,27 +40,27 @@
 
 
 
-void alp_breakdown_u8(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_u8(ot_queue* in_q, void* data_type) {
     *(ot_u8*)data_type = q_readbyte(in_q); 
 }
 
-void alp_breakdown_u16(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_u16(ot_queue* in_q, void* data_type) {
     *(ot_u16*)data_type = q_readshort(in_q);
 }
 
-void alp_breakdown_u32(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_u32(ot_queue* in_q, void* data_type) {
     *(ot_u32*)data_type = q_readlong(in_q);
 }
 
-void alp_stream_u8(ot_queue* out_q, void* data_type) {
+OT_WEAK void alp_stream_u8(ot_queue* out_q, void* data_type) {
     q_writebyte(out_q, *(ot_u8*)data_type);
 }
 
-void alp_stream_u16(ot_queue* out_q, void* data_type) {
+OT_WEAK void alp_stream_u16(ot_queue* out_q, void* data_type) {
     q_writebyte(out_q, *(ot_u16*)data_type);
 }
 
-void alp_stream_u32(ot_queue* out_q, void* data_type) {
+OT_WEAK void alp_stream_u32(ot_queue* out_q, void* data_type) {
     q_writebyte(out_q, *(ot_u32*)data_type);
 }
 
@@ -68,7 +68,7 @@ void alp_stream_u32(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_queue(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_queue(ot_queue* in_q, void* data_type) {
     ot_u16 queue_length;
     ot_u8* queue_front;
     queue_length                    = q_readshort(in_q);
@@ -81,7 +81,7 @@ void alp_breakdown_queue(ot_queue* in_q, void* data_type) {
     ((ot_queue*)data_type)->putcursor  = queue_front;
 }
 
-void alp_stream_queue(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_queue(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
     	ot_int length;
     	length = q_length((ot_queue*)data_type);
@@ -95,7 +95,7 @@ void alp_stream_queue(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_session_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_session_tmpl(ot_queue* in_q, void* data_type) {
     q_readstring(in_q, (ot_u8*)data_type, 6);
     //((session_tmpl*)data_type)->reserved    = q_readbyte(in_q);
     //((session_tmpl*)data_type)->channel     = q_readbyte(in_q);
@@ -105,7 +105,7 @@ void alp_breakdown_session_tmpl(ot_queue* in_q, void* data_type) {
     //((session_tmpl*)data_type)->flagmask    = q_readbyte(in_q);
 }
 
-void alp_stream_session_tmpl(ot_queue* out_q, void* data_type) {
+OT_WEAK void alp_stream_session_tmpl(ot_queue* out_q, void* data_type) {
     if _PTR_TEST(data_type) 
         q_writestring(out_q, (ot_u8*)data_type, 6);
 }
@@ -113,12 +113,12 @@ void alp_stream_session_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_advert_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_advert_tmpl(ot_queue* in_q, void* data_type) {
     q_readstring(in_q, (ot_u8*)data_type, 4);
     ((advert_tmpl*)data_type)->duration     = q_readshort(in_q);
 }
 
-void alp_stream_advert_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_advert_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         q_writestring(out_q, (ot_u8*)data_type, 4);
         q_writeshort(out_q, ((advert_tmpl*)data_type)->duration);
@@ -128,14 +128,14 @@ void alp_stream_advert_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_command_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_command_tmpl(ot_queue* in_q, void* data_type) {
     q_readstring(in_q, (ot_u8*)data_type, 3);
     //((command_tmpl*)data_type)->type        = q_readbyte(in_q);
     //((command_tmpl*)data_type)->opcode      = q_readbyte(in_q);
     //((command_tmpl*)data_type)->extension   = q_readbyte(in_q);
 }
 
-void alp_stream_command_tmpl(ot_queue* out_q, void* data_type) {
+OT_WEAK void alp_stream_command_tmpl(ot_queue* out_q, void* data_type) {
     if _PTR_TEST(data_type)
         q_writestring(out_q, (ot_u8*)data_type, 3);
 }
@@ -144,7 +144,7 @@ void alp_stream_command_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_routing_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_routing_tmpl(ot_queue* in_q, void* data_type) {
     ot_u8 id_length;
     ot_u8 code_mask;
     ((routing_tmpl*)data_type)->hop_code    = q_readbyte(in_q);
@@ -168,7 +168,7 @@ void alp_breakdown_routing_tmpl(ot_queue* in_q, void* data_type) {
     }
 }
 
-void alp_stream_routing_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_routing_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         q_writebyte(out_q, ((routing_tmpl*)data_type)->hop_code );
         q_writebyte(out_q, ((routing_tmpl*)data_type)->hop_ext );
@@ -186,14 +186,14 @@ void alp_stream_routing_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_id_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_id_tmpl(ot_queue* in_q, void* data_type) {
     ot_int id_length;
     id_length                       = q_readbyte(in_q);
     ((id_tmpl*)data_type)->length   = id_length;
     ((id_tmpl*)data_type)->value    = (id_length==0) ? NULL : q_markbyte(in_q, id_length);
 }
 
-void alp_stream_id_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_id_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         q_writebyte(out_q, ((id_tmpl*)data_type)->length);
         q_writestring(out_q, ((id_tmpl*)data_type)->value, ((id_tmpl*)data_type)->length);
@@ -203,7 +203,7 @@ void alp_stream_id_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_dialog_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_dialog_tmpl(ot_queue* in_q, void* data_type) {
     ((dialog_tmpl*)data_type)->timeout = q_readbyte(in_q);
     
     if (((dialog_tmpl*)data_type)->timeout & 0x80) {
@@ -213,7 +213,7 @@ void alp_breakdown_dialog_tmpl(ot_queue* in_q, void* data_type) {
     }
 }
 
-void alp_stream_dialog_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_dialog_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         q_writeshort(out_q, ((dialog_tmpl*)data_type)->timeout);
         q_writeshort(out_q, ((dialog_tmpl*)data_type)->channels);
@@ -225,7 +225,7 @@ void alp_stream_dialog_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_query_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_query_tmpl(ot_queue* in_q, void* data_type) {
     ot_u8   query_length;
     ot_u8   query_code;
     ot_u8*  query_mask;
@@ -244,7 +244,7 @@ void alp_breakdown_query_tmpl(ot_queue* in_q, void* data_type) {
     ((query_tmpl*)data_type)->value     = q_markbyte(in_q, query_length);
 }
 
-void alp_stream_query_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_query_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         q_writebyte(out_q, ((query_tmpl*)data_type)->code);
         q_writebyte(out_q, ((query_tmpl*)data_type)->length);
@@ -260,7 +260,7 @@ void alp_stream_query_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_ack_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_ack_tmpl(ot_queue* in_q, void* data_type) {
     ot_int ack_id_count;
     ot_int ack_id_length;
     ack_id_count                    = q_readbyte(in_q);
@@ -270,7 +270,7 @@ void alp_breakdown_ack_tmpl(ot_queue* in_q, void* data_type) {
     ((ack_tmpl*)data_type)->list    = q_markbyte(in_q, ack_id_count*ack_id_length);
 }
 
-void alp_stream_ack_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_ack_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         q_writebyte(out_q, ((ack_tmpl*)data_type)->count);
         q_writebyte(out_q, ((ack_tmpl*)data_type)->length);
@@ -282,13 +282,13 @@ void alp_stream_ack_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_error_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_error_tmpl(ot_queue* in_q, void* data_type) {
     ((error_tmpl*)data_type)->code      = q_readbyte(in_q);
     ((error_tmpl*)data_type)->subcode   = q_readbyte(in_q);
     ((error_tmpl*)data_type)->data      = in_q->getcursor;  ///@todo build a routine for code:subcode --> data length
 }
 
-void alp_stream_error_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_error_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         q_writebyte(out_q, ((error_tmpl*)data_type)->code);
         q_writebyte(out_q, ((error_tmpl*)data_type)->subcode);
@@ -300,20 +300,20 @@ void alp_stream_error_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_udp_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_udp_tmpl(ot_queue* in_q, void* data_type) {
     ot_int udp_data_length;
-    ((udp_tmpl*)data_type)->src_port      = q_readbyte(in_q);
-    ((udp_tmpl*)data_type)->dst_port      = q_readbyte(in_q);
     udp_data_length                       = q_readshort(in_q);
     ((udp_tmpl*)data_type)->data_length   = udp_data_length;
+    ((udp_tmpl*)data_type)->dst_port      = q_readbyte(in_q);
+    ((udp_tmpl*)data_type)->src_port      = q_readbyte(in_q);
     ((udp_tmpl*)data_type)->data          = q_markbyte(in_q, udp_data_length);
 }
 
-void alp_stream_udp_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_udp_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
-        q_writebyte(out_q, ((udp_tmpl*)data_type)->src_port);
-        q_writebyte(out_q, ((udp_tmpl*)data_type)->dst_port);
         q_writeshort(out_q, ((udp_tmpl*)data_type)->data_length);
+        q_writebyte(out_q, ((udp_tmpl*)data_type)->dst_port);
+        q_writebyte(out_q, ((udp_tmpl*)data_type)->src_port);
         q_writestring(out_q, ((udp_tmpl*)data_type)->data, ((udp_tmpl*)data_type)->data_length);
     }
 }
@@ -322,13 +322,13 @@ void alp_stream_udp_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_isfcomp_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_isfcomp_tmpl(ot_queue* in_q, void* data_type) {
     ((isfcomp_tmpl*)data_type)->is_series   = q_readbyte(in_q);
     ((isfcomp_tmpl*)data_type)->isf_id      = q_readbyte(in_q);
     ((isfcomp_tmpl*)data_type)->offset      = q_readshort(in_q);
 }
 
-void alp_stream_isfcomp_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_isfcomp_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         q_writebyte(out_q, ((isfcomp_tmpl*)data_type)->is_series);
         q_writebyte(out_q, ((isfcomp_tmpl*)data_type)->isf_id);
@@ -340,12 +340,12 @@ void alp_stream_isfcomp_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
-void alp_breakdown_isfcall_tmpl(ot_queue* in_q, void* data_type) {
+OT_WEAK void alp_breakdown_isfcall_tmpl(ot_queue* in_q, void* data_type) {
     alp_breakdown_isfcomp_tmpl(in_q, data_type);
     ((isfcall_tmpl*)data_type)->max_return  = q_readshort(in_q);
 }
 
-void alp_stream_isfcall_tmpl(ot_queue* out_q, void* data_type) { 
+OT_WEAK void alp_stream_isfcall_tmpl(ot_queue* out_q, void* data_type) { 
     if _PTR_TEST(data_type) {
         alp_breakdown_isfcomp_tmpl(out_q, data_type);
         q_writeshort(out_q, ((isfcall_tmpl*)data_type)->max_return);

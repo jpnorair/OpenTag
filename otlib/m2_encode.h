@@ -105,8 +105,6 @@ extern fn_codec em2_decode_data;
 
 
 
-
-
 /** @brief  Initializes the encoder for a new Mode 2 packet
   * @param  None
   * @retval None
@@ -211,6 +209,7 @@ ot_int em2_rs_check(void);
 ot_int em2_rs_postprocess(void);
 ot_int em2_rs_init_encode(ot_queue* q);
 void em2_rs_encode(ot_int n_bytes);
+void em2_rs_interleave(ot_u8* start, ot_int numbytes);
 
 #endif
 
