@@ -386,7 +386,11 @@ ot_int sub_parse_request(m2session* session) {
             //m2np_header(active, 0, M2FI_FRDIALOG); ///@todo Future Update Code, Can use 0 in addressing for Response
             q_writebyte(&txq, (M2TT_RESPONSE | cmd_opcode));            // Write Cmd code byte
         }
+<<<<<<< HEAD
         
+=======
+           
+>>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
         opgroup_proc[((cmd_opcode>>1) & 7)]();
     }
     

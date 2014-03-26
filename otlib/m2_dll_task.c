@@ -753,6 +753,115 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
 
 
 
+<<<<<<< HEAD
+=======
+
+
+
+
+
+
+/** External DLL applets <BR>
+  * ========================================================================<BR>
+  */
+OT_WEAK void dll_default_applet(m2session* active) {
+    dll_set_defaults(active);
+}
+
+
+/** Internal DLL applets <BR>
+  * ========================================================================<BR>
+  */
+
+OT_WEAK void dll_response_applet(m2session* active) {
+/// If this is a response transmission of a session with "Listen" active, it
+/// means the contention period (Tc) is followed immediately with a subsequent
+/// request.  We must not overlap that request with the tail-end of our own
+/// response.  Therefore, we subtract from Tc the duration of this response.
+    if (active->flags & M2_FLAG_LISTEN) {
+        ot_u8 substate = active->netstate & M2_NETSTATE_TMASK;
+        
+        if (substate == M2_NETSTATE_RESPTX) {
+            dll.comm.tc -= TI2CLK(rm2_pkt_duration(&txq));
+        }
+        else if (substate == M2_NETSTATE_REQRX) {
+            sys.task_HSS.cursor     = 0;
+            sys.task_HSS.nextevent  = dll.comm.rx_timeout;
+            dll.comm.rx_timeout     = rm2_default_tgd(active->channel);
+        }
+    }
+}
+
+
+OT_WEAK void dll_scan_applet(m2session* active) {
+/// Scanning is a Request-RX operation, so Tc is not important.
+    ot_u8 scan_code;
+    dll_set_defaults(active);
+    
+    scan_code               = active->extra;
+    active->extra           = 0;
+    dll.comm.rx_timeout     = otutils_calc_timeout(scan_code);
+    //dll.comm.csmaca_params  = 0;
+}
+
+
+OT_WEAK void dll_beacon_applet(m2session* active) {
+/// Beaconing is a Request-TX operation, and the value for Tc is the amount of
+/// time to spend in CSMA before quitting the beacon.
+    ot_queue beacon_queue;
+    ot_u8 b_params;
+    ot_u8 cmd_ext;
+    ot_u8 cmd_code;
+    
+    b_params        = active->extra;
+    active->extra   = 0;
+
+    /// Start building the beacon packet:
+    /// <LI> Calling m2np_header() will write most of the front of the frame </LI>
+    /// <LI> Add the command byte and optional command-extension byte </LI>
+    m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
+    
+    cmd_ext     = (b_params & 0x06);
+    cmd_code    = 0x20 | (b_params & 1) | ((cmd_ext!=0) << 7);
+    q_writebyte(&txq, cmd_code);
+    if (cmd_ext) {
+        q_writebyte(&txq, cmd_ext);
+    }
+
+    /// Setup the comm parameters, if the channel is available:
+    /// <LI> dll.comm values tx_eirp, cs_rssi, and cca_rssi must be set by the
+    ///      radio module during the CSMA-CA process -- don't set them here.
+    ///      The DASH7 spec requires it to happen in this order. </LI>
+    /// <LI> Set CSMA-CA parameters, which are used by the radio module </LI>
+    /// <LI> Set number of redundant TX's we would like to transmit </LI>
+    /// <LI> Set rx_timeout for Default-Tg or 0, if beacon has no response </LI>
+    dll_set_defaults(active);
+    dll.comm.tc             = TI2CLK(M2_PARAM_BEACON_TCA);
+    dll.comm.rx_timeout     = (b_params & 0x02) ? \
+                                0 : rm2_default_tgd(active->channel);
+    dll.comm.csmaca_params |= (b_params & 0x04) | M2_CSMACA_NA2P | M2_CSMACA_MACCA;
+    dll.comm.redundants     = dll.netconf.b_attempts;  
+
+    q_writebyte(&txq, (ot_u8)dll.comm.rx_timeout);
+
+    /// If the beacon data is missing or otherwise not accessible by the 
+    /// GUEST user, scrap this session.  Else, finish the M2NP frame.
+    q_init(&beacon_queue, &bq_data.ubyte[0], 4);
+    if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
+        //active->netstate = M2_NETFLAG_SCRAP;
+        session_pop();
+        dll_idle();
+    }
+    else {
+        m2np_footer();
+    }
+}
+
+
+
+
+
+>>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
 /** DLL Systask RF I/O routines   <BR>
   * ========================================================================<BR>
   * These routines & subroutines are called from the dll_systack() function.

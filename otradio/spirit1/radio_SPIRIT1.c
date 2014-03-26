@@ -152,7 +152,11 @@ void    subrfctl_buffer_config(MODE_enum mode, ot_u16 param);
 void    subrfctl_save_linkinfo();
 
 void    subrfctl_prep_q(ot_queue* q);
+<<<<<<< HEAD
 ot_bool subrfctl_mac_filter();
+=======
+
+>>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
 
 
 #if (RF_FEATURE(AUTOCAL) != ENABLED)
@@ -630,6 +634,7 @@ void em2_decode_newpacket() {
 
 #ifdef EXTF_em2_encode_newframe
 void em2_encode_newframe() {
+<<<<<<< HEAD
     /// 1. Prepare the CRC and RS encoding, which need to be computed
     ///    when the upper options byte is set.  That is, it is non-zero
     ///    on the first packet and 0 for retransmissions.
@@ -653,6 +658,30 @@ void em2_encode_newframe() {
 #       endif
         
         // Only appoint CRC5 when the first ten bits of txq are settled
+=======
+    /// 1. Prepare the CRC and RS encoding, which need to be computed
+    ///    when the upper options byte is set.  That is, it is non-zero
+    ///    on the first packet and 0 for retransmissions.
+    if (txq.options.ubyte[UPPER] != 0) {
+        crc_init_stream(True, q_span(&txq), txq.getcursor);
+        txq.front[0]   += 2;
+        txq.putcursor  += 2;
+        
+#       if (M2_FEATURE(RSCODE))
+            em2.lctl = txq.front[1];
+            if (em2.lctl & 0x40) {
+                ot_int parity_bytes;
+                parity_bytes    = em2_rs_init_encode(&txq);
+                txq.front[0]   += parity_bytes;
+                txq.putcursor  += parity_bytes;
+            }
+#       else
+            em2.lctl        = txq.front[1] & ~0x40;
+            txq.front[1]    = em2.lctl;
+#       endif
+        
+        // Only appoint CRC5 when the first ten bits of txq are settled
+>>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
         em2_add_crc5(txq.front);
 	}
 
@@ -747,11 +776,16 @@ void em2_decode_data() {
             crc_init_stream(False, em2.bytes-ext_bytes, rxq.getcursor);
         }
         
+<<<<<<< HEAD
         crc_calc_nstream(grab);
         
         ///@todo we can optimize this also by waiting until crc is done,
         ///      and then verifying that it is not accurate.  but we need
         ///      better speed profiling before doing that.
+=======
+        crc_calc_nstream(grab);
+        
+>>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
 #       if (M2_FEATURE(RSCODE))
         if (em2.lctl & 0x40) {
             em2_rs_decode(grab);
@@ -1151,6 +1185,9 @@ OT_WEAK void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
     radio.evtdone   = callback;
     radio.state     = RADIO_Csma;
     rfctl.state     = RADIO_STATE_TXINIT;
+    
+    // initialize the CRC/RS disabling byte
+    txq.options.ubyte[UPPER] = 0;
     
     // initialize the CRC/RS disabling byte
     txq.options.ubyte[UPPER] = 0;
