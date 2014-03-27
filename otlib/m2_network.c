@@ -23,7 +23,7 @@
   *
   * Includes implementation for the following protocols:
   * 1. M2AdvP
-  * 2. M2ResP (not implemented in this version)
+  * 2. M2ResP (not implemented in this version) 
   * 3. M2NP
   * 4. M2DP
   ******************************************************************************

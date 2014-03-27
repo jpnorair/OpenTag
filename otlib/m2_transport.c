@@ -17,7 +17,7 @@
   * @file       /otlib/m2_transport.c
   * @author     JP Norair
   * @version    R102
-  * @date       20 March 2014
+  * @date       20 March 2014 
   * @brief      Mode 2 Query Protocol Implementation (Transport Layer)
   * @ingroup    M2QP
   *

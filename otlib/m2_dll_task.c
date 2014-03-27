@@ -17,7 +17,7 @@
   * @file       /otlib/m2_dll_task.c
   * @author     JP Norair
   * @version    R103
-  * @date       24 Mar 2014
+  * @date       24 Mar 2014 
   * @brief      Data Link Layer Task for DASH7
   * @ingroup    DLL
   *
