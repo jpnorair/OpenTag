@@ -330,8 +330,7 @@ void spirit1_waitforready() {
 
 
 void spirit1_waitforstandby() {
-/// Wait for the Ready Pin to go high (reset pin is remapped in init).
-/// STANDBY->READY should take about 75us
+/// Wait for the Ready Pin to go low (reset pin is remapped in init).
     while ((_READY_PORT->IDR & _READY_PIN) != 0);
 }
 
@@ -475,6 +474,7 @@ void spirit1_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
     /// module buffer.  If doing a read, the garbage data getting duplexed onto
     /// TX doesn't affect the SPIRIT1.  If doing a write, simply disregard the 
     /// RX duplexed data.
+    BOARD_RFSPI_CLKON();
     BOARD_DMA_CLKON();
     __DMA_CLEAR_IFG();
     cmd_len        += resp_len;
@@ -499,6 +499,7 @@ void spirit1_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
     __SPI_DISABLE();
     __SPI_CLKOFF();
     BOARD_DMA_CLKOFF();
+    BOARD_RFSPI_CLKOFF();
     platform_enable_interrupts();
 }
 

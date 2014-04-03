@@ -488,11 +488,12 @@
 
 // This board uses all GPIOs it has (GPIOA-E), so enable all of them.  
 // You could optimize this if you aren't using them all.
-#define _GPIOCLK_N      (   RCC_AHBENR_GPIOAEN  \
+#define _GPIOCLK_SU     (   RCC_AHBENR_GPIOAEN  \
                         |   RCC_AHBENR_GPIOBEN  \
                         |   RCC_AHBENR_GPIOCEN  \
                         |   RCC_AHBENR_GPIODEN  \
                         |   RCC_AHBENR_GPIOEEN  )
+#define _GPIOCLK_N      _GPIOCLK_SU
 
 // DMA will be enabled in Sleep on demand by the device driver.  By default
 // it is disabled in sleep
@@ -517,6 +518,9 @@
                         |   RCC_AHBLPENR_GPIOCLPEN  \
                         |   RCC_AHBLPENR_GPIODLPEN  \
                         |   RCC_AHBLPENR_GPIOELPEN  )
+
+
+
 
 //@note BOARD Macro for Peripheral Clock initialization at startup
 static inline void BOARD_PERIPH_INIT(void) {
@@ -543,42 +547,6 @@ static inline void BOARD_PERIPH_INIT(void) {
     // TIM6, TIM4, TIM3, TIM2
     RCC->APB1ENR   = (RCC_APB1ENR_PWREN); 
 }
-
-
-//@note BOARD Macro for DMA peripheral enabling
-static inline void BOARD_DMA_CLKON(void) {
-#ifdef _DMACLK_DYNAMIC
-    // DMA is not enabled for normal mode by default, so enable it
-    RCC->AHBENR    |= RCC_AHBENR_DMA1EN;
-#endif
-#ifdef _DMACLK_DYNAMIC_LP
-    // DMA is not enabled for low-power mode by default, so enable it
-    RCC->AHBLPENR  |= RCC_AHBLPENR_DMA1LPEN;
-#endif
-}
-
-static inline void BOARD_DMA_CLKOFF(void) {
-#ifdef _DMACLK_DYNAMIC
-    // DMA is not enabled for normal mode by default, so disable it
-    RCC->AHBENR    &= ~RCC_AHBENR_DMA1EN;
-#endif
-#ifdef _DMACLK_DYNAMIC_LP
-    // DMA is not enabled for low-power mode by default, so disable it
-    RCC->AHBLPENR  &= ~RCC_AHBLPENR_DMA1LPEN;
-#endif
-}
-
-//Wipe-out some temporary constants which have generic names
-#undef _DMACLK_N
-#undef _FLITFCLK_N
-#undef _CRCCLK_N
-#undef _GPIOCLK_N
-#undef _DMACLK_LP
-#undef _SRAMCLK_LP
-#undef _FLITFCLK_LP
-#undef _CRCCLK_LP
-#undef _GPIOCLK_LP
-
 
 
 
@@ -793,6 +761,117 @@ static inline void BOARD_PORT_STARTUP(void) {
     
     //The END
 }
+
+
+//@note BOARD Macro for DMA peripheral enabling
+static inline void BOARD_DMA_CLKON(void) {
+#ifdef _DMACLK_DYNAMIC
+    // DMA is not enabled for normal mode by default, so enable it
+    RCC->AHBENR    |= RCC_AHBENR_DMA1EN;
+#endif
+#ifdef _DMACLK_DYNAMIC_LP
+    // DMA is not enabled for low-power mode by default, so enable it
+    RCC->AHBLPENR  |= RCC_AHBLPENR_DMA1LPEN;
+#endif
+}
+
+static inline void BOARD_DMA_CLKOFF(void) {
+#ifdef _DMACLK_DYNAMIC
+    // DMA is not enabled for normal mode by default, so disable it
+    RCC->AHBENR    &= ~RCC_AHBENR_DMA1EN;
+#endif
+#ifdef _DMACLK_DYNAMIC_LP
+    // DMA is not enabled for low-power mode by default, so disable it
+    RCC->AHBLPENR  &= ~RCC_AHBLPENR_DMA1LPEN;
+#endif
+}
+
+
+static inline void BOARD_RFSPI_CLKON(void) {
+    BOARD_RFSPI_PORT->MODER &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                            | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
+    
+    BOARD_RFSPI_PORT->MODER |= (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                            | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
+                            | (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM*2));
+    
+  //BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                            | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+}
+
+static inline void BOARD_RFSPI_CLKOFF(void) {
+    BOARD_RFSPI_PORT->MODER &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                            | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
+    
+    BOARD_RFSPI_PORT->MODER |= (GPIO_MODER_OUT << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                            | (GPIO_MODER_IN << (BOARD_RFSPI_MISOPINNUM*2)) \
+                            | (GPIO_MODER_OUT << (BOARD_RFSPI_MOSIPINNUM*2));
+    
+  //BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                            | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+}
+
+
+static inline void BOARD_STOP(ot_int code) {
+///@note IKR001 board is poorly designed for running in STOP mode, as three
+///      ports must be kept-alive (B, C, E)
+#   define _RF_GPIO     (RCC_AHBENR_GPIOCEN)
+#   define _BUTTON_GPIO (RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOCEN | RCC_AHBENR_GPIOEEN)
+#   define _STOP3_GPIO  (_BUTTON_GPIO)
+#   define _STOP2_GPIO  (_RF_GPIO | _BUTTON_GPIO)
+
+/// code comes from sys_sig_powerdown, but it is usually 0-3.
+/// For all STM32L devices, 3 is full-idle and 2 is radio-active-idle.  
+/// Those are the only modes that should call this inline function.
+
+    static const ot_u16 stop_flags[2] = {  
+        (PWR_CR_LPSDSR | PWR_CR_CSBF), (PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP | PWR_CR_CSBF) };
+        
+    static const ot_u32 rcc_flags[2] = { ~_STOP2_GPIO, ~_STOP3_GPIO };
+    
+    ot_u16 scratch;
+    
+    code &= 1;
+    
+#   if defined(__RELEASE__)
+        ///@todo: set pins not used in STOP to analog mode with no pullup/down
+        //GPIOB->MODER    = 0xFFFFFFFF;
+        //GPIOB->PUPDR    = 0;
+        RCC->AHBENR    &= rcc_flags[code];
+#   endif
+
+    SysTick->CTRL = 0;
+    SCB->SCR   |= SCB_SCR_SLEEPDEEP;
+    scratch     = PWR->CR;
+    scratch    &= ~(PWR_CR_DBP | PWR_CR_PDDS | PWR_CR_LPSDSR);
+    scratch    |= stop_flags[code];
+    PWR->CR     = scratch;
+    
+    EXTI->PR    = 0;
+    gptim_stop_chrono();
+    platform_enable_interrupts();
+    
+    __WFI();
+    
+    // On Wakeup (from STOP) clear flags & re-enable backup register area
+    PWR->CR |= (PWR_CR_DBP | PWR_CR_CWUF | PWR_CR_CSBF);
+    
+    // On wakeup, immediately reset SLEEPDEEP bit
+    SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+    
+    // Re-enable ports
+#   if defined(__RELEASE__)
+      RCC->AHBENR    |= (_STOP2_GPIO | _STOP3_GPIO);
+      ///@todo: set pins not used in STOP to back to default mode & pulling
+      //GPIOB->PUPDR    = GPIOB_PUPDR_DEFAULT;
+      //GPIOB->MODER    = GPIOB_MODER_DEFAULT;
+#   endif
+}
+
 
 
 
@@ -1461,6 +1540,19 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #   define __USE_EXTI15
 #endif
 
+
+
+//Wipe-out some temporary constants which have generic names
+#undef _DMACLK_N
+#undef _FLITFCLK_N
+#undef _CRCCLK_N
+#undef _GPIOCLK_SU
+#undef _GPIOCLK_N
+#undef _DMACLK_LP
+#undef _SRAMCLK_LP
+#undef _FLITFCLK_LP
+#undef _CRCCLK_LP
+#undef _GPIOCLK_LP
 
 
 

@@ -634,7 +634,7 @@ static inline void BOARD_PORT_STARTUP(void) {
     */
     GPIOA->AFR[1]   = (10 << ((BOARD_HCOMUSB_DMPINNUM-8)*4)) \
                     | (10 << ((BOARD_HCOMUSB_DPPINNUM-8)*4));
-    /**/
+    /* */
 
     /// Configure Port B IO.
     /// Port B is used for external (module) IO.
@@ -684,6 +684,68 @@ static inline void BOARD_PORT_STARTUP(void) {
     //                | (GPIO_MODER_OUT << (1*2));
     //RCC->CR   |= RCC_CR_HSEBYP;
 }
+
+
+
+
+static inline void BOARD_STOP(ot_int code) {
+/// code comes from sys_sig_powerdown, but it is usually 0-3.
+/// For all STM32L devices, 3 is full-idle and 2 is radio-active-idle.  
+/// Those are the only modes that should call this inline function.
+
+    static const ot_u16 stop_flags[2] = {  
+        (PWR_CR_LPSDSR | PWR_CR_CSBF), (PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP | PWR_CR_CSBF) };
+        
+    static const ot_u32 rcc_flags[2] = {
+        0xFFFFFFFF, ~(RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN) };
+        
+    static const ot_u32 b_moder[2] = {
+        0xFFFFFC0, 0xFFFFFFFF };
+    
+    ot_u16 scratch;
+    
+    code &= 1;
+    
+#   if defined(__RELEASE__)
+      //GPIOA->MODER    = 0xFFFFFFFF;
+      //GPIOB->MODER    = b_moder[code];
+      //GPIOA->PUPDR    = 0;
+      //GPIOB->PUPDR    = 0;      //can be ignored, always 0
+      RCC->AHBENR    &= rcc_flags[code];
+#   endif
+
+    SysTick->CTRL = 0;
+    SCB->SCR   |= SCB_SCR_SLEEPDEEP;
+    scratch     = PWR->CR;
+    scratch    &= ~(PWR_CR_DBP | PWR_CR_PDDS | PWR_CR_LPSDSR);
+    scratch    |= stop_flags[code];
+    PWR->CR     = scratch;
+    
+    EXTI->PR    = 0;
+    gptim_stop_chrono();
+    platform_enable_interrupts();
+    
+    __WFI();
+    
+    // On Wakeup (from STOP) clear flags & re-enable backup register area
+    PWR->CR |= (PWR_CR_DBP | PWR_CR_CWUF | PWR_CR_CSBF);
+    
+    // On wakeup, immediately reset SLEEPDEEP bit
+    SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+    
+    // Re-enable ports
+#   if defined(__RELEASE__)
+      RCC->AHBENR    |= (RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN);
+      //GPIOA->PUPDR    = GPIOA_PUPDR_DEFAULT;
+      //GPIOB->PUPDR    = GPIOB_PUPDR_DEFAULT;    //can be ignored, always 0
+      //GPIOA->MODER    = GPIOA_MODER_DEFAULT;
+      //GPIOB->MODER    = GPIOB_MODER_DEFAULT;
+#   endif
+}
+
+
+
+
 
 
 

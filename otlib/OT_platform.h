@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/OT_platform.h
   * @author     JP Norair
-  * @version    R100
-  * @date       14 Jan 2014
+  * @version    R101
+  * @date       27 Mar 2014
   * @brief      Platform Library functions
   * @defgroup   Platform (Platform Module)
   * @ingroup    Platform
@@ -38,20 +38,7 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
-#include "platform_config.h"
-
-
-/// Errors for missing critical parameters
-#ifndef MCU_TYPE_PTRINT
-#   error "No value for MCU_TYPE_PTRINT (should be in otplatform/xxx/platform_xxx.h)"
-#endif
-#ifndef MCU_TYPE_PTRUINT
-#   error "No value for MCU_TYPE_PTRUINT (should be in otplatform/xxx/platform_xxx.h)"
-#endif
-#ifndef MCU_PARAM_ERRPTR
-#   error "No value for MCU_TYPE_ERRPTR (should be in otplatform/xxx/platform_xxx.h)"
-#endif
-
+#include "build_config.h"
 
 
 typedef struct {
@@ -730,6 +717,30 @@ void platform_swdelay_ms(ot_uint n);
 void platform_swdelay_us(ot_uint n);
 
 
+
+
+
+
+
+/** Trailing includes & defines <BR>
+  * ========================================================================<BR>
+  * These must trail the function definitions above, so that the board config
+  * header can use inline functions calling the functions above.
+  */
+
+#include "platform_config.h"
+
+
+/// Errors for missing critical parameters
+#ifndef MCU_TYPE_PTRINT
+#   error "No value for MCU_TYPE_PTRINT (should be in otplatform/xxx/platform_xxx.h)"
+#endif
+#ifndef MCU_TYPE_PTRUINT
+#   error "No value for MCU_TYPE_PTRUINT (should be in otplatform/xxx/platform_xxx.h)"
+#endif
+#ifndef MCU_PARAM_ERRPTR
+#   error "No value for MCU_TYPE_ERRPTR (should be in otplatform/xxx/platform_xxx.h)"
+#endif
 
 
 #endif

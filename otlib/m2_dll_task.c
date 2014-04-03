@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_dll_task.c
   * @author     JP Norair
-  * @version    R103
-  * @date       24 Mar 2014 
+  * @version    R104
+  * @date       1 Apr 2014 
   * @brief      Data Link Layer Task for DASH7
   * @ingroup    DLL
   *
@@ -85,8 +85,6 @@
 m2dll_struct    dll;
 
 #if (M2_FEATURE(BEACONS))
-    //ot_queue        beacon_queue;
-    ot_uni32        bq_data;
 #endif
 
 void sub_dll_flush();
@@ -294,6 +292,7 @@ OT_WEAK void dll_refresh() {
     
     fp = ISF_open_su(0);
     vl_load(fp, 10, dll.netconf.vid);
+    dll.netconf.dd_flags    = 0;
     dll.netconf.hold_limit  = PLATFORM_ENDIAN16(dll.netconf.hold_limit);
     vl_close(fp);
     
@@ -468,7 +467,7 @@ OT_WEAK void dll_beacon_applet(m2session* active) {
 
     /// If the beacon data is missing or otherwise not accessible by the 
     /// GUEST user, scrap this session.  Else, finish the M2NP frame.
-    q_init(&beacon_queue, &bq_data.ubyte[0], 4);
+    q_init(&beacon_queue, &dll.netconf.btemp[2], 4);
     if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
         //active->netstate = M2_NETFLAG_SCRAP;
         session_pop();
@@ -478,8 +477,6 @@ OT_WEAK void dll_beacon_applet(m2session* active) {
         m2np_footer();
     }
 }
-
-
 
 
 
@@ -697,6 +694,7 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
 
 
 #if (M2_FEATURE(BEACONS) == ENABLED)
+/*
 OT_WEAK void dll_systask_beacon(ot_task task) {
 /// The beacon rountine runs as an idependent systask.
     vlFILE*     fp;
@@ -726,11 +724,11 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
     b_session->subnet   = dll.netconf.b_subnet;
     b_session->extra    = scratch.ubyte[1];
     b_session->flags    = scratch.ubyte[1] & 0x78;
-    //]b_session->flags   |= (b_session->extra & 0x30);
+    //b_session->flags   |= (b_session->extra & 0x30);
 
     // Second & Third 2 bytes: ISF Call Template
-    bq_data.ushort[0]   = vl_read(fp, task->cursor+=2);
-    bq_data.ushort[1]   = vl_read(fp, task->cursor+=2);
+    *(ot_u16)&dll.netconf.btemp[2]  = vl_read(fp, task->cursor+=2);
+    *(ot_u16)&dll.netconf.btemp[4]  = vl_read(fp, task->cursor+=2);
 
     // Last 2 bytes: Next Scan ticks
 #   ifdef __BIG_ENDIAN__
@@ -748,120 +746,85 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
     task->cursor += 2;
     task->cursor  = (task->cursor >= fp->length) ? 0 : task->cursor;
     vl_close(fp);
+}*/
+
+
+OT_WEAK void dll_systask_beacon(ot_task task) {
+/// The beacon rountine runs as an idependent systask.
+    m2session*  b_session;
+   
+    if ((task->event == 0) || (dll.netconf.b_attempts == 0)) {
+        goto dll_systask_beacon_STOP;
+    }
+    
+    /// Load file-based beacon:
+    /// Open BTS ISF Element and read the beacon sequence.  Make sure there is
+    /// a beacon file of non-zero length and that beacons are presently enabled.
+    if (dll.netconf.dd_flags == 0) {
+        ot_u16  scratch;
+        vlFILE* fp;
+        
+        fp = ISF_open_su( ISF_ID(beacon_transmit_sequence) );
+        if (fp == NULL) {
+            goto dll_systask_beacon_STOP;
+        }
+        if (fp->length == 0)    {
+            vl_close(fp);
+            goto dll_systask_beacon_STOP;
+        }
+        
+        // a little hack
+        scratch     = fp->start;
+        fp->start  += task->cursor;
+        
+        /// Beacon List Management:
+        /// <LI> Move cursor onto next beacon period (above, +8)</LI>
+        /// <LI> Loop cursor if it is past the length of the list </LI>
+        /// <LI> In special case where cursor = 254, everything still works! </LI>
+        task->cursor   += 8;
+        task->cursor    = (task->cursor >= fp->length) ? 0 : task->cursor;
+        
+        // Load next beacon into btemp, then undo the start hack, then close
+        vl_load(fp, 8, dll.netconf.btemp);
+        fp->start = scratch; 
+        vl_close(fp);
+    }
+
+    // First 2 bytes: Chan ID, Cmd Code
+    // - Setup beacon ad-hoc session, on specified channel (ad hoc sessions never return NULL)
+    // - Assure cmd code is always Broadcast & Announcement
+    b_session           = session_new(  &dll_beacon_applet, 0, dll.netconf.btemp[0],
+                                        (M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX)  );
+    b_session->subnet   = dll.netconf.b_subnet;
+    b_session->extra    = dll.netconf.btemp[1];
+    b_session->flags    = dll.netconf.btemp[1] & 0x78;
+    //b_session->flags   |= (b_session->extra & 0x30);
+
+    // Last 2 bytes: Next Scan ticks
+    sys_task_setnext(task, TI2CLK( PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]) ));
+    return;
+    
+    dll_systask_beacon_STOP:
+    dll_idle();
 }
 #endif
 
 
 
-<<<<<<< HEAD
-=======
 
 
 
 
 
 
-/** External DLL applets <BR>
-  * ========================================================================<BR>
-  */
-OT_WEAK void dll_default_applet(m2session* active) {
-    dll_set_defaults(active);
-}
-
-
-/** Internal DLL applets <BR>
-  * ========================================================================<BR>
-  */
-
-OT_WEAK void dll_response_applet(m2session* active) {
-/// If this is a response transmission of a session with "Listen" active, it
-/// means the contention period (Tc) is followed immediately with a subsequent
-/// request.  We must not overlap that request with the tail-end of our own
-/// response.  Therefore, we subtract from Tc the duration of this response.
-    if (active->flags & M2_FLAG_LISTEN) {
-        ot_u8 substate = active->netstate & M2_NETSTATE_TMASK;
-        
-        if (substate == M2_NETSTATE_RESPTX) {
-            dll.comm.tc -= TI2CLK(rm2_pkt_duration(&txq));
-        }
-        else if (substate == M2_NETSTATE_REQRX) {
-            sys.task_HSS.cursor     = 0;
-            sys.task_HSS.nextevent  = dll.comm.rx_timeout;
-            dll.comm.rx_timeout     = rm2_default_tgd(active->channel);
-        }
-    }
-}
-
-
-OT_WEAK void dll_scan_applet(m2session* active) {
-/// Scanning is a Request-RX operation, so Tc is not important.
-    ot_u8 scan_code;
-    dll_set_defaults(active);
-    
-    scan_code               = active->extra;
-    active->extra           = 0;
-    dll.comm.rx_timeout     = otutils_calc_timeout(scan_code);
-    //dll.comm.csmaca_params  = 0;
-}
-
-
-OT_WEAK void dll_beacon_applet(m2session* active) {
-/// Beaconing is a Request-TX operation, and the value for Tc is the amount of
-/// time to spend in CSMA before quitting the beacon.
-    ot_queue beacon_queue;
-    ot_u8 b_params;
-    ot_u8 cmd_ext;
-    ot_u8 cmd_code;
-    
-    b_params        = active->extra;
-    active->extra   = 0;
-
-    /// Start building the beacon packet:
-    /// <LI> Calling m2np_header() will write most of the front of the frame </LI>
-    /// <LI> Add the command byte and optional command-extension byte </LI>
-    m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
-    
-    cmd_ext     = (b_params & 0x06);
-    cmd_code    = 0x20 | (b_params & 1) | ((cmd_ext!=0) << 7);
-    q_writebyte(&txq, cmd_code);
-    if (cmd_ext) {
-        q_writebyte(&txq, cmd_ext);
-    }
-
-    /// Setup the comm parameters, if the channel is available:
-    /// <LI> dll.comm values tx_eirp, cs_rssi, and cca_rssi must be set by the
-    ///      radio module during the CSMA-CA process -- don't set them here.
-    ///      The DASH7 spec requires it to happen in this order. </LI>
-    /// <LI> Set CSMA-CA parameters, which are used by the radio module </LI>
-    /// <LI> Set number of redundant TX's we would like to transmit </LI>
-    /// <LI> Set rx_timeout for Default-Tg or 0, if beacon has no response </LI>
-    dll_set_defaults(active);
-    dll.comm.tc             = TI2CLK(M2_PARAM_BEACON_TCA);
-    dll.comm.rx_timeout     = (b_params & 0x02) ? \
-                                0 : rm2_default_tgd(active->channel);
-    dll.comm.csmaca_params |= (b_params & 0x04) | M2_CSMACA_NA2P | M2_CSMACA_MACCA;
-    dll.comm.redundants     = dll.netconf.b_attempts;  
-
-    q_writebyte(&txq, (ot_u8)dll.comm.rx_timeout);
-
-    /// If the beacon data is missing or otherwise not accessible by the 
-    /// GUEST user, scrap this session.  Else, finish the M2NP frame.
-    q_init(&beacon_queue, &bq_data.ubyte[0], 4);
-    if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
-        //active->netstate = M2_NETFLAG_SCRAP;
-        session_pop();
-        dll_idle();
-    }
-    else {
-        m2np_footer();
-    }
-}
 
 
 
 
 
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
+
+
+
 /** DLL Systask RF I/O routines   <BR>
   * ========================================================================<BR>
   * These routines & subroutines are called from the dll_systack() function.

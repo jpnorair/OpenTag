@@ -131,7 +131,7 @@
   * Used in the m2session.flags, to pass common flags between layers.
   * The flag values are consistent with the ones used for M2NP/M2QP, but they
   * can be used for other protocols, too, since they are pretty generic.
-  */
+  *
 #define M2_FLAG_LISTEN              (1<<7)
 #define M2_FLAG_DLLS                (1<<6)
 #define M2_FLAG_NLS                 (1<<5)
@@ -143,11 +143,11 @@
 #define M2_FLAG_BCAST               (1<<0)
 #define M2_FLAG_ACAST               (2<<0)
 #define M2_FLAG_MCAST               (3<<0)
-
+*/
 
 /* Future Changes, needing alignment with referential Mode2 code files
    ASAPI and other APIs that manipulate sessions must be altered to 
-   accept these changes.
+   accept these changes. */
    
 #define M2_FLAG_LISTEN              (1<<7)
 #define M2_FLAG_CRYPTO              (3<<5)      // added since last version
@@ -162,7 +162,7 @@
 #define M2_FLAG_UCAST               (2<<0)      // Changed since last version (0<<0)
 #define M2_FLAG_UCASTVID            (3<<0)      // Added since last version
 
-*/
+
 
 
 

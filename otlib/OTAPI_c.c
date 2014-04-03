@@ -94,13 +94,13 @@ ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
         dll_set_defaults(s_active);
     
         // Unicast/Anycast support routing, so copy the supplied template
-        if ((addr & M2QUERY_GLOBAL) == 0) {   
-            platform_memcpy((ot_u8*)&m2np.rt, (ot_u8*)routing, sizeof(routing_tmpl));
-        }
-        ///@note updated version of above, using modernized network control
-        //if (addr & M2FI_UCAST) {
+        //if ((addr & M2QUERY_GLOBAL) == 0) {   
         //    platform_memcpy((ot_u8*)&m2np.rt, (ot_u8*)routing, sizeof(routing_tmpl));
         //}
+        ///@note updated version of above, using modernized network control
+        if (addr & M2FI_UCAST) {
+            platform_memcpy((ot_u8*)&m2np.rt, (ot_u8*)routing, sizeof(routing_tmpl));
+        }
 
         // Load the header
         m2np_header(s_active, (ot_u8)addr, M2FI_FRDIALOG);
@@ -244,8 +244,8 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
 #ifndef EXTF_otapi_put_query_tmpl
 ot_u16 otapi_put_query_tmpl(ot_u8* status, query_tmpl* query) {
     /// Test for Anycast and Multicast addressing (query needs one of these)    
-    if (m2np.header.fr_info & M2QUERY_GLOBAL) {
-    //if (m2qp.cmd.code & M2TT_MASK) < M2TT_REQ_UB) {     ///@note using modernized approach
+    //if (m2np.header.fr_info & M2QUERY_GLOBAL) {
+    if ((m2qp.cmd.code & M2TT_MASK) < M2TT_REQ_UB) {     ///@note using modernized approach
         q_writebyte(&txq, query->length);
         q_writebyte(&txq, query->code);
     
@@ -357,7 +357,10 @@ ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
             q_writebyte(&txq, (ot_u8)udp->data_length);
             q_writebyte(&txq, udp->dst_port);
             q_writebyte(&txq, udp->src_port);
-            q_writestring(&txq, udp->data, udp->data_length);
+            
+            if (udp->data != NULL) {
+                q_writestring(&txq, udp->data, udp->data_length);
+            }
         }
 #   endif
 

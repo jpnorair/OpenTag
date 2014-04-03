@@ -58,11 +58,6 @@
 
 
 
-
-
-
-
-
 ot_int sub_parse_request(m2session* active) {
     ot_int  score   = 0;
     ot_u8   cmd_opcode;

@@ -1793,7 +1793,7 @@ void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
 
-void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
+void sub_memcpy2_dma(ot_u16* dest, ot_u16* src, ot_uint length) {
 /// Use 16 or 32 bit chunks based on detected alignment
     ot_u16 ccr_val = 0x45D1;
 
@@ -1812,7 +1812,7 @@ void sub_memcpy2_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 }
 
-void sub_memcpy4_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
+void sub_memcpy4_dma(ot_u32* dest, ot_u32* src, ot_uint length) {
 /// 32 bit chunks based on detected alignment
     MEMCPY_DMACHAN->CCR     = 0;
     MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;
@@ -1857,7 +1857,7 @@ void platform_memcpy(ot_u8* dst, ot_u8* src, ot_uint length) {
 
 void platform_memcpy_2(ot_u16* dst, ot_u16* src, ot_uint length) {
 #if MCU_CONFIG(MEMCPYDMA)
-    sub_memcpy2_dma( (ot_u8*)dst, (ot_u8*)src, length);
+    sub_memcpy2_dma( dst, src, length);
 #else
     platform_memcpy((ot_u8*)dst, (ot_u8*)src, length<<1);
 #endif
@@ -1865,9 +1865,9 @@ void platform_memcpy_2(ot_u16* dst, ot_u16* src, ot_uint length) {
 
 void platform_memcpy_4(ot_u32* dst, ot_u32* src, ot_uint length) {
 #if MCU_CONFIG(MEMCPYDMA)
-    sub_memcpy4_dma( (ot_u32*)dst, (ot_u32*)src, length);
+    sub_memcpy4_dma( dst, src, length);
 #else
-    platform_memcpy((ot_u32*)dst, (ot_u32*)src, length<<2);
+    platform_memcpy((ot_u8*)dst, (ot_u8*)src, length<<2);
 #endif
 }
 

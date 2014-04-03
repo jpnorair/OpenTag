@@ -130,6 +130,10 @@ typedef enum {
 } MODE_enum;
 
 
+void    subrfctl_force_ready();
+void    subrfctl_smart_ready();
+void    subrfctl_smart_standby();
+
 ot_bool subrfctl_test_channel(ot_u8 channel);
 void    subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate);
 
@@ -152,11 +156,7 @@ void    subrfctl_buffer_config(MODE_enum mode, ot_u16 param);
 void    subrfctl_save_linkinfo();
 
 void    subrfctl_prep_q(ot_queue* q);
-<<<<<<< HEAD
 ot_bool subrfctl_mac_filter();
-=======
-
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
 
 
 #if (RF_FEATURE(AUTOCAL) != ENABLED)
@@ -213,6 +213,55 @@ void radio_mac_isr() {
   * ============================================================================
   * - Need to be customized per radio platform
   */
+
+
+void subrfctl_force_ready() {
+/// Goes to READY without modifying states.  Use with caution.
+    if ((rfctl.flags & RADIO_FLAG_XOON) == 0)  {
+        rfctl.flags |= RADIO_FLAG_XOON;
+        spirit1_strobe(RFSTROBE_READY);
+        spirit1_waitforready();
+    }
+}
+
+void subrfctl_smart_ready() {
+/// Idle on SPIRIT1 is READY mode.  Only go to READY if it is not already the 
+/// present mode.
+    radio_state last_state;
+    last_state  = radio.state;
+    radio.state = RADIO_Idle;
+    
+    // Active state -> Idle
+    if (last_state != RADIO_Idle) {
+        spirit1_strobe(RFSTROBE_SABORT);
+    }
+    
+    // Standby/Sleep -> Idle
+    //else subrfctl_force_ready();
+    subrfctl_force_ready();
+}
+
+
+void subrfctl_smart_standby() {
+/// Sleep on SPIRIT1 is actually STANDBY mode.  There is also a SLEEP mode on 
+/// SPIRIT1 that is STANDBY+RC_Osc, but this implementation does not use the RC
+/// Oscillator at all, so STANDBY is the best choice.
+#if BOARD_FEATURE_RFXTALOUT
+    if (spirit1.clkreq) {
+        subrfctl_smart_ready();
+    } 
+    else
+#endif
+    // Only go to STANDBY if it is not already the present mode.
+    if (rfctl.flags & RADIO_FLAG_XOON) {
+        subrfctl_smart_ready();
+        rfctl.flags &= ~RADIO_FLAG_PWRMASK;
+        spirit1_strobe(RFSTROBE_STANDBY);
+        spirit1_waitforstandby();           // New line
+    }   
+}
+
+
   
 #ifndef EXTF_radio_off
 OT_WEAK void radio_off() {
@@ -239,49 +288,25 @@ OT_WEAK void radio_ungag() {
 
 #ifndef EXTF_radio_sleep
 OT_WEAK void radio_sleep() {
-/// Sleep on SPIRIT1 is actually STANDBY mode.  There is also a SLEEP mode on 
-/// SPIRIT1 that is STANDBY+RC_Osc, but this implementation does not use the RC
-/// Oscillator at all, so STANDBY is the best choice.
-#if BOARD_FEATURE_RFXTALOUT
-    if (spirit1.clkreq) {
-        radio_idle();
-    } 
-    else
-#endif
-    // Only go to STANDBY if it is not already the present mode.
-    if (rfctl.flags & RADIO_FLAG_XOON) {
-        radio_idle();
-        rfctl.flags &= ~RADIO_FLAG_PWRMASK;
-        spirit1_strobe(RFSTROBE_STANDBY);
-    }
+    subrfctl_smart_standby();
+    
+    //radio_idle();
+    //rfctl.flags &= ~(RADIO_FLAG_XOON | RADIO_FLAG_PWRMASK);
+    //spirit1_strobe(RFSTROBE_STANDBY);
+    //spirit1_waitforstandby();
 }
 #endif
 
-
-void sub_force_idle() {
-    if ((rfctl.flags & RADIO_FLAG_XOON) == 0)  {
-        rfctl.flags |= RADIO_FLAG_XOON;
-        spirit1_strobe(RFSTROBE_READY);
-        spirit1_waitforready();
-    }
-}
 
 #ifndef EXTF_radio_idle
 OT_WEAK void radio_idle() {
-/// Idle on SPIRIT1 is READY mode.  Only go to READY if it is not already the 
-/// present mode.
-    radio_state last_state;
-    last_state  = radio.state;
-    radio.state = RADIO_Idle;
+    subrfctl_smart_ready();
     
-    // Active state -> Idle
-    if (last_state != RADIO_Idle) {
-        spirit1_strobe(RFSTROBE_SABORT);
-    }
-    
-    // Standby/Sleep -> Idle
-    //else sub_force_idle();
-    sub_force_idle();
+    //radio.state = RADIO_Idle;
+    //rfctl.flags |= RADIO_FLAG_XOON;
+    //spirit1_strobe(RFSTROBE_SABORT);
+    //spirit1_strobe(RFSTROBE_READY);
+    //spirit1_waitforready();
 }
 #endif
 
@@ -290,7 +315,7 @@ void spirit1_clockout_on(ot_u8 clk_param) {
 /// Set the SPIRIT1 to idle, then configure the driver so it never goes into sleep 
 /// or standby, and finally configure the SPIRIT1 to output the clock.
 #if (BOARD_FEATURE_RFXTALOUT)
-    radio_idle();
+    subrfctl_smart_ready();
     spirit1.clkreq = True;
     spirit1_write(RFREG(MCU_CK_CONF), clk_param);
     spirit1_write(RFREG(GPIO3_CONF), (_GPIO_SELECT(RFGPO_MCU_CLK) | _GPIO_MODE_HIDRIVE));
@@ -304,7 +329,7 @@ void spirit1_clockout_off() {
     spirit1.clkreq = False;
     spirit1_write(RFREG(GPIO3_CONF), RFGPO(GND));
     spirit1_write(RFREG(MCU_CK_CONF), 0);
-    radio_sleep();
+    subrfctl_smart_standby();
 #endif
 }
 
@@ -328,7 +353,7 @@ void subrfctl_offline_calibration() {
     // Step 1 (from erratum workaround): Set SEL_TSPLIT to 3.47 ns.
     // This is performed during startup initialization
     
-    radio_idle();
+    subrfctl_smart_ready();
     
     // Step 2: for 48, 50, 52 MHz crystals impls, enable _REFDIV and 
     //         change the center frequency to match.
@@ -449,7 +474,7 @@ OT_WEAK void radio_init( ) {
     //spirit1_write(RFREG(TEST_SELECT), 0x00);
     
     /// Done with the radio init
-    radio_sleep();
+    subrfctl_smart_standby();
     
     /// Set startup channel to a completely invalid channel ID (0x55), and run 
     /// lookup on the default channel (0x07) to kick things off.  Since the 
@@ -634,7 +659,6 @@ void em2_decode_newpacket() {
 
 #ifdef EXTF_em2_encode_newframe
 void em2_encode_newframe() {
-<<<<<<< HEAD
     /// 1. Prepare the CRC and RS encoding, which need to be computed
     ///    when the upper options byte is set.  That is, it is non-zero
     ///    on the first packet and 0 for retransmissions.
@@ -658,30 +682,6 @@ void em2_encode_newframe() {
 #       endif
         
         // Only appoint CRC5 when the first ten bits of txq are settled
-=======
-    /// 1. Prepare the CRC and RS encoding, which need to be computed
-    ///    when the upper options byte is set.  That is, it is non-zero
-    ///    on the first packet and 0 for retransmissions.
-    if (txq.options.ubyte[UPPER] != 0) {
-        crc_init_stream(True, q_span(&txq), txq.getcursor);
-        txq.front[0]   += 2;
-        txq.putcursor  += 2;
-        
-#       if (M2_FEATURE(RSCODE))
-            em2.lctl = txq.front[1];
-            if (em2.lctl & 0x40) {
-                ot_int parity_bytes;
-                parity_bytes    = em2_rs_init_encode(&txq);
-                txq.front[0]   += parity_bytes;
-                txq.putcursor  += parity_bytes;
-            }
-#       else
-            em2.lctl        = txq.front[1] & ~0x40;
-            txq.front[1]    = em2.lctl;
-#       endif
-        
-        // Only appoint CRC5 when the first ten bits of txq are settled
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
         em2_add_crc5(txq.front);
 	}
 
@@ -776,16 +776,11 @@ void em2_decode_data() {
             crc_init_stream(False, em2.bytes-ext_bytes, rxq.getcursor);
         }
         
-<<<<<<< HEAD
         crc_calc_nstream(grab);
         
         ///@todo we can optimize this also by waiting until crc is done,
         ///      and then verifying that it is not accurate.  but we need
         ///      better speed profiling before doing that.
-=======
-        crc_calc_nstream(grab);
-        
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
 #       if (M2_FEATURE(RSCODE))
         if (em2.lctl & 0x40) {
             em2_rs_decode(grab);
@@ -925,7 +920,7 @@ OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
     spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit );
     
     radio_gag();                    // This shouldn't be necessary, but there's a bug in the rxend function.
-    radio_idle();
+    subrfctl_smart_ready();
     radio_flush_rx();
     spirit1_strobe( RFSTROBE_RX );
     subrfctl_unsync_isr();
@@ -956,7 +951,7 @@ ot_u32 bg_false_positives  = 0;
 #ifndef EXTF_rm2_kill
 OT_WEAK void rm2_kill() {
     radio_gag();
-    radio_sleep();
+    subrfctl_smart_standby();
     
     ///@note this is only for lab testing of channel threshold
     //radio.last_rssi = spirit1_calc_rssi( spirit1_read(RFREG(RSSI_LEVEL)) );
@@ -972,7 +967,7 @@ OT_WEAK void rm2_kill() {
 #ifndef EXTF_rm2_rxtimeout_isr
 OT_WEAK void rm2_rxtimeout_isr() {
     radio_gag();
-    radio_sleep();
+    subrfctl_smart_standby();
     
     ///@note this is only for lab testing of channel threshold
     //radio.last_rssi = spirit1_calc_rssi( spirit1_read(RFREG(RSSI_LEVEL)) );
@@ -1313,7 +1308,8 @@ OT_WEAK void rm2_txcsma_isr() {
             }
             spirit1_write(RFREG(PROTOCOL2), protocol2);
             spirit1_int_csma();
-            sub_force_idle();
+            subrfctl_force_ready();
+            radio.state = RADIO_Csma;
             spirit1_strobe(STROBE(RX));
             break;
         }
@@ -1332,7 +1328,7 @@ OT_WEAK void rm2_txcsma_isr() {
             txq.front[2]    = (phymac[0].tx_eirp & 0x7f);
             //txq.front[2] = 6;     //hack for packet sniff debugging on Chipcon kits
             
-            sub_force_idle(); 
+            subrfctl_force_ready(); 
             radio_flush_tx();
             em2_encode_data();
             
@@ -1360,7 +1356,7 @@ void subrfctl_ccafail_isr() {
 /// means that the CCA scan has failed.
     spirit1_int_off();
     spirit1_write(RFREG(PROTOCOL2), 0);     //Turn-off LDC, RCO-Cal, VCO-Cal
-    radio_sleep();
+    subrfctl_smart_standby();
     
     rfctl.state = RADIO_STATE_TXCCA1;
     radio.evtdone(1, 0);
@@ -1446,7 +1442,7 @@ void subrfctl_txend_isr() {
 ///      something that resolves to an appropriate non-zero,as an arg in order 
 ///      to signal an error
     radio_gag();
-    radio_idle();
+    subrfctl_smart_ready();
     subrfctl_finish(0, 0);
 }
 
@@ -1472,7 +1468,7 @@ void subrfctl_null(ot_int arg1, ot_int arg2) { }
 
 //void subrfctl_kill(ot_int errcode) {
 //    radio_gag();
-//    radio_idle();
+//    subrfctl_smart_ready();
 //    subrfctl_finish(errcode, 0);
 //}
 

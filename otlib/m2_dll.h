@@ -149,6 +149,7 @@
 #endif
 
 typedef struct {
+    ot_u8   btemp[8];
     ot_u8   uid[8];
     ot_u8   vid[2];
     ot_u8   subnet;             // Device Subnet from ISF 0

@@ -35,6 +35,15 @@
      && (OT_FEATURE(ALP) == ENABLED) \
      && (LOG_FEATURE(ANY) == ENABLED) )
 
+#endif
+
+#if (ALP(LOGGER) != ENABLED)
+OT_WEAK ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
+    return True;
+}
+
+#else
+
 #include "auth.h"
 #include "queue.h"
 

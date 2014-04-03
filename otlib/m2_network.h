@@ -49,18 +49,18 @@
 #define M2LC_CRC5               (31<<0)
 
 #define M2FI_LISTEN             (1<<7)
-#define M2FI_DLLS               (1<<6)
-#define M2FI_NLS                (1<<5)
+//#define M2FI_DLLS               (1<<6)
+//#define M2FI_NLS                (1<<5)
 #define M2FI_VID                (1<<4)
 #define M2FI_EXT                (1<<3)
-#define M2FI_STREAM             (1<<2)
+//#define M2FI_STREAM             (1<<2)
 #define M2FI_ADDRMASK           (3<<0)
-#define M2FI_UCAST              (0<<0)
-#define M2FI_BCAST              (1<<0) 
-#define M2FI_ANYCAST            (2<<0)
-#define M2FI_MULTICAST          (3<<0)
+//#define M2FI_UCAST              (0<<0)
+//#define M2FI_BCAST              (1<<0) 
+//#define M2FI_ANYCAST            (2<<0)
+//#define M2FI_MULTICAST          (3<<0)
 
-/* Future version updates
+/* Future version updates */
 #define M2FI_CRYPTO             (3<<5)
 #define M2FI_DLLS               (2<<5)
 #define M2FI_DLLSROOT           (2<<5)
@@ -68,14 +68,14 @@
 #define M2FI_ROUTE              (1<<2)
 #define M2FI_STREAM             (0<<0)
 #define M2FI_UCAST              (2<<0)
-#define M2FI_BCAST              (1<<0) 
+#define M2FI_BCAST              (1<<0)
 #define M2FI_UCASTVID           (1<<0)
 
 // These removed!
 //#define M2FI_STREAM Removed
 //#define M2FI_ANYCAST
 //#define M2FI_MULTICAST
-*/
+
 
 
 
@@ -87,15 +87,16 @@
 //#define M2RT_MULTICAST          M2FI_MULTICAST
 
 
-// Query Aliases
-#define M2QUERY_GLOBAL          M2FI_ANYCAST
-#define M2QUERY_LOCAL           M2FI_BCAST
-
 /* Future Updates: M2QUERY_GLOBAL and M2QUERY_LOCAL are removed and replaced 
    with transport layer constructs. Files affected:
    - m2_transport.c (359, 643)
    - OTAPI.c (97, 242)
 */
+// Query Aliases
+//#define M2QUERY_GLOBAL          M2FI_ANYCAST
+//#define M2QUERY_LOCAL           M2FI_BCAST
+
+
 
 
 
@@ -110,16 +111,16 @@
 // Mode 2 Hop Control Options
 //#define M2HC_HOPMASK            (0x0F)
 #define M2HC_EXT                (1 << 7) 
-#define M2HC_ORIG               (1 << 6) 
-#define M2HC_DEST               (1 << 5)
-#define M2HC_VID                (1 << 4)
+//#define M2HC_ORIG               (1 << 6) 
+//#define M2HC_DEST               (1 << 5)
+//#define M2HC_VID                (1 << 4)
 
-/* Future updates
+/* Future updates */
 #define M2HC_ORIG               (1<<5)
 #define M2HC_VID                (1<<4)
 #define M2HC_HOPEN              (1<<2)
 #define M2HC_DEST               (1<<1)
-*/
+
 
 
 
@@ -146,23 +147,6 @@ typedef struct {
 } m2np_struct;
 
 
-typedef struct {
-    ot_u8   ctl;
-    //ot_u8   fr_total;
-    //ot_u8   fr_per_pkt;
-    ot_u8   dmg_count;
-    //ot_u16  data_total;
-} dscfg_struct;
-
-
-typedef struct {
-    dscfg_struct    dscfg;
-} m2dp_struct;
-
-
-#if (OT_FEATURE(M2DP) == ENABLED)
-    extern m2dp_struct m2dp;
-#endif
 extern m2np_struct m2np;
 
 
@@ -313,7 +297,7 @@ void m2np_put_deviceid(ot_bool use_vid);
   * The "length" parameter should be 2 or 8 in order for this usage to work
   * properly with Mode 2 Device ID types (2byte VID and 8byte UID).
   */
-ot_bool m2np_idcmp(ot_int length, void* id);
+ot_bool m2np_idcmp(ot_int length, ot_u8* id);
 
 
 

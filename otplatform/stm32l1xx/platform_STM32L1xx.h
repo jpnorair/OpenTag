@@ -28,12 +28,33 @@
 #ifndef __PLATFORM_STM32L1xx_H
 #define __PLATFORM_STM32L1xx_H
 
-#include "ST/STM32L1xx/stm32l1xx.h"     //from CMSIS/CM3/DeviceSupport/
-#include "platform_config.h"
+#include "OT_types.h"
 #include "OT_support.h"
-
-
+#include "ST/STM32L1xx/stm32l1xx.h"     //from CMSIS/CM3/DeviceSupport/
 //#include "stm32l1xx_conf.h"
+
+
+/** Special Platform functions for STM32L      <BR>
+  * ========================================================================<BR>
+  * These must be defined before including platform_config.h, so that they
+  * can be used for inline functions.
+  */
+void gptim_start_chrono();
+void gptim_restart_chrono();
+ot_u16 gptim_get_chrono();
+void gptim_stop_chrono();
+
+
+void platform_ext_pllon();
+void platform_ext_plloff();
+void platform_ext_wakefromstop();
+void platform_ext_hsitrim();
+ot_u16 platform_ext_lsihz();
+
+
+#include "platform_config.h"
+
+
 
 #ifndef STM32L1XX_MD
 #   define STM32L1XX_MD
@@ -459,17 +480,7 @@ typedef struct {
 //extern rtc_struct rtc;
 extern gptim_struct gptim;
 
-void gptim_start_chrono();
-void gptim_restart_chrono();
-ot_u16 gptim_get_chrono();
-void gptim_stop_chrono();
 
-
-void platform_ext_pllon();
-void platform_ext_plloff();
-void platform_ext_wakefromstop();
-void platform_ext_hsitrim();
-ot_u16 platform_ext_lsihz();
 
 
 

@@ -140,31 +140,16 @@ void crc_init_stream(ot_bool writeout, ot_int stream_size, ot_u8* stream) {
     crc.writeout= writeout;
     crc.cursor  = stream;
     crc.count   = stream_size+1;
-  //crc.stream  = &sub_stream0;
-<<<<<<< HEAD
-  //crc.val     = platform_crc_init();
-=======
-  //crc.val     = platform_crc_init();
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
     platform_crc_init();
 }
 
 
 void crc_calc_stream() {
-<<<<<<< HEAD
-    //crc.stream();
-=======
-    //crc.stream();
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
     crc.count--;
     if (crc.count > 0) {
         platform_crc_byte( *crc.cursor++ );
     }
-<<<<<<< HEAD
     else if ((crc.writeout) && (crc.count > -2)) {
-=======
-    else if ((crc.writeout) && (crc.count > -2)) {
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
         ot_u16 crc_val  = platform_crc_result();
         *crc.cursor++   = (ot_u8)(crc_val >> ((crc.count == 0) << 3));
     }
@@ -183,21 +168,11 @@ void crc_calc_nstream(ot_u16 n) {
 
 ot_bool crc_check() {
 ///@todo deprecate this function in OT, in favor of crc_get(), and checking with 0.
-<<<<<<< HEAD
-    //return (ot_bool)(crc.val == 0);
-=======
-    //return (ot_bool)(crc.val == 0);
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
     return (platform_crc_result() == 0);
 }
 
 
 ot_u16 crc_get() {
-<<<<<<< HEAD
-    //return crc.val;
-=======
-    //return crc.val;
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
     return platform_crc_result();
 }
 

@@ -192,8 +192,8 @@ typedef struct {
 #if !defined(EXTF_m2qp_sig_dsack) && M2_FEATURE(M2DP)
     ot_m2qpsig dsack;
 #endif
-#if !defined(EXTF_m2qp_sig_error) && M2QP_HANDLES_ERROR
-    ot_m2qpsig error;
+#if !defined(EXTF_m2qp_sig_control) && M2QP_HANDLES_ERROR
+    ot_m2qpsig control;
 #endif
 #if !defined(EXTF_m2qp_sig_a2p) && M2QP_HANDLES_A2P
     ot_m2qpsig a2p;
@@ -345,7 +345,7 @@ void m2qp_mark_dsframe();
   */
 ot_bool m2qp_sig_isf(   ot_u8 type,     ot_u8 opcode,   id_tmpl* user_id    );
 ot_bool m2qp_sig_udp(   ot_u8 srcport,  ot_u8 dstport,  id_tmpl* user_id    );
-ot_bool m2qp_sig_error( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
+ot_bool m2qp_sig_control( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
 ot_bool m2qp_sig_a2p(   ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
 
 // Subject to change

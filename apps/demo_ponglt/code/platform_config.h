@@ -107,13 +107,4 @@
 
 
 
-
-
-
-#define OS_FEATURE(VAL)                 DISABLED                // NO OS Featuresetting just yet
-#define OS_FEATURE_MEMCPY               DISABLED                //  
-#define OS_FEATURE_MALLOC               DISABLED
-
-
-
 #endif 

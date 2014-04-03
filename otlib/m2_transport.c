@@ -46,9 +46,12 @@
 
 // Sneaky stashing for internal data
 // It overwrites part of the rxq that isn't used for comp & call commands
-#define LOCAL_U8(OFFSET)    rxq.front[rxq.alloc-32+(OFFSET)]
-#define LOCAL_U16(OFFSET)   *((ot_u16*)&rxq.front[rxq.alloc-32+(OFFSET)])
-#define LOCAL_U32(OFFSET)   *((ot_u32*)&rxq.front[rxq.alloc-32+(OFFSET)])
+//#define LOCAL_U8(OFFSET)    rxq.front[rxq.alloc-32+(OFFSET)]
+//#define LOCAL_U16(OFFSET)   *((ot_u16*)&rxq.front[rxq.alloc-32+(OFFSET)])
+//#define LOCAL_U32(OFFSET)   *((ot_u32*)&rxq.front[rxq.alloc-32+(OFFSET)])
+#define LOCAL_U8(OFFSET)    txq.front[txq.alloc-16+(OFFSET)]
+#define LOCAL_U16(OFFSET)   *((ot_u16*)&txq.front[txq.alloc-16+(OFFSET)])
+#define LOCAL_U32(OFFSET)   *((ot_u32*)&txq.front[txq.alloc-16+(OFFSET)])
 
 // Argument Shortcut for some callbacks
 
@@ -85,10 +88,10 @@
 #   define M2QP_CB_DSACK();
 #endif
 
-#if defined(EXTF_m2qp_sig_error)
-#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp_sig_error(CODE, SUBCODE, &m2np.rt.dlog)
+#if defined(EXTF_m2qp_sig_control)
+#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp_sig_control(CODE, SUBCODE, &m2np.rt.dlog)
 #elif OT_FEATURE(M2QP_CALLBACKS)
-#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp.sig.error(CODE, SUBCODE, &m2np.rt.dlog)
+#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp.sig.control(CODE, SUBCODE, &m2np.rt.dlog)
 #else
 #   define M2QP_CB_ERROR(CODE, SUBCODE)    False
 #endif
@@ -161,12 +164,12 @@ void    sub_opgroup_scinit(void);
 void    sub_opgroup_sctransport(void);
 void    sub_opgroup_rfu(void);
 
-ot_int  sub_parse_response(m2session* session);
-ot_int  sub_parse_error(m2session* session);
-ot_int  sub_parse_request(m2session* session);
+ot_int  sub_parse_response(m2session* active);
+ot_int  sub_parse_control(m2session* active);
+ot_int  sub_parse_request(m2session* active);
 void    sub_renack(ot_int nack);
 void    sub_load_query();
-ot_int  sub_process_query(m2session* session);
+ot_int  sub_process_query(m2session* active);
 
 /// This is a command vector table used to turn a command opcode into a
 /// function call that is appropriate for processing that command.
@@ -190,6 +193,12 @@ ot_bool m2qp_sig_null(id_tmpl* responder_id, ot_int payload_length, ot_u8* paylo
 
 
 
+///@note New patchwork code to accomodate universal ALP model.
+///      Soon it will need buffers as well
+alp_tmpl m2alp;
+
+
+
 #ifndef EXTF_m2qp_init
 OT_WEAK void m2qp_init() {
 #if OT_FEATURE(M2QP_CALLBACKS)
@@ -205,8 +214,8 @@ OT_WEAK void m2qp_init() {
 #   if !defined(EXTF_m2qp_sig_scack) && M2_FEATURE(M2DP)
         m2qp.sig.scack  = &m2qp_sig_null;
 #   endif
-#   if !defined(EXTF_m2qp_sig_error) && M2QP_HANDLES_ERROR
-        m2qp.sig.error  = &m2qp_sig_null;
+#   if !defined(EXTF_m2qp_sig_control) && M2QP_HANDLES_ERROR
+        m2qp.sig.control = &m2qp_sig_null;
 #   endif
 #   if !defined(EXTF_m2qp_sig_a2p) && M2QP_HANDLES_A2P
         m2qp.sig.a2p    = &m2qp_sig_null;
@@ -215,19 +224,24 @@ OT_WEAK void m2qp_init() {
 
     //Initialize to an undefined code value
     m2qp.cmd.code = 0x1F; 
+    
+    ///@note New patchwork code to accomodate universal ALP model.
+    ///      Soon it will need buffers as well.
+    alp_init(&m2alp, &rxq, &txq);
 }
 #endif
 
 
 
 #ifndef EXTF_m2qp_parse_frame
-OT_WEAK ot_int m2qp_parse_frame(m2session* session) {
+OT_WEAK ot_int m2qp_parse_frame(m2session* active) {
 /// Load Command Code & Extension, and pick the correct parser
 /// - normal response (command type 000)
-/// - error response (command type 001)
+/// - control response (command type 001)
 /// - all types requests (010 - 111)
+/*
     static const m2qp_parser parse_fn[] = { &sub_parse_response, 
-                                            &sub_parse_error,
+                                            &sub_parse_control,
                                             &sub_parse_request };
     ot_u8 cmd_type;
     cmd_type = (*rxq.getcursor >> 4) & 0x07;
@@ -236,25 +250,25 @@ OT_WEAK ot_int m2qp_parse_frame(m2session* session) {
     // Deal with case where M2QP command type mismatches the Netstate
     if (cmd_type > 1) {
         cmd_type = 2;
-        if (session->netstate & M2_NETSTATE_RESP) {
+        if (active->netstate & M2_NETSTATE_RESP) {
             return -1;
         }
     }
     
-    return parse_fn[cmd_type](session);
-    
+    return parse_fn[cmd_type](active);
+    */
 /** @todo this is the next-gen implementation of this function.  In addition,
-  *       error reporting may be taken out of M2QP, or otherwise simplified 
+  *       control reporting may be taken out of M2QP, or otherwise simplified 
   *       into a "notification" form much like ICMP.
-  *
+  */
     ot_u8 cmd_type = (*rxq.getcursor >> 4) & 7;
     
     if (cmd_type == 0)  return sub_parse_response(active);
-    if (cmd_type == 1)  return sub_parse_error(active);
+    if (cmd_type == 1)  return sub_parse_control(active);
     
     if (active->netstate & M2_NETSTATE_RESP) return -1;
     return sub_parse_request(active);
-  */
+  
 }
 #endif
 
@@ -312,10 +326,10 @@ ot_int sub_parse_response(m2session* session) {
 
 
 
-ot_int sub_parse_error(m2session* session) {
+ot_int sub_parse_control(m2session* active) {
 #if ((M2_FEATURE(GATEWAY) == ENABLED) || (M2_FEATURE(SUBCONTROLLER) == ENABLED))
-/// Forwards error payload to a callback.  
-/// Deciding what to do with the error data is a job for the Application Layer
+/// Forwards control payload to a callback.  
+/// Deciding what to do with the control data is a job for the Application Layer
     ot_u8 code, subcode;
     code    = q_readbyte(&rxq);
     subcode = q_readbyte(&rxq);
@@ -329,7 +343,7 @@ ot_int sub_parse_error(m2session* session) {
 
 
 
-ot_int sub_parse_request(m2session* session) {
+ot_int sub_parse_request(m2session* active) {
     ot_int  score   = 0;
     ot_u8   cmd_opcode;
     //ot_u8   nack    = 0;
@@ -337,7 +351,7 @@ ot_int sub_parse_request(m2session* session) {
     /// 1.  Universal Comm Processing:
     /// <LI> Load CCA type & CSMA disable from command extension        </LI>
     /// <LI> Load NA2P or A2P dialog type from command code             </LI>
-    session->netstate      &= ~M2_NETSTATE_TMASK;
+    active->netstate      &= ~M2_NETSTATE_TMASK;
     m2qp.cmd.code           = q_readbyte(&rxq);
     m2qp.cmd.ext            = (m2qp.cmd.code & 0x80) ? q_readbyte(&rxq) : 0;
     dll.comm.redundants     = 1;
@@ -359,15 +373,15 @@ ot_int sub_parse_request(m2session* session) {
         else {
             dll.comm.tx_channels    = 1;
             dll.comm.tx_chanlist    = &dll.comm.scratch[0];
-            dll.comm.scratch[0]     = session->channel;
+            dll.comm.scratch[0]     = active->channel;
         }
     }
     
     /// 3. Handle Global Queries: (Anycast
     /// Multicast and anycast addressed requests include queries
-    if (m2np.header.fr_info & M2QUERY_GLOBAL) {
-    //if (m2qp.cmd.code & M2TT_REQ_QUERY) {     ///@todo future update code
-        score = sub_process_query(session);
+    //if (m2np.header.fr_info & M2QUERY_GLOBAL) {
+    if (m2qp.cmd.code & M2TT_REQ_QUERY) {     ///@todo future update code
+        score = sub_process_query(active);
     }
     
     /// 4. If the query is good (sometimes this is trivial):
@@ -378,19 +392,14 @@ ot_int sub_parse_request(m2session* session) {
         q_empty(&txq); // Flush TX Queue
         
         if (m2qp.cmd.ext & M2CE_NORESP) {
-            session->netstate |= M2_NETFLAG_SCRAP;
+            active->netstate |= M2_NETFLAG_SCRAP;
         }
         else {
-            session->netstate |= M2_NETSTATE_RESPTX;
-            m2np_header(session, (m2np.header.fr_info & M2FI_ADDRMASK), M2FI_FRDIALOG);
-            //m2np_header(active, 0, M2FI_FRDIALOG); ///@todo Future Update Code, Can use 0 in addressing for Response
+            active->netstate |= M2_NETSTATE_RESPTX;
+            //m2np_header(active, (m2np.header.fr_info & M2FI_ADDRMASK), M2FI_FRDIALOG);
+            m2np_header(active, 0, M2FI_FRDIALOG); ///@todo Future Update Code, Can use 0 in addressing for Response
             q_writebyte(&txq, (M2TT_RESPONSE | cmd_opcode));            // Write Cmd code byte
         }
-<<<<<<< HEAD
-        
-=======
-           
->>>>>>> 73ea68a83b242c0fc34b2a01fc04018397f94e0d
         opgroup_proc[((cmd_opcode>>1) & 7)]();
     }
     
@@ -400,8 +409,9 @@ ot_int sub_parse_request(m2session* session) {
     /// be used to adaptively affect the congestion control parameters in the
     /// data-link-layer, e.g. they can prioritize higher scores by responding
     /// earlier in the response window.  That is DLL implementation dependent.
-    return score;  
+    return score;
 }
+
 
 
 
@@ -413,6 +423,7 @@ void sub_opgroup_globalisf(void) {
 
 
 void sub_opgroup_udp(void) {
+    /*
     ot_u8 src, dst;
     
     // Grab Source & Destination Ports.  DASH7 uses 8 bit ports.  The specific
@@ -431,13 +442,21 @@ void sub_opgroup_udp(void) {
     // bit is set.  The transport layer manages this independently of the 
     // application layer.
     M2QP_CB_UDP(src, dst);
+    */
     
-    ///@todo future version calls ALP, not a UDP callback
-    //udp_record_size = rxq.back - rxq.getcursor;
-    //udp_record      = rxq.getcursor;
-    //rxq.getcursor   = rxq.back;
-    //q_writestring(m2alp.inq, udp_record, udp_record_size);      // or is there alp add new?
-    //alp_proc(&m2alp, &m2np.rt.dlog);
+    ot_int      udp_record_size;
+    ot_u8*      udp_record;
+    ALP_status  status;
+    
+    udp_record_size = rxq.back - rxq.getcursor;
+    udp_record      = rxq.getcursor;
+    rxq.getcursor   = rxq.back;
+    q_writestring(m2alp.inq, udp_record, udp_record_size);      // or is there alp add new?
+    
+    status  = alp_parse_message(&m2alp, &m2np.rt.dlog);
+    if (status == MSG_Null) {
+        ///@todo some exception management, although it might not be necessary
+    }
 }
 
 
@@ -491,7 +510,13 @@ void sub_renack(ot_int nack) {
 
 
 
-void sub_load_query(void) {    
+void sub_load_query(void) {
+/// @todo put this into it
+    static const ot_u8 fixed_mask[16] = { \
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, \
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF  \
+    };
+
     m2qp.qtmpl.length = q_readbyte(&rxq);
     m2qp.qtmpl.code   = q_readbyte(&rxq);
     
@@ -503,12 +528,14 @@ void sub_load_query(void) {
         /// Option 2: we need to stash a mask of FF's at the back of the queue!
         /// This is not a problem, because the RX queue will never get this far
         /// during comp & call commands.
-        m2qp.qtmpl.mask = &rxq.front[rxq.alloc-16];
-
-        *((ot_u32*)&rxq.front[rxq.alloc-16]) = 0xFFFFFFFF;
-        *((ot_u32*)&rxq.front[rxq.alloc-12]) = 0xFFFFFFFF;
-        *((ot_u32*)&rxq.front[rxq.alloc-8])  = 0xFFFFFFFF;
-        *((ot_u32*)&rxq.front[rxq.alloc-4])  = 0xFFFFFFFF;
+        
+        //m2qp.qtmpl.mask = &rxq.front[rxq.alloc-16];
+        //*((ot_u32*)&rxq.front[rxq.alloc-16]) = 0xFFFFFFFF;
+        //*((ot_u32*)&rxq.front[rxq.alloc-12]) = 0xFFFFFFFF;
+        //*((ot_u32*)&rxq.front[rxq.alloc-8])  = 0xFFFFFFFF;
+        //*((ot_u32*)&rxq.front[rxq.alloc-4])  = 0xFFFFFFFF;
+        
+        m2qp.qtmpl.mask = (ot_u8*)fixed_mask;
     }
 
     m2qp.qtmpl.value  = q_markbyte(&rxq, m2qp.qtmpl.length);
@@ -517,7 +544,7 @@ void sub_load_query(void) {
 
 
 
-ot_int sub_process_query(m2session* session) {
+ot_int sub_process_query(m2session* active) {
 ///@note For sequential queries, the Listen Bit must be set in the MAC 
 ///Frame Info field.
     ot_u8 cmd_type = m2qp.cmd.code & 0x70;
@@ -526,8 +553,8 @@ ot_int sub_process_query(m2session* session) {
     /// ACK check: Non-initial A2P only
     /// Look through the ack list for this host's device ID.  If it is
     /// there, then the query can exit.
-    if (cmd_type > 0x40) {
-    //if (cmd_type > M2TT_REQ_M_INIT) {     ///@todo future update code
+    //if (cmd_type > 0x40) {
+    if (cmd_type > M2TT_REQ_M_INIT) {     ///@todo future update code
         ot_bool id_test;
         ot_int  number_of_acks  = (ot_int)q_readbyte(&rxq);
         
@@ -550,8 +577,8 @@ ot_int sub_process_query(m2session* session) {
     /// Local Query: Multicast only.
     /// Save a pointer to the local query, if this is an initial multicast
     /// request.  This query will be run later.
-    if (m2np.header.fr_info & M2QUERY_LOCAL) {
-    //if (cmd_type & M2TT_REQ_M) {  ///@todo future update code
+    //if (m2np.header.fr_info & M2QUERY_LOCAL) {
+    if (cmd_type & M2TT_REQ_M) {  ///@todo future update code
         ot_int  query_size;
         ot_u8*  local_ptr;
         
@@ -576,7 +603,7 @@ ot_int sub_process_query(m2session* session) {
 
     /// Exit case
     sub_process_query_EXITA2P:
-    session->flags &= ~M2FI_LISTEN;
+    active->flags &= ~M2FI_LISTEN;
     return -1;
 }
 
@@ -636,8 +663,9 @@ OT_WEAK ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id) {
 
         // Run Arithmetic comparison
         for (i=0; i<m2qp.qtmpl.length; i++) {
+            ot_u8* local_buf = &LOCAL_U8(0);
             j = m2qp.qtmpl.mask[i] & m2qp.qtmpl.value[i];
-            k = m2qp.qtmpl.mask[i] & LOCAL_U8(i);
+            k = m2qp.qtmpl.mask[i] & local_buf[i];
             
             if (j != k) {
                 switch (m2qp.qtmpl.code & 0x1F) {
@@ -878,10 +906,12 @@ ot_int sub_load_charcorrelation(ot_int* cursor, ot_u8 data_byte) {
 
     ot_int i;
     ot_int c;
+    ot_u8* local_buf;
     
     /// The datastream is buffered in an unused part of the data-queue.
     /// The LOCAL_U8() macro behaves similar to array nomenclature
-    LOCAL_U8(*cursor) = data_byte;
+    local_buf = &LOCAL_U8(0);
+    local_buf[*cursor] = data_byte;
     
     /// If the datastream is *not* fully pre-buffered, return to the caller.
     /// If the datastream is fully pre-buffered, then proceed to correlation.
@@ -896,11 +926,11 @@ ot_int sub_load_charcorrelation(ot_int* cursor, ot_u8 data_byte) {
     /// equality by +1.  It is implemented as c += (0 or 2) - 1
     else {
         for (i=0, c=0; i<m2qp.qtmpl.length; i++) {
-            c += ( (LOCAL_U8(i) & m2qp.qtmpl.mask[i]) == \
+            c += ( (local_buf[i] & m2qp.qtmpl.mask[i]) == \
                    (m2qp.qtmpl.value[i] & m2qp.qtmpl.mask[i]) ) << 1;
             c -= 1;
             
-            LOCAL_U8(i-1) = LOCAL_U8(i);
+            local_buf[i-1] = local_buf[i];
         }
     }
     

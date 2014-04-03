@@ -71,6 +71,16 @@
         (OT_FEATURE(SERVER) == ENABLED) && \
         (OT_FEATURE(VEELITE) == ENABLED)    )
 
+#endif
+
+#if (ALP(FILE_MGR) != ENABLED)
+OT_WEAK ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id) {
+    return True;
+}
+
+
+#else
+
 #include "auth.h"
 #include "veelite.h"
 

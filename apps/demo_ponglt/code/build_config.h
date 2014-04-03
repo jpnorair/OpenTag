@@ -91,6 +91,14 @@
 #endif
 
 
+
+#define OS_FEATURE(VAL)                 DISABLED                // NO OS Featuresetting just yet
+#define OS_FEATURE_MEMCPY               DISABLED                //  
+#define OS_FEATURE_MALLOC               DISABLED
+
+
+
+
 //Deprecated
 #define ISR_EMBED(VAL)                  ISR_EMBED_##VAL
 #define ISR_EMBED_GPTIM                 ENABLED
