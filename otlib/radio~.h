@@ -58,7 +58,7 @@ typedef enum {
 
 
 
-/** Additional link information
+/** Additional l information
   *
   */
 #define RADIO_LINK_CORRECTIONS  (1<<6)
@@ -68,16 +68,14 @@ typedef enum {
 #define RADIO_LINK_AGC          (1<<0)
 
 typedef struct {
-#if (OT_FEATURE(RF_LINKINFO) || OT_FEATURE(RF_ADAPTIVE))
-    ot_u8   flags;
-    ot_u8   corrections;  
-    ot_u8   pqi;          // Preamble Quality Index
-    ot_u8   sqi;          // Synchronization Quality Index
-    ot_u8   lqi;          // Link Quality Index
-    ot_u8   agc;          // AGC Parameters
-#endif
-    ot_u8   offset_thr;
-    ot_u8   raw_thr;
+    ot_u8 flags;
+    ot_u8 corrections;  
+    ot_u8 reserved_2;
+    ot_u8 reserved_3;
+    ot_u8 pqi;          // Preamble Quality Index
+    ot_u8 sqi;          // Synchronization Quality Index
+    ot_u8 lqi;          // Link Quality Index
+    ot_u8 agc;          // AGC Parameters
 } radio_link_struct;
 
 
@@ -88,11 +86,13 @@ typedef struct {
   * evtdone     A callback that is used when RX or TX is completed (i.e. done)
   */
 typedef struct {
-    radio_state         state;
-    ot_int              last_rssi;
-    ot_int              last_linkloss;
-    ot_sig2             evtdone;
-    radio_link_struct   link;
+    radio_state state;
+    ot_int      last_rssi;
+    ot_int      last_linkloss;
+    ot_sig2     evtdone;
+#if (OT_FEATURE(RF_LINKINFO))
+    radio_link_struct link;
+#endif
 } radio_struct;
 
 extern radio_struct radio;
@@ -249,15 +249,6 @@ extern phymac_struct   phymac[M2_PARAM_MI_CHANNELS];
   * ========================================================================<BR>
   * Mode 2 specific virtual PHYMAC functionality, implemented in radio_task.c 
   */
-
-
-/** @brief  Initialize RM2 module parameters
-  * @param  None
-  * @retval None
-  * @ingroup Radio
-  */
-void rm2_init(void);
-
 
 /** @brief  Returns default Tgd (guard period) for the specified channel
   * @param  chan_id     (ot_u8) Mode 2 channel ID

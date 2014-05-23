@@ -112,8 +112,12 @@ typedef enum {
 #if (1)
     TASK_sleep,
 #endif
-#if defined(OT_PARAM_USER_KERNELTASKS)
-    OT_PARAM_USER_KERNELTASKS,
+//#if(OT_FEATURE(CRON))
+//    TASK_otcron,
+//#endif
+///@todo: rearrange user tasks with external, or simply remove external.
+#if (OT_PARAM(KERNELTASKS) > 0)
+    OT_PARAM_KERNELTASK_IDS,
 #elif (OT_FEATURE(EXT_TASK))
     TASK_external,
 #endif
@@ -472,10 +476,8 @@ void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks);
 void sys_synchronize(Task_Index task_id);
 
 
-/** @brief  Refresh the Scheduler Parameters from the Active Settings
-  * @param  None
-  * @retval None
-  * @ingroup System
+/**
+  * @todo this is replaced by OTcron
   */
 void sys_refresh_scheduler();
 

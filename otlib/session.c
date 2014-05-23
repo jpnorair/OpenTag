@@ -205,10 +205,29 @@ OT_WEAK ot_bool session_occupied(ot_u8 chan_id) {
 #endif
 
 
+#ifndef EXTF_session_scrap
+OT_WEAK void session_scrap() {
+    if (session.top != &session.heap[_END]) {
+        m2session* old_top;
+        old_top = session.top++;
+    
+        if (old_top->applet != NULL) {
+            old_top->netstate = M2_NETSTATE_SCRAP;
+            old_top->applet(old_top);
+        }
+    }
+}
+#endif
+
+
 
 #ifndef EXTF_session_pop
 OT_WEAK void session_pop() {
-    session.top++;
+/// session.top++ will pop a session, but this routine includes protection
+/// against less-than-perfect API usage by assuring that session.top is 
+/// only incremented when in bounds.
+    if (session.top != &session.heap[_END])
+        session.top++;
 }
 #endif
 
@@ -220,7 +239,7 @@ OT_WEAK void session_flush() {
         if (session.top->netstate & M2_NETSTATE_INIT) {
             break;
         }
-        session_pop();
+        session.top++;      //session_pop();
     }
 }
 #endif

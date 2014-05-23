@@ -42,7 +42,7 @@
 #include "OT_types.h"
 #include "OT_config.h"
 #include "OT_utils.h"
-#include "OTAPI.h"  //might be unnecessary
+#include "OTAPI_tmpl.h"
 #include "veelite_core.h"
 
 

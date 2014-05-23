@@ -386,12 +386,12 @@ void platform_init_gptim(ot_uint prescaler) {
 #   else
     RTC->PRER               = (31 << 16) | 0;
 #   endif
-    RTC->WUTR               = 0;
+    RTC->WUTR               = 1023;
 
     ///@todo Calibration could be here
     //RTC->CALIBR = ...
     
-    // Re-enable RTC.  Wakeup timer is set to 1/1024 sec (1 tick), although not
+    // Re-enable RTC.  Wakeup timer is set to 1 sec (1024 ticks), although not
     // always enabled.  ALARMB and wakeup interrupts are always on.  ALARMA is 
     // controlled by the platform_...ktim() functions
     RTC->CR     = _IE_WAKEUP | _IE_ALARMB | b100;
@@ -687,24 +687,22 @@ ot_u32 sub_get_nextalarm(ot_u16 next) {
 
 
 
+
 ot_u32 platform_get_interval(ot_u32* timestamp) {
     ot_long timer_cnt;
     
     // Wait for RTC to be readable
     while ((RTC->ISR & RTC_ISR_RSF) == 0);
     
-    // Get RTC value in ticks.  Return as-is if there is no timestamp pointer
+    // Get RTC value in ticks.  Return as-is if there is no timestamp pointer.
+    // Else, return the difference between the timestamp and the RTC timer 
+    // value.  If the timer has looped, we need to deal with it.
     timer_cnt = sub_rtc2ticks();
-    if (timestamp == NULL) {
-        return (ot_u32)timer_cnt;
+    if (timestamp != NULL) {
+        if (timer_cnt < *timestamp) timer_cnt  += (86400 - *timestamp);
+        else                        timer_cnt   = (timer_cnt - *timestamp);
     }
-    
-    // If timestamp pointer, return the difference between RTC ticks and the
-    // timestamp.
-    timer_cnt -= *timestamp;
-    if (timer_cnt < 0) {
-        timer_cnt = 0-timer_cnt;
-    }
+
     return (ot_u32)timer_cnt;
 }
 

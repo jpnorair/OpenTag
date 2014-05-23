@@ -101,12 +101,12 @@
 #define M2_NETSTATE_RESP            0x10
 #define M2_NETSTATE_RESPTX          0x10
 #define M2_NETSTATE_RESPRX          0x30
-#define M2_NETFLAG_FLOOD            0x40
-#define M2_NETFLAG_SCRAP            0x80
+#define M2_NETFLAG_BG               0x40
+#define M2_NETFLAG_STREAM           0x80
 
 #define M2_NETSTATE_SMASK           0x03
 #define M2_NETSTATE_INIT            0x08
-#define M2_NETSTATE_DSDIALOG        0x04
+#define M2_NETSTATE_SCRAP           0x04
 #define M2_NETSTATE_UNASSOC         0x00
 #define M2_NETSTATE_CONNECTED       0x01            // set after connecting to session
 #define M2_NETSTATE_ASSOCIATED      0x03            // Connected, plus uses First-RX mode
@@ -177,6 +177,12 @@
 
 
 
+
+
+typedef enum {
+    SESSION_ok  = 0,
+    SESSION_err = M2_NETSTATE_SCRAP
+} SESSION_status;
 
 
 
@@ -358,6 +364,9 @@ m2session* session_continue(ot_app applet, ot_u8 next_state, ot_uint wait);
   */
 ot_bool session_occupied(ot_u8 chan_id);
 
+
+
+void session_notify(SESSION_status status);
 
 
 /** @brief  Pops a session off the top of the stack (deleting it).

@@ -33,6 +33,9 @@
 #include "ST/STM32L1xx/stm32l1xx.h"     //from CMSIS/CM3/DeviceSupport/
 //#include "stm32l1xx_conf.h"
 
+//Stored in App Code folder
+#include "isr_config_STM32L.h"
+
 
 /** Special Platform functions for STM32L      <BR>
   * ========================================================================<BR>

@@ -42,12 +42,19 @@
 #include "external.h"
 
 
+/// OTcron inclusion.  OTcron is a common extension of the kernel
+#if (OT_FEATURE(CRON) == ENABLED) 
+#   include "otcron.h"
+#endif
+
+
 ///@todo IAP inclusion: a hack.  Fix this later with some extension header
 #if (OT_FEATURE(IAP) == ENABLED)
 #   include "iap.h"
 #elif (OT_FEATURE(IAP2) == ENABLED)
 #   include "iap2.h"
 #endif
+
 
 
 
@@ -110,7 +117,12 @@ static const systask_fn systask_call[]   = {
 #if (OT_FEATURE(M2))
     &dll_systask_sleepscan,
 #endif
-#if (OT_FEATURE(EXT_TASK))
+//#if (OT_FEATURE(CRON))
+//    &otcron_systask,
+//#endif
+#if (OT_PARAM(KERNELTASKS) > 0)
+    OT_PARAM_KERNELTASK_HANDLES,
+#elif (OT_FEATURE(EXT_TASK))
     &ext_systask,
 #endif
 };
@@ -155,7 +167,11 @@ void sys_init() {
 
     sys.active = TASK_MAX;
 
-    /// Initialize External module if enabled
+    ///@todo change these manual calls into normal task calls using event=0,
+    ///      which is the initialization/kill state.
+#   if (OT_FEATURE(CRON) == ENABLED)
+        otcron_init();
+#   endif
 #   if (OT_FEATURE(EXT_TASK) == ENABLED)
         ext_init();
 #   endif
@@ -606,8 +622,10 @@ void sys_synchronize(Task_Index task_id) {
 }
 
 
+///@todo this is replaced by OTcron
 void sys_refresh_scheduler() {
-#if (M2_FEATURE(RTC_SCHEDULER))
+#if (0)
+//#if (M2_FEATURE(RTC_SCHEDULER))
     ot_u16  sched_ctrl;
     ot_u16  offset;
     ot_int  i, j;

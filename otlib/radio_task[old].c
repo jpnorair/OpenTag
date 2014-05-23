@@ -51,45 +51,6 @@ radio_struct    radio;
   */
 
 
-#ifndef EXTF_rm2_init
-OT_WEAK void rm2_init(void) {
-    vlFILE* fp;
-    
-    /// Set universal Radio module initialization defaults
-    radio.state     = RADIO_Idle;
-    radio.evtdone   = &otutils_sig2_null;
-
-    /// These Radio Link features are available on the SPIRIT1
-    ///@todo see if this and the "Set startup channel" part of the init can
-    ///      get bundled into a common initialization function in radio_task.c
-#   if (OT_FEATURE(RF_LINKINFO))
-#       if (M2_FEATURE(RSCODE))
-#           define _CORRECTIONS RADIO_LINK_CORRECTIONS
-#       else
-#           define _CORRECTIONS 0
-#       endif
-    radio.link.flags        = _CORRECTIONS | RADIO_LINK_PQI | RADIO_LINK_SQI \
-                            | RADIO_LINK_LQI | RADIO_LINK_AGC;
-#   endif
-    radio.link.offset_thr   = 0;
-    radio.link.raw_thr      = 0;
-    
-    /// Set startup channel to an always invalid channel ID (0xF0), and run 
-    /// lookup on the default channel (0x18) to kick things off.  Since the 
-    /// startup channel will always be different than a real channel, the 
-    /// necessary settings and calibration will always occur. 
-    phymac[0].channel   = 0xF0;
-    phymac[0].tx_eirp   = 0x7F;
-    fp                  = ISF_open_su( ISF_ID(channel_configuration) );
-    rm2_channel_lookup(0x18, fp);
-    vl_close(fp);
-}
-#endif
-
-
-
-
-
 #ifndef EXTF_rm2_default_tgd
 OT_WEAK ot_uint rm2_default_tgd(ot_u8 chan_id) {
 #if ((M2_FEATURE(FEC) == DISABLED) && (M2_FEATURE(TURBO) == DISABLED))
@@ -316,16 +277,14 @@ OT_WEAK ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
 
             ///@todo Try this: *(ot_u16*)&phymac[0].cs_thr = vl_read(fp, i+4);  
             ///it will need some rearrangement in phymac struct
-            /// Convert thresholds from DASH7 numeric encoding to native encoding
             scratch.ushort      = vl_read(fp, i+4);
-            //phymac[0].cs_thr    = __THR(scratch.ubyte[0]);
-            //phymac[0].cca_thr   = scratch.ubyte[1];
-            //phymac[0].cs_thr    = rm2_calc_rssithr(phymac[0].cs_thr);
-            //phymac[0].cca_thr   = rm2_calc_rssithr(phymac[0].cca_thr);
-            radio.link.raw_thr  = scratch.ubyte[0];
-            phymac[0].cs_thr    = rm2_calc_rssithr( (ot_u8)(radio.link.raw_thr + radio.link.offset_thr) );
-            phymac[0].cca_thr   = rm2_calc_rssithr( scratch.ubyte[1] );
-            
+            phymac[0].cs_thr    = scratch.ubyte[0];
+            phymac[0].cca_thr   = scratch.ubyte[1];
+
+            /// Convert thresholds from DASH7 numeric encoding to native encoding
+            phymac[0].cs_thr    = rm2_calc_rssithr(phymac[0].cs_thr);
+            phymac[0].cca_thr   = rm2_calc_rssithr(phymac[0].cca_thr);
+
             rm2_enter_channel(old_chan_id, old_tx_eirp);
             return True;
         }

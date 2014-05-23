@@ -56,7 +56,7 @@
   */
 m2np_struct m2np;
 
-static const ot_int _idlen[2] = { 2, 8 };
+static const ot_int _idlen[2] = { 8, 2 };
 
 
 
@@ -117,15 +117,22 @@ OT_WEAK m2session* network_parse_bf() {
         
         ///@todo ADV_OFFSET slop should depend on the duration of an
         ///      advertising packet (bg packet).
+        //slop = M2_ADV_OFFSET + (count.ushort / OT_GPTIM_ERRDIV);
+        //if (slop <= M2_ADV_MAXSLOP) {
+        //    scancode    = M2_ADV_LISTEN;
+        //    netstate    = M2_NETSTATE_REQRX;
+        //}
         
-        slop = M2_ADV_OFFSET + (count.ushort / OT_GPTIM_ERRDIV);
-        if (slop <= M2_ADV_MAXSLOP) {
-            scancode    = M2_ADV_LISTEN;
+        // hack for slow backgrounding
+        slop = 13 + (count.ushort / OT_GPTIM_ERRDIV);
+        if (slop <= 16) {
+            scancode    = 0x18;
             netstate    = M2_NETSTATE_REQRX;
         }
+        
         else {
             scancode    = 0x80;
-            netstate    = M2_NETSTATE_REQRX | M2_NETFLAG_FLOOD;
+            netstate    = M2_NETSTATE_REQRX | M2_NETFLAG_BG;
         }
         
         // Reduce the interval time by the slop amount, also ensuring 
@@ -588,8 +595,6 @@ void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack) {
     q_writeshort(&txq, (ot_u16)((active->flags & M2_FLAG_RSCODE) << 3) );
     q_writeshort(&txq, (ot_u16)active->subnet);
     
-    
-    ///@todo consider updating m2np_header()... not sure addressing & nack are useful anymore
 #   if (M2_FEATURE(MULTIHOP) != ENABLED)    
     active->flags &= M2_FLAG_ROUTE;
 #   endif

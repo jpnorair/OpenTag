@@ -56,53 +56,88 @@
 // Argument Shortcut for some callbacks
 
 
+OT_WEAK ot_bool m2qp_sig_isf(ot_u8 type, ot_u8 opcode, id_tmpl* user_id) { return False; }
+
+OT_WEAK ot_bool m2qp_sig_ctl(ot_u8 type, ot_u8 opcode, id_tmpl* user_id) { return False; }
+
+OT_WEAK ot_bool m2qp_sig_a2p(ot_u8 type, ot_u8 opcode, id_tmpl* user_id) { return False; }
+
+
+
 #if defined(EXTF_m2qp_sig_isf)
 #   define M2QP_CB_ISF()    m2qp_sig_isf(m2qp.cmd.code&0x70, m2qp.cmd.code&0x0f, &m2np.rt.dlog)
 #elif OT_FEATURE(M2QP_CALLBACKS)
 #   define M2QP_CB_ISF()    m2qp.sig.isf(m2qp.cmd.code&0x70, m2qp.cmd.code&0x0f, &m2np.rt.dlog)
 #else
-#   define M2QP_CB_ISF();
+#   define M2QP_CB_ISF()    m2qp_sig_isf(m2qp.cmd.code&0x70, m2qp.cmd.code&0x0f, &m2np.rt.dlog)
 #endif
 
-#if defined(EXTF_m2qp_sig_udp)
-#   define M2QP_CB_UDP(SRC, DST)    m2qp_sig_udp(SRC, DST, &m2np.rt.dlog)
+
+#if defined(EXTF_m2qp_sig_ctl)
+
+#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp_sig_ctl(CODE, SUBCODE, &m2np.rt.dlog)
+
 #elif OT_FEATURE(M2QP_CALLBACKS)
-#   define M2QP_CB_UDP(SRC, DST)    m2qp.sig.udp(SRC, DST, &m2np.rt.dlog)
+
+#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp.sig.ctl(CODE, SUBCODE, &m2np.rt.dlog)
+
 #else
-#   define M2QP_CB_UDP(SRC, DST);
+
+#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp_sig_ctl(CODE, SUBCODE, &m2np.rt.dlog)
+
 #endif
 
-#if defined(EXTF_m2qp_sig_scpkt) && M2_FEATURE(DATASTREAM)
-#   define M2QP_CB_DSPKT()    m2qp_sig_scpkt(0, 0, &m2np.rt.dlog)
-#elif OT_FEATURE(M2QP_CALLBACKS) && M2_FEATURE(DATASTREAM)
-#   define M2QP_CB_DSPKT()    m2qp.sig.scpkt(0, 0, &m2np.rt.dlog)
-#else
-#   define M2QP_CB_DSPKT();
-#endif
 
-#if defined(EXTF_m2qp_sig_scack) && M2_FEATURE(M2DP)
-#   define M2QP_CB_DSACK()    m2qp_sig_scack(0, 0, &m2np.rt.dlog)
-#elif OT_FEATURE(M2QP_CALLBACKS) && M2_FEATURE(M2DP)
-#   define M2QP_CB_DSACK()    m2qp.sig.scack(0, 0, &m2np.rt.dlog)
-#else
-#   define M2QP_CB_DSACK();
-#endif
-
-#if defined(EXTF_m2qp_sig_control)
-#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp_sig_control(CODE, SUBCODE, &m2np.rt.dlog)
-#elif OT_FEATURE(M2QP_CALLBACKS)
-#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp.sig.control(CODE, SUBCODE, &m2np.rt.dlog)
-#else
-#   define M2QP_CB_ERROR(CODE, SUBCODE)    False
-#endif
 
 #if defined(EXTF_m2qp_sig_a2p)
+
 #   define M2QP_CB_A2P()    m2qp_sig_a2p(0, 0, &m2np.rt.dlog)
+
 #elif OT_FEATURE(M2QP_CALLBACKS)
+
 #   define M2QP_CB_A2P()    m2qp.sig.a2p(0, 0, &m2np.rt.dlog)
+
 #else
-#   define M2QP_CB_A2P()    False
+
+#   define M2QP_CB_A2P()    m2qp_sig_a2p(0, 0, &m2np.rt.dlog)
+
 #endif
+
+
+
+
+
+
+
+///@note UDP now goes through ALP
+//#if defined(EXTF_m2qp_sig_udp)
+//#   define M2QP_CB_UDP(SRC, DST)    m2qp_sig_udp(SRC, DST, &m2np.rt.dlog)
+//#elif OT_FEATURE(M2QP_CALLBACKS)
+//#   define M2QP_CB_UDP(SRC, DST)    m2qp.sig.udp(SRC, DST, &m2np.rt.dlog)
+//#else
+//#   define M2QP_CB_UDP(SRC, DST);
+//#endif
+
+
+
+
+///@todo port these to SCTP, which may or may not even need callbacks like these.
+//#if defined(EXTF_m2qp_sig_scpkt) && M2_FEATURE(DATASTREAM)
+//#   define M2QP_CB_DSPKT()    m2qp_sig_scpkt(0, 0, &m2np.rt.dlog)
+//#elif OT_FEATURE(M2QP_CALLBACKS) && M2_FEATURE(DATASTREAM)
+//#   define M2QP_CB_DSPKT()    m2qp.sig.scpkt(0, 0, &m2np.rt.dlog)
+//#else
+//#   define M2QP_CB_DSPKT();
+//#endif
+//#if defined(EXTF_m2qp_sig_scack) && M2_FEATURE(M2DP)
+//#   define M2QP_CB_DSACK()    m2qp_sig_scack(0, 0, &m2np.rt.dlog)
+//#elif OT_FEATURE(M2QP_CALLBACKS) && M2_FEATURE(M2DP)
+//#   define M2QP_CB_DSACK()    m2qp.sig.scack(0, 0, &m2np.rt.dlog)
+//#else
+//#   define M2QP_CB_DSACK();
+//#endif
+
+
 
 
 
@@ -205,21 +240,32 @@ OT_WEAK void m2qp_init() {
 #   if !defined(EXTF_m2qp_sig_isf)
         m2qp.sig.isf    = &m2qp_sig_null;
 #   endif
-#   if !defined(EXTF_m2qp_sig_udp)
-        m2qp.sig.udp    = &m2qp_sig_null;
+
+#   if !defined(EXTF_m2qp_sig_ctl) && M2QP_HANDLES_ERROR
+
+        m2qp.sig.ctl = &m2qp_sig_null;
+
 #   endif
-#   if !defined(EXTF_m2qp_sig_scpkt) && M2_FEATURE(DATASTREAM)
-        m2qp.sig.scpkt  = &m2qp_sig_null;
-#   endif
-#   if !defined(EXTF_m2qp_sig_scack) && M2_FEATURE(M2DP)
-        m2qp.sig.scack  = &m2qp_sig_null;
-#   endif
-#   if !defined(EXTF_m2qp_sig_control) && M2QP_HANDLES_ERROR
-        m2qp.sig.control = &m2qp_sig_null;
-#   endif
+
 #   if !defined(EXTF_m2qp_sig_a2p) && M2QP_HANDLES_A2P
+
         m2qp.sig.a2p    = &m2qp_sig_null;
+
 #   endif
+
+
+
+// These callbacks no longer available
+//#   if !defined(EXTF_m2qp_sig_udp)
+//        m2qp.sig.udp    = &m2qp_sig_null;
+//#   endif
+//#   if !defined(EXTF_m2qp_sig_scpkt) && M2_FEATURE(DATASTREAM)
+//        m2qp.sig.scpkt  = &m2qp_sig_null;
+//#   endif
+//#   if !defined(EXTF_m2qp_sig_scack) && M2_FEATURE(M2DP)
+//        m2qp.sig.scack  = &m2qp_sig_null;
+//#   endif
+
 #endif
 
     //Initialize to an undefined code value
@@ -392,7 +438,7 @@ ot_int sub_parse_request(m2session* active) {
         q_empty(&txq); // Flush TX Queue
         
         if (m2qp.cmd.ext & M2CE_NORESP) {
-            active->netstate |= M2_NETFLAG_SCRAP;
+            active->netstate |= M2_NETSTATE_SCRAP;
         }
         else {
             active->netstate |= M2_NETSTATE_RESPTX;

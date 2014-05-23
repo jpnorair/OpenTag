@@ -32,7 +32,7 @@ void otutils_null(void)                     { }
 void otutils_sig_null(ot_int a)             { }
 void otutils_sig2_null(ot_int a, ot_int b)  { }
 void otutils_sigv_null(void* a)             { }
-
+void otutils_applet_null(m2session* a)      { }
 
 
 // Constant arrays used within
@@ -41,10 +41,11 @@ const ot_u8 otutils_hexlut[16] = "0123456789ABCDEF";
 
 
 
+///@todo alias this in m2dll.h
 #ifndef EXTF_otutils_calc_timeout
-ot_u16 otutils_calc_timeout(ot_u8 timeout_code) {
-    ot_u8 shift;
-    ot_u16 timeout;
+ot_ulong otutils_calc_timeout(ot_u8 timeout_code) {
+    ot_u8       shift;
+    ot_ulong    timeout;
     shift       = (timeout_code >> 3) & 0x0E;
     timeout     = (timeout_code & 0x0F);
     timeout    += (shift != 0);
@@ -57,6 +58,7 @@ ot_u16 otutils_calc_timeout(ot_u8 timeout_code) {
 
 
 // Exp-Mantissa expansion for common 7-bit field
+///@todo alias this in m2dll.h
 #ifndef EXTF_otutils_encode_timeout
 ot_u8 otutils_encode_timeout(ot_u16 timeout_ticks) {
     ot_u8 exp;
@@ -96,26 +98,18 @@ ot_u16 otutils_byte2hex(ot_u8 input) {
 // Binary data to hex-text
 #ifndef EXTF_otutils_bin2hex
 ot_int otutils_bin2hex(ot_u8* dst, ot_u8* src, ot_int size) {
-    ot_u8* src_end;
-    //ot_u8* dst_start;
-    src_end     = src + size;
-    //dst_start   = dst;
+    //ot_u8* src_end;
+    //src_end = src + size;
+    ot_int bytes_out = size << 1;
     
-    while (src != src_end) {
-        //ot_u8 scratch;
-        //scratch     = *src >> 4;
-        //scratch    += (scratch >= 10) ? ('A'-10) : '0';
-        //*dst++      = scratch;
-        //scratch     = *src++ & 0x0F;
-        //scratch    += (scratch >= 10) ? ('A'-10) : '0';
-        //*dst++      = scratch;
+    //while (src != src_end) {
+    while (--size >= 0) {
         *dst++  = otutils_hexlut[(*src >> 4)];
         *dst++  = otutils_hexlut[(*src & 0x0F)];
         src++;
     }
     
-    //return (ot_int)(dst - dst_start);
-    return (size<<1);
+    return bytes_out;
 }
 #endif
 

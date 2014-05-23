@@ -183,17 +183,22 @@ typedef struct {
 #if !defined(EXTF_m2qp_sig_isf)
     ot_m2qpsig isf;
 #endif
-#if !defined(EXTF_m2qp_sig_udp)
-    ot_m2qpsig udp;
-#endif
-#if !defined(EXTF_m2qp_sig_dspkt) && M2_FEATURE(DATASTREAM)
-    ot_m2qpsig dspkt;
-#endif
-#if !defined(EXTF_m2qp_sig_dsack) && M2_FEATURE(M2DP)
-    ot_m2qpsig dsack;
-#endif
-#if !defined(EXTF_m2qp_sig_control) && M2QP_HANDLES_ERROR
-    ot_m2qpsig control;
+    
+// Old UDP callback now goes through ALP    
+//#if !defined(EXTF_m2qp_sig_udp)
+//    ot_m2qpsig udp;
+//#endif
+
+// Old Datastream stuff is no longer available
+//#if !defined(EXTF_m2qp_sig_dspkt) && M2_FEATURE(DATASTREAM)
+//    ot_m2qpsig dspkt;
+//#endif
+//#if !defined(EXTF_m2qp_sig_dsack) && M2_FEATURE(M2DP)
+//    ot_m2qpsig dsack;
+//#endif
+
+#if !defined(EXTF_m2qp_sig_ctl) && M2QP_HANDLES_ERROR
+    ot_m2qpsig ctl;
 #endif
 #if !defined(EXTF_m2qp_sig_a2p) && M2QP_HANDLES_A2P
     ot_m2qpsig a2p;
@@ -210,12 +215,16 @@ typedef struct {
     cmd_data        cmd;        // internal usage
     query_data      qdata;      // internal usage
     query_tmpl      qtmpl;
+    
 #   if (OT_FEATURE(M2QP_CALLBACKS) == ENABLED)
         m2qp_sigs   sig;
 #   endif
-#   if (M2_FEATURE(DATASTREAM) == ENABLED)
-        alp_tmpl    ds;
-#   endif
+
+// Datastream features now removed, getting integrated into SCTP adaptor    
+//#   if (M2_FEATURE(DATASTREAM) == ENABLED)
+//        alp_tmpl    ds;
+//#   endif
+    
 } m2qp_struct;
 
 
@@ -344,13 +353,15 @@ void m2qp_mark_dsframe();
   * queue pointers are set properly.
   */
 ot_bool m2qp_sig_isf(   ot_u8 type,     ot_u8 opcode,   id_tmpl* user_id    );
-ot_bool m2qp_sig_udp(   ot_u8 srcport,  ot_u8 dstport,  id_tmpl* user_id    );
-ot_bool m2qp_sig_control( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
+ot_bool m2qp_sig_ctl(   ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
 ot_bool m2qp_sig_a2p(   ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
 
-// Subject to change
-ot_bool m2qp_sig_dspkt( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
-ot_bool m2qp_sig_dsack( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
+// Old UDP callback is now going through ALP instead
+//ot_bool m2qp_sig_udp(   ot_u8 srcport,  ot_u8 dstport,  id_tmpl* user_id    );
+
+// Old Datastream feature no longer available
+//ot_bool m2qp_sig_dspkt( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
+//ot_bool m2qp_sig_dsack( ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
 
 
 

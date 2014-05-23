@@ -310,6 +310,17 @@ void spirit1_waitforreset() {
 }
 
 
+ot_u16 spirit1_isready() {
+    return (_READY_PORT->IDR & _READY_PIN);
+}
+
+
+void spirit1_waitfor_inactive() {
+/// Wait for the RX/TX indicator pin to go off.
+    
+}
+
+
 void spirit1_waitforready() {
 /// Wait for the Ready Pin to go high (reset pin is remapped in init).
 /// STANDBY->READY should take about 75us, although the absolute worst
@@ -317,21 +328,33 @@ void spirit1_waitforready() {
 /// 52, 50, 48, 26, 25, 24 MHz crystals.  By inspection, the loop takes
 /// 8 cycles to complete one iteration, and we assume a clock speed of 
 /// 16 MHz.
+    
+    ///@todo implement this using WFE instead of while loop
     ot_uint watchdog = 500;
     while (((_READY_PORT->IDR & _READY_PIN) == 0) && (--watchdog));
 
+    ///@todo if watchdog is invoked very rarely (do a test), then 
+    ///      do a reset and log a HW fault instead of this retry.
     if (watchdog == 0){
-        ///@todo failure code that logs firmware fault, kills task,
-        ///      re-inits radio
-        //Error Marker: DEBUG ONLY
-        //BOARD_LEDR_PORT->BSRRH  = BOARD_LEDR_PIN;
+        //spirit1_strobe(RFSTROBE_SABORT);
+        //spirit1_strobe(RFSTROBE_READY);
     }
 }
 
 
 void spirit1_waitforstandby() {
 /// Wait for the Ready Pin to go low (reset pin is remapped in init).
-    while ((_READY_PORT->IDR & _READY_PIN) != 0);
+    
+    ///@todo implement this using WFE instead of while loop
+    ot_uint watchdog = 10;
+    while (((_READY_PORT->IDR & _READY_PIN) != 0) && (--watchdog));
+    
+    ///@todo if watchdog is invoked very rarely (do a test), then 
+    ///      do a reset and log a HW fault instead of this retry.
+    if (watchdog == 0) {
+        //spirit1_strobe(RFSTROBE_SABORT);
+        //spirit1_strobe(RFSTROBE_READY);
+    }
 }
 
 

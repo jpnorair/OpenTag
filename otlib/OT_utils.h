@@ -42,7 +42,7 @@ void otutils_applet_null(m2session* a);
 
 
 // Exp-Mantissa expansion for common 7-bit field
-ot_u16 otutils_calc_timeout(ot_u8 timeout_code);
+ot_ulong otutils_calc_timeout(ot_u8 timeout_code);
 
 
 // Exp-Mantissa expansion for common 7-bit field

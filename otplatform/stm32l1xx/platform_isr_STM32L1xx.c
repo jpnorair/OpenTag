@@ -179,19 +179,19 @@
 
 
 
-/// Enable RF Module interrupts: 
-/// In every known case, these are :
-/// RTC Wakeup interrupt is required by OpenTag for advertisement flooding
+/// Enable RF Module interrupts
 #if (OT_FEATURE(M2))
 #   undef __ISR_RF1A
 #   define __ISR_RF1A
 
-//#   undef __ISR_RTC_WKUP
-//#   undef __N_ISR_RTC_WKUP
-//#   define __ISR_RTC_WKUP
 #endif
 
 
+
+// RFU for enabling Wakeup Interrupt
+//#   undef __ISR_RTC_WKUP
+//#   undef __N_ISR_RTC_WKUP
+//#   define __ISR_RTC_WKUP
 
 
 
@@ -236,10 +236,10 @@ void TAMPER_STAMP_IRQHandler(void) {
 #if defined(__ISR_RTC_WKUP) && !defined(__N_ISR_RTC_WKUP)
 void RTC_WKUP_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    //RTC->ISR &= ~RTC_ISR_RSF;
+    //RTC->ISR   &= ~RTC_ISR_RSF;
     EXTI->PR    = (1<<20);
     RTC->ISR   &= ~RTC_ISR_WUTF;
-    //__ISR_WAKEUP_HOOK();          //OpenTag doesn't use this INT for STOP wakeup
+    __ISR_WAKEUP_HOOK();
     platform_isr_rtcwakeup();
     __ISR_EXIT_HOOK();
 }

@@ -512,7 +512,7 @@ void NMI_Handler(void) {
     platform.error_code = 0;
     sys_panic(code);
 }
-  
+
 
 void HardFault_Handler(void) {
 /// If you have traced the code here, most likely the problem is stack overrun.
@@ -520,6 +520,7 @@ void HardFault_Handler(void) {
 /// other serious problem (possibly interrupt storm)
 #ifdef __DEBUG__
     while (1);
+    
 #else
     /// Log HardFault by saving an error code to Backup RAM, then resetting.
     /// The startup routine will check this sector of backup RAM and do the
@@ -1195,14 +1196,14 @@ OT_INLINE void platform_ot_run() {
 /// This function must be run in a while(1) loop from main.  It is the context
 /// used by Kernel Tasks, which are co-operatively multitasked.
 
-    /// 3. Run the Scheduler.  The scheduler will issue a PendSV if there is a 
+    /// 1. Run the Scheduler.  The scheduler will issue a PendSV if there is a 
     /// threaded task, in which case the P-stack will get changed to that 
     /// thread, and the code after this call will not run until all threads are 
     /// dormant.
     __SEND_SVC(0);
     
     
-    /// 4. When the PC is here, it means that a kernel task has been scheduled 
+    /// 2. When the PC is here, it means that a kernel task has been scheduled 
     ///    or that no task is scheduled.  If no task is scheduled, then it is
     ///    time to go to sleep (or more likely STOP mode).  The powerdown 
     ///    routine MUST re-enable interrupts immediately before issuing the WFI
@@ -1211,31 +1212,25 @@ OT_INLINE void platform_ot_run() {
         platform_disable_interrupts();
         platform_enable_ktim();
         sys_powerdown();
-    }
+    }    
     
-    //while (gptim.flags & GPTIM_FLAG_SLEEP) {
-    //    __WFI();
-    //}
-    
-    
-    /// 1. Save the current P-stack pointer (PSP), and push the return address 
+    /// 3. Save the current P-stack pointer (PSP), and push the return address 
     ///    onto this position.  If the task is killed during its runtime, this
     ///    data will be used to reset the P-stack and PC.
     
     ///@note this code only works with GCC-based compilers.  The && operator
     /// ahead of the label is a label-reference, and it is a GCC feature.
-    {
-    register ot_u32 return_from_task;
-    platform_ext.task_exit  = (void*)__get_PSP();
-    return_from_task        = (ot_u32)&&RETURN_FROM_TASK;
-    asm volatile ("PUSH {%0}" : : "r"(return_from_task) );
+    {   register ot_u32 return_from_task;
+        platform_ext.task_exit  = (void*)__get_PSP();
+        return_from_task        = (ot_u32)&&RETURN_FROM_TASK;
+        asm volatile ("PUSH {%0}" : : "r"(return_from_task) );
     }
 
-    /// 2. Run the Tasking Engine.  It will call the ktask or switch to the 
+    /// 4. Run the Tasking Engine.  It will call the ktask or switch to the 
     /// thread, as needed based on what is scheduled.
     sys_run_task();
     
-    /// 3. In any condition, retract the stack to a known, stable condition.
+    /// 5. In any condition, retract the stack to a known, stable condition.
     /// If the task/thread exited cleanly, this changes nothing.  If killed, 
     /// this will flush the stack.
     RETURN_FROM_TASK:
@@ -1300,7 +1295,7 @@ void platform_init_interruptor() {
     SCB->SHP[((uint32_t)(SVC_IRQn)&0xF)-4]              = (b0000 << 4);
 //  SCB->SHP[((uint32_t)(DebugMonitor_IRQn)&0xF)-4]     = (b0000 << 4);
     SCB->SHP[((uint32_t)(PendSV_IRQn)&0xF)-4]           = (b1111 << 4);
-    //SCB->SHP[((uint32_t)(SysTick_IRQn)&0xF)-4]          = (_LOPRI_BASE << 4);  
+//  SCB->SHP[((uint32_t)(SysTick_IRQn)&0xF)-4]          = (_LOPRI_BASE << 4);  
     
     /// 4. Setup NVIC for Kernel Interrupts.  Kernel interrupts cannot interrupt
     /// each other, but there are subpriorities.  I/O interrupts should be set 
@@ -1366,25 +1361,26 @@ void platform_init_interruptor() {
     NVIC->IP[(uint32_t)(EXTI4_IRQn)]        = (_HIPRI_BASE << 4);
     NVIC->ISER[((uint32_t)(EXTI4_IRQn)>>5)] = (1 << ((uint32_t)(EXTI4_IRQn) & 0x1F));
 #   endif
-#   if (  defined(__USE_EXTI5) \
-       || defined(__USE_EXTI6) \
-       || defined(__USE_EXTI7) \
-       || defined(__USE_EXTI8) \
-       || defined(__USE_EXTI9) )
+#   if (  defined(__USE_EXTI5) || defined(__USE_EXTI6) || defined(__USE_EXTI7) \
+       || defined(__USE_EXTI8) || defined(__USE_EXTI9) )
     NVIC->IP[(uint32_t)(EXTI9_5_IRQn)]        = (_HIPRI_BASE << 4);
     NVIC->ISER[((uint32_t)(EXTI9_5_IRQn)>>5)] = (1 << ((uint32_t)(EXTI9_5_IRQn) & 0x1F));
 #   endif
-#   if (  defined(__USE_EXTI15) \
-       || defined(__USE_EXTI14) \
-       || defined(__USE_EXTI13) \
-       || defined(__USE_EXTI12) \
-       || defined(__USE_EXTI11) \
-       || defined(__USE_EXTI10) )
+#   if (  defined(__USE_EXTI15) || defined(__USE_EXTI14) || defined(__USE_EXTI13) \
+       || defined(__USE_EXTI12) || defined(__USE_EXTI11) || defined(__USE_EXTI10) )
     NVIC->IP[(uint32_t)(EXTI15_10_IRQn)]        = (_HIPRI_BASE << 4);
     NVIC->ISER[((uint32_t)(EXTI15_10_IRQn)>>5)] = (1 << ((uint32_t)(EXTI15_10_IRQn) & 0x1F));
 #   endif
 
 
+    /// 6. Setup ADC interrupt.  This is needed only for ADC-enabled builds,
+    ///    but ADC is used for true-random-number generation as well as actual
+    ///    analog voltage sensing.
+    ///@todo figure out why this #if isn't working
+//#   if defined(__ISR_ADC1)
+    NVIC->IP[(uint32_t)(ADC1_IRQn)]         = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(ADC1_IRQn)>>5)]  = (1 << ((uint32_t)(ADC1_IRQn) & 0x1F));
+//#   endif
     
 }
 #endif
@@ -1445,7 +1441,7 @@ void platform_init_rtc(ot_u32 value) {
 
 #ifndef EXTF_platform_init_memcpy
 void platform_init_memcpy() {
-#if (MCU_CONFIG(MEMCPYDMA) == ENABLED)  
+#if (MCU_CONFIG(MEMCPYDMA) == ENABLED)
 #endif
 }
 #endif

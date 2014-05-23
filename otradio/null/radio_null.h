@@ -130,8 +130,9 @@
 
 /** Internal Radio Flags
 */
-#define RADIO_FLAG_FLOOD        (1 << 0)
-#define RADIO_FLAG_FRCONT       (1 << 1)
+#define RADIO_FLAG_BG           (1 << 0)
+#define RADIO_FLAG_CONT         (1 << 1)
+#define RADIO_FLAG_BGFLOOD      (3 << 0)
 #define RADIO_FLAG_CRC5         (1 << 2)
 #define RADIO_FLAG_RESIZE       (1 << 3)
 #define RADIO_FLAG_AUTOCAL		(1 << 4)

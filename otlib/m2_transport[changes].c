@@ -106,7 +106,7 @@ ot_int sub_parse_request(m2session* active) {
         q_empty(&txq); // Flush TX Queue
 
         if (m2qp.cmd.ext & M2CE_NORESP) {
-            active->netstate |= M2_NETFLAG_SCRAP;
+            active->netstate |= M2_NETSTATE_SCRAP;
         }
         else {
             active->netstate |= M2_NETSTATE_RESPTX;

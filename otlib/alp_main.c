@@ -194,10 +194,13 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
 #else
     ALP_status exit_code = MSG_Null;
     
-    ///@todo engage ALP locks
+    /// Lock the Queues while ALP is parsing/processing
+    alp->inq->options.ubyte[0]  = 1;
+    alp->outq->options.ubyte[0] = 1;
     
     /// Loop through records in the input message.  Each input message can
     /// generate 0 or 1 output messages.
+    alp_parse_message_LOOP:
     do {
         ot_u8*  input_position;
         ot_u8*  hdr_position;
@@ -211,7 +214,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
             ((alp->outq->back - alp->outq->putcursor) < 4)) {
             break;
         }
-
+        
         /// Load a new input record only when the last output record has the
         /// "Message End" flag set.  Therefore, it was the last record of a
         /// previous message.  If new input record header does not match
@@ -219,7 +222,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
         /// the input record to the output record.  alp_proc() will adjust
         /// the output payload length and flags, as necessary.
         if (alp->OUTREC(FLAGS) & ALP_FLAG_ME) {
-            input_position = alp->inq->getcursor;
+            input_position      = alp->inq->getcursor;
             alp->OUTREC(FLAGS)  = input_position[0];
             alp->OUTREC(PLEN)   = 0;
             alp->OUTREC(ID)     = input_position[2];
@@ -247,7 +250,7 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
             // Remove header and any output data if no data written
             // Also, remove output chunking flag
             alp->outq->putcursor   = hdr_position;
-            alp->OUTREC(FLAGS)     &= ~NDEF_CF;
+            alp->OUTREC(FLAGS)    &= ~NDEF_CF;
         }
         else {
             //OBSOLETE: sub_insert_header(alp, hdr_position, hdr_len);
@@ -268,6 +271,14 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
             else {
                 //input_position[0]   = 0;          //non-atomic app should wipe flags!
                 alp->inq->getcursor = nextrecord;
+                
+                ///@note HACK
+                /// added by JPN 7-April-14, in order to batch multiple reads.
+                /// It might be kept or removed.  Also note that "continue" statement
+                /// will not work properly here, goto must be used.
+                if (alp->inq->putcursor > alp->inq->getcursor) {
+                    goto alp_parse_message_LOOP;
+                }
             }
             
             exit_code = MSG_End;
@@ -276,7 +287,9 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
     }
     while (exit_code != MSG_Null);
     
-    ///@todo release ALP locks
+    /// Unlock the Queues after ALP is parsing/processing
+    alp->inq->options.ubyte[0]  = 0;
+    alp->outq->options.ubyte[0] = 0;
     
     return exit_code;
 #endif
@@ -393,6 +406,11 @@ void alp_purge(alp_tmpl* alp) {
 #       warning "NDEF not yet supported for non-atomic alps"
 #   endif
     
+    /// 0. Hack for now.
+    q_empty(alp->inq);
+    
+    /*
+    
     /// 1. An ALP processor that has non-atomic handling ability must mark all
     ///    record flags to 0, after that record is processed.  In the special
     ///    case where all records are marked to 0, just empty the queue.  In
@@ -417,6 +435,8 @@ void alp_purge(alp_tmpl* alp) {
             return;
         }
     }
+    
+    ///@note This doesn't quite work and it needs further testing
     
     /// 2. Progress through Queue, purging targeted records by shifting later 
     /// contents over them.  "acursor" has been set, in part 1, to the first
@@ -490,6 +510,7 @@ void alp_purge(alp_tmpl* alp) {
     
     ///4. Finally, retract the alp queue putcursor by purged bytes.
     alp->inq->putcursor -= total_purge_bytes;
+    */
 }
 #endif
 

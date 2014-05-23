@@ -482,8 +482,8 @@ void subrfctl_launch_rx(ot_u8 channel, ot_u8 netstate) {
     //    maccfg[4] = _PERS_RX | _NACK_TX;
     //}
 
-    /// 4a. Setup RX for Background detection (if FLOOD), else Foreground reception
-    if (rfctl.flags & RADIO_FLAG_FLOOD) {
+    /// 4a. Setup RX for Background detection (if BG), else Foreground reception
+    if (rfctl.flags & RADIO_FLAG_BG) {
         rxq.getcursor       = rxq.front;
         *rxq.getcursor++    = 8;
         *rxq.getcursor++    = 2;            // 00010 is CRC5 for 0000100000
@@ -518,8 +518,8 @@ void rm2_reenter_rx(ot_sig2 callback) {
     };
     
     radio.evtdone   = callback;
-    rfctl.state     = rxstates[(rfctl.flags & RADIO_FLAG_FLOOD)];
-    rfctl.flags    |= rxstates[2 + (rfctl.flags & RADIO_FLAG_FLOOD)];
+    rfctl.state     = rxstates[(rfctl.flags & RADIO_FLAG_BG)];
+    rfctl.flags    |= rxstates[2 + (rfctl.flags & RADIO_FLAG_BG)];
     rfctl.rxlimit   = 8;
     
     radio_gag();
@@ -561,12 +561,11 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     /// the lower flags (non-persistent flags)
     radio.evtdone   = callback;
     rfctl.flags    &= ~(  RADIO_FLAG_RESIZE \
-                        | RADIO_FLAG_FRCONT \
-                        | RADIO_FLAG_FLOOD  \
-                        | RADIO_FLAG_RESIZE );
+                        | RADIO_FLAG_CONT \
+                        | RADIO_FLAG_BG   );
     
     if (psettings != 0) {
-        rfctl.flags|= RADIO_FLAG_FLOOD;
+        rfctl.flags|= RADIO_FLAG_BG;
         netstate    = (M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX);
     }
     else {
@@ -720,11 +719,11 @@ void rm2_rxend_isr() {
 #ifndef EXTF_rm2_txinit
 void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
     rfctl.flags    &= ~(    RADIO_FLAG_RESIZE   \
-                          | RADIO_FLAG_FLOOD    \
-                          | RADIO_FLAG_FRCONT   \
+                          | RADIO_FLAG_BG    \
+                          | RADIO_FLAG_CONT   \
                           | RADIO_FLAG_CRC5     );
 #   if (SYS_FLOOD == ENABLED)
-    rfctl.flags    |= (psettings != 0);   //sets RADIO_FLAG_FLOOD
+    rfctl.flags    |= (psettings != 0);   //sets RADIO_FLAG_BG
 #   endif
 #   if (M2_FEATURE(MULTIFRAME) == ENABLED)
     rfctl.flags    |= ((session_netstate() & M2_NETSTATE_DSDIALOG) >> 1); //sets RADIO_FLAG_FRCONT
@@ -802,7 +801,7 @@ void rm2_txcsma_isr() {
             // Set other TX Buffering & Packet parameters, and also save the
             // Peristent-TX attribute for floods, which is written later
 #           ifdef _DSSS
-            if (rfctl.flags & RADIO_FLAG_FLOOD) {
+            if (rfctl.flags & RADIO_FLAG_BG) {
                 timcfg[2]      |= _PERS_TX;
                 type            = MODE_bg;
                 rfctl.txlimit   = (7*_SPREAD);
@@ -813,7 +812,7 @@ void rm2_txcsma_isr() {
             }
 #           else
             rfctl.txlimit   = 7;
-            if (rfctl.flags & RADIO_FLAG_FLOOD) {
+            if (rfctl.flags & RADIO_FLAG_BG) {
                 timcfg[2]      |= 0;    //_PERS_TX;
                 type            = MODE_bg;
             }
@@ -866,7 +865,7 @@ void rm2_txcsma_isr() {
         rm2_txcsma_START:
             // Send TX start (CSMA done) signal to DLL task
             // arg2: Non-zero for background, 0 for foreground
-            radio.evtdone(0, (rfctl.flags & RADIO_FLAG_FLOOD));  
+            radio.evtdone(0, (rfctl.flags & RADIO_FLAG_BG));  
             
             // Preload into TX FIFO a small amount of data (up to 8 bytes)
             // This is small-enough that the TX state machine doesn't need
@@ -885,7 +884,7 @@ void rm2_txcsma_isr() {
             //spirit1_strobe( RFSTROBE_TX );
             //spirit1_int_txdata();
             
-            if (rfctl.flags & RADIO_FLAG_FLOOD) {
+            if (rfctl.flags & RADIO_FLAG_BG) {
                 //spirit1_start_counter();
             }
             break;
@@ -937,7 +936,7 @@ void rm2_txdata_isr() {
 #   if (SYS_FLOOD == ENABLED)
     /// Packet flooding.  Only needed on devices that can send M2AdvP
     /// The radio.evtdone callback here should update the AdvP payload
-    if (rfctl.flags & RADIO_FLAG_FLOOD) {
+    if (rfctl.flags & RADIO_FLAG_BG) {
         radio.evtdone(2, 0);
         
         if ((rfctl.state & RADIO_STATE_TXMASK) == RADIO_STATE_TXDATA) {

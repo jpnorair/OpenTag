@@ -106,7 +106,11 @@
 #define RF_FEATURE_ECC                  DISABLED            // ECC engine               Rare/None yet
 
 #define RF_PARAM(VAL)                   RF_PARAM_##VAL
-#define RF_PARAM_PKT_OVERHEAD           (2+6+4)
+#define RF_PARAM_SSBIT_US               
+#define RF_PARAM_RAMP_BYTES             1                   // Ramp-up + Down
+#define RF_PARAM_PREAMBLE_BYTES         8                   // 8 seems to work best on SPIRIT1
+#define RF_PARAM_SYNC_BYTES             4                   // Always 4
+#define RF_PARAM_PKT_OVERHEAD           (RF_PARAM_RAMP_BYTES+RF_PARAM_PREAMBLE_BYTES+RF_PARAM_SYNC_BYTES)
 #define RF_PARAM_RCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
 #define RF_PARAM_VCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
 
@@ -156,8 +160,9 @@
 
 /** Internal Radio Flags
 */
-#define RADIO_FLAG_FLOOD        (1 << 0)
-#define RADIO_FLAG_FRCONT       (1 << 1)
+#define RADIO_FLAG_BG           (1 << 0)
+#define RADIO_FLAG_CONT         (1 << 1)
+#define RADIO_FLAG_BGFLOOD      (3 << 0)
 #define RADIO_FLAG_CRC5         (1 << 2)
 #define RADIO_FLAG_RESIZE       (1 << 3)
 #define RADIO_FLAG_AUTOCAL		(1 << 4)
@@ -192,6 +197,42 @@
 #define RADIO_KILLRX_STI            0
 #define RADIO_KILLTX_STI            0
 #define RADIO_TURNAROUND_STI        1
+
+
+
+
+
+
+/** Some local constants, variables, macros
+  */
+#define _MAXPKTLEN (M2_PARAM(MAXFRAME) * M2_PARAM(MFPP))
+#if (_MAXPKTLEN == 0)
+#   warning "Max packet length could not be derived from app_config.h, using 256 bytes"
+#   undef _MAXPKTLEN
+#   define _MAXPKTLEN   256
+#endif
+
+#if (0)
+#   define _DSSS
+#   define _SPREAD      5
+#   define _RXMAXTHR    80
+#   define _RXMINTHR    (_SPREAD * 2)
+#else
+#   define _SPREAD      1
+#   define _RXMAXTHR    64
+#   define _RXMINTHR    8
+#endif
+
+
+#if (RF_FEATURE(AUTOCAL) != ENABLED)
+#   define __CALIBRATE()    spirit1drv_offline_calibration()
+#else
+#   define __CALIBRATE();
+#endif
+
+
+
+
 
 
 

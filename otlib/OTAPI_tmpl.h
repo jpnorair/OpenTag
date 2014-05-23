@@ -98,19 +98,18 @@ typedef struct {
 
 
 /// Mode 2 MAC/Protocol Templates
-typedef enum {
-    ADDR_unicast    = 0,    //2
-    ADDR_broadcast  = 1,    //1
-    ADDR_anycast    = 2,    //removed
-    ADDR_multicast  = 3     //removed
-} addr_type;
-///@todo update to following once new networking updates applied
 //typedef enum {
-//    ADDR_stream     = 0,
-//    ADDR_broadcast  = 1,
-//    ADDR_unicast    = 2,
-//    ADDR_unicastvid = 3
+//    ADDR_unicast    = 0,    //2
+//    ADDR_broadcast  = 1,    //1
+//    ADDR_anycast    = 2,    //removed
+//    ADDR_multicast  = 3     //removed
 //} addr_type;
+typedef enum {
+    ADDR_stream     = 0,
+    ADDR_broadcast  = 1,
+    ADDR_unicast    = 2,
+    ADDR_unicastvid = 3
+} addr_type;
 
 #define ADDR_Type   addr_type
 
@@ -227,25 +226,25 @@ typedef enum {
 } command_opcodes;
 
 
-typedef enum {
-    CMDTYPE_response            = 0,
-    CMDTYPE_error               = (1 << 4),
-    CMDTYPE_na2p_request        = (2 << 4),
-    CMDTYPE_a2p_init_request    = (4 << 4),
-    CMDTYPE_a2p_inter_request   = (5 << 4),
-    CMDTYPE_a2p_final_request   = (7 << 4)
-} command_types;
-/** @todo update to the following once transport changes are applied
+//typedef enum {
+//    CMDTYPE_response            = 0,
+//    CMDTYPE_error               = (1 << 4),
+//    CMDTYPE_na2p_request        = (2 << 4),
+//    CMDTYPE_a2p_init_request    = (4 << 4),
+//    CMDTYPE_a2p_inter_request   = (5 << 4),
+//    CMDTYPE_a2p_final_request   = (7 << 4)
+//} command_types;
+
 typedef enum {
     CMDTYPE_response            = 0,
     CMDTYPE_control             = (1 << 4),
     CMDTYPE_bcast_request       = (2 << 4),
     CMDTYPE_acast_request       = (3 << 4),
-    CMDTYPE_mcast_request       = (4 << 4)
+    CMDTYPE_mcast_request       = (4 << 4),
     CMDTYPE_mcast_continue      = (5 << 4),
     CMDTYPE_mcast_finish        = (7 << 4),
 } command_types;
-*/
+
 
 
 #define __SIZEOF_error_tmpl (1+1+(1*PLATFORM_POINTER_SIZE))

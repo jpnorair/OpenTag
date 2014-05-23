@@ -1,4 +1,4 @@
-/* Copyright 2012 JP Norair
+/* Copyright 2012-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_dll.h
   * @author     JP Norair
-  * @version    R100
-  * @date       1 Oct 2012
+  * @version    R101
+  * @date       7 May 2014
   * @brief      Data Link Layer for DASH7
   * @defgroup   DLL (Data Link Layer Module)
   * @ingroup    DLL
@@ -296,6 +296,28 @@ extern m2dll_struct dll;
 
 
 
+/** Macros <BR>
+  * ========================================================================<BR>
+  */
+#if defined(EXTF_dll_sig_rfinit)
+#   define DLL_SIG_RFINIT(CODE)                 dll_sig_rfinit(CODE)
+#elif (OT_FEATURE(DLLRF_CALLBACKS) == ENABLED)
+#   define DLL_SIG_RFINIT(CODE)                 dll.sig.rfinit(CODE)
+#else
+#   define DLL_SIG_RFINIT(CODE)                 while(0)
+#endif
+
+#if defined(EXTF_dll_sig_rfterminate)
+#   define DLL_SIG_RFTERMINATE(CODE1, CODE2)    dll_sig_rfterminate(CODE1, CODE2)
+#elif (OT_FEATURE(DLLRF_CALLBACKS) == ENABLED)
+#   define DLL_SIG_RFTERMINATE(CODE1, CODE2)    dll.sig.rfterminate(CODE1, CODE2)
+#else
+#   define DLL_SIG_RFTERMINATE(CODE1, CODE2)    while(0)
+#endif
+
+
+
+
 
 
 
@@ -303,11 +325,11 @@ extern m2dll_struct dll;
 /** DLL IO Tasks <BR>
   * ========================================================================<BR>
   */
-void dll_block();
-void dll_unblock();
+void dll_block(void);
+void dll_unblock(void);
 void dll_clock(ot_uint ticks);
-void dll_next();
-void dll_systask_init();
+void dll_next(void);
+void dll_systask_init(void);
 void dll_systask_rf(ot_task task_dll);
 
 
@@ -315,11 +337,11 @@ void dll_systask_rf(ot_task task_dll);
 /** DLL Idle-Time Tasks <BR>
   * ========================================================================<BR>
   */
-void dll_systask_holdscan();
-void dll_systask_sleepscan();
-void dll_systask_beacon();
+void dll_systask_holdscan(ot_task task);
+void dll_systask_sleepscan(ot_task task);
+void dll_systask_beacon(ot_task task);
 
-void dll_block_idletasks();
+void dll_block_idletasks(void);
 
 void dll_default_applet(m2session* active);
 
@@ -349,7 +371,7 @@ void dll_sig_rfterminate(ot_int pcode, ot_int scode);
   * @retval None
   * @ingroup DLL
   */
-void dll_init();
+void dll_init(void);
 
 
 /** @brief Refresh system settings, wipe sessions, and put system into idle
@@ -362,7 +384,23 @@ void dll_init();
   * Network Settings ISF (ISF 0) and applies it to the system object.  Then it
   * puts OpenTag in a default idle state with no pending or ongoing sessions.
   */
-void dll_refresh();
+void dll_refresh(void);
+
+
+/** @brief Refreshes the DLL real-time scheduler features (requires OTcron)
+  * @param  None
+  * @retval None
+  * @ingroup DLL
+  * @sa dll_refresh
+  * 
+  * If your build includes OTcron, this function will pull data from the Real
+  * Time Scheduler file (ISF 04) and align Sleep, Hold, and Beacon RTS to what
+  * is in the file.  If your build does not include OTcron, this function does
+  * nothing.
+  *
+  * The function dll_refresh() calls this dll_refresh_rts() internally.
+  */
+void dll_refresh_rts(void);
 
 
 
@@ -387,7 +425,7 @@ void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings);
   *
   * Generally, this doesn't need to be called from the outside.
   */
-void dll_goto_off();
+void dll_goto_off(void);
 
 
 
@@ -401,7 +439,7 @@ void dll_goto_off();
   * example is to use sys_idle() in a USB suspend callback, to make sure that
   * radio operation is shut off.
   */
-void dll_idle();
+void dll_idle(void);
 
 
 
@@ -415,6 +453,31 @@ void dll_idle();
   */
 void dll_set_defaults(m2session* session);
 
+
+
+
+
+
+/** Internal Task Calls, exposed to enable patching <BR>
+  * ========================================================================<BR>
+  */
+void dll_scan_timeout(void);
+void dll_processing(void);
+void dll_activate(void);
+void dll_init_rx(m2session* active);
+void dll_init_tx(ot_u8 is_btx);
+void dll_txcsma(void);
+
+
+
+/** Radio Driver DLL Callbacks, exposed to enable patching <BR>
+  * ========================================================================<BR>
+  */
+void dll_rfevt_brx(ot_int scode, ot_int fcode);
+void dll_rfevt_frx(ot_int pcode, ot_int fcode);
+void dll_rfevt_txcsma(ot_int pcode, ot_int tcode);
+void dll_rfevt_btx(ot_int flcode, ot_int scratch);
+void dll_rfevt_ftx(ot_int pcode, ot_int scratch);
 
 
 
@@ -437,7 +500,7 @@ ot_u8 dll_default_csma(ot_u8 chan_id);
   * @retval none
   * @ingroup DLL
   */
-void dll_quit_rf();
+void dll_quit_rf(void);
 
 
 
