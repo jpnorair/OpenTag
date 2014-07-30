@@ -64,9 +64,9 @@
   */
 
 #if !defined (STM32L1XX_MD) && !defined (STM32L1XX_MDP) && !defined (STM32L1XX_HD)
-  /* #define STM32L1XX_MD  */   /*!< STM32L1XX_MD: STM32L Ultra Low Power Medium-density devices */
+#   define STM32L1XX_MD     /*!< STM32L1XX_MD: STM32L Ultra Low Power Medium-density devices */
   /* #define STM32L1XX_MDP */   /*!< STM32L1XX_MDP: STM32L Ultra Low Power Medium-density Plus devices */
-  #define STM32L1XX_HD    /*!< STM32L1XX_HD: STM32L Ultra Low Power High-density devices */
+  /* #define STM32L1XX_HD */    /*!< STM32L1XX_HD: STM32L Ultra Low Power High-density devices */
 #endif
 /*  Tip: To avoid modifying this file each time you need to switch between these
         devices, you can define the device in your toolchain compiler preprocessor.

@@ -24,6 +24,27 @@
 #   endif
 
 
+/** @note CRCBASE, CRCPOLY
+  * These make the "magic number" to use when starting up CRC, written to the
+  * crc.value variable during init_crc.value.  They are not currently used,
+  * having been substituted for the somewhat optimized tabular approach.  If
+  * program memory becomes a problem, a bitwise CRC routine may be used in place
+  * of the tabular method.
+  */
+#ifndef CRCBASE
+#define CRCBASE    0xFFFF
+#define CRCBASE_LO 0xFF
+#define CRCBASE_HI 0xFF
+#endif
+
+#ifndef CRCPOLY
+#define CRCPOLY    0x8005
+#define CRCPOLY_LO 0x05
+#define CRCPOLY_HI 0x80
+#endif
+
+
+
 
 typedef struct {
     ot_u16      alloc;
@@ -149,8 +170,8 @@ ot_u16 platform_ext_crc16;
   * standalone CRC16 peripheral.
   */
 ot_u16 platform_crc_init() {
-    platform_ext_crc16 = 0xFFFF;
-    return 0xFFFF;
+    platform_ext_crc16 = CRCBASE;
+    return CRCBASE;
 }
 
 
@@ -168,7 +189,7 @@ ot_u16 platform_crc_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 in
 
 
 ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
-    return platform_crc_block_manual(block_addr, block_size, 0xFFFF);
+    return platform_crc_block_manual(block_addr, block_size, CRCBASE);
 }
 
 
@@ -420,30 +441,6 @@ void q_readstring(ot_queue* q, ot_u8* string, ot_int length) {
 
 
 
-
-
-/** @note CRCBASE, CRCPOLY
-  * These make the "magic number" to use when starting up CRC, written to the
-  * crc.value variable during init_crc.value.  They are not currently used,
-  * having been substituted for the somewhat optimized tabular approach.  If
-  * program memory becomes a problem, a bitwise CRC routine may be used in place
-  * of the tabular method.
-  */
-#ifndef CRCBASE
-#define CRCBASE    0xFFFF
-#define CRCBASE_LO 0xFF
-#define CRCBASE_HI 0xFF
-#endif
-
-#ifndef CRCPOLY
-// 18000-7 & 18185 CRC polynomial is: x^16 + x^12 + x^5 + x^0
-// 16th bit is implicit
-#define CRCPOLY    0x1021
-#define CRCPOLY_LO 0x21
-#define CRCPOLY_HI 0x10
-#endif
-
-
 void crc_init_stream(ot_bool writeout, ot_int stream_size, ot_u8* stream) {
     crc.writeout= writeout;
     crc.cursor  = stream;
@@ -462,7 +459,7 @@ void crc_calc_stream() {
     }
     else if ((crc.writeout) && (crc.count > -2)) {
         ot_u16 crc_val  = platform_crc_result();
-        printf("writeout\n");
+        //printf("writeout\n");
         *crc.cursor++   = (ot_u8)(crc_val >> ((crc.count == 0) << 3));
     }
     
@@ -531,12 +528,17 @@ ot_int sub_load_rand(ot_queue* q, ot_int max) {
 #define _ITERATIONS 1
 
 int main(void) {
+    const char refstring[] = "123456789";
     int i;
     
     srand(time(NULL));
     
     q_init(&testq, buffer, 256);
     
+    {   ot_u16 crc_result;
+        crc_result = platform_crc_block((ot_u8*)refstring, 9);
+        printf("CRC16 reference = \"%04X\"\n\n", crc_result);
+    }
     
     for (i=0; i<_ITERATIONS; i++) {
         ot_int numbytes;

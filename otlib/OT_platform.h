@@ -41,6 +41,12 @@
 #include "build_config.h"
 
 
+#if (defined(__DEBUG__) || defined(__PROTO__))
+#   define __DEBUG_ERRCODE_EVAL(EVAL)   (platform.error_code EVAL)
+#else
+#   define __DEBUG_ERRCODE_EVAL(EVAL);
+#endif
+
 typedef struct {
     ot_int error_code;
 } platform_struct;
@@ -361,7 +367,9 @@ void platform_init_prand(ot_u16 seed);
   * Please check with the implementation comments / documentation to determine
   * the usage with your platform,
   */
-void platform_init_systick(ot_uint period);
+void platform_init_itimer(ot_uint period);
+
+void platform_stop_itimer();
 
 
 

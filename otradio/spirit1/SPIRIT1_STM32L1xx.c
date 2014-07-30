@@ -30,7 +30,7 @@
 #include "OT_utils.h"
 #include "OT_types.h"
 #include "OT_config.h"
-
+#include "m2_dll.h"
 
 #include "SPIRIT1_interface.h"
 
@@ -45,6 +45,11 @@
 #endif
 
 
+#if defined(_SPIRIT1_PROFILE)
+    ot_s16 set_line;
+    ot_s16 line_hits[256];
+    ot_u16 count_hits = 0;
+#endif
 
 
 /// RF IRQ GPIO Macros:
@@ -278,9 +283,10 @@ void spirit1_load_defaults() {
 
 
 
-void spirit1_shutdown() {
+void spirit1_shutdown(ot_uint delay_us) {
 /// Raise the Shutdown Line
     RADIO_SDN_PORT->BSRRL = RADIO_SDN_PIN;
+    platform_swdelay_us(delay_us);
 }
 
 
@@ -304,8 +310,6 @@ void spirit1_waitforreset() {
     while (((RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN) == 0) && (--watchdog));
     if (watchdog == 0) {
         ///@todo failure code that logs hardware fault and resets OT
-        //Error Marker: DEBUG ONLY
-        //BOARD_LEDB_PORT->BSRRH  = BOARD_LEDB_PIN;
     }
 }
 
@@ -315,9 +319,77 @@ ot_u16 spirit1_isready() {
 }
 
 
-void spirit1_waitfor_inactive() {
-/// Wait for the RX/TX indicator pin to go off.
+
+ot_int sub_failsafe_standby(void) {
+/// This code is a failsafe way to bring SPIRIT1 into shutdown, mainly for
+/// testing purposes.  It has been observed to have the same result as
+/// the normal standby routine.
+    ot_u8   nextstrobe;
+    ot_u8   mcstate;
+    ot_u8   teststate;
+    ot_uint watchdog;
+
+    mcstate = spirit1_read(RFREG(MC_STATE0));
     
+    sub_failsafe_standby_TOP:
+    switch (mcstate>>1) {
+        // Already in STANDBY, which is an error
+        case 0x40:  return 1;
+        
+        // SLEEP
+        case 0x36:  nextstrobe  = RFSTROBE_READY;
+                    teststate   = 0x07;
+                    break;
+                    
+        // RX or TX or LOCK
+        case 0x0F:
+        case 0x33:
+        case 0x5f:  nextstrobe  = RFSTROBE_SABORT;
+                    teststate   = 0x07;
+                    break;
+        
+        // READY
+        case 0x03:  nextstrobe  = RFSTROBE_STANDBY;
+                    teststate   = (0x40<<1);
+                    break;
+        
+        //Unknown State (error)
+        default:    return 3;
+    }
+    
+    spirit1_strobe(nextstrobe);
+    watchdog = 100;
+    do {
+        mcstate = spirit1_read(RFREG(MC_STATE0));
+        watchdog--;
+    } while ((watchdog != 0) && (mcstate != teststate));
+    
+    if (watchdog == 0)  return 2;
+    else                goto sub_failsafe_standby_TOP;
+}
+
+
+//volatile ot_int abort_fails = 0;
+//volatile ot_int ready_fails = 0;
+//volatile ot_int standby_fails = 0;
+//volatile ot_int standby_double_fails = 0;
+
+void spirit1_waitforabort() {
+/// Wait for the RX/TX indicator pin to go off.  
+/// @todo this may need to be state-based.  In other words, if ABORT is
+///       called during the CSMA mode, the pin may be different or it may
+///       not be included at all.
+    
+    ///@todo implement this using WFE instead of while loop
+    ot_uint watchdog = 100;
+    while ((RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN) && (--watchdog));
+    
+    if (watchdog == 0) {
+        //abort_fails++;
+        ///@todo failure code that logs hardware fault and resets OT
+        spirit1_shutdown(300);
+        dll_init();
+    }
 }
 
 
@@ -333,27 +405,31 @@ void spirit1_waitforready() {
     ot_uint watchdog = 500;
     while (((_READY_PORT->IDR & _READY_PIN) == 0) && (--watchdog));
 
-    ///@todo if watchdog is invoked very rarely (do a test), then 
-    ///      do a reset and log a HW fault instead of this retry.
     if (watchdog == 0){
-        //spirit1_strobe(RFSTROBE_SABORT);
-        //spirit1_strobe(RFSTROBE_READY);
+        //ready_fails++;
+        ///@todo failure code that logs hardware fault and resets OT
+        spirit1_shutdown(300);
+        dll_init();
     }
 }
 
-
 void spirit1_waitforstandby() {
-/// Wait for the Ready Pin to go low (reset pin is remapped in init).
-    
-    ///@todo implement this using WFE instead of while loop
+/// Wait for the Ready Pin to go low (reset pin is remapped in init). 
+///@todo implement this using WFE instead of while loop
     ot_uint watchdog = 10;
-    while (((_READY_PORT->IDR & _READY_PIN) != 0) && (--watchdog));
     
-    ///@todo if watchdog is invoked very rarely (do a test), then 
-    ///      do a reset and log a HW fault instead of this retry.
+    spirit1_waitforstandby_TOP:
+    while ((_READY_PORT->IDR & _READY_PIN) && (--watchdog));
+    
+    // Critical Failure
+    ///@todo failure code that logs hardware fault and resets OT
     if (watchdog == 0) {
-        //spirit1_strobe(RFSTROBE_SABORT);
-        //spirit1_strobe(RFSTROBE_READY);
+        //standby_fails++;
+        //if (sub_failsafe_standby() != 0) {
+            //standby_double_fails++;
+            spirit1_shutdown(300);
+            dll_init();
+        //}
     }
 }
 
@@ -718,18 +794,11 @@ ot_bool spirit1_check_cspin(void) {
 ot_u32 macstamp;
 
 
-void platform_isr_rtcwakeup() {
-// Decrement dll counter... that's it
-//    dll.counter--;
-}
-
 void spirit1_start_counter() {
-    //RTC->CR |= RTC_CR_WUTE;
     macstamp = platform_get_interval(NULL);
 }
 
 void spirit1_stop_counter() {
-    //RTC->CR &= ~RTC_CR_WUTE;
 }
 
 ot_u16 spirit1_get_counter() {

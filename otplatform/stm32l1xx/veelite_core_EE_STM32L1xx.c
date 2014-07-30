@@ -163,6 +163,7 @@ ot_u8 vworm_format( ) {
 ot_u8 vworm_init( ) {
     // Minimal initialization needed for EEPROM
     DATA_EEPROM_Unlock();
+    FLASH->SR = 0xF00;
     return 0;
 }
 #endif
@@ -233,52 +234,45 @@ ot_u8 vworm_mark(vaddr addr, ot_u16 value) {
 #ifndef EXTF_vworm_mark_physical
 ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
-    FLASH_Status status = FLASH_COMPLETE;
+    FLASH_Status status; // = FLASH_COMPLETE;
 
     BUSERROR_CHECK( (((ot_u32)addr < VWORM_BASE_PHYSICAL) || \
                     ((ot_u32)addr >= (VWORM_BASE_PHYSICAL+VWORM_ALLOC))), 7, "VLC_237");    //__LINE__
 
     
-    // Wait for last operation to be completed, then clear FTDW bit
-    status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-    if (status == FLASH_COMPLETE) {
-        FLASH->PECR &= (uint32_t)(~((uint32_t)FLASH_PECR_FTDW));
-    }
+    // Wait for last operation to be completed (if any),
+    // then 
+    //status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
+    //if (status == FLASH_COMPLETE) {
+        // STM32L EEPROM driver is a bit odd.  The Medium Density parts
+        // cannot write 0 without doing an aligned whole-word write.
+#       if !defined(STM32L1XX_HD) && !defined(STM32L1XX_MDP)
+        if (value != 0) {
+            *(__IO uint16_t*)addr = value;
+        }
+        else { 
+            ot_u32 offset, w_addr, w_value;
+            offset      = (ot_u32)addr & 2;
+            w_addr      = (ot_u32)addr - offset;
+            w_value     = *(ot_u32*)w_addr;
+            offset    <<= 3;
+            w_value    &= 0xFFFF0000 >> offset;
+        
+            *(__IO uint32_t*)w_addr = w_value;
+        }
 
-#   if !defined (STM32L1XX_HD) && !defined (STM32L1XX_MDP)
-    // If the previous operation is completed, proceed to write the new data 
-    // Wait for last operation to be completed 
-//    if(value != (uint16_t)0x0000) {
+#       else
         *(__IO uint16_t*)addr = value;
+#       endif
+
+        // If the previous operation is completed, proceed to write the new data 
+        // Wait for last operation to be completed 
         status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-//    }
-//    else {
-      //if((Address & 0x3) != 0x3){  // Should always be 0 or 2 for VWORM
-//            ot_u32 tmp;
-//            ot_u32 tmpaddr;
-//            tmpmask = (Address & 3);
-//            Address&= ~(ot_u32)3;
-//            tmp     = *(__IO uint32_t*)Address;
-//            tmpaddr = 0xFFFF << ((Address & 0x3)<<3);
-//            tmp    &= ~tmpaddr;        
-//            status  = DATA_EEPROM_EraseWord(Address);
-//            status  = DATA_EEPROM_FastProgramWord((Address), tmp);
+        
     //}
-    //else
-    //{
-      //DATA_EEPROM_FastProgramByte(Address, 0x00);
-      //DATA_EEPROM_FastProgramByte(Address + 1, 0x00);
-    //}
-    //    }
-#   elif defined (STM32L1XX_HD) || defined (STM32L1XX_MDP)
-        // If the previous operation is completed, proceed to write the new data
-        // Wait for last operation to be completed
-        *(__IO uint16_t*)addr = value;
-        status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-#   endif
     
-
     return (ot_u8)status;
+    
 #else
     return 0;
 #endif

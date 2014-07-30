@@ -33,8 +33,8 @@
 
 // Well tested Ultra-low-rate modulations
 //#define _10kHz_MSK
-#define _11k1Hz_MSK
-//#define _13k24Hz_MSK        // (13560 / 1024) kHz
+//#define _11k1Hz_MSK
+#define _13k24Hz_MSK        // (13560 / 1024) kHz
 
 // Out-of-favor low/mid modulations
 //#define _20kHz_MSK
@@ -42,7 +42,7 @@
 
 // Mid rate modulations
 //#define _52k97Hz_MSK        // (13560 / 256) kHz
-//#define _52k97Hz_FSK10        // (13560 / 256) kHz ***
+#define _52k97Hz_FSK10        // (13560 / 256) kHz ***
 //#define _52k97Hz_FSK18
 //#define _52k97Hz_FSK20
 //#define _52k97Hz_FSK24
@@ -51,7 +51,7 @@
 //#define _70k63Hz_MSK        // (13560 / 192) KHz
 
 // Upper rate Modulations
-//#define _105k94Hz_MSK       // (13560 / 128) kHz
+#define _105k94Hz_MSK       // (13560 / 128) kHz
 //#define _211k88Hz_MSK       // (13560 / 64) kHz
 
 
@@ -77,101 +77,99 @@
 // Special Data Rate Settings
 
 #ifdef _105k94Hz_MSK
-#   define _DR_M_SS_24MHz       33          // 105834.96
-#   define _DR_E_SS_24MHz       12
-#   define _MODULATION          _MOD_TYPE_MSK
-#   define _CHFLT_M_SS_24MHz    (7<<4)      //270 kHz
-#   define _CHFLT_E_SS_24MHz    (1<<0)
+#   define _DR_M_HS_24MHz       33          // 105834.96
+#   define _DR_E_HS_24MHz       12
+#   define _MODULATION_HS       _MOD_TYPE_MSK
+#   define _CHFLT_M_HS_24MHz    (7<<4)      //270 kHz
+#   define _CHFLT_E_HS_24MHz    (1<<0)
 #endif
 
 #ifdef _70k63Hz_MSK
-#   define _DR_M_SS_24MHz       130         // 70680.96
-#   define _DR_E_SS_24MHz       11
-#   define _MODULATION          _MOD_TYPE_MSK
-#   define _CHFLT_M_SS_24MHz    (2<<4)      // 200 kHz  
-#   define _CHFLT_E_SS_24MHz    (2<<0)
+#   define _DR_M_LS_24MHz       130         // 70680.96
+#   define _DR_E_LS_24MHz       11
+#   define _MODULATION_LS       _MOD_TYPE_MSK
+#   define _CHFLT_M_LS_24MHz    (2<<4)      // 200 kHz  
+#   define _CHFLT_E_LS_24MHz    (2<<0)
 #endif
 
 #ifdef _52k97Hz_MSK
-#   define _DR_M_SS_24MHz       33          // 52917.48
-#   define _DR_E_SS_24MHz       11
-#   define _MODULATION          _MOD_TYPE_MSK
-#   define _CHFLT_M_SS_24MHz    (4<<4)      //166 kHz
-#   define _CHFLT_E_SS_24MHz    (2<<0)
+#   define _DR_M_LS_24MHz       33          // 52917.48
+#   define _DR_E_LS_24MHz       11
+#   define _MODULATION_LS       _MOD_TYPE_MSK
+#   define _CHFLT_M_LS_24MHz    (4<<4)      //166 kHz
+#   define _CHFLT_E_LS_24MHz    (2<<0)
 
-#   define _FDEV_E_SS_48MHz     (4<<4)      //20 kHz (token)
-#   define _FDEV_M_SS_48MHz     6
+#   define _FDEV_E_LS_48MHz     (4<<4)      //20 kHz (token)
+#   define _FDEV_M_LS_48MHz     6
 #endif
 
 #ifdef _52k97Hz_FSK10
-#   define _DR_M_SS_24MHz       33          // 52917.48
-#   define _DR_E_SS_24MHz       11
-#   define _MODULATION          _MOD_TYPE_2FSK
-#   define _CHFLT_M_SS_24MHz    (7<<4)      //7=136, 6=150, 5=157, 4=166
-#   define _CHFLT_E_SS_24MHz    (2<<0)
-#   define _FDEV_E_SS_48MHz     (5<<4)      // 26.367 kHz (roughly 26.484)
-#   define _FDEV_M_SS_48MHz     1           // (can also try 2)
-#   define _FDEV_E_SS_50MHz     (5<<4)
-#   define _FDEV_M_SS_50MHz     1
+#   define _DR_M_LS_24MHz       33          // 52917.48
+#   define _DR_E_LS_24MHz       11
+#   define _MODULATION_LS       _MOD_TYPE_2FSK  //(_BT_SEL_1  | _MOD_TYPE_GFSK)
+#   define _CHFLT_M_LS_24MHz    (7<<4)      //7=136, 6=150, 5=157, 4=166
+#   define _CHFLT_E_LS_24MHz    (2<<0)
+#   define _FDEV_E_LS_48MHz     (5<<4)      // 26.367 kHz (roughly 26.484)
+#   define _FDEV_M_LS_48MHz     1           // (can also try 2)
+#   define _FDEV_E_LS_50MHz     (5<<4)
+#   define _FDEV_M_LS_50MHz     1
 #endif
 
 #ifdef _52k97Hz_FSK18
-#   define _DR_M_SS_24MHz       33          // 52917.48
-#   define _DR_E_SS_24MHz       11
+#   define _DR_M_LS_24MHz       33          // 52917.48
+#   define _DR_E_LS_24MHz       11
 #   define _MODULATION          _MOD_TYPE_2FSK
-#   define _CHFLT_M_SS_24MHz    (0<<4)      // 4=166, 3=175, 2=185, 1=196, 0=207
-#   define _CHFLT_E_SS_24MHz    (2<<0)
-#   define _FDEV_E_SS_48MHz     (6<<4)      // 46.875 kHz (roughly 47.672)
-#   define _FDEV_M_SS_48MHz     0 
-#   define _FDEV_E_SS_50MHz     (6<<4)
-#   define _FDEV_M_SS_50MHz     0
+#   define _CHFLT_M_LS_24MHz    (0<<4)      // 4=166, 3=175, 2=185, 1=196, 0=207
+#   define _CHFLT_E_LS_24MHz    (2<<0)
+#   define _FDEV_E_LS_48MHz     (6<<4)      // 46.875 kHz (roughly 47.672)
+#   define _FDEV_M_LS_48MHz     0 
+#   define _FDEV_E_LS_50MHz     (6<<4)
+#   define _FDEV_M_LS_50MHz     0
 #endif
 
 #ifdef _52k97Hz_FSK20
-#   define _DR_M_SS_24MHz       33          // 52917.48
-#   define _DR_E_SS_24MHz       11
-#   define _MODULATION          _MOD_TYPE_2FSK
-#   define _CHFLT_M_SS_24MHz    (0<<4)      // 4=166, 3=175, 2=185, 1=196, 0=207
-#   define _CHFLT_E_SS_24MHz    (2<<0)
-#   define _FDEV_E_SS_48MHz     (6<<4)      // 52.734 kHz (roughly 52.97)
-#   define _FDEV_M_SS_48MHz     3
-#   define _FDEV_E_SS_50MHz     (6<<4)
-#   define _FDEV_M_SS_50MHz     2
+#   define _DR_M_LS_24MHz       33          // 52917.48
+#   define _DR_E_LS_24MHz       11
+#   define _MODULATION_LS       _MOD_TYPE_2FSK
+#   define _CHFLT_M_LS_24MHz    (0<<4)      // 4=166, 3=175, 2=185, 1=196, 0=207
+#   define _CHFLT_E_LS_24MHz    (2<<0)
+#   define _FDEV_E_LS_48MHz     (6<<4)      // 52.734 kHz (roughly 52.97)
+#   define _FDEV_M_LS_48MHz     3
+#   define _FDEV_E_LS_50MHz     (6<<4)
+#   define _FDEV_M_LS_50MHz     2
 #endif
 
 #ifdef _52k97Hz_FSK24
-#   define _DR_M_SS_24MHz       33          // 52917.48
-#   define _DR_E_SS_24MHz       11
-#   define _MODULATION          _MOD_TYPE_2FSK
-#   define _CHFLT_M_SS_24MHz    (0<<4)      // 4=166, 3=175, 2=185, 1=196, 0=207
-#   define _CHFLT_E_SS_24MHz    (2<<0)
-#   define _FDEV_E_SS_48MHz     (6<<4)      // 64.453 kHz (roughly 63.563 kHz)
-#   define _FDEV_M_SS_48MHz     1
-#   define _FDEV_E_SS_50MHz     (6<<4)
-#   define _FDEV_M_SS_50MHz     1
+#   define _DR_M_LS_24MHz       33          // 52917.48
+#   define _DR_E_LS_24MHz       11
+#   define _MODULATION_LS       _MOD_TYPE_2FSK
+#   define _CHFLT_M_LS_24MHz    (0<<4)      // 4=166, 3=175, 2=185, 1=196, 0=207
+#   define _CHFLT_E_LS_24MHz    (2<<0)
+#   define _FDEV_E_LS_48MHz     (6<<4)      // 64.453 kHz (roughly 63.563 kHz)
+#   define _FDEV_M_LS_48MHz     1
+#   define _FDEV_E_LS_50MHz     (6<<4)
+#   define _FDEV_M_LS_50MHz     1
 #endif
 
 #ifdef _52k97Hz_FSK30
-#   define _DR_M_SS_24MHz       33          // 52917.48
-#   define _DR_E_SS_24MHz       11
-#   define _MODULATION          _MOD_TYPE_2FSK
-#   define _CHFLT_M_SS_24MHz    (8<<4)      // 8=250, 7=272, 6=300, 5=315
-#   define _CHFLT_E_SS_24MHz    (1<<0)
-#   define _FDEV_E_SS_48MHz     (6<<4)      // 76.172 kHz (roughly 79.45)
-#   define _FDEV_M_SS_48MHz     5
-#   define _FDEV_E_SS_50MHz     (6<<4)
-#   define _FDEV_M_SS_50MHz     5
+#   define _DR_M_LS_24MHz       33          // 52917.48
+#   define _DR_E_LS_24MHz       11
+#   define _MODULATION_LS       _MOD_TYPE_2FSK
+#   define _CHFLT_M_LS_24MHz    (8<<4)      // 8=250, 7=272, 6=300, 5=315
+#   define _CHFLT_E_LS_24MHz    (1<<0)
+#   define _FDEV_E_LS_48MHz     (6<<4)      // 76.172 kHz (roughly 79.45)
+#   define _FDEV_M_LS_48MHz     5
+#   define _FDEV_E_LS_50MHz     (6<<4)
+#   define _FDEV_M_LS_50MHz     5
 #endif
 
 
-// 35312.5 Hz (13.56 / 192)
-//#define _DR_M_SS_24MHz      130      // 35340.48
-//#define _DR_E_SS_24MHz      10
+
 
 #ifdef _26k48Hz_MSK
 #   define _DR_M_SS_24MHz       33          // 26458.74
 #   define _DR_E_SS_24MHz       10
-#   define _MODULATION          _MOD_TYPE_MSK
+#   define _MODULATION_SS       _MOD_TYPE_MSK
 #   define _CHFLT_M_SS_24MHz    (5<<4)      // 79 kHz
 #   define _CHFLT_E_SS_24MHz    (3<<0)   
 #endif
@@ -183,7 +181,7 @@
 #ifdef _20kHz_MSK
 #   define _DR_M_SS_24MHz       181         
 #   define _DR_E_SS_24MHz       9
-#   define _MODULATION          _MOD_TYPE_MSK
+#   define _MODULATION_SS       _MOD_TYPE_MSK
 #   define _CHFLT_M_SS_24MHz    (8<<4)      // 62 kHz
 #   define _CHFLT_E_SS_24MHz    (3<<0)
 #   define _CHFLT_M_SS_25MHz    (8<<4)
@@ -192,21 +190,22 @@
 
 // (13.56 / 1024)
 #ifdef _13k24Hz_MSK
-#   define _DR_M_SS_24MHz       33          // 13229.37
+#   define _DR_M_SS_24MHz       32  //33          // 13229.37 (13183.6 works more closely for MSK)
 #   define _DR_E_SS_24MHz       9
-#   define _MODULATION          _MOD_TYPE_MSK
+#   define _MODULATION_SS       _MOD_TYPE_MSK
 #   define _CHFLT_M_SS_24MHz    (1<<4)      // 49 kHz
 #   define _CHFLT_E_SS_24MHz    (4<<0)
+#   define _FDEV_E_SS_48MHz     (4<<4)      //20kHz (token)
+#   define _FDEV_M_SS_48MHz     6
 #endif
 
 // 11.11 kbps
 #ifdef _11k1Hz_MSK
 #   define _DR_M_SS_24MHz       230         // 11123.66
 #   define _DR_E_SS_24MHz       8
-#   define _MODULATION          _MOD_TYPE_MSK
+#   define _MODULATION_SS       _MOD_TYPE_MSK
 #   define _CHFLT_M_SS_24MHz    (2<<4)      // 
 #   define _CHFLT_E_SS_24MHz    (4<<0)
-
 #   define _FDEV_E_SS_48MHz     (4<<4)      //20kHz (token)
 #   define _FDEV_M_SS_48MHz     6
 #endif
@@ -217,7 +216,7 @@
 #   define _DR_E_SS_24MHz       8
 #   define _DR_M_SS_25MHz       163         
 #   define _DR_E_SS_25MHz       8
-#   define _MODULATION          _MOD_TYPE_MSK
+#   define _MODULATION_SS       _MOD_TYPE_MSK
 #   define _CHFLT_M_SS_24MHz    (8<<4)      // 37 kHz
 #   define _CHFLT_E_SS_24MHz    (4<<0)
 #   define _CHFLT_M_SS_25MHz    (8<<4)      // 38 kHz
@@ -228,29 +227,46 @@
 
 
 
-
-
-
-
-
-
 // Custom Modulation & Data Rate Type Settings
-#undef DRF_MOD1_LS
-#if defined(_24MHz) || defined(_48MHz)
-#   define DRF_MOD1_LS     _DR_M_SS_24MHz
-#elif defined(_25MHz) || defined(_50MHz)
-#   define DRF_MOD1_LS     _DR_M_SS_25MHz
+
+
+#ifdef _DR_M_HS_24MHz
+#   undef   DRF_CHFLT_HS
+#   undef   DRF_MOD1_HS
+#   undef   DRF_MOD0_HS
+#   undef   DRF_FDEV0
+#   define  DRF_MOD1_HS     _DR_M_HS_24MHz
+#   define  DRF_MOD0_HS     (_MODULATION_HS | _DR_E_HS_24MHz)
+#   define  DRF_FDEV0       (_FDEV_E_HS_48MHz | 0 | _FDEV_M_HS_48MHz)   // _CLOCK_REC_ALGO_SEL     //PLL
+#   define  DRF_CHFLT_HS    (_CHFLT_M_HS_24MHz | _CHFLT_E_HS_24MHz)
 #endif
+
+#ifdef _DR_M_LS_24MHz
+#   undef   DRF_CHFLT_LS
+#   undef   DRF_MOD1_LS
+#   undef   DRF_MOD0_LS
+#   undef   DRF_FDEV0
+#   define  DRF_MOD1_LS     _DR_M_LS_24MHz
+#   define  DRF_MOD0_LS     (_MODULATION_LS | _DR_E_LS_24MHz)
+#   define  DRF_FDEV0       (_FDEV_E_LS_48MHz | 0 | _FDEV_M_LS_48MHz)   // _CLOCK_REC_ALGO_SEL     //PLL
+#   define  DRF_CHFLT_LS    (_CHFLT_M_LS_24MHz | _CHFLT_E_LS_24MHz)
+#endif
+
+#ifdef _DR_M_SS_24MHz
+#   undef   DRF_CHFLT_SS
+#   undef   DRF_MOD1_SS
+#   undef   DRF_MOD0_SS
+#   undef   DRF_FDEV0
+#   define  DRF_MOD1_SS     _DR_M_SS_24MHz
+#   define  DRF_MOD0_SS     (_MODULATION_SS | _DR_E_SS_24MHz)
+#   define  DRF_FDEV0       (_FDEV_E_SS_48MHz | 0 | _FDEV_M_SS_48MHz)   // _CLOCK_REC_ALGO_SEL     //PLL
+#   define  DRF_CHFLT_SS    (_CHFLT_M_SS_24MHz | _CHFLT_E_SS_24MHz)
+#endif
+
+
 
 #undef DRF_MOD1
 #define DRF_MOD1        DRF_MOD1_LS
-
-#undef DRF_MOD0_LS
-#if defined(_24MHz) || defined(_48MHz)
-#   define DRF_MOD0_LS     (/*_BT_SEL_1  |*/ _MODULATION | _DR_E_SS_24MHz)
-#elif defined(_25MHz) || defined(_50MHz)
-#   define DRF_MOD0_LS     (/*_BT_SEL_1  |*/ _MODULATION | _DR_E_SS_25MHz)
-#endif     
 
 #undef DRF_MOD0
 #define DRF_MOD0        DRF_MOD0_LS
@@ -282,18 +298,18 @@
 //#   define _FDEV_M_SS_48MHz     5           
 
 
-#define _CLKREC_METHOD      0                       //DLL (default)
+//#define _CLKREC_METHOD      0                       //DLL (default)
 //#define _CLKREC_METHOD      _CLOCK_REC_ALGO_SEL     //PLL
 
 
 
 
-#undef DRF_FDEV0
-#if defined(_48MHz)
-#   define DRF_FDEV0     (_FDEV_E_SS_48MHz | _CLKREC_METHOD | _FDEV_M_SS_48MHz)
-#elif defined(_50MHz)
-#   define DRF_FDEV0     (_FDEV_E_SS_50MHz | _CLKREC_METHOD | _FDEV_M_SS_50MHz)
-#endif 
+//#undef DRF_FDEV0
+//#if defined(_48MHz)
+//#   define DRF_FDEV0     (_FDEV_E_SS_48MHz | _CLKREC_METHOD | _FDEV_M_SS_48MHz)
+//#elif defined(_50MHz)
+//#   define DRF_FDEV0     (_FDEV_E_SS_50MHz | _CLKREC_METHOD | _FDEV_M_SS_50MHz)
+//#endif 
 
 
 // Clock Recovery Customizations
@@ -311,9 +327,10 @@
 // Using DLL clock recovery, higher P-Gain values allow better noise filtering,
 // but they also require longer preambles.
 
-// I've used __CLK_REC_P_GAIN(5) in the past... might have negligible improvement
+// I've used __CLK_REC_P_GAIN(5) in the past... might have small improvement
+// over __CLK_REC_P_GAIN(4), but merits further testing
 #undef DRF_CLOCKREC
-#define DRF_CLOCKREC            (__CLK_REC_P_GAIN(4) | _PSTFLT_LEN | __CLK_REC_I_GAIN(8))
+#define DRF_CLOCKREC            (__CLK_REC_P_GAIN(5) | _PSTFLT_LEN | __CLK_REC_I_GAIN(8))
 
 
 
@@ -330,8 +347,7 @@
 
 
 
-#undef DRF_CHFLT_LS
-#define DRF_CHFLT_LS    (_CHFLT_M_SS_24MHz | _CHFLT_E_SS_24MHz)
+
 
 
 
@@ -361,11 +377,11 @@
 
 #undef DRF_SYNC_BYTES
 #undef _SYNC_BYTES
-#define DRF_SYNC_BYTES      4
-#define _SYNC_BYTES         ((DRF_SYNC_BYTES-1) << 1)
+#define DRF_SYNC_BYTES          4
+#define _SYNC_BYTES             ((DRF_SYNC_BYTES-1) << 1)
 
 #undef DRF_PREAMBLE_BYTES
-#define DRF_PREAMBLE_BYTES  10
+#define DRF_PREAMBLE_BYTES      10
 
 #undef DRF_PCKTCTRL2_LSFG
 #undef DRF_PCKTCTRL2_LSBG

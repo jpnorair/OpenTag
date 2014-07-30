@@ -77,7 +77,11 @@
 #ifndef BOARD_PARAM_MPIPE_IFS
 #   define BOARD_PARAM_MPIPE_IFS 1
 #endif
-#if (defined(__STM32L__) && OT_FEATURE(MPIPE) && (BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_UART))
+
+#define MPIPEDRV_ENABLED        (BOARD_FEATURE(MPIPE))
+#define THIS_MPIPEDRV_SUPPORTED ((BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_UART))
+
+#if (defined(__STM32L__) && MPIPEDRV_ENABLED && THIS_MPIPEDRV_SUPPORTED)
 
 #include "buffers.h"
 #include "mpipe.h"
@@ -90,6 +94,10 @@
   * the MPIPE across different peripherals and with different options that are
   * made available at runtime.
   */
+#if ((BOARD_FEATURE(MPIPE) == ENABLED) && (OT_FEATURE(MPIPE) == DISABLED))
+#   warning "MPIPE is enabled in your board config but not your app config.  Usually this doesn't work."
+#endif
+  
 #if (BOARD_FEATURE(MPIPE_FLOWCTL) || BOARD_FEATURE(MPIPE_CS))
 #   error "This driver does not support CTS/RTS or DTR"
 #endif

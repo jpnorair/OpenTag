@@ -540,24 +540,22 @@ FLASH_Status DATA_EEPROM_EraseByte(uint32_t Address)
   * @retval FLASH Status: The returned value can be: 
   *   FLASH_ERROR_PROGRAM, FLASH_ERROR_WRP, FLASH_COMPLETE or FLASH_TIMEOUT.
   */
-FLASH_Status DATA_EEPROM_EraseHalfWord(uint32_t Address)
-{
-  FLASH_Status status = FLASH_COMPLETE;
+FLASH_Status DATA_EEPROM_EraseHalfWord(uint32_t Address) {
+    FLASH_Status status = FLASH_COMPLETE;
   
-  /* Check the parameters */
-  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
+    /* Check the parameters */
+    //assert_param(IS_FLASH_DATA_ADDRESS(Address));
   
-  /* Wait for last operation to be completed */
-  status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
+    /* Wait for last operation to be completed */
+    status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
   
-  if(status == FLASH_COMPLETE)
-  {
-    /* Write "0000h" to valid address in the data memory" */
-    *(__IO uint16_t *) Address = (uint16_t)0x0000;
-  }
+    if(status == FLASH_COMPLETE) {
+        /* Write "0000h" to valid address in the data memory" */
+        *(__IO uint16_t *) Address = (uint16_t)0x0000;
+    }
    
-  /* Return the erase status */
-  return status;
+    /* Return the erase status */
+    return status;
 }
 
 /**
@@ -667,60 +665,58 @@ FLASH_Status DATA_EEPROM_FastProgramByte(uint32_t Address, uint8_t Data)
   * @retval FLASH Status: The returned value can be: 
   *         FLASH_ERROR_PROGRAM, FLASH_ERROR_WRP, FLASH_COMPLETE or  FLASH_TIMEOUT. 
   */
-FLASH_Status DATA_EEPROM_FastProgramHalfWord(uint32_t Address, uint16_t Data)
-{
-  FLASH_Status status = FLASH_COMPLETE;
-#if !defined (STM32L1XX_HD) && !defined (STM32L1XX_MDP)
-  uint32_t tmp = 0, tmpaddr = 0;
-#endif
+FLASH_Status DATA_EEPROM_FastProgramHalfWord(uint32_t Address, uint16_t Data) {
+    FLASH_Status status = FLASH_COMPLETE;
+#   if !defined (STM32L1XX_HD) && !defined (STM32L1XX_MDP)
+        uint32_t tmp = 0, tmpaddr = 0;
+#   endif
   
-  /* Check the parameters */
-  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
+    /* Check the parameters */
+    //assert_param(IS_FLASH_DATA_ADDRESS(Address));
 
-  /* Wait for last operation to be completed */
-  status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-    
-  if(status == FLASH_COMPLETE)
-  {
-    /* Clear the FTDW bit */
-    FLASH->PECR &= (uint32_t)(~((uint32_t)FLASH_PECR_FTDW));
-
-#if !defined (STM32L1XX_HD) && !defined (STM32L1XX_MDP)
-    if(Data != (uint16_t)0x0000) 
-    {
-      /* If the previous operation is completed, proceed to write the new data */
-      *(__IO uint16_t *)Address = Data;
-  
-      /* Wait for last operation to be completed */
-      status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-    }
-    else
-    {
-      if((Address & 0x3) != 0x3)
-      {
-        tmpaddr = Address & 0xFFFFFFFC;
-        tmp = * (__IO uint32_t *) tmpaddr;
-        tmpaddr = 0xFFFF << ((uint32_t) (0x8 * (Address & 0x3)));
-        tmp &= ~tmpaddr;        
-        status = DATA_EEPROM_EraseWord(Address & 0xFFFFFFFC);
-        status = DATA_EEPROM_FastProgramWord((Address & 0xFFFFFFFC), tmp);
-      }
-      else
-      {
-        DATA_EEPROM_FastProgramByte(Address, 0x00);
-        DATA_EEPROM_FastProgramByte(Address + 1, 0x00);
-      }
-    }
-#elif defined (STM32L1XX_HD) || defined (STM32L1XX_MDP)
-    /* If the previous operation is completed, proceed to write the new data */
-    *(__IO uint16_t *)Address = Data;
-  
     /* Wait for last operation to be completed */
     status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-#endif
-  }
-  /* Return the Write Status */
-  return status;
+    
+    if (status == FLASH_COMPLETE) {
+        /* Clear the FTDW bit */
+        FLASH->PECR &= (uint32_t)(~((uint32_t)FLASH_PECR_FTDW));
+
+#       if !defined (STM32L1XX_HD) && !defined (STM32L1XX_MDP)
+        if (Data != (uint16_t)0x0000) {
+            /* If the previous operation is completed, proceed to write the new data */
+            *(__IO uint16_t *)Address = Data;
+  
+            /* Wait for last operation to be completed */
+            status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
+        }
+        else {
+            if((Address & 0x3) != 0x3) {
+                tmpaddr = Address & 0xFFFFFFFC;
+                tmp = * (__IO uint32_t *) tmpaddr;
+                tmpaddr = 0xFFFF << ((uint32_t) (0x8 * (Address & 0x3)));
+                tmp &= ~tmpaddr;        
+                status = DATA_EEPROM_EraseWord(Address & 0xFFFFFFFC);
+                status = DATA_EEPROM_FastProgramWord((Address & 0xFFFFFFFC), tmp);
+            }
+            else {
+                DATA_EEPROM_FastProgramByte(Address, 0x00);
+                DATA_EEPROM_FastProgramByte(Address + 1, 0x00);
+            }
+        }
+        
+#       elif defined (STM32L1XX_HD) || defined (STM32L1XX_MDP)
+        /* If the previous operation is completed, proceed to write the new data */
+        *(__IO uint16_t *)Address = Data;
+  
+        /* Wait for last operation to be completed */
+        status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
+        
+#       endif
+
+    }
+    
+    /* Return the Write Status */
+    return status;
 }
 
 /**
@@ -833,55 +829,52 @@ FLASH_Status DATA_EEPROM_ProgramByte(uint32_t Address, uint8_t Data)
   * @retval FLASH Status: The returned value can be:
   *   FLASH_ERROR_PROGRAM, FLASH_ERROR_WRP, FLASH_COMPLETE or FLASH_TIMEOUT. 
   */
-FLASH_Status DATA_EEPROM_ProgramHalfWord(uint32_t Address, uint16_t Data)
-{
-  FLASH_Status status = FLASH_COMPLETE;
-#if !defined (STM32L1XX_HD) && !defined (STM32L1XX_MDP)
-  uint32_t tmp = 0, tmpaddr = 0;
-#endif
+FLASH_Status DATA_EEPROM_ProgramHalfWord(uint32_t Address, uint16_t Data) {
+    FLASH_Status status = FLASH_COMPLETE;
+#   if !defined (STM32L1XX_HD) && !defined (STM32L1XX_MDP)
+    uint32_t tmp = 0, tmpaddr = 0;
+#   endif
   
-  /* Check the parameters */
-  //assert_param(IS_FLASH_DATA_ADDRESS(Address));
+    /* Check the parameters */
+    //assert_param(IS_FLASH_DATA_ADDRESS(Address));
 
-  /* Wait for last operation to be completed */
-  status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-  
-  if(status == FLASH_COMPLETE)
-  {
-#if !defined (STM32L1XX_HD) && !defined (STM32L1XX_MDP)
-    if(Data != (uint16_t)0x0000)
-    {
-      *(__IO uint16_t *)Address = Data;
-   
-      /* Wait for last operation to be completed */
-      status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-    }
-    else
-    {
-      if((Address & 0x3) != 0x3)
-      {
-        tmpaddr = Address & 0xFFFFFFFC;
-        tmp = * (__IO uint32_t *) tmpaddr;
-        tmpaddr = 0xFFFF << ((uint32_t) (0x8 * (Address & 0x3)));
-        tmp &= ~tmpaddr;          
-        status = DATA_EEPROM_EraseWord(Address & 0xFFFFFFFC);
-        status = DATA_EEPROM_FastProgramWord((Address & 0xFFFFFFFC), tmp);
-      }
-      else
-      {
-        DATA_EEPROM_FastProgramByte(Address, 0x00);
-        DATA_EEPROM_FastProgramByte(Address + 1, 0x00);
-      }
-    }
-#elif defined (STM32L1XX_HD) || defined (STM32L1XX_MDP)
-    *(__IO uint16_t *)Address = Data;
-   
     /* Wait for last operation to be completed */
     status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-#endif
-  }
-  /* Return the Write Status */
-  return status;
+  
+    if (status == FLASH_COMPLETE) {
+#       if !defined (STM32L1XX_HD) && !defined (STM32L1XX_MDP)
+        if (Data != (uint16_t)0x0000) {
+            *(__IO uint16_t *)Address = Data;
+   
+            /* Wait for last operation to be completed */
+            status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
+        }
+        else {
+            if ((Address & 0x3) != 0x3) {
+                tmpaddr = Address & 0xFFFFFFFC;
+                tmp     = * (__IO uint32_t *) tmpaddr;
+                tmpaddr = 0xFFFF << ((uint32_t) (0x8 * (Address & 0x3)));
+                tmp    &= ~tmpaddr;          
+                status  = DATA_EEPROM_EraseWord(Address & 0xFFFFFFFC);
+                status  = DATA_EEPROM_FastProgramWord((Address & 0xFFFFFFFC), tmp);
+            }
+            else {
+                DATA_EEPROM_FastProgramByte(Address, 0x00);
+                DATA_EEPROM_FastProgramByte(Address + 1, 0x00);
+            }
+        }
+        
+#       elif defined (STM32L1XX_HD) || defined (STM32L1XX_MDP)
+        *(__IO uint16_t *)Address = Data;
+   
+        /* Wait for last operation to be completed */
+        status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
+        
+#       endif
+    }
+    
+    /* Return the Write Status */
+    return status;
 }
 
 /**
@@ -1574,34 +1567,43 @@ void FLASH_ClearFlag(uint32_t FLASH_FLAG)
   * @retval FLASH Status: The returned value can be: 
   *   FLASH_BUSY, FLASH_ERROR_PROGRAM, FLASH_ERROR_WRP or FLASH_COMPLETE.
   */
-FLASH_Status FLASH_GetStatus(void)
-{
-  FLASH_Status FLASHstatus = FLASH_COMPLETE;
+/*
+FLASH_Status FLASH_GetStatus(void) {
+    FLASH_Status FLASHstatus = FLASH_COMPLETE;
   
-  if((FLASH->SR & FLASH_FLAG_BSY) == FLASH_FLAG_BSY) 
-  {
-    FLASHstatus = FLASH_BUSY;
-  }
-  else 
-  {  
-    if((FLASH->SR & (uint32_t)FLASH_FLAG_WRPERR)!= (uint32_t)0x00)
-    { 
-      FLASHstatus = FLASH_ERROR_WRP;
+    if ((FLASH->SR & FLASH_FLAG_BSY) == FLASH_FLAG_BSY) {
+        FLASHstatus = FLASH_BUSY;
     }
-    else 
-    {
-      if((FLASH->SR & (uint32_t)0x1E00) != (uint32_t)0x00)
-      {
-        FLASHstatus = FLASH_ERROR_PROGRAM; 
-      }
-      else
-      {
-        FLASHstatus = FLASH_COMPLETE;
-      }
+    else {  
+        if((FLASH->SR & (uint32_t)FLASH_FLAG_WRPERR) != (uint32_t)0x00) { 
+            FLASHstatus = FLASH_ERROR_WRP;
+        }
+        else {
+            if ((FLASH->SR & (uint32_t)0x1E00) != (uint32_t)0x00) {
+                FLASHstatus = FLASH_ERROR_PROGRAM; 
+            }
+            else {
+                FLASHstatus = FLASH_COMPLETE;
+            }
+        }
     }
-  }
-  /* Return the FLASH Status */
-  return FLASHstatus;
+    
+    // Return the FLASH Status
+    return FLASHstatus;
+}
+*/
+
+// JP's faster/lighter/better version of above
+// could be potentially made even better with aritmetic transform or LUT.
+FLASH_Status FLASH_GetStatus(void) {
+    uint32_t  flash_sr;
+    flash_sr = FLASH->SR;
+    
+    if ((flash_sr & 0xF01) == 0)        return FLASH_COMPLETE;
+    if (flash_sr & FLASH_FLAG_BSY)      return FLASH_BUSY;
+    if (flash_sr & FLASH_FLAG_WRPERR)   return FLASH_ERROR_WRP;
+    
+    return FLASH_ERROR_PROGRAM;
 }
 
 
@@ -1611,27 +1613,44 @@ FLASH_Status FLASH_GetStatus(void)
   * @retval FLASH Status: The returned value can be: FLASH_BUSY, 
   *   FLASH_ERROR_PROGRAM, FLASH_ERROR_WRP, FLASH_COMPLETE or FLASH_TIMEOUT.
   */
-FLASH_Status FLASH_WaitForLastOperation(uint32_t Timeout)
-{ 
-  __IO FLASH_Status status = FLASH_COMPLETE;
+/*
+FLASH_Status FLASH_WaitForLastOperation(uint32_t Timeout) { 
+    __IO FLASH_Status status = FLASH_COMPLETE;
    
-  /* Check for the FLASH Status */
-  status = FLASH_GetStatus();
-  
-  /* Wait for a FLASH operation to complete or a TIMEOUT to occur */
-  while((status == FLASH_BUSY) && (Timeout != 0x00))
-  {
+    // Check for the FLASH Status 
     status = FLASH_GetStatus();
-    Timeout--;
-  }
   
-  if(Timeout == 0x00 )
-  {
-    status = FLASH_TIMEOUT;
-  }
-  /* Return the operation status */
-  return status;
+    // Wait for a FLASH operation to complete or a TIMEOUT to occur 
+    while((status == FLASH_BUSY) && (Timeout != 0x00)) {
+        status = FLASH_GetStatus();
+        Timeout--;
+    }
+  
+    if(Timeout == 0x00 ) {
+        status = FLASH_TIMEOUT;
+    }
+    
+    // Return the operation status 
+    return status;
 }
+*/
+
+// JP's lighter version of above
+FLASH_Status FLASH_WaitForLastOperation(uint32_t Timeout) { 
+    __IO FLASH_Status status; // = FLASH_COMPLETE;
+  
+    do {
+        if (Timeout-- == 0) {
+            return FLASH_TIMEOUT;
+        }
+        status = FLASH_GetStatus();
+    } while (status == FLASH_BUSY);
+    
+    return status;
+}
+
+
+
 
 /**
   * @}

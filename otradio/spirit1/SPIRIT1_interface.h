@@ -83,6 +83,25 @@ extern spirit1_struct spirit1;
 
 
 
+/** SET_LINE and CLR_LINE macros for some profiling tasks.  They have been used
+  * so far to save the line number of a call to spirit1_smart_standby().
+  */
+//#define _SPIRIT1_PROFILE
+  
+#if defined(_SPIRIT1_PROFILE)
+    extern ot_s16 set_line;
+    extern ot_s16 line_hits[256];
+    extern ot_u16 count_hits;
+    
+#   define __SET_LINE(NUMBER)   (set_line = NUMBER)
+#   define __CLR_LINE(NUMBER)   (set_line = -1)
+#else
+#   define __SET_LINE(NUMBER);
+#   define __CLR_LINE(NUMBER);  
+#endif
+
+
+
 
 
 /** Special things implemented in radio driver (radio_SPIRIT1.c)  <BR>
@@ -104,8 +123,8 @@ typedef enum {
 } MODE_enum;
 
 void spirit1drv_force_ready();
-void spirit1drv_smart_ready();
-void spirit1drv_smart_standby();
+void spirit1drv_smart_ready(void);
+void spirit1drv_smart_standby(void);
 void spirit1drv_unsync_isr();
 void spirit1drv_ccafail_isr();
 void spirit1drv_ccapass_isr();
@@ -169,7 +188,7 @@ ot_u16 spirit1_isready();
   */
 void spirit1_waitforready();
 void spirit1_waitforstandby();
-void spirit1_waitfor_inactive();
+void spirit1_waitforabort();
 
 
 

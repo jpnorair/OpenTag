@@ -316,8 +316,9 @@ extern m2dll_struct dll;
 #endif
 
 
-
-
+//For synchronization only
+//extern volatile ot_u32 sample_t0;
+//extern volatile ot_u32 sample_t1;
 
 
 

@@ -638,6 +638,31 @@ void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback);
 
 
 
+
+/** @brief  Perform a test of system in RX
+  * @param  channel     (ot_u8) channel
+  * @param  tsettings   (ot_u8) test settings (RFU)
+  * @param  timeout     (ot_u16) timeout for Test RX (not always available)
+  * @retval None
+  * @ingroup Radio
+  *
+  * Performs a test of the RX feature, mainly for the purpose of measuring
+  * system currents or simply getting RSSI data from the channel.  No data will
+  * be received.  
+  *
+  * The "tsettings" parameter is RFU.
+  * 
+  * If the "timeout" parameter is 0, the test-rx will go on forever, or until
+  * rm2_kill() is issued.  If the "timeout" parameter is non-zero, this 
+  * corresponds to some unit of time that the radio will operate in RX before
+  * shutting-down.  This unit is proprietary, but it should be 1/32768 seconds 
+  * if possible.
+  */
+void rm2_rxtest(ot_u8 channel, ot_u8 tsettings, ot_u16 timeout);
+
+
+
+
 /** @brief  Initializes TX engine for "foreground" packet transmission
   * @param  psettings   (ot_u8) Packet settings bits
   * @param  callback    (ot_sig2) callback for when TX is done, on error or complete
@@ -655,6 +680,30 @@ void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback);
   * - arg 2 is ignored
   */
 void rm2_txinit(ot_u8 psettings, ot_sig2 callback);
+
+
+
+/** @brief  Perform a test of the system in TX
+  * @param  channel     (ot_u8) channel
+  * @param  eirp        (ot_u8) test output power
+  * @param  tsettings   (ot_u8) test settings (0 or 1)
+  * @param  timeout     (ot_u16) timeout for Test TX (not always available)
+  * @retval None
+  * @ingroup Radio
+  *
+  * Performs a test of the RX feature, mainly for the purpose of measuring
+  * system currents or simply getting RSSI data from the channel.  No data will
+  * be received.  
+  *
+  * The "tsettings" parameter has two values: 0 or 1.  If 0, only the raw 
+  * carrier will be transmitted.  If 1, randomized data will be sent over the 
+  * channel.
+  *
+  * The "timeout" parameter is functionally identical to that used by 
+  * rm2_rxtest(), although the time units may differ.  Check the implementation.
+  */
+void rm2_txtest(ot_u8 channel, ot_u8 eirp, ot_u8 tsettings, ot_u16 timeout);
+
 
 
 

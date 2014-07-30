@@ -294,6 +294,11 @@ OT_WEAK ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
     // Strip the FEC & Spread bits
     spectrum_id = chan_id & 0x3F;
 
+    /// Populate the phymac flags: these are not frequently used
+    /// @todo I might want to do this in radio_init() instead
+    scratch.ushort  = vl_read(fp, 2);
+    phymac[0].flags = scratch.ubyte[UPPER];
+
     /// Look through the channel list to find the one with matching spectrum id.
     /// The channel list is not necessarily sorted.
     /// @todo might do this with vl_get() in the future

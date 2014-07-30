@@ -68,15 +68,17 @@
 
 /** @typedef ot_bool
   * Boolean, takes True or False
+  * NOTE: even if <stdbool.h> is available, sometimes the enumerated version
+  *       still results in more optimized code.  Experiment.
   */
 #ifdef __STDC_VERSION__
 #   if (__STDC_VERSION__ >= 199901L)
 #       define __HAS_C99
 #   endif
 #endif
-#ifdef __HAS_C99
+#if defined(__HAS_C99) || 1
 #   include <stdbool.h>
-#   define ot_bool  bool
+    typedef bool    ot_bool;
 #   define True     true
 #   define False    false
 #else

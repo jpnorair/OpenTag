@@ -700,6 +700,11 @@ void platform_poweron() {
     /// 8. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
     vworm_init();
+    
+    /// 9. This prevents the scheduler from getting called by a preemption
+    ///    event until it officially begins.  It allows some tasks to be
+    ///    used for special purposes at power-on (namely MPipe).
+    platform_ext.task_exit = (void*)__get_PSP();
 }
 #endif
 
@@ -762,7 +767,7 @@ void platform_init_OT() {
     ///
     /// @note the ID is inserted via Veelite, so it is abstracted from the 
     /// file memory configuration of your board and/or app. 
-#   if (defined(__DEBUG__) || defined(__PROTO__))
+#   if (1) || (defined(__DEBUG__) || defined(__PROTO__))
     {
         vlFILE* fpid;
         ot_u16* hwid;
@@ -770,9 +775,9 @@ void platform_init_OT() {
         
         fpid    = ISF_open_su(ISF_ID(device_features));
         hwid    = (ot_u16*)(0x1FF80050);
-        for (i=6; i!=0; i-=2) {
-            vl_write(fpid, i, *hwid++);
-        }
+        //for (i=6; i!=0; i-=2) {
+        //    vl_write(fpid, i, *hwid++);
+        //}
         vl_close(fpid);
     }
 #   else
@@ -780,11 +785,6 @@ void platform_init_OT() {
     ///      the default file location by the manufacturer firmware upload.
 
 #   endif
-
-    ///5. This prevents the scheduler from getting called by a preemption
-    ///   event until it officially begins.  It allows some tasks to be
-    ///   used for special purposes at power-on (namely MPipe).
-    platform_ext.task_exit = (void*)__get_PSP();
 }
 #endif
 
@@ -1212,7 +1212,10 @@ OT_INLINE void platform_ot_run() {
         platform_disable_interrupts();
         platform_enable_ktim();
         sys_powerdown();
-    }    
+    }
+    
+    /// Stop the interval timer, which is used as a kernel watchdog
+    platform_stop_itimer();
     
     /// 3. Save the current P-stack pointer (PSP), and push the return address 
     ///    onto this position.  If the task is killed during its runtime, this
@@ -1287,15 +1290,26 @@ void platform_init_interruptor() {
     NVIC_SetPriorityGrouping(_GROUP_PRIORITY);
     
     /// 3. Setup Cortex-M system interrupts 
-    ///    SysTick is not used by OpenTag, and it is a bit of a power hog, so
-    ///    it is advisable to never use it.
+    /// <LI> Fault IRQs (Mem management, bus-fault, usage-fault) can be enabled
+    ///         if you want more clarity of the fault than just Hard-Fault </LI>
+    /// <LI> SVC IRQ is for supervisor-call.  The kernel needs it. </LI>
+    /// <LI> Pend SV is for supervisor-call-pending.  The kernel needs it. </LI>
+    /// <LI> Debug-Monitor is not used </LI>
+    /// <LI> Systick is not used and it is inadvisable to use because it is a
+    ///         power hog and because it is mostly useless with OpenTag. </LI>
 //  SCB->SHP[((uint32_t)(MemoryManagement_IRQn)&0xF)-4] = (b0000 << 4);
 //  SCB->SHP[((uint32_t)(BusFault_IRQn)&0xF)-4]         = (b0000 << 4);
 //  SCB->SHP[((uint32_t)(UsageFault_IRQn)&0xF)-4]       = (b0000 << 4);
     SCB->SHP[((uint32_t)(SVC_IRQn)&0xF)-4]              = (b0000 << 4);
-//  SCB->SHP[((uint32_t)(DebugMonitor_IRQn)&0xF)-4]     = (b0000 << 4);
     SCB->SHP[((uint32_t)(PendSV_IRQn)&0xF)-4]           = (b1111 << 4);
-//  SCB->SHP[((uint32_t)(SysTick_IRQn)&0xF)-4]          = (_LOPRI_BASE << 4);  
+//  SCB->SHP[((uint32_t)(DebugMonitor_IRQn)&0xF)-4]     = (b0000 << 4);
+
+    // Systick needs SCB and NVIC to be enabled in order to run.
+#   if defined(YOU_ARE_AN_IDIOT)
+    SCB->SHP[((uint32_t)(SysTick_IRQn)&0xF)-4]  = (_LOPRI_BASE << 4);  
+    NVIC->IP[(uint32_t)(OT_SYSTICK_IRQn)]       = ((_KERNEL_GROUP+_OT_SUB2) << 4);
+    NVIC->ISER[((uint32_t)(OT_SYSTICK_IRQn)>>5)]= (1 << ((uint32_t)(OT_SYSTICK_IRQn) & 0x1F));
+#   endif
     
     /// 4. Setup NVIC for Kernel Interrupts.  Kernel interrupts cannot interrupt
     /// each other, but there are subpriorities.  I/O interrupts should be set 
@@ -1303,44 +1317,37 @@ void platform_init_interruptor() {
     ///    <LI> NMI will interrupt anything.  It is used for panics.    </LI>
     ///    <LI> SVC is priority 0-0.  It runs the scheduler. </LI>
     ///    <LI> GPTIM (via RTC ALARM) is priority 0-1.  It runs the tasker.  </LI>
-    ///    <LI> OT-Systick (via RTC WAKEUP) is priority 0-2. </LI>
-    
+    ///    <LI> RTC-Wakeup (used for software systick) is set to Low-Priority.
+    ///             Usually it is better to just make a task. </LI>
 #   ifndef __DEBUG__
-#   if (RF_FEATURE(TXTIMER) != ENABLED)
-#   define RTC_EXTI_MASK    ((1<<17) | (1<<20))
+#       define RTC_EXTI_MASK    ((1<<17) | (1<<20))
+#       define OT_GPTIM_IRQn    RTC_Alarm_IRQn
+#       define OT_SYSTICK_IRQn  RTC_WKUP_IRQn
+#       define _OT_SUB1         (b0001)
+#       define _OT_SUB2         ((_OT_SUB1+1)*(_SUB_LIMIT >= (_OT_SUB1+1)))  
+#       define _OT_SUB3         ((_OT_SUB2+1)*(_SUB_LIMIT >= (_OT_SUB2+1)))
+
+        // Setup Kernel Timer (General Purpose Timer) as kernel-priority,
+        // RTC-Wakeup timer as low-priority.
+        EXTI->PR                                    = RTC_EXTI_MASK;
+        EXTI->IMR                                  |= RTC_EXTI_MASK;
+        EXTI->RTSR                                 |= RTC_EXTI_MASK;
+        NVIC->IP[(uint32_t)(OT_GPTIM_IRQn)]         = ((_KERNEL_GROUP+_OT_SUB1) << 4);
+        NVIC->ISER[((uint32_t)(OT_GPTIM_IRQn)>>5)]  = (1 << ((uint32_t)(OT_GPTIM_IRQn) & 0x1F));
+        NVIC->IP[(uint32_t)(RTC_WKUP_IRQn)]         = ((_LOPRI_BASE) << 4);
+        NVIC->ISER[((uint32_t)(RTC_WKUP_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
+    
 #   else
-#   define RTC_EXTI_MASK    (1<<17)
+        //Setup RTC-Wakeup timer as low-priority.
+        EXTI->PR                                    = (1<<20);
+        EXTI->IMR                                  |= (1<<20);
+        EXTI->RTSR                                 |= (1<<20);
+        NVIC->IP[(uint32_t)(RTC_WKUP_IRQn)]         = ((_LOPRI_BASE) << 4);
+        NVIC->ISER[((uint32_t)(RTC_WKUP_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
 #   endif
-#   define OT_GPTIM_IRQn    RTC_Alarm_IRQn
-#   define OT_SYSTICK_IRQn  RTC_WKUP_IRQn
-#   define _OT_SUB1         (b0001)
-#   define _OT_SUB2         ((_OT_SUB1+1)*(_SUB_LIMIT >= (_OT_SUB1+1)))  
-#   define _OT_SUB3         ((_OT_SUB2+1)*(_SUB_LIMIT >= (_OT_SUB2+1)))  
-
-    EXTI->PR                                    = RTC_EXTI_MASK;
-    EXTI->IMR                                  |= RTC_EXTI_MASK;
-    EXTI->RTSR                                 |= RTC_EXTI_MASK;
-    NVIC->IP[(uint32_t)(OT_GPTIM_IRQn)]         = ((_KERNEL_GROUP+_OT_SUB1) << 4);
-    NVIC->ISER[((uint32_t)(OT_GPTIM_IRQn)>>5)]  = (1 << ((uint32_t)(OT_GPTIM_IRQn) & 0x1F));
-
-    // Systick is a power hog.  Avoid!
-    //NVIC->IP[(uint32_t)(OT_SYSTICK_IRQn)]       = ((_KERNEL_GROUP+_OT_SUB2) << 4);
-    //NVIC->ISER[((uint32_t)(OT_SYSTICK_IRQn)>>5)]= (1 << ((uint32_t)(OT_SYSTICK_IRQn) & 0x1F));
-    
-#   elif (RF_FEATURE(TXTIMER) != ENABLED)
-    // Setup Wakeup timer used by radio driver
-    EXTI->PR                                    = (1<<20);
-    EXTI->IMR                                  |= (1<<20);
-    EXTI->RTSR                                 |= (1<<20);
-    NVIC->IP[(uint32_t)(RTC_WKUP_IRQn)]         = ((_KERNEL_GROUP+2) << 4);
-    NVIC->ISER[((uint32_t)(RTC_WKUP_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
-
-#   endif
-    
     
     /// 5. Setup other external interrupts
-    /// @todo set these up in priority 1 (2nd priority).  Also, make sure board
-    /// files set-up the __USE_EXTIX definitions
+    /// @note Make sure board files use the __USE_EXTI(N) definitions
 #   ifdef __USE_EXTI0
     NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (_HIPRI_BASE << 4);
     NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
@@ -1376,8 +1383,7 @@ void platform_init_interruptor() {
     /// 6. Setup ADC interrupt.  This is needed only for ADC-enabled builds,
     ///    but ADC is used for true-random-number generation as well as actual
     ///    analog voltage sensing.
-    ///@todo figure out why this #if isn't working
-//#   if defined(__ISR_ADC1)
+//#   if defined(__USE_ADC1)
     NVIC->IP[(uint32_t)(ADC1_IRQn)]         = (_HIPRI_BASE << 4);
     NVIC->ISER[((uint32_t)(ADC1_IRQn)>>5)]  = (1 << ((uint32_t)(ADC1_IRQn) & 0x1F));
 //#   endif
@@ -1420,14 +1426,35 @@ void platform_init_resetswitch() {
 #endif
 
 
-#ifndef EXTF_platform_init_systick
-void platform_init_systick(ot_uint period) {
+#ifndef EXTF_platform_init_itimer
+void platform_init_itimer(ot_uint period) {
 /// OpenTag does NOT use the ARM Cortex M SysTick.  Instead, it uses the RTC
 /// Wakeup Timer feature to produce a 1 ti (1/1024sec) interval, which actually
 /// is implemented as GPTIM for STM32L.  So, the setup for establishing this
 /// interval is done in the gptim initialization (above).
+    ot_u32 rtc_cr;
+    
+    // Ensure Wakeup Timer is off
+    rtc_cr  = RTC->CR;
+    RTC->CR = rtc_cr & ~RTC_CR_WUTE;
+    
+    // Ticks interval to run wakeup.
+    RTC->WUTR = period;
+
+    // Enable Wakeup with interrupt
+    // This will do nothing more than wake-up the chip from STOP at the set 
+    // interval.  The default ISR in platform_isr_STM32L.c is sufficient.
+    RTC->CR = rtc_cr | (RTC_CR_WUTIE | RTC_CR_WUTE);
 }
 #endif
+
+#ifndef EXTF_platform_stop_itimer
+void platform_stop_itimer() {
+/// STOP RTC Interval Timer
+    RTC->CR &= ~RTC_CR_WUTE;
+}
+#endif
+
 
 
 #ifndef EXTF_platform_init_rtc

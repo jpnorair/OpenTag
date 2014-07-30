@@ -75,13 +75,6 @@
 
 
 
-/** SET_LINE and CLR_LINE macros for some debugging tasks
-  */
-#define __SET_LINE(NUMBER);
-#define __CLR_LINE(NUMBER);
-
-
-
 //#define RFCORE_DEBUG
 //ot_u8 dump[256];
 
@@ -203,9 +196,9 @@ OT_WEAK void radio_init( ) {
     /// Do this workaround (SPIRIT1 Errata DocID023165 R5, section 1.2) to fix
     /// the shutdown current issue for input voltages <= 2.6V.  For input
     /// voltages > 2.6V, it does not hurt anything.
-    //spirit1_write(RFREG(PM_TEST), 0xCA);
-    //spirit1_write(RFREG(TEST_SELECT), 0x04);
-    //spirit1_write(RFREG(TEST_SELECT), 0x00);
+    spirit1_write(RFREG(PM_TEST), 0xCA);
+    spirit1_write(RFREG(TEST_SELECT), 0x04);
+    spirit1_write(RFREG(TEST_SELECT), 0x00);
     
     /// Done with the radio init
     //spirit1drv_smart_standby();
@@ -222,8 +215,8 @@ OT_WEAK void radio_init( ) {
 OT_WEAK void radio_finish(ot_int main_err, ot_int frame_err) {
 /// Reset radio & callback to null state, then run saved callback
     ot_sig2 callback;
-    radio_gag();                            //redundant,
-    radio.state     = RADIO_Idle;
+    radio_gag();                            // redundant, but here until more debugging done
+    //radio.state     = RADIO_Idle;         // redundant, and do
     rfctl.state     = 0;
     rfctl.flags    &= (RADIO_FLAG_XOON | RADIO_FLAG_SETPWR);    //clear all other flags
     callback        = radio.evtdone;
@@ -297,14 +290,13 @@ OT_INLINE ot_u8 rm2_calc_rssithr(ot_u8 m2_rssithr) {
 
 #ifndef EXTF_rm2_enter_channel
 OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
-    static const ot_u8 dr_matrix[24] = { 
-       /* 0, RFREG(MOD1), DRF_MOD1_SS, DRF_MOD0_SS, DRF_FDEV0, DRF_CHFLT_SS, 0, 0, */
+    static const ot_u8 dr_matrix[32] = { 
+        0, RFREG(MOD1), DRF_MOD1_SS, DRF_MOD0_SS, DRF_FDEV0, DRF_CHFLT_SS, 0, 0, 
         0, RFREG(MOD1), DRF_MOD1_LS, DRF_MOD0_LS, DRF_FDEV0, DRF_CHFLT_LS, 0, 0, 
-        0, RFREG(MOD1), DRF_MOD1_LS, DRF_MOD0_LS, DRF_FDEV0, DRF_CHFLT_LS, 0, 0, 
-        0, RFREG(MOD1), DRF_MOD1_HS, DRF_MOD0_HS, DRF_FDEV0, DRF_CHFLT_HS, 0, 0
-    };
-
-    ot_u8 fc_i;
+        0, RFREG(MOD1), DRF_MOD1_HS, DRF_MOD0_HS, DRF_FDEV0, DRF_CHFLT_HS, 0, 0,    /// @todo change HS to MS (mid speed)
+        0, RFREG(MOD1), DRF_MOD1_HS, DRF_MOD0_HS, DRF_FDEV0, DRF_CHFLT_HS, 0, 0,
+    };    
+    ot_u8   fc_i;
 
     /// Flag PA table reprogram (done before TX): only flag if power is different
     if (old_tx_eirp != phymac[0].tx_eirp) {
@@ -313,8 +305,9 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
 
     /// Configure data rate: only change registers if required
     if ((old_chan_id ^ phymac[0].channel) & 0x30) {
-        ot_u8* dr_string = (ot_u8*)&dr_matrix[(phymac[0].channel & 0x30) >> 1];
-        spirit1_spibus_io(6, 0, dr_string);
+        ot_u8 offset;
+        offset = (phymac[0].channel & 0x30) >> 1;
+        spirit1_spibus_io(6, 0, (ot_u8*)&dr_matrix[offset]);
     }
 
     /// Configure Channel: only change registers if required
@@ -324,6 +317,8 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
     }
 }
 #endif
+
+
 
 
 #ifndef EXTF_rm2_mac_configure
@@ -372,10 +367,12 @@ OT_WEAK ot_int rm2_get_floodcounter() {
 
 #ifndef EXTF_rm2_kill
 OT_WEAK void rm2_kill() {
+    __DEBUG_ERRCODE_EVAL(=290);
+    
     radio_gag();
-    __SET_LINE(427);     
+    __SET_LINE(__LINE__);     
     spirit1drv_smart_standby();     
-    __CLR_LINE(427);
+    __CLR_LINE(__LINE__);
     
     ///@note this is only for lab testing of channel threshold
     //radio.last_rssi = spirit1_calc_rssi( spirit1_read(RFREG(RSSI_LEVEL)) );
@@ -389,19 +386,23 @@ OT_WEAK void rm2_kill() {
 
 #ifndef EXTF_rm2_rxtimeout_isr
 OT_WEAK void rm2_rxtimeout_isr() {
+    __DEBUG_ERRCODE_EVAL(=280);
+    
     radio_gag();
-    __SET_LINE(444);    
+    __SET_LINE(__LINE__);    
     spirit1drv_smart_standby();       
-    __CLR_LINE(444);
+    __CLR_LINE(__LINE__);
+    
+    __DEBUG_ERRCODE_EVAL(=281);
     
 #   if OT_FEATURE(RF_ADAPTIVE)
     spirit1drv_save_linkinfo();
     radio_finish(RM2_ERR_TIMEOUT, radio.link.sqi);
-    
 #   else
     radio_finish(RM2_ERR_TIMEOUT, 0);
-    
 #   endif
+    
+    __DEBUG_ERRCODE_EVAL(=282);
 }
 #endif
 
@@ -417,6 +418,8 @@ OT_WEAK void rm2_rxtimeout_isr() {
 #ifndef EXTF_rm2_rxinit
 OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     ot_u8 netstate;
+    
+    __DEBUG_ERRCODE_EVAL(=200);
     
     /// Setup the RX engine for Foreground Frame detection and RX.  Wipe-out
     /// the lower flags (non-persistent flags)
@@ -475,7 +478,6 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
             pktlen              = (7*_SPREAD);
         }
         else {
-            //spirit1_write(RFREG(PCKTCTRL4), DRF_PCKTCTRL4+3);
             buffer_mode = MODE_fg;
             pktlen      = (_MAXPKTLEN*_SPREAD);
         }
@@ -500,7 +502,39 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
 #endif
 
 
-#ifndef rm2_reenter_rx
+
+
+#ifndef EXTF_rm2_rxtest
+OT_WEAK void rm2_rxtest(ot_u8 channel, ot_u8 tsettings, ot_u16 timeout) {
+    ot_u8 maccfg[8] = { 0, RFREG(PROTOCOL2), 2, 0, 0, DRF_TIMERS5, 0, 0 };
+
+    // We don't care if the channel is supported, because no data is going to
+    // be sent.  Just set the center frequency to where it is desired
+    rm2_enter_channel((channel & 0x7f), (phymac[0].tx_eirp & 0x7f));
+    
+    // Always use CW Mode
+    spirit1_write(RFREG(MOD0), DRF_MOD0 | _CW);
+    
+    // No callback
+    radio.evtdone = &otutils_sig2_null;
+    
+    // Set timeout accordingly
+    maccfg[6] = (ot_u8)timeout;
+    spirit1_spibus_io(7, 0, maccfg);
+    
+    spirit1_iocfg_rx();
+    spirit1_int_off();
+    spirit1drv_smart_ready();
+    spirit1_strobe( RFSTROBE_RX );
+    spirit1_int_listen();
+    radio.state = RADIO_Listening;
+}
+#endif
+
+
+
+
+#ifndef EXTF_rm2_reenter_rx
 OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
 /// Restart RX using the same settings that are presently in the radio core.
 ///@todo RX internal state configuration might need attention
@@ -527,6 +561,8 @@ OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
 OT_WEAK void rm2_rxsync_isr() {
 /// Prepare driver for data reception, update high-level module state, and have
 /// supervisor task (DLL) go into high-priority mode.
+    __DEBUG_ERRCODE_EVAL(=210);
+    
     if (rfctl.flags & RADIO_FLAG_BG) {
         rxq.getcursor       = rxq.front;
         *rxq.getcursor++    = 8;
@@ -564,9 +600,12 @@ OT_WEAK void rm2_rxdata_isr() {
     ///      only used by BG, and which needs no special cases 1 & 3
     
     /// 1. special handler for Manual RX-DONE, needed for Foreground packets
+    /// @note ABORT is known to have issues, but it might not be needed here.
     if (rfctl.state == RADIO_STATE_RXDONE) {
         rm2_rxdata_isr_DONE:
-        spirit1_strobe(RFSTROBE_SABORT);
+        __DEBUG_ERRCODE_EVAL(=221);
+        radio_gag();
+        spirit1drv_smart_ready();
         rm2_rxend_isr();
         return;
     }
@@ -577,8 +616,11 @@ OT_WEAK void rm2_rxdata_isr() {
 
     /// 3. Software-based FIFO resizing and CRC5 filtering
     if (rfctl.flags & RADIO_FLAG_CRC5) {
+        __DEBUG_ERRCODE_EVAL(=222);
         rfctl.flags ^= RADIO_FLAG_CRC5;
         if (em2.crc5 != 0) {
+            radio_gag();
+            radio.state = RADIO_Idle;
             spirit1_strobe(RFSTROBE_SABORT);
             rm2_reenter_rx(radio.evtdone);
             return;
@@ -600,14 +642,14 @@ OT_WEAK void rm2_rxdata_isr() {
 //#       if ((M2_FEATURE(MULTIFRAME) == ENABLED) || (M2_FEATURE(FECRX) == ENABLED))
         case (RADIO_STATE_RXPAGE >> RADIO_STATE_RXSHIFT): {
             ot_int chipoctets_left;
-        
+            __DEBUG_ERRCODE_EVAL(=223);
+            
             if (em2.bytes <= 0) {
                 goto rm2_rxdata_isr_DONE;
             }
             
             ///@todo reduce from max-fill, so that more work can be done while
             ///      data is being read-in.
-            
             chipoctets_left = (em2.bytes*_SPREAD);
             if (chipoctets_left  <= 96) {
                 rfctl.rxlimit   = 96 - chipoctets_left;
@@ -634,6 +676,8 @@ OT_WEAK void rm2_rxdata_isr() {
         case (RADIO_STATE_RXMFP >> RADIO_STATE_RXSLOT):
         case (RADIO_STATE_RXMFP >> RADIO_STATE_RXSHIFT): {
             ot_int  frames_left = em2_remaining_frames();
+            __DEBUG_ERRCODE_EVAL(=224);
+            
             if (em2.bytes == 0) {
                 if (frames_left == 0) {
                     goto rm2_rxdata_isr_DONE;
@@ -662,6 +706,7 @@ OT_WEAK void rm2_rxdata_isr() {
 #ifndef EXTF_rm2_rxend_isr
 OT_WEAK void rm2_rxend_isr() {
     ot_u16 integrity;
+    __DEBUG_ERRCODE_EVAL(=230);
     radio_gag();                                // No more interrupts!
     rfctl.state = RADIO_STATE_RXDONE;           // Make sure in DONE State, for decoding
     em2_decode_data();                          // decode any leftover data
@@ -710,6 +755,51 @@ OT_WEAK void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
     radio_set_mactimer( (ot_uint)dll.comm.tca );
 }
 #endif
+
+
+
+#ifndef EXTF_rm2_txtest
+OT_WEAK void rm2_txtest(ot_u8 channel, ot_u8 eirp_code, ot_u8 tsettings, ot_u16 timeout) {
+    ot_u8 old_channel;
+    ot_u8 old_eirp;
+
+    // We don't care if the channel is supported, because no data is going to
+    // be sent.  Just set the center frequency to where it is desired
+    old_channel         = phymac[0].channel;
+    old_eirp            = phymac[0].tx_eirp;
+    phymac[0].channel   = channel;
+    phymac[0].tx_eirp   = eirp_code;
+    rm2_enter_channel(old_channel, old_eirp);
+    
+    // Set TX PATABLE values if different than pre-existing values
+    if (rfctl.flags & RADIO_FLAG_SETPWR) {
+        rfctl.flags &= ~RADIO_FLAG_SETPWR;
+        spirit1_set_txpwr( &phymac[0].tx_eirp );
+    }
+    
+    // Use CW mode if enabled
+    if (tsettings == 0) {
+        spirit1_write(RFREG(MOD0), DRF_MOD0 | _CW);
+    }
+    
+    // Always enable PN9 mode.  If CW is used, it won't matter
+    spirit1_write(RFREG(PCKTCTRL1), _TXSOURCE_PN9);
+    
+    // No callback
+    radio.evtdone = &otutils_sig2_null;
+    
+    spirit1_int_off();
+    spirit1_iocfg_tx();
+    spirit1drv_force_ready();
+    radio_flush_tx();
+            
+    // Prepare for TX, then enter TX
+    // For floods, we must activate the flood counter right before TX
+    radio.state = RADIO_DataTX;
+    spirit1_strobe( RFSTROBE_TX );
+}
+#endif
+
 
 
 #ifndef EXTF_rm2_resend
@@ -946,9 +1036,9 @@ void spirit1drv_ccafail_isr() {
 /// means that the CCA scan has failed.
     spirit1_int_off();
     spirit1_write(RFREG(PROTOCOL2), 0);     //Turn-off LDC, RCO-Cal, VCO-Cal
-    __SET_LINE(999);         
+    __SET_LINE(__LINE__);         
     spirit1drv_smart_standby();   
-    __CLR_LINE(999);
+    __CLR_LINE(__LINE__);
     
     rfctl.state = RADIO_STATE_TXCCA1;
     radio.evtdone(1, 0);
@@ -1018,53 +1108,25 @@ void spirit1drv_buffer_config(MODE_enum mode, ot_u16 param) {
 /// ddd: based on defaults.  CRC isn't fully tested yet, so 000 for now
 /// plen: length of the packet 
     
-//#if (DRF_SYNC_BYTES == 2)
-//    // 2 byte sync using: E6D0 / 0B67 / F498 / 192F
-//    static const ot_u8 sync_matrix[] = { 0xD0, 0xE6,    //bg non-fec
-//                                         0x67, 0x0B,    //fg non-fec
-//                                         0x98, 0xF4,    //bg fec
-//                                         0x2F, 0x19,    //fg fec
-//                                         };
-//#elif (DRF_SYNC_BYTES == 3)
-//    // 3 byte sync using:  8C497E / A5330F / F85299 / 83D699
-//    static const ot_u8 sync_matrix[] = { 0, 0x7E, 0x49, 0x8C,    //bg non-fec
-//                                         0, 0x0F, 0x33, 0xA5,    //fg non-fec
-//                                         0, 0x99, 0x52, 0xF8,    //bg fec
-//                                         0, 0x99, 0xD6, 0x83     //fg fec
-//                                         };
-//#else
     // 4 byte sync using ... 92DDC8F1 / A444B78F / EE415A3C / AD79C06C
     static const ot_u8 sync_matrix[] = { 0xF1, 0xC8, 0xDD, 0x92,     //bg non-fec
                                          0x8F, 0xB7, 0x44, 0xA4,     //fg non-fec
                                          0x3C, 0x5A, 0x41, 0xEE,     //bg fec
                                          0x6C, 0xC0, 0x79, 0xAD      //fg fec
                                          };
-//#endif
-                                         
-    ot_u8 buf_cfg[10];
-    ot_u8 is_fec;
-    //ot_u8 is_hs;
     
-    ///@todo If PCKTCTRL2 is universal, then set it in defaults
-    buf_cfg[0]  = 0;
-    buf_cfg[1]  = RFREG(PCKTCTRL2);                                
-    //is_hs       = (phymac[0].channel & 0x20) >> 1;
-    //buf_cfg[2]  = DRF_PCKTCTRL2_LSBG + is_hs;                                  
+    ot_u8 buf_cfg[10] = {   0, RFREG(PCKTCTRL2), 
+                            DRF_PCKTCTRL2_LSBG, 0, 0, 0, 0, 0, 0, 0 };
+    ot_u8 is_fec;
+    
+    ///@todo monitor state locally, based on mode and param.  If same as last
+    ///      usage, don't bother rewriting all this stuff to the SPIRIT1
+    
+    ///@todo If PCKTCTRL2 is universal, then can set it in defaults and do 9 byte write
+                                  
+    //buf_cfg[2] += (phymac[0].channel & 0x20) >> 1;                                  
     //buf_cfg[2] |= ((ot_u8)mode & 1);
-    buf_cfg[2]  = DRF_PCKTCTRL2_LSBG;
-                             
-//#   if (DRF_SYNC_BYTES == 2)                                         
-//    is_fec      = (phymac[0].channel & 0x80) >> 5;      // 0 when no fec, 4 when FEC                              
-//    mode       += is_fec;                              
-//    buf_cfg[3]  = _WHIT_EN | (is_fec >> 2);
-//    buf_cfg[4]  = ((ot_u8*)&param)[UPPER];
-//    buf_cfg[5]  = ((ot_u8*)&param)[LOWER];
-//    buf_cfg[6]  = 0;
-//    buf_cfg[7]  = 0;
-//    buf_cfg[8]  = sync_matrix[mode];
-//    buf_cfg[9]  = sync_matrix[mode+1];
-//    
-//#   elif (DRF_SYNC_BYTES == 3) || (DRF_SYNC_BYTES == 4)
+    
     is_fec      = (phymac[0].channel & 0x80) >> 4;      // 0 when no fec, 8 when FEC
     mode       += is_fec;
     buf_cfg[3]  = _WHIT_EN | (is_fec >> 3);                    
@@ -1074,7 +1136,6 @@ void spirit1drv_buffer_config(MODE_enum mode, ot_u16 param) {
     buf_cfg[7]  = sync_matrix[mode+1];
     buf_cfg[8]  = sync_matrix[mode+2];
     buf_cfg[9]  = sync_matrix[mode+3];
-//#   endif
     
     spirit1_spibus_io(10, 0, buf_cfg);
 }
@@ -1105,7 +1166,6 @@ void spirit1drv_save_linkinfo() {
 void spirit1drv_force_ready() {
 /// Goes to READY without modifying states.  Use with caution.
 ///@note alternate version uses Ready-line test instead of flag test.
-    //if ((rfctl.flags & RADIO_FLAG_XOON) == 0)  {
     if (spirit1_isready() == 0) {
         rfctl.flags |= RADIO_FLAG_XOON;
         spirit1_strobe(RFSTROBE_READY);
@@ -1113,47 +1173,103 @@ void spirit1drv_force_ready() {
     }
 }
 
+
 void spirit1drv_smart_ready() {
-/// Idle on SPIRIT1 is READY mode.  Only go to READY if it is not already the 
-/// present mode.
-    radio_state last_state;
-    last_state  = radio.state;
-    radio.state = RADIO_Idle;
+/// Put the device into READY, using only the means necessary to
+/// do so, based on the current state of the SPIRIT1.  There are two
+/// methods here: 1 is an optimized method and 2 is a general method.
+
+/// Method 1:
+    radio_state current_state;
+    current_state   = radio.state;
+    radio.state     = RADIO_Idle;
+    rfctl.flags    |= RADIO_FLAG_XOON;
     
-    // Active state -> Idle
-    if (last_state != RADIO_Idle) {
+    if (current_state != RADIO_Idle) {
         spirit1_strobe(RFSTROBE_SABORT);
-        spirit1_waitfor_inactive();
+        spirit1_waitforabort();
     }
-    
-    // Standby/Sleep -> Idle
-    //else spirit1drv_force_ready();
-    spirit1drv_force_ready();
+    else if (spirit1_isready() == 0) {
+        spirit1_strobe(RFSTROBE_READY);
+        spirit1_waitforready();
+    }
+
+/// Method 2: Unimplemented at this point
 }
 
 
-void spirit1drv_smart_standby() {
-/// Sleep on SPIRIT1 is actually STANDBY mode.  There is also a SLEEP mode on 
-/// SPIRIT1 that is STANDBY+RC_Osc, but this implementation does not use the RC
-/// Oscillator at all, so STANDBY is the best choice.
+
+void spirit1drv_smart_standby(void) {
+/// Put the device into standby, using only the means necessary to
+/// do so, based on the current state of the SPIRIT1.  There are two
+/// methods here: 1 is an optimized method and 2 is a general method.
+    
 #if BOARD_FEATURE_RFXTALOUT
     if (spirit1.clkreq) {
         spirit1drv_smart_ready();
     } 
     else
 #endif
-    // Only go to STANDBY if it is not already the present mode.
-    ///@note alternate version uses Ready-line test instead of flag test.
-    //if (rfctl.flags & RADIO_FLAG_XOON) {
+    {
+    
+/// Method 1: Using pin checks and local state
+    // spirit1_isready() should indicate if the chip is in READY state,
+    // but it actually indicates that the XO is on.  XO is on for all
+    // states that are not SLEEP, STANDBY, SHUTDOWN.
     if (spirit1_isready()) {
-        spirit1drv_smart_ready();
-        rfctl.flags &= ~RADIO_FLAG_PWRMASK;
+        // The local state will be RADIO_Idle if in READY or STANDBY.
+        // We need to abort the active state (typ RX, TX)
+        if (radio.state != RADIO_Idle) {
+            spirit1_strobe(RFSTROBE_SABORT);
+            spirit1_waitforabort();
+        }
+        // Now we need to go into STANDBY
         spirit1_strobe(RFSTROBE_STANDBY);
         spirit1_waitforstandby();
     }
+    
+    // Change the flags & states accordingly.
+    // STANDBY is a state only known to the SPIRIT1 layer.
+    radio.state     = RADIO_Idle;
+    rfctl.flags    &= ~RADIO_FLAG_PWRMASK;
+    
+/*
+/// Method2:  Using checking of MCSTATE on SPIRIT1
+    ot_u8 mcstate;
+    mcstate = spirit1_read(RFREG(MC_STATE0));
+    
+    switch (mcstate>>1) {
+        case 0x40:  break;
+        
+        // SLEEP
+        case 0x36:  spirit1_strobe(RFSTROBE_READY);
+                    while (spirit1_read(RFREG(MC_STATE0)) != 0x07);
+                    goto _ENTER_STANDBY;
+        
+        // RX or TX or LOCK
+        case 0x0F:
+        case 0x33:
+        case 0x5f:  spirit1_strobe(RFSTROBE_SABORT);
+                    while (spirit1_read(RFREG(MC_STATE0)) != 0x07);
+        
+        case 0x03:  
+        _ENTER_STANDBY:
+                    spirit1_strobe(RFSTROBE_STANDBY);
+                    do { mcstate = spirit1_read(RFREG(MC_STATE0)); }
+                    while (mcstate != (0x40<<1));
+                    break;
+        
+        //error!
+        default:    otapi_led1_on();
+                    while(1);
+    }
+    
+    radio.state     = RADIO_Idle;
+    rfctl.flags    &= ~RADIO_FLAG_PWRMASK;
+*/   
+
+    }
 }
-
-
 
 
 
@@ -1187,24 +1303,13 @@ OT_WEAK void radio_ungag() {
 
 #ifndef EXTF_radio_sleep
 OT_WEAK void radio_sleep() {
-    //spirit1drv_smart_standby();
-    
-    radio_idle();
-    rfctl.flags &= ~(RADIO_FLAG_XOON | RADIO_FLAG_PWRMASK);
-    spirit1_strobe(RFSTROBE_STANDBY);
-    spirit1_waitforstandby();
+    spirit1drv_smart_standby();
 }
 #endif
 
 #ifndef EXTF_radio_idle
 OT_WEAK void radio_idle() {
-    //spirit1drv_smart_ready();
-    
-    radio.state = RADIO_Idle;
-    rfctl.flags |= RADIO_FLAG_XOON;
-    spirit1_strobe(RFSTROBE_SABORT);
-    spirit1_strobe(RFSTROBE_READY);
-    spirit1_waitforready();
+    spirit1drv_smart_ready();
 }
 #endif
 

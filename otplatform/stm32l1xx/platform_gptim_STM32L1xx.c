@@ -39,6 +39,23 @@ gptim_struct gptim;
 
 
 
+#define _KTIM_WATCHDOG_EXTRATICKS   256
+
+
+void platform_isr_rtcwakeup(void) {
+/// This ISR is normally used as a watchdog for the kernel scheduler.  itimer,
+/// however, can be used for other purposes as well (generally on startup 
+/// before the kernel gets fully started).  So the watchdog code (restarting
+/// the kernel) will only get called if the kernel is actually running in Idle.
+
+    if (gptim.flags & GPTIM_FLAG_SLEEP) {
+        ///@todo log a glitch
+        platform_init_OT();
+    }
+}
+
+
+
 
 #if defined(__DEBUG__)
 /** Debug Implementation <BR>
@@ -185,12 +202,21 @@ void platform_flush_ktim() {
 }
 
 ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
-/// This should only be called from the scheduler.  Note how this function 
-/// implements tail-chaining
+/// This should only be called from the scheduler.  
+
+    /// If the task to be scheduled is already due (considering the runtime of
+    /// the scheduler itself) return 0.  This will cause the sleep process to 
+    /// be ignored and the task to start immediately.
     if ( (ot_long)(nextevent-overhead) <= 0 ) {
         gptim.flags = 0;
         return 0;
     }
+    
+    /// Start the interval timer, using some additional ticks more than the 
+    /// scheduled arrival time of the kernel timer.
+    platform_init_itimer(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
+    
+    /// Program the scheduled time into the timer, in ticks.
     gptim.flags     = GPTIM_FLAG_SLEEP;
     TIM9->DIER     &= ~TIM_DIER_CC1IE;
     gptim.stamp1    = TIM9->CNT;
@@ -508,13 +534,22 @@ void platform_disable_ktim() {
 
 
 ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
-/// This should only be called from the scheduler.  Note how this function 
-/// implements tail-chaining
+/// This should only be called from the scheduler.
     
+    /// If the task to be scheduled is already due (considering the runtime of
+    /// the scheduler itself) return 0.  This will cause the sleep process to 
+    /// be ignored and the task to start immediately.
+    ///@todo Should overhead be (overhead+X) to account for possible alarm
+    ///      misses when the scheduled time is very small (=1)?
     if ( (ot_long)(nextevent-overhead) <= 0 ) {
         gptim.flags &= ~GPTIM_FLAG_SLEEP;
         return 0;
     }
+    
+    /// Start the interval timer, using some additional ticks more than the 
+    /// scheduled arrival time of the kernel timer.
+    ///@todo this is broken right now, at least with strobes
+    //platform_init_itimer(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
     
     // Wait for the Alarm flag to go high.  There is no easy way to do this 
     // with an interrupt or event.  This loop will only get used if you are 
@@ -530,6 +565,9 @@ ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
     
     return (ot_u16)nextevent;
 }
+
+
+
 
 
 // void platform_set_ktim(ot_u16 value) {

@@ -113,23 +113,12 @@ OT_WEAK m2session* network_parse_bf() {
         // Account for "slop" due to clock deviation, process latency, 
         // and other such things.  Thus the follow-up session is 
         // either a second BG scan (if too much slop), or it is FG
-        // listening for the request.
-        
-        ///@todo ADV_OFFSET slop should depend on the duration of an
-        ///      advertising packet (bg packet).
-        //slop = M2_ADV_OFFSET + (count.ushort / OT_GPTIM_ERRDIV);
-        //if (slop <= M2_ADV_MAXSLOP) {
-        //    scancode    = M2_ADV_LISTEN;
-        //    netstate    = M2_NETSTATE_REQRX;
-        //}
-        
-        // hack for slow backgrounding
-        slop = 13 + (count.ushort / OT_GPTIM_ERRDIV);
-        if (slop <= 16) {
-            scancode    = 0x18;
+        // listening for the request. 
+        slop = (count.ushort / OT_GPTIM_ERRDIV);
+        if (slop <= 8) {
+            scancode    = 0x0F;
             netstate    = M2_NETSTATE_REQRX;
         }
-        
         else {
             scancode    = 0x80;
             netstate    = M2_NETSTATE_REQRX | M2_NETFLAG_BG;
@@ -810,6 +799,7 @@ OT_WEAK void m2np_footer() {
 #endif
 
 
+
 #ifndef EXTF_m2advp_open
 OT_WEAK void m2advp_open(m2session* follower) {
     q_empty(&txq);
@@ -831,8 +821,6 @@ OT_WEAK void m2advp_open(m2session* follower) {
 }
 
 #endif
-
-
 
 
 

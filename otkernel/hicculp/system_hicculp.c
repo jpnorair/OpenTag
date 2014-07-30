@@ -136,7 +136,7 @@ static const systask_fn systask_call[]   = {
   */
 
 #ifndef EXTF_sys_init
-void sys_init() {
+OT_WEAK void sys_init() {
 
     /// Set system kernel callbacks to null (if kernel callbacks enabled)
 #   if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED)
@@ -192,7 +192,7 @@ void sys_init() {
 
 
 #ifndef EXTF_sys_panic
-void sys_panic(ot_u8 err_code) {
+OT_WEAK void sys_panic(ot_u8 err_code) {
 /// Go to OFF state
 #   if (OT_FEATURE(M2))
         dll.idle_state = 0;
@@ -213,7 +213,7 @@ void sys_panic(ot_u8 err_code) {
 
 
 #ifndef EXTF_sys_powerdown
-void sys_powerdown() {
+OT_WEAK void sys_powerdown() {
 /// code = 3: No active I/O Task (goto most aggressive LP regime)
 /// code = 2: RF I/O Task active
 /// code = 1: MPipe or other local peripheral I/O task active
@@ -224,7 +224,8 @@ void sys_powerdown() {
     ot_int code;
     code    = 3; //(platform_next_ktim() <= 3) ? 0 : 3;
 #   if (1)
-    code   -= (sys.task_RFA.event != 0);
+    //code   -= (sys.task_RFA.event != 0);
+    code   -= (radio.state != RADIO_Idle);
 #   endif
 #   if (OT_FEATURE(MPIPE))
     code    = (mpipe_status() >= 0) ? 1 : code;
@@ -246,7 +247,7 @@ void sys_powerdown() {
 
 
 #ifndef EXTF_sys_halt
-void sys_halt(Halt_Request halt_request) {
+OT_WEAK void sys_halt(Halt_Request halt_request) {
 /// sys_halt() is implemented as a wrapper to sys_sig_halt(), or sys.halt(),
 /// either of which the user should implement as an applet.  If there is no
 /// static signal or dynamic signal configured, sys_halt() will implement the
@@ -269,7 +270,7 @@ void sys_halt(Halt_Request halt_request) {
 
 
 #ifndef EXTF_sys_resume
-void sys_resume() {
+OT_WEAK void sys_resume() {
 #   if (1)
     dll_refresh();
 #   endif
@@ -286,7 +287,7 @@ void sys_resume() {
 
 
 
-void sys_kill(Task_Index i) {
+OT_WEAK void sys_kill(Task_Index i) {
 /// Kill the indexed task.
     ot_u8 task_event;
     
@@ -325,7 +326,7 @@ void sys_kill(Task_Index i) {
 
 
 #ifndef EXTF_sys_kill_active
-void sys_kill_active() {
+OT_WEAK void sys_kill_active() {
     Task_Index i;
     i = TASK_INDEX(sys.active);
 
@@ -342,7 +343,7 @@ void sys_kill_active() {
 
 
 #ifndef EXTF_sys_kill_all
-void sys_kill_all() {
+OT_WEAK void sys_kill_all() {
     Task_Index  i = TASK_terminus;
     
     do {
@@ -394,7 +395,7 @@ void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
 
 
 #ifndef EXTF_sys_task_enable
-void sys_task_enable(ot_u8 task_id, ot_u8 task_ctrl, ot_u16 sleep) {
+OT_WEAK void sys_task_enable(ot_u8 task_id, ot_u8 task_ctrl, ot_u16 sleep) {
 #if (OT_FEATURE(EXT_TASK))
     ot_task task;
     task        = &sys.task[TASK_external+task_id];
@@ -408,7 +409,7 @@ void sys_task_enable(ot_u8 task_id, ot_u8 task_ctrl, ot_u16 sleep) {
 
 
 #ifndef EXTF_sys_task_disable
-void sys_task_disable(ot_u8 task_id) {
+OT_WEAK void sys_task_disable(ot_u8 task_id) {
 #if (OT_FEATURE(EXT_TASK))
 //#   ifdef __DEBUG__
 //    if (task_id <= (TASK_hold - TASK_external - 1)) 
@@ -433,7 +434,7 @@ void sys_task_disable(ot_u8 task_id) {
   */
 #ifndef EXTF_sys_event_manager
 
-ot_uint sys_event_manager() {
+OT_WEAK ot_uint sys_event_manager() {
 /// This is the task-scheduling part of the kernel.
     ot_uint      elapsed;
     ot_long      nextevent;
@@ -556,7 +557,7 @@ ot_uint sys_event_manager() {
 
 
 #ifndef EXTF_sys_task_manager
-void sys_task_manager() {
+OT_WEAK void sys_task_manager() {
 /// Perform a context switch onto the active task (sys.active).  In purely
 /// co-operative systems, all tasks run in the same context, so do nothing.
 
@@ -600,7 +601,7 @@ OT_INLINE void sys_run_task() {
 
 
 
-void sys_preempt(ot_task task, ot_uint nextevent_ti) {
+OT_WEAK void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 /// Pre-empting will "pend" the timer.  In device terms, this is implemented
 /// by manually setting the timer interrupt flag.  If a task is running while
 /// this function is called (typical usage), first the task will finish and then
@@ -612,7 +613,7 @@ void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 
 
 
-void sys_synchronize(Task_Index task_id) {
+OT_WEAK void sys_synchronize(Task_Index task_id) {
 #ifdef __DEBUG__
     //if (((ot_int)task_id < IO_TASKS) || (ot_int)task_id >= (IO_TASKS+IDLE_TASKS))
     //    return;
@@ -623,7 +624,7 @@ void sys_synchronize(Task_Index task_id) {
 
 
 ///@todo this is replaced by OTcron
-void sys_refresh_scheduler() {
+OT_WEAK void sys_refresh_scheduler() {
 #if (0)
 //#if (M2_FEATURE(RTC_SCHEDULER))
     ot_u16  sched_ctrl;

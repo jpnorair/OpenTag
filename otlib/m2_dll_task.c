@@ -497,6 +497,12 @@ OT_WEAK void dll_beacon_applet(m2session* active) {
 /** DLL Systask Manager <BR>
   * ========================================================================<BR>
   */
+
+// For synchronization test only
+//volatile ot_u32 sample_t0;
+//volatile ot_u32 sample_t1;
+
+
 #if !defined(__KERNEL_NONE__)
   
 #ifdef OT_FEATURE_LISTEN_ALLOWANCE
@@ -527,7 +533,15 @@ OT_WEAK void dll_clock(ot_uint clocks) {
     }
     else if (session_notempty()) {
         sys.task_RFA.event      = 2;
-        sys.task_RFA.nextevent  = session_getnext();
+        sys.task_RFA.nextevent  = clocks + session_getnext();
+        
+        // Synchronization test
+        //volatile ot_u16 next_session;
+        //next_session            = session_getnext();
+        //sys.task_RFA.nextevent  = next_session;
+       // if (next_session != 0) {
+        //    sample_t1 = 0;
+        //}
     }
 }
 #endif
@@ -817,6 +831,12 @@ OT_WEAK void dll_init_rx(m2session* active) {
     // E.g. lights a LED
     DLL_SIG_RFINIT(sys.task_RFA.event);
     
+    //For synchronization test only
+    //if ((active->netstate & M2_NETFLAG_BG) == 0) {
+    //    sample_t1 = platform_get_interval(&sample_t0);
+    //    sample_t0 = 0;
+    //}
+    
     callback = (active->netstate & M2_NETFLAG_BG) ? \
                     &dll_rfevt_brx : &dll_rfevt_frx;
     
@@ -934,8 +954,11 @@ OT_WEAK void dll_rfevt_brx(ot_int scode, ot_int fcode) {
 /// bscan reception radio-core event callback: called by radio core driver when
 /// the bscan process terminates, either due to success or failure
 
+    __DEBUG_ERRCODE_EVAL(=100);
+    
     // CRC Failure (or init), retry
     if ((scode == -1) && (dll.comm.redundants != 0)) {
+        __DEBUG_ERRCODE_EVAL(=101);
         rm2_reenter_rx(&dll_rfevt_brx);   //non-blocking
         return;
     }
@@ -943,6 +966,17 @@ OT_WEAK void dll_rfevt_brx(ot_int scode, ot_int fcode) {
     // General Error: usually a timeout
     ///@todo RM2 Error codes should be refactored.
     if (scode < 0) {
+        // For synchronization test only
+        //rxq.getcursor = &rxq.front[2];
+        //rxq.front[3] = 0x1F;    // subnet & BPID
+        //rxq.front[4] = 0x8A;    // next channel
+        //rxq.front[5] = 0x01;    // countdown (upper)
+        //rxq.front[6] = 0x00;    // countdown (lower)
+        //if (network_parse_bf()) {
+        //    sample_t0 = platform_get_interval(NULL);
+        //    goto dll_rfevt_SUCCESS;
+        //}
+        __DEBUG_ERRCODE_EVAL(=102);
         scode = RM2_ERR_GENERIC;
     	goto dll_rfevt_FAILURE;
     }
@@ -951,6 +985,7 @@ OT_WEAK void dll_rfevt_brx(ot_int scode, ot_int fcode) {
     // - Check subnet and EIRP filters
     // - network_parse_bf() will update the session stack as needed
     if (rm2_mac_filter()) {
+        __DEBUG_ERRCODE_EVAL(=103);
         if (network_parse_bf()) {
             goto dll_rfevt_SUCCESS;
         }
@@ -982,11 +1017,14 @@ OT_WEAK void dll_rfevt_frx(ot_int pcode, ot_int fcode) {
     ot_bool     re_init = False;
     m2session*  active  = session_top();
     
+    __DEBUG_ERRCODE_EVAL(=110);
+    
     /// If pcode is less than zero, it is because of a listening timeout.
     /// Listening timeouts happen after unfulfilled request scanning, or after
     /// Response scanning window expires.  In certain cases, after a timeout,
     /// the session persists.  These cases are implemented below.
     if (pcode < 0) {
+        __DEBUG_ERRCODE_EVAL(=111);
         sys.task_RFA.event  = 0;
         if (dll.comm.redundants) {
             active->netstate   = (M2_NETSTATE_REQTX | M2_NETSTATE_INIT | M2_NETFLAG_FIRSTRX);
@@ -1005,6 +1043,7 @@ OT_WEAK void dll_rfevt_frx(ot_int pcode, ot_int fcode) {
     // Multiframe packet RX frame check
 #   if (M2_FEATURE(M2DP) == ENABLED)
     else if (pcode > 0) {
+        __DEBUG_ERRCODE_EVAL(=112);
     	if (fcode != 0) {
     		m2dp_mark_frame();
     	}
@@ -1014,6 +1053,7 @@ OT_WEAK void dll_rfevt_frx(ot_int pcode, ot_int fcode) {
 
     // pcode == 0 on last frame
     else {
+        __DEBUG_ERRCODE_EVAL(=113);
         /// Handle damaged frames (bad CRC)
     	/// Run subnet filtering on frames with good CRC
     	if (fcode != 0) {
@@ -1052,6 +1092,7 @@ OT_WEAK void dll_rfevt_frx(ot_int pcode, ot_int fcode) {
 
     /// Re-initialize signal, if reinitializing
     if (re_init) {
+        __DEBUG_ERRCODE_EVAL(=114);
         DLL_SIG_RFINIT(3);
     }
     
@@ -1067,8 +1108,11 @@ OT_WEAK void dll_rfevt_frx(ot_int pcode, ot_int fcode) {
 OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
     ot_uint event_ticks;
 
+    __DEBUG_ERRCODE_EVAL(=120);
+    
     /// ON CSMA SUCCESS: pcode == 0, tcode == 1/0 for BG/FG
     if (pcode == 0) {
+        __DEBUG_ERRCODE_EVAL(=121);
         sys.task_RFA.latency    = 0;
         sys.task_RFA.event      = 5;
         radio.evtdone           = (tcode & RADIO_FLAG_BG)   ? \
@@ -1082,10 +1126,12 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
     /// @todo replace the "2" in the idle vs. sleep check with a per-radio constant
     else if (pcode > 0) {
         ot_uint nextcsma;
+        __DEBUG_ERRCODE_EVAL(=122);
+        
         nextcsma                    = (ot_uint)sub_fcloop();
         if (nextcsma < TI2CLK(2))   radio_idle();
         else                        radio_sleep();
-    
+        
         radio_set_mactimer( nextcsma );
         return;
     }
@@ -1095,6 +1141,7 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
     /// try again if it chooses.
     else {
         //m2session* active;
+        __DEBUG_ERRCODE_EVAL(=123);
         DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
         
         //active              = session_top();
@@ -1111,9 +1158,13 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
 
 
 
+//volatile ot_u16 _testflood[500];
+//volatile ot_u16 _testflood_i = 0;
+
 OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
 #if ((M2_FEATURE(SUBCONTROLLER) == ENABLED) || (M2_FEATURE(GATEWAY) == ENABLED))
     ot_bool dirty_adv_check;
+    __DEBUG_ERRCODE_EVAL(=130);
     
     switch (flcode) {
         /// Single-issue BG packet (non-flood) is being TX'ed.
@@ -1133,9 +1184,13 @@ OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
         /// <LI> The Radio Driver will flood adv packets forever, in parallel
         ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
         case 2: {
-            ot_int countdown = rm2_get_floodcounter();
+            ot_int countdown;
+            __DEBUG_ERRCODE_EVAL(=131);
+            
+            countdown = rm2_get_floodcounter();
+            //_testflood[_testflood_i++] = countdown;
             if (countdown < rm2_bgpkt_duration()) {
-                dll.counter = countdown;
+                dll.counter = (countdown < 0) ? 0 : countdown;
                 m2advp_close();
                 rm2_txstop_flood();
             }
@@ -1155,6 +1210,7 @@ OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
             m2session* follower;
             // assure request hits NOW & assure it doesn't init dll.comm
             // Tweak dll.comm for request (2 ti is a token, small amount)
+            __DEBUG_ERRCODE_EVAL(=132);
             follower                = session_follower();
             follower->counter       = dll.counter;
             sys.task_RFA.event      = 0;
@@ -1167,6 +1223,7 @@ OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
         ///        session.
         default: {
             dll_rfevt_btx_KILL:
+            __DEBUG_ERRCODE_EVAL(=133);
             dll_idle();
             
             // Pop BG session, and do a quick and dirty check to see if it has
@@ -1194,7 +1251,8 @@ OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
 
 OT_WEAK void dll_rfevt_ftx(ot_int pcode, ot_int scratch) {
     m2session* session;
-
+    __DEBUG_ERRCODE_EVAL(=140);
+    
     /// Non-final frame TX'ed in multiframe packet
     if (pcode == 1) {
         ///@todo possibly put the queue rearrangement here
@@ -1205,6 +1263,7 @@ OT_WEAK void dll_rfevt_ftx(ot_int pcode, ot_int scratch) {
     /// <LI> Allow scheduling of redundant TX on responses, or request with no response. </LI>
     /// <LI> End session if no redundant, and no listening required. </LI>
     else {
+        __DEBUG_ERRCODE_EVAL(=141);
         session = session_top();
         scratch = ((session->netstate & M2_NETSTATE_RESPTX) \
         		|| (dll.comm.rx_timeout <= 0));

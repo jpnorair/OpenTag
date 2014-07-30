@@ -39,11 +39,14 @@
 #define NULL ((void *)0)
 #endif
 
-typedef enum
-{
-  FALSE = 0, TRUE  = !FALSE
-}
-bool;
+//typedef enum
+//{
+//  FALSE = 0, TRUE  = !FALSE
+//}
+//bool;
+
+#define FALSE False
+#define TRUE  True
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */

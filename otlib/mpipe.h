@@ -50,9 +50,6 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
-
-#if (OT_FEATURE(MPIPE) == ENABLED)
-
 #include "alp.h"
 #include "system.h"
 
@@ -119,6 +116,8 @@ typedef struct {
     ot_sigv sig_rxdetect;
 #endif
 } mpipe_struct;
+
+
 
 extern mpipe_struct mpipe;
 
@@ -458,7 +457,5 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority);
 void mpipedrv_isr();
 
 
-
-#endif
 
 #endif
