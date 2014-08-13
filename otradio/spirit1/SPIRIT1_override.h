@@ -34,6 +34,10 @@
 // Well tested Ultra-low-rate modulations
 //#define _10kHz_MSK
 //#define _11k1Hz_MSK
+//#define _13k24Hz_FSK10
+//#define _13k24Hz_FSK15
+//#define _13k24Hz_FSK20
+//#define _13k24Hz_FSK30
 #define _13k24Hz_MSK        // (13560 / 1024) kHz
 
 // Out-of-favor low/mid modulations
@@ -188,15 +192,66 @@
 #   define _CHFLT_E_SS_25MHz    (3<<0)
 #endif  
 
+
+
+// (13.56 / 1024)
+#ifdef _13k24Hz_FSK30
+#   define _DR_M_SS_24MHz       33  // 13229.37
+#   define _DR_E_SS_24MHz       9
+#   define _MODULATION_SS       _MOD_TYPE_2FSK
+#   define _CHFLT_E_SS_24MHz    (3<<0)
+#   define _CHFLT_M_SS_24MHz    (0<<4)      // 103 kHz
+#   define _FDEV_E_SS_48MHz     (3<<4)      // 6591 Hz
+#   define _FDEV_M_SS_48MHz     1
+#endif
+
+// (13.56 / 1024)
+#ifdef _13k24Hz_FSK20
+#   define _DR_M_SS_24MHz       33  // 13229.37
+#   define _DR_E_SS_24MHz       9
+#   define _MODULATION_SS       _MOD_TYPE_2FSK
+#   define _CHFLT_E_SS_24MHz    (3<<0)
+#   define _CHFLT_M_SS_24MHz    (4<<4)      // 83 kHz
+//#   define _CHFLT_E_SS_24MHz    (3<<0)
+//#   define _CHFLT_M_SS_24MHz    (2<<0)      // 93
+
+#   define _FDEV_E_SS_48MHz     (4<<4)      // 13183 Hz
+#   define _FDEV_M_SS_48MHz     1
+#endif
+
+// (13.56 / 1024)
+#ifdef _13k24Hz_FSK15
+#   define _DR_M_SS_24MHz       33  // 13229.37
+#   define _DR_E_SS_24MHz       9
+#   define _MODULATION_SS       _MOD_TYPE_2FSK
+#   define _CHFLT_E_SS_24MHz    (3<<0)
+#   define _CHFLT_M_SS_24MHz    (6<<4)      // 75 kHz
+#   define _FDEV_E_SS_48MHz     (3<<4)      // 10253 Hz
+#   define _FDEV_M_SS_48MHz     6
+#endif
+
+// (13.56 / 1024)
+#ifdef _13k24Hz_FSK10
+#   define _DR_M_SS_24MHz       33  // 13229.37
+#   define _DR_E_SS_24MHz       9
+#   define _MODULATION_SS       _MOD_TYPE_2FSK
+#   define _CHFLT_E_SS_24MHz    (3<<0)
+#   define _CHFLT_M_SS_24MHz    (8<<4)      // 63 kHz
+#   define _FDEV_E_SS_48MHz     (3<<4)      // 6591 Hz
+#   define _FDEV_M_SS_48MHz     1
+#endif
+
 // (13.56 / 1024)
 #ifdef _13k24Hz_MSK
-#   define _DR_M_SS_24MHz       32  //33          // 13229.37 (13183.6 works more closely for MSK)
+#   define _DR_M_SS_24MHz       32  //33 (13229.37), 32 (13183.6)
 #   define _DR_E_SS_24MHz       9
 #   define _MODULATION_SS       _MOD_TYPE_MSK
-#   define _CHFLT_M_SS_24MHz    (1<<4)      // 49 kHz
 #   define _CHFLT_E_SS_24MHz    (4<<0)
-#   define _FDEV_E_SS_48MHz     (4<<4)      //20kHz (token)
-#   define _FDEV_M_SS_48MHz     6
+#   define _CHFLT_M_SS_24MHz    (1<<4)      // 49 kHz
+//#   define _CHFLT_E_SS_24MHz    (4<<0)
+//#   define _CHFLT_M_SS_24MHz    (5<<4)      // 39 kHz
+#   define _FDEV_E_SS_48MHz     (2<<4)      // 3300 kHz
+#   define _FDEV_M_SS_48MHz     1
 #endif
 
 // 11.11 kbps
