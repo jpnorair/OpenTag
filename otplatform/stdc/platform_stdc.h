@@ -1,4 +1,4 @@
-/* Copyright 2009-2012 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otplatform/stdc/platform_stdc.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       2 Feb 2012
+  * @version    R101
+  * @date       24 Mar 2013
   * @brief      Platform Library Macros and Functions for STD C
   * @ingroup    Platform
   *
@@ -31,6 +31,7 @@
 #include "build_config.h"
 #include "OT_support.h"
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,9 +39,13 @@
 
 
 
-/** Platform Support settings
-  * These reference the exhaustive list of officially supported platform
-  * setting options.
+#define OT_GPTIM_LIMIT   60000
+
+
+
+/** Platform Support settings      <BR>
+  * ========================================================================<BR>
+  * Assume x86 compiled with GCC.
   */
 #define PLATFORM(VAL)           PLATFORM_##VAL
 
@@ -52,44 +57,69 @@
 #define PLATFORM_POINTER_SIZE   sizeof(void*)
 
 // Big-endian to Platform-endian
-#define PLATFORM_ENDIAN16(VAR16)    (((VAR16 >> 8) & 0x00FF) | ((VAR16 << 8) & 0xFF00))
-#define PLATFORM_ENDIAN32(VAR32)    (   ((VAR32 >> 24) & 0x000000FF) \
-                                      | ((VAR32 >> 8)  & 0x0000FF00) \
-                                      | ((VAR32 << 8)  & 0x00FF0000) \
-                                      | ((VAR32 << 24) & 0xFF000000)    )
+#define PLATFORM_ENDIAN16(VAR16)        (((VAR16 >> 8) & 0x00FF) | ((VAR16 << 8) & 0xFF00))
+#define PLATFORM_ENDIAN32(VAR32)        ( ((VAR32 >> 24) & 0x000000FF) \
+                                        | ((VAR32 >> 8)  & 0x0000FF00) \
+                                        | ((VAR32 << 8)  & 0x00FF0000) \
+                                        | ((VAR32 << 24) & 0xFF000000) )
+#define PLATFORM_ENDIAN16_C(CONST16)    (ot_u16)( (((ot_u16)CONST16) << 8) | (((ot_u16)CONST16) >> 8) )
 
 
 
-/** Interrupt Nomenclature  <BR>
+
+
+/** Emulated MCU settings     <BR>
   * ========================================================================<BR>
+  * Basically, emulate an STM32L with 3 I/O ports.
   */
-#define OT_INTERRUPT
+#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL   // FEATURE                  NOTE
+#define MCU_FEATURE_SVMONITOR           DISABLED            // Auto Low V powerdown     On many MCUs
+#define MCU_FEATURE_CRC                 DISABLED            // CCITT CRC16              On some MCUs
+#define MCU_FEATURE_AES128              DISABLED            // AES128 engine            On some MCUs
+#define MCU_FEATURE_ECC                 DISABLED            // ECC engine               Rare
+
+#define MCU_TYPE(VAL)                   MCU_TYPE_##VAL
+#define MCU_TYPE_PTRINT                 ot_s32
+#define MCU_TYPE_PTRUINT                ot_u32
+
+#define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
+#define MCU_PARAM_POINTERSIZE           4
+#define MCU_PARAM_ERRPTR                ((ot_s32)-1)
+#define MCU_PARAM_UART_9600BPS          9600
+#define MCU_PARAM_UART_28800BPS         28800
+#define MCU_PARAM_UART_57600BPS         57600
+#define MCU_PARAM_UART_115200BPS        115200
+#define MCU_PARAM_UART_250000BPS        250000
+#define MCU_PARAM_UART_500000BPS        500000
+
+#define MCU_PARAM_PORTS                 3
+
+#define SRAM_START_ADDR         0
+#define EEPROM_START_ADDR       0
+#define FLASH_START_ADDR        (&platform_flash[0])
+#define FLASH_START_PAGE        0
+#define FLASH_PAGE_SIZE         256
+#define FLASH_WORD_BYTES        2
+#define FLASH_WORD_BITS         (FLASH_WORD_BYTES*8)
+#define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
 
 
 
 
-/** Data section Nomenclature  <BR>
+
+/** Chip Settings  <BR>
   * ========================================================================<BR>
-
-#if (CC_SUPPORT == GCC)
-#   define OT_SECTION(VAR, SECTION)     __attribute__((section(##SECTION))
-
-#elif (CC_SUPPORT == CL430)
-#   define OT_DATAPRAGMA(VAR, SECTION)  _Pragma(DATA_SECTION(##VAR, ##SECTION))
-
-#elif (CC_SUPPORT == IAR_V5)
-#endif
+  * @todo Check if this is even needed.  GCC is dominant compiler
   */
 
 
 
-
-
-/** Low Power Mode Macros:
-  * Within OpenTag, only SLEEP_MCU is used.  The other low power modes may
-  * be used outside OpenTag, especially during idle periods in the MAC sequence.
-  * STANDBY is not normally useful because it shuts off the RTC.
-  *
+/** Low Power Mode Macros: (Deprecated)
+  * ========================================================================<BR>
+  * SLEEP_MCU():        Core off, APB on, SRAM on                       (~50 uA)
+  * SLEEP_WHILE_UHF():  Core off, APB on, SRAM on                       (~10 uA)
+  * STOP_MCU():         Core off, RTC on, SRAM on                       (~1.5 uA)
+  * STANDBY_MCU():      Core off, clocks off, SRAM off                  (~0.2 uA)
   */
 #define SLEEP_MCU()
 #define SLEEP_WHILE_UHF()
@@ -100,12 +130,33 @@
 
 
 
+/** Data section Nomenclature  <BR>
+  * ========================================================================<BR>
+  * @todo Check if this is even needed.  ARMGCC is dominant compiler
+  */
+  
 
 
-typedef ot_u8 flash_heap[FLASH_FS_ALLOC]; 
 
-extern flash_heap  platform_flash;
+/** Interrupt Nomenclature  <BR>
+  * ========================================================================<BR>
+  * At present, no interrupts used in emulation.
+  */
 
+
+
+
+
+/** Flash Emulation  <BR>
+  * ========================================================================<BR>
+  * Emulate a 4KB block for Veelite.
+  */
+
+#if (OT_FEATURE(VEELITE) == ENABLED)
+  //typedef ot_u8       flash_heap[FLASH_FS_ALLOC];
+    typedef ot_u8       flash_heap[4096];
+    extern  flash_heap  platform_flash;
+#endif
 
 
 

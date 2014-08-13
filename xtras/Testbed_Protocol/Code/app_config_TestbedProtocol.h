@@ -1,10 +1,10 @@
 /* Copyright 2010-2011 JP Norair
   *
-  * Licensed under the Apache License, Version 2.0 (the "License");
+  * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
-  * http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.indigresso.com/wiki/doku.php?id=opentag:license_1_0
   *
   * Unless required by applicable law or agreed to in writing, software
   * distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,6 +45,9 @@
 #endif
 #define NOT_AVAILABLE   DISABLED
 
+#define OT_PARAM(VAL)                   OT_PARAM_##VAL
+#define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
+#define OT_PARAM_BUFFER_SIZE            1024                                // Typically, must be at least 512 bytes    
 
 
 /** Top Level Featureset
@@ -74,8 +77,6 @@
 #define OT_FEATURE_RTC                  ENABLED
 #define OT_FEATURE_M1                   NOT_AVAILABLE                       // Mode 1 Featureset: Generally not implemented
 #define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
-#define OT_FEATURE_SESSION_DEPTH        4                                   // Max simultaneous sessions (i.e. tasks)
-#define OT_FEATURE_BUFFER_SIZE          1024                                // Typically, must be at least 512 bytes    
 #define OT_FEATURE_SYSTEM_CALLBACKS     ENABLED                             // Signal callbacks from system layer
 #define OT_FEATURE_M2NP_CALLBACKS       ENABLED                             // Signal callbacks from Network (M2NP) layer
 #define OT_FEATURE_M2QP_CALLBACKS       ENABLED                             // Signal callbacks from Transport (M2QP) layer

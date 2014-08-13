@@ -1,4 +1,4 @@
-/*  Copyright 2010-2012, JP Norair
+/*  Copyright 2013-2014, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,23 +17,31 @@
   * @file       /otlib/alp.h
   * @author     JP Norair
   * @version    V1.0
-  * @date       31 July 2012
-  * @brief      Application Layer Subprotocol header
+  * @date       25 Mar 2014
+  * @brief      Application Layer Protocol Management Module
   * @defgroup   ALP
   * @ingroup    ALP
   *
-  * Application Layer Subprotocols (ALP's) are directive-based protocols that
-  * interface only with the application layer.  Other protocols supported by
-  * DASH7 Mode 2 exist at lower levels, even though they may interact with
-  * higher level data (this is done to improve size and performance).  
+  * "ALP" stands for Application Layer Protocol.  ALP defines a particular 
+  * format for message encapsulation.  Incidentally, this format is also very
+  * useful for general purpose message passing in systems like OpenTag.
   *
-  * Some ALP's are defined in the DASH7 Mode 2 Specification.
-  * - Filesystem access (Veelite)
-  * - Sensor Configuration (pending draft of ISO 21451-7)
-  * - Security Configuration (pending draft of ISO 29167-7)
+  * @note "ALP" is an old term that doesn't anymore fit the wider scope of  
+  * modern ALP.  The data model will be changed to "CHOMP," meaning "Cascaded, 
+  * Header-Oriented Multi-Port."
   *
+  * The ALP Module defines an ALP datatype and functional interface.  The 
+  * general usage model is to define an ALP "object" for usage by some number
+  * of Applications/Tasks/Message-Sources, and then have these message sources
+  * load their messages into ALP.  The next step is to parse the messages and
+  * do some work according to the protocol in the message.  ALP takes care of
+  * all these things.
   *
-  
+  * ALP is a library, not a task!  Task-like behavior for protocol processing
+  * is possible by calling ALP library functions from your task.  Usually, this
+  * is a task that manages some form of I/O, because protocol data has to come
+  * from somewhere.
+  * 
   ******************************************************************************
   */
 
@@ -51,9 +59,28 @@
   * ALP Records can be used for NDEF and Pure-ALP.
   */
   
-#define ALP_FLAG_MB     0x80    // Message Start bit
-#define ALP_FLAG_ME     0x40    // Message End bit
-#define ALP_FLAG_CF     0x20    // Chunk Flag
+#define ALP_FLAG_MB         0x80    // Message Start bit
+#define ALP_FLAG_ME         0x40    // Message End bit
+#define ALP_FLAG_CF         0x20    // Chunk Flag
+#define ALP_FLAG_SR         0x10
+#define ALP_FLAG_WORKING    0x08    // For internal usage with ALP (no NDEF)
+#define ALP_FLAG_INTRAMSG   0x07    // For internal usage with ALP (no NDEF)
+
+/// Temporary, for transitioning some alp code that is being refactored
+#define _O_CMD          cmd
+#define _O_ID           id
+#define _O_PLEN         plength
+#define _O_FLAGS        flags
+#define _I_CMD          -1
+#define _I_ID           -2
+#define _I_PLEN         -3
+#define _I_FLAGS        -4
+
+#define INREC(X)        inq->getcursor[_I_##X]
+#define OUTREC(X)       outrec._O_##X
+#define BOOKMARK_IN     bookmark_in
+#define BOOKMARK_OUT    outrec.bookmark
+
 
 
 typedef enum {
@@ -72,14 +99,22 @@ typedef struct {
     ot_u8   plength;            // Payload Length
     ot_u8   id;                 // ALP ID (Similar to Destination Port)
     ot_u8   cmd;                // ALP CMD (ID-specific Command)
-    void*   bookmark;           // Internal use only (private)
+//    void*   bookmark;           // Internal use only (private)
 } alp_record;
 
+
+///@note The alp_tmpl structure is under redesign.  inrec and outrec will be
+///      removed, and the application processors will be responsible to manage
+///      their own record headers, with functional assitance from ALP module.
 typedef struct {
-    alp_record  inrec;
-    alp_record  outrec;
-    Queue*      inq;
-    Queue*      outq;
+    ot_u16      purge_id;       // Internal use only: for garbage collection
+    
+//    alp_record  inrec;        // Legacy: but using Macros [above] as bridge
+    alp_record  outrec;         // Legacy: to be removed soon
+    ot_queue*   inq;
+    ot_queue*   outq;
+    
+    void*       sstack;         // Use NULL if the ALP is on an interface with no session stack
 } alp_tmpl;
 
 
@@ -87,10 +122,279 @@ typedef struct {
 #if ( OT_FEATURE(SERVER) && OT_FEATURE(ALP) )
 
 
+/** Main Library Functions <BR>
+  * ========================================================================<BR>
+  * These are the functions that OpenTag and your OpenTag-based code should be
+  * calling.
+  */
 
 void alp_init(alp_tmpl* alp, ot_queue* inq, ot_queue* outq);
 
 
+
+/** @brief  Check an ALP input to see if it has room for data
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @param  length      (ot_int) Number of bytes to check for availability
+  * @retval ot_bool     True if "length" bytes are available in ALP
+  * @ingroup ALP
+  * @sa alp_load
+  * @sa alp_purge
+  * 
+  * alp_load() will call this function internally, and it is the preferred way
+  * for apps that need to be thread-safe.
+  *
+  * alp_is_available() will call alp_purge() if there is not sufficient space
+  * in the ALP input, in an effort to try to make enough space by culling dead
+  * records.
+  */
+ot_bool alp_is_available(alp_tmpl* alp, ot_int reserve_bytes);
+
+
+
+
+/** @brief  Thread-safe function for loading data into ALP input
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @param  src         (ot_u8*) source data to load into ALP
+  * @param  length      (ot_int) Number of bytes to load from source into ALP
+  * @retval ot_bool     True if load was possible, false if not
+  * @ingroup ALP
+  * @sa alp_is_available
+  */
+ot_bool alp_load(alp_tmpl* alp, ot_u8* src, ot_int length);
+
+
+
+
+///@todo experimental
+void alp_notify(alp_tmpl* alp, ot_sig callback);
+
+
+
+/** @note User IDs for ALP's
+  * Most ALP commands require some form of user authentication to run.  This is
+  * analagous for a user having to log-in to a POSIX shell in order to run the
+  * applications on the system.  The User ID needs to be authenticated to a 
+  * device ID via the auth system if the ALP's are being transmitted over the 
+  * air (via DASH7).
+  */
+
+/** @brief Header parser for ALP and also NDEF (ALP is a subset of NDEF)
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @retval ALP_status  Delivery Status of ALPs in message
+  * @ingroup ALP
+  *
+  * This is the primary callable function for receiving and processing ALP
+  * messages.  No other alp function needs to be called to process a received
+  * ALP message.
+  *
+  * ALP messages wrap application protocol data.  The application may cause an
+  * ALP message to be sent as output, related to the ALP message that has just
+  * been parsed and processed.  Without caching or state-based control by the
+  * application, one ALP input message may generate at most one output message.
+  *
+  * The function returns 0, 1, 2, 3 (enumerated in ALP_status), depending on
+  * what is happening in the message processing.  If it returns 0 (MSG_Null)
+  * or 3 (MSG_End), then processing has ceased due to error or that the message
+  * is finished successfully.
+  *
+  * If it returns MSG_Chunking_In, then the input message is not over, but the
+  * remaining data has not yet been received.  The communication layer should
+  * get the next frame and call alp_parse_message() again, using the retained
+  * "alp" object as input.  If it returns MSG_Chunking_Out, then the output
+  * message is being dealt in much the same way.  alp_parse_message() reports
+  * output ahead of input, therefore if messages are being chunked-in and out
+  * at the same time, it will return MSG_Chunking_Out.
+  */
+ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id);
+
+
+
+
+/** @brief  Setup a new Application queue from the main alp input queue
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @param  appq        (ot_queue*) subordinate queue used by Application
+  * @retval None
+  * @ingroup ALP
+  * @sa alp_append_appq
+  * @sa alp_goto_next
+  *
+  * Non-atomic applications that run from a shared ALP usually need to maintain
+  * an independent application queue.  The functions alp_goto_next() and 
+  * alp_retrieve_cmd() will will draw records from said queue, but before you
+  * can use these, you must setup an Application queue in the first place.
+  */
+void alp_new_appq(alp_tmpl* alp, ot_queue* appq);
+
+
+
+/** @brief  Refresh an Application queue from the main alp input queue
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @param  appq        (ot_queue*) subordinate queue used by Application
+  * @retval None
+  * @ingroup ALP
+  * @sa alp_new_appq
+  *
+  * After an Application queue has been created, you can append more parts of
+  * the ALP input queue to the App queue.  alp_append_appq() will move the 
+  * getcursor of the ALP input queue past this latest-read record, and as such
+  * the App queue putcursor is extended to this new position, to include this
+  * latest-read record.
+  *
+  * @note Do not call alp_append_appq() immediately after alp_new_appq() unless
+  * you want to append a second record into the App queue.  alp_new_appq() 
+  * automatically appends the first record into the App Queue.
+  */
+void alp_append_appq(alp_tmpl* alp, ot_queue* appq);
+
+
+
+
+/** @brief  Application Traversal Function for ALP input
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @param  appq        (ot_queue*) subordinate queue used by Application
+  * @param  target      (ot_u8) ALP ID used by the Application
+  * @retval ot_u8       Record Flags for next matching record.  0 if none found
+  * @ingroup ALP
+  * @sa alp_retrieve_cmd
+  * @sa alp_new_appq
+  *
+  * This function is important for Applications that require non-atomic
+  * processing of ALP messages.  Since an ALP stream can be shared by multiple
+  * applications, this function will traverse the ALP input stream
+  */
+ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target);
+
+
+
+
+/** @brief  Read ALP record command value and mark record as read
+  * @param  apprec      (alp_record*) output alp record header
+  * @param  appq        (ot_queue*) Application Queue
+  * @param  target      (ot_u8) ALP ID used by Application
+  * @retval ot_u8*      Pointer to front of record, or NULL if no record
+  * @ingroup ALP
+  * @sa alp_goto_next
+  *
+  * A protocol processor should use this function following alp_goto_next(), to
+  * return the Command (cmd) value of the new record and also to mark the new
+  * record as the working record.
+  */
+ot_u8* alp_retrieve_record(alp_record* apprec, ot_queue* appq, ot_u8 target);
+
+
+
+/** @brief  Releases (frees) the record in the buffer
+  * @param  appq        (ot_queue*) Application Queue
+  * @retval None
+  * @ingroup ALP
+  * @sa alp_retrieve_record
+  *
+  * A protocol processor may use this function after it is finished with a 
+  * record.  Issuing alp_retrieve_record() will mark the record as finished, 
+  * allowing the ALP garbage collector (alp_purge()) to reallocate the space 
+  * for future records.
+  */
+void alp_release_record(ot_queue* appq);
+
+
+
+/** @brief  Purge finished ALP records from an ALP Stream
+  * @param  alp         (alp_tmpl*) ALP stream to purge
+  * @retval None
+  * @ingroup ALP
+  * @sa alp_kill
+  *
+  * Non-atomic ALPs must set record flags to 0 after they have completed the
+  * input processing of said records.  The ALP module will call alp_purge() 
+  * when the stream gets too full, and it needs to free-up space in the stream
+  * for new input records.  Users can call alp_purge() as well, although it is
+  * not usually necessary.
+  *
+  * The alp_purge() implementation is opportunistic.  It will avoid stream
+  * defragmentation whenever possible (this process is relatively expensive).
+  */
+void alp_purge(alp_tmpl* alp);
+
+
+
+
+/** @brief  Kill an Application's ALP data
+  * @param  alp         (alp_tmpl*) ALP stream to kill & purge
+  * @param  kill_id     (ot_u8) ALP ID to purge
+  * @retval None
+  * @ingroup ALP
+  * @sa alp_purge
+  *
+  * alp_purge() will only cull ALP records that have been successfully accessed
+  * and marked for deletion.  alp_kill() will seek-out any ALP records that 
+  * match the supplied ALP ID, it will mark them for death, and purge them.
+  *
+  * alp_kill() is intended to be used when killing a thread that may have some
+  * unused data still in an ALP stream.
+  */
+void alp_kill(alp_tmpl* alp, ot_u8 kill_id);
+
+
+
+
+
+
+
+
+/** Internal Module Routines <BR>
+  * ========================================================================<BR>
+  * Under normal software design models, these functions likely would not be 
+  * exposed.  However, we expose pretty much everything in OpenTag.
+  *
+  * Use with caution.
+  */
+
+
+
+/** @brief  Internal function for resolving the index of an app processor
+  * @param  alp_id      (ot_u8) ALP ID
+  * @retval ot_u8       index of the processor routine
+  * @ingroup ALP
+  * @sa alp_proc
+  *
+  * 
+  */
+ot_u8 alp_get_handle(ot_u8 alp_id);
+
+
+
+
+
+/** @brief  Process a received ALP record (vectors to all supported ALP's)
+  * @param  alp         (alp_tmpl*) ALP I/O control structure
+  * @param  user_id     (id_tmpl*) user id for performing the record 
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
+  * @ingroup ALP
+  *
+  * ID values (from spec)
+  * 0x00:       Null subprotocol
+  * 0x01:       Filesystem subprotocol
+  * 0x02:       Sensor Configuration subprotocol (pending)
+  * 0x11-14:    Security subprotocols (pending)
+  */
+ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id);
+
+
+
+
+
+  
+
+
+
+
+
+
+/** Functions Under Review <BR>
+  * ========================================================================<BR>
+  * These are legacy functions.  They might get bundled into different 
+  * functions, changed, or removed.  
+  */
 
 /** @brief Break a running ALP stream (due to error), and load error record
   * @param  alp                 (alp_tmpl*) ALP I/O control structure
@@ -151,45 +455,14 @@ void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payl
   * the "Message Begin" flag high.  If you wish to use alp_new_record() instead
   * of alp_new_message(), you must set ALP_FLAG_MB in alp->outrec.flags AFTER
   * alp_new_record() returns.
-  */
+
 void alp_new_message(alp_tmpl* alp, ot_u8 payload_limit, ot_int payload_remaining);
-
-
-
-
-/** @brief Header parser for ALP and also NDEF (ALP is a subset of NDEF)
-  * @param  alp         (alp_tmpl*) ALP I/O control structure
-  * @retval ALP_status  Delivery Status of ALPs in message
-  * @ingroup ALP
-  *
-  * This is the primary callable function for receiving and processing ALP
-  * messages.  No other alp function needs to be called to process a received
-  * ALP message.
-  *
-  * ALP messages wrap application protocol data.  The application may cause an
-  * ALP message to be sent as output, related to the ALP message that has just
-  * been parsed and processed.  Without caching or state-based control by the
-  * application, one ALP input message may generate at most one output message.
-  *
-  * The function returns 0, 1, 2, 3 (enumerated in ALP_status), depending on
-  * what is happening in the message processing.  If it returns 0 (MSG_Null)
-  * or 3 (MSG_End), then processing has ceased due to error or that the message
-  * is finished successfully.
-  *
-  * If it returns MSG_Chunking_In, then the input message is not over, but the
-  * remaining data has not yet been received.  The communication layer should
-  * get the next frame and call alp_parse_message() again, using the retained
-  * "alp" object as input.  If it returns MSG_Chunking_Out, then the output
-  * message is being dealt in much the same way.  alp_parse_message() reports
-  * output ahead of input, therefore if messages are being chunked-in and out
-  * at the same time, it will return MSG_Chunking_Out.
   */
-ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id);
 
 
 
-
-/** @brief Header parser for ALP and also NDEF (ALP is a subset of NDEF)
+/** @todo pending removal/refactoring
+  * @brief Header parser for ALP and also NDEF (ALP is a subset of NDEF)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @retval ot_u8       0 on success (valid header), non-zero on bad header.
   * @ingroup ALP
@@ -217,43 +490,47 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval);
 
 
 
-/** @note User IDs for ALP's
-  * Most ALP commands require some form of user authentication to run.  This is
-  * analagous for a user having to log-in to a POSIX shell in order to run the
-  * applications on the system.  The User ID needs to be authenticated to a 
-  * device ID via the auth system if the ALP's are being transmitted over the 
-  * air (via DASH7).
+
+
+
+void alp_load_header(ot_queue* appq, alp_record* rec);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/** Protocol Processors <BR>
+  * ========================================================================<BR>
+  * @note Protocol Processors are exposed, but they never should be called 
+  * unless you are writing a patch function for alp_proc() or a patch function
+  * for the Protocol Processor function itself.  Standard usage is to call
+  * alp_parse_message() when there is a message in the ALP stream, which will
+  * call alp_proc(), which will call one of these Protocol Processors.
   */
 
-
-/** @brief  Process a received ALP record (vectors to all supported ALP's)
+/** @brief  Used by parser when ALP ID is unsupported (returns False)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval ot_bool     True if there is output
+  * @retval ot_bool		Always True
   * @ingroup ALP
-  *
-  * ID values (from spec)
-  * 0x00:       Null subprotocol
-  * 0x01:       Filesystem subprotocol
-  * 0x02:       Sensor Configuration subprotocol (pending)
-  * 0x11-14:    Security subprotocols (pending)
   */
-ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id);
-
-
-
-
-
-/** @note Subprotocol processing functions
-  * The functions below are exposed, but they never should be called unless you
-  * are writing some sort of hack or optimized version.  Instead, call the
-  * alp_proc() function with the ID parameter set appropriately.
-  */
+ot_bool alp_proc_null(alp_tmpl* alp, id_tmpl* user_id);
+  
 
 /** @brief  Process a received filesystem ALP record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval ot_bool		True if output
+  * @retval ot_bool		True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id);
@@ -265,7 +542,7 @@ ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id);
 /* @brief  Process a received sensor configurator ALP record (not implemented)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id);
@@ -282,7 +559,7 @@ ot_bool alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received DASHFORTH ALP record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_dashforth(alp_tmpl* alp, id_tmpl* user_id);
@@ -297,7 +574,7 @@ ot_bool alp_proc_dashforth(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received logger ALP record (typically client only)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id);
@@ -316,7 +593,7 @@ ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received Session API record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_api_session(alp_tmpl* alp, id_tmpl* user_id);
@@ -324,7 +601,7 @@ ot_bool alp_proc_api_session(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received System API record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_api_system(alp_tmpl* alp, id_tmpl* user_id);
@@ -332,7 +609,7 @@ ot_bool alp_proc_api_system(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received Query API record
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
 ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id);
@@ -349,11 +626,53 @@ ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id);
 /** @brief  Process a received Security/Auth ALP record (not implemented)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
   * @param  user_id     (id_tmpl*) user id for performing the record 
-  * @retval None
+  * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
-ot_bool alp_proc_sec_example(alp_tmpl* alp, id_tmpl* user_id);
+ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id);
 #endif
+
+
+
+
+
+
+
+
+void alp_breakdown_u8(ot_queue* in_q, void* data_type);
+void alp_breakdown_u16(ot_queue* in_q, void* data_type);
+void alp_breakdown_u32(ot_queue* in_q, void* data_type);
+void alp_breakdown_queue(ot_queue* in_q, void* data_type);
+void alp_breakdown_session_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_advert_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_command_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_id_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_routing_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_dialog_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_query_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_ack_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_error_tmpl(ot_queue* in_q, void* data_type);   //Client only? 
+void alp_breakdown_udp_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_isfcomp_tmpl(ot_queue* in_q, void* data_type);
+void alp_breakdown_isfcall_tmpl(ot_queue* in_q, void* data_type);
+
+void alp_stream_u8(ot_queue* out_q, void* data_type);
+void alp_stream_u16(ot_queue* out_q, void* data_type);
+void alp_stream_u32(ot_queue* out_q, void* data_type);
+void alp_stream_queue(ot_queue* out_q, void* data_type);
+void alp_stream_session_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_advert_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_command_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_id_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_routing_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_dialog_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_query_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_ack_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_error_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_udp_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_isfcomp_tmpl(ot_queue* out_q, void* data_type);
+void alp_stream_isfcall_tmpl(ot_queue* out_q, void* data_type);
+
 
 
 

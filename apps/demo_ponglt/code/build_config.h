@@ -69,6 +69,34 @@
 
 
 
+/** Kernel Configuration  <BR>
+  * ========================================================================<BR>
+  * You can override this by including KERNEL_XXX in your compiler defines.
+  * MSP430 boards default to GULP, Cortex-M boards default to HICCULP
+  */
+#if (!defined(KERNEL_GULP) && !defined(KERNEL_HICCULP))
+#   if (   defined(BOARD_OMG_CC430)    \
+        ||  defined(BOARD_EM430RF)      \
+        ||  defined(BOARD_eZ430Chronos) \
+        ||  defined(BOARD_RF430USB_5509) \
+        )
+#       define KERNEL_GULP
+#       define __KERNEL_GULP__
+
+#   else
+#       define KERNEL_HICCULP
+#       define __KERNEL_HICCULP__
+
+#   endif
+#endif
+
+
+
+#define OS_FEATURE(VAL)                 DISABLED                // NO OS Featuresetting just yet
+#define OS_FEATURE_MEMCPY               DISABLED                //  
+#define OS_FEATURE_MALLOC               DISABLED
+
+
 
 
 //Deprecated

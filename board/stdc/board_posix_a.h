@@ -16,8 +16,8 @@
 /**
   * @file       /board/stdc/board_posix_a.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R101
+  * @date       24 Mar 2014
   * @brief      Board Configuration for POSIX Type A, on STD C libaries
   * @ingroup    Platform
   *
@@ -60,8 +60,9 @@
   * ========================================================================<BR>
   */
 #define RF_PARAM_BAND   433
-#define RF_HDB_ATTEN    6       //Half dB attenuation (units = 0.5dB), used to scale TX power
-#define RF_RSSI_OFFSET  3       //Offset applied to RSSI calculation
+#define RF_HDB_ATTEN    3       //Half dB attenuation (units = 0.5dB), used to scale TX power
+#define RF_HDB_RXATTEN  0
+#define RF_RSSI_OFFSET  0       //Offset applied to RSSI calculation
 
 
 
@@ -69,23 +70,40 @@
   * ========================================================================<BR>
   *
   */
-#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL       // FEATURE                  AVAILABILITY
-#define MCU_FEATURE_CRC                 DISABLED                 // CCITT CRC16              Low
-#define MCU_FEATURE_AES128              DISABLED                 // AES128 engine            Moderate
-#define MCU_FEATURE_ECC                 DISABLED                // ECC engine               Low
-#define MCU_FEATURE_RADIODMA            DISABLED
-#define MCU_FEATURE_RADIODMA_TXBYTES    0
-#define MCU_FEATURE_RADIODMA_RXBYTES    0
-#define MCU_FEATURE_MAPEEPROM           DISABLED
-#define MCU_FEATURE_MPIPEDMA            DISABLED      // MPipe is only useful for debug mode
-#define MCU_FEATURE_MEMCPYDMA           DISABLED
-
-#define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
-#define MCU_PARAM_POINTERSIZE           2
-
-#define PLATFORM_FEATURE_USBCONVERTER    ENABLED
+#define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
+#define MCU_CONFIG_MULTISPEED           DISABLED         // Allows usage of MF-HF clock boosting
+#define MCU_CONFIG_MAPEEPROM            DISABLED
+#define MCU_CONFIG_MPIPECDC             DISABLED        // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPEUART            DISABLED        // UART MPipe Implementation
+#define MCU_CONFIG_MPIPEI2C             DISABLED        // I2C MPipe Implementation
+#define MCU_CONFIG_MEMCPYDMA            DISABLED        // MEMCPY DMA should be lower priority than MPIPE DMA
+#define MCU_CONFIG_USB                  DISABLED
 
 
+
+/** Platform Memory Configuration <BR>
+  * ========================================================================<BR>
+  * OpenTag needs to know where it can put Nonvolatile memory (file system) and
+  * how much space it can allocate for filesystem.  For this configuration, 
+  * Veelite is put into FLASH.
+  *
+  * The STM32L uses 256 byte Flash pages and 4KB Flash sectors.  Therefore, it
+  * is best to allocate the FS in Flash on 4KB boundaries because this is the 
+  * resolution that can be write protected (or, as with FS, *NOT* write 
+  * protected).  Best practice with STM32 chips is to put the FS at the back of
+  * of the Flash space because this seems to work best with the debugger HW.
+  */
+
+#define SRAM_SIZE               (16*1024)
+#define EEPROM_SIZE             (4*1024)
+#define FLASH_SIZE              (64*1024)
+
+
+#define FLASH_NUM_PAGES         (FLASH_SIZE/FLASH_PAGE_SIZE)
+#define FLASH_FS_ADDR           FLASH_START_ADDR
+#define FLASH_FS_PAGES          16
+#define FLASH_FS_FALLOWS        3 
+#define FLASH_FS_ALLOC          (FLASH_PAGE_SIZE*FLASH_FS_PAGES)
 
 
 
@@ -95,36 +113,14 @@
   * ========================================================================<BR>
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
-#define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
-#define BOARD_FEATURE_MPIPE_QMGMT		ENABLED
+#define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
 
-
-
-
-
-
-/** Platform Memory Configuration <BR>
-  * ========================================================================<BR>
-  * OpenTag needs to know where it can put Nonvolatile memory (file system) and
-  * how much space it can allocate for filesystem.
-  */
-#define SRAM_START_ADDR             0x0000
-#define SRAM_SIZE                   (16*1024)
-#define EEPROM_START_ADDR           0
-#define EEPROM_SIZE                 0
-#define FLASH_START_ADDR            0x8000
-#define FLASH_START_PAGE            0
-#define FLASH_PAGE_SIZE             512
-#define FLASH_WORD_BYTES            2
-#define FLASH_WORD_BITS             (FLASH_WORD_BYTES*8)
-#define FLASH_NUM_PAGES             64
-#define FLASH_FS_ALLOC              (512*8)     //allocating total of 8 blocks (4KB)
-#define FLASH_FS_ADDR               0x8000
-#define FLASH_FS_FALLOWS            3
-
-#define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
-
-
+#define BOARD_FEATURE_MPIPE             DISABLED
+#define BOARD_FEATURE_USBCONVERTER      BOARD_FEATURE_MPIPE                 // Is UART connected via USB converter?
+#define BOARD_FEATURE_MPIPE_DIRECT      BOARD_FEATURE_MPIPE
+#define BOARD_FEATURE_MPIPE_BREAK       DISABLED                // Send/receive leading break for wakeup
+#define BOARD_FEATURE_MPIPE_CS          DISABLED                // Chip-Select / DTR wakeup control
+#define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                // RTS/CTS style flow control
 
 
 
@@ -147,11 +143,11 @@
   * MPIPE:      UART to use for the MPipe                                   <BR>
   */
   
-#define OT_GPTIM            TIM1A3
-#define OT_GPTIM_IRQ        TIM1A3_IRQChannel
-#define OT_GPTIM_VECTOR     TIMER1_A1_VECTOR
-#define OT_GPTIM_CLOCK      32768
+#define OT_GPTIM_ID         'R'
+#define OT_GPTIM            RTC
+#define OT_GPTIM_CLOCK      33300
 #define OT_GPTIM_RES        1024
+#define OT_GPTIM_SHIFT      0
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
 #define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
 
@@ -181,12 +177,10 @@
 /******* ALL SHIT BELOW HERE IS SUBJECT TO REDEFINITION **********/
 
 
-
-
 /** Flash Memory Setup: 
   * "OTF" means "Open Tag Flash," but if flash is not used, it just means 
   * storage memory.  Unfortunately this does not begin with F.
-  */
+  
 #define OTF_VWORM_PAGES         (FLASH_FS_ALLOC/FLASH_PAGE_SIZE)
 #define OTF_VWORM_FALLOW_PAGES  3
 #define OTF_VWORM_PAGESIZE      FLASH_PAGE_SIZE
@@ -208,14 +202,14 @@
 
 
 
-/** Abstracted Flash Organization: 
+* Abstracted Flash Organization: 
   * OpenTag uses Flash to store 2 kinds of data.  The default setup puts 
   * Filesystem memory in the back.
   * 1. Program code (obviously)
   * 2. Filesystem Memory
   *
   * FLASH_xxx constants are defined in the platform_config_xxx.h file.  
-  */
+
 #define OTF_TOTAL_SIZE          FLASH_FS_ALLOC
 #define OTF_START_PAGE          OTF_VWORM_START_PAGE
 #define OTF_START_ADDR          FLASH_FS_ADDR
@@ -223,7 +217,7 @@
 #define OTF_VWORM_LAST_PAGE     (OTF_VWORM_START_PAGE + OTF_VWORM_PAGES - 1)
 #define OTF_VWORM_END_ADDR      (FLASH_FS_ADDR + FLASH_FS_ALLOC - 1)
 
-
+*/
 
 
 #endif

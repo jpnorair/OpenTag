@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/mpipe.c
   * @author     JP Norair
-  * @version    R100
-  * @date       24 Oct 2012
+  * @version    R101
+  * @date       24 Jan 2013
   * @brief      Message Pipe (MPIPE) Task Interface
   * @ingroup    MPipe
   *
@@ -40,7 +40,8 @@ mpipe_struct mpipe;
 
 
 void mpipe_connect(void* port_id) {
-    sys.task_MPA.latency = mpipedrv_init(port_id);
+    ///@todo no hard-coded input for second arg
+    sys.task_MPA.latency = mpipedrv_init(port_id, 115200);
 }
 
 void mpipe_disconnect(void* port_id) {
@@ -77,16 +78,29 @@ void sub_mpipe_actuate(ot_u8 new_event, ot_u8 new_reserve, ot_uint new_nextevent
 
 
 void mpipe_send() {
-/// "32" is a magic number right now, which is probably longer than the largest packet
-/// that can be TXed or RXed.
 ///@todo A session stack could be implemented for MPipe Task.  For now, Sending (TX)
 /// will just fall-through if mpipe is occupied
-	mpipedrv_txndef(False, MPIPE_High);
-	sub_mpipe_actuate(3, 1, 32);
+	sub_mpipe_actuate(3, 1, (ot_uint)mpipedrv_txndef(False, MPIPE_High));
 }
 
+
+void mpipe_txschedule(ot_int wait) {
+    sub_mpipe_actuate(2, 1, wait);
+}
+
+
+void mpipe_rxschedule(ot_int wait) {
+    sub_mpipe_actuate(4, 1, wait);
+}
+
+
 void mpipeevt_txdone(ot_int code) {
-    sub_mpipe_actuate(3, 1, (ot_uint)code);
+    // If driver returns 0, it closes connection itself.  Reopen in RX.
+    // If driver returns >0, the task must delay the connection termination.
+    ot_u8 nextevent;
+    nextevent = 3 + (code==0); 
+    sub_mpipe_actuate(nextevent, 1, code);
+    //sub_mpipe_actuate(4, 1, code);
 }
 
 
@@ -107,9 +121,12 @@ void mpipeevt_rxdone(ot_int code) {
 #if (defined(MPIPE_USB) || (BOARD_FEATURE_USBCONVERTER == ENABLED))
 	sub_mpipe_actuate(1, 32, 0);
 #else
-    static const ot_u8 params[] = { 4, 1, 1, 32 };
-    code = (code == 0);
-    sub_mpipe_actuate(params[code], params[code+2], 0);
+    static const ot_u8 params[] = { 1, 32, 4, 1 };
+    ot_u8* task_params;
+    
+    task_params  = params;
+    task_params += (code != 0) << 1;
+    sub_mpipe_actuate(task_params[0], task_params[1], 0);
 #endif
 }
 
@@ -125,7 +142,7 @@ void mpipe_systask(ot_task task) {
         case 1: {
             ALP_status status;
             status      = alp_parse_message(&mpipe.alp, NULL);
-            mpipe.state = MPIPE_Idle;
+            mpipedrv_clear();
             switch (status) {
                 //wipe queue and go back to idle listening
                 case MSG_Null:          //goto systask_mpipe_IDLE;
@@ -145,7 +162,7 @@ void mpipe_systask(ot_task task) {
 
         // TX/RX timeout -- note case fall-through
         case 3: mpipedrv_kill();
-                //mpipe.state = MPIPE_Idle;
+                //mpipedrv_clear();
         
         // Return to idle (passive RX)
         case 4:

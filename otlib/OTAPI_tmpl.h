@@ -16,8 +16,8 @@
 /**
   * @file       otlib/OTAPI_tmpl.h
   * @author     JP Norair
-  * @version    R100
-  * @date       26 Jan 2011
+  * @version    R101
+  * @date       24 Mar 2014
   * @brief      Templates for OTAPI, usually used for organizing ALP-API data 
   *             into queued form that is assimilable by API functions.  Some 
   *             tmpls are also used within the OTlib itself.
@@ -98,19 +98,27 @@ typedef struct {
 
 
 /// Mode 2 MAC/Protocol Templates
+//typedef enum {
+//    ADDR_unicast    = 0,    //2
+//    ADDR_broadcast  = 1,    //1
+//    ADDR_anycast    = 2,    //removed
+//    ADDR_multicast  = 3     //removed
+//} addr_type;
 typedef enum {
-    ADDR_unicast    = 0x00,
-    ADDR_broadcast  = 0x40,
-    ADDR_anycast    = 0x80,
-    ADDR_multicast  = 0xC0
+    ADDR_stream     = 0,
+    ADDR_broadcast  = 1,
+    ADDR_unicast    = 2,
+    ADDR_unicastvid = 3
 } addr_type;
+
+#define ADDR_Type   addr_type
 
 
 #define __SIZEOF_adv_tmpl (1+1+1+1+2)
 typedef struct {
     ot_u8  duty_off;
     ot_u8  duty_on;
-    ot_u8  reserved;
+    ot_u8  subnet;
     ot_u8  channel;
     ot_u16 duration;
 } advert_tmpl;
@@ -218,14 +226,25 @@ typedef enum {
 } command_opcodes;
 
 
+//typedef enum {
+//    CMDTYPE_response            = 0,
+//    CMDTYPE_error               = (1 << 4),
+//    CMDTYPE_na2p_request        = (2 << 4),
+//    CMDTYPE_a2p_init_request    = (4 << 4),
+//    CMDTYPE_a2p_inter_request   = (5 << 4),
+//    CMDTYPE_a2p_final_request   = (7 << 4)
+//} command_types;
+
 typedef enum {
     CMDTYPE_response            = 0,
-    CMDTYPE_error               = (1 << 4),
-    CMDTYPE_na2p_request        = (2 << 4),
-    CMDTYPE_a2p_init_request    = (4 << 4),
-    CMDTYPE_a2p_inter_request   = (5 << 4),
-    CMDTYPE_a2p_final_request   = (7 << 4)
+    CMDTYPE_control             = (1 << 4),
+    CMDTYPE_bcast_request       = (2 << 4),
+    CMDTYPE_acast_request       = (3 << 4),
+    CMDTYPE_mcast_request       = (4 << 4),
+    CMDTYPE_mcast_continue      = (5 << 4),
+    CMDTYPE_mcast_finish        = (7 << 4),
 } command_types;
+
 
 
 #define __SIZEOF_error_tmpl (1+1+(1*PLATFORM_POINTER_SIZE))
@@ -236,10 +255,10 @@ typedef struct {
 } error_tmpl;
 
 
-#define __SIZEOF_dialog_tmpl (2+2+(1*PLATFORM_POINTER_SIZE))
+#define __SIZEOF_dialog_tmpl (1+1+(1*PLATFORM_POINTER_SIZE))
 typedef struct {
-    ot_u16 timeout;
-    ot_u16 channels;
+    ot_u8  timeout;
+    ot_u8  channels;
     ot_u8* chanlist;
 } dialog_tmpl; 
 
@@ -292,14 +311,15 @@ typedef struct {
 
 typedef enum {
     QCODE_ismasked          = 0x80,
-    QCODE_nonnull           = 0,
+    QCODE_null              = 0x00,
+    QCODE_nonnull           = 0x01,
     QCODE_notequal          = 0x20,
     QCODE_equal             = 0x21,
     QCODE_lessthan          = 0x22,
     QCODE_lessthan_equal    = 0x23,
     QCODE_greaterthan       = 0x24,
     QCODE_greaterthan_equal = 0x25,
-    QCODE_search            = 0x26
+    QCODE_search            = 0x40
 } query_codes;
 
 
@@ -312,11 +332,12 @@ typedef struct {
 } query_tmpl;
 
 
-#define __SIZEOF_shell_tmpl (1+1+1+(1*PLATFORM_POINTER_SIZE))
+#define __SIZEOF_shell_tmpl (1+1+2+(1*PLATFORM_POINTER_SIZE))   //deprecated
+#define __SIZEOF_udp_tmpl (1+1+2+(1*PLATFORM_POINTER_SIZE))
 typedef struct {
-    ot_u8   src_port;
+    ot_u16  data_length;
     ot_u8   dst_port;
-    ot_u8   data_length;
+    ot_u8   src_port;
     ot_u8*  data;
 } udp_tmpl;
 

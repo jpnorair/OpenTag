@@ -71,10 +71,6 @@
 
 
 
-#define OS_FEATURE(VAL)                 OS_FEATURE_##VAL
-#define OS_FEATURE_MEMCPY               ENABLED
-#define OS_FEATURE_MALLOC               ENABLED
-
 
 
 #endif 

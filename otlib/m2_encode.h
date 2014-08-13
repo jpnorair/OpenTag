@@ -1,4 +1,4 @@
-/* Copyright 2009 JP Norair
+/* Copyright 2009-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       OTlib/m2_encode.h
+  * @file       /otlib/m2_encode.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       12 June 2009
+  * @version    R102
+  * @date       6 Nov 2013
   * @brief      Encoding and Decoding of bytewise data for the Radio
   * @defgroup   Encode (Encode Module)
   * @ingroup    Encode
@@ -29,6 +29,8 @@
   *
   * Mode 2 offers two encoding options: FEC and PN9.  The queue options field
   * is set up depending on how you want to encode or decode.
+  * options.ubyte[UPPER]  = 0: No CRC
+  * options.ubyte[UPPER] != 0: CRC
   * options.ubyte[LOWER]  = 0: PN9
   * options.ubyte[LOWER] != 0: FEC
   ******************************************************************************
@@ -41,16 +43,18 @@
 
 #include "OT_platform.h"
 #include "OT_types.h"
+#include "queue.h"
 
 
 typedef struct {
-    ot_u8*  fr_info;
+    ot_u8   lctl;
+    ot_u8   crc5;
     ot_int  bytes;
     ot_int  state;              // could be changed to ot_s8
 
 #   if ( (RF_FEATURE(PN9) != ENABLED) || \
          ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) != ENABLED)) )
-        Twobytes PN9_lfsr;
+        ot_uni16 PN9_lfsr;
 #   endif
 
 #   if ((M2_FEATURE(FECRX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED))
@@ -80,8 +84,9 @@ typedef void (*fn_codec)(void);
   * @retval None
   * @ingroup Encode
   */
+#ifndef EXTF_em2_encode_data
 extern fn_codec em2_encode_data;
-
+#endif
 
 /** @par Decode function pointer
   * The function @c decode_newpacket sets this function pointer to the
@@ -93,10 +98,9 @@ extern fn_codec em2_encode_data;
   * @retval None
   * @ingroup Encode
   */
+#ifndef EXTF_em2_decode_data
 extern fn_codec em2_decode_data;
-
-
-
+#endif
 
 
 
@@ -146,14 +150,29 @@ void em2_decode_newframe();
 
 
 
+/** @brief  Finish decoding and framing process on a fully received frame
+  * @param  None
+  * @retval ot_u16      0 if there are no uncorrectable errors in this frame
+  * @ingroup Encode
+  *
+  * If the function returns 0, that is good, it means the frame is full of 
+  * happy data.
+  *
+  * RS block coding and CRC must be removed from the frame before passing it to
+  * the next layer.  If your build/app supports RS coding, it will also be 
+  * processed by this function.
+  */
+ot_u16 em2_decode_endframe();
 
 
-/** @brief  Returns the number of frames following the current one
+
+
+/** @brief  Indicates if more frames remain in the packet, after the present
   * @param none
-  * @retval ot_int      value from em2.frames
+  * @retval ot_u8       0 or non-zero, if frames remain
   * @ingroup Encode
   */
-ot_int em2_remaining_frames();
+ot_u8 em2_remaining_frames();
 
 
 /** @brief  Returns bytes remaining to encode or decode
@@ -170,7 +189,7 @@ ot_int em2_remaining_bytes();
 
 /** @brief  Returns True when the encoding/decoding is complete
   * @param none
-  * @retval ot_bool     true on (em2.bytes == 0) && (em2.frames == 0)
+  * @retval ot_bool     true when no bytes left and no frames left
   * @ingroup Encode
   */
 ot_bool em2_complete();
@@ -181,9 +200,33 @@ ot_bool em2_complete();
 
 
 
+#if (M2_FEATURE(RSCODE))
+
+ot_int em2_rs_init_decode(ot_queue* q);
+void em2_rs_decode(ot_int n_bytes);
+
+ot_int em2_rs_check(void);
+ot_int em2_rs_postprocess(void);
+ot_int em2_rs_init_encode(ot_queue* q);
+void em2_rs_encode(ot_int n_bytes);
+void em2_rs_interleave(ot_u8* start, ot_int numbytes);
+
+#endif
 
 
 
+
+
+
+void em2_encode_data_HW();
+void em2_decode_data_HW();
+void em2_encode_data_HWCRC();
+void em2_decode_data_HWCRC();
+void em2_encode_data_PN9();
+void em2_decode_data_PN9();
+void em2_encode_data_FEC();
+void em2_decode_data_FEC();
+    
 #endif
 
 

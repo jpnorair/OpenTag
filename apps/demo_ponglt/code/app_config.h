@@ -88,7 +88,7 @@
 #define OT_FEATURE_LOGGER               ENABLED                             // Mpipe-based data logging & printing
 #define OT_FEATURE_ALP                  (ENABLED || (OT_FEATURE_CLIENT))    // Application Layer Protocol Support
 #define OT_FEATURE_ALPAPI               (ENABLED && (OT_FEATURE_ALP))       // Application Layer Protocol callable API's
-#define OT_FEATURE_MPIPE                ENABLED
+#define OT_FEATURE_MPIPE                DISABLED
 #define OT_FEATURE_NDEF                 (OT_FEATURE_MPIPE)                  // NDEF wrapper for Messaging API
 #define OT_FEATURE_VEELITE              ENABLED                             // Veelite DASH7 File System
 #define OT_FEATURE_VLFPS                OT_PARAM_VLFPS

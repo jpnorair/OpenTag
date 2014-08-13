@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_network.h
   * @author     JP Norair
-  * @version    R100
-  * @date       2 November 2011
+  * @version    R102
+  * @date       20 Mar 2014
   * @brief      Network Layer interface for DASH7 Mode 2
   * @ingroup    Network
   *
@@ -31,7 +31,7 @@
 
 
 #include "OT_config.h"
-#if !defined(__M2_NETWORK_H) && OT_FEATURE(M2)
+#if !defined(__M2_NETWORK_H) /* && OT_FEATURE(M2) */
 #define __M2_NETWORK_H
 
 #include "OT_types.h"
@@ -43,65 +43,93 @@
   * @todo adjust to lastest spec
   */
 
-// Mode 2 Frame Info Field
-#define M2FI_FRTYPEMASK         (0x03)
-#define M2FI_FRDIALOG           (0x00)
-#define M2FI_FRNACK             (0x01)
-#define M2FI_STREAM             (0x02)
-#define M2FI_RFU                (0x03)
-#define M2FI_NM2                (0x04)
-#define M2FI_CRC32              (0x08)
-#define M2FI_FRCONT             (0x10)
-#define M2FI_ENADDR             (0x20)
-#define M2FI_DLLS               (0x40)
-#define M2FI_LISTEN             (0x80)
+#define M2LC_FRCONT             (1<<7)
+#define M2LC_RSCODE             (1<<6)
+#define M2LC_DMGMARK            (1<<5)
+#define M2LC_CRC5               (31<<0)
 
-// Official Mode 2 Network Protocol IDs
-#define M2PID_M2NPv0            (0x50)
-#define M2PID_M2NPv1            (0x51)
-#define M2PID_M2DP              (0x60)
-#define M2PID_M2ADVP            (0xF0)
-#define M2PID_M2RESP            (0xF1)
+#define M2FI_LISTEN             (1<<7)
+//#define M2FI_DLLS               (1<<6)
+//#define M2FI_NLS                (1<<5)
+#define M2FI_VID                (1<<4)
+#define M2FI_EXT                (1<<3)
+//#define M2FI_STREAM             (1<<2)
+#define M2FI_ADDRMASK           (3<<0)
+//#define M2FI_UCAST              (0<<0)
+//#define M2FI_BCAST              (1<<0) 
+//#define M2FI_ANYCAST            (2<<0)
+//#define M2FI_MULTICAST          (3<<0)
 
-// M2NP Routing Types
-#define M2RT_UNICAST            (0x00 << 6)
-#define M2RT_BROADCAST          (0x01 << 6) 
-#define M2RT_ANYCAST            (0x02 << 6)
-#define M2RT_MULTICAST          (0x03 << 6)
-#define M2RT_MASK               (0x03 << 6)
+/* Future version updates */
+#define M2FI_CRYPTO             (3<<5)
+#define M2FI_DLLS               (2<<5)
+#define M2FI_DLLSROOT           (2<<5)
+#define M2FI_DLLSUSER           (3<<5)
+#define M2FI_ROUTE              (1<<2)
+#define M2FI_STREAM             (0<<0)
+#define M2FI_UCAST              (2<<0)
+#define M2FI_BCAST              (1<<0)
+#define M2FI_UCASTVID           (1<<0)
 
-// M2NP Address Control Flags
-#define M2AC_VID                (0x01 << 5)
-#define M2AC_NLS                (0x01 << 4)
+// These removed!
+//#define M2FI_STREAM Removed
+//#define M2FI_ANYCAST
+//#define M2FI_MULTICAST
+
+
+
+
+// Routing Aliases
+#define M2FI_FRDIALOG           0
+#define M2RT_UNICAST            M2FI_UCAST
+#define M2RT_BROADCAST          M2FI_BCAST
+//#define M2RT_ANYCAST            M2FI_ANYCAST
+//#define M2RT_MULTICAST          M2FI_MULTICAST
+
+
+/* Future Updates: M2QUERY_GLOBAL and M2QUERY_LOCAL are removed and replaced 
+   with transport layer constructs. Files affected:
+   - m2_transport.c (359, 643)
+   - OTAPI.c (97, 242)
+*/
+// Query Aliases
+//#define M2QUERY_GLOBAL          M2FI_ANYCAST
+//#define M2QUERY_LOCAL           M2FI_BCAST
+
+
+
+
+
+// EXT stuff, rarely used
+#define M2EXT_APPFLAGS          (15<<0)
+#define M2EXT_RFU               (15<<4)
 
 // M2NP Command Code Options
-#define M2CC_SLEEP              (0x01 << 4) 
-#define M2CC_EXT                (0x01 << 5) 
+#define M2CC_SLEEP              (1 << 4) 
+#define M2CC_EXT                (1 << 5) 
 
 // Mode 2 Hop Control Options
-#define M2HC_HOPMASK            (0x0F)
-#define M2HC_VID                (0x01 << 4)
-#define M2HC_DEST               (0x01 << 5)
-#define M2HC_ORIG               (0x01 << 6) 
-#define M2HC_EXT                (0x01 << 7) 
+//#define M2HC_HOPMASK            (0x0F)
+#define M2HC_EXT                (1 << 7) 
+//#define M2HC_ORIG               (1 << 6) 
+//#define M2HC_DEST               (1 << 5)
+//#define M2HC_VID                (1 << 4)
 
-// Application Device Flags
-#define M2DF_EALARM             (0x01 << 3)
-#define M2DF_SALARM             (0x01 << 4)
-#define M2DF_LOWBATT            (0x01 << 5)
-#define M2DF_SYSFAULT           (0x01 << 6)
-#define M2DF_NACK               (0x01 << 7)
+/* Future updates */
+#define M2HC_ORIG               (1<<5)
+#define M2HC_VID                (1<<4)
+#define M2HC_HOPEN              (1<<2)
+#define M2HC_DEST               (1<<1)
 
-// Datastream Flags
-#define M2DS_DISABLE_ACKREQ      (0x01 << 7)
-#define M2DS_DISABLE_ACKRESP     (0x01 << 1)
+
+
 
 
 
 
 typedef struct {
     ot_u8   fr_info;
-    ot_u8   addr_ctl;
+    ot_u8   ext_info;
 } header_struct;
 
 
@@ -119,23 +147,6 @@ typedef struct {
 } m2np_struct;
 
 
-typedef struct {
-    ot_u8   ctl;
-    //ot_u8   fr_total;
-    //ot_u8   fr_per_pkt;
-    ot_u8   dmg_count;
-    //ot_u16  data_total;
-} dscfg_struct;
-
-
-typedef struct {
-    dscfg_struct    dscfg;
-} m2dp_struct;
-
-
-#if (OT_FEATURE(M2DP) == ENABLED)
-    extern m2dp_struct m2dp;
-#endif
 extern m2np_struct m2np;
 
 
@@ -186,7 +197,7 @@ void network_mark_ff();
 
 
 /** @brief  parses and routes a foreground frame
-  * @param  session     (m2session*) Pointer to active session
+  * @param  active     (m2session*) Pointer to active session
   * @retval ot_int      -1 on ignore, non-negative is Routing Index of the
   *                     device/host that should be forwarded the message.
   * @ingroup Network
@@ -196,13 +207,18 @@ void network_mark_ff();
   * other positive return value is the index of the routing table which 
   * corresponds to the host that shall be forwarded the frame.
   */
-ot_int network_route_ff(m2session* session);
+ot_int network_route_ff(m2session* active);
+
+
+
+// moved into session module as session_continue()
+//m2session* network_cont_session(ot_app applet, ot_u8 next_state, ot_uint wait);
 
 
 
 /** @brief  Optional static callback function for network router
   * @param  route       (void*) Pointer to routing status information (ot_int*)
-  * @param  session     (void*) Pointer to active session
+  * @param  active      (void*) Pointer to active session
   * @retval None
   * @ingroup Network
   * @sa network_route_ff()
@@ -215,7 +231,7 @@ ot_int network_route_ff(m2session* session);
   * In applications that do not need dynamic callbacks, some program code and
   * global memory can be saved by using static callbacks.
   */
-void network_sig_route(void* route, void* session);
+void network_sig_route(void* route, void* active);
 
 
 
@@ -230,7 +246,7 @@ void network_sig_route(void* route, void* session);
   */
 
 /** @brief  Loads Mode 2 DLL and Network layer frame headers into the TX queue
-  * @param  session     (m2session*) Pointer to active session
+  * @param  active      (m2session*) Pointer to active session
   * @param  addressing  (ot_u8) forced addressing flags per Mode 2 DLL spec
   * @param  nack        (ot_u8) set to 1 to declare frame as NACK, else set to 0
   * @retval None
@@ -239,7 +255,7 @@ void network_sig_route(void* route, void* session);
   * Call this function when you have the session allocated, and you are 
   * beginning the process of generating an M2NP-type transmission.
   */
-void m2np_header(m2session* session, ot_u8 addressing, ot_u8 nack);
+void m2np_header(m2session* active, ot_u8 addressing, ot_u8 nack);
 
 
 
@@ -281,7 +297,7 @@ void m2np_put_deviceid(ot_bool use_vid);
   * The "length" parameter should be 2 or 8 in order for this usage to work
   * properly with Mode 2 Device ID types (2byte VID and 8byte UID).
   */
-ot_bool m2np_idcmp(ot_int length, void* id);
+ot_bool m2np_idcmp(ot_int length, ot_u8* id);
 
 
 
@@ -296,7 +312,7 @@ ot_bool m2np_idcmp(ot_int length, void* id);
   */
 
 /** @brief  Prepares an M2AdvP flood from a session container
-  * @param  session     (m2session*) Pointer to active session
+  * @param  follower    (m2session*) pointer to session after advertising
   * @retval none
   * @ingroup Network
   * @sa m2advp_close()
@@ -306,7 +322,7 @@ ot_bool m2np_idcmp(ot_int length, void* id);
   * in order to begin an M2AdvP flood process.  It reconfigures the TX Queue
   * to transmit background frames.
   */
-void m2advp_open(m2session* session);
+void m2advp_open(m2session* follower);
 
 
 

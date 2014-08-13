@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 /**
   * @file       /otlib/session.h
   * @author     JP Norair
-  * @version    R100
-  * @date       24 November 2012
-  * @brief      DASH7 M2 (ISO 18000-7.4) Session Framework
+  * @version    R103
+  * @date       20 Mar 2014
+  * @brief      Mode 2 Session Framework
   * @defgroup   Session (Session Layer)
   * @ingroup    Session
   *
   * The DASH7 Mode 2 specification describes a Session Layer, and this layer is
-  * implemented completely by this module.  This module also implements some 
+  * implemented partially by this module.  This module also implements some 
   * additional features.
   * 
   * If the application has not enabled DASH7 Mode 2 features, the session 
@@ -51,6 +51,38 @@
 #include "OT_config.h"
 
 
+#ifndef OT_PARAM_SESSION_DEPTH
+#   define OT_PARAM_SESSION_DEPTH   4
+#endif
+
+#if (OT_PARAM_SESSION_DEPTH < 3)
+#   error "OT_PARAM_SESSION_DEPTH is less than 3."
+#elif (OT_PARAM_SESSION_DEPTH > 8)
+#   warning "OT_PARAM_SESSION_DEPTH is greater than 8.  This can slow things down."
+#endif
+
+
+
+
+/** General-purpose Session Adaptation
+  * Not supported now, but there is this patch to assist future migration to
+  * a general-purpose session block.  It will require that session fuction 
+  * names are changed slightly (e.g. _session_...()) so that these macros work.
+  *
+  * Here are examples of how this will work:
+  *
+  * #if (M2 is only session user)
+  * #   define session_init(SSTACK) _session_init()
+  * #   define session_new(SSTACK, APPLET, WAIT, CHAN, NSTATE) \
+  *                _session_new(APPLET, WAIT, CHAN, NSTATE)
+  * #else
+  * #   define session_init(SSTACK) _session_init(SSTACK)
+  * #   define session_new(SSTACK, APPLET, WAIT, CHAN, NSTATE) \
+  *                _session_new(SSTACK, APPLET, WAIT, CHAN, NSTATE)
+  * #endif
+  *
+  */
+
 
 
 
@@ -69,23 +101,22 @@
 #define M2_NETSTATE_RESP            0x10
 #define M2_NETSTATE_RESPTX          0x10
 #define M2_NETSTATE_RESPRX          0x30
-#define M2_NETFLAG_FLOOD            0x40
-#define M2_NETFLAG_SCRAP            0x80
+#define M2_NETFLAG_BG               0x40
+#define M2_NETFLAG_STREAM           0x80
 
 #define M2_NETSTATE_SMASK           0x03
 #define M2_NETSTATE_INIT            0x08
-#define M2_NETSTATE_DSDIALOG        0x04
+#define M2_NETSTATE_SCRAP           0x04
 #define M2_NETSTATE_UNASSOC         0x00
-//#define M2_NETSTATE_SYNCED          0x01            // set after valid synchronizer received
 #define M2_NETSTATE_CONNECTED       0x01            // set after connecting to session
 #define M2_NETSTATE_ASSOCIATED      0x03            // Connected, plus uses First-RX mode
 #define M2_NETFLAG_FIRSTRX          0x02            // Stops receiving after first RX found.
 
 
-/** Session power configuration
-  * Used in the m2session.cs_rssi, .cca_rssi, .tx_eirp containers to 
+
+/** Session power configuration (deprecated)
+  * Used in .cs_rssi, .cca_rssi, .tx_eirp containers to 
   * move power configurations between layers.
-  */
 #define M2_RSSI_AUTOSCALE           b10000000
 #define M2_RSSI_MASK                b00011111
 #define M2_RSSI_DBM(VAL)            (ot_int)(-140 + ((VAL)*3))
@@ -93,27 +124,65 @@
 #define M2_EIRP_MASK                b01111111
 #define M2_EIRP_DBM(VAL)            (ot_int)(-40 + ((VAL)>>1))
 #define M2_EIRP_0p5DBM(VAL)         (ot_int)(-80 + (VAL))
-
-
-/** Protocols (Deprecated)
   */
-#define M2_PROTOCOL_M2NP            0x0
-#define M2_PROTOCOL_M2QP            0x0
-#define M2_PROTOCOL_M2DP            0x2
-#define M2_PROTOCOL_M2ADVP          0xF0
-#define M2_PROTOCOL_M2RESP          0xF1
-
 
 
 /** Session persistent flags
   * Used in the m2session.flags, to pass common flags between layers.
   * The flag values are consistent with the ones used for M2NP/M2QP, but they
   * can be used for other protocols, too, since they are pretty generic.
+  *
+#define M2_FLAG_LISTEN              (1<<7)
+#define M2_FLAG_DLLS                (1<<6)
+#define M2_FLAG_NLS                 (1<<5)
+#define M2_FLAG_VID                 (1<<4)
+#define M2_FLAG_EXT                 (1<<3)      //Synthetic
+#define M2_FLAG_RSCODE              (1<<3)      
+#define M2_FLAG_STREAM              (1<<2)
+#define M2_FLAG_UCAST               (0<<0)
+#define M2_FLAG_BCAST               (1<<0)
+#define M2_FLAG_ACAST               (2<<0)
+#define M2_FLAG_MCAST               (3<<0)
+*/
+
+/* Future Changes, needing alignment with referential Mode2 code files
+   ASAPI and other APIs that manipulate sessions must be altered to 
+   accept these changes. */
+   
+#define M2_FLAG_LISTEN              (1<<7)
+#define M2_FLAG_CRYPTO              (3<<5)      // added since last version
+#define M2_FLAG_DLLS                (2<<5)      // last version is (1<<6), which is the same
+#define M2_FLAG_NLS                 (1<<5)      
+#define M2_FLAG_VID                 (1<<4)      
+#define M2_FLAG_EXT                 (1<<3)      //Synthetic
+#define M2_FLAG_RSCODE              (1<<3)      
+#define M2_FLAG_ROUTE               (1<<2)      // Added since last version, in place of _STREAM
+#define M2_FLAG_STREAM              (0<<0)      // Changed since last version
+#define M2_FLAG_BCAST               (1<<0)      
+#define M2_FLAG_UCAST               (2<<0)      // Changed since last version (0<<0)
+#define M2_FLAG_UCASTVID            (3<<0)      // Added since last version
+
+
+
+
+
+
+/** "Extra" Information
   */
-#define M2_FLAG_LISTEN              b10000000
-#define M2_FLAG_DLLS                b01000000
-#define M2_FLAG_VID                 b00100000
-#define M2_FLAG_NLS                 b00010000
+#define M2_EXTRA_USERAUTH           (1<<6)
+#define M2_EXTRA_CRYPTO             (3<<4)
+#define M2_EXTRA_EPSLEEP            (1<<0)
+
+//#define M2_EXTRA_APPFLAGS           (15<<0)
+
+
+
+
+
+typedef enum {
+    SESSION_ok  = 0,
+    SESSION_err = M2_NETSTATE_SCRAP
+} SESSION_status;
 
 
 
@@ -136,10 +205,9 @@
   * netstate    (ot_u8) Control code for Mode 2 network behavior.  Applets can
   *             usually ignore this, except for setting SCRAP to kill a session.
   *
-  * protocol    (ot_u8) Unused by DASH7, but it is possible to use 'protocol'
-  *             together with 'dialog_id' to hold a 16 bit ID value.  This can
-  *             allow transparent integration of the session module into app
-  *             protocol layers like CoAP.
+  * extra       (ot_u8) Extra information about the session.  Most commonly it
+  *             is used to specify a method of encryption, when encryption is
+  *             enabled in the session flags.
   *
   * dialog_id   (ot_u8) Each session has a one-byte Dialog ID used for basic
   *             matching of request & response in a dialog sequence.  It should
@@ -158,7 +226,7 @@ typedef struct m2session {
     ot_u16  counter;
     ot_u8   channel;
     ot_u8   netstate;
-    ot_u8   protocol;
+    ot_u8   extra;      ///@todo see if there is benefit in re-aligning this element
     ot_u8   dialog_id;
     ot_u8   subnet;
     ot_u8   flags;
@@ -178,13 +246,9 @@ typedef struct m2session {
   */
 typedef void (*ot_app)(m2session*);
 
-
-
-
 typedef struct {
-    ot_s8       top;
-    ot_u8       seq_number;
-    m2session   heap[OT_FEATURE(SESSION_DEPTH)];
+    m2session*  top;
+    m2session   heap[OT_PARAM(SESSION_DEPTH)];
 } session_struct;
 
 extern session_struct session;
@@ -201,28 +265,93 @@ void session_init();
 
 
 
-/** @brief  Reduces the session counters uniformly, and alerts if a session is beginning
-  * @param  elapsed_ti      (ot_uint) ti to reduce all session counters by
-  * @retval ot_bool         True when a session is ready
-  * @ingroup Session
-  */
-ot_bool session_refresh(ot_uint elapsed_ti);
-
-
-
-/** @brief  Adds a session element to the heap, pushes it to stack, and sorts
-  *         the stack so the session at the top is the one happening soonest.
-  * @param  applet          (ot_app) applet bound to session
-  * @param  new_counter     (ot_u16) new session initial counter value
-  * @param  new_netstate    (ot_u8) new session netstate value
-  * @param  new_channel     (ot_u8) new session channel id
-  * @retval m2session*      Pointer to added session struct
+/** @brief  Activates the next session and returns its wait time
+  * @param  None
+  * @retval ot_uint     Ticks until next session event
   * @ingroup Session
   *
-  * Additional session data not supplied as parameters to this function must be
-  * loaded-in by the user, via the returned pointer.
+  * @note this function is not inherently safe.  You must first get "True" from 
+  *       session_notempty() in order to be safe.
+  *
+  * Don't use this function unless you are building a Link Layer integrated as
+  * an exotask, and in that case just copy how it is used in m2_dll_task.c.
   */
-m2session* session_new(ot_app applet, ot_u16 new_counter, ot_u8 new_netstate, ot_u8 new_channel);
+ot_uint session_getnext();
+
+
+
+/** @brief  Adds a session to the back of the list
+  * @param  applet      (ot_app) applet bound to session
+  * @param  wait        (ot_u16) new session wait counter value
+  * @param  netstate    (ot_u8) new session netstate value
+  * @param  channel     (ot_u8) new session channel id
+  * @retval m2session*  Pointer to added session struct
+  * @ingroup Session
+  * @sa session_extend()
+  *
+  * Create a new session at the end of the session list/queue.  Returns NULL if
+  * there is not enough room to add a new session.
+  *
+  * "Flags" and "Extra" session elements must be supplied by the user after
+  * this function returns.  The other session elements are loaded-in by this
+  * function.
+  */
+m2session* session_new(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netstate);
+
+
+/** @brief  Extends an active session with another session
+  * @param  applet      (ot_app) applet bound to session
+  * @param  wait        (ot_u16) new session wait counter value
+  * @param  netstate    (ot_u8) new session netstate value
+  * @param  channel     (ot_u8) new session channel id
+  * @retval m2session*  Pointer to added session struct
+  * @ingroup Session
+  * @sa session_new()
+  *
+  * Calling this function will insert a new session into the session list, in
+  * between the end of the joined session sequence at the top of the list and
+  * the first unjoined session sequence.  A "joined session sequence" is some
+  * number of contiguous sessions that starts with M2_NETSTATE_INIT flag set,
+  * and all subsequent sessions have this flag clear.  The session at the top
+  * of the list is implicitly assumed to be part of a sequence, so it does not
+  * need to have M2_NETSTATE_INIT set.
+  *
+  * "Flags" and "Extra" session elements must be supplied by the user after
+  * this function returns.  The other session elements are loaded-in by this
+  * function.
+  */
+m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netstate);
+
+
+
+/** @brief  Continues a session by "extending" the existing session
+  * @param  applet      (ot_app) Applet pointer for new session
+  * @param  next_state  (ot_u8) next session netstate (e.g. M2_NETSTATE_REQRX)
+  * @param  wait        (ot_uint) Number of ticks to wait following dll-idle
+  * @retval m2session*  Pointer to newly cloned session
+  * @ingroup Session
+  * @sa session_extend(), session_new()
+  *
+  * session_continue() is a particular implementation of session_extend(), 
+  * designed to simplify normal usage by copying common session elements from
+  * the existing session to the extended session (the client code must do this
+  * itself with session_extend()).
+  *
+  * You must pass a valid applet into the "applet" argument, or NULL.  NULL
+  * will follow the default session behavior, which is simply to respond
+  * appropriately to requests.  Passing-in session_top()->applet will use 
+  * the applet from the current session.
+  *
+  * The "wait" argument is a tail-chained number of ticks that starts 
+  * counting as soon as the DLL engages the continued session.  This will occur
+  * the next time the DLL is evaluated by the kernel scheduler (e.g. preempted)
+  * AND the DLL is not busy doing any active RX/TX work (i.e. idle).
+  */
+m2session* session_continue(ot_app applet, ot_u8 next_state, ot_uint wait);
+
+///@note For legacy code: not guaranteed to be here forever
+#define network_cont_session    session_continue
+
 
 
 
@@ -237,6 +366,9 @@ ot_bool session_occupied(ot_u8 chan_id);
 
 
 
+void session_notify(SESSION_status status);
+
+
 /** @brief  Pops a session off the top of the stack (deleting it).
   * @param  none
   * @retval none
@@ -245,41 +377,12 @@ ot_bool session_occupied(ot_u8 chan_id);
 void session_pop();
 
 
-
 /** @brief  Flushes (pops) expired sessions out of the stack.
   * @param  none
   * @retval none
   * @ingroup Session
   */
 void session_flush();
-
-
-
-/** @brief  Pops sessions out of the stack that are below a scheduling threshold.
-  * @param  threshold       (ot_u16) scheduling threshold
-  * @retval none
-  * @ingroup Session
-  */
-void session_crop(ot_u16 threshold);
-
-
-
-/** @brief  Flushes (pops) expired sessions out of the stack, but not the top session.
-  * @param  none
-  * @retval none
-  * @ingroup Session
-  */
-void session_drop();
-
-
-
-/** @brief  Returns the number of sessions in the stack (zero indexed)
-  * @param  none
-  * @retval ot_int		Number of sessions in the stack.  -1 = empty
-  * @ingroup Session
-  */
-ot_int session_count();
-
 
 
 /** @brief  Returns the session at the top of the stack.
@@ -292,13 +395,79 @@ ot_int session_count();
 m2session* session_top();
 
 
-
-/** @brief  Fast session netstate function, but not safe
+/** @brief  Returns Number of free sessions slots
   * @param  none
-  * @retval ot_u8    Netstate of session at the top of the stack
+  * @retval ot_int  Number of free sessions slots
+  * @ingroup Session
+  */
+ot_int session_numfree();
+
+
+/** @brief  Returns True if the session list is not empty
+  * @param  none
+  * @retval ot_bool     True if session list is not empty
+  * @ingroup Session
+  */
+ot_bool session_notempty();
+
+
+/** @brief  Returns session following the one at the top of the stack
+  * @param  none
+  * @retval m2session*  Session pointer or NULL if list is less than two sessions
+  * @ingroup Session
+  */
+m2session* session_follower();
+
+
+
+/** @brief  Approximate arrival of session following the current one
+  * @param  none
+  * @retval ot_u16      Number of ticks until following session
+  * @ingroup Session
+  */
+ot_u16 session_follower_wait();
+
+
+
+/** @brief  Allows follower session to happen right away
+  * @param  None
+  * @retval None
+  * @ingroup Session
+  */
+void session_invite_follower();
+
+
+
+/** @brief  Postpones all non-sequential sessions by some amount
+  * @param  postponement    (ot_u16) number of ticks to postpone, 0-65535
+  * @retval None
+  * @ingroup Session
+  *
+  * Note that the session wait time is clipped at 65535 ticks, so sessions
+  * cannot be postponed beyond that.
+  */
+void session_postpone_inactives(ot_u16 postponement);
+
+
+
+/** @brief  Returns netstate of session at top of list
+  * @param  none
+  * @retval ot_u8    Netstate value
   * @ingroup Session
   */
 ot_u8 session_netstate();
 
+
+
+
+#if (defined(__STDC__) || defined (__POSIX__))
+
+/** @brief  Test function to print the session stack to stdout (POSIX/STD-C only)
+  * @param  none
+  * @retval None
+  * @ingroup Session
+  */
+void session_print();
 #endif
 
+#endif

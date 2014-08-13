@@ -31,16 +31,58 @@
 #include "OTAPI.h"
 #include "OT_platform.h"
 
+
+#include <time.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/types.h>
+
+
+
+
+/** Feature Configuration Macros <BR>
+ * ========================================================================<BR>
+ * These should be defined in apps/.../app_config.h.  If one or more are
+ * missing, use the defaults.
+ */
+#ifndef OT_FEATURE_RTC
+#   define OT_FEATURE_RTC       DISABLED
+#endif
+#ifndef OT_FEATURE_MPIPE
+#   define OT_FEATURE_MPIPE     DISABLED
+#endif
+//#ifndef OT_FEATURE_STDGPIO
+//#   define OT_FEATURE_STDGPIO   DISABLED
+//#endif
+
+
+
+
 // OT low-level modules that need initialization
-#include "veelite_core.h"
-#include "mpipe.h"
-#include "radio.h"
+#if (OT_FEATURE(VEELITE) == ENABLED)
+#   include "veelite_core.h"
+#endif
+#if (OT_FEATURE(MPIPE) == ENABLED)
+#   include "mpipe.h"
+#endif
+#if (OT_FEATURE(SERVER) == ENABLED)
+#   include "radio.h"
+#endif
 
 //#include "auth.h"         //should be initialized via system (sys_init())
 //#include "session.h"      //should be initialized via system (sys_init())
 
 
-flash_heap  platform_flash;
+
+
+
+#if (OT_FEATURE(VEELITE) == ENABLED)
+    flash_heap  platform_flash;
+#endif
+
+
+
 
 
 
@@ -141,20 +183,7 @@ void otapi_led2_off() {
 
 
 
-/** Feature Configuration Macros <BR>
-  * ========================================================================<BR>
-  * These should be defined in apps/.../app_config.h.  If one or more are
-  * missing, use the defaults.
-  */
-#ifndef OT_FEATURE_RTC
-#   define OT_FEATURE_RTC       DISABLED
-#endif
-#ifndef OT_FEATURE_MPIPE
-#   define OT_FEATURE_MPIPE     DISABLED
-#endif
-//#ifndef OT_FEATURE_STDGPIO
-//#   define OT_FEATURE_STDGPIO   DISABLED
-//#endif
+
 
 
 
@@ -203,12 +232,12 @@ platform_struct platform;
   */
 
 // 1. User NMI Interrupt (segmentation faults, i.e. firmware faults)
-OT_INTERRUPT void platform_usernmi_isr(void) {
+void platform_usernmi_isr(void) {
 }
 
 
 // 2. System NMI Interrupt (bus errors and other more serious faults)
-OT_INTERRUPT void platform_sysnmi_isr(void) {
+void platform_sysnmi_isr(void) {
 }
 
 
@@ -222,7 +251,7 @@ OT_INTERRUPT void platform_sysnmi_isr(void) {
 
 
 
-OT_INTERRUPT void platform_gptim_isr() {
+void platform_ktim_isr() {
     platform_ot_run();
 }
 
@@ -232,7 +261,7 @@ void sub_juggle_rtc_alarm() {
 }
 
 
-OT_INTERRUPT void platform_rtc_isr() {
+void platform_rtc_isr() {
 }
 
 
@@ -257,14 +286,14 @@ void platform_ot_preempt() {
 /// Also, save the current value of the timer so that the kernel can subtract
 /// whatever time passed since the last event.
     ot_u16 scratch;
-    scratch = platform_get_gptim();
-    platform_set_gptim(scratch);
+    scratch = platform_get_ktim();
+    platform_set_ktim(scratch);
     ///@todo do something here
 }
 
 void platform_ot_pause() {
     platform_ot_preempt();
-    platform_flush_gptim();
+    platform_flush_ktim();
 }
 
 void platform_ot_run() {
@@ -274,15 +303,15 @@ void platform_ot_run() {
 /// 4. Put the next scheduled call into the timer, and turn it back on
     ot_u16 next_event;
     ot_u16 elapsed_time;
-    elapsed_time    = platform_get_gptim();
-    next_event      = sys_event_manager( elapsed_time );
+    elapsed_time    = platform_get_ktim();
+    next_event      = 200; //sys_event_manager( elapsed_time );
 
 #   if (OT_PARAM(KERNEL_LIMIT) > 0)
         if (next_event > OT_PARAM(KERNEL_LIMIT))
             next_event = OT_PARAM(KERNEL_LIMIT);
 #   endif
 
-    platform_set_gptim( next_event );
+    platform_set_ktim( next_event );
 }
 
 
@@ -296,41 +325,71 @@ void platform_ot_run() {
   */
 
 void platform_poweron() {
-    /// 2. Initialize OpenTag platform peripherals
-    platform_init_busclk();
-    platform_init_interruptor();
-
-    platform_init_gptim(0);
-    platform_init_gpio();
-    platform_init_memcpy();
+    /// 1. Stack preparation
+    ///@todo this
+    
+    /// 2. Board-specific power-up
+    ///@todo this
+    platform_init_memcpy(); 
     platform_init_prand(0);
+    
+    /// 3. Initialize OpenTag platform peripherals
+    platform_init_periphclk();
+    platform_init_busclk();
+    
+    /// 4. Debugger setup
+    ///@todo this
+    
+    /// 5. Final initialization
+#   if (OT_FEATURE(SERVER) == ENABLED)    
+    platform_init_gpio();
+    platform_init_interruptor();
+    platform_init_gptim(0);
+#   endif
 
-    /// 3. Initialize Low-Level Drivers (worm, mpipe)
+    /// 6. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
-    vworm_init();
-
-    // Mpipe (message pipe) typically used for serial-line comm.
-#   if (OT_FEATURE(MPIPE) == ENABLED)
-        mpipe_init(NULL);
+#   if (OT_FEATURE(VEELITE) == ENABLED)
+        vworm_init();
 #   endif
 }
 
 
 void platform_poweroff() {
-/// 2. Put any mirror data into the flash <BR>
-/// 3. Save the vworm mapping table
+/// - Put any mirror data into the flash
+/// - Save the vworm mapping table
+#if (OT_FEATURE(VEELITE) == ENABLED)
     ISF_syncmirror();
     vworm_save();
+#endif
 }
 
 
 void platform_init_OT() {
+#   if (OT_FEATURE(SERVER) == ENABLED)
 	buffers_init(); //buffers init must be first in order to do core dumps
+#   endif
+#   if (OT_FEATURE(VEELITE) == ENABLED)
 	vl_init();      //Veelite init must be second
-	radio_init();   //radio init third
+#   endif
+#   if (OT_FEATURE(RTC) == ENABLED)
+    platform_init_rtc(364489200);
+#   endif
+#   if !defined(__KERNEL_NONE__)
 	sys_init();     //system init last
+#   else
+#       if (OT_FEATURE(EXT_TASK) == ENABLED)
+        //ext_init();
+#       endif
+#       if (OT_FEATURE(M2))
+        dll_init();
+#       endif
+#       if (OT_FEATURE(MPIPE) == ENABLED)
+        mpipe_connect(NULL);
+#       endif
+#   endif
 	
-#   if (defined(__DEBUG__) || defined(__PROTO__))
+#   if (OT_FEATURE(VEELITE) && (defined(__DEBUG__) || defined(__PROTO__)))
     /// If debugging, find the Chip ID and use 6 out of 8 bytes of it to yield
     /// the UID.  This ID might not be entirely unique -- technically, there is
     /// 1/65536 chance of non-uniqueness, but practically the chance is much
@@ -343,6 +402,7 @@ void platform_init_OT() {
 		vlFILE*   fpid;
 		ot_u16*   hwid;
 		uint64_t  number; 
+		ot_int    i;
 
         fpid    = ISF_open_su(1);
         number  = rand();
@@ -354,11 +414,6 @@ void platform_init_OT() {
         vl_close(fpid);
     }
 #   endif
-}
-
-
-void platform_fastinit_OT() {
-    platform_init_OT();
 }
 
 
@@ -381,11 +436,11 @@ void platform_init_gpio() {
 struct itimerval tconfig;
 
 void platform_init_gptim(ot_uint prescaler) {
-    struct sigaction timer_action;
-    timer_action.sa_handler = timer_handler;
-    sigemptyset(&timer_action.sa_mask);
-    timer_action.sa_flags = 0;
-    sigaction( SIGALRM, &timer_action, NULL );
+//    struct sigaction timer_action;
+//    timer_action.sa_handler = timer_handler;
+//    sigemptyset(&timer_action.sa_mask);
+//    timer_action.sa_flags = 0;
+//    sigaction( SIGALRM, &timer_action, NULL );
 }
 
 
@@ -421,7 +476,7 @@ void platform_init_memcpy() { }
   * ========================================================================<BR>
   */
 
-ot_u16 platform_get_gptim() {
+ot_u32 platform_get_ktim() {
 /// Have to do a lot of hackery, because unix itimer is a downcounter with a
 /// highly annoying setup
 
@@ -443,7 +498,7 @@ ot_u16 platform_get_gptim() {
     return time1;
 }
 
-void platform_set_gptim(ot_u16 value) {
+void platform_set_ktim(ot_u16 value) {
 /// Have to do a lot of hackery, because unix itimer is a downcounter with a
 /// highly annoying setup
 
@@ -457,8 +512,8 @@ void platform_set_gptim(ot_u16 value) {
     }
 }
 
-void platform_flush_gptim() {
-    platform_set_gptim(65535);
+void platform_flush_ktim() {
+    platform_set_ktim(65535);
 }
 
 void platform_run_watchdog() {
@@ -497,18 +552,12 @@ void platform_set_time(ot_u32 utc_time) {
 #endif
 }
 
-void platform_set_rtc_alarm(ot_u8 alarm_i, ot_u16 mask, ot_u16 value) {
+void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
 #if (OT_FEATURE(RTC) == ENABLED)
-    otrtc.alarm[alarm_i].mask     = mask;
-    otrtc.alarm[alarm_i].value    = value;
+
 #endif
 }
 
-void platform_enable_rtc_alarm(ot_u8 alarm_id, ot_bool enable) {
-#if (OT_FEATURE(RTC) == ENABLED)
-    otrtc.alarm[alarm_i].active   = enable;
-#endif
-}
 
 
 
@@ -634,14 +683,14 @@ ot_u16 platform_prand_u16() {
   * Behavior is always blocking
   */
 
-void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
-    memcpy(dest, src, length);
+void platform_memcpy(ot_u8* dst, ot_u8* src, ot_uint length) {
+    memcpy(dst, src, length);
 }
 
 
 
-void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
-    memset(dest, value, length);
+void platform_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
+    memset(dst, value, length);
 }
 
 

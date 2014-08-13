@@ -32,7 +32,7 @@
   ******************************************************************************
   */
 
-#ifndef __ISR_CONFIG_CC430_H
+#if !defined(__ISR_CONFIG_CC430_H) && defined(__CC430__)
 #define __ISR_CONFIG_CC430_H
 
 

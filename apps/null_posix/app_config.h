@@ -497,7 +497,7 @@
 #define ISF_LEN(VAL)                            ISF_LEN_##VAL
 #define ISF_LEN_network_settings                10
 #define ISF_LEN_device_features                 48
-#define ISF_LEN_channel_configuration           32
+#define ISF_LEN_channel_configuration           18
 #define ISF_LEN_real_time_scheduler             12
 #define ISF_LEN_sleep_scan_sequence             0
 #define ISF_LEN_hold_scan_sequence              8
@@ -526,7 +526,7 @@
 #define ISF_MAX_USER_FILE                       255
 #define ISF_MAX_network_settings                10
 #define ISF_MAX_device_features                 48
-#define ISF_MAX_channel_configuration           64
+#define ISF_MAX_channel_configuration           48
 #define ISF_MAX_real_time_scheduler             12
 #define ISF_MAX_sleep_scan_sequence             0   //Not used by gateway
 #define ISF_MAX_hold_scan_sequence              32  //8 scans

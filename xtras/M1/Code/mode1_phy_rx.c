@@ -29,8 +29,8 @@ print_payload()
     else
         debug_printf("int ");
 
-    debug_printf("%d: ", rxq.length);
-    for (i = 0; i < rxq.length; i++)
+    debug_printf("%d: ", q_length(&rxq));
+    for (i = 0; i < q_length(&rxq); i++)
         debug_printf("%02x ", q_readbyte(&rxq));
 
     debug_printf("\r\n");

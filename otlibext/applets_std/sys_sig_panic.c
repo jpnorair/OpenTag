@@ -15,8 +15,8 @@
 /**
   * @file       /otlibext/applets_std/sys_sig_panic.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R100
+  * @date       29 Aug 2013
   * @brief      Standard Panic Routine
   *
   * Kernel panic.  You could have it print something out, or blink LEDs, or
@@ -31,7 +31,7 @@
 #ifdef EXTF_sys_sig_panic
 void sys_sig_panic(ot_int code) {
 #   if (OT_FEATURE(MPIPE))
-	otapi_log_msg(MSG_raw, 3, 2, (ot_u8*)"WTF", (ot_u8*)&code);
+    otapi_log_code(3, (ot_u8*)"WTF", (ot_u16)code);
 #   endif
 }
 #endif

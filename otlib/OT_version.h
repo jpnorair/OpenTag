@@ -121,15 +121,15 @@
 
 
 // Device Class Settings
-#define OT_SUPPORTED_CLASSES   (((ot_u16)M2_FEATURE(GATEWAY) << 11)         | \
-                                ((ot_u16)M2_FEATURE(SUBCONTROLLER) << 10)   | \
-                                ((ot_u16)M2_FEATURE(ENDPOINT) << 9))
+#define OT_SUPPORTED_CLASSES   (((ot_u16)M2_FEATURE(GATEWAY) << 10)         | \
+                                ((ot_u16)M2_FEATURE(SUBCONTROLLER) << 9)   | \
+                                ((ot_u16)M2_FEATURE(ENDPOINT) << 8))
 #if (M2_FEATURE(GATEWAY) == ENABLED) 
-#   define OT_ACTIVE_CLASS      0x0800
-#elif (M2_FEATURE(SUBCONTROLLER) == ENABLED) 
 #   define OT_ACTIVE_CLASS      0x0400
-#elif (M2_FEATURE(ENDPOINT) == ENABLED) 
+#elif (M2_FEATURE(SUBCONTROLLER) == ENABLED) 
 #   define OT_ACTIVE_CLASS      0x0200
+#elif (M2_FEATURE(ENDPOINT) == ENABLED) 
+#   define OT_ACTIVE_CLASS      0x0100
 #else
 #   define OT_ACTIVE_CLASS      0x0000
 #endif

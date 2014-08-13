@@ -68,7 +68,7 @@ tag_to_interrogator(ot_u8 command_code, const ot_u8 *response_data, int response
     txq.putcursor[2] = (tag_sn >> 8) & 0xff;    // 10
     txq.putcursor[3] = tag_sn & 0xff;           // 11
     txq.putcursor += 4;
-    txq.length += 4;
+ //#txq.length += 4;
 
     q_writebyte(&txq, command_code);            // 12
 
@@ -81,7 +81,7 @@ tag_to_interrogator(ot_u8 command_code, const ot_u8 *response_data, int response
     }
 
     // 14,15 crc appended by radio phy
-    debug_printf("txq.length=%d\r\n", txq.length);
+    debug_printf("txq.length=%d\r\n", q_length(&txq));
 
     from_tag = True;
     rm2_txinit_ff(0, NULL);
@@ -164,7 +164,7 @@ parse_rx()
         // ignore this message?
     }
 
-    debug_printf("opt=%02x len=%d(%d) ", packet_opt, packet_length, rxq.length);
+    debug_printf("opt=%02x len=%d(%d) ", packet_opt, packet_length, q_length(&rxq));
 
     if (packet_opt & 0x02) {
         // point-to-point (s/n and mfg-id present)

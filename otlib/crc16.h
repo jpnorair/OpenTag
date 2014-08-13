@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,13 +16,18 @@
 /**
   * @file       /otlib/crc16.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
-  * @brief      CRC16 implementation
+  * @version    R101
+  * @date       31 Jan 2013
+  * @brief      A streaming object for CRC16
   * @defgroup   CRC16 (CRC16 Module)
   * @ingroup    CRC16
   *
-  * 
+  * CRC16 Module implements a streaming, iterative CRC16 calculation and check
+  * apparatus.  The nominal algorithm is CRC16-CCITT with FFFF initialization.
+  *
+  * You could alter this module to be more like an object, such that the crc
+  * datatype is passed into the functions to identify the stream.  For now, 
+  * that is not important because it only is used for RF.
   ******************************************************************************
   */
 
@@ -40,31 +45,20 @@
   */
 typedef struct {
     ot_u8*      cursor;
-    ot_u8*      end;
-    void        (*stream)();
+    ot_int      count;
+    ot_bool     writeout;
+    //ot_u8*      end;
+    //void        (*stream)();
     ot_u16      val;
 } crc_struct;
 
 extern crc_struct crc;
 
 
-extern const ot_u16 crc_table[256];
-
-
-
-/** @brief Calculates the CRC16 for a complete data block
-  * @param block_size : (ot_int) number of bytes in the data block
-  * @param block_addr : (ot_u8*) address of the data block
-  * @retval ot_u16 : CRC16 value
-  * @ingroup CRC16
-  */
-ot_u16 crc_calc_block(ot_int block_size, ot_u8 *block_addr);
-
-
-
 
 
 /** @brief Initializes streaming CRC16 engine
+  * @param writeout     (ot_bool) True/False if CRC should be appended onto stream
   * @param stream_size  (ot_int) Number of bytes in stream
   * @param stream       (ot_u8*) pointer to the data for CRC calculation
   * @retval None
@@ -75,7 +69,7 @@ ot_u16 crc_calc_block(ot_int block_size, ot_u8 *block_addr);
   * CRC on parallel/concurrent data-streams.  init_crc_stream will zero the
   * crc_partial global variable before operating.
   */
-void crc_init_stream(ot_int stream_size, ot_u8* stream);
+void crc_init_stream(ot_bool writeout, ot_int stream_size, ot_u8* stream);
 
 
 
@@ -83,27 +77,27 @@ void crc_init_stream(ot_int stream_size, ot_u8* stream);
   * @param None
   * @retval None
   * @ingroup CRC16
+  * @sa crc_calc_nstream()
+  * @sa crc_init_stream()
   *
   * This is state-based.  When the stream is done, the value of the CRC 
   * calculated from the stream data will be inserted onto the end of the stream
   * automatically.  If you keep calling it forever, it will keep writing the
-  * CRC to the end of the stream.  It will not go off and start doing weird
-  * shit to nearby data.
+  * CRC to the end of the stream, and it will not overwrite subsequent data.
   */
 void crc_calc_stream();
 
 
 
-/* @brief Updates the end of the CRC stream
-  * @param new_end      (ot_u8*) new end pointer for crc stream
+
+/** @brief Performs a stream CRC calculation on more than one byte
+  * @param n    (ot_u16) number of new stream bytes, must be positive
   * @retval None
   * @ingroup CRC16
-  *
-  * Useful for receiving datastreams where the stream length is not known ahead 
-  * of decoding.  Use this function to tell the CRC streamer where the end of
-  * the stream is, once you know where it is.
+  * @sa crc_calc_stream()
+  * @sa crc_init_stream()
   */
-//void crc_update_stream(ot_u8* new_end);
+void crc_calc_nstream(ot_u16 n);
 
 
 

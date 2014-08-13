@@ -42,7 +42,7 @@
 #include "OT_types.h"
 #include "OT_config.h"
 #include "OT_utils.h"
-#include "OTAPI.h"  //might be unnecessary
+#include "OTAPI_tmpl.h"
 #include "veelite_core.h"
 
 
@@ -465,6 +465,10 @@ ot_uint vl_load( vlFILE* fp, ot_uint length, ot_u8* data );
   * @ingroup Veelite
   */
 ot_u8 vl_store( vlFILE* fp, ot_uint length, ot_u8* data );
+
+
+
+ot_u8 vl_append( vlFILE* fp, ot_uint length, ot_u8* data );
 
 
 

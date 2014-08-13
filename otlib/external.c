@@ -1,4 +1,4 @@
-/*  Copyright 2010-2012, JP Norair
+/*  Copyright 2010-2013, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       otlib/external.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       10 October 2012
+  * @version    R100
+  * @date       12 Oct 2013
   * @brief      External Data & Event Wrappers
   * @defgroup   External (External Module)
   * @ingroup    External
@@ -31,14 +31,14 @@
 
 
 #ifndef EXTF_ext_init
-void ext_init() { 
+OT_WEAK void ext_init() { 
 /// See comments from external.h.  BEST PRACTICE is to leave this impl empty.
 }
 #endif
 
 
 #ifndef EXTF_ext_get_m2appflags
-ot_u8 ext_get_m2appflags() {
+OT_WEAK ot_u8 ext_get_m2appflags() {
 /// See comments from external.h.  BEST PRACTICE is to leave this impl as-is.
     return 0;
 }
@@ -47,7 +47,7 @@ ot_u8 ext_get_m2appflags() {
 
 
 #ifndef EXTF_ext_systask
-void ext_systask(task_marker* task) {
+OT_WEAK void ext_systask(ot_task task) {
 /// See comments from external.h.  BEST PRACTICE is to leave this impl empty.
 }
 #endif

@@ -60,7 +60,7 @@ interrogator_to_tag(to_tag_args_t *args)
         txq.putcursor[2] = (args->tag_sn >> 8) & 0xff;  // 7
         txq.putcursor[3] = args->tag_sn & 0xff;         // 8
         txq.putcursor += 4;
-        txq.length += 4;
+     //#txq.length += 4;
     }
 
     q_writebyte(&txq, session_id >> 8);     // 3        mode1 is big-endian over the air
@@ -207,7 +207,7 @@ parse_rx()
 
     command_code = q_readbyte(&rxq); // 12
 
-    debug_printf("len=%d(%d) mfg=%x sn=%x cmd=%x ", packet_length, rxq.length, mfg_id, (unsigned int)rx_tag_sn, command_code);
+    debug_printf("len=%d(%d) mfg=%x sn=%x cmd=%x ", packet_length, q_length(&rxq), mfg_id, (unsigned int)rx_tag_sn, command_code);
     while (data_length > 0) {
         debug_printf("%02x ", q_readbyte(&rxq)); // 13+
         data_length--;

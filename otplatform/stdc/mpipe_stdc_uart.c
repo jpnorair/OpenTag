@@ -315,7 +315,7 @@ ot_int mpipe_init(void* port_id) {
 /// 2. Prepare the HW, which in this case is a UART
 /// 3. Set default speed, which in this case is 115200 bps
 
-#if (MCU_FEATURE(MEMCPYDMA) != ENABLED)
+#if (MCU_CONFIG(MEMCPYDMA) != ENABLED)
     BOARD_DMA_COMMON_INIT();
 #endif
 
@@ -331,7 +331,7 @@ ot_int mpipe_init(void* port_id) {
     mpipe.sequence.ushort   = 0;          //not actually necessary
     mpipe.state             = MPIPE_Idle;
 
-    alp_init(&mpipe_alp, &dir_in, &dir_out);
+    alp_init(&mpipe_alp, &otmpin, &otmpout);
     mpipe_alp.inq->back    -= 10;
     mpipe_alp.outq->back   -= 10;
 
@@ -391,7 +391,7 @@ void mpipe_setspeed(mpipe_speed speed) {
                                          0x2B, 0x00, 0x06, 0, \
                                          0x15, 0x00, 0x0A, 0  };
 
-#   if (MCU_FEATURE(MPIPEDMA) == ENABLED)
+#   if (MCU_CONFIG(MPIPEDMA) == ENABLED)
         MPIPE_DMAEN(OFF);
 #   else
 #       error "Mpipe requires a DMA in this implementation"
@@ -537,7 +537,8 @@ void mpipe_isr() {
         case MPIPE_RxHeader: 
         	///@note DMA doesn't seem to need intermediate disabling here
             mpipe.state             = MPIPE_RxPayload;
-            mpipe_alp.inq->length   = mpipe_alp.inq->front[2] + 10;
+         //#mpipe_alp.inq->length   = mpipe_alp.inq->front[2] + 10;
+         	mpipe_alp.inq->putcursor= mpipe_alp.inq->front[2] + 10;
             mpipe_alp.inq->back     = mpipe_alp.inq->front + mpipe_alp.inq->front[2] + 6;
             MPIPE_DMA_RXCONFIG( mpipe_alp.inq->front+10, \
             		            mpipe_alp.inq->front[2], \
@@ -555,12 +556,12 @@ void mpipe_isr() {
                     ot_u8* scratch;
                     mpipe.state = MPIPE_TxAck_Done; //MPIPE_TxAck_Wait;
                     scratch     = \
-                    	mpipe_alp.inq->front[mpipe_alp.inq->length-MPIPE_FOOTERBYTES];
+                    	mpipe_alp.inq->front[q_length(mpipe_alp.inq)-MPIPE_FOOTERBYTES];
                     mpipe.sequence.ubyte[UPPER] = *scratch++;
                     mpipe.sequence.ubyte[LOWER] = *scratch;
                 }
                 sub_txack_header();
-                if (platform_crc_block(mpipe_alp.inq->front, mpipe_alp.inq->length)) {
+                if (platform_crc_block(mpipe_alp.inq->front, q_length(mpipe_alp.inq)) {
                 	mpipe.outq->front[5] = 0x7F;
                 }
                 mpipe_txndef(NULL, False, MPIPE_Ack);

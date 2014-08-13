@@ -41,10 +41,10 @@ void network_sig_route(void* route, void* session) {
 											label_snack };
 	ot_u8 protocol;
 
-	protocol = ((m2session*)session)->protocol & 3;
+	protocol = ((m2session*)session)->extra & 3;
 	otapi_log_msg(	MSG_raw,
 					labels[protocol][0],
-					rxq.length,
+					q_length(&rxq),
 					(ot_u8*)&(labels[protocol][1]),
 					rxq.front	);
 }

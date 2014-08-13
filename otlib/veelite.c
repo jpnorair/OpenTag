@@ -554,6 +554,29 @@ ot_u8 vl_store( vlFILE* fp, ot_uint length, ot_u8* data ) {
 #endif
 
 
+#ifndef EXTF_vl_append
+ot_u8 vl_append( vlFILE* fp, ot_uint length, ot_u8* data ) {
+    Twobytes    scratch;
+    ot_uint     cursor;
+    ot_u8       test = 255;
+    
+    length = (fp->length+length);
+    if (length <= fp->alloc) {
+        cursor      = fp->start + fp->length;
+        fp->length  = length;
+        length     += cursor;
+        
+        for (test=0; cursor<length; cursor+=2) {
+            scratch.ubyte[0]    = *data++;
+            scratch.ubyte[1]    = *data++;
+            test               |= fp->write(cursor, scratch.ushort);
+        }
+    }
+    return test;
+}
+#endif
+
+
 
 
 #ifndef EXTF_vl_close
@@ -665,7 +688,7 @@ ot_u8 ISFS_chmod_su( ot_u8 id, ot_u8 mod ) {
 }
 
 ot_u8 ISF_chmod_su( ot_u8 id, ot_u8 mod ) {
-    return vl_chmod(VL_ISFS_BLOCKID, id, mod, NULL);
+    return vl_chmod(VL_ISF_BLOCKID, id, mod, NULL);
 }
 
 

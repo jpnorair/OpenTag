@@ -1,4 +1,4 @@
-/* Copyright 2012 JP Norair
+/* Copyright 2012-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_dll.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Oct 2012
+  * @version    R101
+  * @date       7 May 2014
   * @brief      Data Link Layer for DASH7
   * @defgroup   DLL (Data Link Layer Module)
   * @ingroup    DLL
@@ -27,11 +27,12 @@
 
 
 
-#if (!defined(__M2_DLL_H) && OT_FEATURE(M2))
+#if !defined(__M2_DLL_H) /* && OT_FEATURE(M2) */
 #define __M2_DLL_H
 
 #include "OT_types.h"
 #include "OT_config.h"
+#include "session.h"
 #include "system.h"
 
 
@@ -87,10 +88,10 @@
   * @todo Connect this to the configuration interface, not just the hardcoded
   * values below.
   */
-#define M2_ADV_OFFSET       (-3)
-#define M2_ADV_LISTEN       6
-#define M2_ADV_SLOP         (M2_ADV_OFFSET * -2)
-#define M2_ADV_ERRDIV       16384
+#define M2_ADV_OFFSET       (5)
+#define M2_ADV_LISTEN       (10)                 //must be <= 15
+#define M2_ADV_MAXSLOP      (8)
+//#define M2_ADV_ERRDIV       16384
 
 
 
@@ -112,10 +113,10 @@
 #   define M2_SET_HOLDSCHED            0x8000
 #   define M2_SET_SLEEPSCHED           0x4000
 #   define M2_SET_BEACONSCHED          0x2000
-#   define M2_SET_CLASSMASK            0x0E00
-#   define M2_SET_GATEWAY              0x0800
-#   define M2_SET_SUBCONTROLLER        0x0400
-#   define M2_SET_ENDPOINT             0x0200
+#   define M2_SET_CLASSMASK            0x0700
+#   define M2_SET_GATEWAY              0x0400
+#   define M2_SET_SUBCONTROLLER        0x0200
+#   define M2_SET_ENDPOINT             0x0100
 #   define M2_SET_DSTREAMMASK          0x00C0
 #   define M2_SET_345WAY               0x0080
 #   define M2_SET_2WAY                 0x0040
@@ -131,10 +132,10 @@
 #   define M2_SET_HOLDSCHED            0x0080
 #   define M2_SET_SLEEPSCHED           0x0040
 #   define M2_SET_BEACONSCHED          0x0020
-#   define M2_SET_CLASSMASK            0x000E
-#   define M2_SET_GATEWAY              0x0008
-#   define M2_SET_SUBCONTROLLER        0x0004
-#   define M2_SET_ENDPOINT             0x0002
+#   define M2_SET_CLASSMASK            0x0007
+#   define M2_SET_GATEWAY              0x0004
+#   define M2_SET_SUBCONTROLLER        0x0002
+#   define M2_SET_ENDPOINT             0x0001
 #   define M2_SET_DSTREAMMASK          0xC000
 #   define M2_SET_345WAY               0x8000
 #   define M2_SET_2WAY                 0x4000
@@ -148,12 +149,15 @@
 #endif
 
 typedef struct {
-    ot_u8   subnet;             // Device Subnet from UDB 0
+    ot_u8   btemp[8];
+    ot_u8   uid[8];
+    ot_u8   vid[2];
+    ot_u8   subnet;             // Device Subnet from ISF 0
     ot_u8   b_subnet;
-    ot_u8   dd_flags;           // Default Device flags (see M2DF's in protocol_M2.h)
-    ot_u8   b_attempts;         // Beacon Tries from UDB 0
-    ot_u16  active;             // Active settings from UDB 0
-    ot_u16  hold_limit;         // Hold limit from UDB 0
+    ot_u16  active;             // Active settings from ISF 0
+    ot_u8   dd_flags;           // Default Device flags
+    ot_u8   b_attempts;         // Beacon Tries from ISF 0
+    ot_u16  hold_limit;         // Hold limit from ISF 0
 } netconf_struct;
 
 
@@ -259,14 +263,14 @@ typedef struct {
 typedef struct {
     ot_long tc;                 // Contention Period (Tc, sometimes also called Tcp)
     ot_long tca;                // Collision avoidance period (Tca)
-    ot_uint rx_timeout;
+    ot_long rx_timeout;
+    ot_u8   scratch[2];         // intended for chanlist storage during ad-hoc single channel dialogs
     ot_u8   csmaca_params;      // (A2P | NA2P) + (RIGD | RAIND | AIND) + CSMA on/off
     ot_u8   redundants;         // number of attempts
     ot_u8   tx_channels;        // num channels on which the tx may be issued
     ot_u8   rx_channels;        // num channels on which the rx may come from (usually 1)
     ot_u8*  tx_chanlist;
     ot_u8*  rx_chanlist;
-    ot_u8   scratch[2];         // intended for chanlist storage during ad-hoc single channel dialogs
 } m2comm_struct;
 
 typedef struct {
@@ -279,7 +283,6 @@ typedef struct {
     ot_u8           reserved;
     ot_uint         counter;
     ot_uint         adv_time;
-    ot_int          last_nrssi;
     netconf_struct  netconf;
     m2comm_struct   comm;
 #   if (OT_FEATURE(DLLRF_CALLBACKS))
@@ -293,6 +296,29 @@ extern m2dll_struct dll;
 
 
 
+/** Macros <BR>
+  * ========================================================================<BR>
+  */
+#if defined(EXTF_dll_sig_rfinit)
+#   define DLL_SIG_RFINIT(CODE)                 dll_sig_rfinit(CODE)
+#elif (OT_FEATURE(DLLRF_CALLBACKS) == ENABLED)
+#   define DLL_SIG_RFINIT(CODE)                 dll.sig.rfinit(CODE)
+#else
+#   define DLL_SIG_RFINIT(CODE)                 while(0)
+#endif
+
+#if defined(EXTF_dll_sig_rfterminate)
+#   define DLL_SIG_RFTERMINATE(CODE1, CODE2)    dll_sig_rfterminate(CODE1, CODE2)
+#elif (OT_FEATURE(DLLRF_CALLBACKS) == ENABLED)
+#   define DLL_SIG_RFTERMINATE(CODE1, CODE2)    dll.sig.rfterminate(CODE1, CODE2)
+#else
+#   define DLL_SIG_RFTERMINATE(CODE1, CODE2)    while(0)
+#endif
+
+
+//For synchronization only
+//extern volatile ot_u32 sample_t0;
+//extern volatile ot_u32 sample_t1;
 
 
 
@@ -300,10 +326,11 @@ extern m2dll_struct dll;
 /** DLL IO Tasks <BR>
   * ========================================================================<BR>
   */
-void dll_block();
+void dll_block(void);
+void dll_unblock(void);
 void dll_clock(ot_uint ticks);
-void dll_next();
-void dll_systask_init();
+void dll_next(void);
+void dll_systask_init(void);
 void dll_systask_rf(ot_task task_dll);
 
 
@@ -311,14 +338,28 @@ void dll_systask_rf(ot_task task_dll);
 /** DLL Idle-Time Tasks <BR>
   * ========================================================================<BR>
   */
-void dll_systask_holdscan();
-void dll_systask_sleepscan();
-void dll_systask_beacon();
+void dll_systask_holdscan(ot_task task);
+void dll_systask_sleepscan(ot_task task);
+void dll_systask_beacon(ot_task task);
 
+void dll_block_idletasks(void);
+
+void dll_default_applet(m2session* active);
+
+void dll_response_applet(m2session* s_active);
+void dll_scan_applet(m2session* s_active);
+void dll_beacon_applet(m2session* s_active);
+
+
+
+/** DLL Default Signal Callers <BR>
+  * ========================================================================<BR>
+  * These are implemented in m2_dll_task.c as empty functions, and they are 
+  * linked with "weak" attribute so you can replace them with your own versions.
+  */
 
 void dll_sig_rfinit(ot_int pcode);
 void dll_sig_rfterminate(ot_int pcode, ot_int scode);
-
 
 
 
@@ -331,7 +372,7 @@ void dll_sig_rfterminate(ot_int pcode, ot_int scode);
   * @retval None
   * @ingroup DLL
   */
-void dll_init();
+void dll_init(void);
 
 
 /** @brief Refresh system settings, wipe sessions, and put system into idle
@@ -344,7 +385,23 @@ void dll_init();
   * Network Settings ISF (ISF 0) and applies it to the system object.  Then it
   * puts OpenTag in a default idle state with no pending or ongoing sessions.
   */
-void dll_refresh();
+void dll_refresh(void);
+
+
+/** @brief Refreshes the DLL real-time scheduler features (requires OTcron)
+  * @param  None
+  * @retval None
+  * @ingroup DLL
+  * @sa dll_refresh
+  * 
+  * If your build includes OTcron, this function will pull data from the Real
+  * Time Scheduler file (ISF 04) and align Sleep, Hold, and Beacon RTS to what
+  * is in the file.  If your build does not include OTcron, this function does
+  * nothing.
+  *
+  * The function dll_refresh() calls this dll_refresh_rts() internally.
+  */
+void dll_refresh_rts(void);
 
 
 
@@ -369,7 +426,7 @@ void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings);
   *
   * Generally, this doesn't need to be called from the outside.
   */
-void dll_goto_off();
+void dll_goto_off(void);
 
 
 
@@ -383,7 +440,7 @@ void dll_goto_off();
   * example is to use sys_idle() in a USB suspend callback, to make sure that
   * radio operation is shut off.
   */
-void dll_idle();
+void dll_idle(void);
 
 
 
@@ -397,6 +454,31 @@ void dll_idle();
   */
 void dll_set_defaults(m2session* session);
 
+
+
+
+
+
+/** Internal Task Calls, exposed to enable patching <BR>
+  * ========================================================================<BR>
+  */
+void dll_scan_timeout(void);
+void dll_processing(void);
+void dll_activate(void);
+void dll_init_rx(m2session* active);
+void dll_init_tx(ot_u8 is_btx);
+void dll_txcsma(void);
+
+
+
+/** Radio Driver DLL Callbacks, exposed to enable patching <BR>
+  * ========================================================================<BR>
+  */
+void dll_rfevt_brx(ot_int scode, ot_int fcode);
+void dll_rfevt_frx(ot_int pcode, ot_int fcode);
+void dll_rfevt_txcsma(ot_int pcode, ot_int tcode);
+void dll_rfevt_btx(ot_int flcode, ot_int scratch);
+void dll_rfevt_ftx(ot_int pcode, ot_int scratch);
 
 
 
@@ -419,7 +501,7 @@ ot_u8 dll_default_csma(ot_u8 chan_id);
   * @retval none
   * @ingroup DLL
   */
-void dll_quit_rf();
+void dll_quit_rf(void);
 
 
 

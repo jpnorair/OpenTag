@@ -34,26 +34,62 @@
 #ifndef __SYSTEM_H
 #define __SYSTEM_H
 
+#include "OT_platform.h"
 #include "OT_types.h"
 #include "OT_config.h"
-#include "gulp/system_gulp.h"
 
+// Pick the kernel that was built-in
+#include "build_config.h"
 
-#ifndef GPTIM_SHIFT
-#   define GPTIM_SHIFT 0
+#if defined(__KERNEL_HICCULP__)
+#   include "hicculp/system_hicculp.h"
+
+#elif defined(__KERNEL_GULP__)
+#   include "gulp/system_gulp.h"
+
+#else
+//#   warning "No Kernel Defined, OK for some testbeds."
+#   ifndef __KERNEL_NONE__
+#   define __KERNEL_NONE__
+#   endif
+    //typedef void*    ot_task;
+    //typedef ot_u32   ot_task_struct;
+
+    typedef struct task_marker_struct {
+        ot_u8   event;
+        ot_u8   cursor;
+        ot_u8   reserve;
+        ot_u8   latency;
+        ot_long nextevent;
+#       if (OT_PARAM_SYSTHREADS != 0)
+        void*   stack;
+#       endif
+#       if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
+        void    (*call)(struct task_marker_struct *marker);
+#       endif
+    } task_marker;
+
+    typedef task_marker*    ot_task;
+    typedef task_marker     ot_task_struct;
+
+    typedef void (*systask_fn)(ot_task);
 #endif
 
-#if (GPTIM_SHIFT != 0)
+
+
+#ifndef OT_GPTIM_SHIFT
+#   define OT_GPTIM_SHIFT 0
+#endif
+
+#if (OT_GPTIM_SHIFT != 0)
 #   define CLK_UNIT         ot_long
-#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> GPTIM_SHIFT)
-#   define TI2CLK(TICKS)    ((ot_long)TICKS << GPTIM_SHIFT)
+#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> OT_GPTIM_SHIFT)
+#   define TI2CLK(TICKS)    ((ot_long)TICKS << OT_GPTIM_SHIFT)
 #else
 #   define CLK_UNIT         ot_u16
 #   define CLK2TI(CLOCKS)   (CLOCKS)
 #   define TI2CLK(TICKS)    (TICKS)
 #endif
-
-
 
 
 typedef enum {
@@ -64,20 +100,24 @@ typedef enum {
 #if (OT_FEATURE(MPIPE))
     TASK_mpipe,
 #endif
-#if defined(OT_PARAM_USER_EXOTASKS)
-    OT_PARAM_USER_EXOTASKS,
+#if (OT_PARAM(EXOTASKS) > 0)
+    OT_PARAM_EXOTASK_IDS,
 #endif
 #if (1)
     TASK_hold,
 #endif
-#if (M2_FEATURE(ENDPOINT))
-    TASK_sleep,
-#endif
 #if (M2_FEATURE(BEACONS))
     TASK_beacon,
+#endif    
+#if (1)
+    TASK_sleep,
 #endif
-#if defined(OT_PARAM_USER_KERNELTASKS)
-    OT_PARAM_USER_KERNELTASKS,
+//#if(OT_FEATURE(CRON))
+//    TASK_otcron,
+//#endif
+///@todo: rearrange user tasks with external, or simply remove external.
+#if (OT_PARAM(KERNELTASKS) > 0)
+    OT_PARAM_KERNELTASK_IDS,
 #elif (OT_FEATURE(EXT_TASK))
     TASK_external,
 #endif
@@ -167,14 +207,14 @@ extern sys_struct sys;
 #define task_MPA        task[MPA_INDEX]
 
 #define HSS_INDEX       TASK_hold
-#define SSS_INDEX       (HSS_INDEX+(M2_FEATURE(ENDPOINT) == ENABLED))
-#define BTS_INDEX       (SSS_INDEX+(M2_FEATURE(BEACONS) == ENABLED))
-#define EXT_INDEX       (BTS_INDEX+(OT_FEATURE(EXT_TASK) == ENABLED))
+#define BTS_INDEX       (HSS_INDEX+(M2_FEATURE(BEACONS) == ENABLED))
+#define SSS_INDEX       (BTS_INDEX+1)
+#define EXT_INDEX       (SSS_INDEX+(OT_FEATURE(EXT_TASK) == ENABLED))
 #define IDLE_TASKS      ((EXT_INDEX-HSS_INDEX)+1)
 #define task_idle(x)    task[IO_TASKS+x]
 #define task_HSS        task[HSS_INDEX]
-#define task_SSS        task[SSS_INDEX]
 #define task_BTS        task[BTS_INDEX]
+#define task_SSS        task[SSS_INDEX]
 #define task_EXT        task[EXT_INDEX]
 
 #define SYS_TASKS       TASK_terminus
@@ -436,10 +476,8 @@ void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks);
 void sys_synchronize(Task_Index task_id);
 
 
-/** @brief  Refresh the Scheduler Parameters from the Active Settings
-  * @param  None
-  * @retval None
-  * @ingroup System
+/**
+  * @todo this is replaced by OTcron
   */
 void sys_refresh_scheduler();
 
@@ -539,7 +577,6 @@ void sys_sig_extprocess(void* event_data);
   * a successful transfer of a packet.
   */
 //void sys_sig_rfaterminate(ot_int pcode, ot_int scode);
-
 
 
 

@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2010-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/radio.h
   * @author     JP Norair
-  * @version    R100
-  * @date       20 Oct 2012
+  * @version    R101
+  * @date       19 April 2014
   * @brief      Generic Radio (RF transceiver) interface
   * @defgroup   Radio (Radio Module)
   * @ingroup    Radio
@@ -44,7 +44,8 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
-
+#include "queue.h"
+#include "veelite.h"
 
 
 typedef enum {
@@ -56,18 +57,50 @@ typedef enum {
 } radio_state;
 
 
+
+/** Additional link information
+  *
+  */
+#define RADIO_LINK_CORRECTIONS  (1<<6)
+#define RADIO_LINK_PQI          (1<<3)
+#define RADIO_LINK_SQI          (1<<2)
+#define RADIO_LINK_LQI          (1<<1)
+#define RADIO_LINK_AGC          (1<<0)
+
+typedef struct {
+#if (OT_FEATURE(RF_LINKINFO) || OT_FEATURE(RF_ADAPTIVE))
+    ot_u8   flags;
+    ot_u8   corrections;  
+    ot_u8   pqi;          // Preamble Quality Index
+    ot_u8   sqi;          // Synchronization Quality Index
+    ot_u8   lqi;          // Link Quality Index
+    ot_u8   agc;          // AGC Parameters
+#endif
+    ot_u8   offset_thr;
+    ot_u8   raw_thr;
+} radio_link_struct;
+
+
+
 /** Universal Radio Driver Control
   * state       A high-level description of what is happening on the radio
   * last_rssi   Used to buffer the last-read RSSI value -- not always implemented
   * evtdone     A callback that is used when RX or TX is completed (i.e. done)
   */
 typedef struct {
-    radio_state state;
-    ot_int      last_rssi;
-    ot_sig2     evtdone;
+    radio_state         state;
+    ot_int              last_rssi;
+    ot_int              last_linkloss;
+    ot_sig2             evtdone;
+    radio_link_struct   link;
 } radio_struct;
 
 extern radio_struct radio;
+
+
+
+
+
 
 
 
@@ -86,7 +119,9 @@ extern radio_struct radio;
   *
   * phymac_struct description
   * 
-  * tg              (ot_int) channel guard time (in ti units) as determined by
+  * flags           (ot_u8) usage flags, proprietary/custom, optional.
+  * 
+  * tg              (ot_u8) channel guard time (in ti units) as determined by
   *                 the spec.  It is 2, 3, 5, or 10 ti depending on the channel.
   * 
   * channel         (ot_u8) channel id to use
@@ -113,7 +148,8 @@ extern radio_struct radio;
   *                 RSSI, in order to prevent "hidden node problem" in CSMA.
   */
 typedef struct {
-    ot_int  tg;
+    ot_u8   flags;
+    ot_u8   tg;
     ot_u8   channel;
     ot_u8   autoscale;
     ot_u8   tx_eirp;
@@ -188,11 +224,15 @@ extern phymac_struct   phymac[M2_PARAM_MI_CHANNELS];
 #define RM2_CHAN_BLINK_C    0x3C
 
 // Wildcard Channel
+///@todo change this to 00
 #define RM2_CHAN_WILDCARD   0x7F
 
 // MAC configuration of PHY parameters via synchronizer packet
 #define RM2_ENCODING_FEC    0x80
 
+// Common Errors
+///@todo refactor these in order to better represent the way errors are used
+///      now.  CRC should be -1, for example.
 #define RM2_ERR_KILL        -1
 #define RM2_ERR_CCAFAIL     -2
 #define RM2_ERR_BADCHANNEL  -3
@@ -204,9 +244,158 @@ extern phymac_struct   phymac[M2_PARAM_MI_CHANNELS];
 
 
 
-/** Radio Module control    <BR>
+
+/** Radio-Agnostic Mode 2 Library Functions    <BR>
   * ========================================================================<BR>
-  * Used for module configuration and utility
+  * Mode 2 specific virtual PHYMAC functionality, implemented in radio_task.c 
+  */
+
+
+/** @brief  Initialize RM2 module parameters
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  */
+void rm2_init(void);
+
+
+/** @brief  Returns default Tgd (guard period) for the specified channel
+  * @param  chan_id     (ot_u8) Mode 2 channel ID
+  * @retval ot_iint     Tgd in ticks (units: 1/1024 seconds)
+  * @ingroup Radio
+  */
+ot_uint rm2_default_tgd(ot_u8 chan_id);
+
+
+
+/** @brief  Returns minimum rxtimeout value on pending/active channel
+  * @param  chan_id     (ot_u8) Mode 2 channel ID
+  * @retval ot_u16      minimum timeout in ticks (units: 1/1024 seconds)
+  * @ingroup Radio
+  */
+ot_uint rm2_rxtimeout_floor(ot_u8 chan_id);
+
+
+
+/** @brief  Returns approximate duration of pending packet, in ticks.
+  * @param  pkt_q       (ot_queue*) pointer to queue containing packet
+  * @retval ot_uint     Duration of packet in ticks (units: 1/1024 seconds)
+  * @ingroup Radio
+  * @sa rm2_scale_codec()
+  * @sa rm2_bgpkt_duration()
+  *
+  * Basically identical to rm2_scale_codec(), except that some padding is added
+  * to the output in order to account for FIFO lag of the radio.
+  */
+ot_uint rm2_pkt_duration(ot_queue* pkt_q);
+
+
+
+/** @brief  Returns approximate duration of BG packet, in ticks
+  * @param  None
+  * @retval ot_uint     Duration of packet in ticks (units: 1/1024 seconds)
+  * @ingroup Radio
+  * @sa rm2_pkt_duration()
+  *
+  * This is an optimized version of rm2_pkt_duration(), for background
+  * packets.
+  */
+ot_uint rm2_bgpkt_duration();
+
+
+
+/** @brief  Returns transmission duration of X bytes on the active channel
+  * @param  pkt_bytes   (ot_u8) number of bytes (or bytes left) in the packet
+  * @retval ot_uint     Duration of packet in ticks (units: 1/1024 seconds)
+  * @ingroup Radio
+  * @sa rm2_pkt_duration()
+  *
+  * An implicit (internal) parameter to this function is phymac[N].channel
+  */
+ot_uint rm2_scale_codec(ot_uint buf_bytes);
+
+
+
+/** @brief  Returns true if the received packet passes subnet & power filtering
+  * @param  None
+  * @retval ot_bool     True/False on MAC filter pass/fail
+  * @ingroup Radio
+  */
+ot_bool rm2_mac_filter();
+
+
+
+/** @brief  Explicit channel test function, returns True when channel is entered
+  * @param  channel     (ot_u8) Channel ID to test and enter
+  * @retval ot_bool     True/False when channel is entered/not-available
+  * @ingroup Radio
+  * @sa rm2_test_chanlist
+  *
+  * If this function returns True when the supplied channel available and has
+  * been entered into phymac[0] and the radio hardware.
+  */
+ot_bool rm2_test_channel(ot_u8 channel);
+
+
+
+/** @brief  Implicit channel test function, returns True when channel is entered
+  * @param  None
+  * @retval ot_bool     True/False when channel is entered/not-available
+  * @ingroup Radio
+  * @sa rm2_test_channel
+  *
+  * If this function returns True when a channel from the DLL chanlist is 
+  * available (dll.chanlist), and it has been entered into phymac[0] and the 
+  * radio hardware.
+  */
+ot_bool rm2_test_chanlist();
+
+
+
+/** @brief  Checks if radio layer is already using supplied channel
+  * @param  chan_id     (ot_u8) Mode 2 Channel ID to fast-check
+  * @retval ot_bool     True/False if channel is already in use
+  * @ingroup Radio
+  * @sa rm2_test_channel
+  * @sa rm2_test_chanlist
+  * @sa rm2_channel_lookup
+  *
+  * This is typically called from within rm2_test_channel and rm2_test_chanlist
+  * function implementations.  If the channel is not already in use, this 
+  * function will return False, and the caller must use the slower function,
+  * rm2_channel_lookup, in order to enter the chosen channel.
+  */
+ot_bool rm2_channel_fastcheck(ot_u8 chan_id);
+
+
+
+/** @brief  Searches Mode 2 Channel Configuration File and configures hardware
+  *             to use a requested channel
+  * @param  chan_id     (ot_u8) Mode 2 Channel ID to lookup and configure
+  * @param  fp          (vlFILE*) file pointer to compliant Mode 2 channel-config file
+  * @retval ot_bool     True/False on channel found and configured
+  * @ingroup Radio
+  * @sa rm2_test_channel
+  * @sa rm2_test_chanlist
+  *
+  * Preferred usage is instead to call rm2_test_channel or rm2_chanscan, which 
+  * both call this function internally.
+  *
+  */
+ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE *fp);
+
+
+
+
+
+
+
+
+
+/** General Purpose, High-Level Radio Module control    <BR>
+  * ========================================================================<BR>
+  * Used for module configuration and utility, not specifically related to
+  * Mode 2.  These are implemented in the radio driver.
   */
 
 /** @brief Initializes Radio
@@ -230,6 +419,34 @@ void radio_init();
 
 
 
+/** @brief  Used by the radio driver when finished with active RX or TX
+  * @param main_err     (ot_int) Main process error, or 0
+  * @param frame_err    (ot_int) Frame data error, or 0
+  * @retval None
+  * @ingroup Radio
+  *
+  * radio_finish interacts with the DLL callbacks, and it also manages radio
+  * driver flags and radio state.
+  */
+void radio_finish(ot_int main_err, ot_int frame_err);
+
+
+
+/** @brief  Sets a timer that will invoke the MAC Timer ISR after a specified
+  *             amount of ticks.
+  * @param clocks       (ot_u16) 0-65535 ticks wait period
+  * @retval None
+  * @ingroup Radio
+  *
+  * The MAC Timer is used in Mode 2 for setting low-level transmission slotting,
+  * it could be used for other purposes as well.  The implementation uses
+  * GPTIM2, which is a tick-based timer commonly implemented as a second channel 
+  * of the same timer as GPTIM, the kernel scheduler timer.  See the platform
+  * implementation for more information on MAC Timer specifications.
+  */
+void radio_set_mactimer(ot_u16 clocks);
+
+
 /** @brief Invokes ISR subroutines that use the MAC timer
   * @param None
   * @retval None
@@ -246,21 +463,20 @@ void radio_mac_isr();
 
 
 
-/** @brief  Returns the RSSI value of the most recent reception.
-  * @param None
-  * @retval ot_int      RSSI of last reception in units of 0.5 dBm
+
+/** @brief Activate a queue being used as a radio RX or TX buffer
+  * @param index        (ot_queue*) queue to activate for radio TX or RX
+  * @retval None        
   * @ingroup Radio
   *
-  * This function is callable outside the process of a dialog, because it 
-  * returns the RSSI detected during the most recent receive operation, not the
-  * instantaneous RSSI.  RSSI detection happens early in the course of each RX,
-  * so in the case that this function is called during process of a dialog, it 
-  * will return the RSSI of the current reception.
+  * Call this function prior to opening the radio for RX or TX.  Before RX, use
+  * the reception queue as the input.  Before TX, use the transmission queue.
   *
-  * On most hardware, the RSSI range of -100 to -40 dBm [-200 to -80 returned] 
-  * is the area of interest.
+  * The inner workings of this function are designed to work with the encoder
+  * decoder modules.  It does not affect data in the queue, but it does alter
+  * the queue's option bytes.
   */
-ot_int radio_rssi();
+void radio_activate_queue(ot_queue* q);
 
 
 
@@ -273,7 +489,7 @@ ot_int radio_rssi();
   * platforms there may not be a radio buffer localized on the MCU, and on these
   * builds the functionality of radio_buffer() is not guaranteed.
   */
-ot_u8 radio_buffer(ot_int index);
+ot_u8 radio_buffer(ot_uint index);
 
 
 
@@ -282,10 +498,329 @@ ot_u8 radio_buffer(ot_int index);
 
 
 
-/** Radio Core control    <BR>
+/** Mode 2 - Specific, High-Level Radio Module control    <BR>
   * ========================================================================<BR>
-  * - Basic radio control functions         <BR>
-  * - called mostly by Encode module        <BR>
+  * Used for module configuration and utility.  These are implemented in the 
+  * radio driver.
+  */
+
+/** @brief  Clips the TX EIRP to HW spec, and encodes as native for HW
+  * @param  m2_txeirp       (ot_u8) Mode 2 encoded TX EIRP for the channel
+  * @retval ot_u8           Native encoded & adjusted TX EIRP value            
+  * @ingroup Radio
+  *
+  * This function is called by rm2 channel lookup functions, and generally it
+  * should not be called directly.
+  */
+ot_u8 rm2_clip_txeirp(ot_u8 m2_txeirp);
+
+
+/** @brief  Calculates the HW-Native RSSI Threshold from the Mode 2 value
+  * @param  m2_rssithr      (ot_u8) Mode 2 encoded RSSI Threshold
+  * @retval ot_u8           Native encoded & adjusted RSSI Threshold            
+  * @ingroup Radio
+  *
+  * This function is called by rm2 channel lookup functions, and generally it
+  * should not be called directly.
+  */
+ot_u8 rm2_calc_rssithr(ot_u8 m2_rssithr);
+
+
+/** @brief  Puts the radio into the Implicit Mode 2 Channel from phymac[0]
+  * @param  old_chan_id     (ot_u8) previous channel ID
+  * @param  old_tx_eirp     (ot_u8) previous TX EIRP
+  * @retval None            
+  * @ingroup Radio
+  *
+  * This function is called by rm2 channel lookup functions, and generally it
+  * should not be called directly.
+  */
+void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp);
+
+
+
+/** @brief  Applies Mode 2 MAC filtering configuration to low-level components
+  * @param  None 	
+  * @retval None
+  * @ingroup Radio
+  */
+void rm2_mac_configure();
+
+
+
+/** @brief  Calculates and saves the link information
+  * @param None
+  * @retval None
+  * @ingroup Radio
+  *
+  * This function calculates RSSI and Link-Loss, and it saves them into:
+  * radio.last_linkloss
+  * radio.last_rssi
+  *
+  * It should be called within the radio driver when a packet is finished being 
+  * received.  It also uses the Mode 2 TX EIRP field (in every Mode 2 frame) in
+  * order to calculate link loss.
+  */
+void rm2_calc_link();
+
+
+
+/** @brief  Returns the number of ticks remaining on the flood counter.
+  * @param  None 	
+  * @retval ot_int      number of ticks until flood expires
+  * @ingroup Radio
+  *
+  * The flood counter is used with most types of Mode 2 background packet 
+  * transmission, in particular the Advertising packet which inserts the value 
+  * of this counter into the background payload.
+  *
+  * rm2_get_floodcounter should be aware of the state of each background packet 
+  * transmission, such that the value returned is the amount of ticks once the
+  * last bit of the packet has been modulated and put onto the air.
+  */
+ot_int rm2_get_floodcounter();
+
+
+
+/** @brief  Terminates RX or TX process (typically for internal use)
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  */
+void rm2_kill();
+
+
+/** @brief  ISR that is called internally when FF RX times out
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  * 
+  * __Best to ignore__.  If you are an expert you can call this to force radio 
+  * actions, which may force callbacks.
+  */
+void rm2_rxtimeout_isr();
+
+
+
+/** @brief  Initializes RX engine for Mode 2 packet reception
+  * @param  channel     (ot_u8) Mode 2 channel ID to look for packet
+  * @param  psettings   (ot_u8) Packet settings bits
+  * @param  callback    (ot_sig2) callback for when RX is done, on error or complete
+  * @retval None
+  * @ingroup Radio
+  *
+  * Call this to listen for a packet.  Using psettings != 0 will look for a
+  * a "background packet."  If psettings == 0, the radio will look for a 
+  * foreground packet.
+  *
+  * A foreground packet contains one or more foreground frames (usually 1)
+  * which have a certain format and are subject to a timeout -- if Sync Word
+  * is not found by the timeout, the RX is killed.
+  *
+  * Background flood packets follow very specific rules in the Mode 2 spec
+  * (they are used mostly for group synchronization).  Background RX terminates
+  * once a packet is received, it is killed, or if the channel energy detection
+  * (carrier sense) fails.  Background packets contain only one frame each.
+  *
+  * This is a non-blocking RX.  It starts an interrupt-driven process that runs
+  * in the background until the packet is complete, the RX times-out, or the
+  * RX is manually killed with rm2_kill().  These are the termination events.
+  *
+  * A callback function is used when any of the RX termination events occur or
+  * any time a frame is successfully received.  Mode 2 supports multiframe 
+  * packets, so the callback is used following the concept below:
+  * 
+  * void callback(ot_int arg1, ot_int arg2)
+  * arg1: negative on RX error, 0 on RX complete, positive on frame complete
+  * arg2: 0 on frame received successfully, negative on error.
+  */
+void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback);
+
+
+
+
+/** @brief  Perform a test of system in RX
+  * @param  channel     (ot_u8) channel
+  * @param  tsettings   (ot_u8) test settings (RFU)
+  * @param  timeout     (ot_u16) timeout for Test RX (not always available)
+  * @retval None
+  * @ingroup Radio
+  *
+  * Performs a test of the RX feature, mainly for the purpose of measuring
+  * system currents or simply getting RSSI data from the channel.  No data will
+  * be received.  
+  *
+  * The "tsettings" parameter is RFU.
+  * 
+  * If the "timeout" parameter is 0, the test-rx will go on forever, or until
+  * rm2_kill() is issued.  If the "timeout" parameter is non-zero, this 
+  * corresponds to some unit of time that the radio will operate in RX before
+  * shutting-down.  This unit is proprietary, but it should be 1/32768 seconds 
+  * if possible.
+  */
+void rm2_rxtest(ot_u8 channel, ot_u8 tsettings, ot_u16 timeout);
+
+
+
+
+/** @brief  Initializes TX engine for "foreground" packet transmission
+  * @param  psettings   (ot_u8) Packet settings bits
+  * @param  callback    (ot_sig2) callback for when TX is done, on error or complete
+  * @retval None
+  * @ingroup Radio
+  * @sa rm2_txinit_bf, rm2_txcsma
+  *
+  * Call to prepare the TX system and the TX callback for foreground or background
+  * packet.  This function does not usually start TX -- on most hardware,
+  * rm2_txcsma() must be called to run the csma-ca routine and begin actual TX.
+  *
+  * the callback: void callback(ot_int arg1, ot_int arg2)
+  * - called on TX termination and whenever a frame is completed
+  * - arg 1 is negative on error, 0 on complete, positive if more frames to TX
+  * - arg 2 is ignored
+  */
+void rm2_txinit(ot_u8 psettings, ot_sig2 callback);
+
+
+
+/** @brief  Perform a test of the system in TX
+  * @param  channel     (ot_u8) channel
+  * @param  eirp        (ot_u8) test output power
+  * @param  tsettings   (ot_u8) test settings (0 or 1)
+  * @param  timeout     (ot_u16) timeout for Test TX (not always available)
+  * @retval None
+  * @ingroup Radio
+  *
+  * Performs a test of the RX feature, mainly for the purpose of measuring
+  * system currents or simply getting RSSI data from the channel.  No data will
+  * be received.  
+  *
+  * The "tsettings" parameter has two values: 0 or 1.  If 0, only the raw 
+  * carrier will be transmitted.  If 1, randomized data will be sent over the 
+  * channel.
+  *
+  * The "timeout" parameter is functionally identical to that used by 
+  * rm2_rxtest(), although the time units may differ.  Check the implementation.
+  */
+void rm2_txtest(ot_u8 channel, ot_u8 eirp, ot_u8 tsettings, ot_u16 timeout);
+
+
+
+
+/** @brief  Stops the flood harmoniously (finishes the current packet and stops)
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  * @sa rm2_txinit_bf
+  * 
+  * This will cause the TX callback to occur.
+  */
+void rm2_txstop_flood();
+
+
+
+/** @brief  Instructs radio to re-enter RX mode immediately
+  * @param  callback 	(ot_bool) re-supplied RX-done callback
+  * @retval None
+  * @ingroup Radio
+  *
+  * This function is used in certain places in the Data Link Layer, and also
+  * [typically] internally, to restart RX.  The RX core is not altered, so 
+  * whatever settings are in the core get used for this re-entered RX.  Mode 2
+  * relies on this function to re-enter RX in the response window or after an
+  * erroneous request is detected.
+  *
+  * The function may be used internally, for code-reuse, with callback set to
+  * NULL.  Many implementations use this technique.
+  */
+void rm2_reenter_rx(ot_sig2 callback);
+
+
+
+/** @brief  Prepares the radio chain to resend a packet
+  * @param  callback	(ot_sig2) re-supplied callback for TX-Done handler
+  * @retval None
+  * @ingroup Radio
+  *
+  * This works with the redundant-TX feature.  It can be implemented in a
+  * variety of ways, depending on how the radio core is designed.  For radio
+  * cores that have full low-level MAC support of DASH7, it does nothing.
+  */
+void rm2_resend(ot_sig2 callback);
+
+
+
+/** @brief  ISR that is called internally when a sync word is detected in RX
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  * 
+  * __Best to ignore__.  If you are an expert you can call this to force radio 
+  * actions, which may force callbacks.
+  */
+void rm2_rxsync_isr();
+
+
+
+/** @brief  ISR that is called internally whenever the RX FIFO fills up
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  * 
+  * __Best to ignore__.  If you are an expert you can call this to force radio 
+  * actions, which may force callbacks.
+  */
+void rm2_rxdata_isr();
+
+
+
+/** @brief  ISR that is called internally when CSMA process is going
+  * @param  none
+  * @retval none
+  * @ingroup Radio
+  * @sa rm2_txinit_ff, rm2_txinit_bf
+  *
+  */
+void rm2_txcsma_isr();
+
+
+
+/** @brief  ISR that is called internally whenever TX FIFO needs filling
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  * 
+  * __Best to ignore__.  If you are an expert you can call this to force radio 
+  * actions, which may force callbacks.
+  */
+void rm2_txdata_isr();
+
+
+
+/** @brief  ISR/general-routine that is called when the RX process ends.
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  * 
+  * __Best to ignore__.  If you are an expert you can call this to force RX 
+  * termination.
+  */
+void rm2_rxend_isr();
+
+
+
+
+
+
+
+
+
+
+
+/** General Purpose, Low-Level Radio Module control    <BR>
+  * ========================================================================<BR>
+  * Used for data FIFO interaction and power configuration, but not specifically 
+  * related to Mode 2.  These are implemented in the radio driver.
   */
 
 /** @brief  Turns off the radio transceiver
@@ -302,7 +837,6 @@ ot_u8 radio_buffer(ot_int index);
 void radio_off();
 
 
-
 /** @brief Disables all Events/Interrupts used by the radio module
   * @param None
   * @retval None
@@ -314,6 +848,7 @@ void radio_off();
   * it to just go idle and shut-up.
   */
 void radio_gag();
+void radio_ungag();
 
 
 
@@ -323,14 +858,15 @@ void radio_gag();
   * @ingroup Radio
   *
   * Different radio HW may have different names for sleep mode.  In any case,
-  * radio_sleep() will put the radio into the mode that is lowest power, where
+  * radio_sleep() will put the radio into the mode that is lowest power where
   * register contents are retained.  On HW that I've studied, going from sleep 
-  * to active RX or TX takes anywhere from 400 µs to 2000 µs.  Here are specs 
-  * from the chips I like most:
+  * to active RX or TX takes anywhere from 125 µs to 2000 µs.  Here are specs 
+  * for some chips I've used:
   *
-  * CC430:      ~400 µs      (CC430 calibrates after every fourth TX/RX usage)
+  * SPIRIT1     ~180 us     (including calibration, FAST!)
+  * CC430:      ~400 µs     (CC430 calibrates after every fourth TX/RX usage)
   * ADµCRF101:  ~600 µs
-  * SX1212:     ~1500 µs     (Integer PLL is slow but allows 2.5mA RX)
+  * SX1212:     ~1500 µs    (Integer PLL is slow but allows 2.5mA RX)
   */
 void radio_sleep();
 
@@ -347,11 +883,6 @@ void radio_sleep();
   * usually between 0.5mW and 5mW.
   */
 void radio_idle();
-
-
-
-void radio_set_mactimer(ot_u16 clocks);
-
 
 
 /** @brief Flushes the TX buffer
@@ -450,236 +981,45 @@ ot_bool radio_txopen_4();
 
 
 
-
-
-
-
-
-
-/****************************************************************
-  * Mode 2 Radio Functions                                      *
-  * - radio I/O specific to the way DASH7 Mode 2 works          *
-  * - called in system.c, probably nowhere else                 *
-  ***************************************************************/
-
-/** @brief  Returns default Tgd (guard period) for the specified channel
-  * @param  chan_id     (ot_u8) Mode 2 channel ID
-  * @retval ot_int      Tgd in ticks (units: 1/1024 seconds)
-  * @ingroup Radio
-  */
-ot_int rm2_default_tgd(ot_u8 chan_id);
-
-
-
-/** @brief  Returns estimated time until the packet is completed
-  * @param  pkt_bytes   (ot_u8) number of bytes left in the packet
-  * @retval ot_int      Duration of packet in ticks (units: 1/1024 seconds)
-  * @ingroup Radio
-  * @sa rm2_scale_codec()
-  *
-  * Basically identical to rm2_scale_codec(), except that some padding is added
-  * to the output in order to account for FIFO lag of the radio.
-  */
-ot_int rm2_pkt_duration(ot_int pkt_bytes);
-
-
-
-/** @brief  Returns estimated time until the buffered data is airborne
-  * @param  pkt_bytes   (ot_u8) number of bytes (or bytes left) in the packet
-  * @retval ot_int      Duration of packet in ticks (units: 1/1024 seconds)
-  * @ingroup Radio
-  * @sa rm2_pkt_duration()
-  *
-  * Basically identical to rm2_scale_codec(), except that some padding is added
-  * to the output in order to account for FIFO lag of the radio.
-  */
-ot_int rm2_scale_codec(ot_int buf_bytes);
-
-
-
-/** @brief  Instructs radio to re-enter RX mode immediately
-  * @param  callback 	(ot_bool) re-supplied RX-done callback
-  * @retval None
+/** @brief  Returns the RSSI value of the most recent reception.
+  * @param None
+  * @retval ot_int      RSSI of last reception in units of 0.5 dBm
   * @ingroup Radio
   *
-  * This function is used in certain places in the Data Link Layer, and also
-  * [typically] internally, to restart RX.  The RX core is not altered, so 
-  * whatever settings are in the core get used for this re-entered RX.  Mode 2
-  * relies on this function to re-enter RX in the response window or after an
-  * erroneous request is detected.
+  * This function is callable outside the process of a dialog, because it 
+  * returns the RSSI detected during the most recent receive operation, not the
+  * instantaneous RSSI.  RSSI detection happens early in the course of each RX,
+  * so in the case that this function is called during process of a dialog, it 
+  * will return the RSSI of the current reception.
   *
-  * The function may be used internally, for code-reuse, with callback set to
-  * NULL.  Many implementations use this technique.
+  * On most hardware, the RSSI range of -100 to -40 dBm [-200 to -80 returned] 
+  * is the area of interest.
   */
-void rm2_reenter_rx(ot_sig2 callback);
+ot_int radio_rssi();
 
 
 
-/** @brief  Prepares the radio chain to resend a packet
-  * @param  callback	(ot_sig2) re-supplied callback for TX-Done handler
-  * @retval None
-  * @ingroup Radio
-  *
-  * This works with the redundant-TX feature.  It can be implemented in a
-  * variety of ways, depending on how the radio core is designed.  For radio
-  * cores that have full low-level MAC support of DASH7, it does nothing.
-  */
-void rm2_resend(ot_sig2 callback);
-
-
-/** @brief  Initializes RX engine for "foreground" packet reception
-  * @param  channel     (ot_u8) Mode 2 channel ID to look for packet
-  * @param  psettings   (ot_u8) Packet settings bits
-  * @param  callback    (ot_sig2) callback for when RX is done, on error or complete
-  * @retval None
-  * @ingroup Radio
-  *
-  * Call this to listen for a packet.  Using "psettings = 0" will look for a
-  * 0-frame packet, that is, a "background packet."  If psettings is non-zero,
-  * The radio will assume a packet of at least this many "foreground frames"
-  * is on the way.
-  *
-  * A foreground packet contains one or more foreground frames (usually 1)
-  * which have a certain format and are subject to a timeout -- if Sync Word
-  * is not found by the timeout, the RX is killed.
-  *
-  * Background flood packets follow very specific rules in the Mode 2 spec
-  * (they are used mostly for group synchronization).  Background RX terminates
-  * once a packet is received, it is killed, or if the channel energy detection
-  * (carrier sense) fails.  Background packets contain only one frame each.
-  *
-  * This is a non-blocking RX.  It starts an interrupt-driven process that runs
-  * in the background until the packet is complete, the RX times-out, or the
-  * RX is manually killed with rm2_kill().  These are the termination events.
-  *
-  * A callback function is used when any of the RX termination events occur or
-  * any time a frame is successfully received.  Mode 2 supports multiframe 
-  * packets, so the callback is used following the concept below:
-  * 
-  * void callback(ot_int arg1, ot_int arg2)
-  * arg1: negative on RX error, 0 on RX complete, positive on frame complete
-  * arg2: 0 on frame received successfully, negative on error.
-  */
-void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback);
-
-
-
-
-/** @brief  Initializes TX engine for "foreground" packet transmission
-  * @param  psettings   (ot_u8) Packet settings bits
-  * @param  callback    (ot_sig2) callback for when TX is done, on error or complete
-  * @retval None
-  * @ingroup Radio
-  * @sa rm2_txinit_bf, rm2_txcsma
-  *
-  * Call to prepare the TX system and the TX callback for foreground or background
-  * packet.  This function does not usually start TX -- on most hardware,
-  * rm2_txcsma() must be called to run the csma-ca routine and begin actual TX.
-  *
-  * the callback: void callback(ot_int arg1, ot_int arg2)
-  * - called on TX termination and whenever a frame is completed
-  * - arg 1 is negative on error, 0 on complete, positive if more frames to TX
-  * - arg 2 is ignored
-  */
-void rm2_txinit(ot_u8 psettings, ot_sig2 callback);
-
-
-
-
-/** @brief  Stops the flood harmoniously (finishes the current packet and stops)
-  * @param  None
-  * @retval None
-  * @ingroup Radio
-  * @sa rm2_txinit_bf
-  * 
-  * This will cause the TX callback to occur.
-  */
-void rm2_txstop_flood();
-
-
-
-
-/** @brief  Terminates RX or TX process (typically for internal use)
-  * @param  None
-  * @retval None
+/** @brief Checks Clear-Channel-Assesment Indicator and returns True/False
+  * @param none
+  * @retval ot_bool     True if Clear-Channel-Assesment is indicated
   * @ingroup Radio
   */
-void rm2_kill();
+ot_bool radio_check_cca();
 
 
 
-
-/** @brief  ISR that is called internally when a sync word is detected in RX
-  * @param  None
-  * @retval None
-  * @ingroup Radio
-  * 
-  * __Best to ignore__.  If you are an expert you can call this to force radio 
-  * actions, which may force callbacks.
-  */
-void rm2_rxsync_isr();
-
-
-
-/** @brief  ISR that is called internally when FF RX times out
-  * @param  None
-  * @retval None
-  * @ingroup Radio
-  * 
-  * __Best to ignore__.  If you are an expert you can call this to force radio 
-  * actions, which may force callbacks.
-  */
-void rm2_rxtimeout_isr();
-
-
-
-/** @brief  ISR that is called internally whenever the RX FIFO fills up
-  * @param  None
-  * @retval None
-  * @ingroup Radio
-  * 
-  * __Best to ignore__.  If you are an expert you can call this to force radio 
-  * actions, which may force callbacks.
-  */
-void rm2_rxdata_isr();
-
-
-
-/** @brief  ISR/general-routine that is called when the RX process ends.
-  * @param  None
-  * @retval None
-  * @ingroup Radio
-  * 
-  * __Best to ignore__.  If you are an expert you can call this to force RX 
-  * termination.
-  */
-void rm2_rxend_isr();
-
-
-
-/** @brief  ISR that is called internally when CSMA process is going
-  * @param  none
+/** @brief Performs or schedules manual calibration of the VCO 
+  * @param none
   * @retval none
   * @ingroup Radio
-  * @sa rm2_txinit_ff, rm2_txinit_bf
   *
+  * The channel(s) calibrated are either implementation-bound or the one(s)
+  * stored in phymac[0] at the time of the call.  On certain hardware, the 
+  * calibration will occur immediately, and on other hardware the calibration
+  * will simply be scheduled for the next time the VCO is turned-on (i.e. RX or
+  * TX startup).
   */
-void rm2_txcsma_isr();
-
-
-
-/** @brief  ISR that is called internally whenever TX FIFO needs filling
-  * @param  None
-  * @retval None
-  * @ingroup Radio
-  * 
-  * __Best to ignore__.  If you are an expert you can call this to force radio 
-  * actions, which may force callbacks.
-  */
-void rm2_txdata_isr();
-
-
-
+void radio_calibrate();
 
 
 

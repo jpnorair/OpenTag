@@ -1,4 +1,4 @@
-/* Copyright 2009-2012 JP Norair
+/* Copyright 2009-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,13 +16,15 @@
 /**
   * @file       /otradio/null/radio_null.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       2 Feb 2012
+  * @version    R100
+  * @date       4 Feb 2014
   * @brief      Radio configuration file for Null radio
-  * @ingroup    Null_RF
+  * @ingroup    Null_radio
   *
-  * "NULL Radio" is for testing purposes.  It does not actually map to hardware,
-  * but it does all the processes that a normal driver does.
+  * "NULL Radio" is for purposes of testing encoder and DLL without actually
+  * sending any data over the air.  Right now it does not map to any hardware,
+  * but in the future it should probably map to an SPI or serial interface of
+  * some sort.
   *
   * Any platform/board can use the NULL radio as long as it is configured
   * properly.  Usually, this just means setting a compiler constant of:
@@ -35,7 +37,9 @@
 #ifndef __radio_NULL_H
 #define __radio_NULL_H
 
+#include "OT_config.h"
 #include "OT_support.h"
+#include "OT_types.h"
 
 
 #ifndef ENABLED
@@ -54,45 +58,49 @@
   * Null Radio doesn't have any high level PHY/MAC features, but it does 
   * pretend to support a basic PHY (i.e. a FIFO for RX/TX).
   */
-#define RF_FEATURE(VAL)                  RF_FEATURE_##VAL        // FEATURE                  AVAILABILITY
-#define RF_FEATURE_MSK                   ENABLED                 // MSK Modulation           Moderate
-#define RF_FEATURE_55K                   ENABLED                 // 55kHz baudrate           High
-#define RF_FEATURE_200K                  ENABLED                 // 200kHz baudrate          High
-#define RF_FEATURE_PN9                   DISABLED                // Integrated PN9 codec     Moderate (DASH7 has particular sequence)
-#define RF_FEATURE_FEC                   DISABLED                // Integrated FEC codec     Moderate (DASH7 has particular sequence)
-#define RF_FEATURE_FIFO                  ENABLED                 // RF TX/RX FIFO            High
-#define RF_FEATURE_TXFIFO_BYTES          64
-#define RF_FEATURE_RXFIFO_BYTES          64
-#define RF_FEATURE_PACKET                ENABLED                 // Packet Handler           High
-#define RF_FEATURE_CRC                   DISABLED                // CCITT CRC16              High
-#define RF_FEATURE_CSMA                  DISABLED                // CSMA                     Low
-#define RF_FEATURE_RXTIMER               DISABLED                // RX Timeout capability    Low
-#define RF_FEATURE_TXTIMER               DISABLED                // TX MAC capability        DASH7-specific
-#define RF_FEATURE_SCANCYCLE             DISABLED                // Wake-on scan cycle       DASH7-specific
-#define RF_FEATURE_MIRROR                DISABLED                // UDB Register Mirroring   DASH7-specific
-#define RF_FEATURE_SYNCFILTER            DISABLED                // Synchronizer Filtering   DASH7-specific
-#define RF_FEATURE_LBFILTER              DISABLED                // Link Budget Filtering    DASH7-specific
-#define RF_FEATURE_SIDFILTER             DISABLED                // Session ID Filtering     DASH7-specific
-#define RF_FEATURE_ADDRFILTER            DISABLED                // Address Filtering        DASH7-specific
-#define RF_FEATURE_PARSEFILTER           DISABLED                // Full Parse Filtering     DASH7-specific
-#define RF_FEATURE_MAC                   DISABLED                // Full Integrated MAC      DASH7-specific
-#define RF_FEATURE_AES128                DISABLED                // AES128 engine            Rare/None yet
-#define RF_FEATURE_ECC                   DISABLED                // ECC engine               Rare/None yet
-#define RF_FEATURE_ALGE                  DISABLED                // Algebraic Eraser engine  Rare/None yet
+#define RF_FEATURE(VAL)                 RF_FEATURE_##VAL        // FEATURE                  AVAILABILITY
+#define RF_FEATURE_MSK                  ENABLED                 // MSK Modulation           Moderate
+#define RF_FEATURE_55K                  ENABLED                 // 55kHz baudrate           High
+#define RF_FEATURE_200K                 ENABLED                 // 200kHz baudrate          High
+#define RF_FEATURE_PN9                  DISABLED                // Integrated PN9 codec     Moderate (DASH7 has particular sequence)
+#define RF_FEATURE_FEC                  DISABLED                // Integrated FEC codec     Moderate (DASH7 has particular sequence)
+#define RF_FEATURE_FIFO                 ENABLED                 // RF TX/RX FIFO            High
+#define RF_FEATURE_TXFIFO_BYTES         96
+#define RF_FEATURE_RXFIFO_BYTES         96
+#define RF_FEATURE_PACKET               ENABLED             // Packet Handler           High
+#define RF_FEATURE_CRC                  DISABLED            // CCITT CRC16              High
+#define RF_FEATURE_CCA                  ENABLED             // DASH7 CCA method         Moderate
+#define RF_FEATURE_CSMA                 DISABLED            // DASH7 CSMA method        Low
+#define RF_FEATURE_RXTIMER              DISABLED            // RX Timeout capability    Low
+#define RF_FEATURE_TXTIMER              DISABLED            // TX MAC capability        DASH7-specific
+#define RF_FEATURE_CSMATIMER            DISABLED
 
-#define RF_PARAM_PKT_OVERHEAD           (2+4+2)
+//More esoteric stuff
+#define RF_FEATURE_SCANCYCLE            DISABLED            // Wake-on scan cycle       DASH7-specific
+#define RF_FEATURE_MIRROR               DISABLED            // ISF Register Mirroring   DASH7-specific
+#define RF_FEATURE_SYNCFILTER           DISABLED            // Synchronizer Filtering   DASH7-specific
+#define RF_FEATURE_LBFILTER             DISABLED            // Link Budget Filtering    DASH7-specific
+#define RF_FEATURE_SIDFILTER            DISABLED            // Session ID Filtering     DASH7-specific
+#define RF_FEATURE_ADDRFILTER           DISABLED            // Address Filtering        DASH7-specific
+#define RF_FEATURE_PARSEFILTER          DISABLED            // Full Parse Filtering     DASH7-specific
+#define RF_FEATURE_MAC                  DISABLED            // Full Integrated MAC      DASH7-specific
+#define RF_FEATURE_AES128               DISABLED            // AES128 engine            Rare
+#define RF_FEATURE_ECC                  DISABLED            // ECC engine               Rare/None yet
+
+#define RF_PARAM(VAL)                   RF_PARAM_##VAL
+#define RF_PARAM_PKT_OVERHEAD           (2+6+4)
 
 
 
 
 /** Radio Buffer Allocation constants: Null Radio implements SW Buffer
   */
-#define BUFFER_ALLOC         64
+#define BUFFER_ALLOC                    64
 
 
 // Change these settings depending on your radio buffer
-#define RADIO_BUFFER_TXMIN      RADIO_BUFFER_TXMAX
-#define RADIO_BUFFER_RXMIN      RADIO_BUFFER_RXMAX
+#define RADIO_BUFFER_TXMAX              RF_FEATURE(TXFIFO_BYTES)
+#define RADIO_BUFFER_RXMAX              RF_FEATURE(RXFIFO_BYTES)
 
 
 
@@ -105,10 +113,11 @@
 #define RADIO_STATE_RXSHIFT     0
 #define RADIO_STATE_RXMASK      (3 << RADIO_STATE_RXSHIFT)
 #define RADIO_STATE_RXINIT      (4 << RADIO_STATE_RXSHIFT)
-#define RADIO_STATE_RXMFP       (0 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXDONE      (5 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXAUTO      (0 << RADIO_STATE_RXSHIFT)
 #define RADIO_STATE_RXPAGE      (1 << RADIO_STATE_RXSHIFT)
-#define RADIO_STATE_RXAUTO      (2 << RADIO_STATE_RXSHIFT)
-#define RADIO_STATE_RXDONE      (3 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXSLOT      (2 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXMFP       (3 << RADIO_STATE_RXSHIFT)
 
 #define RADIO_STATE_TXSHIFT     3
 #define RADIO_STATE_TXMASK      (7 << RADIO_STATE_TXSHIFT)
@@ -119,15 +128,19 @@
 #define RADIO_STATE_TXDATA      (5 << RADIO_STATE_TXSHIFT)
 #define RADIO_STATE_TXDONE      (6 << RADIO_STATE_TXSHIFT)
 
-/** Internal Radio Flags (lots of room remaining)
+/** Internal Radio Flags
 */
-#define RADIO_FLAG_FRCONT       (1 << 0)
-#define RADIO_FLAG_FLOOD        (1 << 1)
-#define RADIO_FLAG_AUTO         (1 << 2)
+#define RADIO_FLAG_BG           (1 << 0)
+#define RADIO_FLAG_CONT         (1 << 1)
+#define RADIO_FLAG_BGFLOOD      (3 << 0)
+#define RADIO_FLAG_CRC5         (1 << 2)
 #define RADIO_FLAG_RESIZE       (1 << 3)
 #define RADIO_FLAG_AUTOCAL		(1 << 4)
 #define RADIO_FLAG_SETPWR		(1 << 5)
-#define RADIO_FLAG_ASLEEP		(1 << 7)
+#define RADIO_FLAG_PWRMASK      (3 << 6)
+#define RADIO_FLAG_XOOFF        (0 << 6)
+#define RADIO_FLAG_XOON         (1 << 6)
+
 
 
 /** Internal Radio Interrupt Flags
@@ -146,44 +159,36 @@
   * Reminder: sti is "short tick"
   * 1 sti = 32 ti = 1/32768 sec = ~30.52 us
   */
-#define RADIO_COLDSTART_STI_MAX     27
-#define RADIO_COLDSTART_STI_TYP     9
-#define RADIO_WARMSTART_STI         3
-#define RADIO_CALIBRATE_STI         24
-#define RADIO_FASTHOP_STI           5
+#define RADIO_COLDSTART_STI_MAX     11
+#define RADIO_COLDSTART_STI_TYP     4
+#define RADIO_WARMSTART_STI         1
+#define RADIO_CALIBRATE_STI         2
+#define RADIO_FASTHOP_STI           2
 #define RADIO_KILLRX_STI            0
 #define RADIO_KILLTX_STI            0
 #define RADIO_TURNAROUND_STI        1
 
 
 
-/** Radio Module Data
+/** NULL RF Module local Data
   * Data that is useful for the internal use of this module.  The list below is
   * comprehensive, and it may not be needed in entirety for all implementations.
   * For implementations that don't use the values, comment out.
   *
-  * state       Radio State, used with multi-call functions (RX/TX)
+  * state       Radio State, partially implementation-dependent
   * flags       A local store for usage flags
   * txlimit     An interrupt/event comes when tx buffer gets below this number of bytes
   * rxlimit     An interrupt/event comes when rx buffer gets above this number of bytes
-  * last_rssi   Experimental, used to buffer the last-read RSSI value
-  * evtdone     A callback that is used when RX or TX is completed (i.e. done)
-  * txcursor    holds some data about tx buffer position (MCU-based buffer only)
-  * rxcursor    holds some data about rx buffer position (MCU-based buffer only)
-  * buffer[]    buffer data.  (MCU-based buffer only)
-  * last_rssi   The most recent value of the rss (not always needed)
   */
 typedef struct {
     ot_u8   state;
     ot_u8   flags;
+    ot_int  nextcal;
     ot_int  txlimit;
     ot_int  rxlimit;
-    ot_int  last_rssi;
-    ot_sig2 evtdone;
-} radio_struct;
+} rfctl_struct;
 
-extern radio_struct radio;
-
+extern rfctl_struct rfctl;
 
 
 

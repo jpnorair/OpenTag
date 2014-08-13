@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/alp_api_client.c
+  * @file       /otlib/alp_api_client.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       22 Aug 2011
+  * @version    R100
+  * @date       22 Aug 2013
   * @brief      ALP message building routines for the client.
   * @ingroup    ALP
   *

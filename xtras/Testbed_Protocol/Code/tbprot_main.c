@@ -1,10 +1,10 @@
 /* Copyright 2010-2011 JP Norair
   *
-  * Licensed under the Apache License, Version 2.0 (the "License");
+  * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
-  * http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.indigresso.com/wiki/doku.php?id=opentag:license_1_0
   *
   * Unless required by applicable law or agreed to in writing, software
   * distributed under the License is distributed on an "AS IS" BASIS,
@@ -231,14 +231,14 @@ int test_against_reference(FILE* fp_ref, Queue* q_ref, Queue* q_test) {
         
             case 2: {
                 int i;
-                int testlen = q_test->length;
+                int testlen = q_length(q_test);
                 int testx   = 255;
                 
-                if (q_test->length != q_ref->length) {
+                if (q_length(q_test) != q_length(q_ref)) {
                     fprintf(stdout, "... Warning, response is not same length as reference.\n");
                     testx   = 0;
-                    testlen = (q_test->length >= q_ref->length) ? \
-                                q_test->length : q_ref->length;
+                    testlen = (q_length(q_test) >= q_length(q_ref)) ? \
+                                q_length(q_test) : q_length(q_ref);
                 }
                 
                 for (i=0; i<testlen; i++) {
@@ -254,7 +254,7 @@ int test_against_reference(FILE* fp_ref, Queue* q_ref, Queue* q_test) {
                 }
                 else {
                     fprintf(stdout, "??? Test Response has errors (printing response) ???\n");
-                    for (i=0; i<q_ref->length; ) {
+                    for (i=0; i<q_length(q_ref); ) {
                         if ((i & 7) == 0) {
                             fprintf(stdout, "%03d: ", i);
                         }
@@ -369,7 +369,7 @@ int main(int argc, char** argv) {
                         // These operations (on the response) are done at the 
                         // MAC layer (below the protocol layer).  So in this
                         // testbed we have to run them here.
-                        txq.front[0] = (ot_u8)txq.length;
+                        txq.front[0] = (ot_u8)q_length(&txq);
                         txq.front[1] = 80;
                         
                         // Test
@@ -764,7 +764,7 @@ static const ot_u8 isf_stock_files[] = {
     SPLIT_SHORT(GFB_TOTAL_BYTES-GFB_HEAP_BYTES),        /* GFB Available Memory */
     SPLIT_SHORT(GFB_FILE_BYTES),                        /* GFB File Size */
     0,                                                  /* RFU */
-    OT_FEATURE(SESSION_DEPTH),                          /* Session Stack Depth */
+    OT_PARAM(SESSION_DEPTH),                          /* Session Stack Depth */
     'O','T','v',BV0,' ',' ',
     BT0,BC0,BC1,BC2,BC3,BC4,BC5,BC6,BC7, 0,             /* Firmware & Version as C-string */
     

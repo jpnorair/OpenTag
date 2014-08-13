@@ -27,7 +27,6 @@
 
 #include "OTAPI.h"
 
-
 #ifdef EXTF_dll_sig_rfterminate
 void dll_sig_rfterminate(ot_int pcode, ot_int scode) {
     otapi_led2_off();   //Orange LED off

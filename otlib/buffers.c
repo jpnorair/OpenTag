@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,59 +14,64 @@
   *
   */
 /**
-  * @file       /OTlib/buffers.c
+  * @file       /otlib/buffers.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 June 2011
+  * @version    R100
+  * @date       8 Oct 2013
   * @brief      An inline, volatile set of stream buffers used with Queues
   * @ingroup    Buffers
   *
+  * @todo cleanup buffers allocation model, so that each buffer allocation is
+  *       individually defined & declared.
   ******************************************************************************
   */
 
 #include "buffers.h"
 
 
-#define DIR_ENABLED (OT_FEATURE(NDEF) || OT_FEATURE(ALP) || OT_FEATURE(MPIPE))
-#define TXRX_SIZE   ((M2_PARAM_MAXFRAME + (M2_PARAM_MAXFRAME & 1)) * (OT_FEATURE(SERVER) == ENABLED))
-#define DIR_SIZE    ((OT_FEATURE(BUFFER_SIZE) - (TXRX_SIZE*2))/2)
+#define ALP_ENABLED (OT_FEATURE(NDEF) || OT_FEATURE(ALP) || OT_FEATURE(MPIPE))
+#define TXRX_SIZE   ((M2_PARAM_MAXFRAME + (M2_PARAM_MAXFRAME & 1)) * (OT_FEATURE_SERVER == ENABLED))
+#define ALP_SIZE    ((OT_PARAM_BUFFER_SIZE - (TXRX_SIZE*2))/2)
 
-#if ((DIR_SIZE < 0) && DIR_ENABLED)
-#   error "DIR Queues (Needed for ALP/NDEF/MPIPE) are configured with negative allocation."
-#elif ((DIR_SIZE < 256) && DIR_ENABLED)
-#   warn "DIR Queues (Needed for ALP/NDEF/MPIPE) are configured with < 256 byte allocation."
+#if ((ALP_SIZE < 0) && ALP_ENABLED)
+#   error "ALP Queues (Needed for ALP/NDEF/MPIPE) are configured with negative allocation."
+#elif ((ALP_SIZE < 256) && ALP_ENABLED)
+#   warn "ALP Queues (Needed for ALP/NDEF/MPIPE) are configured with < 256 byte allocation."
 #endif
 
 
-ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
+ot_u8 otbuf[OT_PARAM_BUFFER_SIZE];
 
 #if (OT_FEATURE(SERVER) == ENABLED)
-    Queue rxq;
-    Queue txq;
+    ot_queue rxq;
+    ot_queue txq;
 #endif
 
-#if (DIR_ENABLED)
-    Queue dir_in;
-    Queue dir_out;
+#if (ALP_ENABLED)
+    ot_queue otmpin;
+    ot_queue otmpout;
 #endif
 
 
 
+#ifndef EXTF_buffers_init
 void buffers_init() {
-#if (OT_FEATURE(SERVER) == ENABLED)
+#   if (OT_FEATURE(SERVER) == ENABLED)
     q_init(&rxq,    otbuf,              TXRX_SIZE);
-    q_init(&txq,    otbuf+TXRX_SIZE,    TXRX_SIZE);
-#endif
-#if (DIR_ENABLED)
-    q_init(&dir_in,     otbuf+(TXRX_SIZE*2),            DIR_SIZE );
-    q_init(&dir_out,    otbuf+(TXRX_SIZE*2)+DIR_SIZE,   DIR_SIZE );
-#endif
+    q_init(&txq,    otbuf+TXRX_SIZE,    TXRX_SIZE);    
+#   endif
+#   if (ALP_ENABLED)
+    q_init(&otmpin,     otbuf+(TXRX_SIZE*2),            ALP_SIZE );
+    q_init(&otmpout,    otbuf+(TXRX_SIZE*2)+ALP_SIZE,   ALP_SIZE );
+#   endif
 }
+#endif
+
 
 
 /// Experimental
-void buffers_swap(Queue* q1, Queue* q2) {
-    Queue scratch;
+void buffers_swap(ot_queue* q1, ot_queue* q2) {
+    ot_queue scratch;
     
     q_copy(&scratch, q1);
     q_copy(q1, q2);

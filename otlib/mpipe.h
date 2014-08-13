@@ -50,9 +50,6 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
-
-#if (OT_FEATURE(MPIPE) == ENABLED)
-
 #include "alp.h"
 #include "system.h"
 
@@ -61,12 +58,12 @@
 ///@todo when more hardware is supported by mpipe, variations of this will be
 ///      specified.  In certain implementations, this is superfluous
 typedef enum {
-    MPIPE_9600bps    = 0,
-    MPIPE_28800bps   = 1,
-    MPIPE_57600bps   = 2, 
-    MPIPE_115200bps  = 3,
-    MPIPE_230400bps  = 4,
-    MPIPE_460800bps  = 5
+    MPIPE_9600bps    = MCU_PARAM(UART_9600BPS),
+    MPIPE_28800bps   = MCU_PARAM(UART_28800BPS),
+    MPIPE_57600bps   = MCU_PARAM(UART_57600BPS), 
+    MPIPE_115200bps  = MCU_PARAM(UART_115200BPS),
+    MPIPE_250000bps  = MCU_PARAM(UART_250000BPS),
+    MPIPE_500000bps  = MCU_PARAM(UART_500000BPS)
 } mpipe_speed;
 
 
@@ -110,7 +107,7 @@ typedef enum {
   */
 
 typedef struct {
-    mpipe_state state;
+    volatile mpipe_state state;
     alp_tmpl    alp;
     
 #if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
@@ -119,6 +116,8 @@ typedef struct {
     ot_sigv sig_rxdetect;
 #endif
 } mpipe_struct;
+
+
 
 extern mpipe_struct mpipe;
 
@@ -156,12 +155,9 @@ void mpipe_connect(void* port_id);
   * @sa mpipe_connect()
   * @sa mpipedrv_detach()
   *
-  * The user should call this function during system initialization, and the
-  * implementation must call mpipedrv_detach().
-  *
   * Some drivers may be essentially connectionless -- e.g. an embedded UART.
   * USB Mpipes usually need to be disconnected, though, when in fact they are
-  * disconnected.
+  * physically disconnected.
   */
 void mpipe_disconnect(void* port_id);
 
@@ -183,7 +179,7 @@ mpipe_state mpipe_status();
   * @ingroup Mpipe
   * @sa mpipe_close()
   *
-  * This function is usually called only once, by mpipe_init().  However, if
+  * This function is usually called only once, by mpipe_connect().  However, if
   * mpipe is closed, then you will have to call it again to re-open mpipe.
   */
 void mpipe_open();
@@ -266,7 +262,7 @@ void mpipeevt_rxdone(ot_int code);
 
 /** @brief  Driver callback for TX Done Event
   * @param  code    (ot_int) Ticks (typ 0-255) the driver needs to page-out TX
-  * @retval None
+  * @retval none
   * @ingroup Mpipe
   * 
   * Some MPipe driver implementations may deliver "DONE" interrupts before the 
@@ -301,11 +297,15 @@ ot_u8 mpipedrv_footerbytes();
 
 /** @brief  Initializes Mpipe Driver
   * @param  port_id     (void*) Implementation-dependent port identifier 
+  * @param  baud_rate   (mpipe_speed) baud rate value
   * @retval ot_int      Amount of latency to attribute to this driver
   * @ingroup Mpipe
   * @sa mpipe_connect()
   * @sa mpipedrv_detach()
   *
+  * @note the baud_rate input may differ on each platform.  So, the header
+  * platform_xxx.h must include MCU_PARAM(UART_xxxBPS) constants.
+  * 
   * This function must be implemented in the MPipe driver.  It should be called
   * from inside mpipe_connect().
   * 
@@ -316,7 +316,7 @@ ot_u8 mpipedrv_footerbytes();
   * This value should be 1-255 for the native kernel, but for other kernels it
   * may have different outputs.
   */
-ot_int mpipedrv_init(void* port_id);
+ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate);
 
 
 
@@ -362,6 +362,13 @@ void mpipedrv_detach(void* port_id);
 void mpipedrv_kill();
 
 
+/** @brief  Clears the MPipe Driver state machine (typically sends to Idle)
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  */
+void mpipedrv_clear();
+
 
 /** @brief  Blocks MPipe from operating
   * @param  None
@@ -392,23 +399,11 @@ void mpipedrv_wait();
 
 
 
-/** @brief  Sets the baud-rate of the mpipe.
-  * @param  speed       (mpipe_speed) baud rate of the pipe
-  * @retval None 
-  * @ingroup Mpipe
-  *
-  * This function sets or resets data rate controlling attributes of the Mpipe.
-  * In certain Mpipe implementations, data rate is irrelevant, and for these all
-  * calls to mpipe_setspeed() will do the same thing.
-  */
-void mpipedrv_setspeed(mpipe_speed speed);
-
-
 
 /** @brief  Transmits an NDEF structured datastream over the MPIPE
   * @param  blocking    (ot_bool) True/False for blocking/non-blocking call
   * @param  data_priority (mpipe_priority) Priority of the TX
-  * @retval None
+  * @retval ot_uint     Number of ticks before TX stream timeout
   * @ingroup Mpipe
   * @sa mpipe_rxndef, mpipe_status
   *
@@ -423,7 +418,7 @@ void mpipedrv_setspeed(mpipe_speed speed);
   * underway if its own priority is higher.
   *
   */
-void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority);
+ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority);
 
 
 
@@ -462,7 +457,5 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority);
 void mpipedrv_isr();
 
 
-
-#endif
 
 #endif

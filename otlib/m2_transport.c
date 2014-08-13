@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2010-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,15 +16,20 @@
 /**
   * @file       /otlib/m2_transport.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       2 October 2012
+  * @version    R102
+  * @date       20 March 2014 
   * @brief      Mode 2 Query Protocol Implementation (Transport Layer)
   * @ingroup    M2QP
+  *
+  * @todo Move the ISF comp and call templates before the query template(s) in
+  * the M2QP template ordering.  Requires reorganization of sub_load_query() 
+  * and m2qp_isf_comp.
+  *
   ******************************************************************************
   */
 
 #include "OT_config.h"
-#if OT_FEATURE(M2)
+#if (OT_FEATURE(SERVER) && OT_FEATURE(M2))
 
 #include "m2_transport.h"
 #include "OT_utils.h"
@@ -41,11 +46,22 @@
 
 // Sneaky stashing for internal data
 // It overwrites part of the rxq that isn't used for comp & call commands
-#define LOCAL_U8(OFFSET)    rxq.front[rxq.alloc-32+(OFFSET)]
-#define LOCAL_U16(OFFSET)   *((ot_u16*)&rxq.front[rxq.alloc-32+(OFFSET)])
-#define LOCAL_U32(OFFSET)   *((ot_u32*)&rxq.front[rxq.alloc-32+(OFFSET)])
+//#define LOCAL_U8(OFFSET)    rxq.front[rxq.alloc-32+(OFFSET)]
+//#define LOCAL_U16(OFFSET)   *((ot_u16*)&rxq.front[rxq.alloc-32+(OFFSET)])
+//#define LOCAL_U32(OFFSET)   *((ot_u32*)&rxq.front[rxq.alloc-32+(OFFSET)])
+#define LOCAL_U8(OFFSET)    txq.front[txq.alloc-16+(OFFSET)]
+#define LOCAL_U16(OFFSET)   *((ot_u16*)&txq.front[txq.alloc-16+(OFFSET)])
+#define LOCAL_U32(OFFSET)   *((ot_u32*)&txq.front[txq.alloc-16+(OFFSET)])
 
 // Argument Shortcut for some callbacks
+
+
+OT_WEAK ot_bool m2qp_sig_isf(ot_u8 type, ot_u8 opcode, id_tmpl* user_id) { return False; }
+
+OT_WEAK ot_bool m2qp_sig_ctl(ot_u8 type, ot_u8 opcode, id_tmpl* user_id) { return False; }
+
+OT_WEAK ot_bool m2qp_sig_a2p(ot_u8 type, ot_u8 opcode, id_tmpl* user_id) { return False; }
+
 
 
 #if defined(EXTF_m2qp_sig_isf)
@@ -53,48 +69,75 @@
 #elif OT_FEATURE(M2QP_CALLBACKS)
 #   define M2QP_CB_ISF()    m2qp.sig.isf(m2qp.cmd.code&0x70, m2qp.cmd.code&0x0f, &m2np.rt.dlog)
 #else
-#   define M2QP_CB_ISF();
+#   define M2QP_CB_ISF()    m2qp_sig_isf(m2qp.cmd.code&0x70, m2qp.cmd.code&0x0f, &m2np.rt.dlog)
 #endif
 
-#if defined(EXTF_m2qp_sig_udp)
-#   define M2QP_CB_UDP(SRC, DST)    m2qp_sig_udp(SRC, DST, &m2np.rt.dlog)
+
+#if defined(EXTF_m2qp_sig_ctl)
+
+#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp_sig_ctl(CODE, SUBCODE, &m2np.rt.dlog)
+
 #elif OT_FEATURE(M2QP_CALLBACKS)
-#   define M2QP_CB_UDP(SRC, DST)    m2qp.sig.udp(SRC, DST, &m2np.rt.dlog)
+
+#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp.sig.ctl(CODE, SUBCODE, &m2np.rt.dlog)
+
 #else
-#   define M2QP_CB_UDP(SRC, DST);
+
+#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp_sig_ctl(CODE, SUBCODE, &m2np.rt.dlog)
+
 #endif
 
-#if defined(EXTF_m2qp_sig_dspkt) && M2_FEATURE(DATASTREAM)
-#   define M2QP_CB_DSPKT()    m2qp_sig_dspkt(0, 0, &m2np.rt.dlog)
-#elif OT_FEATURE(M2QP_CALLBACKS) && M2_FEATURE(DATASTREAM)
-#   define M2QP_CB_DSPKT()    m2qp.sig.dspkt(0, 0, &m2np.rt.dlog)
-#else
-#   define M2QP_CB_DSPKT();
-#endif
 
-#if defined(EXTF_m2qp_sig_dsack) && M2_FEATURE(M2DP)
-#   define M2QP_CB_DSACK()    m2qp_sig_dsack(0, 0, &m2np.rt.dlog)
-#elif OT_FEATURE(M2QP_CALLBACKS) && M2_FEATURE(M2DP)
-#   define M2QP_CB_DSACK()    m2qp.sig.dsack(0, 0, &m2np.rt.dlog)
-#else
-#   define M2QP_CB_DSACK();
-#endif
-
-#if defined(EXTF_m2qp_sig_error)
-#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp_sig_error(CODE, SUBCODE, &m2np.rt.dlog)
-#elif OT_FEATURE(M2QP_CALLBACKS)
-#   define M2QP_CB_ERROR(CODE, SUBCODE)    m2qp.sig.error(CODE, SUBCODE, &m2np.rt.dlog)
-#else
-#   define M2QP_CB_ERROR(CODE, SUBCODE)    False
-#endif
 
 #if defined(EXTF_m2qp_sig_a2p)
+
 #   define M2QP_CB_A2P()    m2qp_sig_a2p(0, 0, &m2np.rt.dlog)
+
 #elif OT_FEATURE(M2QP_CALLBACKS)
+
 #   define M2QP_CB_A2P()    m2qp.sig.a2p(0, 0, &m2np.rt.dlog)
+
 #else
-#   define M2QP_CB_A2P()    False
+
+#   define M2QP_CB_A2P()    m2qp_sig_a2p(0, 0, &m2np.rt.dlog)
+
 #endif
+
+
+
+
+
+
+
+///@note UDP now goes through ALP
+//#if defined(EXTF_m2qp_sig_udp)
+//#   define M2QP_CB_UDP(SRC, DST)    m2qp_sig_udp(SRC, DST, &m2np.rt.dlog)
+//#elif OT_FEATURE(M2QP_CALLBACKS)
+//#   define M2QP_CB_UDP(SRC, DST)    m2qp.sig.udp(SRC, DST, &m2np.rt.dlog)
+//#else
+//#   define M2QP_CB_UDP(SRC, DST);
+//#endif
+
+
+
+
+///@todo port these to SCTP, which may or may not even need callbacks like these.
+//#if defined(EXTF_m2qp_sig_scpkt) && M2_FEATURE(DATASTREAM)
+//#   define M2QP_CB_DSPKT()    m2qp_sig_scpkt(0, 0, &m2np.rt.dlog)
+//#elif OT_FEATURE(M2QP_CALLBACKS) && M2_FEATURE(DATASTREAM)
+//#   define M2QP_CB_DSPKT()    m2qp.sig.scpkt(0, 0, &m2np.rt.dlog)
+//#else
+//#   define M2QP_CB_DSPKT();
+//#endif
+//#if defined(EXTF_m2qp_sig_scack) && M2_FEATURE(M2DP)
+//#   define M2QP_CB_DSACK()    m2qp_sig_scack(0, 0, &m2np.rt.dlog)
+//#elif OT_FEATURE(M2QP_CALLBACKS) && M2_FEATURE(M2DP)
+//#   define M2QP_CB_DSACK()    m2qp.sig.scack(0, 0, &m2np.rt.dlog)
+//#else
+//#   define M2QP_CB_DSACK();
+//#endif
+
+
 
 
 
@@ -142,214 +185,6 @@ ot_int sub_load_nonnull(ot_int* cursor, ot_u8 data_byte);
 
 
 
-
-
-/** M2QP OTAPI Functions    
-  * ============================================================================
-  * -
-  */
- 
-#if (OT_FEATURE(CAPI) == ENABLED)
-
-#ifndef EXTF_otapi_put_command_tmpl
-ot_u16 otapi_put_command_tmpl(ot_u8* status, command_tmpl* command) {    
-    /// Check Opcodes to make sure this one is supported
-    /// @todo base this on app_config.h settings.  Currently this is rudimentary
-    ///       and hard-coded.  It just filters out Datastream and non-existing codes
-    if (command->opcode > 15) {
-        // command extension, not present at the moment
-        *status = 0;
-        return 0;
-    }
-    
-    dll.comm.csmaca_params |= command->type & M2_CSMACA_A2P;
-    m2qp.cmd.code           = command->type | command->opcode;
-    m2qp.cmd.code          |= (command->extension != 0) << 7;
-    m2qp.cmd.ext            = command->extension;
-    q_writebyte(&txq, m2qp.cmd.code);
-    
-    if (m2qp.cmd.ext != 0) {
-        q_writebyte(&txq, m2qp.cmd.ext);
-    }
-    
-    *status = 1;
-    return txq.length;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_dialog_tmpl
-ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
-    if (dialog == NULL) {
-        ///@todo "15" is hard-coded timeout.  Have this be a constant
-        dll.comm.rx_timeout = (m2qp.cmd.ext & 2) ? 0 : 15;
-        q_writebyte(&txq, 0);
-    }
-    else {
-        // Calculate actual timeout and write timeout code field
-        dll.comm.rx_timeout = otutils_calc_timeout(dialog->timeout);
-        dialog->timeout    |= (dialog->channels == 0) ? 0 : 0x80;
-        q_writebyte(&txq, dialog->timeout);
-    
-        // Write response list
-        if (dialog->channels != 0) {
-            dll.comm.rx_channels = dialog->channels;
-            dll.comm.rx_chanlist = dialog->chanlist;
-            q_writestring(&txq, dialog->chanlist, dialog->channels);
-        }
-    }
-
-    *status = 1;
-    return txq.length;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_query_tmpl
-ot_u16 otapi_put_query_tmpl(ot_u8* status, query_tmpl* query) {
-    /// Test for Anycast and Multicast addressing (query needs one of these)    
-    if (m2np.header.addr_ctl & 0x80) {
-        q_writebyte(&txq, query->length);
-        q_writebyte(&txq, query->code);
-    
-        if (query->code & 0x80) {
-            q_writestring(&txq, query->mask, query->length);
-        }
-        q_writestring(&txq, query->value, query->length);
-    
-        *status = 1;
-        return txq.length;
-    }
-    *status = 0;
-    return 0;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_ack_tmpl
-ot_u16 otapi_put_ack_tmpl(ot_u8* status, ack_tmpl* ack) {
-    ot_int  i;
-    ot_u8*  data_ptr    = ack->list;
-    ot_u8*  limit       = txq.back - ack->length;
-    
-    for (i=0; (i < ack->count) && (txq.putcursor < limit); \
-            i+=ack->length, data_ptr+=ack->length ) {
-        q_writestring(&txq, data_ptr, ack->length);
-    }
-    
-    *status = (ot_u8)i;
-    return txq.length;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_isf_offset
-void sub_put_isf_offset(ot_u8 is_series, ot_u16 offset) {
-    if (is_series) {
-        q_writeshort(&txq, (ot_u8)offset);
-    }
-    else {
-        q_writebyte(&txq, (ot_u8)offset);
-    }
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_isf_comp
-ot_u16 otapi_put_isf_comp(ot_u8* status, isfcomp_tmpl* isfcomp) {
-    q_writebyte(&txq, isfcomp->isf_id);
-    sub_put_isf_offset(isfcomp->is_series, isfcomp->offset);
-    
-    *status = 1;
-    return txq.length;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_isf_call
-ot_u16 otapi_put_isf_call(ot_u8* status, isfcall_tmpl* isfcall) {
-    q_writebyte(&txq, isfcall->max_return);
-    q_writebyte(&txq, isfcall->isf_id);
-    sub_put_isf_offset(isfcall->is_series, isfcall->offset);
-    
-    *status = 1;
-    return txq.length;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_isf_return
-ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall) {
-    Queue   local_q;
-    ot_u8   lq_data[4];
-    
-    q_init(&local_q, lq_data, 4);
-    q_writebyte(&local_q, (ot_u8)isfcall->max_return);
-    q_writebyte(&local_q, (ot_u8)isfcall->isf_id);
-    sub_put_isf_offset(isfcall->is_series, isfcall->offset);
-    
-    ///@note user_id is set to NULL here.  This stipulates that the API is not
-    ///      ever going to be called by a non root user.  So, the application
-    ///      layer should perform proper authentication of the user if neeeded.
-    *status = (m2qp_isf_call(isfcall->is_series, &local_q, NULL) >= 0);
-
-    return txq.length;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_udp_tmpl
-ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
-/// There is no error/exception handling in this implementation, but it is
-/// possible to add in the future
-    q_writebyte(&txq, udp->src_port);
-    q_writebyte(&txq, udp->dst_port);
-    q_writestring(&txq, udp->data, udp->data_length);
-    
-    *status = 1;
-    return txq.length;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_error_tmpl
-ot_u16 otapi_put_error_tmpl(ot_u8* status, error_tmpl* error) {
-    q_writebyte(&txq, error->code);
-    q_writebyte(&txq, error->subcode);
-    
-    *status = 1;
-    return txq.length;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_reqds
-ot_u16 otapi_put_reqds(ot_u8* status, Queue* dsq) {
-/// Write values stored from configuration
-/// @todo implement this in next version
-    *status = 0;
-    return 0;
-}
-#endif
-
-
-#ifndef EXTF_otapi_put_propds
-ot_u16 otapi_put_propds(ot_u8* status, Queue* dsq) {
-/// Write values stored from configuration
-/// @todo implement this in next version
-    *status = 0;
-    return 0;
-}
-#endif
-
-#endif
-
-
-
-
-
-
-
 /** M2QP Parsing Functions    <BR>
   * ========================================================================<BR>
   * -
@@ -360,16 +195,16 @@ typedef void (*m2qp_subproc)(void);
 void    sub_opgroup_globalisf(void);
 void    sub_opgroup_udp(void);
 void    sub_opgroup_collection(void);
-void    sub_opgroup_dsinit(void);
-void    sub_opgroup_dstransport(void);
+void    sub_opgroup_scinit(void);
+void    sub_opgroup_sctransport(void);
 void    sub_opgroup_rfu(void);
 
-ot_int  sub_parse_response(m2session* session);
-ot_int  sub_parse_error(m2session* session);
-ot_int  sub_parse_request(m2session* session);
+ot_int  sub_parse_response(m2session* active);
+ot_int  sub_parse_control(m2session* active);
+ot_int  sub_parse_request(m2session* active);
 void    sub_renack(ot_int nack);
 void    sub_load_query();
-ot_int  sub_process_query(m2session* session);
+ot_int  sub_process_query(m2session* active);
 
 /// This is a command vector table used to turn a command opcode into a
 /// function call that is appropriate for processing that command.
@@ -378,8 +213,8 @@ static const ot_sub opgroup_proc[8] = { &sub_opgroup_globalisf,     //Announceme
                                         &sub_opgroup_udp,           //Inventory+UDP
                                         &sub_opgroup_collection,    //Collection
                                         &sub_opgroup_collection,    //Collection
-                                        &sub_opgroup_dsinit,        //DS init, DS negotiate
-                                        &sub_opgroup_dstransport,   //DS send, DS ACK
+                                        &sub_opgroup_scinit,        //DS init, DS negotiate
+                                        &sub_opgroup_sctransport,   //DS send, DS ACK
                                         &sub_opgroup_rfu            //RFU
                                     };
 
@@ -393,44 +228,66 @@ ot_bool m2qp_sig_null(id_tmpl* responder_id, ot_int payload_length, ot_u8* paylo
 
 
 
+///@note New patchwork code to accomodate universal ALP model.
+///      Soon it will need buffers as well
+alp_tmpl m2alp;
+
+
+
 #ifndef EXTF_m2qp_init
-void m2qp_init() {
+OT_WEAK void m2qp_init() {
 #if OT_FEATURE(M2QP_CALLBACKS)
 #   if !defined(EXTF_m2qp_sig_isf)
         m2qp.sig.isf    = &m2qp_sig_null;
 #   endif
-#   if !defined(EXTF_m2qp_sig_udp)
-        m2qp.sig.udp    = &m2qp_sig_null;
+
+#   if !defined(EXTF_m2qp_sig_ctl) && M2QP_HANDLES_ERROR
+
+        m2qp.sig.ctl = &m2qp_sig_null;
+
 #   endif
-#   if !defined(EXTF_m2qp_sig_dspkt) && M2_FEATURE(DATASTREAM)
-        m2qp.sig.dspkt  = &m2qp_sig_null;
-#   endif
-#   if !defined(EXTF_m2qp_sig_dsack) && M2_FEATURE(M2DP)
-        m2qp.sig.dsack  = &m2qp_sig_null;
-#   endif
-#   if !defined(EXTF_m2qp_sig_error) && M2QP_HANDLES_ERROR
-        m2qp.sig.error  = &m2qp_sig_null;
-#   endif
+
 #   if !defined(EXTF_m2qp_sig_a2p) && M2QP_HANDLES_A2P
+
         m2qp.sig.a2p    = &m2qp_sig_null;
+
 #   endif
+
+
+
+// These callbacks no longer available
+//#   if !defined(EXTF_m2qp_sig_udp)
+//        m2qp.sig.udp    = &m2qp_sig_null;
+//#   endif
+//#   if !defined(EXTF_m2qp_sig_scpkt) && M2_FEATURE(DATASTREAM)
+//        m2qp.sig.scpkt  = &m2qp_sig_null;
+//#   endif
+//#   if !defined(EXTF_m2qp_sig_scack) && M2_FEATURE(M2DP)
+//        m2qp.sig.scack  = &m2qp_sig_null;
+//#   endif
+
 #endif
 
     //Initialize to an undefined code value
-    m2qp.cmd.code = 0x3F; 
+    m2qp.cmd.code = 0x1F; 
+    
+    ///@note New patchwork code to accomodate universal ALP model.
+    ///      Soon it will need buffers as well.
+    alp_init(&m2alp, &rxq, &txq);
 }
 #endif
 
 
 
 #ifndef EXTF_m2qp_parse_frame
-ot_int m2qp_parse_frame(m2session* session) {
+OT_WEAK ot_int m2qp_parse_frame(m2session* active) {
 /// Load Command Code & Extension, and pick the correct parser
 /// - normal response (command type 000)
-/// - error response (command type 001)
+/// - control response (command type 001)
 /// - all types requests (010 - 111)
+/*
     static const m2qp_parser parse_fn[] = { &sub_parse_response, 
-                                            &sub_parse_error,
+                                            &sub_parse_control,
                                             &sub_parse_request };
     ot_u8 cmd_type;
     cmd_type = (*rxq.getcursor >> 4) & 0x07;
@@ -439,12 +296,25 @@ ot_int m2qp_parse_frame(m2session* session) {
     // Deal with case where M2QP command type mismatches the Netstate
     if (cmd_type > 1) {
         cmd_type = 2;
-        if (session->netstate & M2_NETSTATE_RESP) {
+        if (active->netstate & M2_NETSTATE_RESP) {
             return -1;
         }
     }
     
-    return parse_fn[cmd_type](session);
+    return parse_fn[cmd_type](active);
+    */
+/** @todo this is the next-gen implementation of this function.  In addition,
+  *       control reporting may be taken out of M2QP, or otherwise simplified 
+  *       into a "notification" form much like ICMP.
+  */
+    ot_u8 cmd_type = (*rxq.getcursor >> 4) & 7;
+    
+    if (cmd_type == 0)  return sub_parse_response(active);
+    if (cmd_type == 1)  return sub_parse_control(active);
+    
+    if (active->netstate & M2_NETSTATE_RESP) return -1;
+    return sub_parse_request(active);
+  
 }
 #endif
 
@@ -479,7 +349,7 @@ ot_int sub_parse_response(m2session* session) {
         /// If using A2P, put this responder's ID onto the ACK chain, reserve 
         /// 48 bytes at the back for query scratchpad, increment "Number of
         /// ACKs" on each ACK generation (txq.getcursor[0]), and do callback.  
-        if (((req_cmdcode & 0x60)==0x40) && ((txq.back-txq.putcursor)>48)) {
+        if (((req_cmdcode & 0x60) == M2TT_REQ_M_INIT) && (q_space(&txq) > 48)) {
             ///@todo check to make sure NumACKs is 0 on 1st run (might be done)
             ///@todo Might put in some type of return scoring, later
             txq.getcursor[0]++;
@@ -492,7 +362,7 @@ ot_int sub_parse_response(m2session* session) {
             opgroup_proc[((req_cmdcode>>1) & 7)]();
         }
     }
-    return (ot_int)test - 1;
+    return -1; //(ot_int)test - 1;
 #else
     return -1;
 #endif
@@ -502,10 +372,10 @@ ot_int sub_parse_response(m2session* session) {
 
 
 
-ot_int sub_parse_error(m2session* session) {
+ot_int sub_parse_control(m2session* active) {
 #if ((M2_FEATURE(GATEWAY) == ENABLED) || (M2_FEATURE(SUBCONTROLLER) == ENABLED))
-/// Forwards error payload to a callback.  
-/// Deciding what to do with the error data is a job for the Application Layer
+/// Forwards control payload to a callback.  
+/// Deciding what to do with the control data is a job for the Application Layer
     ot_u8 code, subcode;
     code    = q_readbyte(&rxq);
     subcode = q_readbyte(&rxq);
@@ -519,7 +389,7 @@ ot_int sub_parse_error(m2session* session) {
 
 
 
-ot_int sub_parse_request(m2session* session) {
+ot_int sub_parse_request(m2session* active) {
     ot_int  score   = 0;
     ot_u8   cmd_opcode;
     //ot_u8   nack    = 0;
@@ -527,7 +397,7 @@ ot_int sub_parse_request(m2session* session) {
     /// 1.  Universal Comm Processing:
     /// <LI> Load CCA type & CSMA disable from command extension        </LI>
     /// <LI> Load NA2P or A2P dialog type from command code             </LI>
-    session->netstate      &= ~M2_NETSTATE_TMASK;
+    active->netstate      &= ~M2_NETSTATE_TMASK;
     m2qp.cmd.code           = q_readbyte(&rxq);
     m2qp.cmd.ext            = (m2qp.cmd.code & 0x80) ? q_readbyte(&rxq) : 0;
     dll.comm.redundants     = 1;
@@ -538,10 +408,9 @@ ot_int sub_parse_request(m2session* session) {
     /// 2.  All Requests contain the dialog template, so load it.
     /// <LI> [ num resp channels ] [ list of resp channels]             </LI>
     /// <LI> If number of resp channels is 0, use the current channel   </LI>
-    {
-        ot_u8 timeout_code  = q_readbyte(&rxq);
-        dll.comm.rx_timeout = otutils_calc_timeout(timeout_code);    // original contention period
-        dll.comm.tc         = dll.comm.rx_timeout;  // contention period counter
+    {   ot_u8 timeout_code  = q_readbyte(&rxq);
+        dll.comm.rx_timeout = otutils_calc_timeout(timeout_code);   // original contention period
+        dll.comm.tc         = dll.comm.rx_timeout;                  // contention period counter
         
         if (timeout_code & 0x80) {
             dll.comm.tx_channels    = q_readbyte(&rxq);
@@ -550,45 +419,45 @@ ot_int sub_parse_request(m2session* session) {
         else {
             dll.comm.tx_channels    = 1;
             dll.comm.tx_chanlist    = &dll.comm.scratch[0];
-            dll.comm.scratch[0]     = session->channel;
+            dll.comm.scratch[0]     = active->channel;
         }
     }
     
-    /// 3. Handle Command Queries (filtering): 
+    /// 3. Handle Global Queries: (Anycast
     /// Multicast and anycast addressed requests include queries
-    if (m2np.header.addr_ctl & 0x80) {
-        score = sub_process_query(session);
+    //if (m2np.header.fr_info & M2QUERY_GLOBAL) {
+    if (m2qp.cmd.code & M2TT_REQ_QUERY) {     ///@todo future update code
+        score = sub_process_query(active);
     }
     
     /// 4. If the query is good (sometimes this is trivial):
     /// <LI> If response enabled, prepare common response header.          </LI>
-    /// <LI> If response disabled, scrap session unless there's a stream   </LI>
+    /// <LI> If response disabled, don't move session to response TX.      </LI>
     /// <LI> Run command-specific dialog data processing                   </LI>
     if (score >= 0) {
         q_empty(&txq); // Flush TX Queue
-    
-        if ((m2qp.cmd.ext & M2CE_NORESP) == 0) {
-            ot_u8 addressing;
-            session->netstate  |= M2_NETSTATE_RESPTX;
-            addressing          = ext_get_m2appflags();
-            addressing         |= m2np.header.addr_ctl & 0x30;  // make unicast, retain VID & NLS                               
-            m2np_header(session, addressing, 0);                // Create M2QP header
-            q_writebyte(&txq, (M2TT_RESPONSE | cmd_opcode));    // Write Cmd code byte
-        }
         
-        //else if ((session->netstate & M2_NETSTATE_DSDIALOG) == 0) {
-        //    score = -1;
-        //}
-           
+        if (m2qp.cmd.ext & M2CE_NORESP) {
+            active->netstate |= M2_NETSTATE_SCRAP;
+        }
+        else {
+            active->netstate |= M2_NETSTATE_RESPTX;
+            //m2np_header(active, (m2np.header.fr_info & M2FI_ADDRMASK), M2FI_FRDIALOG);
+            m2np_header(active, 0, M2FI_FRDIALOG); ///@todo Future Update Code, Can use 0 in addressing for Response
+            q_writebyte(&txq, (M2TT_RESPONSE | cmd_opcode));            // Write Cmd code byte
+        }
         opgroup_proc[((cmd_opcode>>1) & 7)]();
     }
     
     /// Return the score, which when negative will cause cancellation of the 
-    /// dialog (but not necessarily the session).  If positive, this can be 
-    /// used to affect the congestion control parameters, which must be passed
-    /// back into the fc function.
-    return score;  
+    /// dialog (but not necessarily the session).  Non-negative values cause 
+    /// continuation of the dialog per session rules.  Positive values can be
+    /// be used to adaptively affect the congestion control parameters in the
+    /// data-link-layer, e.g. they can prioritize higher scores by responding
+    /// earlier in the response window.  That is DLL implementation dependent.
+    return score;
 }
+
 
 
 
@@ -600,17 +469,17 @@ void sub_opgroup_globalisf(void) {
 
 
 void sub_opgroup_udp(void) {
-/// UDP Shell commands are mostly proprietary in structure.
+    /*
     ot_u8 src, dst;
     
     // Grab Source & Destination Ports.  DASH7 uses 8 bit ports.  The specific
     // mapping between IETF 16 bit ports and DASH7 ports is not defined yet,
     // but you can safely assume that ports 224-255 are user-defined.
-    src = q_readbyte(&rxq);
-    dst = q_readbyte(&rxq);
-
+    dst = rxq.getcursor[1];
+    src = rxq.getcursor[2];
+    
     // For Response, automatically swap source & destination ports in Request
-    if ((m2qp.cmd.code & 0x70) != 0) {
+    if ((m2qp.cmd.code & M2TT_MASK) != M2TT_RESPONSE) {
         q_writebyte(&txq, dst);
         q_writebyte(&txq, src);  
     }
@@ -619,6 +488,21 @@ void sub_opgroup_udp(void) {
     // bit is set.  The transport layer manages this independently of the 
     // application layer.
     M2QP_CB_UDP(src, dst);
+    */
+    
+    ot_int      udp_record_size;
+    ot_u8*      udp_record;
+    ALP_status  status;
+    
+    udp_record_size = rxq.back - rxq.getcursor;
+    udp_record      = rxq.getcursor;
+    rxq.getcursor   = rxq.back;
+    q_writestring(m2alp.inq, udp_record, udp_record_size);      // or is there alp add new?
+    
+    status  = alp_parse_message(&m2alp, &m2np.rt.dlog);
+    if (status == MSG_Null) {
+        ///@todo some exception management, although it might not be necessary
+    }
 }
 
 
@@ -644,126 +528,14 @@ void sub_opgroup_collection(void) {
 
 
 
-void sub_opgroup_dsinit(void) {
-/// Nothing Yet
+void sub_opgroup_scinit(void) {
+/// This is an SCTP command.  RFU
 }
 
 
 
-void sub_opgroup_dstransport(void) {
-/// This processor is called on request and response of "Request Datastream" and
-/// "Propose Datastream" commands (RDS, PDS).  The nomenclature should probably
-/// be changed to PULL & PUSH, because it is confusing that RDS is a normal
-/// command with both request and response types.
-///
-/// RDS and PDS are unusual commands.  They encapsulate ALP payloads, and they
-/// also negotiate an optional 3/4/5-way transfer process.  
-/// <LI> RDS (PULL) includes an ALP in the request that returns ALP data in the 
-///      response, or if it's too big, it is pulled from responder to requester
-///      in the subsequent M2DP datastream datastream                      </LI>
-/// <LI> PDS (PUSH) does NOT include ALP payloads in request or response.  It
-///      does negotiating only, and the ALP data is pushed from requester to
-///      responder via the subsequent M2DP datastream.                     </LI>
-/// <LI> For devices that support 2-way datastreaming but not 3/4/5-way, PDS
-///      commands are ignored completely.                                  </LI>
-
-#if 0 //((M2_FEATURE(DATASTREAM)) && (OT_FEATURE(ALP)))
-    ot_u8 is_response;
-    ot_u8 is_345way;
-    
-    // - Check existing values to determine RDS/PDS and request/response
-    // - Ignore Propose/PUSH command if it cannot be supported (requires M2DP)
-    // - Grab the mostly universal negotiation header
-#   if (M2_FEATURE(M2DP) != ENABLED)
-#       define is_push  0
-        if (m2qp.cmd.code & 1) {
-            //Scrap, or maybe set no-resp
-            return;
-        }
-#   else  
-        ot_u8 is_push;
-        is_push = (m2qp.cmd.code & 1);
-#   endif
-    
-    is_response = ((m2qp.cmd.code & 0x70) == 0);
-    ds.s_ext    = q_readshort(&rxq);
-    ds.src      = q_readbyte(&rxq);
-    ds.dst      = q_readbyte(&rxq);
-    
-    /// If this is a Pull, run the ALP processor.
-    /// Direct ALP-output from request to txq. Direct ALP-output from response
-    /// to dir_out.  On response, most ALPs just do a copy from rxq->dir_out,
-    /// but you could make an ALP that works differently.  
-    if (is_push == 0) {
-        ot_u8   status;
-        ot_u8*  out_marker;
-        ot_u8*  in_marker;
-        
-        m2qp.dsalp.outq = (is_response) ? &dir_out : &txq;
-        out_marker      = m2qp.dsalp.outq->putcursor;
-        in_marker       = 
-        status          = is_response;
-        status         += (ot_u8)alp_parse_message(&m2qp.dsalp, &m2np.rt.dlog);
-        
-        
-        /// ALP Status Handling:
-        /// <LI> Chunking-Out and fpp == 0, or Chunking-In (any fpp), then be
-        ///      sure to postpone M2DP (or disable entirely) until the chunking
-        ///      is complete </LI>
-        /// <LI> If MSG_End, the stream is complete </LI>
-        switch (status & 7) {
-            /// MSG_Null: there is an ALP framing/header error on one of the
-            /// received ALPs which is deemed unrecoverable (e.g. ALP payload 
-            /// too big, ALP Type not supported).  On request, manually append 
-            /// a Message-Ending NACK-Abort ALP to the response.
-            case (MSG_Null):    alp_break(&m2qp.dsalp);
-            case (MSG_Null+1):  ///@todo end session
-                                break;
-            
-            /// MSG_Chunking_Out: output data cannot fit into the frame, so it
-            /// must be continued in subsequent frame, and a new ALP record 
-            /// must be created for the continued data (automatic).  Append an
-            /// M2DP frame to the packet if this is possible.
-            case (MSG_Chunking_Out):    
-            case (MSG_Chunking_Out+1): {
-                m2qp.dscfg.offset  += m2qp.ds.outrec.plength;
-                
-#               if (M2_PARAM(MFPP) > 1)
-                if (m2qp.dscfg.offset <= m2qp.dscfg.limit) {
-                    m2dp_append(4);
-                    q_writelong(qq, (m2qp.dscfg.tsn + m2qp.dscfg.offset));
-                    goto parse message stage;
-                }
-#               endif
-
-            } break;
-                
-            
-            /// MSG_Chunking_In: input data cannot fit into the frame, so it 
-            /// must be continued in the next frame.  If ds.fpp == 0, the next
-            /// frame must be another pull request.
-            case MSG_Chunking_In:
-                break;
-            
-            
-            /// MSG_End: Stream has completed successfully.  Stop processing
-            /// the stream, but wait for the next stream-ACK request, which may
-            /// have further instructions.
-            case MSG_End:
-                break;
-        }
-        
-        /// ALP Status Handling for response ALP
-        
-    }
-    
-    /// If this is Push request, just respond with the negotiated information
-    /// 
-    else {
-        
-    }
-
-#endif
+void sub_opgroup_sctransport(void) {
+/// This is an SCTP command.  RFU
 }
 
 
@@ -784,7 +556,13 @@ void sub_renack(ot_int nack) {
 
 
 
-void sub_load_query(void) {    
+void sub_load_query(void) {
+/// @todo put this into it
+    static const ot_u8 fixed_mask[16] = { \
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, \
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF  \
+    };
+
     m2qp.qtmpl.length = q_readbyte(&rxq);
     m2qp.qtmpl.code   = q_readbyte(&rxq);
     
@@ -796,12 +574,14 @@ void sub_load_query(void) {
         /// Option 2: we need to stash a mask of FF's at the back of the queue!
         /// This is not a problem, because the RX queue will never get this far
         /// during comp & call commands.
-        m2qp.qtmpl.mask = &rxq.front[rxq.alloc-16];
-
-        *((ot_u32*)&rxq.front[rxq.alloc-16]) = 0xFFFFFFFF;
-        *((ot_u32*)&rxq.front[rxq.alloc-12]) = 0xFFFFFFFF;
-        *((ot_u32*)&rxq.front[rxq.alloc-8])  = 0xFFFFFFFF;
-        *((ot_u32*)&rxq.front[rxq.alloc-4])  = 0xFFFFFFFF;
+        
+        //m2qp.qtmpl.mask = &rxq.front[rxq.alloc-16];
+        //*((ot_u32*)&rxq.front[rxq.alloc-16]) = 0xFFFFFFFF;
+        //*((ot_u32*)&rxq.front[rxq.alloc-12]) = 0xFFFFFFFF;
+        //*((ot_u32*)&rxq.front[rxq.alloc-8])  = 0xFFFFFFFF;
+        //*((ot_u32*)&rxq.front[rxq.alloc-4])  = 0xFFFFFFFF;
+        
+        m2qp.qtmpl.mask = (ot_u8*)fixed_mask;
     }
 
     m2qp.qtmpl.value  = q_markbyte(&rxq, m2qp.qtmpl.length);
@@ -810,27 +590,28 @@ void sub_load_query(void) {
 
 
 
-ot_int sub_process_query(m2session* session) {
+ot_int sub_process_query(m2session* active) {
 ///@note For sequential queries, the Listen Bit must be set in the MAC 
 ///Frame Info field.
     ot_u8 cmd_type = m2qp.cmd.code & 0x70;
+    //ot_u8 cmd_type = m2qp.cmd.code & M2TT_MASK;   ///@todo future update code
 
-    /// ACK check: Non-initial Multicast only
+    /// ACK check: Non-initial A2P only
     /// Look through the ack list for this host's device ID.  If it is
     /// there, then the query can exit.
-    if (cmd_type > 0x40) {
+    //if (cmd_type > 0x40) {
+    if (cmd_type > M2TT_REQ_M_INIT) {     ///@todo future update code
         ot_bool id_test;
         ot_int  number_of_acks  = (ot_int)q_readbyte(&rxq);
         
         do {
+            id_test = m2np_idcmp(m2np.rt.dlog.length, q_markbyte(&rxq, m2np.rt.dlog.length));
             number_of_acks--;
-            id_test = m2np_idcmp(m2np.rt.dlog.length, \
-                                    q_markbyte(&rxq, m2np.rt.dlog.length));   
         }
         while ((number_of_acks >= 0) && (id_test == False));
         
         if (number_of_acks != 0) {
-            goto sub_process_query_exit;
+            goto sub_process_query_EXITA2P;
         }
     }
 
@@ -839,10 +620,11 @@ ot_int sub_process_query(m2session* session) {
     /// query (all multicast, all anycast)
     sub_load_query();
     
-    /// Local Query: Initial Multicast only
+    /// Local Query: Multicast only.
     /// Save a pointer to the local query, if this is an initial multicast
     /// request.  This query will be run later.
-    if (cmd_type == 0x40) {
+    //if (m2np.header.fr_info & M2QUERY_LOCAL) {
+    if (cmd_type & M2TT_REQ_M) {  ///@todo future update code
         ot_int  query_size;
         ot_u8*  local_ptr;
         
@@ -853,9 +635,8 @@ ot_int sub_process_query(m2session* session) {
         rxq.getcursor  += query_size;
         
         /// run the first query... this will actually be the global query
-        /// on commands that also contain a local query.
         if (m2qp_isf_comp((m2qp.cmd.code & 1), &m2np.rt.dlog) < 0) {
-            goto sub_process_query_exit;
+            goto sub_process_query_EXITA2P;
         }
         
         /// Backtrace the queue to run the Local query
@@ -867,8 +648,8 @@ ot_int sub_process_query(m2session* session) {
     return m2qp_isf_comp((m2qp.cmd.code & 1), &m2np.rt.dlog);
 
     /// Exit case
-    sub_process_query_exit:
-    session->flags &= ~M2FI_LISTEN;
+    sub_process_query_EXITA2P:
+    active->flags &= ~M2FI_LISTEN;
     return -1;
 }
 
@@ -884,12 +665,11 @@ ot_int sub_process_query(m2session* session) {
   * - M2QP ISF manipulation can be done on single files or series of files.
   */
 #ifndef EXTF_m2qp_isf_comp
-ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id) {
+OT_WEAK ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id) {
     ot_int  score;
 
     // Load the data from the file/series into the query buffer
-    {
-        ot_int  (*load_function)(ot_int*, ot_u8);
+    {   ot_int  (*load_function)(ot_int*, ot_u8);
         
         // Assure length is 0 when Non-Null search is used, and set the load
         // function accordingly, depending on the query method
@@ -929,8 +709,9 @@ ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id) {
 
         // Run Arithmetic comparison
         for (i=0; i<m2qp.qtmpl.length; i++) {
+            ot_u8* local_buf = &LOCAL_U8(0);
             j = m2qp.qtmpl.mask[i] & m2qp.qtmpl.value[i];
-            k = m2qp.qtmpl.mask[i] & LOCAL_U8(i);
+            k = m2qp.qtmpl.mask[i] & local_buf[i];
             
             if (j != k) {
                 switch (m2qp.qtmpl.code & 0x1F) {
@@ -959,10 +740,10 @@ ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id) {
 
 
 #ifndef EXTF_m2qp_isf_call
-ot_int m2qp_isf_call( ot_u8 is_series, Queue* input_q, id_tmpl* user_id ) {
+OT_WEAK ot_int m2qp_isf_call( ot_u8 is_series, ot_queue* input_q, id_tmpl* user_id ) {
 /// This function takes data from a queue.  That data is a ISF or ISFS Call
 /// Template as described in the Mode 2 Spec.
-    Twobytes scratch;
+    ot_uni16 scratch;
     ot_u8   isf_id;
     vlFILE* fp_f;
     ot_int  offset;
@@ -994,7 +775,6 @@ ot_int m2qp_isf_call( ot_u8 is_series, Queue* input_q, id_tmpl* user_id ) {
         q_writeshort(&txq, offset );
         clength_ptr     = txq.putcursor;
         txq.putcursor  += 2;
-        txq.length     += 2;
         
         for (i=0; i<fp_s->length; i++) {
             if ( (i&1) == 0 ) {
@@ -1052,12 +832,12 @@ ot_int m2qp_isf_call( ot_u8 is_series, Queue* input_q, id_tmpl* user_id ) {
 
 
 #ifndef EXTF_m2qp_load_isf
-ot_int m2qp_load_isf(   ot_u8       is_series, 
-                        ot_u8       isf_id, 
-                        ot_int      offset, 
-                        ot_int      window_bytes,
-                        ot_int      (*load_function)(ot_int*, ot_u8),
-                        id_tmpl*    user_id ) {            
+OT_WEAK ot_int m2qp_load_isf(   ot_u8       is_series, 
+                                ot_u8       isf_id, 
+                                ot_int      offset, 
+                                ot_int      window_bytes,
+                                ot_int      (*load_function)(ot_int*, ot_u8),
+                                id_tmpl*    user_id ) {            
     Twobytes scratch;
     ot_int  i;
     vlFILE* fp_f;
@@ -1111,7 +891,7 @@ ot_int m2qp_load_isf(   ot_u8       is_series,
             
             // Load the window and process it, using the open file
             while ( (j < window_bytes) && (offset < fp_f->length) ) {
-                Twobytes ldata;
+                ot_uni16 ldata;
                 
                 align = offset & 1;
                 if (align == 0) {
@@ -1172,10 +952,12 @@ ot_int sub_load_charcorrelation(ot_int* cursor, ot_u8 data_byte) {
 
     ot_int i;
     ot_int c;
+    ot_u8* local_buf;
     
     /// The datastream is buffered in an unused part of the data-queue.
     /// The LOCAL_U8() macro behaves similar to array nomenclature
-    LOCAL_U8(*cursor) = data_byte;
+    local_buf = &LOCAL_U8(0);
+    local_buf[*cursor] = data_byte;
     
     /// If the datastream is *not* fully pre-buffered, return to the caller.
     /// If the datastream is fully pre-buffered, then proceed to correlation.
@@ -1190,11 +972,11 @@ ot_int sub_load_charcorrelation(ot_int* cursor, ot_u8 data_byte) {
     /// equality by +1.  It is implemented as c += (0 or 2) - 1
     else {
         for (i=0, c=0; i<m2qp.qtmpl.length; i++) {
-            c += ( (LOCAL_U8(i) & m2qp.qtmpl.mask[i]) == \
+            c += ( (local_buf[i] & m2qp.qtmpl.mask[i]) == \
                    (m2qp.qtmpl.value[i] & m2qp.qtmpl.mask[i]) ) << 1;
             c -= 1;
             
-            LOCAL_U8(i-1) = LOCAL_U8(i);
+            local_buf[i-1] = local_buf[i];
         }
     }
     

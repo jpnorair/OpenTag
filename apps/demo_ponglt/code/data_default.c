@@ -1,4 +1,4 @@
-/* Copyright 2012 JP Norair
+/* Copyright 2012-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /apps/demo_ponglt/code/default_data.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R101
+  * @date       14 Feb 2013
   * @brief      PongLT Demo Default Data
   * 
   ******************************************************************************
@@ -26,6 +26,9 @@
 #ifndef _DEFAULT_DATA_C
 #define _DEFAULT_DATA_C
 
+#include "OT_support.h"
+#include "OT_version.h"
+#include "OT_types.h"
 
 
 #if defined(__DEBUG__) || defined(__PROTO__)
@@ -60,12 +63,12 @@
 /// These overhead are the Veelite vl_header files. They are hard coded,
 /// and they must be in the endian of the platform. (Little endian here)
 
-//#if (CC_SUPPORT == GCC)
-//__attribute__((section(".vl_ov")))
-//#elif (CC_SUPPORT == CL430)
+#if (CC_SUPPORT == GCC)
+const ot_u8 overhead_files[] __attribute__ ((section(".vl_ov"))) = {
+#elif (CC_SUPPORT == CL430)
 #pragma DATA_SECTION(overhead_files, ".vl_ov")
-//#endif
 const ot_u8 overhead_files[] = {
+#endif
     //0x00, 0x00, 0x00, 0x01,                 /* GFB ELements 0 - 3 */
     //0x00, GFB_MOD_standard,
     //0x00, 0x14, 0xFF, 0xFF,
@@ -326,12 +329,12 @@ const ot_u8 overhead_files[] = {
 
 
 /// This array contains stock codes for isfs.  They are ordered strings.
-//#if (CC_SUPPORT == GCC)
-//__attribute__((section(".vl_isfs")))
-//#elif (CC_SUPPORT == CL430)
+#if (CC_SUPPORT == GCC)
+const ot_u8 isfs_stock_codes[] __attribute__((section(".vl_isfs"))) = {
+#elif (CC_SUPPORT == CL430)
 #pragma DATA_SECTION(isfs_stock_codes, ".vl_isfs")
-//#endif
 const ot_u8 isfs_stock_codes[] = {
+#endif
     0x10, 0x11, 0x18, 0xFF,
     0x12, 0x13, 0x14, 0xFF,
     0x15, 0xFF,
@@ -373,19 +376,19 @@ const ot_u8 gfb_stock_files[] = {0xFF, 0xFF};
 #define BC7     OT_BUILDCODE7
 
 /// This array contains the stock ISF data.  ISF data must be big endian!
-//#if (CC_SUPPORT == GCC)
-//__attribute__((section(".vl_isf")))
-//#elif (CC_SUPPORT == CL430)
+#if (CC_SUPPORT == GCC)
+const ot_u8 isf_stock_files[] __attribute__((section(".vl_isf"))) = {
+#elif (CC_SUPPORT == CL430)
 #pragma DATA_SECTION(isf_stock_files, ".vl_isf")
-//#endif
 const ot_u8 isf_stock_files[] = {
+#endif
     /* network settings: id=0x00, len=8, alloc=8 */
     __VID,                                              /* VID */
     0x11,                                               /* Device Subnet */
     0x11,                                               /* Beacon Subnet */
     SPLIT_SHORT(OT_ACTIVE_SETTINGS),                    /* Active Setting */
     0x00,                                               /* Default Device Flags */
-    0,                                                  /* Beacon Attempts */
+    1,                                                  /* Beacon Attempts */
     SPLIT_SHORT(2),                                     /* Hold Scan Sequence Cycles */
 
     /* device features: id=0x01, len=48, alloc=48 */
@@ -403,51 +406,34 @@ const ot_u8 isf_stock_files[] = {
     SPLIT_SHORT(GFB_TOTAL_BYTES-GFB_HEAP_BYTES),        /* GFB Available Memory */
     SPLIT_SHORT(GFB_FILE_BYTES),                        /* GFB File Size */
     0,                                                  /* RFU */
-    OT_FEATURE(SESSION_DEPTH),                          /* Session Stack Depth */
+    OT_PARAM(SESSION_DEPTH),                          /* Session Stack Depth */
     'O','T','v',BV0,' ',' ',
     BT0,BC0,BC1,BC2,BC3,BC4,BC5,BC6,BC7, 0,             /* Firmware & Version as C-string */
 
-    /* channel configuration: id=0x02, len=32, alloc=64 */
-    0x07,                                               /* Channel Spectrum ID */
-    0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-85) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-92) + 140 ),                             /* CCA RSSI Threshold*/
-    0x00,                                               /* Regulatory Code */
-    0x01,                                               /* Duty Cycle (100%) */
+    /* channel configuration: id=0x02, len=32, alloc=48 */
+    0x00, 0x00,                                         /* Header: 2 bytes RFU */
+    0x00,                                               /* Header: Regulatory Code */
+    0x00,                                               /* Header: TX Duty Cycle */
+    0x00,                                               /* Header: TX Power Autoscaling Control */
+    0x00,                                               /* Header: RFU */                                               
+    
+    (0x1F), 0x00,                                       /* Channel Spectrum ID & RFU */
+    (ot_u8)(( (-2) + 40 )*2),                           /* Channel TX Power Limit */
+    (ot_u8)( 140 ),                                     /* Channel Link Quality Filter Level */
+    (ot_u8)( (-88) + 140 ),                             /* CS RSSI Threshold */
+    (ot_u8)( (-80) + 140 ),                             /* CCA RSSI Threshold*/
+    
+    (0x2F), 0x00,                                       /* Channel Spectrum ID & RFU */
+    (ot_u8)(( (-2) + 40 )*2),                           /* Channel TX Power Limit */
+    (ot_u8)( 140 ),                                     /* Channel Link Quality Filter Level */
+    (ot_u8)( (-88) + 140 ),                             /* CS RSSI Threshold */
+    (ot_u8)( (-80) + 140 ),                             /* CCA RSSI Threshold*/
 
-    0x2A,                                               /* Channel Spectrum ID */
-    0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-85) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-92) + 140 ),                             /* CCA RSSI Threshold*/
-    0x00,                                               /* Regulatory Code */
-    0x01,                                               /* Duty Cycle (100%) */
-
-    0x10,                                               /* Channel Spectrum ID */
-    0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-85) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-92) + 140 ),                             /* CCA RSSI Threshold*/
-    0x00,                                               /* Regulatory Code */
-    0x01,                                               /* Duty Cycle (100%) */
-
-    0x12,                                               /* Channel Spectrum ID */
-    0x00,                                               /* Channel Parameters */
-    (ot_u8)(( (-15) + 40 )*2),                          /* Channel TX Power Limit */
-    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-80) + 140 ),                             /* CS RSSI Threshold */
-    (ot_u8)( (-90) + 140 ),                             /* CCA RSSI Threshold*/
-    0x00,                                               /* Regulatory Code */
-    0x01,                                               /* Duty Cycle (100%) */
-
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
 
     /* real time scheduler: id=0x03, len=12, alloc=12 */
@@ -460,8 +446,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* hold scan periods: id=0x04, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x07, 0x5F, 0x00, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
-    0xFF, 0xFF, 0xFF, 0xFF,
+    0x07, 0x40, 0x04, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */ //FIX
+    0x17, 0x40, 0x08, 0x00,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF,
@@ -482,8 +468,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240
-    0x07, 0x06, 0x20, 0x00, 0x00, 0x08, 0x00, 0x20,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
-    0x2A, 0x06, 0x20, 0x00, 0x00, 0x08, 0x0B, 0x00,
+    0x07, 0x06, 0x20, 0x00, 0x00, 0x08, 0x01, 0x00,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
+    0x2A, 0x06, 0x20, 0x00, 0x00, 0x08, 0x0B, 0x00, 
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* App Protocol List: id=0x07, len=4, alloc=16 */

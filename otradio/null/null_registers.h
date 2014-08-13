@@ -1,4 +1,4 @@
-/* Copyright 2009-2011 JP Norair
+/* Copyright 2009-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 /**
   * @file       /otradio/null/null_registers.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 April 2012
+  * @version    R100
+  * @date       4 Feb 2014
   * @brief      Register Addressing Constants for NULL Radio
-  * @ingroup    Null_RF
+  * @ingroup    Null_radio
   *
   ******************************************************************************
   */

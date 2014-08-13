@@ -42,15 +42,8 @@
 #include "m2_network.h"         // Network Layer
 #include "m2_transport.h"       // Transport Layer
 #include "radio.h"
+#include "system.h"
 #include "veelite.h"            // Filesystem (Also Presentation Layer)
-
-
-///@todo Kernel-level stuff should be encapsulated in generic system-layer functions
-#if (OT_FEATURE(CUSTOM_KERNEL) == ENABLED)
-    // no other kernels supported at the moment
-#else
-#   include "gulp/system_gulp.h"
-#endif
 
 
 

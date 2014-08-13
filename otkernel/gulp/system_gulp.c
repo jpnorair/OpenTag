@@ -25,10 +25,12 @@
   ******************************************************************************
   */
 
+#include "build_config.h"
+#if defined(__KERNEL_GULP__)
+
+#include "OT_platform.h"
 #include "OT_types.h"
 #include "OT_utils.h"
-#include "OT_config.h"
-#include "OT_platform.h"
 
 #include "system.h"
 #include "gulp/system_gulp.h"
@@ -90,11 +92,11 @@ static const systask_fn systask_call[]   = {
 #if (1)
     &dll_systask_holdscan,
 #endif
-#if (M2_FEATURE(ENDPOINT))
-    &dll_systask_sleepscan,
-#endif
 #if (M2_FEATURE(BEACONS))
     &dll_systask_beacon,
+#endif
+#if (M2_FEATURE(ENDPOINT))
+    &dll_systask_sleepscan,
 #endif
 #if (OT_FEATURE(EXT_TASK))
     &ext_systask,
@@ -122,7 +124,7 @@ void sys_init() {
     /// Set default values in system tasks.  At a minimum, this is doing a
     /// memset on the task struct to 0.  If dynamic task callbacks are enabled,
     /// also set theses callbacks to the default values.
-    platform_memset((ot_u8*)sys.task, 0, sizeof(task_marker)*SYS_TASKS);
+    memset((ot_u8*)sys.task, 0, sizeof(task_marker)*SYS_TASKS);
     
 #   if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
     {
@@ -182,6 +184,10 @@ void sys_panic(ot_u8 err_code) {
 
 #ifndef EXTF_sys_powerdown
 void sys_powerdown() {
+/// code = 3: No active I/O Task (goto most aggressive LP regime)
+/// code = 2: RF I/O Task active
+/// code = 1: MPipe or other local peripheral I/O task active
+/// code = 0: Use fastest-exit powerdown mode 
     ot_int code;
     code    = 3; //(platform_next_ktim() <= 3) ? 0 : 3;
 #   if (1)
@@ -333,6 +339,21 @@ void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
 
 
 
+
+#ifndef EXTF_sys_task_enable
+void sys_task_enable(ot_u8 task_id, ot_u8 task_ctrl, ot_u16 sleep) {
+#if (OT_FEATURE(EXT_TASK))
+    ot_task task;
+    task        = &sys.task[TASK_external+task_id];
+    task->event = task_ctrl;
+    sys_task_setnext(task, sleep);
+	platform_ot_preempt();
+#endif
+}
+#endif
+
+
+
 #ifndef EXTF_sys_task_disable
 void sys_task_disable(ot_u8 task_id) {
 #if (OT_FEATURE(EXT_TASK))
@@ -342,7 +363,7 @@ void sys_task_disable(ot_u8 task_id) {
 //    {
 //        sys.task[task_id].event  = 0;
 //    }
-    sys.task[TASK_external].event    = 0;
+    sys.task[TASK_external+task_id].event    = 0;
 
 #endif
 }
@@ -523,7 +544,7 @@ void sys_refresh_scheduler() {
 
 
 
-
+#endif // #if from top
 
 
 

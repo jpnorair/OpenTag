@@ -68,7 +68,7 @@ void dll_sig_rfterminate(ot_int pcode, ot_int scode) {
         /// RX driver process termination: This can happen a lot, so a lot of
         /// times it will be commented-out.
         case 3: loglabel[2] = 'R';
-                logdata_len = rxq.length;
+                logdata_len = q_length(&rxq);
                 logdata     = rxq.front;
                 break;
 
@@ -81,7 +81,7 @@ void dll_sig_rfterminate(ot_int pcode, ot_int scode) {
 
         /// TX driver process termination
         case 5: loglabel[2] = 'T';
-                logdata_len = txq.length;
+                logdata_len = q_length(&txq);
                 logdata     = txq.front;
                 break;
 

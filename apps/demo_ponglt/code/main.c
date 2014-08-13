@@ -115,20 +115,6 @@ void opmode_goto_endpoint();
   * sub_button_init() is a board-dependent function, as 
   */
 void sub_button_init();
-
-
-#if (   defined(BOARD_OMG_CC430)   \
-    ||  defined(BOARD_EM430RF)      \
-    ||  defined(BOARD_eZ430Chronos) \
-    ||  defined(BOARD_RF430USB_5509)    )
-#   define _MSP430F5_CORE
-
-#else
-#   error "You have not defined a currently supported board: select one in build_config.h"
-
-#endif
-
-
 #define APP_TASK    (&sys.task[TASK_external])
 
 
@@ -142,7 +128,7 @@ void sub_button_init();
   * The button-press is unique to this application, and it is treated here.
   */
   
-#if (defined(_MSP430F5_CORE) && defined(OT_SWITCH1_PORT))
+#if (defined(__MSP430F5__) && defined(OT_SWITCH1_PORT))
 #   if (OT_SWITCH1_PORTNUM == 1)
 #       define PLATFORM_ISR_SW  platform_isr_p1
 #   else
@@ -179,8 +165,25 @@ void PLATFORM_ISR_SW() {
     }
 }
 
+#elif (defined(__STM32__) && defined(OT_SWITCH1_PINNUM) && (OT_SWITCH1_PINNUM >= 0))
+#   define PLATFORM_ISR_SW  platform_isr_exti##OT_SWITCH1_PINNUM
+
+void PLATFORM_ISR_SW(void) {
+    // Ignore the button press if the task is in progress already
+    if (APP_TASK->event == 0) {
+        app_invoke(7);              // Initialize Ping Task on channel 7
+    }
+}
+
+void sub_button_init() {
+/// ARM Cortex M boards must prepare all EXTI line interrupts in their board
+/// configuration files.
+}
+
+
 #else
-void sub_button_init() {}
+#   warn "You are not using a known, compatible MCU.  Demo might not work."
+    void sub_button_init() {}
 
 #endif
 
@@ -209,89 +212,77 @@ void sub_button_init() {}
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
   */ 
 
-void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
-/// The function app_invoke() will cause the kernel to call ext_systask() as
-/// soon as resources are available.
-
-    // Start the task only if: Caller is ROOT, ALP Call is Protocol-255, Task is idle
-    if (    auth_isroot(user_id)    \
-        &&  (alp->inrec.id == 0xFF) \
-        &&  (APP_TASK->event == 0)   )   {
-        
-        app_invoke(alp->inrec.cmd);     // Initialize Ping Task on supplied channel
-        alp_load_retval(alp, 1);        // Write back 1 (success)
-    }
-}
-
-
-
-
-
-/** M2QP-UDP (Transport Layer) Callback for Printing a Pong <BR>
-  * =======================================================================<BR>
-  * This function is called when a UDP request or response is received.  It is
-  * implemented to monitor port 255, which is used for PONGs in this demo.
-  */
-#ifdef EXTF_m2qp_sig_udp
-ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
-    static const char* label[]  = { "PongID: ", ", RSSI: ", ", Link: " };
-    ot_u16  pongval;
-    ot_u8   i;
-    ot_u8   scratch;
-
-    //1. Read the PONG VAL
-    pongval = q_readshort(&rxq);
-
-    // Request: Copy PING VAL to PONG
-    if (dstport == 255) {
-        q_writeshort(&txq, pongval);
-        return True;
-    }
-
-#   if defined(BOARD_eZ430Chronos)
-    // Chronos doesn't have a normal MPipe, so print-out responses on the LCD
+///@todo change task into logger task, and make the Pingpong part entirely 
+///      session driven.
+ot_bool otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
+    /// Offset=2 is the ALP ID, which defines the protocol to use.
+    /// This Project has only one custom app, ID=255
+    switch (alp->inq->getcursor[2]) {
     
-#   else
-    // Response: Compare PING Val to PONG Val and write output to MPipe
-    if (dstport == 254) {
-        // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
-        otapi_log_header(1, 0);
+    // This app is completely atomic and it manages the ALP data in place rather
+    // than through a subordinate app queue.
+    case 255: {
+        ot_u8 cmd           = alp->inq->getcursor[3] & 0x7f;
+        alp->inq->getcursor+= 4;
         
-        // Print out the three parameters for PongLT, one at a time.
-        // If you are new to OpenTag, this is a common example of a state-
-        // based code structure JP likes to use.
-        i = 0;
-        while (1) {
-            q_writestring(mpipe.alp.outq, (ot_u8*)label[i], 8);
-            switch (i++) {
-                case 0: scratch = otutils_bin2hex(  mpipe.alp.outq->putcursor, 
-                                                    user_id->value,
-                                                    user_id->length     );
-                        break;
-                
-                case 1: scratch = otutils_int2dec(mpipe.alp.outq->putcursor, radio.last_rssi);
-                        break;
-                        
-                case 2: scratch = otutils_int2dec(mpipe.alp.outq->putcursor, dll.last_nrssi);
-                        break;
-                        
-                case 3: goto m2qp_sig_udp_PRINTDONE;
-            }
-            
-            mpipe.alp.outq->putcursor  += scratch;
-            mpipe.alp.outq->length     += scratch;
+        // Start a ping
+        if (cmd == 0) {
+            app_invoke(7);
         }
+        
+        // Request: copy ping val to pong
+        else if (cmd == 255) {
+            ot_u16  pongval = q_readshort(alp->inq);
+            q_writeshort(alp->outq, pongval);
+        }
+        
+        // Response: Compare PING Val to PONG Val and write output to MPipe
+        else {
+#       elif (OT_FEATURE(MPIPE))
+            static const char* label[]  = { "PongID: ", ", RSSI: ", ", Link: " };
+            ot_u8   i;
+            ot_u8   scratch;
+            
+            // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
+            otapi_log_header(1, 0);
+        
+            // Print out the three parameters for PongLT, one at a time.
+            // If you are new to OpenTag, this is a common example of a state-
+            // based code structure JP likes to use.
+            i = 0;
+            while (1) {
+                q_writestring(mpipe.alp.outq, (ot_u8*)label[i], 8);
+                switch (i++) {
+                    case 0: scratch = otutils_bin2hex(  mpipe.alp.outq->putcursor, 
+                                                        user_id->value,
+                                                        user_id->length     );
+                            break;
+                    
+                    case 1: scratch = otutils_int2dec(mpipe.alp.outq->putcursor, radio.last_rssi);
+                            break;
+                            
+                    case 2: scratch = otutils_int2dec(mpipe.alp.outq->putcursor, dll.last_nrssi);
+                            break;
+                            
+                    case 3: goto m2qp_sig_udp_PRINTDONE;
+                }
+            
+                mpipe.alp.outq->putcursor  += scratch;
+            }
 
-        // Close the log file, send it out, return success
-        m2qp_sig_udp_PRINTDONE:
-        otapi_log_direct();
-        return True;
+            // Close the log file, send it out, return success
+            m2qp_sig_udp_PRINTDONE:
+            otapi_log_direct();
+#       endif
+        }
+        
+    } break;
     }
-#   endif
 
-    return False;
+    return True;
 }
-#endif
+
+
 
 
 
@@ -303,12 +294,6 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
   * This app uses some of the "std" applets from /otlibext/applets_std
   * The applets used are selected in extf_config.h
   */
-
-
-
-
-
-
 
 
 
@@ -337,8 +322,8 @@ void ext_systask(ot_task task) {
         task->nextevent = 512;  
     
         // Generate a pseudo random 16 bit number to be used as a ping check value
-        app.pingval = platform_prand_u16();
-    
+        app.pingval = PLATFORM_ENDIAN_16(platform_prand_u16());
+        
         // Log a message.  It is scheduled, and the RF task has higher priority,
         // so if you are sending a DASH7 dialog this log message will usually
         // come-out after the dialog finishes.
@@ -408,7 +393,7 @@ void applet_send_query(m2session* session) {
     { //write the query to search for the sensor protocol id
         static const ot_u8 query_str[10] = "APP=PongLT";
         query_tmpl query;
-        query.code      = M2QC_COR_SEARCH | 10; // do a 100% length=10 correlation search
+        query.code      = M2QC_COR_SEARCH + 10; // do a 100% length=10 correlation search
         query.mask      = NULL;                 // don't do any masking (no partial matching)
         query.length    = 10;                   // query_str is 10 bytes
         query.value     = (ot_u8*)query_str;
@@ -422,9 +407,12 @@ void applet_send_query(m2session* session) {
         otapi_put_isf_comp(&status, &isfcomp);
     }
     { //put in UDP ports (from 254 to 255) and Ping ID
-        q_writebyte(&txq, 254);
-        q_writebyte(&txq, 255);
-        q_writeshort(&txq, app.pingval);
+        udp_tmpl udp;
+        udp->data_length    = 2;
+        udp->dst_port       = 255;
+        udp->src_port       = 254;
+        udp->data           = (ot_u8*)&app.pingval;
+        otapi_put_udp_tmpl(&status, &udp);
     }
 
     //Done building command, close the request and send the dialog
@@ -442,7 +430,6 @@ void applet_send_query(m2session* session) {
 void app_init() {
 #if defined(BOARD_eZ430Chronos)
 /// Setup LCD
-
 
 #else
 /// 1. Blink the board LEDs to show that it is starting up.  

@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2013-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/alp_logger.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       20 July 2012
+  * @version    R101
+  * @date       24 Mar 2014
   * @brief      ALP to Logger processor
   * @ingroup    ALP
   *
@@ -35,23 +35,33 @@
      && (OT_FEATURE(ALP) == ENABLED) \
      && (LOG_FEATURE(ANY) == ENABLED) )
 
+#endif
+
+#if (ALP(LOGGER) != ENABLED)
+OT_WEAK ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
+    return True;
+}
+
+#else
+
 #include "auth.h"
 #include "queue.h"
 
-ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
+///@todo replace INREC calls with direct access from input
+
+OT_WEAK ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
 /// Logger ALP is like ECHO.  The input is copied to the output.
     
     // Only root can log directly (this is an important security firewall)
-    if (auth_isroot(user_id) == False)
-        return False;
+    if (auth_isroot(user_id)) {
+        alp->OUTREC(FLAGS)  = *alp->inq->getcursor++;
+        alp->OUTREC(PLEN)   = *alp->inq->getcursor++;
+        alp->inq->getcursor+= 2;
         
-    alp->outrec.flags   = alp->inrec.flags;
-    alp->outrec.plength = alp->inrec.plength;
-    
-    if (alp->inq != alp->outq) {
-        q_writestring(alp->outq, alp->inq->getcursor, alp->inrec.plength);
+        if (alp->inq != alp->outq) {
+            q_writestring(alp->outq, alp->inq->getcursor, alp->OUTREC(PLEN));
+        }
     }
-    
     return True;
 }
 

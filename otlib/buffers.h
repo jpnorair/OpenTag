@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2010-2013 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /OTlib/buffers.h
+  * @file       /otlib/buffers.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 June 2011
-  * @brief      An inline, volatile set of stream buffers used with Queues
+  * @version    R100
+  * @date       8 Oct 2013
+  * @brief      An inline, volatile set of stream buffers used with OT Queues
   * @defgroup   Buffers (Buffers Module)
   * @ingroup    Buffers
   *
@@ -40,13 +40,13 @@
 
 #define BUF0_ALLOC  256
 #define BUF1_ALLOC  256
-#define BUF2_ALLOC  (OT_FEATURE(BUFFER_SIZE) - 512)
+#define BUF2_ALLOC  (OT_PARAM(BUFFER_SIZE) - 512)
 
 
 /// Buffer Partitions
 /// Number of partitions allowed is the total allocated size divided by 256.
 /// Partitions, hence, are always 256 bytes.
-#define BUF_PARTITIONS      (OT_FEATURE(BUFFER_SIZE)/256)
+#define BUF_PARTITIONS      (OT_PARAM(BUFFER_SIZE)/256)
 #define BUF_PARTITION(VAL)  (otbuf+(256*VAL))
 
 
@@ -63,23 +63,22 @@
 
 
 /// Main Buffer (encapsulates buffers for all supported Queues)
-extern ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
+extern ot_u8 otbuf[OT_PARAM(BUFFER_SIZE)];
 
 
 
-#if (OT_FEATURE(SERVER) == ENABLED)
+#if (OT_FEATURE(SERVER) && OT_FEATURE(M2))
     /// Required Queues (on server side): rxq and txq are used for DASH7 I/O
-    extern Queue rxq;
-    extern Queue txq;
+    extern ot_queue rxq;
+    extern ot_queue txq;
 #endif
 
-#if (   (OT_FEATURE(NDEF)  == ENABLED) || \
-        (OT_FEATURE(ALP)   == ENABLED) || \
-        (OT_FEATURE(MPIPE) == ENABLED) )
-    /// Directive Queues: optional, used for ALP processing and usually also 
-    /// NDEF record usage (if enabled)
-    extern Queue dir_in;
-    extern Queue dir_out;
+#if (OT_FEATURE(NDEF) || OT_FEATURE(ALP) || OT_FEATURE(MPIPE))
+    /// Analagous to stdin/stdout.  Frequently used ALP application queues
+    extern ot_queue otmpin;
+    extern ot_queue otmpout;
+    
+    
 #endif
 
 
@@ -90,7 +89,7 @@ extern ot_u8 otbuf[OT_FEATURE(BUFFER_SIZE)];
   * @retval none
   * @ingroup Buffers
   *
-  * The System Queues (rxq, txq, dir_in, dir_out) can be manipulated to point
+  * The System Queues (rxq, txq, otmpin, otmpout) can be manipulated to point
   * to different data elements during the course of their usage.  This function
   * will reset them to their defaults.  Use it whenever you want to reset the
   * queues or during boot-up.

@@ -1,4 +1,4 @@
-/* Copyright 2010-2011 JP Norair
+/* Copyright 2013-14 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /OTlib/OT_platform.h
+  * @file       /otlib/OT_platform.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       1 Jan 2011
+  * @version    R101
+  * @date       27 Mar 2014
   * @brief      Platform Library functions
   * @defgroup   Platform (Platform Module)
   * @ingroup    Platform
@@ -26,6 +26,9 @@
   * are optional (and they are marked as such).  When porting to a new platform,
   * these functions need to be implemented, as they are typically not hardware
   * agnostic.
+  *
+  * @todo Break-up OT_platform into its own directory of includes, perhaps like
+  *       inc/otplatform/...
   ******************************************************************************
   */
   
@@ -35,10 +38,14 @@
 
 #include "OT_types.h"
 #include "OT_config.h"
-#include "platform_config.h"
+#include "build_config.h"
 
 
-
+#if (defined(__DEBUG__) || defined(__PROTO__))
+#   define __DEBUG_ERRCODE_EVAL(EVAL)   (platform.error_code EVAL)
+#else
+#   define __DEBUG_ERRCODE_EVAL(EVAL);
+#endif
 
 typedef struct {
     ot_int error_code;
@@ -51,6 +58,43 @@ void platform_rtc_isr();
 
 
 
+/** Platform Enablers <BR>
+  * ========================================================================<BR>
+  */
+
+/** @brief Initializes HW at Power On
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  *
+  * This function should be called when the chip has a cold or warm start.
+  */
+void platform_poweron();
+
+
+/** @brief Safely shuts-down: call when resetting or shutting down.
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Not all implementations will need this, but usually ones that write to 
+  * flash will require calling it any time prior to turning-off the SRAM.
+  */
+void platform_poweroff();
+
+
+/** @brief Initializes the platform for the OpenTag runtime
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Call this prior to entering the OpenTag runtime in order to configure the
+  * system for OpenTag.  If your application does not have functionality beyond
+  * OpenTag (or if the functionality does not change the OpenTag settings), then
+  * this function only needs to be run whenever the registers need to be 
+  * refreshed.
+  */
+void platform_init_OT();
 
 
 /** @brief Routine for putting maskable interrupts on hold
@@ -59,6 +103,7 @@ void platform_rtc_isr();
   * @ingroup Platform
   */
 void platform_disable_interrupts();
+
 
 /** @brief Routine for taking maskable interrupts off of hold
   * @param None
@@ -69,6 +114,89 @@ void platform_enable_interrupts();
 
 
 
+
+
+/** Platform Information Functions <BR>
+  * ========================================================================<BR>
+  */
+/** @brief  Get clock speed in Hz from one of the system clocks
+  * @param  clock_index     (ot_uint) Index of a system clock
+  * @retval None
+  * @ingroup Platform
+  *
+  * The input "clock_index" is always 0 for the main CPU clock, but different
+  * CPUs/MCUs have different bus clock architectures.  See two examples below:
+  *
+  * MSP430F5:
+  * 0: MCLK
+  * 1: SMCLK
+  * 2: ACLK
+  *
+  * Cortex M:
+  * 0: AHB clock
+  * 1: APB2 clock
+  * 2: APB1 clock
+  */
+ot_ulong platform_get_clockhz(ot_uint clock_index); 
+
+
+
+
+/** Platform Speed Control <BR>
+  * ========================================================================<BR>
+  */
+/** @brief  Put platform CPU into most efficient runtime speed configuration
+  * @param  None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Standard speed is the default speed.  On some systems like MSP430, Standard,
+  * Full, and Flank may be all the same without penalty.  Other systems may 
+  * benefit from having speed steps.  Most STM32L configurations, for example, 
+  * use the MSI oscillator at 4.2 MHz as the CPU clock during Standard.
+  */
+void platform_standard_speed(void);
+
+
+/** @brief  Put platform CPU into fastest speed allowable without setup lag
+  * @param  None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Full speed may be entered by some tasks that need faster performance, for
+  * example, packet processing.  Transition from Standard to Full should be,
+  * fast, in other words it should be a matter of oscillator switching and not
+  * PLL startup.  On most STM32L configurations, for example, Full Speed  
+  * invokes the HSI oscillator at 16 MHz.
+  */
+void platform_full_speed(void);
+
+
+/** @brief  Fuck everything and put platform CPU into absolute maximum speed
+  * @param  None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Flank speed almost always involves firing-up a PLL, which typically has an
+  * appreciable lag time (e.g. 100us), and often carries with it some penalties
+  * in MIPS/MHz and-or uA/MHz.  On USB-enabled configurations, Flank may be the
+  * default as USB typically requires a 48MHz clock.
+  *
+  * Flank speed is not advisable for battery-powered devices unless there is a
+  * low-duty-cycle yet demanding task such as public key cryptography, and in 
+  * addition there is a requirement that the task must complete in a given, 
+  * short amount of time.  Only use flank if both requirements exist together,
+  * otherwise use full or standard speed.
+  */
+void platform_flank_speed(void);
+
+
+
+
+
+/** OpenTag Kernel functions <BR>
+  * ========================================================================<BR>
+  */
 
 /** @brief Drop a context (task) from the primary stack
   * @param task_id		(ot_uint) Correlated to Task_Index
@@ -102,7 +230,6 @@ void platform_enable_interrupts();
 void platform_drop_context(ot_uint task_id);
 
 
-
 /** @brief The function that pauses OpenTag
   * @param None
   * @retval None
@@ -118,7 +245,6 @@ void platform_drop_context(ot_uint task_id);
 void platform_ot_pause();
 
 
-
 /** @brief The function that invokes OpenTag -- typically 100% automatic.
   * @param None
   * @retval None
@@ -130,7 +256,6 @@ void platform_ot_pause();
   * you will want to call platform_ot_run() immediately after creating it.
   */
 void platform_ot_run();
-
 
 
 /** @brief Pre-emption function for OpenTag
@@ -148,64 +273,9 @@ void platform_ot_preempt();
 
 
 
-/** Initialization functions 
+/** OpenTag Resource Initializers <BR>
+  * ========================================================================<BR>
   */
-
-/** @brief Initializes HW at Power On
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  *
-  * This function should be called when the chip has a cold or warm start.
-  */
-void platform_poweron();
-
-
-
-/** @brief Safely shuts-down: call when resetting or shutting down.
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  *
-  * Not all implementations will need this, but usually ones that write to 
-  * flash will require calling it any time prior to turning-off the SRAM.
-  */
-void platform_poweroff();
-
-
-
-/** @brief Initializes the platform for the OpenTag runtime
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  *
-  * Call this prior to entering the OpenTag runtime in order to configure the
-  * system for OpenTag.  If your application does not have functionality beyond
-  * OpenTag (or if the functionality does not change the OpenTag settings), then
-  * this function only needs to be run whenever the registers need to be 
-  * refreshed.
-  */
-void platform_init_OT();
-
-
-
-/** @brief An optimized method for initializing the platform for the OpenTag runtime
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  * 
-  * fast_initOT() is basically like init_OT(), except it is optimized for the 
-  * platform.  It is especially useful for platforms that retain register 
-  * settings (SRAM) through low power modes, since it can be minimized to meet
-  * very specific needs.
-  *
-  * fast_initOT() is intended to be modified by the user to best fit the 
-  * application.
-  */
-void platform_fastinit_OT();
-
-
-
 
 /** @brief Initializes the bus clocks that OpenTag uses.
   * @param None
@@ -217,8 +287,6 @@ void platform_fastinit_OT();
   * SMCLK, ACLK).
   */
 void platform_init_busclk();
-
-
 
 
 /** @brief Initializes the peripheral clocks that OpenTag uses.  If there are
@@ -237,8 +305,6 @@ void platform_init_busclk();
 void platform_init_periphclk();
 
 
-
-
 /** @brief Initializes Global Interrupt Functionality for OpenTag resources.
   * @param None
   * @retval None
@@ -248,8 +314,6 @@ void platform_init_periphclk();
   * down interrupts that could affect the OpenTag runtime in unpredictable ways.
   */
 void platform_init_interruptor();
-
-
 
 
 /** @brief Initializes GPIO used by OpenTag, not including the radio module.
@@ -262,6 +326,65 @@ void platform_init_interruptor();
   */
 void platform_init_gpio();
 
+
+/** @brief Initializes a reset switch that may be used outside of OpenTag.
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  *
+  * Not required for all platforms
+  */
+void platform_init_resetswitch();
+
+
+void platform_init_memcpy();
+
+
+void platform_init_prand(ot_u16 seed);
+
+
+
+
+
+
+
+/** Platform Timer functions <BR>
+  * ========================================================================<BR>
+  */
+
+/**
+  * @brief Initializes a "system tick" peripheral, but doesn't begin running it.
+  * @param period : system tick period
+  * @retval None
+  * @ingroup Platform
+  *
+  * Some platforms have a dedicated SysTick peripheral (the STM32).  Others
+  * may not, but almost all have some form of watchdog functionality that may
+  * be used for the same purpose.
+  *
+  * The input parameter "period" is often the milliseconds between SysTick
+  * interrupts (or flagging), but in some platforms it has a different value.
+  * Please check with the implementation comments / documentation to determine
+  * the usage with your platform,
+  */
+void platform_init_itimer(ot_uint period);
+
+void platform_stop_itimer();
+
+
+
+void platform_init_watchdog();
+
+
+
+/** @brief Initializes a real time clock.
+  * @param value: the default RTC value, in seconds
+  * @retval None
+  * @ingroup Platform
+  * 
+  * The RTC value is the number of seconds from 1/1/1990, 00:00:00
+  */
+void platform_init_rtc(ot_u32 value);
 
 
 
@@ -282,68 +405,40 @@ void platform_init_gpio();
 
 
 
-void platform_init_watchdog();
 
 
+ot_u32 platform_get_interval(ot_u32* timestamp);
 
-/** @brief Initializes a reset switch that may be used outside of OpenTag.
+
+/** @brief Starts the process chronometer
   * @param None
   * @retval None
   * @ingroup Platform
-  *
-  * Not required for all platforms
   */
-void platform_init_resetswitch();
+void platform_start_chrono();
 
-
-
-
-/**
-  * @brief Initializes a "system tick" peripheral, but doesn't begin running it.
-  * @param period : system tick period
-  * @retval None
-  * @ingroup Platform
-  *
-  * Some platforms have a dedicated SysTick peripheral (the STM32).  Others
-  * may not, but almost all have some form of watchdog functionality that may
-  * be used for the same purpose.
-  *
-  * The input parameter "period" is often the milliseconds between SysTick
-  * interrupts (or flagging), but in some platforms it has a different value.
-  * Please check with the implementation comments / documentation to determine
-  * the usage with your platform,
-  */
-void platform_init_systick(ot_uint period);
-
-
-
-
-/** @brief Initializes a real time clock.
-  * @param value: the default RTC value, in seconds
-  * @retval None
-  * @ingroup Platform
-  * 
-  * The RTC value is the number of seconds from 1/1/1990, 00:00:00
-  */
-void platform_init_rtc(ot_u32 value);
-
-
-void platform_init_memcpy();
-
-
-
-void platform_init_prand(ot_u16 seed);
-
-
-
-
-
-/** @brief Gets the current GPTIM value, does not alter GPTIM behavior
+/** @brief Stops the process chronometer, and returns the measured time
   * @param None
-  * @retval ot_u16      current timer value
+  * @retval None
   * @ingroup Platform
   */
-ot_u16 platform_get_ktim();
+ot_u16 platform_stop_chrono();
+
+
+/** @brief Returns the time elapsed since the last flush or set of ktim
+  * @param None
+  * @retval ot_u32      Elapsed time since last refresh
+  * @ingroup Platform
+  */
+ot_u32 platform_get_ktim();
+
+
+/** @brief Reloads ktim to update calls to platform_get_ktim()
+  * @param None
+  * @retval None
+  * @ingroup Platform
+  */
+void platform_flush_ktim();
 
 
 /** @brief Returns the amount of timer clocks until the next interrupt
@@ -352,7 +447,6 @@ ot_u16 platform_get_ktim();
   * @ingroup Platform
   */
 ot_u16 platform_next_ktim();
-
 
 
 void platform_pend_ktim();
@@ -364,10 +458,12 @@ void platform_pend_ktim();
   * @ingroup Platform
   */
 void platform_enable_ktim();
+void platform_enable_gptim2();
 
 
 
 void platform_disable_ktim();
+void platform_disable_gptim2();
 
 
 
@@ -377,28 +473,22 @@ void platform_disable_ktim();
   * @ingroup Platform
   */
 void platform_set_ktim(ot_u16 value);
-
 void platform_set_gptim2(ot_u16 value);
 void platform_set_gptim3(ot_u16 value);
 void platform_set_gptim4(ot_u16 value);
 void platform_set_gptim5(ot_u16 value);
 
+ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead);
 
-/** @brief Zeros GPTIM, turns off interrupt, and puts into free-running
-  * @param None
-  * @retval None
-  * @ingroup Platform
-  */
-void platform_flush_ktim();
+
+
 
 
 
 void platform_run_watchdog();
 
 
-
 void platform_reset_watchdog(ot_u16 reset);
-
 
 
 void platform_enable_rtc();
@@ -441,8 +531,6 @@ void platform_clear_rtc_alarms();
 
 
 
-
-
 /** @brief Trigger Functions for debug. (Pin control)
   * @param : None
   * @retval : None
@@ -457,15 +545,23 @@ void platform_trig2_toggle();
 
 
 
-#if (MCU_FEATURE(CRC) == ENABLED)
-    ot_u16 platform_crc_init();
-    ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size);
-    void platform_crc_byte(ot_u8 databyte);
-    ot_u16 platform_crc_result();
-#endif
+
+ot_u16 platform_crc_init();
+ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size);
+ot_u16 platform_crc_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init);
+
+void platform_crc_byte(ot_u8 databyte);
+ot_u16 platform_crc_result();
 
 
 
+
+
+
+
+/** OpenTag OS Utility Functions <BR>
+  * ========================================================================<BR>
+  */
 
 /** @brief A random number generator.  Used within OpenTag.
   * @param rand_out     (ot_u8*) Pointer to the output random data
@@ -506,42 +602,65 @@ ot_u16 platform_prand_u16();
 
 
 
+/** @brief Quick and dirty 32 bit pseudo-random value
+  * @param None
+  * @retval ot_u32       32 bit pseudo random number
+  * @ingroup Platform
+  *
+  * A quickly generated 32 bit random number, not recommended for crypto.
+  */
+ot_u32 platform_prand_u32();
+
+
 /** @brief platform-specific memcpy, in some cases wraps to OS-level memcpy
   * @param  dest        (ot_u8*) destination memory address
   * @param  src         (ot_u8*) source memory address
-  * @param  length      (ot_int) number of bytes to transfer/copy
+  * @param  length      (ot_uint) number of bytes to transfer/copy
   * @retval None
   * @ingroup Platform
   * @sa platform_memcpy_2()
+  * @sa platform_memcpy_4()
   * @sa platform_memset()
+  *
+  * platform_memcpy() is the generic implementation of memcpy, which must 
+  * handle byte-aligned memory copies.
+  *
+  * platform_memcpy_2() and platform_memcpy_4() are two and four byte aligned
+  * variants of platform_memcpy()
   */
-void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length);
-
-
-
-/** @brief platform-specific half-word memcpy, in some cases wraps to OS-level memcpy
-  * @param  dest        (ot_u8*) destination memory address
-  * @param  src         (ot_u8*) source memory address
-  * @param  length      (ot_int) number of half-words to transfer/copy
-  * @retval None
-  * @ingroup Platform
-  * @sa platform_memcpy()
-  * @sa platform_memset()
-  */
-void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length);
+void platform_memcpy(ot_u8* dst, ot_u8* src, ot_uint length);
+void platform_memcpy_2(ot_u16* dst, ot_u16* src, ot_uint length);
+void platform_memcpy_4(ot_u32* dst, ot_u32* src, ot_uint length);
 
 
 
 /** @brief platform-specific memset, in some cases wraps to OS-level memset
   * @param  dest        (ot_u8*) destination memory address
   * @param  value       (ot_u8) byte to put into memory (repeatedly)
-  * @param  length      (ot_int) number of bytes to set
+  * @param  length      (ot_uint) number of bytes to set
   * @retval None
   * @ingroup Platform
   * @sa platform_memcpy()
-  * @sa platform_memcpy_2()
   */
-void platform_memset(ot_u8* dest, ot_u8 value, ot_int length);
+void platform_memset(ot_u8* dst, ot_u8 value, ot_uint length);
+void platform_memset_2(ot_u16* dst, ot_u16 value, ot_uint length);
+void platform_memset_4(ot_u32* dst, ot_u32 value, ot_uint length);
+
+
+/** Map platform_memcpy and platform_memset routines to memcpy, memset in the
+  * case when POSIX is not used.  
+  */
+#if (OS_FEATURE(MEMCPY) == ENABLED)
+#   define memcpy2(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<1)
+#   define memcpy4(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<2)
+#else
+#   define memcpy       platform_memcpy
+#   define memcpy2      platform_memcpy_2
+#   define memcpy4      platform_memcpy_4
+#   define memset       platform_memset
+#   define memset2      platform_memset_2
+#   define memset4      platform_memset_4
+#endif
 
 
 
@@ -606,6 +725,30 @@ void platform_swdelay_ms(ot_uint n);
 void platform_swdelay_us(ot_uint n);
 
 
+
+
+
+
+
+/** Trailing includes & defines <BR>
+  * ========================================================================<BR>
+  * These must trail the function definitions above, so that the board config
+  * header can use inline functions calling the functions above.
+  */
+
+#include "platform_config.h"
+
+
+/// Errors for missing critical parameters
+#ifndef MCU_TYPE_PTRINT
+#   error "No value for MCU_TYPE_PTRINT (should be in otplatform/xxx/platform_xxx.h)"
+#endif
+#ifndef MCU_TYPE_PTRUINT
+#   error "No value for MCU_TYPE_PTRUINT (should be in otplatform/xxx/platform_xxx.h)"
+#endif
+#ifndef MCU_PARAM_ERRPTR
+#   error "No value for MCU_TYPE_ERRPTR (should be in otplatform/xxx/platform_xxx.h)"
+#endif
 
 
 #endif

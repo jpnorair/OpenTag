@@ -12,7 +12,7 @@ be more.  You should choose a kernel based on the application requirements as
 well as the capabilities of your platform.
 
   * GULP: "Global [interrupt] Ultra Low Power"
-  * HICCULP: "Hardware Integrated Context Caching Ultra Low Power"
+  * HICCULP: "Hardware Integrated Context Control Ultra Low Power"
   * Future Kernel (maybe derived from ChibiOS)
 
 
@@ -67,26 +67,36 @@ support for intensive multi-tasking.
 
 HICCULP
 -------
-HICCULP is the standard kernel for Cortex M3 devices.  It is very similar to
-GULP except that it is designed specifically to leverage the NVIC hardware in
-the Cortex M3 (and perhaps also the Cortex M0).  
+HICCULP is the standard kernel for Cortex M3 devices.  (Note: I expect it also 
+works with Cortex M0 & M0+ devices, although I have not tried yet).  It is 
+similar to GULP except that it is designed specifically to leverage some 
+hardware in the Cortex M devices, which are: NVIC, MPU, Main + Process Stack, 
+SVCall, and PendSV.
 
-The GULP kernel has difficulty running parallel, low-latency I/O tasks.  The
-HICCULP kernel, generally, does not.  Additionally, the HICCULP kernel provides
-a means to bind any task to a fully pre-emptive context.  The caveat is that
-the Cortex M3 has some limitations for HW context switching.  It is possible to
-have as many as SEVEN fully pre-emptive, prioritized tasks on HICCULP.  The 
-kernel and the co-operative tasks occupy one of the context slots, as the HW
-itself supports up to eight.
-
-One benefit of the HICCULP kernel is that it is somewhat more fault-tolerant in
-regard to design and authoring of pre-emptive tasks than GULP is.  If you 
-intend to deploy on GULP and HICCULP, it is better to design on GULP and then
-port to HICCULP.
-
-HICCULP is preferred for running OpenTag along with one or two additional
+HICCULP is preferred for running OpenTag along with one or two additional,
 high-demand protocol stacks.  USB is an example, as is Ethernet/IP.  HICCULP is 
 also the natural choice for integrating OpenTag with an environment such as 
-Maple, as you can give Maple its own context in which to run. 
+Maple or Arduino, as you can give Maple its own context in which to run. 
 (Maple: http://www.leaflabs.com)
+
+The GULP kernel has difficulty running parallel, low-latency I/O tasks.  The
+HICCULP kernel, generally, does not.  In other words, the HICCULP kernel 
+provides a means for fully pre-emptive multithreading, and it has some thread
+API features as you might expect.  
+
+The number of threads supported depends on how much space you want to allocate 
+to the thread stack.  If you do not want or need threads, you can configure 
+HICCULP for 0 threads, too.  In the 0-thread configuration, though, it is still
+possible to safely put some code in the while loop in main(), effectively 
+making your application threaded but without any of the threading features the
+kernel provides (these are important for getting ultra low power).  Even so, if
+you have just a tiny thread this is a perfectly fine strategy.
+
+One further benefit of the HICCULP kernel is that it is somewhat more flexible
+in regard to design and authoring of tasks than GULP is.  If you intend to 
+deploy on both GULP and HICCULP, it is better to design on GULP and then port 
+to HICCULP.  For example, GULP does not support a pseudo-thread in main() the 
+way HICCULP does (see paragraph above).
+
+
 

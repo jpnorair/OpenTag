@@ -37,13 +37,11 @@
   ******************************************************************************
   */
 
-
 #ifndef __SYSTEM_GULP_H
 #define __SYSTEM_GULP_H
 
-#include "OT_types.h"
 #include "OT_config.h"
-
+#include "OT_types.h"
 
 
 /** SYS Configuration
