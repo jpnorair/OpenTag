@@ -147,7 +147,7 @@
 #   define OT_FEATURE_MPIPE             ENABLED
 #endif
 #ifndef OT_FEATURE_NDEF
-#   define OT_FEATURE_NDEF              (OT_FEATURE_MPIPE)                  // NDEF wrapper for Messaging API
+#   define OT_FEATURE_NDEF              DISABLED                            // NDEF wrapper for Messaging API
 #endif
 #ifndef OT_FEATURE_VEELITE
 #   define OT_FEATURE_VEELITE           ENABLED                             // Veelite DASH7 File System

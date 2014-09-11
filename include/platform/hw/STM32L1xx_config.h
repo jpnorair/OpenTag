@@ -29,112 +29,21 @@
 #define __PLATFORM_STM32L1xx_CONFIG_H
 
 #include <otstd.h>
-#include <stm32l1xx.h>
 
 //Stored in App Code folder
 #include <app/board_config.h>
 #include <app/isr_config_STM32L.h>
 
-// From lib/CMSIS/Device
-#include <stm32l1xx.h>
-
-// From lib/CMSIS/Include
-#include <cm3_endian.h>
-#include <cm3_byteswap.h>
-#include <cm3_bitrotate.h>
 
 
 
-/** Cryptographic Library Setup      <BR>
+/** Long Chip-Select Section <BR>
   * ========================================================================<BR>
-  * Needed to build AES128 or other types of Crypto
+  * In your project gcc defines or in the board config file you should set the
+  * part number for the MCU on the board.  The preprocessing below will set up
+  * other attributes based on the part number.
   */
-#ifndef CORTEX_M3
-#   define CORTEX_M3
-#endif
-#ifndef STM32L1XX
-#   define STM32L1XX
-#endif
-
   
-  
-
-/** Special Platform functions for STM32L      <BR>
-  * ========================================================================<BR>
-  * These must be defined before including platform_config.h, so that they
-  * can be used for inline functions.
-  */
-void platform_ext_pllon();
-void platform_ext_plloff();
-void platform_ext_wakefromstop();
-void platform_ext_hsitrim();
-ot_u16 platform_ext_lsihz();
-
-
-
-
-
-#undef OT_GPTIM_LIMIT
-#ifdef __DEBUG__
-#   define OT_GPTIM_LIMIT   15000
-#else
-#   define OT_GPTIM_LIMIT   60000
-#endif
-
-
-
-/** Platform Support settings      <BR>
-  * ========================================================================<BR>
-  * STM32 is little endian with 4 byte pointer (32 bits), and at this stage it
-  * can be compiled using GCC (RIDE, most other IDE's) or IAR's proprietary
-  * compiler.
-  */
-
-#define PLATFORM(VAL)           PLATFORM_##VAL
-#define __STM32__
-#define __STM32L__
-#define __STM32L1xx__
-#define PLATFORM_STM32L1xx
-
-#ifndef __LITTLE_ENDIAN__
-#   error "Endian-ness misdefined, should be __LITTLE_ENDIAN__ (check build_config.h)"
-#endif
-#define PLATFORM_POINTER_SIZE           4               // How many bytes is a pointer?
-#define PLATFORM_ENDIAN16(VAR16)        __REV16(VAR16)  // Big-endian to Platform-endian
-#define PLATFORM_ENDIAN32(VAR32)        __REV(VAR32)    // Big-endian to Platform-endian
-#define PLATFORM_ENDIAN16_C(CONST16)    (ot_u16)( (((ot_u16)CONST16) << 8) | (((ot_u16)CONST16) >> 8) )
-
-
-
-
-
-
-/** STM32L family MCU settings     <BR>
-  * ========================================================================<BR>
-  * STM32L has a peculiar FLASH design where the erased value is 0 instead of
-  * 1.  This requires some unusual setup for the Memory configuration.
-  */
-#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL   // FEATURE                  NOTE
-#define MCU_FEATURE_SVMONITOR           DISABLED            // Auto Low V powerdown     On many MCUs
-#define MCU_FEATURE_CRC16               DISABLED            // CRC16                    On some MCUs
-#define MCU_FEATURE_CRC                 MCU_FEATURE_CRC16   // Legacy definition
-#define MCU_FEATURE_AES128              DISABLED            // AES128 engine            On some MCUs
-#define MCU_FEATURE_ECC                 DISABLED            // ECC engine               Rare
-
-#define MCU_TYPE(VAL)                   MCU_TYPE_##VAL
-#define MCU_TYPE_PTRINT                 ot_s32
-#define MCU_TYPE_PTRUINT                ot_u32
-
-#define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
-#define MCU_PARAM_POINTERSIZE           4
-#define MCU_PARAM_ERRPTR                ((ot_s32)-1)
-#define MCU_PARAM_UART_9600BPS          9600
-#define MCU_PARAM_UART_28800BPS         28800
-#define MCU_PARAM_UART_57600BPS         57600
-#define MCU_PARAM_UART_115200BPS        115200
-#define MCU_PARAM_UART_250000BPS        250000
-#define MCU_PARAM_UART_500000BPS        500000
-
 // 48 Pin STM32L's have ports A, B, C   (although C is limited)
 #if (   defined(__STM32L151C6__) \
     ||  defined(__STM32L151C8__) \
@@ -310,6 +219,117 @@ ot_u16 platform_ext_lsihz();
 #       define STM32L1XX_MD
 #   endif
 #endif
+
+
+
+
+
+
+/** Back to regularly-sheduled program <BR>
+  * ========================================================================<BR>
+  */
+
+// From lib/CMSIS/Device
+#include <stm32l1xx.h>
+
+// From lib/CMSIS/Include
+#include <cm3_endian.h>
+#include <cm3_byteswap.h>
+#include <cm3_bitrotate.h>
+
+
+
+/** Cryptographic Library Setup      <BR>
+  * ========================================================================<BR>
+  * Needed to build AES128 or other types of Crypto
+  */
+#ifndef CORTEX_M3
+#   define CORTEX_M3
+#endif
+#ifndef STM32L1XX
+#   define STM32L1XX
+#endif
+
+  
+  
+
+/** Special Platform functions for STM32L      <BR>
+  * ========================================================================<BR>
+  * These must be defined before including platform_config.h, so that they
+  * can be used for inline functions.
+  */
+void platform_ext_pllon();
+void platform_ext_plloff();
+void platform_ext_wakefromstop();
+void platform_ext_hsitrim();
+ot_u16 platform_ext_lsihz();
+
+
+
+
+
+#undef OT_GPTIM_LIMIT
+#ifdef __DEBUG__
+#   define OT_GPTIM_LIMIT   15000
+#else
+#   define OT_GPTIM_LIMIT   60000
+#endif
+
+
+
+/** Platform Support settings      <BR>
+  * ========================================================================<BR>
+  * STM32 is little endian with 4 byte pointer (32 bits), and at this stage it
+  * can be compiled using GCC (RIDE, most other IDE's) or IAR's proprietary
+  * compiler.
+  */
+
+#define PLATFORM(VAL)           PLATFORM_##VAL
+#define __STM32__
+#define __STM32L__
+#define __STM32L1xx__
+#define PLATFORM_STM32L1xx
+
+#ifndef __LITTLE_ENDIAN__
+#   error "Endian-ness misdefined, should be __LITTLE_ENDIAN__ (check build_config.h)"
+#endif
+#define PLATFORM_POINTER_SIZE           4               // How many bytes is a pointer?
+#define PLATFORM_ENDIAN16(VAR16)        __REV16(VAR16)  // Big-endian to Platform-endian
+#define PLATFORM_ENDIAN32(VAR32)        __REV(VAR32)    // Big-endian to Platform-endian
+#define PLATFORM_ENDIAN16_C(CONST16)    (ot_u16)( (((ot_u16)CONST16) << 8) | (((ot_u16)CONST16) >> 8) )
+
+
+
+
+
+
+/** STM32L family MCU settings     <BR>
+  * ========================================================================<BR>
+  * STM32L has a peculiar FLASH design where the erased value is 0 instead of
+  * 1.  This requires some unusual setup for the Memory configuration.
+  */
+#define MCU_FEATURE(VAL)                MCU_FEATURE_##VAL   // FEATURE                  NOTE
+#define MCU_FEATURE_SVMONITOR           DISABLED            // Auto Low V powerdown     On many MCUs
+#define MCU_FEATURE_CRC16               DISABLED            // CRC16                    On some MCUs
+#define MCU_FEATURE_CRC                 MCU_FEATURE_CRC16   // Legacy definition
+#define MCU_FEATURE_AES128              DISABLED            // AES128 engine            On some MCUs
+#define MCU_FEATURE_ECC                 DISABLED            // ECC engine               Rare
+
+#define MCU_TYPE(VAL)                   MCU_TYPE_##VAL
+#define MCU_TYPE_PTRINT                 ot_s32
+#define MCU_TYPE_PTRUINT                ot_u32
+
+#define MCU_PARAM(VAL)                  MCU_PARAM_##VAL
+#define MCU_PARAM_POINTERSIZE           4
+#define MCU_PARAM_ERRPTR                ((ot_s32)-1)
+#define MCU_PARAM_UART_9600BPS          9600
+#define MCU_PARAM_UART_28800BPS         28800
+#define MCU_PARAM_UART_57600BPS         57600
+#define MCU_PARAM_UART_115200BPS        115200
+#define MCU_PARAM_UART_250000BPS        250000
+#define MCU_PARAM_UART_500000BPS        500000
+
+
 
 
 

@@ -32,6 +32,9 @@
 #ifndef __board_IKR001_H
 #define __board_IKR001_H
 
+/// MCU definition for the board must be the first thing
+#define __STM32L151CB__
+
 #include <app/app_config.h>
 #include <platform/hw/STM32L1xx_config.h>
 #include <platform/interrupts.h>
@@ -815,6 +818,7 @@ static inline void BOARD_RFSPI_CLKOFF(void) {
 }
 
 
+#include <platform/timers.h>    // for gptim_stop_chrono()
 static inline void BOARD_STOP(ot_int code) {
 ///@note IKR001 board is poorly designed for running in STOP mode, as three
 ///      ports must be kept-alive (B, C, E)

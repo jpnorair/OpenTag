@@ -34,6 +34,10 @@
 #ifndef __board_Jupiter_R1_H
 #define __board_Jupiter_R1_H
 
+/// MCU definition for the board must be the first thing
+#define __STM32L151CB__
+
+
 #include <app/app_config.h>
 #include <platform/hw/STM32L1xx_config.h>
 #include <platform/interrupts.h>
@@ -720,7 +724,7 @@ static inline void BOARD_RFSPI_CLKOFF(void) {
 
 
 
-
+#include <platform/timers.h>    // for gptim_stop_chrono()
 static inline void BOARD_STOP(ot_int code) {
 /// code comes from sys_sig_powerdown, but it is usually 0-3.
 /// For all STM32L devices, 3 is full-idle and 2 is radio-active-idle.  
@@ -836,7 +840,7 @@ static inline void BOARD_XTAL_STARTUP(void) {
 ///      at startup.  For any build using CMSIS libraries (standard), this will
 ///      be blank.  In those cases, crystal init is done in the CMSIS system
 ///      startup function.
-#include <io/spirit1/interface.h>    // Used for clkout functions
+#include <io/spirit1/clkout.h>    // Used for clkout functions
 
 static inline void BOARD_HSXTAL_ON(void) {
     spirit1_clockout_on(b10000110); // 48MHz/6 = 8MHz

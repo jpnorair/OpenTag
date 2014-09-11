@@ -38,8 +38,7 @@
 #endif
 
 /* Includes ------------------------------------------------------------------*/
-//#include "ST/STM32L1xx/stm32l1xx.h"
-#include "stm32l1xx.h"
+#include <platform/config.h>
 
 /** @addtogroup STM32L1xx_StdPeriph_Driver
   * @{

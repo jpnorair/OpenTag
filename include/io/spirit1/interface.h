@@ -117,8 +117,6 @@ extern spirit1_struct spirit1;
   * i.e. io/spirit1/radio_rm2.c
   */
 void spirit1_virtual_isr(ot_u8 code);
-void spirit1_clockout_on(ot_u8 clk_param);
-void spirit1_clockout_off();
 
 
 

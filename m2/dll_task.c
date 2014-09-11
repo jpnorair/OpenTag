@@ -87,7 +87,7 @@ static void sub_dll_flush(void);
   * @retval ot_bool     True/False on received frame subnet passes/fails filter
   * @ingroup System
   */
-static ot_bool sub_mac_filter(void);
+//static ot_bool sub_mac_filter(void);
 
 
 /** @brief Scrambles the response-channel-list in order to improve collision
@@ -143,7 +143,7 @@ static CLK_UNIT sub_rigd_newslot(void);
   *
   * This is called by sub_fcloop() and is much like sub_rigd_newslot().
   */
-static ot_uint sub_rigd_nextslot(void);
+//static ot_uint sub_rigd_nextslot(void);
 
 
 /** @brief Picks a TX offset based on the AIND (or RAIND) method
@@ -158,7 +158,7 @@ static ot_uint sub_rigd_nextslot(void);
   * AIND is just without the "Randomized."  Basically, it uses a fixed subslot
   * size which can be initially offset with a random value (or not).
   */
-static ot_uint sub_aind_nextslot(void);
+//static ot_uint sub_aind_nextslot(void);
 
 
 
@@ -1244,7 +1244,7 @@ OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
 
 
 OT_WEAK void dll_rfevt_ftx(ot_int pcode, ot_int scratch) {
-    m2session* session;
+    m2session* active;
     __DEBUG_ERRCODE_EVAL(=140);
 
     /// Non-final frame TX'ed in multiframe packet
@@ -1258,8 +1258,8 @@ OT_WEAK void dll_rfevt_ftx(ot_int pcode, ot_int scratch) {
     /// <LI> End session if no redundant, and no listening required. </LI>
     else {
         __DEBUG_ERRCODE_EVAL(=141);
-        session = session_top();
-        scratch = ((session->netstate & M2_NETSTATE_RESPTX) \
+        active = session_top();
+        scratch = ((active->netstate & M2_NETSTATE_RESPTX) \
         		|| (dll.comm.rx_timeout <= 0));
 
         /// Send redundant TX immediately, but only if no response window or if
@@ -1283,8 +1283,8 @@ OT_WEAK void dll_rfevt_ftx(ot_int pcode, ot_int scratch) {
 
         /// Don't scrap the session, instead go for response listening
         else {
-            session->netstate  &= ~M2_NETSTATE_TMASK;
-            session->netstate  |= M2_NETSTATE_RESPRX;
+            active->netstate  &= ~M2_NETSTATE_TMASK;
+            active->netstate  |= M2_NETSTATE_RESPRX;
         }
 
         /// Terminate Transmit state
@@ -1294,9 +1294,9 @@ OT_WEAK void dll_rfevt_ftx(ot_int pcode, ot_int scratch) {
 
 //        else {
 //        	//M2_NETSTATE_SCRAP is represented below
-//            session->netstate  |= (ot_u8)(((pcode != 0) | scratch) << 2);
-//            session->netstate  &= ~M2_NETSTATE_TMASK;
-//            session->netstate  |= M2_NETSTATE_RESPRX;
+//            active->netstate  |= (ot_u8)(((pcode != 0) | scratch) << 2);
+//            active->netstate  &= ~M2_NETSTATE_TMASK;
+//            active->netstate  |= M2_NETSTATE_RESPRX;
 //
 //            DLL_SIG_RFTERMINATE(sys.task_RFA.event, pcode);
 //            sys.task_RFA.event = 0;
@@ -1377,9 +1377,9 @@ OT_WEAK void dll_set_defaults(m2session* s_active) {
 
 
 
-ot_bool sub_mac_filter(void) {
-    return rm2_mac_filter();
-}
+//ot_bool sub_mac_filter(void) {
+//    return rm2_mac_filter();
+//}
 
 
 

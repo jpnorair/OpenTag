@@ -1,12 +1,22 @@
 
-<ApplicationBuild Header="pongsleepy" Extern=".\pongsleepy.rapp" Path=".\pongsleepy.rapp" OutputFile=".\pongsleepy.elf" sate="96" Config="Jupiter" >
+<ApplicationBuild Header="pongsleepy" Extern=".\pongsleepy.rapp" Path=".\pongsleepy.rapp" OutputFile=".\build\pongsleepy.elf" sate="98" Config="IKR001_Debug" >
 	<Group Header="app" Marker="-1" OutputFile="" sate="0" >
 		<NodeH Path="..\app\app_config.h" Header="app_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\app\board_config.h" Header="board_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\app\build_config.h" Header="build_config.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\app\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\data_default.o" sate="0" >
+		<NodeC Path="..\app\data_default.c" Header="data_default.c" Marker="0" OutputFile=".\build\data_default.o" sate="0" >
 			<Options>
 				<Config Header="IKR001_Debug" >
+					<Set Header="NodeC" >
+						<Section Header="Build" >
+							<Property Header="Exclude" Value="Yes" Removable="1" />
+																																																													
+						</Section>
+																																																			
+					</Set>
+																																				
+				</Config>
+				<Config Header="Standard" >
 					<Set Header="NodeC" >
 						<Section Header="Build" >
 							<Property Header="Exclude" Value="Yes" Removable="1" />
@@ -16,212 +26,187 @@
 					</Set>
 																											
 				</Config>
-				<Config Header="Standard" >
-					<Set Header="NodeC" >
-						<Section Header="Build" >
-							<Property Header="Exclude" Value="Yes" Removable="1" />
-																																			
-						</Section>
-																													
-					</Set>
-																		
-				</Config>
-														
+																					
 			</Options>
-															
+																				
 		</NodeC>
 		<NodeH Path="..\app\extf_config.h" Header="extf_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\app\isr_config_STM32L.h" Header="isr_config_STM32L.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\app\main.c" Header="main.c" Marker="-1" OutputFile=".\main.o" sate="0" />
-									
+		<NodeC Path="..\app\main.c" Header="main.c" Marker="-1" OutputFile=".\build\main.o" sate="0" />
+												
 	</Group>
 	<Group Header="extensions" Marker="-1" OutputFile="" sate="0" >
-		<NodeC Path="..\..\..\extensions\applets_std\sys_sig_powerdown_[stm32lp].c" Header="sys_sig_powerdown_[stm32lp].c" Marker="-1" OutputFile=".\sys_sig_powerdown_[stm32lp].o" sate="0" />
-		<NodeC Path="..\..\..\extensions\applets_std\dll_sig_rfinit.c" Header="dll_sig_rfinit.c" Marker="-1" OutputFile=".\dll_sig_rfinit.o" sate="0" />
-		<NodeC Path="..\..\..\extensions\applets_std\dll_sig_rfterminate_2.c" Header="dll_sig_rfterminate_2.c" Marker="-1" OutputFile=".\dll_sig_rfterminate_2.o" sate="0" />
-		<NodeC Path="..\..\..\extensions\applets_std\mpipe_sig_done.c" Header="mpipe_sig_done.c" Marker="-1" OutputFile=".\mpipe_sig_done.o" sate="0" />
-		<NodeC Path="..\..\..\extensions\applets_std\network_sig_route.c" Header="network_sig_route.c" Marker="-1" OutputFile=".\network_sig_route.o" sate="0" />
-		<NodeC Path="..\..\..\extensions\applets_std\sys_sig_panic.c" Header="sys_sig_panic.c" Marker="-1" OutputFile=".\sys_sig_panic.o" sate="0" />
-									
+		<NodeC Path="..\..\..\extensions\applets_std\sys_sig_powerdown_[stm32lp].c" Header="sys_sig_powerdown_[stm32lp].c" Marker="-1" OutputFile=".\build\sys_sig_powerdown_[stm32lp].o" sate="0" />
+		<NodeC Path="..\..\..\extensions\applets_std\dll_sig_rfinit.c" Header="dll_sig_rfinit.c" Marker="-1" OutputFile=".\build\dll_sig_rfinit.o" sate="0" />
+		<NodeC Path="..\..\..\extensions\applets_std\dll_sig_rfterminate_2.c" Header="dll_sig_rfterminate_2.c" Marker="-1" OutputFile=".\build\dll_sig_rfterminate_2.o" sate="0" />
+		<NodeC Path="..\..\..\extensions\applets_std\mpipe_sig_done.c" Header="mpipe_sig_done.c" Marker="-1" OutputFile=".\build\mpipe_sig_done.o" sate="0" />
+		<NodeC Path="..\..\..\extensions\applets_std\network_sig_route.c" Header="network_sig_route.c" Marker="-1" OutputFile=".\build\network_sig_route.o" sate="0" />
+		<NodeC Path="..\..\..\extensions\applets_std\sys_sig_panic.c" Header="sys_sig_panic.c" Marker="-1" OutputFile=".\build\sys_sig_panic.o" sate="0" />
+												
 	</Group>
 	<Group Header="io" Marker="-1" OutputFile="" sate="0" >
 		<Group Header="spirit1" Marker="-1" OutputFile="" sate="0" >
-			<NodeC Path="..\..\..\io\spirit1\radio_rm2.c" Header="radio_rm2.c" Marker="-1" OutputFile=".\radio_rm2.o" sate="0" />
+			<NodeC Path="..\..\..\io\spirit1\radio_rm2.c" Header="radio_rm2.c" Marker="-1" OutputFile=".\build\radio_rm2.o" sate="0" />
 			<NodeH Path="..\..\..\io\spirit1\radio_rm2.h" Header="radio_rm2.h" Marker="-1" OutputFile="" sate="0" />
-			<NodeC Path="..\..\..\io\spirit1\radio_rm2_patch.c" Header="radio_rm2_patch.c" Marker="-1" OutputFile=".\radio_rm2_patch.o" sate="0" />
-			<NodeC Path="..\..\..\io\spirit1\SPIRIT1_interface.c" Header="SPIRIT1_interface.c" Marker="-1" OutputFile=".\SPIRIT1_interface.o" sate="0" />
+			<NodeC Path="..\..\..\io\spirit1\radio_rm2_patch.c" Header="radio_rm2_patch.c" Marker="-1" OutputFile=".\build\radio_rm2_patch.o" sate="0" />
+			<NodeC Path="..\..\..\io\spirit1\SPIRIT1_interface.c" Header="SPIRIT1_interface.c" Marker="-1" OutputFile=".\build\SPIRIT1_interface.o" sate="0" />
+																				
+		</Group>
+												
+	</Group>
+	<Group Header="lib" Marker="-1" OutputFile="" sate="0" >
+		<Group Header="STM32_USB_FS" Marker="-1" OutputFile="" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_core.c" Header="usb_core.c" Marker="-1" OutputFile=".\build\usb_core.o" sate="0" />
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_init.c" Header="usb_init.c" Marker="-1" OutputFile=".\build\usb_init.o" sate="0" />
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_int.c" Header="usb_int.c" Marker="-1" OutputFile=".\build\usb_int.o" sate="0" />
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_mem.c" Header="usb_mem.c" Marker="-1" OutputFile=".\build\usb_mem.o" sate="0" />
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_regs.c" Header="usb_regs.c" Marker="-1" OutputFile=".\build\usb_regs.o" sate="0" />
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_sil.c" Header="usb_sil.c" Marker="-1" OutputFile=".\build\usb_sil.o" sate="0" />
 															
 		</Group>
 									
 	</Group>
-	<Group Header="lib" Marker="-1" OutputFile="" sate="0" >
-		<Group Header="STM32_USB_FS" Marker="-1" OutputFile="" sate="0" >
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_core.c" Header="usb_core.c" Marker="-1" OutputFile=".\usb_core.o" sate="0" />
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_init.c" Header="usb_init.c" Marker="-1" OutputFile=".\usb_init.o" sate="0" />
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_int.c" Header="usb_int.c" Marker="-1" OutputFile=".\usb_int.o" sate="0" />
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_mem.c" Header="usb_mem.c" Marker="-1" OutputFile=".\usb_mem.o" sate="0" />
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_regs.c" Header="usb_regs.c" Marker="-1" OutputFile=".\usb_regs.o" sate="0" />
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_sil.c" Header="usb_sil.c" Marker="-1" OutputFile=".\usb_sil.o" sate="0" />
-										
-		</Group>
-						
-	</Group>
 	<Group Header="m2" Marker="-1" OutputFile="" sate="0" >
-		<NodeC Path="..\..\..\m2\capi.c" Header="capi.c" Marker="-1" OutputFile=".\capi.o" sate="0" />
-		<NodeC Path="..\..\..\m2\dll_task.c" Header="dll_task.c" Marker="-1" OutputFile=".\dll_task.o" sate="0" />
-		<NodeC Path="..\..\..\m2\encode.c" Header="encode.c" Marker="-1" OutputFile=".\encode.o" sate="0" />
-		<NodeC Path="..\..\..\m2\m2tasker.c" Header="m2tasker.c" Marker="-1" OutputFile=".\m2tasker.o" sate="0" />
-		<NodeC Path="..\..\..\m2\network.c" Header="network.c" Marker="-1" OutputFile=".\network.o" sate="0" />
-		<NodeC Path="..\..\..\m2\radio_task.c" Header="radio_task.c" Marker="-1" OutputFile=".\radio_task.o" sate="0" />
-		<NodeC Path="..\..\..\m2\session.c" Header="session.c" Marker="-1" OutputFile=".\session.o" sate="0" />
-		<NodeC Path="..\..\..\m2\transport.c" Header="transport.c" Marker="-1" OutputFile=".\transport.o" sate="0" />
-									
+		<NodeC Path="..\..\..\m2\capi.c" Header="capi.c" Marker="-1" OutputFile=".\build\capi.o" sate="0" />
+		<NodeC Path="..\..\..\m2\dll_task.c" Header="dll_task.c" Marker="-1" OutputFile=".\build\dll_task.o" sate="0" />
+		<NodeC Path="..\..\..\m2\encode.c" Header="encode.c" Marker="-1" OutputFile=".\build\encode.o" sate="0" />
+		<NodeC Path="..\..\..\m2\m2tasker.c" Header="m2tasker.c" Marker="-1" OutputFile=".\build\m2tasker.o" sate="0" />
+		<NodeC Path="..\..\..\m2\network.c" Header="network.c" Marker="-1" OutputFile=".\build\network.o" sate="0" />
+		<NodeC Path="..\..\..\m2\radio_task.c" Header="radio_task.c" Marker="-1" OutputFile=".\build\radio_task.o" sate="0" />
+		<NodeC Path="..\..\..\m2\session.c" Header="session.c" Marker="-1" OutputFile=".\build\session.o" sate="0" />
+		<NodeC Path="..\..\..\m2\transport.c" Header="transport.c" Marker="-1" OutputFile=".\build\transport.o" sate="0" />
+												
 	</Group>
 	<Configs>
 		<Config Header="IKR001_Debug" />
 		<Config Header="Jupiter" />
-															
+																		
 	</Configs>
 	<Group Header="platform" Marker="-1" OutputFile="" sate="96" >
 		<Group Header="stm32l1xx" Marker="-1" OutputFile="" sate="96" >
-			<Group Header="_startup" Marker="-1" OutputFile="" sate="2" >
-				<NodeASM Path="..\..\..\platform\stm32l1xx\_startup\gcc_ride7\startup_stm32l1xx_md.s" Header="startup_stm32l1xx_md.s" Marker="0" OutputFile=".\startup_stm32l1xx_md.o" sate="0" >
+			<Group Header="_startup" Marker="-1" OutputFile="" sate="0" >
+				<NodeASM Path="..\..\..\platform\stm32l1xx\_startup\gcc_ride7\startup_stm32l1xx_md.s" Header="startup_stm32l1xx_md.s" Marker="0" OutputFile=".\build\startup_stm32l1xx_md.o" sate="0" >
 					<Options>
 						<Config Header="IKR001_Debug" >
 							<Set Header="NodeASM" >
 								<Section Header="Build" >
 									<Property Header="LinkExclude" Value="Yes" Removable="1" />
-											
+																												
 								</Section>
-									
+																								
 							</Set>
+													
 						</Config>
 						<Config Header="Jupiter" >
 							<Set Header="NodeASM" >
 								<Section Header="Build" >
 									<Property Header="LinkExclude" Value="Yes" Removable="1" />
-											
+																												
 								</Section>
-									
+																								
 							</Set>
+													
 						</Config>
+											
 					</Options>
-				</NodeASM>
-			</Group>
-			<NodeC Path="..\..\..\platform\stm32l1xx\core_errors.c" Header="core_errors.c" Marker="-1" OutputFile=".\core_errors.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\core_gptim.c" Header="core_gptim.c" Marker="-1" OutputFile=".\core_gptim.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\core_isr.c" Header="core_isr.c" Marker="-1" OutputFile=".\core_isr.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\core_main.c" Header="core_main.c" Marker="-1" OutputFile=".\core_main.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\core_tasking.c" Header="core_tasking.c" Marker="-1" OutputFile=".\core_tasking.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\core_watchdog.c" Header="core_watchdog.c" Marker="-1" OutputFile=".\core_watchdog.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\io_SPIRIT1.c" Header="io_SPIRIT1.c" Marker="-1" OutputFile=".\io_SPIRIT1.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_delay.c" Header="otlib_delay.c" Marker="-1" OutputFile=".\otlib_delay.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_eax.c" Header="otlib_eax.c" Marker="-1" OutputFile=".\otlib_eax.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_memcpy.c" Header="otlib_memcpy.c" Marker="-1" OutputFile=".\otlib_memcpy.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_rand.c" Header="otlib_rand.c" Marker="-1" OutputFile=".\otlib_rand.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_mpipe_uart.c" Header="otsys_mpipe_uart.c" Marker="-1" OutputFile=".\otsys_mpipe_uart.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_mpipe_usbcdc.c" Header="otsys_mpipe_usbcdc.c" Marker="-1" OutputFile=".\otsys_mpipe_usbcdc.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_veelite_EE.c" Header="otsys_veelite_EE.c" Marker="-1" OutputFile=".\otsys_veelite_EE.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\stm32l1xx_flash.c" Header="stm32l1xx_flash.c" Marker="-1" OutputFile=".\stm32l1xx_flash.o" sate="0" />
-			<NodeH Path="..\..\..\platform\stm32l1xx\stm32l1xx_flash.h" Header="stm32l1xx_flash.h" Marker="-1" OutputFile="" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\stm32l1xx_pwr.c" Header="stm32l1xx_pwr.c" Marker="-1" OutputFile=".\stm32l1xx_pwr.o" sate="0" />
-			<NodeH Path="..\..\..\platform\stm32l1xx\stm32l1xx_pwr.h" Header="stm32l1xx_pwr.h" Marker="-1" OutputFile="" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\stm32l1xx_rcc.c" Header="stm32l1xx_rcc.c" Marker="-1" OutputFile=".\stm32l1xx_rcc.o" sate="0" />
-			<NodeH Path="..\..\..\platform\stm32l1xx\stm32l1xx_rcc.h" Header="stm32l1xx_rcc.h" Marker="-1" OutputFile="" sate="0" />
-															
-		</Group>
 									
+				</NodeASM>
+							
+			</Group>
+			<NodeC Path="..\..\..\platform\stm32l1xx\core_errors.c" Header="core_errors.c" Marker="-1" OutputFile=".\build\core_errors.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\core_gptim.c" Header="core_gptim.c" Marker="-1" OutputFile=".\build\core_gptim.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\core_isr.c" Header="core_isr.c" Marker="-1" OutputFile=".\build\core_isr.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\core_main.c" Header="core_main.c" Marker="-1" OutputFile=".\build\core_main.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\core_tasking.c" Header="core_tasking.c" Marker="-1" OutputFile=".\build\core_tasking.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\core_watchdog.c" Header="core_watchdog.c" Marker="-1" OutputFile=".\build\core_watchdog.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\io_SPIRIT1.c" Header="io_SPIRIT1.c" Marker="-1" OutputFile=".\build\io_SPIRIT1.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_delay.c" Header="otlib_delay.c" Marker="-1" OutputFile=".\build\otlib_delay.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_eax.c" Header="otlib_eax.c" Marker="-1" OutputFile=".\build\otlib_eax.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_memcpy.c" Header="otlib_memcpy.c" Marker="-1" OutputFile=".\build\otlib_memcpy.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_rand.c" Header="otlib_rand.c" Marker="-1" OutputFile=".\build\otlib_rand.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_mpipe_uart.c" Header="otsys_mpipe_uart.c" Marker="-1" OutputFile=".\build\otsys_mpipe_uart.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_mpipe_usbcdc.c" Header="otsys_mpipe_usbcdc.c" Marker="-1" OutputFile=".\build\otsys_mpipe_usbcdc.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_veelite_EE.c" Header="otsys_veelite_EE.c" Marker="-1" OutputFile=".\build\otsys_veelite_EE.o" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\stm32l1xx_flash.c" Header="stm32l1xx_flash.c" Marker="-1" OutputFile=".\build\stm32l1xx_flash.o" sate="0" />
+			<NodeH Path="..\..\..\platform\stm32l1xx\stm32l1xx_flash.h" Header="stm32l1xx_flash.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\stm32l1xx_pwr.c" Header="stm32l1xx_pwr.c" Marker="-1" OutputFile=".\build\stm32l1xx_pwr.o" sate="0" />
+			<NodeH Path="..\..\..\platform\stm32l1xx\stm32l1xx_pwr.h" Header="stm32l1xx_pwr.h" Marker="-1" OutputFile="" sate="0" />
+			<NodeC Path="..\..\..\platform\stm32l1xx\stm32l1xx_rcc.c" Header="stm32l1xx_rcc.c" Marker="-1" OutputFile=".\build\stm32l1xx_rcc.o" sate="0" />
+			<NodeH Path="..\..\..\platform\stm32l1xx\stm32l1xx_rcc.h" Header="stm32l1xx_rcc.h" Marker="-1" OutputFile="" sate="0" />
+																				
+		</Group>
+												
 	</Group>
 	<Group Header="otlib" Marker="-1" OutputFile="" sate="0" >
-		<NodeC Path="..\..\..\otlib\alp_api_client.c" Header="alp_api_client.c" Marker="-1" OutputFile=".\alp_api_client.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\alp_api_server.c" Header="alp_api_server.c" Marker="-1" OutputFile=".\alp_api_server.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\alp_dashforth.c" Header="alp_dashforth.c" Marker="-1" OutputFile=".\alp_dashforth.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\alp_filedata.c" Header="alp_filedata.c" Marker="-1" OutputFile=".\alp_filedata.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\alp_logger.c" Header="alp_logger.c" Marker="-1" OutputFile=".\alp_logger.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\alp_main.c" Header="alp_main.c" Marker="-1" OutputFile=".\alp_main.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\alp_security.c" Header="alp_security.c" Marker="-1" OutputFile=".\alp_security.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\alp_sensor.c" Header="alp_sensor.c" Marker="-1" OutputFile=".\alp_sensor.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\alp_tmpl.c" Header="alp_tmpl.c" Marker="-1" OutputFile=".\alp_tmpl.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\auth.c" Header="auth.c" Marker="-1" OutputFile=".\auth.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\buffers.c" Header="buffers.c" Marker="-1" OutputFile=".\buffers.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\crc16.c" Header="crc16.c" Marker="-1" OutputFile=".\crc16.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\crypto.c" Header="crypto.c" Marker="-1" OutputFile=".\crypto.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\logger.c" Header="logger.c" Marker="-1" OutputFile=".\logger.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\queue.c" Header="queue.c" Marker="-1" OutputFile=".\queue.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\utils.c" Header="utils.c" Marker="-1" OutputFile=".\utils.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\veelite.c" Header="veelite.c" Marker="-1" OutputFile=".\veelite.o" sate="0" />
-		<NodeC Path="..\..\..\otlib\trigger.c" Header="trigger.c" Marker="-1" OutputFile=".\trigger.o" sate="0" />
-									
+		<NodeC Path="..\..\..\otlib\alp_api_client.c" Header="alp_api_client.c" Marker="-1" OutputFile=".\build\alp_api_client.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_api_server.c" Header="alp_api_server.c" Marker="-1" OutputFile=".\build\alp_api_server.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_dashforth.c" Header="alp_dashforth.c" Marker="-1" OutputFile=".\build\alp_dashforth.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_filedata.c" Header="alp_filedata.c" Marker="-1" OutputFile=".\build\alp_filedata.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_logger.c" Header="alp_logger.c" Marker="-1" OutputFile=".\build\alp_logger.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_main.c" Header="alp_main.c" Marker="-1" OutputFile=".\build\alp_main.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_security.c" Header="alp_security.c" Marker="-1" OutputFile=".\build\alp_security.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_sensor.c" Header="alp_sensor.c" Marker="-1" OutputFile=".\build\alp_sensor.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\alp_tmpl.c" Header="alp_tmpl.c" Marker="-1" OutputFile=".\build\alp_tmpl.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\auth.c" Header="auth.c" Marker="-1" OutputFile=".\build\auth.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\buffers.c" Header="buffers.c" Marker="-1" OutputFile=".\build\buffers.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\crc16.c" Header="crc16.c" Marker="-1" OutputFile=".\build\crc16.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\crypto.c" Header="crypto.c" Marker="-1" OutputFile=".\build\crypto.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\logger.c" Header="logger.c" Marker="-1" OutputFile=".\build\logger.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\queue.c" Header="queue.c" Marker="-1" OutputFile=".\build\queue.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\utils.c" Header="utils.c" Marker="-1" OutputFile=".\build\utils.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\veelite.c" Header="veelite.c" Marker="-1" OutputFile=".\build\veelite.o" sate="0" />
+		<NodeC Path="..\..\..\otlib\trigger.c" Header="trigger.c" Marker="-1" OutputFile=".\build\trigger.o" sate="0" />
+												
 	</Group>
-	<Group Header="otsys" Marker="-1" OutputFile="" sate="96" >
-		<NodeC Path="..\..\..\otsys\external.c" Header="external.c" Marker="-1" OutputFile=".\external.o" sate="0" />
-		<NodeC Path="..\..\..\otsys\mpipe_task.c" Header="mpipe_task.c" Marker="-1" OutputFile=".\mpipe_task.o" sate="0" />
-		<NodeC Path="..\..\..\otsys\system_gulp.c" Header="system_gulp.c" Marker="-1" OutputFile=".\system_gulp.o" sate="0" />
+	<Group Header="otsys" Marker="-1" OutputFile="" sate="0" >
+		<NodeC Path="..\..\..\otsys\external.c" Header="external.c" Marker="-1" OutputFile=".\build\external.o" sate="0" />
+		<NodeC Path="..\..\..\otsys\mpipe_task.c" Header="mpipe_task.c" Marker="-1" OutputFile=".\build\mpipe_task.o" sate="0" />
+		<NodeC Path="..\..\..\otsys\system_gulp.c" Header="system_gulp.c" Marker="-1" OutputFile=".\build\system_gulp.o" sate="0" />
 		<NodeH Path="..\..\..\otsys\system_gulp.h" Header="system_gulp.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\..\..\otsys\system_hicculp.c" Header="system_hicculp.c" Marker="-1" OutputFile=".\system_hicculp.o" sate="0" />
+		<NodeC Path="..\..\..\otsys\system_hicculp.c" Header="system_hicculp.c" Marker="-1" OutputFile=".\build\system_hicculp.o" sate="0" />
 		<NodeH Path="..\..\..\otsys\system_hicculp.h" Header="system_hicculp.h" Marker="-1" OutputFile="" sate="0" />
-		<NodeC Path="..\..\..\otsys\time.c" Header="time.c" Marker="-1" OutputFile=".\time.o" sate="0" />
-									
+		<NodeC Path="..\..\..\otsys\time.c" Header="time.c" Marker="-1" OutputFile=".\build\time.o" sate="0" />
+												
 	</Group>
 	<Options>
 		<Config Header="Standard" >
 			<Set Header="ApplicationBuild" >
 				<Section Header="General" >
 					<Property Header="TargetFamily" Value="ARM" />
-																																																																						
+																																																																															
 				</Section>
 				<Section Header="Directories" >
 					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;$(ApplicationDir)/../app;$(ApplicationDir)/../../../include;$(ApplicationDir)/../../../lib/CMSIS/Include;$(ApplicationDir)/../../../lib/STM32_USB_FS/inc" Removable="1" />
-																									
+																																		
 				</Section>
-																			
+																										
 			</Set>
 			<Set Header="Target" >
 				<Section Header="ProcessorARM" >
 					<Property Header="Processor" Value="STM32L151CBT6" />
-																									
+																																		
 				</Section>
 				<Section Header="ToolSetARM" >
 					<Property Header="BuildToolSetARM" Value="ARM\GNU.config" />
-																																																																						
+																																																																															
 				</Section>
-																			
+																										
 			</Set>
 			<Set Header="GCC" >
 				<Section Header="Dialect" >
 					<Property Header="CharSign" Value="-funsigned-char" Removable="1" />
-																																																													
+																																																																						
 				</Section>
 				<Section Header="Defines" >
 					<Property Header="Defines" Value="__STM32L151CB__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_Jupiter_R2" Removable="1" />
-																									
+																																		
 				</Section>
 				<Section Header="DEBUG" >
 					<Property Header="LISTING" Value="REM" Removable="1" />
-																									
+																																		
 				</Section>
-																			
+																										
 			</Set>
-			<Set Header="LD" >
-				<Section Header="Startup" >
-					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
-					<Property Header="File" Value="$(ApplicationDir)/build/startup_stm32l1xx_md.o" Removable="1" />
-																									
-				</Section>
-				<Section Header="Scripts" >
-					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
-					<Property Header="File" Value="$(ApplicationDir)/../../_common/linker/stm32l1xx_128_16.ld" Removable="1" />
-																									
-				</Section>
-				<Section Header="LIB" >
-					<Property Header="UART0PUTC" Value="0" Removable="1" />
-																									
-				</Section>
-																			
-			</Set>
-										
-		</Config>
-		<Config Header="IKR001_Debug" >
 			<Set Header="LD" >
 				<Section Header="Startup" >
 					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
@@ -231,17 +216,37 @@
 				<Section Header="Scripts" >
 					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
 					<Property Header="File" Value="$(ApplicationDir)/../../_common/linker/stm32l1xx_128_16.ld" Removable="1" />
-																
+																																		
 				</Section>
 				<Section Header="LIB" >
 					<Property Header="UART0PUTC" Value="0" Removable="1" />
-																																																				
+																																		
+				</Section>
+																										
+			</Set>
+															
+		</Config>
+		<Config Header="IKR001_Debug" >
+			<Set Header="LD" >
+				<Section Header="Startup" >
+					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
+					<Property Header="File" Value="$(ApplicationDir)/build/startup_stm32l1xx_md.o" Removable="1" />
+																																											
+				</Section>
+				<Section Header="Scripts" >
+					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
+					<Property Header="File" Value="$(ApplicationDir)/../../_common/linker/stm32l1xx_128_16.ld" Removable="1" />
+																									
+				</Section>
+				<Section Header="LIB" >
+					<Property Header="UART0PUTC" Value="0" Removable="1" />
+																																																													
 				</Section>
 				<Section Header="Linker" >
 					<Property Header="WARNONCE" Value="-Wl,--warn-once" Removable="1" />
-																																																				
+																																																													
 				</Section>
-												
+																			
 			</Set>
 			<Set Header="ApplicationBuild" >
 				<Section Header="Directories" >
@@ -249,60 +254,59 @@
 					<Property Header="OutDir" Value="$(ApplicationDir)\build" Removable="1" />
 					<Property Header="LinkerOutputDir" Value="Application Directory" Removable="1" />
 					<Property Header="ListDir" Value="$(ApplicationDir)\build" Removable="1" />
-																									
+																																		
 				</Section>
-																			
+																										
 			</Set>
 			<Set Header="GCC" >
 				<Section Header="OPTIMIZE" >
 					<Property Header="Optimize" Value="-O1" Removable="1" />
-																																																				
+																																																													
 				</Section>
 				<Section Header="Defines" >
-					<Property Header="Defines" Value="__STM32L152VB__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_IKR001" Removable="1" />
-																																		
+					<Property Header="Defines" Value="__GCC__;__DEBUG__;BOARD_IKR001" Removable="1" />
+							
 				</Section>
 				<Section Header="Dialect" >
 					<Property Header="CharSign" Value="-funsigned-char" Removable="1" />
-																									
+																																		
 				</Section>
 				<Section Header="DEBUG" >
 					<Property Header="LISTING" Value="REM" Removable="1" />
-																									
+																																		
 				</Section>
 				<Section Header="WARNINGS" >
 					<Property Header="SHADOWARNINGS" Value="-Wshadow" Removable="1" />
 					<Property Header="UNUSEDWARNINGS" Value="-Wunused" Removable="1" />
-																									
+																																		
 				</Section>
-																			
+					
 			</Set>
 			<Set Header="Target" >
 				<Section Header="ToolSetARM" >
 					<Property Header="BuildToolSetARM" Value="ARM\GNU.config" />
-																									
+																																		
 				</Section>
-																			
+																										
 			</Set>
-					
 		</Config>
 		<Config Header="Jupiter" >
 			<Set Header="GCC" >
 				<Section Header="Defines" >
-					<Property Header="Defines" Value="__STM32L151CB__;__LITTLE_ENDIAN__;__GCC__;__DEBUG__;BOARD_Jupiter_R1" Removable="1" />
-																									
+					<Property Header="Defines" Value="__GCC__;__DEBUG__;BOARD_Jupiter_R1" Removable="1" />
+							
 				</Section>
-																			
+					
 			</Set>
 			<Set Header="ApplicationBuild" >
 				<Section Header="Directories" >
 					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;$(ApplicationDir)/..;$(ApplicationDir)/../../../include;$(ApplicationDir)/../../../lib/CMSIS/Include;$(ApplicationDir)/../../../lib/CMSIS/Device;$(ApplicationDir)/../../../lib/STM32_USB_FS/inc" Removable="1" />
-																									
+					<Property Header="OutDir" Value="$(ApplicationDir)\build" Removable="1" />
+					<Property Header="ListDir" Value="$(ApplicationDir)\build" Removable="1" />
+							
 				</Section>
-																			
+					
 			</Set>
-										
 		</Config>
-			
 	</Options>
 </ApplicationBuild>

@@ -432,16 +432,10 @@ void alp_purge(alp_tmpl* alp) {
 #       warning "NDEF not yet supported for non-atomic alps"
 #   endif
 
-
     /// 0. Hack for now.
-
     q_empty(alp->inq);
 
-
-
     /*
-
-
     /// 1. An ALP processor that has non-atomic handling ability must mark all
     ///    record flags to 0, after that record is processed.  In the special
     ///    case where all records are marked to 0, just empty the queue.  In

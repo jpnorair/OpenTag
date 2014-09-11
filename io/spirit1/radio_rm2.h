@@ -33,6 +33,7 @@
 #include <otstd.h>
 #include <io/spirit1/config.h>
 #include <io/spirit1/interface.h>
+#include <io/spirit1/clkout.h>
 
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>
