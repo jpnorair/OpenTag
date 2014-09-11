@@ -21,13 +21,13 @@
   * @brief      Functions for the MLX73xxx transceiver interface
   * @defgroup   MLX73xxx (MLX73xxx family support)
   *
-  * These functions are typically implemented in Platforms/radio_MLX73xxx.c, 
+  * These functions are typically implemented in Platforms/radio_MLX73xxx.c,
   * since they depend on the MCU library
   ******************************************************************************
   */
 
 
-#include "OT_types.h"
+#include <otsys/types.h>
 #include "mlx73xxx_registers.h"
 #include "mlx73xxx_defaults.h"
 
@@ -64,7 +64,7 @@ typedef enum {
 typedef struct {
 //    ot_u8 rfstatus[2];
 //    ot_u8 lfstatus;         //lf not currently implemented
-    MLX73_IMode imode;     
+    MLX73_IMode imode;
     //ot_u8 burstbuf[6];    //only needed if you use burstwrite functions (they aren't used)
 } mlx73_struct;
 
@@ -114,7 +114,7 @@ void mlx73_get_rfstatus();
 void mlx73_get_lfstatus();
 
 
-/** @brief  Returns the IO status register (0x35), which contains the 4x GPIO 
+/** @brief  Returns the IO status register (0x35), which contains the 4x GPIO
   *         levels as well as some other information
   * @param  None
   * @retval ot_u8       IOSTATUS register value
@@ -123,7 +123,7 @@ void mlx73_get_lfstatus();
 ot_u8 mlx73_iostatus();
 
 
-/** @brief  Returns the power status register (0/0x03), which contains 
+/** @brief  Returns the power status register (0/0x03), which contains
   *         diagnostic information about the power supply
   * @param  None
   * @retval ot_u8       PWRSTATUS register value
@@ -181,7 +181,7 @@ void mlx73_iqcorrection();
   * @ingroup MLX73xxx
   * @sa radio_init()
   *
-  * This function does not set the default registers.  That is done in the 
+  * This function does not set the default registers.  That is done in the
   * generic radio module function, radio_init().  This function needs to be run
   * before radio_init(), since radio_init() requires the bus.  Best practice is
   * to actually call this function inside radio_init(), at the beginning.
@@ -209,8 +209,8 @@ void mlx73_spibus_wait();
   * @sa radio_init()
   *
   * mlx73_spibus_io() can be used for any sort of SPI-based IO to the MLX73xxx.
-  * It is important to make sure that the data array includes the bank number 
-  * (if using banked access) the register address, and then any write data. 
+  * It is important to make sure that the data array includes the bank number
+  * (if using banked access) the register address, and then any write data.
   *
   * The user is responsible for doing any double buffering that might be
   * necessary.  In other words, mlx73_spibus_io() MAY clobber your input data
@@ -227,13 +227,13 @@ ot_s8 mlx73_spibus_io(ot_u8 bank, ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd, ot_
   * @retval ot_int      read data (non-negative) or Error code (negative)
   * @ingroup MLX73xxx
   *
-  * The return value is 0-255 when everything goes as normal, or some TBD 
+  * The return value is 0-255 when everything goes as normal, or some TBD
   * negative value when something goes wrong.
-  * 
+  *
   * @note The MLX73xxx has 7 bit register addresses, from 0-127, and the lowest
   * bit of the 8 bit addressing is used for R/W control.  The user must shift
-  * the 7 bit reg address up by one when calling this function.  However, the 
-  * register call macros in mlx73_registers.h will do this for you 
+  * the 7 bit reg address up by one when calling this function.  However, the
+  * register call macros in mlx73_registers.h will do this for you
   * automatically.
   */
 ot_u8 mlx73_read(ot_u8 addr);
@@ -260,13 +260,13 @@ ot_u8 mlx73_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data);
   * @retval ot_int      Error code
   * @ingroup MLX73xxx
   *
-  * The return value is 0 when everything goes as normal, or some TBD negative 
+  * The return value is 0 when everything goes as normal, or some TBD negative
   * value when something goes wrong.
-  * 
+  *
   * @note The MLX73xxx has 7 bit register addresses, from 0-127, and the lowest
   * bit of the 8 bit addressing is used for R/W control.  The user must shift
-  * the 7 bit reg address up by one when calling this function.  However, the 
-  * register call macros in mlx73_registers.h will do this for you 
+  * the 7 bit reg address up by one when calling this function.  However, the
+  * register call macros in mlx73_registers.h will do this for you
   * automatically.
   */
 ot_u8 mlx73_write(ot_u8 addr, ot_u8 data);
@@ -282,7 +282,7 @@ ot_u8 mlx73_write(ot_u8 addr, ot_u8 data);
   * @sa mlx73_write_u()
   *
   * This function is nearly identical to mlx73_write().  The differences
-  * should be self-explanatory.  The "data" parameter may or may not be double 
+  * should be self-explanatory.  The "data" parameter may or may not be double
   * buffered, depending on the implementation.  Double buffering is not required
   * by the spec, but it is usually necessary if you are doing in non-blocking.
   */
@@ -296,13 +296,13 @@ ot_u8 mlx73_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* data);
   * @retval ot_int      Error Code
   * @ingroup MLX73xxx
   *
-  * The return value is 0-255 when everything goes as normal, or some TBD 
+  * The return value is 0-255 when everything goes as normal, or some TBD
   * negative value when something goes wrong.
-  * 
+  *
   * @note The MLX73xxx has 7 bit register addresses, from 0-127, and the lowest
   * bit of the 8 bit addressing is used for R/W control.  The user must shift
-  * the 7 bit reg address up by one when calling this function.  However, the 
-  * register call macros in mlx73_registers.h will do this for you 
+  * the 7 bit reg address up by one when calling this function.  However, the
+  * register call macros in mlx73_registers.h will do this for you
   * automatically.
   */
 ot_u8 mlx73_read_bank(MLX73_Bank bank, ot_u8 addr);
@@ -332,13 +332,13 @@ ot_u8 mlx73_burstread_bank(MLX73_Bank bank, ot_u8 start_addr, ot_u8 length, ot_u
   * @retval ot_int      Error code
   * @ingroup MLX73xxx
   *
-  * The return value is 0 when everything goes as normal, or some TBD negative 
+  * The return value is 0 when everything goes as normal, or some TBD negative
   * value when something goes wrong.
-  * 
+  *
   * @note The MLX73xxx has 7 bit register addresses, from 0-127, and the lowest
   * bit of the 8 bit addressing is used for R/W control.  The user must shift
-  * the 7 bit reg address up by one when calling this function.  However, the 
-  * register call macros in mlx73_registers.h will do this for you 
+  * the 7 bit reg address up by one when calling this function.  However, the
+  * register call macros in mlx73_registers.h will do this for you
   * automatically.
   */
 ot_u8 mlx73_write_bank(MLX73_Bank bank, ot_u8 addr, ot_u8 data);
@@ -356,7 +356,7 @@ ot_u8 mlx73_write_bank(MLX73_Bank bank, ot_u8 addr, ot_u8 data);
   * @sa mlx73_banked_w()
   *
   * This function is nearly identical to mlx73_write_bank().  The differences
-  * should be self-explanatory.  The "data" parameter may or may not be double 
+  * should be self-explanatory.  The "data" parameter may or may not be double
   * buffered, depending on the implementation.  Double buffering is not required
   * by the spec, but it is usually necessary if you are doing in non-blocking.
   */
@@ -370,13 +370,13 @@ ot_u8 mlx73_burstwrite_bank(MLX73_Bank bank, ot_u8 start_addr, ot_u8 length, ot_
 /** RSSI detection <BR>
   * ========================================================================<BR>
   * The MLX73xxx has a unique RSSI mechanism.  You can get the "fresh" RSSI
-  * (most recent output of the RSSI detector) or the RSSI detected when the 
+  * (most recent output of the RSSI detector) or the RSSI detected when the
   * header (sync word & preamble) was found.
   */
 
 #define mlx73_GET_FRESHRSSI()  \
     mlx73_offsetrssi( (ot_u8)mlx73_read(RFREG(RSSI)) )
-    
+
 #define mlx73_GET_SAVEDRSSI()  \
     mlx73_offsetrssi( (ot_u8)mlx73_read(RFREG(RSSIHDR)) )
 
@@ -414,7 +414,7 @@ void mlx73_set_txpwr(ot_u8 pwr_code);
 
 /** Common GPIO register setup & interrupt functions <BR>
   * ========================================================================<BR>
-  * Your radio ISR function should be of the type void radio_isr(ot_u8), as it 
+  * Your radio ISR function should be of the type void radio_isr(ot_u8), as it
   * will be a soft ISR.  The input parameter is an interrupt vector.  The vector
   * values are shown below:
   *
@@ -430,8 +430,8 @@ void mlx73_set_txpwr(ot_u8 pwr_code);
   * OFFSET=3    RF RXPKTDONE:   4
   * (RX Data)   RF RXFIFOTHR:   5
   *             RF RXFIFOERR:   6
-  
-  *             
+
+  *
   * OFFSET=6    RF PKTDONE:     7
   * (TX Data)   RF TXFIFOTHR:   8
   *             RF TXFIFOERR:   9
@@ -480,16 +480,16 @@ void mlx73_set_txpwr(ot_u8 pwr_code);
   * @retval None
   * @ingroup MLX73xxx
   *
-  * Listening includes a listen timeout (needs to be put in separately), 
+  * Listening includes a listen timeout (needs to be put in separately),
   * notification that a decodable signal has been detected, and notification
   * that any signal has been detected (decodable or not).
   *
-  * Typical Sync detection GPIO setup: 
-  * XTAL_RDY (goes high when XTAL is ready) + 
-  * TMR_FLAG (timer expired) + 
+  * Typical Sync detection GPIO setup:
+  * XTAL_RDY (goes high when XTAL is ready) +
+  * TMR_FLAG (timer expired) +
   * RFRX_PAYLOAD (sync word detected successfully) +
   * RFRX_RSSICS (carrier sensed, used on background rx) +
-  */ 
+  */
 void mlx73_iocfg_listen();
 
 
@@ -504,12 +504,12 @@ void mlx73_iocfg_listen();
   * packet control), and a notification when the FIFO is underflowed (for modes
   * where the HW packet control is not used)
   *
-  * Typical Data RX GPIO setup: 
-  * XTAL_RDY (goes high when XTAL is ready) + 
+  * Typical Data RX GPIO setup:
+  * XTAL_RDY (goes high when XTAL is ready) +
   * RF_PKTDONE (packet fully received) +
   * RFRX_FIFO64BYTES (rising edge means it's time to do some decoding) +
   * RFRX_FIFOERR (goes high when underflow/overflow)
-  */ 
+  */
 void mlx73_iocfg_rxdata();
 
 
@@ -522,7 +522,7 @@ void mlx73_iocfg_rxdata();
   * TX CSMA is the same as listening.  It is "listen-before-talk."
   *
   * Typical Data TX-CSMA GPIO setup: (same as listen mode)
-  */ 
+  */
 void mlx73_iocfg_txcsma();
 
 
@@ -538,11 +538,11 @@ void mlx73_iocfg_txcsma();
   * where the HW packet control is not used)
   *
   * Typical Data TX GPIO setup: (similar to RX mode)
-  * XTAL_RDY (goes high when XTAL is ready) + 
+  * XTAL_RDY (goes high when XTAL is ready) +
   * RF_PKTDONE (packet fully transmitted) +
   * RFTX_FIFO64BYTES (falling edge means it's time to do some encoding) +
   * RFTX_FIFOERR (goes high when underflow/overflow)
-  */ 
+  */
 void mlx73_iocfg_txdata();
 
 

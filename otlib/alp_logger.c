@@ -24,40 +24,36 @@
   * When called by ALP, Logger acts the same way "echo" does.  It echos to the
   * logger output, which by official implementation is always Mpipe.  Therefore,
   * this is one way to send a message to the client connected to a server.
-  * 
+  *
   ******************************************************************************
   */
 
 
-#include "alp.h"
 
-#if (   (OT_FEATURE(SERVER) == ENABLED) \
-     && (OT_FEATURE(ALP) == ENABLED) \
-     && (LOG_FEATURE(ANY) == ENABLED) )
+#include <otstd.h>
+#include <otlib/alp.h>
 
-#endif
-
-#if (ALP(LOGGER) != ENABLED)
+#if !(OT_FEATURE(SERVER) && OT_FEATURE(ALP) && OT_FEATURE(LOGGER))
 OT_WEAK ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
     return True;
 }
 
 #else
 
-#include "auth.h"
-#include "queue.h"
+#include <otlib/auth.h>
+#include <otlib/queue.h>
 
 ///@todo replace INREC calls with direct access from input
 
 OT_WEAK ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
 /// Logger ALP is like ECHO.  The input is copied to the output.
-    
+
     // Only root can log directly (this is an important security firewall)
     if (auth_isroot(user_id)) {
         alp->OUTREC(FLAGS)  = *alp->inq->getcursor++;
         alp->OUTREC(PLEN)   = *alp->inq->getcursor++;
         alp->inq->getcursor+= 2;
-        
+
         if (alp->inq != alp->outq) {
             q_writestring(alp->outq, alp->inq->getcursor, alp->OUTREC(PLEN));
         }

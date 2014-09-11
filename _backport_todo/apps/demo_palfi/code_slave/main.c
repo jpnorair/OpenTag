@@ -44,9 +44,9 @@
   */
 
 #include "OTAPI.h"          // OTlib top-level stuff
-#include "OT_platform.h"    // Platform level stuff
+#include <otplatform.h>    // Platform level stuff
 #include "palfi.h"          // palfi thread & app
-
+#include <otlib/logger.h>
 
 
 /** Logging for Debugging (not available in release)<BR>
@@ -55,7 +55,7 @@
 #if (MPIPE_FOR_DEBUGGING)
 #   define WAIT_FOR_MPIPE() while(0)
 #	define OTAPI_LOG_MSG(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA) \
-		otapi_log_msg(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA)
+		logger_msg(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA)
 #else
 #   define WAIT_FOR_MPIPE() while(0)
 #	define OTAPI_LOG_MSG(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA) while(0)
@@ -140,17 +140,17 @@ void sub_led_cycle(ot_u8 i) {
 	switch (i) {
 	case 0: PALFI_LED4_ON();	break;
 	case 1: PALFI_LED3_ON();	break;
-	case 2: otapi_led2_on();	break;
-	case 3: otapi_led1_on();	break;
+	case 2: BOARD_led2_on();	break;
+	case 3: BOARD_led1_on();	break;
 	}
 
-    platform_swdelay_ms(33);
+    delay_ms(33);
 
     switch (i) {
     case 0: PALFI_LED4_OFF();	break;
     case 1: PALFI_LED3_OFF();	break;
-    case 2: otapi_led2_off();	break;
-    case 3: otapi_led1_off();	break;
+    case 2: BOARD_led2_off();	break;
+    case 3: BOARD_led1_off();	break;
     }
 }
 
@@ -219,7 +219,7 @@ void sys_sig_powerdown(ot_int code) {
   * There is an example implementation below, which can be uncommented to match
   * the example in the API Quickstart Guide:
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
-  */ 
+  */
 
 
 

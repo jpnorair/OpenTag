@@ -35,13 +35,13 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 #if ( defined(BOARD_eZ430Chronos) &&  OT_FEATURE(MPIPE) &&  defined(MPIPE_LCD) )
 
 #include "chronoslcd.h"
-#include "buffers.h"
-#include "mpipe.h"
+#include <otlib/buffers.h>
+#include <otsys/mpipe.h>
 
 
 //Local Data storage

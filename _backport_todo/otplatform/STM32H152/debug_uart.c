@@ -1,8 +1,8 @@
 #ifdef RADIO_DEBUG
-#include "OT_types.h"
+#include <otsys/types.h>
 #include "debug_uart.h"
 #include "stm32l1xx.h"
-#include "build_config.h"
+#include <app/build_config.h>
 #include "platform_STM32L1xx.h"
 
 #define UART_RX_BUF_SIZE        16
@@ -25,7 +25,7 @@ kick_dma_usart_tx(char context)
 
     DMA_ITConfig(USART3_TX_DMA_CHANNEL, DMA_IT_TC, DISABLE);
     DMA_DeInit(USART3_TX_DMA_CHANNEL);
-    if (usart_tx_dmafifo_in_idx < usart_tx_dmafifo_out_idx) {   
+    if (usart_tx_dmafifo_in_idx < usart_tx_dmafifo_out_idx) {
         // wrap-around condition, will need to be sent in two parts, first do unsent up to end of buffer
         UTX_DMA_Init.DMA_BufferSize = (uint16_t)(TX_DMA_FIFO_SIZE - usart_tx_dmafifo_out_idx);
     } else {
@@ -113,7 +113,7 @@ void USART3_IRQHandler(void)
         }
     }
 
-    if (USART_GetITStatus(USART3, USART_IT_TXE) != RESET) {   
+    if (USART_GetITStatus(USART3, USART_IT_TXE) != RESET) {
         USART_ClearFlag(USART3, USART_FLAG_TXE);
         USART_ITConfig(USART3, USART_IT_TXE, DISABLE);
 

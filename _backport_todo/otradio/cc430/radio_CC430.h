@@ -23,13 +23,13 @@
   *
   ******************************************************************************
   */
-  
+
 
 #ifndef __radio_CC430_H
 #define __radio_CC430_H
 
-#include "OT_support.h"
-#include "OT_types.h"
+#include <otsys/support.h>
+#include <otsys/types.h>
 
 
 #ifndef ENABLED

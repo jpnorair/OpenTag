@@ -1,11 +1,11 @@
 /**
   ******************************************************************************
-  * @file    Project/STM32L1xx_StdPeriph_Template/stm32l1xx_it.c 
+  * @file    Project/STM32L1xx_StdPeriph_Template/stm32l1xx_it.c
   * @author  MCD Application Team
   * @version V1.0.0
   * @date    31-December-2010
   * @brief   Main Interrupt Service Routines.
-  *          This file provides template for all exceptions handler and 
+  *          This file provides template for all exceptions handler and
   *          peripherals interrupt service routine.
   ******************************************************************************
   * @attention
@@ -19,11 +19,11 @@
   *
   * <h2><center>&copy; COPYRIGHT 2010 STMicroelectronics</center></h2>
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l1xx_it.h"
-#include "OT_types.h"
+#include <otsys/types.h>
 //#include "platform_STM32H152.h" // wherever printf comes from
 
 /** @addtogroup Template_Project
@@ -63,12 +63,12 @@ void hard_fault_handler_c (unsigned int * hardfault_args)
     unsigned int stacked_lr;
     unsigned int stacked_pc;
     unsigned int stacked_psr;
- 
+
     stacked_r0 = ((unsigned long) hardfault_args[0]);
     stacked_r1 = ((unsigned long) hardfault_args[1]);
     stacked_r2 = ((unsigned long) hardfault_args[2]);
     stacked_r3 = ((unsigned long) hardfault_args[3]);
- 
+
     stacked_r12 = ((unsigned long) hardfault_args[4]);
     stacked_lr = ((unsigned long) hardfault_args[5]);
     stacked_pc = ((unsigned long) hardfault_args[6]);
@@ -89,7 +89,7 @@ void hard_fault_handler_c (unsigned int * hardfault_args)
     printf ("DFSR = %x\r\n", (*((volatile unsigned int *)(0xE000ED30))));
     printf ("AFSR = %x\r\n", (*((volatile unsigned int *)(0xE000ED3C))));
     printf ("SCB_SHCSR = %x\r\n", (unsigned int)SCB->SHCSR);
- 
+
     while (1) {
         asm("nop");
         asm("nop");
@@ -206,7 +206,7 @@ void SysTick_Handler(void)
 
 /**
   * @}
-  */ 
+  */
 
 
 /******************* (C) COPYRIGHT 2010 STMicroelectronics *****END OF FILE****/

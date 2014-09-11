@@ -28,12 +28,12 @@
   */
 
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 #if (defined(__CC430__))
 #if (OT_FEATURE(PALFI))
 
-#include "buffers.h"
+#include <otlib/buffers.h>
 #include "palfi.h"
 
 

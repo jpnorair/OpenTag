@@ -55,11 +55,11 @@
   */
 
 
-#include "OT_platform.h"
+#include <otplatform.h>
 #if defined(__CC430__)
 
 #include "OTAPI.h"              // for logging faults
-#include "veelite_core.h"
+#include <otsys/veelite_core.h>
 
 #ifndef OT_FEATURE_VLNVWRITE
 #   define OT_FEATURE_VLNVWRITE ENABLED

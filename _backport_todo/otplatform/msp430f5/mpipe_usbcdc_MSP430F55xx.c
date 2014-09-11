@@ -30,7 +30,7 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 /// Do not compile if MPIPE is disabled, or MPIPE does not use USB CDC
 #if (   defined(__MSP430F5__) \
@@ -399,7 +399,7 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
         ///@todo remove CRC part, not necessary for USB.  
         /// Requires coordination with OTcom, though: need to add a checkbox
         scratch = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;    //data length
-        scratch = platform_crc_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
+        scratch = crc16drv_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
         q_writeshort(mpipe.alp.outq, scratch);                              //Put CRC
         
         scratch                     = mpipe.alp.outq->putcursor \
@@ -469,7 +469,7 @@ void mpipedrv_isr() {
             tty.seq.ubyte[UPPER]    = *footer++;
             tty.seq.ubyte[LOWER]    = *footer;
 
-            //crc_result = platform_crc_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
+            //crc_result = crc16drv_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
             //mpipeevt_rxdone((ot_int)crc_result);
             mpipeevt_rxdone(0);
         }   break;

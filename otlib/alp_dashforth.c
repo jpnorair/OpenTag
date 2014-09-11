@@ -27,7 +27,7 @@
   */
 
 
-#include "alp.h"
+#include <otlib/alp.h>
 
 #if (   (OT_FEATURE(SERVER) == ENABLED) \
      && (OT_FEATURE(ALP) == ENABLED) \

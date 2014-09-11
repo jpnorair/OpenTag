@@ -60,8 +60,8 @@
   * </PRE>                           
   *****************************************************************************/
 
-#include "OT_config.h"
-#include "veelite.h"    //for getting device id
+#include <otsys/config.h>
+#include <otsys/veelite.h>    //for getting device id
 
 #include "msp430f5_lib.h"
 
@@ -185,7 +185,7 @@ ot_u8 usb_init (void) {
     USBPWRCTL   = VUSBEN + SLDOAON;     //enable primary and secondary LDO (3.3 and 1.8V)
     
     //wait some time for LDOs (5ms delay)
-    platform_swdelay_ms(5);             
+    delay_ms(5);             
     
     USBPWRCTL   = VUSBEN + SLDOAON + VBONIE;    //enable interrupt VBUSon
     USBKEYPID   = 0x9600;                       //access to configuration registers disabled
@@ -231,9 +231,9 @@ ot_u8 usb_enable () {
     do {
         USBPLLIR    = 0x0000;
 #       ifdef __MSP430F6638
-            platform_swdelay_us(1000); //1ms
+            delay_us(1000); //1ms
 #       else
-            platform_swdelay_us(500);  //0.5ms
+            delay_us(500);  //0.5ms
 #       endif
 
         pll_unsettled = (USBPLLIR != 0);
@@ -608,7 +608,7 @@ void usbcmd_txnext_ep0 (void) {
             pkt_size += (ot_int)usbctl.bytes_ep0in;
         }
 
-        platform_memcpy(abuf_ep0in, usbctl.pbuf_ep0in, pkt_size);
+        ot_memcpy(abuf_ep0in, usbctl.pbuf_ep0in, pkt_size);
         usbctl.pbuf_ep0in  += pkt_size;
         dblock_ep0.bIEPBCNT = pkt_size;
     }
@@ -655,7 +655,7 @@ void usbcmd_txnext_ep0 (void) {
             //}
         }
 
-        platform_memcpy(abuf_ep0in, usbctl.pbuf_ep0in, bPacketSize);
+        ot_memcpy(abuf_ep0in, usbctl.pbuf_ep0in, bPacketSize);
         usbctl.pbuf_ep0in  += bPacketSize;
         dblock_ep0.bIEPBCNT = bPacketSize;
     }
@@ -694,7 +694,7 @@ void usbcmd_rxnext_ep0 (void) {
     bByte = dblock_ep0.bOEPBCNT & EPBCNT_BYTECNT_MASK;
 
     if (usbctl.bytes_ep0out >= (ot_u16)bByte) {
-        platform_memcpy(usbctl.pbuf_ep0out, abuf_ep0out, bByte);
+        ot_memcpy(usbctl.pbuf_ep0out, abuf_ep0out, bByte);
 
         //clear the NAK bit for next packet
         if (usbctl.bytes_ep0out > 0){
@@ -1051,7 +1051,7 @@ void usbproc_parse_request (void) {
     //@testing
     //if (Tactive < 32) {
     //    Ttrace[Tactive] = (ot_u16)parse_fn;
-    //    platform_memcpy((ot_u8*)&Treq[Tactive], (ot_u8*)&dblock_setup, sizeof(usbreq_struct));
+    //    ot_memcpy((ot_u8*)&Treq[Tactive], (ot_u8*)&dblock_setup, sizeof(usbreq_struct));
     //    Tactive++;
     //}
 

@@ -36,6 +36,7 @@ ones are enabled (or, to specify new ones).
 
 This Application Recommends
 ===========================
+(Note, MSP430 not supported yet)
 CC430/MSP430F5: ~24KB Flash, ~1.5KB SRAM
 Cortex M3:      ~32KB Flash, ~2KB SRAM
  - MPipe connection to show pong responses
@@ -45,7 +46,7 @@ Cortex M3:      ~32KB Flash, ~2KB SRAM
 
 Supported Boards & Platforms
 ============================
-See /apps/demo_opmode/code/platform_config.h for board & platform support.
+See /apps/demo_ponglt/app/board_config.h for board & platform support.
 NOTE: Different boards may support different methods of input and output.
 
 

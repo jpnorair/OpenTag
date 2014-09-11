@@ -30,13 +30,13 @@
   */
 
 
-#include "alp.h"
+#include <otlib/alp.h>
 
 #if ((OT_FEATURE(ALP) == ENABLED) && (OT_FEATURE(CLIENT) == ENABLED))
 
-#include "OT_platform.h"
-#include "buffers.h"
-#include "queue.h"
+#include <otplatform.h>
+#include <otlib/buffers.h>
+#include <otlib/queue.h>
 
 ///@todo All this stuff.  Much can be copied (and cleaned up) from testbeds 
 ///      I made for other purposes.

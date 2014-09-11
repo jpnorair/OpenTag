@@ -28,7 +28,7 @@
 #ifndef __radio_MLX73290_H
 #define __radio_MLX73290_H
 
-#include "OT_support.h"
+#include <otsys/support.h>
 
 
 #ifndef ENABLED

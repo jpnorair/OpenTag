@@ -1,12 +1,12 @@
-#include "system.h" // get SYS_* definitions
+#include <otsys/syskern.h> // get SYS_* definitions
 #include "stm32l1xx.h"
 #include "stm32l1xx_it.h"
 #include "sx1231_registers.h"
-#include "platform_config.h"
+#include <app/board_config.h>
 #include "stm32_sx1231_private.h"
-#include "m2_encode.h"
-#include "crc16.h"
-#include "radio.h"
+#include <m2/encode.h>
+#include <otlib/crc16.h>
+#include <m2/radio.h>
 
 spi2_state_e spi2_state = SPI2_STATE__NONE;
 static volatile ot_u16 spi_rx_word;
@@ -19,7 +19,7 @@ DMA_InitTypeDef SPI2_DMA_Init;
 void
 WriteReg_Sx1231__nonblocking(ot_u8 addr, ot_u8 val)
 {
-    Twobytes output;
+    ot_uni16 output;
 
     if (addr == REG_FIFOTHRESH && ((val & 0x7f) > RF_FEATURE_TXFIFO_BYTES) ) {
         for (;;)
@@ -41,7 +41,7 @@ WriteReg_Sx1231__nonblocking(ot_u8 addr, ot_u8 val)
 void
 WriteReg_Sx1231(ot_u8 addr, ot_u8 val)
 {
-    Twobytes output;
+    ot_uni16 output;
 
     while (spi_busy == 1)
         ;
@@ -71,7 +71,7 @@ WriteReg_Sx1231(ot_u8 addr, ot_u8 val)
 ot_u8
 ReadReg_Sx1231(ot_u8 addr)
 {
-    Twobytes output;
+    ot_uni16 output;
 
     while (spi_busy == 1)
         ;
@@ -98,7 +98,7 @@ ReadReg_Sx1231(ot_u8 addr)
 void
 ReadReg_Sx1231__nonblocking(ot_u8 addr, spi2_state_e s)
 {
-    Twobytes output;
+    ot_uni16 output;
 
 /*    ignoring, called from SPI2_ISR: while (spi_busy == 1)
         ;*/

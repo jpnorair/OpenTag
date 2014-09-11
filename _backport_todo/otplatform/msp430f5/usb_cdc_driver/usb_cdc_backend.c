@@ -34,9 +34,9 @@
   * This is the CDC driver adapted by JP Norair from the official TI USB stack
   * code, and targeted for OpenTag.  In this file, there is nothing especially
   * dependent on OpenTag, however there are four references:
-  * <LI> platform_memcpy() is used explicitly.  It has the same interface as normal 
-  *          memcpy(), except that platform_memcpy() typically uses DMA.    </LI>
-  * <LI> platform_memset() is used, to similar affect as platform_memcpy()  </LI>
+  * <LI> ot_memcpy() is used explicitly.  It has the same interface as normal 
+  *          memcpy(), except that ot_memcpy() typically uses DMA.    </LI>
+  * <LI> ot_memset() is used, to similar affect as ot_memcpy()  </LI>
   * <LI> Platform Macro "PLATFORM_ENDIAN32()" is used.  On the MSP430, this
   *          maps to the intrinsic function __swap_long_bytes(u32) </LI>
   * <LI> OpenTag types are used.  They should be transparent.  </LI>
@@ -73,7 +73,7 @@
 #include "usb_cdc_driver/usb_cdc_backend.h"
 
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 #if (CDC_NUM_INTERFACES == 1) 
 #   define USB_HANDLE(INTF) usb_handle[0]
@@ -154,8 +154,8 @@ void sub_copy_usbtobuf (ot_u8* pEP, ot_u8* pCT, ot_u8 x) {
                 CDC_READER(x).epbytes : CDC_READER(x).rxbytes;
 
     //copy data from OEP3 X or Y buffer
-    ///@todo this could be made into platform_memcpy2() via (nCount+1)>>1
-    platform_memcpy_2(CDC_READER(x).qbuf, pEP, (nCount+1)>>1);
+    ///@todo this could be made into ot_memcpy2() via (nCount+1)>>1
+    ot_memcpy2(CDC_READER(x).qbuf, pEP, (nCount+1)>>1);
     
     //update buffer pointer past new bytes
     CDC_READER(x).rxbytes -= nCount;
@@ -204,10 +204,10 @@ void sub_buffer_firedrill(ot_u8 epcnt, ot_u8 x, ot_u8* ep_out) {
 
 void usbcdc_reset_data () {
 	/// Wipe all interfaces
-	platform_memset((ot_u8*)&cdc, 0, sizeof(cdc_struct));
-    //platform_memset((ot_u8*)cdc.writer, 0, sizeof(cdc.writer));
-    //platform_memset((ot_u8*)cdc.reader, 0, sizeof(cdc.reader));
-    //platform_memset((ot_u8*)cdc.ctrler, 0, sizeof(cdc.ctrler));
+	ot_memset((ot_u8*)&cdc, 0, sizeof(cdc_struct));
+    //ot_memset((ot_u8*)cdc.writer, 0, sizeof(cdc.writer));
+    //ot_memset((ot_u8*)cdc.reader, 0, sizeof(cdc.reader));
+    //ot_memset((ot_u8*)cdc.ctrler, 0, sizeof(cdc.ctrler));
 
     /// Set data bits to 8 for each interface
 #   if ((NONCOMP_NUM_USB_INTERFACES <= 0) || (NONCOMP_NUM_USB_INTERFACES > 3))
@@ -326,7 +326,7 @@ void usbcdc_transfer_buf2host (ot_u8 x) {
         byte_count = (CDC_WRITER(x).txbytes > EP_MAX_PACKET_SIZE_CDC) ? \
                     EP_MAX_PACKET_SIZE_CDC : CDC_WRITER(x).txbytes;
     
-        platform_memcpy(pEP[j], CDC_WRITER(x).qbuf, byte_count);
+        ot_memcpy(pEP[j], CDC_WRITER(x).qbuf, byte_count);
         *pCT[j] = byte_count;
 
         sub_update_writebuf(&CDC_WRITER(x), byte_count);
@@ -744,7 +744,7 @@ CMD_RETURN usbcdccmd_get_linecoding (void) {
 /// Copy the seven bytes from the CDC Control Field to the Return Data Buffer.
 /// The CDC Control field is aligned to match the USB spec, here.
 
-	platform_memcpy(usbctl.response, (ot_u8*)&CDC_CTRLER(dblock_setup.wIndex), 7);
+	ot_memcpy(usbctl.response, (ot_u8*)&CDC_CTRLER(dblock_setup.wIndex), 7);
 
     //usbctl.response[0] = CdcControl[CDCINTF(dblock_setup.wIndex)].lBaudrate;
     //usbctl.response[1] = CdcControl[CDCINTF(dblock_setup.wIndex)].lBaudrate >> 8;

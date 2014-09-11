@@ -39,22 +39,22 @@
   ******************************************************************************
   */
 
-#include "radio.h"
+#include <m2/radio.h>
 #include "radio_CC1101.h"
 #include "CC1101_interface.h"
 
-#include "OT_types.h"
-#include "OT_config.h"
-#include "OT_utils.h"
-#include "OT_platform.h"
+#include <otsys/types.h>
+#include <otsys/config.h>
+#include <otlib/utils.h>
+#include <otplatform.h>
 
-#include "veelite.h"
-#include "session.h"
-#include "m2_dll.h"
-#include "crc16.h"
-#include "m2_encode.h"
-#include "buffers.h"
-#include "queue.h"
+#include <otsys/veelite.h>
+#include <m2/session.h>
+#include <m2/dll.h>
+#include <otlib/crc16.h>
+#include <m2/encode.h>
+#include <otlib/buffers.h>
+#include <otlib/queue.h>
 
 
 
@@ -98,7 +98,7 @@ void    subcc1101_syncword_config(ot_u8 sync_class);
 void    subcc1101_buffer_config(ot_u8 mode, ot_u8 param);
 void    subcc1101_chan_config(ot_u8 old_chan, ot_u8 old_eirp);
 
-void    subcc1101_prep_q(Queue* q);
+void    subcc1101_prep_q(ot_queue* q);
 //ot_int  subcc1101_eta(ot_int next_int);
 //ot_int  subcc1101_eta_rxi();
 //ot_int  subcc1101_eta_txi();
@@ -138,13 +138,13 @@ OT_INLINE void cc1101_virtual_isr(ot_u8 irq) {
 
 OT_INLINE void radio_mac_isr() {
     switch (radio.state) {
-        //case RADIO_Idle:        
-        //case RADIO_Listening:   
-        
-        case RADIO_Csma:        rm2_txcsma_isr();   
+        //case RADIO_Idle:
+        //case RADIO_Listening:
+
+        case RADIO_Csma:        rm2_txcsma_isr();
                                 break;
         //case RADIO_DataRX:
-        
+
 #       if (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER))
         case RADIO_DataTX:      dll.counter--;
                                 radio_set_mactimer(TI2CLK(1));
@@ -166,7 +166,7 @@ OT_INLINE void radio_mac_isr() {
 
 #ifndef EXTF_radio_off
 void radio_off() {
-   radio_sleep();   
+   radio_sleep();
 }
 #endif
 
@@ -238,12 +238,12 @@ void radio_init( ) {
     vlFILE* fp;
 
     cc1101_init_bus();           //Initialize IO
-    cc1101_load_defaults();     //Load default registers                  
+    cc1101_load_defaults();     //Load default registers
 
-    /// Set startup channel to a completely invalid channel ID (0x55), and run 
-    /// lookup on the default channel (0x07) to kick things off.  Since the 
-    /// startup channel will always be different than a real channel, the 
-    /// necessary settings and calibration will always occur. 
+    /// Set startup channel to a completely invalid channel ID (0x55), and run
+    /// lookup on the default channel (0x07) to kick things off.  Since the
+    /// startup channel will always be different than a real channel, the
+    /// necessary settings and calibration will always occur.
     phymac[0].channel   = 0x55;
     phymac[0].tx_eirp   = 0x7F;
     rfctl.flags         = 0;
@@ -340,8 +340,8 @@ void radio_flush_rx() {
     /// 1. Flush the Data in the RX FIFO
     cc1101_strobe( STROBE(SFRX) );
 
-    /// 2. Flush Queue and set decoder
-    /// Queue options are set by subcc1101_prep_q, which decoder uses as params
+    /// 2. Flush ot_queue and set decoder
+    /// ot_queue options are set by subcc1101_prep_q, which decoder uses as params
     q_empty(&rxq);
     subcc1101_prep_q(&rxq);
     em2_decode_newpacket();
@@ -411,7 +411,7 @@ ot_bool radio_txopen_4() {
 	//ot_u8 fifo_limit = (rfctl.txlimit < (RADIO_BUFFER_TXMAX-4)) ? \
 	//						(ot_u8)rfctl.txlimit : (RADIO_BUFFER_TXMAX-4);
     //return (ot_bool)(RF_GetTXBYTES() < fifo_limit);
-    
+
     return radio_txopen();
 }
 #endif
@@ -465,7 +465,7 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate) {
     mcsm210[1]  = 7;
     mcsm210[2]  = (netstate ^ M2_NETSTATE_RESP) ? DRF_MCSM1 : (DRF_MCSM1 | _RXOFF_MODE_RX);
     mcsm210[3]  = (rfctl.flags & RADIO_FLAG_AUTOCAL) ? DRF_MCSM0 : (DRF_MCSM0&0xCF) | _FS_AUTOCAL_FROMIDLE;
-    
+
     /// 2. Go to IDLE.  CC1101 must be in IDLE before writing data.
     radio_idle();
 
@@ -480,7 +480,7 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate) {
         //pktlen = 7;                                       //CC1101 has HW FEC
         //pktlen = (phymac[0].channel & 0x80) ? 16 : 7;     //This is for SW FEC
 
-        /// Queue manipulation to fit background frame into common model
+        /// ot_queue manipulation to fit background frame into common model
      //#rxq.length      = pktlen + 2;
         rxq.front[0]    = pktlen;
         rxq.front[1]    = 0;
@@ -520,7 +520,7 @@ void subcc1101_launch_rx(ot_u8 channel, ot_u8 netstate) {
     cc1101_spibus_io(4, 0, mcsm210, NULL);
 
     subcc1101_offset_rxtimeout();     // if timeout is 0, set it to a minimal amount
-    
+
     /// 9.  Using rm2_reenter_rx() with NULL forces entry into rx, and sets states
     rm2_reenter_rx(NULL);
 }
@@ -606,7 +606,7 @@ void rm2_reenter_rx(ot_sig2 callback) {
     if (callback == NULL) {
         goto rm2_reenter_rx_PROC;
     }
-        
+
     if (cc1101_read(RFREG(MARCSTATE)) < 3) {
     rm2_reenter_rx_PROC:
         radio_flush_rx();
@@ -646,12 +646,12 @@ void rm2_kill() {
 void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
 #if (SYS_RECEIVE == ENABLED)
     ot_u8 netstate;
-    
+
     /// Setup the RX engine for Foreground Frame detection and RX.  Wipe-out
     /// the lower flags (non-persistent flags)
     radio.evtdone   = callback;
     rfctl.flags    &= (RADIO_FLAG_ASLEEP | RADIO_FLAG_SETPWR | RADIO_FLAG_AUTOCAL);
-    
+
     if (psettings == 0) {
         netstate    = (M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX);
         rfctl.flags|= RADIO_FLAG_FLOOD;
@@ -710,7 +710,7 @@ void rm2_rxdata_isr() {
     subcc1101_lowrssi_reenter();
 
     rm2_rxdata_isr_TOP:
-    
+
     /// 1. load data
     //RFGET_RXDATA();         // Only needed w/ internal DMA usage to set buffer params
     em2_decode_data();      // Contains logic to prevent over-run
@@ -825,13 +825,13 @@ void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
     radio.evtdone   = callback;
     radio.state     = RADIO_Csma;
     rfctl.state     = RADIO_STATE_TXINIT;
-    
-    /// @note Flush TX FIFO and set buffer threshold to 5 bytes: the encoder 
-    /// should be at least 20% faster than the max TX data speed (1 byte per 
+
+    /// @note Flush TX FIFO and set buffer threshold to 5 bytes: the encoder
+    /// should be at least 20% faster than the max TX data speed (1 byte per
     /// 40 µs).  On CC430, FEC encode is possible with 20 MHz CPU.
     radio_flush_tx();
     cc1101_write(RFREG(FIFOTHR), DRF_FIFOTHR | _FIFO_TXTHR(5));
-    
+
     /// CSMA-CA interrupt based and fully pre-emptive.  This is
     /// possible using CC1 on the GPTIM to clock the intervals.
     radio_set_mactimer( (ot_uint)dll.comm.tca );
@@ -901,20 +901,20 @@ void rm2_txcsma_isr() {
         case (RADIO_STATE_TXCCA1 >> RADIO_STATE_TXSHIFT): {
             rfctl.state = RADIO_STATE_TXCCA1;
         }
-        
-        /// 3. CCA check state (also CCA2).  
+
+        /// 3. CCA check state (also CCA2).
         ///    If CCA1, failure->CCA1 (callback), success->CCA2 (mactimer wait)
         ///    If CCA2, failure->CCA1 (callback), success->TXSTART (fall through)
         case (RADIO_STATE_TXCCA2 >> RADIO_STATE_TXSHIFT): {
             ot_u8 result;
-            
+
             result = subcc1101_ccascan();
             if (result == 0) {
                 rfctl.state = RADIO_STATE_TXCCA1;
                 radio.evtdone(1, 0);
                 break;
             }
-            
+
             rfctl.state += (result << RADIO_STATE_TXSHIFT);
             if (rfctl.state != RADIO_STATE_TXSTART) {
                 if (phymac[0].tg > 2) {
@@ -934,13 +934,13 @@ void rm2_txcsma_isr() {
                 rfctl.flags &= ~RADIO_FLAG_SETPWR;
                 cc1101_set_txpwr( phymac[0].tx_eirp );
             }
-            
+
 #           if (M2_FEATURE(SUBCONTROLLER) || M2_FEATURE(GATEWAY))
             {   sync_enum   sync_type   = SYNC_fg;
                 ot_u8       mcsm1       = b00000000;
                 ot_u8       buffer_mode = 1;
                 ot_u8       buffer_size = 255;
-    
+
                 if (rfctl.flags & RADIO_FLAG_FLOOD) {
                     sync_type   = SYNC_bg;
                     mcsm1       = b00000010;
@@ -958,7 +958,7 @@ void rm2_txcsma_isr() {
                 subcc1101_syncword_config( SYNC_fg );
                 //cc1101_write(RFREG(MCSM1), b00000000 );   //should be persistent default
 #           endif
-            
+
             // Preload into TX FIFO a relatively small amount (8 bytes) for min
             // latency.  Amount should be multiple of 4, (> 5), and small.
             cc1101_write(RFREG(FIFOTHR), DRF_FIFOTHR | _FIFO_TXTHR(5));
@@ -970,12 +970,12 @@ void rm2_txcsma_isr() {
             em2_encode_newpacket();
             em2_encode_newframe();
             em2_encode_data();
-            
+
             // Put state into TX Data, and TXlimit to maximum (after preloading)
             radio.state     = RADIO_DataTX;
             rfctl.state     = RADIO_STATE_TXDATA;
             rfctl.txlimit   = RADIO_BUFFER_TXMAX;
-            
+
             cc1101_iocfg_txdata();
             cc1101_int_turnon(RFI_SOURCE0 | RFI_SOURCE2);
             cc1101_strobe(STROBE(STX));
@@ -1077,7 +1077,7 @@ void subcc1101_null(ot_int arg1, ot_int arg2) { }
 
 void subcc1101_finish(ot_int main_err, ot_int frame_err) {
     ot_sig2 callback;
-    
+
     /// 1.  Turn-off interrupts & put CC1101 into IDLE
     radio_gag();
     //radio_idle();         //should already be in idle, or going to idle
@@ -1098,7 +1098,7 @@ void subcc1101_finish(ot_int main_err, ot_int frame_err) {
 ot_bool subcc1101_lowrssi_reenter() {
     ot_int  min_rssi;
     min_rssi = ((phymac[0].cs_thr >> 1) & 0x3F) - 40;
-    
+
     //if (radio_rssi() < min_rssi) {
     //    subcc1101_reset_autocal();
     //    radio_idle();               //for CC1101 version, idle must be called ahead of rm2_reenter_rx(NULL)
@@ -1146,7 +1146,7 @@ ot_bool subcc1101_chanscan( ) {
 ot_bool subcc1101_ccascan() {
 /// This is a blocking call, and it runs pretty fast (less than 1ms).  It uses
 /// direct RSSI evaluation instead of the built-in CCA mechanism, which is not
-/// reliable.  Direct RSSI evaluation is faster and more precise.  400us is a 
+/// reliable.  Direct RSSI evaluation is faster and more precise.  400us is a
 /// safe amount of time for the RSSI to stabilize after starting RX.
     ot_bool check_cca;
     ot_u16  wait_period;
@@ -1154,16 +1154,16 @@ ot_bool subcc1101_ccascan() {
     cc1101_int_turnoff(RFI_SOURCE0 | RFI_SOURCE2);
     //radio_idle();  //should be in idle already
     cc1101_strobe( STROBE(SRX) );
-    
+
     // CC1101 takes about 350us to get RSSI stabilized, and 799 to calibrate
     wait_period = (rfctl.flags & RADIO_FLAG_AUTOCAL) ? (350+799) : (350);
 
     // Wait for RSSI, check it against threshold, go back to idle, stop autocal
-    platform_swdelay_us(wait_period);
+    delay_us(wait_period);
     check_cca = radio_check_cca();
     radio_idle();
     subcc1101_reset_autocal();
-    
+
     return check_cca;
 }
 
@@ -1178,7 +1178,7 @@ ot_bool subcc1101_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
     ot_u8       fec_id;
     ot_u8       spectrum_id;
     ot_int      i;
-    Twobytes    scratch;
+    ot_uni16    scratch;
 
     /// Only do the channel lookup if the new channel is different than before
     if (chan_id == phymac[0].channel) {
@@ -1314,7 +1314,7 @@ void subcc1101_chan_config(ot_u8 old_chan, ot_u8 old_eirp) {
 
     /// If channel frequency is different than before, move to the new channel,
     /// and tell driver to stage automatic calibration upon TX/RX entry.
-    /// @note: CC1101 contains a channel-offset built-in mechanism. 
+    /// @note: CC1101 contains a channel-offset built-in mechanism.
     fc_i = (phymac[0].channel & 0x0F);   // Center Frequency index = lower four bits channel ID
     if ( fc_i != (old_chan & 0x0F) ) {
         cc1101_write(RFREG(CHANNR), (ot_u8)fc_i);
@@ -1327,19 +1327,19 @@ void subcc1101_chan_config(ot_u8 old_chan, ot_u8 old_eirp) {
 
 void subcc1101_syncword_config(ot_u8 sync_class) {
 #   if (M2_FEATURE(FEC) != ENABLED)
-    static const ot_u8 sync_matrix[] = { RFREG(SYNC1)|0x40, 0xE6, 0xD0, 
+    static const ot_u8 sync_matrix[] = { RFREG(SYNC1)|0x40, 0xE6, 0xD0,
                                          RFREG(SYNC1)|0x40, 0x0B, 0x67 };
 #   else
-    static const ot_u8 sync_matrix[] = { RFREG(SYNC1)|0x40, 0xE6, 0xD0, 
+    static const ot_u8 sync_matrix[] = { RFREG(SYNC1)|0x40, 0xE6, 0xD0,
                                          RFREG(SYNC1)|0x40, 0x0B, 0x67,
                                          RFREG(SYNC1)|0x40, 0xF4, 0x98,
                                          RFREG(SYNC1)|0x40, 0x19, 0x2F };
-    
+
     if (phymac[0].channel & 0x80) {
         (ot_u8)sync_class += 6;
     }
 #   endif
-    
+
     cc1101_spibus_io(3, 0, (ot_u8*)(sync_matrix+sync_class), NULL);
 }
 
@@ -1357,7 +1357,7 @@ void subcc1101_buffer_config(ot_u8 mode, ot_u8 param) {
 
 
 
-void subcc1101_prep_q(Queue* q) {
+void subcc1101_prep_q(ot_queue* q) {
 /// Put some special data in the queue options field.
 /// Lower byte is encoding options (i.e. FEC)
 /// Upper byte is processing options (i.e. CRC)

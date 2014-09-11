@@ -28,7 +28,7 @@
 #ifndef __APP_CONFIG_H
 #define __APP_CONFIG_H
 
-#include "build_config.h"
+#include <app/build_config.h>
 
 
 
@@ -59,28 +59,28 @@
   * setting to ENABLED/DISABLED, you are changing the way OpenTag compiles.
   * Disabling features you don't need will make the build smaller -- sometimes
   * a lot smaller.  Total build sizes tend to range between 10 - 40 KB.
-  * 
+  *
   * Main device features are ultimately summarized in the DEV_FEATURES_BITMAP
-  * constant, defined at the bottom of the section.  This 32 bit bitmap is 
+  * constant, defined at the bottom of the section.  This 32 bit bitmap is
   * converted into BASE64 along with the firmware type (OpenTag) and the version
   * and stored in the "Firmware Version" element of ISF 1 (Device Features).
-  * By reading some ISF's (especially Device Features and Protocol List), a 
+  * By reading some ISF's (especially Device Features and Protocol List), a
   * DASH7 gateway can figure out exactly what capabilities this device has.
   */
 #define OT_PARAM(VAL)                   OT_PARAM_##VAL
 #define OT_FEATURE(VAL)                 OT_FEATURE_##VAL
 
-// User/App task lists: comment-out if none.  
+// User/App task lists: comment-out if none.
 // Use comma separated with TASK_xxx nomenclature (e.g. TASK_0, TASK_1, TASK_2)
 #define OT_PARAM_EXOTASKS               0
-#define OT_PARAM_EXOTASK_IDS            
-#define OT_PARAM_EXOTASK_HANDLES        
+#define OT_PARAM_EXOTASK_IDS
+#define OT_PARAM_EXOTASK_HANDLES
 #define OT_PARAM_KERNELTASKS            0
-#define OT_PARAM_KERNELTASK_IDS         
-#define OT_PARAM_KERNELTASK_HANDLES     
+#define OT_PARAM_KERNELTASK_IDS
+#define OT_PARAM_KERNELTASK_HANDLES
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          6                                   // Max simultaneous sessions (i.e. tasks)
-#define OT_PARAM_BUFFER_SIZE            (512+2080)                          // Typically, must be at least 512 bytes    
+#define OT_PARAM_BUFFER_SIZE            (512+2080)                          // Typically, must be at least 512 bytes
 #define OT_PARAM_KERNEL_LIMIT           -1                                  // Maximum ticks between kernel calls (if<=0, no limit)
 
 #define OT_FEATURE_SERVER               ENABLED                             // "Server" is a build containing the OpenTag stack
@@ -109,7 +109,7 @@
 #define OT_FEATURE_HF                   NOT_AVAILABLE                       // Optional HF interface for event generation
 #define OT_FEATURE_CRC_TXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
 #define OT_FEATURE_CRC_RXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
-#define OT_FEATURE_RTC                  DISABLED                            // Do you have a precise 32768 Hz clock?
+#define OT_FEATURE_TIME                  DISABLED                            // Do you have a precise 32768 Hz clock?
 #define OT_FEATURE_SESSION_DEPTH        OT_PARAM_SESSION_DEPTH
 #define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE
 #define OT_FEATURE_EXT_TASK             ENABLED
@@ -132,16 +132,16 @@
 /// Somewhat defunct, legacy features
 #define LOG_FEATURE(VAL)                ((LOG_FEATURE_##VAL) && (OT_FEATURE_LOGGER))
 #define LOG_FEATURE_FAULTS              ENABLED                             // Logs System Faults (errors that cause reset)
-#define LOG_FEATURE_FAILS               ENABLED                             // Logs System Failures (detected glitches)                
+#define LOG_FEATURE_FAILS               ENABLED                             // Logs System Failures (detected glitches)
 #define LOG_FEATURE_RESPONSES           ENABLED
 #define LOG_FEATURE_ANY                 OT_FEATURE_LOGGER
-#define LOG_METHOD_DEFAULT              0                                   // Logging over NDEF+MPIPE, using OTAPI_logger.c
+#define LOG_METHOD_DEFAULT              0                                   // Logging over NDEF+MPIPE, using logger.c
 #define LOG_METHOD_SOMETHINGELSE        1                                   // Just an example
 #define LOG_METHOD                      LOG_METHOD_DEFAULT
 
 
-/// Mode 2 Features:    
-/// These are generally handled by the ISF settings files, but these defines 
+/// Mode 2 Features:
+/// These are generally handled by the ISF settings files, but these defines
 /// can limit scope of the compilation if you are trying to optimize the build.
 #define M2_FEATURE(VAL)                 ((M2_FEATURE_##VAL) && (M2_FEATURESET))
 #define M2_PARAM(VAL)                   (M2_PARAM_##VAL)
@@ -184,8 +184,8 @@
 #    define M2_FEATURE_RTC_SCHEDULER    DISABLED
 #endif
 
-/// Mode 1 Features: 
-/// Just here for show.  Mode 1 is the legacy version of DASH7, and it is 
+/// Mode 1 Features:
+/// Just here for show.  Mode 1 is the legacy version of DASH7, and it is
 /// generally obsolete circa 2010.  I have no plans to implement Mode 1, but
 /// someone else may want to do so.  Mode 1 is old, and it uses a PHY that is
 /// not well suited to digital radios (and is naive in general, but I digress).
@@ -196,7 +196,7 @@
 #define M1_FEATURE_AUTOSYNC             DISABLED                            // Sync-word detection in HW
 #define M1_FEATURE_INTEGRATED_PHY       DISABLED                            // PHY features in Radio HW
 #define M1_FEATURE_INTEGRATED_MAC       DISABLED                            // MAC features in Radio HW (pipe dream)
-#define M1_FEATURE_INTERFACE_SPI        DISABLED                            // MCU<-->Radio is via SPI 
+#define M1_FEATURE_INTERFACE_SPI        DISABLED                            // MCU<-->Radio is via SPI
 #define M1_FEATURE_INTERFACE_TXSYNC     DISABLED                            // Synchronous RX bit generation
 #define M1_FEATURE_INTERFACE_RXSYNC     DISABLED                            // Synchronous RX bit detection
 #define M1_FEATURE_TUNE                 -1                                  // microseconds to offset input async RX bit
@@ -222,7 +222,7 @@
                                 ((ot_u32)OT_FEATURE_M1 << 14) | \
                                 ((ot_u32)OT_FEATURE_LF << 13) | \
                                 ((ot_u32)OT_FEATURE_HF << 11) | \
-                                ((ot_u32)OT_FEATURE_RTC << 7)       )
+                                ((ot_u32)OT_FEATURE_TIME << 7)       )
 
 
 
@@ -257,7 +257,7 @@
 /** ISFSB Files (Indexed Short File Series Block)   <BR>
   * ========================================================================<BR>
   * ISFSB Files are strings of ISF IDs that bundle/batch related ISF's.  ISFs
-  * are not all the same length (max length = 16).  Also, make sure that the 
+  * are not all the same length (max length = 16).  Also, make sure that the
   * TOTAL_BYTES you allocate to the ISFSB bank corresponds to the amount set in
   * the linker file.
   */
@@ -305,7 +305,7 @@
 #define ISFS_MAX_device_channel_utilization  4
 #define ISFS_MAX_location_data               2
 
-// The +1 and bit shifting assures that 
+// The +1 and bit shifting assures that
 // the ALLOC value will be half-word (16 bit) aligned
 #define ISFS_ALLOC(VAL)                      (((ISFS_MAX_##VAL + _ALLOC_OFFSET) >> _ALLOC_SHIFT) << _ALLOC_SHIFT)
 
@@ -339,7 +339,7 @@
 
 /** GFB (Generic File Block)
   * ========================================================================<BR>
-  * GFB is a mostly unstructured data space.  You can change the definitions 
+  * GFB is a mostly unstructured data space.  You can change the definitions
   * below to match your application & platform.  As always, make sure that the
   * TOTAL_BYTES setting matches that from your linker file.
   */
@@ -364,8 +364,8 @@
 /** ISFB (Indexed Short File Block)  <BR>
   * ========================================================================<BR>
   * The ISFB contains up to 256 files (IDs 0x00 to 0xFF), length <= 255 bytes.
-  * As always, make sure that the TOTAL_BYTES allocated to the ISFB matches the 
-  * value from your linker file.  
+  * As always, make sure that the TOTAL_BYTES allocated to the ISFB matches the
+  * value from your linker file.
   *
   * If just using the base registry, the amount of bytes the ISFB requires is
   * typically between 512-1024, depending on how many features you are using.
@@ -396,7 +396,7 @@
   * <LI> 0xA0 to 0xFE: Proprietary </LI>
   * <LI> 0xFF: Proprietary Data Extension </LI>
   *
-  * Some files have allocations less than 255 bytes.  Many of the files from IDs 
+  * Some files have allocations less than 255 bytes.  Many of the files from IDs
   * 0x00 to 0x1F have limited allocations because they are config registers.
   *
   * There are several types of MACROS for handling ISFB constants.  To use, put
@@ -441,7 +441,7 @@
 #define ISF_ID_application_extension            0xFF
 
 /// ISF Mirror Enabling: <BR>
-/// ISFB files can be mirrored in RAM.  Set to 0/1 to Disable/Enable each file 
+/// ISFB files can be mirrored in RAM.  Set to 0/1 to Disable/Enable each file
 /// mirror.  Mirroring speeds-up file access, but it can consume a lot of RAM.
 #define ISF_ENMIRROR(VAL)                       ISF_ENMIRROR_##VAL
 #define ISF_ENMIRROR_network_settings           1
@@ -504,7 +504,7 @@
 #define ISF_MOD_hardware_fault_status           b00100100
 #define ISF_MOD_application_extension           b00100100
 
-/// ISF file default length: 
+/// ISF file default length:
 /// (that is, the initial length of the ISF)
 #define ISF_LEN(VAL)                            ISF_LEN_##VAL
 #define ISF_LEN_network_settings                10
@@ -657,6 +657,6 @@
 /// Total amount of allocation to the Mirror
 #define ISF_MIRROR_HEAP_BYTES   ((ISF_MIRROR_NEXT) - (ISF_MIRROR_VADDR))
 
-/// END OF AUTOMATIC ISF STUFF 
+/// END OF AUTOMATIC ISF STUFF
 
-#endif 
+#endif

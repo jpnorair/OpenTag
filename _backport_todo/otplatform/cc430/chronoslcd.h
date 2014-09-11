@@ -23,7 +23,7 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 #if ( defined(BOARD_eZ430Chronos) &&  OT_FEATURE(MPIPE) &&  defined(MPIPE_LCD) )
 

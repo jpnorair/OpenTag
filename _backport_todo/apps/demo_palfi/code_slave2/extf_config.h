@@ -91,7 +91,7 @@
 
 
 /// OTAPI EXTFs
-//#define EXTF_otapi_alpext_proc
+//#define EXTF_alp_ext_proc
 
 
 /// Platform EXTFs
@@ -99,7 +99,7 @@
 #define EXTF_platform_isr_sysnmi
 
 
-/// Queue EXTFs
+/// ot_queue EXTFs
 
 
 

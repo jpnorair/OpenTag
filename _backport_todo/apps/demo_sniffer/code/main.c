@@ -47,14 +47,14 @@
   */
 
 #include "OTAPI.h"
-#include "OT_platform.h"
-
+#include <otplatform.h>
+#include <otlib/logger.h>
 
 
 
 /** Data Mapping <BR>
   * ===========================================================================
-  * The Opmode Demo needs a particular data mapping.  It is not unusual, but 
+  * The Opmode Demo needs a particular data mapping.  It is not unusual, but
   * the demo may not work if the data is not set correctly.  This define below
   * uses the default data mapping (/apps/demo_opmode/code/data_default.c)
   */
@@ -67,7 +67,7 @@
 
 /** Application Global Variables <BR>
   * ========================================================================<BR>
-  * opmode_devicemode must be volatile, since it is set in an interrupt service 
+  * opmode_devicemode must be volatile, since it is set in an interrupt service
   * routine.
   */
 
@@ -120,10 +120,10 @@ void opmode_goto_endpoint();
 /** Application Events <BR>
   * ========================================================================<BR>
   * This Application can be initialized by a button-press or by an ALP command.
-  * The ALP command is treated at a higher-level (see ALP callback later).  
+  * The ALP command is treated at a higher-level (see ALP callback later).
   * The button-press is unique to this application, and it is treated here.
   */
-  
+
 
 
 
@@ -134,7 +134,7 @@ void opmode_goto_endpoint();
 /** ALP Processor Callback for Starting a Ping <BR>
   * ========================================================================<BR>
   * "ALP" is the NDEF-based set of low-level API protocols that OpenTag uses.
-  * ALP messages can come-in over any communication method: wire, wireless, 
+  * ALP messages can come-in over any communication method: wire, wireless,
   * telepathy... anything that can transfer a packet payload.
   *
   * Some ALPs are standardized. Those get handled by OTlib automatically.  ALPs
@@ -146,11 +146,11 @@ void opmode_goto_endpoint();
   * ALP Protocol Commands:      0-127 (00-7F) corresponding to channel to sniff
   *
   * The "user_id" parameter corresponds to the Device ID that sent this ALP.
-  * 
+  *
   * A quickstart guide to the ALP API is available on the Indigresso Wiki.
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
-  */ 
-void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
+  */
+void alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 /// The function app_invoke() will cause the kernel to call ext_systask() as
 /// soon as resources are available.
     vlFILE*     fp;
@@ -162,8 +162,8 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
     if (    auth_isroot(user_id)    \
         &&  (alp->inrec.id == 0xFF) \
         &&  (APP_TASK.event == 0)   )   {
-        
-        /// Make sure channel is spec-legal.  If so, set the channel of the 
+
+        /// Make sure channel is spec-legal.  If so, set the channel of the
         /// first (and only) in the channel list to the specified one, and also
         /// set the channel of the hold scan accordingly.  By default, the scan
         /// is updated every second.  The next scan will have these settings.
@@ -175,16 +175,16 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
             scratch.ubyte[0]    = channel;
             vl_write(fp, 0, scratch.ushort);
             vl_close(fp);
-            
+
             fp                  = ISF_open_su(ISF_ID(hold_scan_sequence));
             scratch.ushort      = vl_read(fp, 0);
             scratch.ubyte[0]    = channel;
             vl_write(fp, 0, scratch.ushort);
             vl_close(fp);
-            
+
             retval = 1; //success
         }
-        
+
         alp_load_retval(alp, retval);
     }
 }
@@ -199,14 +199,14 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 #ifdef EXTF_network_sig_route
 void network_sig_route(void* route, void* session) {
 /// network_sig_route() will have route >= 0 on successful request processing.
-/// "route" will always be set to -1, which will cause the Data Link Layer to 
+/// "route" will always be set to -1, which will cause the Data Link Layer to
 /// ignore the rest of the session and keep listening (sniffing).
     static const ot_u8 unknown_rx[10]   = "UNKNOWN_RX";
     static const ot_u8 opentag_rx[10]   = "OPENTAG_RX";
     ot_u8* label;
 
     // A valid packet has been received.
-    // You can look at the response in the TX Queue (and log it if you want).
+    // You can look at the response in the TX ot_queue (and log it if you want).
     // We just log the request and mark it as known or unknown.
     if (*(ot_int*)route >= 0) {
         label = (ot_u8*)opentag_rx;
@@ -214,13 +214,13 @@ void network_sig_route(void* route, void* session) {
     else {
         label = (ot_u8*)unknown_rx;
     }
-    
+
     // Log the received packet data (with 10 character label)
-    otapi_log_msg(MSG_raw, 10, q_length(&rxq), label, rxq.front);
-    
+    logger_msg(MSG_raw, 10, q_length(&rxq), label, rxq.front);
+
     // Turn on Green LED to indicate received packet
     // Activate the app task, which will turn off the LED in 30 ticks
-    otapi_led1_on();
+    BOARD_led1_on();
     sys_task_setevent(APP_TASK, 1);
     sys_preempt(APP_TASK, 30);
 
@@ -253,9 +253,9 @@ void ext_systask(ot_task task) {
 
     // Turn-off the Green LED
     if (task->event != 0) {
-        otapi_led1_off();
+        BOARD_led1_off();
     }
-    
+
     // Turn-off the task
     task->event = 0;
 }
@@ -286,29 +286,29 @@ void ext_systask(ot_task task) {
   *
   */
 void app_init() {
-/// 1. Blink the board LEDs to show that it is starting up.  
+/// 1. Blink the board LEDs to show that it is starting up.
 /// 2. Configure the board input button, which for this app will send a ping
     ot_u8 i;
 
     i=4;
     while (i != 0) {
-        if (i&1)    otapi_led1_on();
-        else        otapi_led2_on();
+        if (i&1)    BOARD_led1_on();
+        else        BOARD_led2_on();
 
-        platform_swdelay_ms(30);
-        otapi_led2_off();
-        otapi_led1_off();
+        delay_ms(30);
+        BOARD_led2_off();
+        BOARD_led1_off();
         i--;
     }
-    
+
     //App Task parameters that stay the same throughout the runtime
     sys_task_setreserve(APP_TASK, 1);
     sys_task_setlatency(APP_TASK, 10);
 }
 
 
-  
-  
+
+
 void main(void) {
     ///1. Standard Power-on routine (Clocks, Timers, IRQ's, etc)
     ///2. Standard OpenTag Init (most stuff actually will not be used)
@@ -323,7 +323,7 @@ void main(void) {
     mpipedrv_standby();
 
     ///4b. Load a message to show that main startup has passed
-    otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+    logger_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>

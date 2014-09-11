@@ -32,7 +32,7 @@
   *      means: 1. Asynchronous event (button press), 2. Another task (the
   *      MPipe task, via a custom ALP command). </LI>
   * <LI> Defining a custom ALP protocol using ID=0x90, 0<=CMD<=3, and putting
-  *      the custom protocol code in static callback otapi_alpext_proc() </LI>
+  *      the custom protocol code in static callback alp_ext_proc() </LI>
   * <LI> Basic usage of OTAPI for logging and DASH7 dialog creation </LI>
   * <LI> Basic structuring of an OpenTag-based App & main.c </LI>
   *
@@ -65,14 +65,14 @@
   */
 
 #include "OTAPI.h"
-#include "OT_platform.h"
-
+#include <otplatform.h>
+#include <otlib/logger.h>
 
 
 
 /** Data Mapping <BR>
   * ===========================================================================
-  * The Opmode Demo needs a particular data mapping.  It is not unusual, but 
+  * The Opmode Demo needs a particular data mapping.  It is not unusual, but
   * the demo may not work if the data is not set correctly.  This define below
   * uses the default data mapping (/apps/demo_opmode/code/data_default.c)
   */
@@ -85,7 +85,7 @@
 
 /** Application Global Variables <BR>
   * ========================================================================<BR>
-  * opmode_devicemode must be volatile, since it is set in an interrupt service 
+  * opmode_devicemode must be volatile, since it is set in an interrupt service
   * routine.
   */
 #ifdef __BIG_ENDIAN__
@@ -173,22 +173,22 @@ void sub_trig4_toggle();
 
 /** User Applet and Button Management Routines <BR>
   * ========================================================================<BR>
-  * The User applet is primarily activated by callbacks from the kernel.  
+  * The User applet is primarily activated by callbacks from the kernel.
   * However, in this system some features are also activated by button presses.
   */
-static const ot_sub led_on[4] = {   &sub_trig4_high, 
+static const ot_sub led_on[4] = {   &sub_trig4_high,
                                     &sub_trig3_high,
                                     &platform_trig2_high,
                                     &platform_trig1_high    };
 
-static const ot_sub led_off[4] = {  &sub_trig4_low, 
+static const ot_sub led_off[4] = {  &sub_trig4_low,
                                     &sub_trig3_low,
                                     &platform_trig2_low,
                                     &platform_trig1_low     };
 
 void sub_led_cycle(ot_u8 i) {
     led_on[i&3]();
-    platform_swdelay_ms(33);
+    delay_ms(33);
     led_off[i&3]();
 }
 
@@ -412,11 +412,11 @@ void opmode_goto_endpoint() {
   * There is an example implementation below, which can be uncommented to match
   * the example in the API Quickstart Guide:
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
-  */ 
+  */
 
-void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
+void alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 /// For this example, the directive ID is 0x90 and the commands are 0-3.  You
-/// can change these values simply by changing the implementation of this 
+/// can change these values simply by changing the implementation of this
 /// function.
 ///
 /// Alternatively, instead of using the User Task (extprocess) you can use the
@@ -446,9 +446,9 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
   * =======================================================================<BR>
   * You can create a user task that does various different things -- basically
   * it is just a function that does whatever you want.  This task is enabled
-  * when a valid "Opmode" ALP is received (see otapi_alpext_proc() above),
+  * when a valid "Opmode" ALP is received (see alp_ext_proc() above),
   * and it runs the command routine specified by the ALP CMD value that was
-  * received and parsed by otapi_alpext_proc().
+  * received and parsed by alp_ext_proc().
   *
   * It is important to use a task to do the work in cases where "the work"
   * is involving the OpenTag core.  Otherwise, you are in danger of
@@ -458,7 +458,7 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
   *
   * If "the work" has nothing to do with the OpenTag core, then you don't
   * need a task.  For example, you could just run the code from
-  * otapi_alpext_proc().  The Built-in Filedata ALP is an example of an ALP
+  * alp_ext_proc().  The Built-in Filedata ALP is an example of an ALP
   * that doesn't impact the core, and therefore is runs directly from ALP.
   */
 
@@ -479,7 +479,7 @@ void ext_systask(ot_task task) {
 	// Log a message.  It is scheduled, and the RF task has higher priority,
 	// so if you are sending a DASH7 dialog this log message will usually
 	// come-out after the dialog finishes.
-	otapi_log_msg(MSG_utf8, 3, 14, (ot_u8*)"CMD", (ot_u8*)msglist[app_select]);
+	logger_msg(MSG_utf8, 3, 14, (ot_u8*)"CMD", (ot_u8*)msglist[app_select]);
 
 	// Load the session template: Only used for communication tasks
 	s_tmpl.channel      = 0x00;
@@ -488,11 +488,11 @@ void ext_systask(ot_task task) {
 
 	switch (app_select) {
 	// Communication Task Commands
-	///@todo Change Query command to use otapi_task_immediate_advertise()
-	///@note You can actually call otapi_task... functions directly from
+	///@todo Change Query command to use m2task_immediate_advertise()
+	///@note You can actually call m2task... functions directly from
 	/// the alp_extproc function without breaking anything.
-	case 0: otapi_task_immediate(&s_tmpl, &applet_send_beacon);   break;
-	case 1: otapi_task_immediate(&s_tmpl, &applet_send_query);   break;
+	case 0: m2task_immediate(&s_tmpl, &applet_send_beacon);   break;
+	case 1: m2task_immediate(&s_tmpl, &applet_send_query);   break;
 
 	// Direct System Control Commands
 	case 2: opmode_goto_gateway();  break;
@@ -528,7 +528,7 @@ void main(void) {
     mpipedrv_standby();
 
     ///4b. Load a message to show that main startup has passed
-    otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+    logger_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>

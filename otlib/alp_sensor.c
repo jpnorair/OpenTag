@@ -27,15 +27,15 @@
   */
 
 
-#include "alp.h"
+#include <otlib/alp.h>
 
 #if (   (OT_FEATURE(SERVER) == ENABLED) \
      && (OT_FEATURE(ALP) == ENABLED) \
      && (OT_FEATURE(SENSORS) == ENABLED) )
 
-#include "auth.h"
-#include "external.h"
-#include "queue.h"
+#include <otlib/auth.h>
+#include <otsys/sysext.h>
+#include <otlib/queue.h>
 
 
 // No implementaton yet!

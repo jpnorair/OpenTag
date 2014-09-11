@@ -2,14 +2,14 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <sys/stat.h>
+#include <otsys/stat.h>
 #include <signal.h>
 
-#include "OT_types.h"
+#include <otsys/types.h>
 #include "radio_named_pipe.h"
 #include "encode.h"
 #include "radio_pipe.h"
-#include "radio.h"
+#include <m2/radio.h>
 
 #include "named_pipe/board_named_pipe.h"    // includes platform_named_pipe.h
 

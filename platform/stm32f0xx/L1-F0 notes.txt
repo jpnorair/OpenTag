@@ -1,0 +1,14 @@
+ADC: F0 has reduced function, is simpler, but much different
+
+CRC: basically the same
+
+FLASH: somewhat different, but probably inconsequential when using lib code
+
+GPIO: Seems to be the same, except BSRR is not addressable as BSRRL, BSRRH
+
+I2C: Very different
+
+RTC: Basically the same, but F0 has no Alarm B and fewer backup regs
+
+USART: Different, but probably minimal for simple UART configuration
+

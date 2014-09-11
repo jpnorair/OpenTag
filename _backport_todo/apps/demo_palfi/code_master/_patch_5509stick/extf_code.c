@@ -29,7 +29,7 @@
 #define __EXTF_CODE_C
 
 #include "OTAPI.h"
-#include "OT_platform.h"
+#include <otplatform.h>
 
 ot_u8 led_mask = 0;
 
@@ -37,28 +37,28 @@ ot_u8 led_mask = 0;
 //Some additonal EXTFs are using the normal applets from otlibext
 
 
-void otapi_led1_on() {
+void BOARD_led1_on() {
     led_mask               |= 1;
     OT_TRIG2_PORT->SEL     &= ~OT_TRIG2_PIN;
     OT_TRIG1_PORT->DOUT    |= OT_TRIG1_PIN;
 }
 
 
-void otapi_led2_on() {
+void BOARD_led2_on() {
     led_mask               |= 2;
     OT_TRIG2_PORT->DOUT    |= OT_TRIG2_PIN;
     OT_TRIG2_PORT->SEL     |= OT_TRIG2_PIN;
 }
 
 
-void otapi_led1_off() {
+void BOARD_led1_off() {
     led_mask &= ~1;
     if (led_mask & 2)   OT_TRIG2_PORT->SEL     |= OT_TRIG2_PIN;
     else                OT_TRIG1_PORT->DOUT    &= ~OT_TRIG1_PIN;
 }
 
 
-void otapi_led2_off() {
+void BOARD_led2_off() {
     OT_TRIG2_PORT->SEL &= ~OT_TRIG2_PIN;
     led_mask &= ~2;
     if ((led_mask & 1) == 0) {

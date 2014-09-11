@@ -26,14 +26,14 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 #ifdef PLATFORM_STM32F10x
 
 
-#include "OT_utils.h"
-#include "OT_types.h"
-#include "OT_config.h"
-
+#include <otlib/utils.h>
+#include <otsys/types.h>
+#include <otsys/config.h>
+#include <otlib/logger.h>
 
 #include "cc1101_interface.h"
 
@@ -147,8 +147,8 @@ void cc1101_coredump() {
         ot_u8 regval    = cc1101_read(i);
 
         otutils_bin2hex(&i, &label[4], 1);
-        otapi_log_msg(MSG_raw, 6, 1, label, &regval);
-        //platform_swdelay_ms(5);
+        logger_msg(MSG_raw, 6, 1, label, &regval);
+        //delay_ms(5);
     }
 }
 
@@ -242,14 +242,14 @@ void cc1101_waitforidle() {
 }
 
 ot_u16 cc1101_rfstatus() {
-    Twobytes readout;
+    ot_uni16 readout;
     readout.ubyte[0] = cc1101_read(RF_MARCSTATE);
     readout.ubyte[1] = cc1101_read(RF_PKTSTATUS);
     return readout.ushort;
 }
 
 ot_u16 sub_get2regs(ot_u8 start) {
-    Twobytes readout;
+    ot_uni16 readout;
     cc1101_spibus_io(1, 2, &start, &readout.ubyte[0]);
     return readout.ushort;
 }
@@ -291,12 +291,12 @@ void cc1101_init_bus() {
 
     ///2. Set-up SPI port: this could be moved into a BOARD inline function
     BOARD_RADIO_SPI_PORTCONF();
-    
+
 
     // EXTI binding
     GPIO_EXTILineConfig(RADIO_IRQ0_SRCPORT, RADIO_IRQ0_SRCPIN);
     GPIO_EXTILineConfig(RADIO_IRQ2_SRCPORT, RADIO_IRQ2_SRCPIN);
-    
+
     // Clear any interrupt flags on the lines
     EXTI->PR    =  RFI_ALL;
     EXTI->RTSR &= ~RFI_ALL;
@@ -314,20 +314,20 @@ void cc1101_init_bus() {
     NVIC->IP[(uint32_t)(RADIO_IRQ0_IRQn)]       = b0001 << (8 - __NVIC_PRIO_BITS);
     NVIC->ISER[((uint32_t)(RADIO_IRQ0_IRQn)>>5)]= (1 << ((uint32_t)(RADIO_IRQ0_IRQn) & 0x1F));
 #   endif
-    
-    
+
+
     ///4. Power-up reset via CS pin & MISO pin
     __SPI_CS_HIGH();
-    platform_swdelay_us(30);
+    delay_us(30);
     __SPI_CS_LOW();
-    platform_swdelay_us(30);
+    delay_us(30);
     __SPI_CS_HIGH();
-    platform_swdelay_us(45);
+    delay_us(45);
     __SPI_CS_LOW();
     while (RADIO_SPIMISO_PORT->IDR & RADIO_SPIMISO_PIN);
     __SPI_CS_HIGH();
-    
-    
+
+
     ///5. Perform reset of the digital core.
     cc1101_reset();
 }
@@ -345,7 +345,7 @@ void cc1101_spibus_wait() {
 void cc1101_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd, ot_u8* resp) {
     cc1101_waitforidle();
     __SPI_ENABLE();
-    
+
     ///Wait for TX to be done.  Meanwhile, save the status byte
     while (cmd_len != 0) {
         cmd_len--;
@@ -436,7 +436,7 @@ ot_u8 cc1101_calc_rssithr(ot_u8 input, ot_u8 offset) {
     thr     = (ot_int)input - _ATTEN_DB;    // subtract dBm encoding offset
     thr   >>= 1;                            // divide by two (array is 2dB increments)
     thr    -= offset;               // (1) account for turbo vs normal rate
-    
+
     if (thr > 17)       thr = 17;   // (2) make max if dBm threshold is above range
     else if (thr < 0)   thr = 0;    // (3) make 0 if dBm threshold is lower than range
 
@@ -488,7 +488,7 @@ void cc1101_set_txpwr(ot_u8 pwr_code) {
     ot_int  i;
     ot_int  eirp_val;
 
-// Should be defined in board config file 
+// Should be defined in board config file
 // Depends on matching circuit, antenna, and board physics
 // Described in 0.5 dB units (12 = 6dB system loss)
 #   ifndef RF_HDB_ATTEN
@@ -582,9 +582,9 @@ void cc1101_irq2_isr() {
 }
 
 
-void cc1101_globalirq_isr() { 
+void cc1101_globalirq_isr() {
     ot_int irq_sel;
-    
+
     irq_sel     = ((EXTI->PR & RFI_SOURCE0) == 0);
     EXTI->PR    = (irq_sel) ? RFI_SOURCE2 : RFI_SOURCE0;
 

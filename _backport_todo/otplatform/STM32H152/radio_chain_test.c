@@ -1,11 +1,12 @@
 
 #include "OTAPI.h"
-#include "OT_platform.h"
-#include "system.h"
-#include "session.h"
-#include "radio.h"
+#include <otplatform.h>
+#include <otsys/syskern.h>
+#include <m2/session.h>
+#include <m2/radio.h>
 #include "debug_uart.h"
 
+#include <otlib/rand.h>
 
 /** Compile-Time Device ID configuration <BR>
   * ===========================================================================
@@ -36,9 +37,9 @@ static void test_radio_fgrx(void);
 char tim11_compared;
 static ot_int rx_fcode;
 
-void sub_print_queue(Queue* q) {
+void sub_print_queue(ot_queue* q) {
     int i, j;
-    
+
     if (q == &rxq) {
         if (rx_fcode == 0)
             debug_printf("[32m"); // for rxq printing: green foreground
@@ -46,10 +47,10 @@ void sub_print_queue(Queue* q) {
             debug_printf("[31m"); // for rxq printing: red foreground on rx failure
     }
 
-    debug_printf("Printing Queue: length=%d\r\n", q_length(q));
-    
+    debug_printf("Printing ot_queue: length=%d\r\n", q_length(q));
+
     for (i=0; i<q_length(q); ) {
-        debug_printf("%04X: ", i); 
+        debug_printf("%04X: ", i);
         for (j=0; (j<16) && (i<q_length(q)); j++, i++) {
             debug_printf("%02X ", q->front[i]);
         }
@@ -93,7 +94,7 @@ create_session()
     /// Basic initialization
     q_start(&txq, 0, 0);
     q_start(&rxq, 0, 0);
-    
+
     /// Create a new ad-hoc session on channel 0x10.  Fill up the remaining
     /// session parameters with [effectively] dummy values.
     session = session_new(0, M2_NETSTATE_INIT, 0x10);
@@ -101,21 +102,21 @@ create_session()
         debug_printf("-> Session could not be created (Fatal error)\r\n");
         return -1;
     }
-    session->dialog_id  = platform_prand_u8();
+    session->dialog_id  = rand_prn8();
     session->subnet     = 0xF0;
     session->extra      = 0;
     session->flags      = 0;
     session->channel    = test_channel;
-    
+
     init_sys_comm(session->channel);
-        
+
     /// Load up the first few bytes of the frame, which are:
     /// Length, TX EIRP, Subnet, Frame Info
     /// - TX EIRP is filled automatically by PHY
     /// - Except length, these fields don't really matter for chain test
-    
+
     if (test_length == 0) {
-        data_length     = platform_prand_u8();  // 4 to 255 bytes
+        data_length     = rand_prn8();  // 4 to 255 bytes
         if (data_length < 4)
             data_length  = 4;
     } else
@@ -127,21 +128,21 @@ create_session()
     txq.front[3]    = (session->flags & 0xC0) | (0x20) | (0x02);
     txq.putcursor   = &txq.front[4];
  //#txq.length      = 4;
-    
+
     /// write the rest of the data to the queue
     for (i=0; i<(data_length-4); i++) {
         ot_u8 input;
-        input = platform_prand_u8();
+        input = rand_prn8();
         q_writebyte(&txq, input);
     }
     sub_print_queue(&txq);
-    
+
     return 0;
 }
 
 
 void
-test_rcevt_frx(ot_int pcode, ot_int fcode) 
+test_rcevt_frx(ot_int pcode, ot_int fcode)
 {
     debug_printf("rcevt_frx(");
     switch (pcode) {
@@ -167,7 +168,7 @@ test_rcevt_frx(ot_int pcode, ot_int fcode)
 void
 test_rcevt_ftx(ot_int pcode, ot_int scratch)
 {
-    radio_sleep();                      
+    radio_sleep();
 
     debug_printf("rcevt_ftx(%d, %d)\r\n", pcode, scratch);
 
@@ -648,7 +649,7 @@ const ot_u8 gfb_stock_files[] = {0xFF, 0xFF};
 /// This will look something like "OTv1  xyyyyyyy" where x is a letter and
 /// yyyyyyy is a Base64 string containing a 16 bit build-id and a 32 bit mask
 /// indicating the features compiled-into the build.
-#include "OT_version.h"
+#include <otsys/version.h>
 
 #define BV0     (ot_u8)(OT_VERSION_MAJOR + 48)
 #define BT0     (ot_u8)(OT_BUILDTYPE)

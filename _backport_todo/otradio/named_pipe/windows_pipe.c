@@ -3,7 +3,7 @@
 #include "radio_pipe.h" // platform header
 #include "radio_named_pipe.h"
 #include "encode.h"
-#include "radio.h"
+#include <m2/radio.h>
 #include <unistd.h>
 
 /**************** public variables... **************************/

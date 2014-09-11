@@ -81,13 +81,13 @@
 ///@todo this is untested code.  The Auth module is incomplete and must be 
 ///      augmented to include functions & data elements referenced in this code.
 
-#include "alp.h"
+#include <otlib/alp.h>
 
 #if (   (OT_FEATURE(ALP) == ENABLED) \
      && (OT_FEATURE(SECURITY) == ENABLED) )
 
 
-#include "auth.h" 
+#include <otlib/auth.h> 
 
 
 #define ALP_SEC_RESPOND     (1<<7)

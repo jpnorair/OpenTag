@@ -34,14 +34,14 @@
   ******************************************************************************
   */
 
-#include "alp.h"
+#include <otlib/alp.h>
 
 #if (   (OT_FEATURE(SERVER) == ENABLED) \
      && (OT_FEATURE(ALP) == ENABLED) \
      && (OT_FEATURE(ALPAPI) == ENABLED) )
 
-#include "OTAPI_c.h"
-#include "auth.h"
+#include <m2/capi.h>
+#include <otlib/auth.h>
 
 
 #define F_OFFSET1   0
@@ -73,47 +73,47 @@ typedef enum {
 // LLDP Data Type breakdown subroutines
 // (Add more when new otapi functions are added, using new data types in args)
 
-typedef ot_u16 (*otapi_icmd)(Queue*);           // Irregular form routine
+typedef ot_u16 (*otapi_icmd)(ot_queue*);           // Irregular form routine
 typedef ot_u16 (*otapi_cmd)(ot_u8*, void*);     // Standard form routine (used in M2QP)
-typedef void (*sub_bdtmpl)(Queue*, void*);
+typedef void (*sub_bdtmpl)(ot_queue*, void*);
 
-ot_u16 icmd_session_number(Queue* in_q);
-ot_u16 icmd_session_flush(Queue* in_q);
-ot_u16 icmd_session_isblocked(Queue* in_q);
+ot_u16 icmd_session_number(ot_queue* in_q);
+ot_u16 icmd_session_flush(ot_queue* in_q);
+ot_u16 icmd_session_isblocked(ot_queue* in_q);
 
-ot_u16 icmd_sys_init(Queue* in_q);
-ot_u16 icmd_sys_newdialog(Queue* in_q);
-ot_u16 icmd_sys_newadvdialog(Queue* in_q);
-ot_u16 icmd_sys_openrequest(Queue* in_q);
-ot_u16 icmd_sys_closerequest(Queue* in_q);
-ot_u16 icmd_sys_startdialog(Queue* in_q);
+ot_u16 icmd_sys_init(ot_queue* in_q);
+ot_u16 icmd_sys_newdialog(ot_queue* in_q);
+ot_u16 icmd_sys_newadvdialog(ot_queue* in_q);
+ot_u16 icmd_sys_openrequest(ot_queue* in_q);
+ot_u16 icmd_sys_closerequest(ot_queue* in_q);
+ot_u16 icmd_sys_startdialog(ot_queue* in_q);
 
 
-ot_u16 icmd_session_number(Queue* in_q) {
+ot_u16 icmd_session_number(ot_queue* in_q) {
     return otapi_session_number();
 }
 
-ot_u16 icmd_session_flush(Queue* in_q) {
+ot_u16 icmd_session_flush(ot_queue* in_q) {
     return otapi_flush_sessions();
 }
 
-ot_u16 icmd_session_isblocked(Queue* in_q) {
+ot_u16 icmd_session_isblocked(ot_queue* in_q) {
     ot_u8 channel_id;
     alp_breakdown_u8(in_q, &channel_id);
     return otapi_is_session_blocked(channel_id);
 }
 
-ot_u16 icmd_sys_init(Queue* in_q) {
+ot_u16 icmd_sys_init(ot_queue* in_q) {
     return otapi_sysinit();
 }
 
-ot_u16 icmd_sys_newdialog(Queue* in_q) {
+ot_u16 icmd_sys_newdialog(ot_queue* in_q) {
     session_tmpl new_session;
     alp_breakdown_session_tmpl(in_q, &new_session);
     return otapi_new_dialog(&new_session, NULL);    ///@todo put in grabber applet (?)
 }
 
-ot_u16 icmd_sys_newadvdialog(Queue* in_q) {
+ot_u16 icmd_sys_newadvdialog(ot_queue* in_q) {
     session_tmpl    new_session;
     advert_tmpl     new_adv;
     alp_breakdown_session_tmpl(in_q, &new_session);
@@ -121,7 +121,7 @@ ot_u16 icmd_sys_newadvdialog(Queue* in_q) {
     return otapi_new_advdialog(&new_adv, &new_session, NULL); 
 }
 
-ot_u16 icmd_sys_openrequest(Queue* in_q) {
+ot_u16 icmd_sys_openrequest(ot_queue* in_q) {
     ot_u8 addr_byte;
     ot_u8 routing[sizeof(routing_tmpl)];
     alp_breakdown_u8(in_q, &addr_byte);
@@ -137,11 +137,11 @@ ot_u16 icmd_sys_openrequest(Queue* in_q) {
     return otapi_open_request( (addr_type)addr_byte, (routing_tmpl*)routing );
 }
 
-ot_u16 icmd_sys_closerequest(Queue* in_q) {
+ot_u16 icmd_sys_closerequest(ot_queue* in_q) {
     return otapi_close_request();
 }
 
-ot_u16 icmd_sys_startdialog(Queue* in_q) {
+ot_u16 icmd_sys_startdialog(ot_queue* in_q) {
     ot_u16 timeout;
     alp_breakdown_u16(in_q, (void*)&timeout);
     return otapi_start_dialog(timeout);
@@ -266,9 +266,9 @@ OT_WEAK ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id ) {
             //alp->outrec.flags   &= ~ALP_FLAG_CF;
             //alp->outrec.cmd     |= 0x40;
             //alp->outrec.plength  = 3;
-            alp->OUTREC(_FLAGS)   &= ~ALP_FLAG_CF;
-            alp->OUTREC(_PLEN)     = 3;
-            alp->OUTREC(_CMD)     |= 0x40;
+            alp->OUTREC(FLAGS)   &= ~ALP_FLAG_CF;
+            alp->OUTREC(PLEN)     = 3;
+            alp->OUTREC(CMD)     |= 0x40;
             q_writebyte(alp->outq, status);
             q_writeshort(alp->outq, txq_len);
         }

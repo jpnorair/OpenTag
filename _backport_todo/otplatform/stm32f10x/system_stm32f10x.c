@@ -62,7 +62,7 @@
   * @{
   */
 #include "stm32f10x.h"
-#include "OT_platform.h"    // added by JPN to get defines from the platform_config file
+#include <otplatform.h>    // added by JPN to get defines from the platform_config file
 
 /**
   * @}

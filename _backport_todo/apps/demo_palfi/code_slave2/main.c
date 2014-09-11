@@ -44,9 +44,9 @@
   */
 
 #include "OTAPI.h"          // OTlib top-level stuff
-#include "OT_platform.h"    // Platform level stuff
-#include "radio.h"          // for lastrssi
-
+#include <otplatform.h>    // Platform level stuff
+#include <m2/radio.h>          // for lastrssi
+#include <otlib/logger.h>
 
 
 /** Logging for Debugging (not available in release)<BR>
@@ -55,7 +55,7 @@
 #if (MPIPE_FOR_DEBUGGING)
 #   define WAIT_FOR_MPIPE() while(0)
 #	define OTAPI_LOG_MSG(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA) \
-		otapi_log_msg(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA)
+		logger_msg(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA)
 #else
 #   define WAIT_FOR_MPIPE() while(0)
 #	define OTAPI_LOG_MSG(TYPE, LABEL_LEN, DATA_LEN, LABEL, DATA) while(0)
@@ -192,7 +192,7 @@ void ext_systask(ot_task task) {
             s_tmpl.channel      = 7;
             s_tmpl.subnetmask   = 0;
             s_tmpl.flagmask     = 0;
-            otapi_task_immediate(&s_tmpl, &applet_adcpacket);
+            m2task_immediate(&s_tmpl, &applet_adcpacket);
         } break;
     }
 
@@ -208,7 +208,7 @@ void applet_adcpacket(m2session* session) {
 /// is over before starting a new one.
 ///
 /// In order to create a new communication task and bind this applet to it, use
-/// otapi_task_immediate() or one of the other tasker functions.
+/// m2task_immediate() or one of the other tasker functions.
 ///
 /// This applet does two things:
 /// 1. Do an ADC capture
@@ -249,7 +249,7 @@ void sub_adc_measurement(ot_int* buffer) {
 
     /// 2. Start ADC and Wait for ADC to finish.  Wait 75us for REF.
     ///    Grab the data, then kill everything
-    platform_swdelay_us(75);
+    delay_us(75);
     ADC12CTL0  |= ADC12ENC;
     ADC12CTL0  |= ADC12SC;
     while ((ADC12CTL1 & ADC12BUSY) == ADC12BUSY);
@@ -371,17 +371,17 @@ void sub_led_cycle(ot_u8 i) {
 	switch (i) {
 	case 0: PALFI_LED4_ON();	break;
 	case 1: PALFI_LED3_ON();	break;
-	case 2: otapi_led2_on();	break;
-	case 3: otapi_led1_on();	break;
+	case 2: BOARD_led2_on();	break;
+	case 3: BOARD_led1_on();	break;
 	}
 
-    platform_swdelay_ms(33);
+    delay_ms(33);
 
     switch (i) {
     case 0: PALFI_LED4_OFF();	break;
     case 1: PALFI_LED3_OFF();	break;
-    case 2: otapi_led2_off();	break;
-    case 3: otapi_led1_off();	break;
+    case 2: BOARD_led2_off();	break;
+    case 3: BOARD_led1_off();	break;
     }
 }
 
@@ -450,7 +450,7 @@ void sys_sig_powerdown(ot_int code) {
   * There is an example implementation below, which can be uncommented to match
   * the example in the API Quickstart Guide:
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
-  */ 
+  */
 
 
 

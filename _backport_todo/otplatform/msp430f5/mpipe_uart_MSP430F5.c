@@ -67,12 +67,12 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 #if (defined(__MSP430F5__) && OT_FEATURE(MPIPE) && defined(MPIPE_UART))
 
-#include "buffers.h"
-#include "mpipe.h"
+#include <otlib/buffers.h>
+#include <otsys/mpipe.h>
 
 #if ((MPIPE_UART_ID != 0xA0) && (MPIPE_UART_ID != 0xA1))
 #   error "MPIPE_UART_ID not defined to an available UART on this MSP430"
@@ -424,7 +424,7 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
         q_writeshort(mpipe.alp.outq, tty.seq.ushort);                // Sequence Number
 
         scratch = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;    //data length
-        scratch = platform_crc_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
+        scratch = crc16drv_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
         q_writeshort(mpipe.alp.outq, scratch);                              //Put CRC
         
         scratch                     = mpipe.alp.outq->putcursor \
@@ -524,7 +524,7 @@ void mpipedrv_isr() {
             
             // CRC is Good (==0) or bad (!=0) Discard the packet if bad
 #           if (BOARD_FEATURE_USBCONVERTER != ENABLED)
-            crc_result = platform_crc_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
+            crc_result = crc16drv_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
 #           endif
             
 #           if (MPIPE_USE_ACKS)
@@ -573,7 +573,7 @@ void mpipedrv_isr() {
             
         case MPIPE_RxAck:
 #           if (MPIPE_USE_ACKS)
-            if (platform_crc_block(mpipe.alp.inq->front, 10) != 0) { //RX'ed NACK
+            if (crc16drv_block(mpipe.alp.inq->front, 10) != 0) { //RX'ed NACK
                 mpipedrv_txndef(False, tty.priority);
                 return;
             }

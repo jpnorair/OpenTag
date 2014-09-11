@@ -29,7 +29,7 @@
   */
 
 
-#include "OT_platform.h"
+#include <otplatform.h>
 #if defined(__CC430__)
 
 #include "OTAPI.h"
@@ -52,7 +52,7 @@
 //Kernel Timer is on case 2 ==> CCR1
 //If Timer0 is being used, there is room for two more channels
 
-#include "radio.h"
+#include <m2/radio.h>
 
 #define __SPECIAL_ISR_GPTIM__	\
     switch (__even_in_range(OT_GPTIM->IV, 16)) {	\
@@ -99,7 +99,7 @@
 #endif
 
 
-#if (OT_FEATURE(RTC))
+#if (OT_FEATURE(TIME))
 #   if (defined(_RTCA))
 #       undef   __ISR_RTCA
 #       undef   __N_ISR_RTCA

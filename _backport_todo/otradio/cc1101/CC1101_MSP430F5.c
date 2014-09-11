@@ -24,13 +24,13 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 #ifdef PLATFORM_MSP430F5
 
-#include "OT_utils.h"
-#include "OT_types.h"
-#include "OT_config.h"
-
+#include <otlib/utils.h>
+#include <otsys/types.h>
+#include <otsys/config.h>
+#include <otlib/logger.h>
 
 #include "cc1101_interface.h"
 
@@ -105,8 +105,8 @@ void cc1101_coredump() {
         ot_u8 regval	= cc1101_read(i);
 
         otutils_bin2hex(&i, &label[4], 1);
-        otapi_log_msg(MSG_raw, 6, 1, label, &regval);
-        //platform_swdelay_ms(5);
+        logger_msg(MSG_raw, 6, 1, label, &regval);
+        //delay_ms(5);
     }
 }
 
@@ -205,14 +205,14 @@ void cc1101_waitforidle() {
 }
 
 ot_u16 cc1101_rfstatus() {
-    Twobytes readout;
+    ot_uni16 readout;
     readout.ubyte[0] = cc1101_read(RF_MARCSTATE);
     readout.ubyte[1] = cc1101_read(RF_PKTSTATUS);
     return readout.ushort;
 }
 
 ot_u16 sub_get2regs(ot_u8 start) {
-    Twobytes readout;
+    ot_uni16 readout;
     cc1101_spibus_io(1, 2, &start, &readout.ubyte[0]);
     return readout.ushort;
 }
@@ -238,13 +238,13 @@ ot_u8   cc1101_txbytes()        { return cc1101_read( RFREG(TXBYTES) ); }
     do { \
         RADIO_SPI->CTL1 &= ~UCSWRST; \
     } while(0)
-    
+
 #define __SPI_DISABLE() \
     do { \
         RADIO_SPICS_HIGH(); \
         RADIO_SPI->CTL1 |= UCSWRST; \
     } while(0)
-    
+
 #define __SPI_GET(VAL)  (VAL = RADIO_SPI->RXBUF)
 #define __SPI_PUT(VAL)  (RADIO_SPI->TXBUF = VAL)
 
@@ -290,15 +290,15 @@ void cc1101_init_bus() {
 
     ///3. Power-up reset via CS pin & MISO pin
     RADIO_SPICS_HIGH();
-    platform_swdelay_us(30);
+    delay_us(30);
     RADIO_SPICS_LOW();
-    platform_swdelay_us(30);
+    delay_us(30);
     RADIO_SPICS_HIGH();
-    platform_swdelay_us(45);
+    delay_us(45);
     RADIO_SPICS_LOW();
     while (RADIO_SPIMISO_PORT->DIN & RADIO_SPIMISO_PIN);
     RADIO_SPICS_HIGH();
-    
+
     ///4. Perform reset of the digital core.
     cc1101_reset();
 }
@@ -316,7 +316,7 @@ void cc1101_spibus_wait() {
 void cc1101_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd, ot_u8* resp) {
 	cc1101_waitforidle();
 	__SPI_ENABLE();
-    
+
     ///Wait for TX to be done.  Meanwhile, save the status byte
     while (cmd_len != 0) {
         cmd_len--;
@@ -406,7 +406,7 @@ ot_u8 cc1101_calc_rssithr(ot_u8 input, ot_u8 offset) {
     thr     = (ot_int)input - _ATTEN_DB;    // subtract dBm encoding offset
     thr   >>= 1;                            // divide by two (array is 2dB increments)
     thr    -= offset;               // (1) account for turbo vs normal rate
-    
+
     if (thr > 17)       thr = 17;   // (2) make max if dBm threshold is above range
     else if (thr < 0)   thr = 0;    // (3) make 0 if dBm threshold is lower than range
 
@@ -458,7 +458,7 @@ void cc1101_set_txpwr(ot_u8 pwr_code) {
     ot_int  i;
     ot_int  eirp_val;
 
-// Should be defined in board config file 
+// Should be defined in board config file
 // Depends on matching circuit, antenna, and board physics
 // Described in 0.5 dB units (12 = 6dB system loss)
 #   ifndef RF_HDB_ATTEN

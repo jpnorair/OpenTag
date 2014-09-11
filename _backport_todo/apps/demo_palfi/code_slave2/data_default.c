@@ -329,7 +329,7 @@ const ot_u8 gfb_stock_files[] = {0xFF, 0xFF};
 /// This will look something like "OTv1  xyyyyyyy" where x is a letter and
 /// yyyyyyy is a Base64 string containing a 16 bit build-id and a 32 bit mask
 /// indicating the features compiled-into the build.
-#include "OT_version.h"
+#include <otsys/version.h>
 
 #define BV0     (ot_u8)(OT_VERSION_MAJOR + 48)
 #define BT0     (ot_u8)(OT_BUILDTYPE)

@@ -1,11 +1,14 @@
 
 #include "OTAPI.h"
-#include "OT_platform.h"
-#include "system.h"
-#include "session.h"
-#include "radio.h"
+#include <otplatform.h>
+#include <otsys/syskern.h>
+#include <m2/session.h>
+#include <m2/radio.h>
 #include "debug_uart.h"
+#include <otlib/rand.h>
 #include <stdlib.h>
+
+#include <otlib/rand.h>
 
 #if (SYS_RECEIVE != ENABLED)
 #   error SYS_RECEIVE   // want to test receiver?
@@ -61,7 +64,7 @@ console_service()
         TIM_Cmd(TIM11, ENABLE);
 
     } else if (uart_rx_buf[0] == 18) { // ctrl-R
-        debug_printf("\r\nrand: %08x", (unsigned int)platform_rand(32));
+        debug_printf("\r\nrand: %08x", (unsigned int)rand_stream(32));
     } else if (uart_rx_buf[0] == 'H') {
        hold_tx_power = 1;
     } else if (uart_rx_buf[0] == 's' && uart_rx_buf[1] == 0) {
@@ -88,9 +91,9 @@ console_service()
 
 volatile ot_int rx_fcode;
 
-void sub_print_queue(Queue* q) {
+void sub_print_queue(ot_queue* q) {
     int i, j;
-    
+
     if (q == &rxq) {
         if (rx_fcode == 0)
             debug_printf("[32m"); // for rxq printing: green foreground
@@ -98,10 +101,10 @@ void sub_print_queue(Queue* q) {
             debug_printf("[31m"); // for rxq printing: red foreground on rx failure
     }
 
-    debug_printf("Printing Queue: length=%d\r\n", q_length(q));
-    
+    debug_printf("Printing ot_queue: length=%d\r\n", q_length(q));
+
     for (i=0; i<q_length(q); ) {
-        debug_printf("%04X: ", i); 
+        debug_printf("%04X: ", i);
         for (j=0; (j<16) && (i<q_length(q)); j++, i++) {
             debug_printf("%02X ", q->front[i]);
         }
@@ -162,7 +165,7 @@ my_rcevt_bscan(ot_int scode, ot_int fcode)
         // CRC Failure (or init), retry
         if (scode == RM2_ERR_TIMEOUT) {
             //got_rx_callback = 1;
-            // SX1212 check FifoNotEmpty 
+            // SX1212 check FifoNotEmpty
             /*if (GPIO_ReadInputDataBit(GPIO_Port_RFIRQ, GPIO_Pin_RFIRQ0) == Bit_SET)
                 debug_printf("FifoNotEmpty on rxtimeout\r\n"); // did i get EXTI1? */
         }
@@ -190,8 +193,8 @@ make_session()
     /// Basic initialization
     q_start(&txq, 0, 0);
     q_start(&rxq, 0, 0);
-    
-    
+
+
     /// Create a new ad-hoc session on channel 0x10.  Fill up the remaining
     /// session parameters with [effectively] dummy values.
     session = session_new(0, M2_NETSTATE_INIT, 0x10);
@@ -199,13 +202,13 @@ make_session()
         debug_printf("-> Session could not be created (Fatal error)\r\n");
         return -1;
     }
-    session->dialog_id  = platform_prand_u8();
+    session->dialog_id  = rand_prn8();
     session->subnet     = 0xF0;
     session->extra      = 0;
     session->flags      = 0;
     session->channel    = test_channel;
-    
-    
+
+
     /// Setup System Comm Variables, which are used by the MAC, Network, and
     /// Transport Layers in the complete build
     sys.comm.tca            = 2048;
@@ -218,7 +221,7 @@ make_session()
     sys.comm.tx_chanlist    = &sys.comm.scratch[1];
     sys.comm.scratch[0]     = session->channel;
     sys.comm.scratch[1]     = session->channel;
-        
+
     return 0;
 }
 
@@ -227,7 +230,7 @@ static int
 test_radio_bgtx(char rand_pkt)
 {
 // By this point, several of the radio functions have already been tested.
-// These are: radio_init, radio_putbyte, radio_getbyte, radio_putfourbytes, 
+// These are: radio_init, radio_putbyte, radio_getbyte, radio_putfourbytes,
 //            radio_get fourbytes, radio_rxopen, radio_rxopen_4, radio_txopen,
 //            radio_txopen_4
 //
@@ -239,22 +242,22 @@ test_radio_bgtx(char rand_pkt)
     int data_length;
     ot_int csma_code = -1;
     ot_u16 wait_until = 0;
-    
+
     if (make_session() < 0) {
         for (;;)
             asm("nop");
     }
-        
+
     /// Load up the first few bytes of the frame, which are:
     /// Length, TX EIRP, Subnet, Frame Info
     /// - TX EIRP is filled automatically by PHY
     /// - Except length, these fields don't really matter for chain test
-    
+
     data_length = 7;    // background frames are at 7bytes fixed length
 #if 0
     if (rand_pkt) {
-        //data_length     = (platform_prand_u8() & 0x7F) + 126;/// - Length will be 128 - 255 bytes following CRC
-        data_length     = platform_prand_u8();  // 4 to 255 bytes
+        //data_length     = (rand_prn8() & 0x7F) + 126;/// - Length will be 128 - 255 bytes following CRC
+        data_length     = rand_prn8();  // 4 to 255 bytes
         if (data_length < 4)
             data_length  = 4;
     } else
@@ -266,26 +269,26 @@ test_radio_bgtx(char rand_pkt)
     txq.front[3]    = (session->flags & 0xC0) | (0x20) | (0x02);
     txq.putcursor   = &txq.front[4];
  //#txq.length      = 4;
-    
+
     /// write the rest of the data to the queue
     for (i=0; i<(data_length-4); i++) {
         ot_u8 input;
         if (rand_pkt)
-            input = platform_prand_u8();
+            input = rand_prn8();
         else
             input = 255 - i;
         q_writebyte(&txq, input);
     }
     sub_print_queue(&txq);
-    
-    
+
+
     rm2_txinit_bf(&my_rcevt_btx);
 
     do {
         csma_code = rm2_txcsma();
         if (csma_code >= 0)
             wait_until = OT_GPTIM->CNT + csma_code; // todo: handle rollover
-        
+
         /// Track status
         switch (csma_code) {
             /// While TX is in CSMA, subtract radio process time from Tca
@@ -301,7 +304,7 @@ test_radio_bgtx(char rand_pkt)
             while (OT_GPTIM->CNT < wait_until)  // todo: handle rollover
                 asm("nop");
         }
-            
+
     } while (csma_code != -1);
 
     //debug_printf("done: -1 = rm2_txcsma()\r\n");
@@ -324,7 +327,7 @@ test_radio_bgtx(char rand_pkt)
 #endif /* RADIO_DEBUG */
 
     }   // ..while tx not yet done
-    
+
     debug_printf("tx done\r\n");
 
     return output;
@@ -340,10 +343,10 @@ test_radio_bgrx(void)
     }
 
     got_rx_callback = False;
-        
+
     //progress = 0;
     rm2_rxinit_bf(session->channel, &my_rcevt_bscan);
-    
+
     if (!got_rx_callback)
         debug_printf("bgtest: waiting for rx callback...\r\n");
     while (got_rx_callback == False) {
@@ -362,18 +365,18 @@ test_radio_bgrx(void)
         asm("nop");
     }
     got_rx_callback = False;
-    
+
     //test_radio_finishup:
-    //debug_printf("rx_pcode %d\r\n", rx_pcode);   
+    //debug_printf("rx_pcode %d\r\n", rx_pcode);
     sub_print_queue(&rxq);
 
 /*    /// Validate data
-    for (i=0; i<txq.front[0]; i++) {    
+    for (i=0; i<txq.front[0]; i++) {
         if (txq.front[i] != rxq.front[i]) {
             debug_printf("-> After radio, RX queue does not match TX queue (Fail) byte %d\r\n", i);
             output = -1;
             break;
-        } 
+        }
     }*/
 
     return 0;
@@ -771,7 +774,7 @@ const ot_u8 gfb_stock_files[] = {0xFF, 0xFF};
 /// This will look something like "OTv1  xyyyyyyy" where x is a letter and
 /// yyyyyyy is a Base64 string containing a 16 bit build-id and a 32 bit mask
 /// indicating the features compiled-into the build.
-#include "OT_version.h"
+#include <otsys/version.h>
 
 #define BV0     (ot_u8)(OT_VERSION_MAJOR + 48)
 #define BT0     (ot_u8)(OT_BUILDTYPE)

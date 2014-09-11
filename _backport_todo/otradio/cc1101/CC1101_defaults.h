@@ -27,8 +27,8 @@
 #ifndef __CC1101_defaults_H
 #define __CC1101_defaults_H
 
-#include "OT_types.h"
-#include "OT_config.h"
+#include <otsys/types.h>
+#include <otsys/config.h>
 #include "CC1101_registers.h"
 
 

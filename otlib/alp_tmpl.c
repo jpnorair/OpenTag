@@ -28,10 +28,10 @@
   */
 
 
-#include "alp.h"
+#include <otlib/alp.h>
 #if ( (OT_FEATURE(ALP) == ENABLED) )
 
-#include "OTAPI_tmpl.h"
+#include <m2/tmpl.h>
 
 
 

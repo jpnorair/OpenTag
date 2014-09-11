@@ -41,14 +41,14 @@
   */
 
 
-#include "OT_config.h"
-#include "OT_platform.h"
+#include <otsys/config.h>
+#include <otplatform.h>
 
 /// Do not compile if MPIPE is disabled, or MPIPE does not use USB VCOM
 #if ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_CONFIG(MPIPECDC) == ENABLED))
 
-#include "mpipe.h"
-#include "OT_utils.h"
+#include <otsys/mpipe.h>
+#include <otlib/utils.h>
 
 #include "usb_conf.h"   //local file
 #include "usb_lib.h"
@@ -1132,9 +1132,9 @@ u32 STM32_PCD_OTG_ISR_Handler (void) {
             }
 #       endif 
 #       ifdef INTR_RXSTSQLVL
-            // Receive FIFO Queue Status Level interrupt 
+            // Receive FIFO ot_queue Status Level interrupt 
             if (gintr_status.b.rxstsqlvl) {
-                retval |= OTGD_FS_Handle_RxStatusQueueLevel_ISR();
+                retval |= OTGD_FS_Handle_RxStatusot_queueLevel_ISR();
             }
 #       endif 
 #       ifdef INTR_ENUMDONE
@@ -1427,7 +1427,7 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
         // add sequence id & crc to end of the datastream
         data[mpipe.pktlen++] = mpipe.sequence.ubyte[UPPER];
         data[mpipe.pktlen++] = mpipe.sequence.ubyte[LOWER];
-        crcval.ushort        = platform_crc_block(data, mpipe.pktlen);
+        crcval.ushort        = crc16drv_block(data, mpipe.pktlen);
         data[mpipe.pktlen++] = crcval.ubyte[UPPER];
         data[mpipe.pktlen++] = crcval.ubyte[LOWER];
         

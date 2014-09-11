@@ -41,14 +41,14 @@
   */
 
 
-#include "OT_config.h"
-#include "OT_platform.h"
+#include <otsys/config.h>
+#include <otplatform.h>
 
 // Compile only when MPipe is enabled, but USB is disabled
 #if ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_CONFIG(MPIPECDC) != ENABLED))
 
-#include "mpipe.h"
-#include "OT_utils.h"
+#include <otsys/mpipe.h>
+#include <otlib/utils.h>
 
 
 
@@ -452,7 +452,7 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
         // add sequence id & crc to end of the datastream
         data[data_length++] = mpipe.sequence.ubyte[UPPER];
         data[data_length++] = mpipe.sequence.ubyte[LOWER];
-        crcval.ushort       = platform_crc_block(data, data_length);
+        crcval.ushort       = crc16drv_block(data, data_length);
         data[data_length++] = crcval.ubyte[UPPER];
         data[data_length++] = crcval.ubyte[LOWER];
         
@@ -532,7 +532,7 @@ void mpipe_isr() {
                     mpipe.sequence.ubyte[UPPER] = *scratch++;
                     mpipe.sequence.ubyte[LOWER] = *scratch;
                 }
-                mpipe.ackbuf[5] = (platform_crc_block(mpipe.pktbuf, mpipe.pktlen)) ? 0x7F : 0;
+                mpipe.ackbuf[5] = (crc16drv_block(mpipe.pktbuf, mpipe.pktlen)) ? 0x7F : 0;
                 mpipe_txndef(mpipe.ackbuf, False, MPIPE_Ack);
                 return;
             }
@@ -574,7 +574,7 @@ void mpipe_isr() {
         
         case MPIPE_RxAck: 
 #           if (MPIPE_USE_ACKS)
-            if (platform_crc_block(mpipe.ackbuf, 10) != 0) { //RX'ed NACK
+            if (crc16drv_block(mpipe.ackbuf, 10) != 0) { //RX'ed NACK
                 mpipe_txndef(mpipe.pktbuf, False, mpipe.priority);
                 break;
             }
