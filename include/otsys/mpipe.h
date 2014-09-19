@@ -23,12 +23,12 @@
   * @ingroup    MPipe
   *
   * The Message Pipe is used to traffic data between a server and client.  This
-  * present implementation always uses NDEF as a data wrapping format, and it 
+  * present implementation always uses NDEF as a data wrapping format, and it
   * typically uses a wireline interface such as serial or USB CDC.
   *
   * Mpipe is a message interface, not a function-based API.  The functions in
   * the MPipe module perform MAC and I/O type features.  However, the MPipe
-  * Payload is tightly coupled to NDEF, and, in OpenTag, NDEF is tightly 
+  * Payload is tightly coupled to NDEF, and, in OpenTag, NDEF is tightly
   * coupled to the ALP interface.  Furthermore, the ALP interface is available
   * for use as a functional API.  So, in practical terms, MPipe's purpose is as
   * a messaging API between client (e.g. PC) and server (OpenTag DASH7 device).
@@ -36,11 +36,11 @@
   * To configure MPipe, alter the board configuration header file.  These are
   * found in the /board directory.  Different boards support different MPipe
   * interfaces.
-  * 
+  *
   * @note Mpipe Protocol
   * The Mpipe Protocol is completely implementation dependent.  Interfaces that
   * do not include an integrated MAC layer (addressing and data integrity) will
-  * probably require some additional data to be sent as protocol overhead. 
+  * probably require some additional data to be sent as protocol overhead.
   * These features should be transparent to the user of Mpipe.
   ******************************************************************************
   */
@@ -58,12 +58,12 @@
 ///@todo when more hardware is supported by mpipe, variations of this will be
 ///      specified.  In certain implementations, this is superfluous
 typedef enum {
-    MPIPE_9600bps    = MCU_PARAM(UART_9600BPS),
-    MPIPE_28800bps   = MCU_PARAM(UART_28800BPS),
-    MPIPE_57600bps   = MCU_PARAM(UART_57600BPS), 
-    MPIPE_115200bps  = MCU_PARAM(UART_115200BPS),
-    MPIPE_250000bps  = MCU_PARAM(UART_250000BPS),
-    MPIPE_500000bps  = MCU_PARAM(UART_500000BPS)
+    MPIPE_9600bps    = 0,
+    MPIPE_28800bps   = 1,
+    MPIPE_57600bps   = 2,
+    MPIPE_115200bps  = 3,
+    MPIPE_250000bps  = 4,
+    MPIPE_500000bps  = 5
 } mpipe_speed;
 
 
@@ -109,7 +109,7 @@ typedef enum {
 typedef struct {
     volatile mpipe_state state;
     alp_tmpl    alp;
-    
+
 #if (OT_FEATURE(MPIPE_CALLBACKS) == ENABLED)
     ot_sigv sig_rxdone;
     ot_sigv sig_txdone;
@@ -125,12 +125,12 @@ extern mpipe_struct mpipe;
 
 
 
-/** Library Functions 
+/** Library Functions
   * ========================================================================<BR>
   */
 /** @brief  Initializes & connects Mpipe Module
-  * @param  port_id     (void*) Implementation-dependent port identifier 
-  * @retval None        
+  * @param  port_id     (void*) Implementation-dependent port identifier
+  * @retval None
   * @ingroup Mpipe
   * @sa mpipe_disconnect()
   * @sa mpipedrv_init()
@@ -149,8 +149,8 @@ void mpipe_connect(void* port_id);
 
 
 /** @brief  Disconnects Mpipe Module
-  * @param  port_id     (void*) Implementation-dependent port identifier 
-  * @retval None        
+  * @param  port_id     (void*) Implementation-dependent port identifier
+  * @retval None
   * @ingroup Mpipe
   * @sa mpipe_connect()
   * @sa mpipedrv_detach()
@@ -191,7 +191,7 @@ void mpipe_open();
   * @ingroup Mpipe
   * @sa mpipe_open()
   *
-  * You may call this function to close the Mpipe.  From a tasking perspective 
+  * You may call this function to close the Mpipe.  From a tasking perspective
   * this has the effect of blocking Mpipe.
   */
 void mpipe_close();
@@ -241,7 +241,7 @@ void mpipeevt_rxinit(ot_int code);
   * Once an mpipe driver detects an incoming packet, it will use this callback.
   * The "code" value will be applied to a timeout measured by the task.  If the
   * packet is not finished being received by this timeout, MPipe is flushed.
-  * 
+  *
   * The timeout value itself is in Ticks, and in typical implementations it is
   * just provided as a fixed value.  For example, on a 115200bps 8N1 UART, 256
   * bytes require 22.7 ticks to receive.  So, for an implementation with a 256
@@ -264,8 +264,8 @@ void mpipeevt_rxdone(ot_int code);
   * @param  code    (ot_int) Ticks (typ 0-255) the driver needs to page-out TX
   * @retval none
   * @ingroup Mpipe
-  * 
-  * Some MPipe driver implementations may deliver "DONE" interrupts before the 
+  *
+  * Some MPipe driver implementations may deliver "DONE" interrupts before the
   * TX data has completely exited from the buffer.  The code value tells the
   * MPipe Task to wait a number of ticks before re-opening the MPipe in RX.
   * Most embedded devices using DMA will have a two byte delay (20 bits), so
@@ -277,7 +277,7 @@ void mpipeevt_txdone(ot_int code);
 
 
 
-/** Driver Interface Functions 
+/** Driver Interface Functions
   * ========================================================================<BR>
   */
 
@@ -288,7 +288,7 @@ void mpipeevt_txdone(ot_int code);
   * @ingroup Mpipe
   *
   * All this does is return a constant.  It is here to prevent magic numbers
-  * from being used, and to allow different MPipe implementations to have 
+  * from being used, and to allow different MPipe implementations to have
   * different footer sizes.
   */
 ot_u8 mpipedrv_footerbytes();
@@ -296,7 +296,7 @@ ot_u8 mpipedrv_footerbytes();
 
 
 /** @brief  Initializes Mpipe Driver
-  * @param  port_id     (void*) Implementation-dependent port identifier 
+  * @param  port_id     (void*) Implementation-dependent port identifier
   * @param  baud_rate   (mpipe_speed) baud rate value
   * @retval ot_int      Amount of latency to attribute to this driver
   * @ingroup Mpipe
@@ -305,10 +305,10 @@ ot_u8 mpipedrv_footerbytes();
   *
   * @note the baud_rate input may differ on each platform.  So, the header
   * platform_xxx.h must include MCU_PARAM(UART_xxxBPS) constants.
-  * 
+  *
   * This function must be implemented in the MPipe driver.  It should be called
   * from inside mpipe_connect().
-  * 
+  *
   * About port_id: this value is passed-in directly from mpipe_connect().
   *
   * About returned latency: this is a value in ticks that is used by the native
@@ -339,7 +339,7 @@ void mpipedrv_standby();
 
 
 /** @brief  De-Initializes Mpipe Driver upon disconnection
-  * @param  port_id     (void*) Implementation-dependent port identifier 
+  * @param  port_id     (void*) Implementation-dependent port identifier
   * @retval void
   * @ingroup Mpipe
   * @sa mpipe_disconnect()
@@ -347,7 +347,7 @@ void mpipedrv_standby();
   *
   * This function must be implemented in the MPipe driver.  It should be called
   * from inside mpipe_disconnect().
-  * 
+  *
   * About port_id: this value is passed-in directly from mpipe_disconnect().
   */
 void mpipedrv_detach(void* port_id);
@@ -355,7 +355,7 @@ void mpipedrv_detach(void* port_id);
 
 
 /** @brief  Kills the Mpipe connection
-  * @param  None 
+  * @param  None
   * @retval None
   * @ingroup Mpipe
   */
@@ -391,7 +391,7 @@ void mpipedrv_unblock();
 
 
 /** @brief  Provides driver-level blocking to MPIPE transfers
-  * @param  None 
+  * @param  None
   * @retval None
   * @ingroup Mpipe
   */
@@ -418,23 +418,23 @@ void mpipedrv_wait();
   * underway if its own priority is higher.
   *
   */
-ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority);
+ot_uint mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority);
 
 
 
 
 
-/** @brief  Receives an NDEF structed datastream over the MPIPE
+/** @brief  Receives a structed datastream over the MPIPE
   * @param  blocking    (ot_bool) True/False for blocking/non-blocking call
   * @param  data_priority (mpipe_priority) Priority of the TX
   * @retval None
   * @ingroup Mpipe
-  * @sa mpipe_txndef, mpipe_status
+  * @sa mpipe_tx, mpipe_status
   *
-  * The blocking parameter and data_priority parameters are dealt-with in the 
-  * same way as they are with mpipe_txndef()
+  * The blocking parameter and data_priority parameters are dealt-with in the
+  * same way as they are with mpipe_tx()
   */
-void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority);
+void mpipedrv_rx(ot_bool blocking, mpipe_priority data_priority);
 
 
 
@@ -445,7 +445,7 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority);
   * @ingroup Mpipe
   *
   * Check the Mpipe driver implementation for usage notes.  In cases where the
-  * Mpipe resources are not included into the user's application, the Mpipe 
+  * Mpipe resources are not included into the user's application, the Mpipe
   * driver should manage everything related to this ISR transparently.  In cases
   * where the user app includes Mpipe resources for its own purposes, you will
   * need to call this ISR subroutine somewhere in that resource's ISR.

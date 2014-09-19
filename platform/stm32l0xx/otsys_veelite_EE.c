@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/veelite_core_EE_STM32L1xx.c
+  * @file       /otplatform/stm32l0xx/veelite_core_EE_STM32L1xx.c
   * @author     JP Norair
   * @version    R100
   * @date       17 Jan 2013
@@ -36,7 +36,7 @@
 #include <otplatform.h>
 #if defined(__STM32L1xx__)
 
-#include "stm32l1xx_flash.h"
+#include "stm32l1xx_hal.h"
 
 #include <otlib/logger.h>
 #include <otsys/veelite_core.h>
@@ -147,7 +147,7 @@ ot_u8 vworm_format( ) {
 
     /// 2. Format all Blocks, Put Block IDs into Primary Blocks
     while (cursor != (FLASH_FS_ADDR+FLASH_FS_ALLOC)) {
-        output |= DATA_EEPROM_EraseWord(cursor);
+        output |= HAL_FLASHEx_DATAEEPROM_Erase(cursor);
         cursor += 4;
     }
 
@@ -162,7 +162,7 @@ ot_u8 vworm_format( ) {
 #ifndef EXTF_vworm_init
 ot_u8 vworm_init( ) {
     // Minimal initialization needed for EEPROM
-    DATA_EEPROM_Unlock();
+    HAL_FLASHEx_DATAEEPROM_Unlock();
     FLASH->SR = 0xF00;
     
     ///@note may want to do initialization for vprom here, hard to say
@@ -186,7 +186,7 @@ void vworm_print_table() {
 #ifndef EXTF_vworm_save
 ot_u8 vworm_save( ) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
-    DATA_EEPROM_Lock();
+    HAL_FLASHEx_DATAEEPROM_Lock();
 #endif
     return 0;
 }
@@ -234,47 +234,26 @@ ot_u8 vworm_mark(vaddr addr, ot_u16 value) {
 
 
 
+
+
 #ifndef EXTF_vworm_mark_physical
 ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
-    FLASH_Status status; // = FLASH_COMPLETE;
+    ot_u8 retval;
+    
 
     BUSERROR_CHECK( (((ot_u32)addr < VWORM_BASE_PHYSICAL) || \
                     ((ot_u32)addr >= (VWORM_BASE_PHYSICAL+VWORM_ALLOC))), 7, "VLC_" __LINE__);    //__LINE__
 
+    //return (ot_u8)FLASH_DATAEEPROM_ProgramHalfWord( (uint32_t)addr, (uint16_t)value) );
     
-    // Wait for last operation to be completed (if any),
-    // then 
-    //status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-    //if (status == FLASH_COMPLETE) {
-        // STM32L EEPROM driver is a bit odd.  The Medium Density parts
-        // cannot write 0 without doing an aligned whole-word write.
-#       if !defined(STM32L1XX_HD) && !defined(STM32L1XX_MDP)
-        if (value != 0) {
-            *(__IO uint16_t*)addr = value;
-        }
-        else { 
-            ot_u32 offset, w_addr, w_value;
-            offset      = (ot_u32)addr & 2;
-            w_addr      = (ot_u32)addr - offset;
-            w_value     = *(ot_u32*)w_addr;
-            offset    <<= 3;
-            w_value    &= 0xFFFF0000 >> offset;
-        
-            *(__IO uint32_t*)w_addr = w_value;
-        }
+    ///@todo don't allow task switching during this process
 
-#       else
-        *(__IO uint16_t*)addr = value;
-#       endif
-
-        // If the previous operation is completed, proceed to write the new data 
-        // Wait for last operation to be completed 
-        status = FLASH_WaitForLastOperation(FLASH_ER_PRG_TIMEOUT);
-        
-    //}
-    
-    return (ot_u8)status;
+    // Set FTDW bit... might not be necessary... check
+    FLASH->PECR        |= (uint32_t)FLASH_PECR_FTDW;   
+    *(__IO ot_u16*)addr = Data;
+    retval              = (ot_u8)FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE));
+    return retval;
     
 #else
     return 0;
@@ -438,7 +417,7 @@ OT_WEAK ot_u8  vprom_write(vaddr addr, ot_u16 value) {
     
     // STM32L uses 256 byte flash pages.  Erase page if on page-start address
     if ((paddr & (FLASH_PAGE_SIZE-1)) == 0) {
-        err = FLASH_ErasePage(paddr);
+        err = FLASH_Erase_Page(paddr);
     }
     
     offset = (paddr & 2);
@@ -450,7 +429,7 @@ OT_WEAK ot_u8  vprom_write(vaddr addr, ot_u16 value) {
     if (offset != 0) {
         FLASH->PRGKEYR  = FLASH_PRGKEY1;
         FLASH->PRGKEYR  = FLASH_PRGKEY2;  
-        err             = FLASH_FastProgramWord(paddr, word);
+        err             = FLASH_Program_Word(paddr, word);
         FLASH->PECR    |= FLASH_PECR_PRGLOCK;
     }
     

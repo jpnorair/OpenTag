@@ -66,13 +66,13 @@
   * @{
   */
 
-/* Uncomment the line below according to the target STM32 device used in your
-   application 
-  */
-
-#if !defined (STM32L051xx) && !defined (STM32L052xx) && !defined (STM32L053xx) && !defined (STM32L062xx) && \
-    !defined (STM32L063xx) && !defined (STM32L061xx)
-  /* #define STM32L051xx */   /*!< STM32L051K8, STM32L051C6,STM32L051C8,STM32L051R6 and STM32L051R8 Devices */
+#if (  !defined (STM32L051xx) \
+    && !defined (STM32L052xx) \
+    && !defined (STM32L053xx) \
+    && !defined (STM32L062xx) \
+    && !defined (STM32L063xx) \
+    && !defined (STM32L061xx)   )
+#   define STM32L051xx   /*!< STM32L051K8, STM32L051C6,STM32L051C8,STM32L051R6 and STM32L051R8 Devices */
   /* #define STM32L052xx */   /*!< STM32L052K6, STM32L052K8,STM32L052C6,STM32L052C8,STM32L052R6 and STM32L052R8 Devices */
   /* #define STM32L053xx */   /*!< STM32L053C6, STM32L053C8, STM32L053R6, and STM32L053R8 Devices */
   /* #define STM32L062xx */   /*!< STM32L062K8 */
@@ -80,9 +80,7 @@
   /* #define STM32L061xx */   
 #endif
    
-/*  Tip: To avoid modifying this file each time you need to switch between these
-        devices, you can define the device in your toolchain compiler preprocessor.
-  */
+
 #if !defined  (USE_HAL_DRIVER)
 /**
  * @brief Comment the line below if you will not use the peripherals drivers.

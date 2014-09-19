@@ -85,7 +85,7 @@
 #   define __ISR_WAKEUP_HOOK();
 
 #else 
-#   define __ISR_WAKEUP_HOOK()  do { gptim_start_chrono(); __ISR_KTIM_WAKEUP_HOOK(); } while(0);
+#   define __ISR_WAKEUP_HOOK()  do { systim_start_clocker(); __ISR_KTIM_WAKEUP_HOOK(); } while(0);
 
 #endif
 

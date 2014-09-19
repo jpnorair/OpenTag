@@ -315,7 +315,7 @@ void radio_calibrate() {
 #ifndef EXTF_radio_set_mactimer
 void radio_set_mactimer(ot_u16 clocks) {
 /// Todo: apply board configuration
-    platform_set_gptim2(clocks);
+    systim_set_insertion(clocks);
 }
 #endif
 
@@ -876,7 +876,7 @@ void rm2_rxdata_isr() {
             else if (em2_remaining_bytes() == 0) {
                 /// @todo: I might require in the future that queue rebasing is
                 ///        done in the evtdone callback (gives more flexibility).
-                radio.evtdone(frames_left, (ot_int)crc_check() - 1);            // argument 2 is negative on bad Frame CRC
+                radio.evtdone(frames_left, (ot_int)crc_check(&em2.crc) - 1);            // argument 2 is negative on bad Frame CRC
 
                 // Prepare the next frame by moving the "front" pointer and
                 // re-initializing the decoder engine
@@ -951,7 +951,7 @@ void rm2_rxdata_isr() {
 void rm2_rxend_isr() {
     cc430.state = RADIO_STATE_RXDONE;           // Make sure in DONE State, for decoding
     em2_decode_data();                          // decode any leftover data
-    subcc430_finish(0, (ot_int)crc_check() - 1);
+    subcc430_finish(0, (ot_int)crc_check(&em2.crc) - 1);
 }
 #endif
 

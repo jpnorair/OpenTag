@@ -34,11 +34,11 @@
 
 /** Replacement Encoder functions <BR>
   * ========================================================================<BR>
-  * The Encoder/Decoder module in OTlib provides some generic encode and 
+  * The Encoder/Decoder module in OTlib provides some generic encode and
   * decode functions.  They work for most radios.  The SPIRIT1 implementation
   * has these optimized encode and decode functions.
   *
-  */ 
+  */
 
 //ot_sig crc_stream_fn;
 
@@ -59,11 +59,11 @@ void em2_encode_newframe() {
     ///    when the upper options byte is set.  That is, it is non-zero
     ///    on the first packet and 0 for retransmissions.
     if (txq.options.ubyte[UPPER] != 0) {
-        crc_init_stream(True, q_span(&txq), txq.getcursor);
+        crc_init_stream(&em2.crc, True, q_span(&txq), txq.getcursor);
         txq.putcursor  += 2;
         txq.front[0]   += 2;
         txq.front[1]   &= ~0x20;            // always clear this bit
-        
+
 #       if (M2_FEATURE(RSCODE))
             em2.lctl = txq.front[1];
             if (em2.lctl & 0x40) {
@@ -76,7 +76,7 @@ void em2_encode_newframe() {
             em2.lctl        = txq.front[1] & ~0x60;
             txq.front[1]    = em2.lctl;
 #       endif
-        
+
         // Only appoint CRC5 when the first ten bits of txq are settled
         em2_add_crc5(txq.front);
 	}
@@ -101,20 +101,20 @@ void em2_encode_data(void) {
     ot_int  load;
     ot_u8   save[2];
     ot_u8*  cmd;
-    
+
     // Loop unrolling for FIFO loading
     load = (rfctl.txlimit - spirit1_txbytes());
-    
+
     while (1) {
         fill = (load < em2.bytes) ? load : em2.bytes;
         if (fill <= 0) break;
-        
+
         if (fill > 24) fill = 24;
         load       -= fill;
         em2.bytes  -= fill;
-        
+
         if (txq.options.ubyte[UPPER] != 0) {
-            crc_calc_nstream(fill);
+            crc_calc_nstream(&em2.crc, fill);
 #           if (M2_FEATURE(RSCODE))
             if (em2.lctl & 0x40) {
                 em2_rs_encode(fill);
@@ -127,13 +127,13 @@ void em2_encode_data(void) {
         *cmd    = 0xff;
         save[1] = *(--cmd);
         *cmd    = 0x00;
-        
+
         txq.getcursor += fill;
         spirit1_spibus_io(fill+2, 0, cmd);
         *cmd++  = save[1];
         *cmd    = save[0];
     }
-    
+
     /// dummy SPI access to complete fill
     //spirit1_read(RFREG(IRQ_STATUS0));
     *(ot_u16*)save  = PLATFORM_ENDIAN16_C(0x8000);
@@ -144,16 +144,16 @@ void em2_encode_data(void) {
 void em2_decode_data(void) {
     static const ot_u8 cmd[] = { 0x01, 0xFF };
     ot_u16 grab;
-    
+
     em2_decode_data_TOP:
 
     grab = spirit1_rxbytes();
     if (grab != 0) {
         if (grab > 24)  grab = 24;
-        
+
         spirit1_spibus_io(2, grab, (ot_u8*)cmd);
         q_writestring(&rxq, spirit1.busrx, grab);
-        
+
         if (em2.state == 0) {
             ot_int ext_bytes;
             em2.state--;
@@ -169,11 +169,11 @@ void em2_decode_data(void) {
             if (em2.lctl & 0x40) {
                 ext_bytes = em2_rs_init_decode(&rxq);
             }
-            crc_init_stream(False, em2.bytes-ext_bytes, rxq.getcursor);
+            crc_init_stream(&em2.crc, False, em2.bytes-ext_bytes, rxq.getcursor);
         }
-        
-        crc_calc_nstream(grab);
-        
+
+        crc_calc_nstream(&em2.crc, grab);
+
         ///@todo we can optimize this also by waiting until crc is done,
         ///      and then verifying that it is not accurate.  but we need
         ///      better speed profiling before doing that.

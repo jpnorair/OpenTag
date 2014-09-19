@@ -160,7 +160,7 @@ void radio_isr(void) {
 void radio_mac_isr() {
     //if (rfctl.state == RADIO_Csma)
 
-    //platform_disable_gptim2();
+    //systim_disable_insertion();
     rm2_txcsma_isr();
 }
 
@@ -212,7 +212,7 @@ OT_WEAK void radio_calibrate() {
 
 OT_WEAK void radio_set_mactimer(ot_u16 clocks) {
 /// Used for high-accuracy TX/CSMA slot insertion, and flooding.
-    //platform_set_gptim2(clocks);
+    //systim_set_insertion(clocks);
 }
 
 
@@ -220,7 +220,7 @@ ot_u32 macstamp;
 
 OT_WEAK ot_u16 radio_get_countdown() {
     ot_u16 value;
-    value = dll.counter - 0; //(ot_u16)platform_get_interval(&macstamp);
+    value = dll.counter - 0; //(ot_u16)systim_chronstamp(&macstamp);
     return value;
 }
 
@@ -538,7 +538,7 @@ void rm2_resend(ot_sig2 callback) {
     radio.state                 = RADIO_Csma;
     rfctl.state                 = RADIO_STATE_TXINIT;
     txq.options.ubyte[UPPER]    = 255;
-    //platform_enable_gptim2();
+    //systim_enable_insertion();
     radio_set_mactimer(0);
 }
 #endif
@@ -738,7 +738,7 @@ void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
 
     /// CSMA-CA interrupt based and fully pre-emptive.  This is
     /// possible using CC1 on the GPTIM to clock the intervals.
-    //platform_enable_gptim2();
+    //systim_enable_insertion();
     radio_set_mactimer( (ot_uint)dll.comm.tca );
 }
 #endif
@@ -941,7 +941,7 @@ void rm2_txdata_isr() {
         radio.evtdone(2, 0);
 
         if ((rfctl.state & RADIO_STATE_TXMASK) == RADIO_STATE_TXDATA) {
-            crc_init_stream(True, 5, txq.getcursor);
+            crc_init_stream(&em2.crc, True, 5, txq.getcursor);
             em2.bytes = 7;
             em2_encode_data();
         }

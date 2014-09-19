@@ -256,7 +256,7 @@ OT_WEAK void em2_rs_interleave(ot_u8* start, ot_int numbytes) {
 #   if !defined(EXTF_em2_encode_data_HWCRC)
     OT_WEAK void em2_encode_data_HWCRC() {
         while ( (em2.bytes > 0) && radio_txopen() ) {
-            crc_calc_stream();
+            crc_calc_stream(&em2.crc);
             RS_ENCODE_1BYTE();
             radio_putbyte( q_readbyte(&txq) );
             em2.bytes--;
@@ -282,13 +282,13 @@ OT_WEAK void em2_rs_interleave(ot_u8* start, ot_int numbytes) {
                         ext_bytes -= rs_init_decode(&rxq);
                         rs_decode(2);
                     }
-                    crc_init_stream(False, em2.bytes + ext_bytes, rxq.front);    // Total bytes
-                    crc_calc_nstream(2);
+                    crc_init_stream(&em2.crc, False, em2.bytes + ext_bytes, rxq.front);    // Total bytes
+                    crc_calc_nstream(&em2.crc, 2);
                 }
             }
             else {
                 RS_DECODE_1BYTE();
-                crc_calc_stream();
+                crc_calc_stream(&em2.crc);
             }
         }
     }
@@ -336,7 +336,7 @@ OT_WEAK void em2_rs_interleave(ot_u8* start, ot_int numbytes) {
 #   if !defined(EXTF_em2_encode_data_PN9)
     OT_WEAK void em2_encode_data_PN9() {
         while ( (em2.bytes > 0) && (radio_txopen() == True) ) {
-            crc_calc_stream();
+            crc_calc_stream(&em2.crc);
             RS_ENCODE_1BYTE();
             radio_putbyte( q_readbyte(&txq) ^ get_PN9() );
             rotate_PN9();
@@ -366,13 +366,13 @@ OT_WEAK void em2_rs_interleave(ot_u8* start, ot_int numbytes) {
                         ext_bytes -= em2_rs_init_decode(&rxq);
                         em2_rs_decode(2);
                     }
-                    crc_init_stream(False, em2.bytes + ext_bytes, rxq.front);    // Total bytes
-                    crc_calc_nstream(2);
+                    crc_init_stream(&em2.crc, False, em2.bytes + ext_bytes, rxq.front);    // Total bytes
+                    crc_calc_nstream(&em2.crc, 2);
                 }
             }
             else {
                 RS_DECODE_1BYTE();
-                crc_calc_stream();
+                crc_calc_stream(&em2.crc);
             }
         }
     }
@@ -424,7 +424,7 @@ void OT_WEAK em2_encode_data_FEC() {
         }
         else {
             em2.bytes--;
-            crc_calc_stream();
+            crc_calc_stream(&em2.crc);
             RS_ENCODE_1BYTE();
             input   = q_readbyte(&txq);
             input  ^= get_PN9();
@@ -626,12 +626,12 @@ void OT_WEAK em2_decode_data_FEC() {
                     }
                     em2.databytes   = fr_bytes - 2;     // subtract this block
 
-                    crc_init_stream(False, fr_bytes, rxq.front);
-                    crc_calc_nstream(2);
+                    crc_init_stream(&em2.crc, False, fr_bytes, rxq.front);
+                    crc_calc_nstream(&em2.crc, 2);
                 }
                 else {
                     RS_DECODE_1BYTE();
-                    crc_calc_stream();
+                    crc_calc_stream(&em2.crc);
                     em2.databytes--;
                 }
             }
@@ -649,7 +649,7 @@ void OT_WEAK em2_decode_data_FEC() {
                     new_byte       ^= get_PN9();
                     rotate_PN9();
                     q_writebyte(&rxq, new_byte);
-                    crc_calc_stream();
+                    crc_calc_stream(&em2.crc);
                 }
                 return;
             }
@@ -793,7 +793,7 @@ OT_WEAK void em2_encode_newframe() {
         em2_add_crc5();
 #       endif
 #       if ((RF_FEATURE(CRC16) | RF_FEATURE(CRC)) != ENABLED)
-        crc_init_stream(True, q_span(&txq), txq.getcursor);
+        crc_init_stream(&em2.crc, True, q_span(&txq), txq.getcursor);
         txq.putcursor += 2;
 #       endif
     }
@@ -890,7 +890,7 @@ OT_WEAK ot_u16 em2_decode_endframe() {
 
     ///1. Get the CRC16 information, which is already computed inline.  There
     ///   may be no reason to do RS decoding, even if it is available
-    crc_invalid = crc_get();
+    crc_invalid = crc_get(&em2.crc);
     framebytes  = rxq.front[0] + 1;
 
     ///2. Remove the RS parity bytes from "framebytes" if RS parity bytes are

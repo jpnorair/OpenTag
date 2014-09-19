@@ -287,14 +287,14 @@ void platform_ot_preempt() {
 /// Also, save the current value of the timer so that the kernel can subtract
 /// whatever time passed since the last event.
     ot_u16 scratch;
-    scratch = platform_get_ktim();
+    scratch = systim_get();
     platform_set_ktim(scratch);
     ///@todo do something here
 }
 
 void platform_ot_pause() {
     platform_ot_preempt();
-    platform_flush_ktim();
+    systim_flush();
 }
 
 void platform_ot_run() {
@@ -304,7 +304,7 @@ void platform_ot_run() {
 /// 4. Put the next scheduled call into the timer, and turn it back on
     ot_u16 next_event;
     ot_u16 elapsed_time;
-    elapsed_time    = platform_get_ktim();
+    elapsed_time    = systim_get();
     next_event      = 200; //sys_event_manager( elapsed_time );
 
 #   if (OT_PARAM(KERNEL_LIMIT) > 0)
@@ -345,7 +345,7 @@ void platform_poweron() {
 #   if (OT_FEATURE(SERVER) == ENABLED)
     platform_init_gpio();
     platform_init_interruptor();
-    platform_init_gptim(0);
+    systim_init(NULL);
 #   endif
 
     /// 6. Initialize Low-Level Drivers (worm, mpipe)
@@ -436,7 +436,7 @@ void platform_init_gpio() {
 
 struct itimerval tconfig;
 
-void platform_init_gptim(ot_uint prescaler) {
+void systim_init(void* tim_init) {
 //    struct sigaction timer_action;
 //    timer_action.sa_handler = timer_handler;
 //    sigemptyset(&timer_action.sa_mask);
@@ -477,7 +477,7 @@ void platform_init_memcpy() { }
   * ========================================================================<BR>
   */
 
-ot_u32 platform_get_ktim() {
+ot_u32 systim_get() {
 /// Have to do a lot of hackery, because unix itimer is a downcounter with a
 /// highly annoying setup
 
@@ -513,7 +513,7 @@ void platform_set_ktim(ot_u16 value) {
     }
 }
 
-void platform_flush_ktim() {
+void systim_flush() {
     platform_set_ktim(65535);
 }
 

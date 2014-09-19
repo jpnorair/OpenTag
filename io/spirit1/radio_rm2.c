@@ -22,14 +22,14 @@
   * @ingroup    Radio
   *
   * <PRE>
-  * "   Invisible airwaves crackle with life, 
-  *     Bright antenna, bristle with the energy. 
-  *     Emotional feedback, on timeless wavelength, 
+  * "   Invisible airwaves crackle with life,
+  *     Bright antenna, bristle with the energy.
+  *     Emotional feedback, on timeless wavelength,
   *     Bearing a gift beyond price, almost free.
   *
-  *     All this machinery making modern music 
-  *     Can still be open-hearted. 
-  *     Not so coldly charted, it's really just a question 
+  *     All this machinery making modern music
+  *     Can still be open-hearted.
+  *     Not so coldly charted, it's really just a question
   *     Of your honesty.  Yeah, your honesty!   "
   *
   *     -- The SPIRIT1 of Radio (I couldn't resist)
@@ -45,11 +45,11 @@
   * 3. MAC      The HW can automate some inner loops, like Adv Flood and CSMA
   * 4. MAC+     The HW has most features of the MAC integrated
   *
-  * The SPIRIT1 is a high-performing RF Core that ALSO has a lot of Mode 2 
+  * The SPIRIT1 is a high-performing RF Core that ALSO has a lot of Mode 2
   * features implemented in HW.  Some of them are a bit roundabout and are not
   * implemented in this driver because software control has been found to work
   * better for the GENERAL CASE, but if you're a plucky innovator, there is a
-  * great degree of optimization possible with the SPIRIT1 core for special 
+  * great degree of optimization possible with the SPIRIT1 core for special
   * case applications.
   ******************************************************************************
   */
@@ -66,8 +66,8 @@
 #include <otlib/utils.h>
 
 // Local header for subroutines and implementation constants (supports patching)
-#include "radio_rm2.h" 
-         
+#include "radio_rm2.h"
+
 
 
 
@@ -108,25 +108,25 @@ void spirit1_virtual_isr(ot_u8 code) {
     switch (code) {
         case RFIV_RXTERM:   rm2_kill();             break;
         case RFIV_RXSYNC:   rm2_rxsync_isr();       break;
-        
+
         case RFIV_RXEND:    rm2_rxend_isr();        break;
         case 3:             //spirit1drv_unsync_isr();  break;  //Falling Edge
         case RFIV_RXFIFO:   rm2_rxdata_isr();       break;
-        
+
         case RFIV_CCAPASS:  spirit1drv_ccapass_isr(); break;
         case RFIV_CCAFAIL:  spirit1drv_ccafail_isr(); break;
-        
-        case RFIV_TXEND:    
+
+        case RFIV_TXEND:
         case 8:             spirit1drv_txend_isr();   break;
         case RFIV_TXFIFO:   rm2_txdata_isr();       break;
     }
 }
 
-    
+
 
 
 void spirit1_clockout_on(ot_u8 clk_param) {
-/// Set the SPIRIT1 to idle, then configure the driver so it never goes into sleep 
+/// Set the SPIRIT1 to idle, then configure the driver so it never goes into sleep
 /// or standby, and finally configure the SPIRIT1 to output the clock.
 #if (BOARD_FEATURE_RFXTALOUT)
     spirit1drv_smart_ready();
@@ -154,39 +154,39 @@ void spirit1_clockout_off() {
   * ========================================================================<BR>
   * By "generic" it means that it is not Mode2 specific
   */
-  
+
 #ifndef EXTF_radio_init
 OT_WEAK void radio_init( ) {
-/// Transceiver implementation dependent    
+/// Transceiver implementation dependent
     //vlFILE* fp;
-    
+
     /// Set SPIRIT1-dependent initialization defaults
     //rfctl.flags     = RADIO_FLAG_XOON;
     rfctl.flags     = 0;
     rfctl.nextcal   = 0;
-    
+
     /// Set universal Radio module initialization defaults
     //radio.state     = RADIO_Idle;
     //radio.evtdone   = &otutils_sig2_null;
-    
+
     /// Initialize the bus between SPIRIT1 and MCU, and load defaults.
     /// SPIRIT1 starts-up in Idle (READY), so we set the state and flags
     /// to match that.  Then, init the bus and send RADIO to sleep.
     /// SPIRIT1 can do SPI in Sleep.
     spirit1_init_bus();
     spirit1_load_defaults();
-    
+
     /// Do this workaround (SPIRIT1 Errata DocID023165 R5, section 1.2) to fix
     /// the shutdown current issue for input voltages <= 2.6V.  For input
     /// voltages > 2.6V, it does not hurt anything.
     spirit1_write(RFREG(PM_TEST), 0xCA);
     spirit1_write(RFREG(TEST_SELECT), 0x04);
     spirit1_write(RFREG(TEST_SELECT), 0x00);
-    
+
     /// Done with the radio init
     //spirit1drv_smart_standby();
     radio_sleep();
-    
+
     /// Initialize RM2 elements such as channels, link-params, etc.
     rm2_init();
 }
@@ -213,7 +213,7 @@ OT_WEAK void radio_finish(ot_int main_err, ot_int frame_err) {
 #ifndef EXTF_radio_set_mactimer
 OT_WEAK void radio_set_mactimer(ot_u16 clocks) {
 /// Used for high-accuracy TX/CSMA slot insertion, and flooding.
-    platform_set_gptim2(clocks);
+    systim_set_insertion(clocks);
 }
 #endif
 
@@ -222,7 +222,7 @@ OT_WEAK void radio_set_mactimer(ot_u16 clocks) {
 OT_WEAK void radio_mac_isr() {
     /// Used as CA insertion timer
     //if (radio.state == RADIO_Csma) {
-        platform_disable_gptim2();
+        systim_disable_insertion();
         rm2_txcsma_isr();
     //}
 }
@@ -279,12 +279,12 @@ OT_INLINE ot_u8 rm2_calc_rssithr(ot_u8 m2_rssithr) {
 
 #ifndef EXTF_rm2_enter_channel
 OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
-    static const ot_u8 dr_matrix[32] = { 
-        0, RFREG(MOD1), DRF_MOD1_SS, DRF_MOD0_SS, DRF_FDEV0, DRF_CHFLT_SS, 0, 0, 
-        0, RFREG(MOD1), DRF_MOD1_LS, DRF_MOD0_LS, DRF_FDEV0, DRF_CHFLT_LS, 0, 0, 
+    static const ot_u8 dr_matrix[32] = {
+        0, RFREG(MOD1), DRF_MOD1_SS, DRF_MOD0_SS, DRF_FDEV0, DRF_CHFLT_SS, 0, 0,
+        0, RFREG(MOD1), DRF_MOD1_LS, DRF_MOD0_LS, DRF_FDEV0, DRF_CHFLT_LS, 0, 0,
         0, RFREG(MOD1), DRF_MOD1_HS, DRF_MOD0_HS, DRF_FDEV0, DRF_CHFLT_HS, 0, 0,    /// @todo change HS to MS (mid speed)
         0, RFREG(MOD1), DRF_MOD1_HS, DRF_MOD0_HS, DRF_FDEV0, DRF_CHFLT_HS, 0, 0,
-    };    
+    };
     ot_u8   fc_i;
 
     /// Flag PA table reprogram (done before TX): only flag if power is different
@@ -313,7 +313,7 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
 #ifndef EXTF_rm2_mac_configure
 OT_WEAK void rm2_mac_configure() {
 /// Only use this when there is a hardware MAC filtering ability.  The SPIRIT1
-/// does technically have ability to filter on subnet, but it is not used.  
+/// does technically have ability to filter on subnet, but it is not used.
 /// Subnet is the 4th byte in a foreground frame or 2nd byte in a background
 /// frame.
     //spirit1_write(RFREG(PCKT_FLT_GOALS11), dll.netconf.subnet);
@@ -327,7 +327,7 @@ OT_WEAK void rm2_calc_link() {
     radio.last_rssi     = spirit1_calc_rssi( spirit1_read(RFREG(RSSI_LEVEL)) );
     radio.last_linkloss = (ot_int)(rxq.front[2] & 0x7F) - 80 - RF_HDB_RXATTEN;
     radio.last_linkloss-= radio.last_rssi;
-    
+
     // Save additional link parameters.  If OT_FEATURE(RF_LINKINFO) is not
     // enabled in the app config, nothing will happen in this function.
     spirit1drv_save_linkinfo();
@@ -344,7 +344,7 @@ OT_WEAK ot_int rm2_get_floodcounter() {
 /// implemented in the SPIRIT1.
     ot_int offset_count;
     offset_count    = (ot_int)spirit1_get_counter();
-    offset_count   -= rm2_scale_codec(7);   // was hardcoded at 13    
+    offset_count   -= rm2_scale_codec(7);   // was hardcoded at 13
     return offset_count;
 }
 #endif
@@ -359,17 +359,17 @@ OT_WEAK void rm2_kill() {
 
     __DEBUG_ERRCODE_EVAL(=290);
 
-    
+
     radio_gag();
-    __SET_LINE(__LINE__);     
-    spirit1drv_smart_standby();     
+    __SET_LINE(__LINE__);
+    spirit1drv_smart_standby();
     __CLR_LINE(__LINE__);
-    
+
     ///@note this is only for lab testing of channel threshold
     //radio.last_rssi = spirit1_calc_rssi( spirit1_read(RFREG(RSSI_LEVEL)) );
     //total += (0-radio.last_rssi);
     //bg_scans++;
-    
+
     radio_finish(RM2_ERR_KILL, 0);
 }
 #endif
@@ -380,16 +380,16 @@ OT_WEAK void rm2_rxtimeout_isr() {
 
     __DEBUG_ERRCODE_EVAL(=280);
 
-    
+
     radio_gag();
-    __SET_LINE(__LINE__);    
-    spirit1drv_smart_standby();       
+    __SET_LINE(__LINE__);
+    spirit1drv_smart_standby();
     __CLR_LINE(__LINE__);
-    
+
 
     __DEBUG_ERRCODE_EVAL(=281);
 
-    
+
 #   if OT_FEATURE(RF_ADAPTIVE)
     spirit1drv_save_linkinfo();
     radio_finish(RM2_ERR_TIMEOUT, radio.link.sqi);
@@ -397,7 +397,7 @@ OT_WEAK void rm2_rxtimeout_isr() {
     radio_finish(RM2_ERR_TIMEOUT, 0);
 #   endif
 
-    
+
 
     __DEBUG_ERRCODE_EVAL(=282);
 }
@@ -415,59 +415,59 @@ OT_WEAK void rm2_rxtimeout_isr() {
 #ifndef EXTF_rm2_rxinit
 OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     ot_u8 netstate;
-    
+
 
     __DEBUG_ERRCODE_EVAL(=200);
 
-    
+
     /// Setup the RX engine for Foreground Frame detection and RX.  Wipe-out
     /// the lower flags (non-persistent flags)
     radio.evtdone   = callback;
     rfctl.flags    &= ~(  RADIO_FLAG_RESIZE \
                         | RADIO_FLAG_CONT   \
                         | RADIO_FLAG_BG     );
-    
+
 #   if (M2_FEATURE(MULTIFRAME) == ENABLED)
     rfctl.flags |= (psettings & (M2_NETFLAG_BG | M2_NETFLAG_STREAM)) >> 6;
 #   else
     rfctl.flags |= (psettings & (M2_NETFLAG_BG)) >> 6;
 #   endif
-    
+
     netstate    = (psettings & M2_NETFLAG_BG) ? \
                     (M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX) : psettings;
-    
+
     ///@note maccfg[5] should be 1 for release, and higher (i.e. 10) for bgrx test
-    {   ot_u8 maccfg[8] = { 0, RFREG(PROTOCOL2), 
+    {   ot_u8 maccfg[8] = { 0, RFREG(PROTOCOL2),
                             (DRF_PROTOCOL2 & 0x1F) | _SQI_TIMEOUT_MASK,
-                            DRF_PROTOCOL1, 
+                            DRF_PROTOCOL1,
                             DRF_PROTOCOL0,
                             DRF_TIMERS5, 0,     // RX Termination timer (default off)
                             0 };                // Alignment Dummy
         MODE_enum   buffer_mode;
         ot_u16      pktlen;
-    
+
         /// 1.  Prepare RX queue by flushing it
         radio_activate_queue(&rxq);
-        
+
         /// 2. Fetch the RX channel, exit if the specified channel is not available
         if (rm2_test_channel(channel) == False) {
             radio_finish(RM2_ERR_BADCHANNEL, 0);
             return;
         }
-        
+
         /// 3. Prepare modem state-machine to do RX-Idle or RX-RX
         ///    RX-RX happens during Response listening, unless FIRSTRX is high
         //netstate &= (M2_NETFLAG_FIRSTRX | M2_NETSTATE_RESP);
         //if ((netstate ^ M2_NETSTATE_RESP) == 0) {
         //    maccfg[4] = _PERS_RX | _NACK_TX;
         //}
-    
+
         /// 4a. Setup RX for Background detection (if BG):
         ///     <LI> Manipulate ot_queue to fit bg frame into common model </LI>
         ///     <LI> Set SPIRIT1 RX timer to a small amount.  The minimum amount
         ///          depends on ramp-up/down settings, but ~400us is a safe bet </LI>
         ///     <LI> Set SPIRIT1 to pause RX timer on carrier sense </LI>
-        /// 4b. Setup RX for Foreground detection (ELSE): 
+        /// 4b. Setup RX for Foreground detection (ELSE):
         ///     <LI> Set Foreground paging and tentative packet-len to max </LI>
         if (rfctl.flags & RADIO_FLAG_BG) {
             spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cs_thr);
@@ -480,19 +480,19 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
             buffer_mode = MODE_fg;
             pktlen      = (_MAXPKTLEN*_SPREAD);
         }
-    
+
         /// 5.  Send Configuration data to SPIRIT1
         spirit1drv_buffer_config(buffer_mode, pktlen);                // packet configuration
         spirit1_spibus_io(7, 0, maccfg);                            // MAC configuration
-    
+
         /// 6.  Prepare Decoder to receive, then receive
         em2_decode_newpacket();
         em2_decode_newframe();
         //dll_offset_rxtimeout();   ///@todo why is this commented-out?  Does it matter?
-        
+
         /// 7. If manual calibration is used, sometimes it is done here
         __CALIBRATE();
-        
+
         /// 8.  Using rm2_reenter_rx()
         spirit1_iocfg_rx();
         rm2_reenter_rx(radio.evtdone);
@@ -510,17 +510,17 @@ OT_WEAK void rm2_rxtest(ot_u8 channel, ot_u8 tsettings, ot_u16 timeout) {
     // We don't care if the channel is supported, because no data is going to
     // be sent.  Just set the center frequency to where it is desired
     rm2_enter_channel((channel & 0x7f), (phymac[0].tx_eirp & 0x7f));
-    
+
     // Always use CW Mode
     spirit1_write(RFREG(MOD0), DRF_MOD0 | _CW);
-    
+
     // No callback
     radio.evtdone = &otutils_sig2_null;
-    
+
     // Set timeout accordingly
     maccfg[6] = (ot_u8)timeout;
     spirit1_spibus_io(7, 0, maccfg);
-    
+
     spirit1_iocfg_rx();
     spirit1_int_off();
     spirit1drv_smart_ready();
@@ -540,13 +540,13 @@ OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
     static const ot_u8 rxstates[4] = {
         RADIO_STATE_RXPAGE, RADIO_STATE_RXAUTO, RADIO_FLAG_CRC5, 0
     };
-    
+
     radio.evtdone   = callback;
     rfctl.state     = rxstates[(rfctl.flags & RADIO_FLAG_BG)];
     rfctl.flags    |= rxstates[2 + (rfctl.flags & RADIO_FLAG_BG)];
     rfctl.rxlimit   = (96-_RXMINTHR);
     spirit1_write(RFREG(FIFO_CONFIG3), (ot_u8)rfctl.rxlimit );
-    
+
     radio_gag();                    // This shouldn't be necessary, but there's a bug in the rxend function.
     spirit1drv_smart_ready();
     radio_flush_rx();
@@ -563,7 +563,7 @@ OT_WEAK void rm2_rxsync_isr() {
 
     __DEBUG_ERRCODE_EVAL(=210);
 
-    
+
     if (rfctl.flags & RADIO_FLAG_BG) {
         rxq.getcursor       = rxq.front;
         *rxq.getcursor++    = 8;
@@ -573,7 +573,7 @@ OT_WEAK void rm2_rxsync_isr() {
     else {
         q_empty(&rxq);
     }
-    
+
     spirit1_int_rxdata();
     radio.state = RADIO_DataRX;
     dll_block();
@@ -599,7 +599,7 @@ OT_WEAK void rm2_rxdata_isr() {
 
     ///@todo speed-up this for background... Just check for RXAUTO, which is
     ///      only used by BG, and which needs no special cases 1 & 3
-    
+
     /// 1. special handler for Manual RX-DONE, needed for Foreground packets
     /// @note ABORT is known to have issues, but it might not be needed here.
     if (rfctl.state == RADIO_STATE_RXDONE) {
@@ -611,7 +611,7 @@ OT_WEAK void rm2_rxdata_isr() {
         rm2_rxend_isr();
         return;
     }
-    
+
     /// 2. load data
     rm2_rxdata_isr_DECODE:
     em2_decode_data();      // Contains logic to prevent over-run
@@ -629,10 +629,10 @@ OT_WEAK void rm2_rxdata_isr() {
             return;
         }
     }
-    
+
     /// 4. Handle main types of RX FIFO data
     switch ((rfctl.state >> RADIO_STATE_RXSHIFT) & (RADIO_STATE_RXMASK >> RADIO_STATE_RXSHIFT)) {
-    
+
         /// RX State 0: Automatic Packet Control
         /// SPIRIT1 automatically handles the following packet RX:
         /// <LI> All background packets </LI>
@@ -647,22 +647,22 @@ OT_WEAK void rm2_rxdata_isr() {
             ot_int chipoctets_left;
             __DEBUG_ERRCODE_EVAL(=223);
 
-            
+
             if (em2.bytes <= 0) {
                 goto rm2_rxdata_isr_DONE;
             }
-            
+
             ///@todo reduce from max-fill, so that more work can be done while
             ///      data is being read-in.
             chipoctets_left = (em2.bytes*_SPREAD);
             if (chipoctets_left  <= 96) {
                 rfctl.rxlimit   = 96 - chipoctets_left;
                 rfctl.state     = RADIO_STATE_RXDONE;
-                goto rm2_rxdata_isr_RESIZE; 
+                goto rm2_rxdata_isr_RESIZE;
             }
             if (rfctl.rxlimit != (96-_RXMAXTHR)) {
                 rfctl.rxlimit   = (96-_RXMAXTHR);
-                goto rm2_rxdata_isr_RESIZE; 
+                goto rm2_rxdata_isr_RESIZE;
             }
             break;
 
@@ -671,7 +671,7 @@ OT_WEAK void rm2_rxdata_isr() {
             break;
 //#       endif
         }
-        
+
         /// RX State 2 & 3:
         /// Multiframe packets (only compiled when MFPs are supported)
         ///@todo Experimental, not presently supported
@@ -683,7 +683,7 @@ OT_WEAK void rm2_rxdata_isr() {
 
             __DEBUG_ERRCODE_EVAL(=224);
 
-            
+
             if (em2.bytes == 0) {
                 if (frames_left == 0) {
                     goto rm2_rxdata_isr_DONE;
@@ -695,11 +695,11 @@ OT_WEAK void rm2_rxdata_isr() {
                 goto rm2_rxdata_isr_DECODE;
             }
             else if (frames_left == 0) {
-                
+
             }
         } break;
 #       endif
-        
+
         /// Bug Trap
        default: rm2_kill();
                 break;
@@ -749,16 +749,16 @@ OT_WEAK void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
     radio.evtdone   = callback;
     radio.state     = RADIO_Csma;
     rfctl.state     = RADIO_STATE_TXINIT;
-    
+
     // initialize the CRC/RS disabling byte
     //txq.options.ubyte[UPPER] = 0;
-    
+
     // initialize the CRC/RS disabling byte
     txq.options.ubyte[UPPER] = 0;
-    
+
     /// CSMA-CA interrupt based and fully pre-emptive.  This is
     /// possible using CC1 on the GPTIM to clock the intervals.
-    platform_enable_gptim2();
+    systim_enable_insertion();
     radio_set_mactimer( (ot_uint)dll.comm.tca );
 }
 #endif
@@ -777,29 +777,29 @@ OT_WEAK void rm2_txtest(ot_u8 channel, ot_u8 eirp_code, ot_u8 tsettings, ot_u16 
     phymac[0].channel   = channel;
     phymac[0].tx_eirp   = eirp_code;
     rm2_enter_channel(old_channel, old_eirp);
-    
+
     // Set TX PATABLE values if different than pre-existing values
     if (rfctl.flags & RADIO_FLAG_SETPWR) {
         rfctl.flags &= ~RADIO_FLAG_SETPWR;
         spirit1_set_txpwr( &phymac[0].tx_eirp );
     }
-    
+
     // Use CW mode if enabled
     if (tsettings == 0) {
         spirit1_write(RFREG(MOD0), DRF_MOD0 | _CW);
     }
-    
+
     // Always enable PN9 mode.  If CW is used, it won't matter
     spirit1_write(RFREG(PCKTCTRL1), _TXSOURCE_PN9);
-    
+
     // No callback
     radio.evtdone = &otutils_sig2_null;
-    
+
     spirit1_int_off();
     spirit1_iocfg_tx();
     spirit1drv_force_ready();
     radio_flush_tx();
-            
+
     // Prepare for TX, then enter TX
     // For floods, we must activate the flood counter right before TX
     radio.state = RADIO_DataTX;
@@ -815,7 +815,7 @@ OT_WEAK void rm2_resend(ot_sig2 callback) {
     radio.state                 = RADIO_Csma;
     rfctl.state                 = RADIO_STATE_TXINIT;
     txq.options.ubyte[UPPER]    = 255;
-    platform_enable_gptim2();
+    systim_enable_insertion();
     radio_set_mactimer(0);
 }
 #endif
@@ -829,7 +829,7 @@ OT_WEAK void rm2_txstop_flood() {
 #if (SYS_FLOOD == ENABLED)
     rfctl.state = RADIO_STATE_TXDONE;
     spirit1_stop_counter();
-    spirit1_int_txdone();     
+    spirit1_int_txdone();
 #endif
 }
 #endif
@@ -840,7 +840,7 @@ OT_WEAK void rm2_txcsma_isr() {
     // The shifting in the switch is so that the numbers are 0, 1, 2, 3...
     // It may seem silly, but it allows the switch to be compiled better.
     switch ( (rfctl.state >> RADIO_STATE_TXSHIFT) & (RADIO_STATE_TXMASK >> RADIO_STATE_TXSHIFT) ) {
-        
+
         /// 1. First CCA: make sure channel is available.  Bypass if NOCSMA.
         /// <LI> Send error if device does not support one of the response channels </LI>
         /// <LI> Now that channel is known, prepare data for TX </LI>
@@ -849,30 +849,30 @@ OT_WEAK void rm2_txcsma_isr() {
         case (RADIO_STATE_TXINIT >> RADIO_STATE_TXSHIFT): {
             MODE_enum   type;
             ot_u16      pktlen;
-            ot_u8       timcfg[8] = {   0, RFREG(PROTOCOL0), 
-                                        DRF_PROTOCOL0, 
+            ot_u8       timcfg[8] = {   0, RFREG(PROTOCOL0),
+                                        DRF_PROTOCOL0,
                                         DRF_TIMERS5, 5, // RX Timer @ ~240us
                                         33, 1,          // LDC First Interval (default 2 ticks)
                                         0 };            // Alignment Dummy
-            
+
             // Find a usable channel from the TX channel list.  If none, error.
             if (rm2_test_chanlist() == False) {
                 radio.evtdone(RM2_ERR_BADCHANNEL, 0);
                 break;
             }
-            
+
             // Configure encoder.  On SPIRIT1 TX, this needs to be done before
             // calling spirit1drv_buffer_config().
             radio_activate_queue(&txq);
             em2_encode_newpacket();
             em2_encode_newframe();
-            
+
             // Set TX PATABLE values if different than pre-existing values
             if (rfctl.flags & RADIO_FLAG_SETPWR) {
                 rfctl.flags &= ~RADIO_FLAG_SETPWR;
                 spirit1_set_txpwr( &phymac[0].tx_eirp );
             }
-            
+
             // Set other TX Buffering & Packet parameters, and also save the
             // Peristent-TX attribute for floods, which is written later
 #           ifdef _DSSS
@@ -889,17 +889,17 @@ OT_WEAK void rm2_txcsma_isr() {
 #           else
             rfctl.txlimit   = 7;
             type            = (rfctl.flags & RADIO_FLAG_BG) ? MODE_bg : MODE_fg;
-            
+
             ///@todo need to verify this is proper procedure on multiframe FTX.
             ///      It is proper on BG Floods.
             timcfg[2]   = (rfctl.flags & RADIO_FLAG_CONT) ? \
                                 (DRF_PROTOCOL0 | _PERS_TX) : DRF_PROTOCOL0;
 #           endif
-            
+
             spirit1drv_buffer_config(type, (em2.bytes*_SPREAD) /*q_span(&txq)*/);
             spirit1_int_off();
             spirit1_iocfg_tx();
-            
+
             // If manual calibration is used, it is done here
             __CALIBRATE();
 
@@ -910,18 +910,18 @@ OT_WEAK void rm2_txcsma_isr() {
                 spirit1_spibus_io(3, 0, timcfg);
                 goto rm2_txcsma_START;
             }
-            
+
             // Setup CSMA/CCA parameters for this channel and fall through
             spirit1_write(RFREG(RSSI_TH), (ot_u8)phymac[0].cca_thr );
-            
+
             timcfg[6] = (phymac[0].tg - 1);
             spirit1_spibus_io(7, 0, timcfg);
         }
-        
+
         /// 2. Fall through from CSMA setup.  This code bypassed for No-CSMA
         ///    case.  This code directly accessed on repeat-CCA after fail.
         ///    Also setup to calibrate LDC RCO clock every X uses of CSMA.
-        case (RADIO_STATE_TXCCA1 >> RADIO_STATE_TXSHIFT): 
+        case (RADIO_STATE_TXCCA1 >> RADIO_STATE_TXSHIFT):
         case (RADIO_STATE_TXCCA2 >> RADIO_STATE_TXSHIFT): {
             ot_u8 protocol2;
             rfctl.state = RADIO_STATE_TXCCA1;
@@ -943,17 +943,17 @@ OT_WEAK void rm2_txcsma_isr() {
         rm2_txcsma_START:
             // Send TX start (CSMA done) signal to DLL task
             // arg2: Non-zero for background, 0 for foreground
-            radio.evtdone(0, (rfctl.flags & (RADIO_FLAG_BG | RADIO_FLAG_CONT)));  
-            
+            radio.evtdone(0, (rfctl.flags & (RADIO_FLAG_BG | RADIO_FLAG_CONT)));
+
             // Preload into TX FIFO a small amount of data (up to 8 bytes)
             // This is small-enough that the TX state machine doesn't need
             // special conditions, and less initial data = less latency.
             txq.front[2] = (phymac[0].tx_eirp & 0x7f);
-            
-            spirit1drv_force_ready(); 
+
+            spirit1drv_force_ready();
             radio_flush_tx();
             em2_encode_data();
-            
+
             // Prepare for TX, then enter TX
             // For floods, we must activate the flood counter right before TX
             radio.state     = RADIO_DataTX;
@@ -961,7 +961,7 @@ OT_WEAK void rm2_txcsma_isr() {
             rfctl.txlimit   = RADIO_BUFFER_TXMAX;   // Change TXlimit to max buffer
             spirit1_strobe( RFSTROBE_TX );
             spirit1_int_txdata();
-            
+
             ///@todo need to verify this is proper procedure on multiframe FTX.
             ///      It is proper on BG Floods.
             if (rfctl.flags & RADIO_FLAG_CONT) {
@@ -977,7 +977,7 @@ OT_WEAK void rm2_txcsma_isr() {
 #ifndef EXTF_rm2_txdata_isr
 OT_WEAK void rm2_txdata_isr() {
 /// Continues where rm2_txcsma() leaves off.
-    
+
     /// This is a safety-check that can be removed in more mature builds
 #   if (0) //defined(__DEBUG__)
     if ((rfctl.state & RADIO_STATE_TXMASK) != RADIO_STATE_TXDATA) {
@@ -985,22 +985,22 @@ OT_WEAK void rm2_txdata_isr() {
         return;
     }
 #   endif
-    
+
 #   if (SYS_FLOOD == ENABLED)
     /// Packet flooding.  Only needed on devices that can send M2AdvP
     /// The radio.evtdone callback here should update the AdvP payload
     if ((rfctl.flags & RADIO_FLAG_BGFLOOD) == RADIO_FLAG_BGFLOOD) {
         radio.evtdone(RADIO_FLAG_CONT, 0);
-        
+
         if ((rfctl.state & RADIO_STATE_TXMASK) == RADIO_STATE_TXDATA) {
-            crc_init_stream(True, 5, txq.getcursor);
+            crc_init_stream(&em2.crc, True, 5, txq.getcursor);
             em2.bytes = 7;
             em2_encode_data();
         }
         return;
     }
 #   endif
-        
+
     /// Packet is not done, so fill buffer with more data and check.
     /// Disable FIFO interrupt and this state when the packet is fully-encoded
     rm2_txpkt_TXDATA:
@@ -1009,7 +1009,7 @@ OT_WEAK void rm2_txdata_isr() {
         rfctl.state = RADIO_STATE_TXDONE;
         spirit1_int_txdone();
     }
-    
+
 #   if (M2_FEATURE(MULTIFRAME) == ENABLED)
     else {
         /// If the frame is done, but more need to be sent (e.g. MFP's)
@@ -1029,8 +1029,8 @@ OT_WEAK void rm2_txdata_isr() {
 
 
 void spirit1drv_txend_isr() {
-///@todo could put (rfctl.state != RADIO_STATE_TXDONE) as an argument, or 
-///      something that resolves to an appropriate non-zero,as an arg in order 
+///@todo could put (rfctl.state != RADIO_STATE_TXDONE) as an argument, or
+///      something that resolves to an appropriate non-zero,as an arg in order
 ///      to signal an error
     radio_gag();
     spirit1drv_smart_ready();
@@ -1043,10 +1043,10 @@ void spirit1drv_ccafail_isr() {
 /// means that the CCA scan has failed.
     spirit1_int_off();
     spirit1_write(RFREG(PROTOCOL2), 0);     //Turn-off LDC, RCO-Cal, VCO-Cal
-    __SET_LINE(__LINE__);         
-    spirit1drv_smart_standby();   
+    __SET_LINE(__LINE__);
+    spirit1drv_smart_standby();
     __CLR_LINE(__LINE__);
-    
+
     rfctl.state = RADIO_STATE_TXCCA1;
     radio.evtdone(1, 0);
 }
@@ -1055,13 +1055,13 @@ void spirit1drv_ccafail_isr() {
 void spirit1drv_ccapass_isr() {
 /// CCA scan has passed.  SPIRIT1 is in SLEEP-state
     rfctl.state += (1<<RADIO_STATE_TXSHIFT);
-    
+
     // CSMA process is done
     if (rfctl.state == RADIO_STATE_TXSTART) {
         spirit1_write(RFREG(PROTOCOL2), 0);     //Turn-off LDC, RCO-Cal, VCO-Cal
         rm2_txcsma_isr();
     }
-    
+
     // CSMA process has another pass: reload LDC with guard time & exit
     else {
         spirit1_write(RFREG(PROTOCOL2), _LDC_MODE);     //Turn-off RCO-Cal, VCO-Cal
@@ -1100,7 +1100,7 @@ void spirit1drv_null(ot_int arg1, ot_int arg2) { }
 
 
 void spirit1drv_buffer_config(MODE_enum mode, ot_u16 param) {
-/// SPIRIT1 buffer config: 
+/// SPIRIT1 buffer config:
 /// Mode | MF | FR | FEC | DIR || PKTCTRL2 | PKTCTRL1 | PKTLEN1:0
 /// -----+----+----+-----+-----++----------+----------+-----------
 ///  00  |  N | BG |  N  |  X  || 00ccc010 | ddd10000 |  0x0007
@@ -1113,37 +1113,37 @@ void spirit1drv_buffer_config(MODE_enum mode, ot_u16 param) {
 ///
 /// ccc: channel dependent: 011 for LowSpeed, 101 for HiSpeed
 /// ddd: based on defaults.  CRC isn't fully tested yet, so 000 for now
-/// plen: length of the packet 
-    
+/// plen: length of the packet
+
     // 4 byte sync using ... 92DDC8F1 / A444B78F / EE415A3C / AD79C06C
     static const ot_u8 sync_matrix[] = { 0xF1, 0xC8, 0xDD, 0x92,     //bg non-fec
                                          0x8F, 0xB7, 0x44, 0xA4,     //fg non-fec
                                          0x3C, 0x5A, 0x41, 0xEE,     //bg fec
                                          0x6C, 0xC0, 0x79, 0xAD      //fg fec
                                          };
-    
-    ot_u8 buf_cfg[10] = {   0, RFREG(PCKTCTRL2), 
+
+    ot_u8 buf_cfg[10] = {   0, RFREG(PCKTCTRL2),
                             DRF_PCKTCTRL2_LSBG, 0, 0, 0, 0, 0, 0, 0 };
     ot_u8 is_fec;
-    
+
     ///@todo monitor state locally, based on mode and param.  If same as last
     ///      usage, don't bother rewriting all this stuff to the SPIRIT1
-    
+
     ///@todo If PCKTCTRL2 is universal, then can set it in defaults and do 9 byte write
-                                  
-    //buf_cfg[2] += (phymac[0].channel & 0x20) >> 1;                                  
+
+    //buf_cfg[2] += (phymac[0].channel & 0x20) >> 1;
     //buf_cfg[2] |= ((ot_u8)mode & 1);
-    
+
     is_fec      = (phymac[0].channel & 0x80) >> 4;      // 0 when no fec, 8 when FEC
     mode       += is_fec;
-    buf_cfg[3]  = _WHIT_EN | (is_fec >> 3);                    
+    buf_cfg[3]  = _WHIT_EN | (is_fec >> 3);
     buf_cfg[4]  = ((ot_u8*)&param)[UPPER];
     buf_cfg[5]  = ((ot_u8*)&param)[LOWER];
     buf_cfg[6]  = sync_matrix[mode];
     buf_cfg[7]  = sync_matrix[mode+1];
     buf_cfg[8]  = sync_matrix[mode+2];
     buf_cfg[9]  = sync_matrix[mode+3];
-    
+
     spirit1_spibus_io(10, 0, buf_cfg);
 }
 
@@ -1152,16 +1152,16 @@ void spirit1drv_buffer_config(MODE_enum mode, ot_u16 param) {
 void spirit1drv_save_linkinfo() {
 #if OT_FEATURE(RF_LINKINFO)
     static const ot_u8 cmd[2] = { 0x01, RFREG(LINK_QUALIF2) };
-    
+
     // Do Read command on LINK_QUALIF[2:0] and store results in link structure
     spirit1_spibus_io(2, 3, (ot_u8*)cmd);
-    
+
     // Convert 3 byte SPIRIT1 output into 4 byte data structure
     radio.link.pqi  = spirit1.busrx[0];
     radio.link.sqi  = spirit1.busrx[1] & ~0x80;
     radio.link.lqi  = spirit1.busrx[2] >> 4;
     radio.link.agc  = spirit1.busrx[2] & 0x0f;  ///@note this is basically useless
-    
+
 #elif OT_FEATURE(RF_ADAPTIVE)
     static const ot_u8 cmd[2] = { 0x01, RFREG(LINK_QUALIF1) };
     spirit1_spibus_io(2, 1, (ot_u8*)cmd);
@@ -1191,7 +1191,7 @@ void spirit1drv_smart_ready() {
     current_state   = radio.state;
     radio.state     = RADIO_Idle;
     rfctl.flags    |= RADIO_FLAG_XOON;
-    
+
     if (current_state != RADIO_Idle) {
         spirit1_strobe(RFSTROBE_SABORT);
         spirit1_waitforabort();
@@ -1210,15 +1210,15 @@ void spirit1drv_smart_standby(void) {
 /// Put the device into standby, using only the means necessary to
 /// do so, based on the current state of the SPIRIT1.  There are two
 /// methods here: 1 is an optimized method and 2 is a general method.
-    
+
 #if BOARD_FEATURE_RFXTALOUT
     if (spirit1.clkreq) {
         spirit1drv_smart_ready();
-    } 
+    }
     else
 #endif
     {
-    
+
 /// Method 1: Using pin checks and local state
     // spirit1_isready() should indicate if the chip is in READY state,
     // but it actually indicates that the XO is on.  XO is on for all
@@ -1234,46 +1234,46 @@ void spirit1drv_smart_standby(void) {
         spirit1_strobe(RFSTROBE_STANDBY);
         spirit1_waitforstandby();
     }
-    
+
     // Change the flags & states accordingly.
     // STANDBY is a state only known to the SPIRIT1 layer.
     radio.state     = RADIO_Idle;
     rfctl.flags    &= ~RADIO_FLAG_PWRMASK;
-    
+
 /*
 /// Method2:  Using checking of MCSTATE on SPIRIT1
     ot_u8 mcstate;
     mcstate = spirit1_read(RFREG(MC_STATE0));
-    
+
     switch (mcstate>>1) {
         case 0x40:  break;
-        
+
         // SLEEP
         case 0x36:  spirit1_strobe(RFSTROBE_READY);
                     while (spirit1_read(RFREG(MC_STATE0)) != 0x07);
                     goto _ENTER_STANDBY;
-        
+
         // RX or TX or LOCK
         case 0x0F:
         case 0x33:
         case 0x5f:  spirit1_strobe(RFSTROBE_SABORT);
                     while (spirit1_read(RFREG(MC_STATE0)) != 0x07);
-        
-        case 0x03:  
+
+        case 0x03:
         _ENTER_STANDBY:
                     spirit1_strobe(RFSTROBE_STANDBY);
                     do { mcstate = spirit1_read(RFREG(MC_STATE0)); }
                     while (mcstate != (0x40<<1));
                     break;
-        
+
         //error!
         default:    BOARD_led1_on();
                     while(1);
     }
-    
+
     radio.state     = RADIO_Idle;
     rfctl.flags    &= ~RADIO_FLAG_PWRMASK;
-*/   
+*/
 
     }
 }
@@ -1284,7 +1284,7 @@ void spirit1drv_smart_standby(void) {
 
 /** General Purpose, Low-Level Radio Module control    <BR>
   * ========================================================================<BR>
-  * Used for data FIFO interaction and power configuration, but not specifically 
+  * Used for data FIFO interaction and power configuration, but not specifically
   * related to Mode 2.  These are implemented in the radio driver.
   */
 
@@ -1347,7 +1347,7 @@ OT_WEAK void radio_getfourbytes(ot_u8* data) {
 #endif
 
 
-///@note this IRQ flushing is needed if you are using a driver interrupt based 
+///@note this IRQ flushing is needed if you are using a driver interrupt based
 ///      on the SPIRIT1 IRQ system.  Presently, all driver interrupts are using
 ///      direct status conditions, not this IRQ.
 //static const ot_u8 read_irq[] = { 1, 0xFA };
@@ -1410,13 +1410,13 @@ OT_WEAK ot_bool radio_check_cca() {
 #if (RF_FEATURE(AUTOCAL) != ENABLED)
 void spirit1drv_offline_calibration() {
 /// Make sure to only call this function when there is nothing going on.
-    static const ot_u8 fc_div[6] = { RFREG(SYNT3), 0, 
+    static const ot_u8 fc_div[6] = { RFREG(SYNT3), 0,
         DRF_SYNT3X, DRF_SYNT2X, DRF_SYNT1X, DRF_SYNT0X };
-    static const ot_u8 fc[6] = { RFREG(SYNT3), 0, 
+    static const ot_u8 fc[6] = { RFREG(SYNT3), 0,
         DRF_SYNT3, DRF_SYNT2, DRF_SYNT1, DRF_SYNT0 };
-        
+
     ot_u8   vco_cal[4] = { RFREG(RCO_VCO_CALIBR_IN1), 0, 0, 0 };
-    
+
     // Step 0: Check if calibration is needed
     if (--rfctl.nextcal >= 0) {
         return;
@@ -1425,16 +1425,16 @@ void spirit1drv_offline_calibration() {
 
     // Step 1 (from erratum workaround): Set SEL_TSPLIT to 3.47 ns.
     // This is performed during startup initialization
-    
+
     spirit1drv_smart_ready();
-    
-    // Step 2: for 48, 50, 52 MHz crystals impls, enable _REFDIV and 
+
+    // Step 2: for 48, 50, 52 MHz crystals impls, enable _REFDIV and
     //         change the center frequency to match.
 #   if (BOARD_PARAM_RFHz > 26000000)
     spirit1_write( RFREG(SYNTH_CONFIG1), (DRF_SYNTH_CONFIG1 | _REFDIV) );
     spirit1_spibus_io(6, 0, (ot_u8*)fc_div);
 #   endif
-    
+
     // Step 3: Boost VCO current to 25 (from default)
     spirit1_write( RFREG(VCO_CONFIG), __VCO_GEN_CURR(25) );
 
@@ -1450,16 +1450,16 @@ void spirit1drv_offline_calibration() {
     delay_us(200);
     vco_cal[3] = spirit1_read( RFREG(RCO_VCO_CALIBR_OUT0) ) & 0x7f;
     spirit1_strobe(RFSTROBE_READY);
-    
+
     // Step 6: write vco calibration output into SPIRIT1 input
     spirit1_spibus_io(4, 0, vco_cal);
-    
+
     // Step 7: Disable automatic calibration
     spirit1_write( RFREG(PROTOCOL2), (DRF_PROTOCOL2) );
-    
+
     // Step 8: Reduce VCO current to standard level
     spirit1_write( RFREG(VCO_CONFIG), __VCO_GEN_CURR(17) );
-    
+
     // Step 9: Revert step 2
 #   if (BOARD_PARAM_RFHz > 26000000)
     spirit1_write( RFREG(SYNTH_CONFIG1), DRF_SYNTH_CONFIG1 );
@@ -1470,10 +1470,10 @@ void spirit1drv_offline_calibration() {
 
 #ifndef EXTF_radio_calibrate
 OT_WEAK void radio_calibrate() {
-/// SPIRIT1 has an errata with the automatic calibrator.  It is best practice to 
+/// SPIRIT1 has an errata with the automatic calibrator.  It is best practice to
 /// perform the calibrations manually and offline.
 #if (RF_FEATURE(AUTOCAL) != ENABLED)
-    
+
     rfctl.nextcal = 0;
 #endif
 }

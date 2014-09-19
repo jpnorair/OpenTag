@@ -180,10 +180,10 @@
 #define BOARD_FEATURE_RFXTAL            ENABLED                 // XTAL for RF chipset
 #define BOARD_FEATURE_RFXTALOUT         MCU_CONFIG_USB
 #define BOARD_FEATURE_PLL               MCU_CONFIG_USB
-#define BOARD_FEATURE_STDSPEED          ENABLED
-#define BOARD_FEATURE_FULLSPEED         (MCU_CONFIG_USB != ENABLED)
+#define BOARD_FEATURE_STDSPEED          (MCU_CONFIG_MULTISPEED == ENABLED)
+#define BOARD_FEATURE_FULLSPEED         ((MCU_CONFIG_MULTISPEED == ENABLED) || (MCU_CONFIG_USB != ENABLED))
 #define BOARD_FEATURE_FULLXTAL          DISABLED
-#define BOARD_FEATURE_FLANKSPEED        MCU_CONFIG_USB
+#define BOARD_FEATURE_FLANKSPEED        ((MCU_CONFIG_MULTISPEED == ENABLED) || (MCU_CONFIG_USB != ENABLED))
 #define BOARD_FEATURE_FLANKXTAL         MCU_CONFIG_USB
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG2      DISABLED
@@ -724,7 +724,7 @@ static inline void BOARD_RFSPI_CLKOFF(void) {
 
 
 
-#include <platform/timers.h>    // for gptim_stop_chrono()
+#include <platform/timers.h>    // for systim_stop_clocker()
 static inline void BOARD_STOP(ot_int code) {
 /// code comes from sys_sig_powerdown, but it is usually 0-3.
 /// For all STM32L devices, 3 is full-idle and 2 is radio-active-idle.  
@@ -759,7 +759,7 @@ static inline void BOARD_STOP(ot_int code) {
     PWR->CR     = scratch;
     
     EXTI->PR    = 0;
-    gptim_stop_chrono();
+    systim_stop_clocker();
     platform_enable_interrupts();
     
     __WFI();

@@ -818,7 +818,7 @@ static inline void BOARD_RFSPI_CLKOFF(void) {
 }
 
 
-#include <platform/timers.h>    // for gptim_stop_chrono()
+#include <platform/timers.h>    // for systim_stop_clocker()
 static inline void BOARD_STOP(ot_int code) {
 ///@note IKR001 board is poorly designed for running in STOP mode, as three
 ///      ports must be kept-alive (B, C, E)
@@ -855,7 +855,7 @@ static inline void BOARD_STOP(ot_int code) {
     PWR->CR     = scratch;
     
     EXTI->PR    = 0;
-    gptim_stop_chrono();
+    systim_stop_clocker();
     platform_enable_interrupts();
     
     __WFI();

@@ -175,7 +175,7 @@ void platform_ot_preempt() {
 #ifndef EXTF_platform_pause
 //void platform_ot_pause() {
 //    platform_ot_preempt();
-//    platform_flush_gptim();
+//    platform_flush_systim();
 //}
 #endif
 
@@ -196,9 +196,9 @@ OT_INLINE void platform_ot_run() {
     ///    or that no task is scheduled.  If no task is scheduled, then it is
     ///    time to go to sleep.  sys_powerdown() MUST re-enable interrupts
     ///    immediately before issuing WFI instruction.
-    while (gptim.flags & GPTIM_FLAG_SLEEP) {
+    while (systim.flags & GPTIM_FLAG_SLEEP) {
         platform_disable_interrupts();
-        platform_enable_ktim();
+        systim_enable();
         sys_powerdown();
         
         // At this point, system has just woke-up from sleep.  
@@ -206,7 +206,7 @@ OT_INLINE void platform_ot_run() {
     }
 
     /// 3. Stop the backup timer, which is used as a kernel watchdog.
-    platform_stop_itimer();
+    systim_stop_ticker();
     
     /// 4. Save the current P-stack pointer (PSP), and push the return address
     ///    onto this position.  If the task is killed during its runtime, this

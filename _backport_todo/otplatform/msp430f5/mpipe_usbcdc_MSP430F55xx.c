@@ -382,8 +382,8 @@ void mpipedrv_setspeed(mpipe_speed speed) {
 
 
 
-#ifndef EXTF_mpipedrv_txndef
-void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXTF_mpipedrv_tx
+void mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
 /// @note Using blocking: OpenTag currently does not implement blocking TX,
 ///       because it can interfere with time-critical radio processes.  You can
 ///       achieve a similar affect by calling "mpipedrv_wait()" after a logging

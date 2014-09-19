@@ -43,16 +43,16 @@ void platform_rtc_isr();
 
 /** Chronometer functions <BR>
   * ========================================================================<BR>
-  * The only function here that user code should call is gptim_get_chrono(), 
-  * which will return the amount of time in 1/32678 second units since the 
-  * scheduler last ran.  The rest of the functions should only be used deep 
+  * The only function here that user code should call is systim_get_clocker(),
+  * which will return the amount of time in 1/32678 second units since the
+  * scheduler last ran.  The rest of the functions should only be used deep
   * inside the kernel.
   */
-ot_u16 gptim_get_chrono();
-  
-void gptim_start_chrono();
-void gptim_restart_chrono();
-void gptim_stop_chrono();
+ot_u16 systim_get_clocker();
+
+void systim_start_clocker();
+void systim_restart_clocker();
+void systim_stop_clocker();
 
 
 
@@ -73,28 +73,28 @@ void platform_reset_watchdog(ot_u16 reset);
 /** Interval Measurement  <BR>
   * ========================================================================<BR>
   */
-  
+
 /** @brief Interval measurement with 1-tick resolution
   * @param timestamp    (ot_u32*) Pointer to a tick counter
   * @retval ot_u32      Number of ticks since last initialization
   * @ingroup Platform
   *
-  * platform_get_interval() is not a real timer, it just is an interface to 
+  * systim_chronstamp() is not a real timer, it just is an interface to
   * a real timer that can measure intervals.  It cannot provide interrupts,
   * just interval durations.
-  * 
+  *
   * Initialize the interval by setting timestamp parameter to NULL.  The return
   * value in this case will be the timestamp.  To get intervals after the
   * timestamp is initialized, pass-in a pointer to your timestamp.
   *
   * Usage example:
-  * my_tstamp = platform_get_interval(NULL);
+  * my_tstamp = systim_chronstamp(NULL);
   * ...
   * ... Some things happen, possibly even exiting scope
   * ...
-  * my_interval = platform_get_interval(&my_tstamp);
+  * my_interval = systim_chronstamp(&my_tstamp);
   */
-ot_u32 platform_get_interval(ot_u32* timestamp);
+ot_u32 systim_chronstamp(ot_u32* timestamp);
 
 
 
@@ -121,27 +121,22 @@ ot_u32 platform_get_interval(ot_u32* timestamp);
   * Please check with the implementation comments / documentation to determine
   * the usage with your platform,
   */
-void platform_init_itimer(ot_uint period);
-void platform_stop_itimer();
+void systim_set_ticker(ot_uint period);
+void systim_stop_ticker();
 
 
 
 
 
 /** @brief Initializes the OpenTag general purpose timer.
-  * @param prescaler    (16 bit) prescaler value.
+  * @param tim_init    (void*) Pointer to platform-dependent initializer
   * @retval None
   * @ingroup Platform
   *
-  * The formatting of the prescaler value can differ between platforms.  Please
-  * refer to the implementation comments / documentation for more specific
-  * usage information for the timer_prescaler input parameter.
+  * On most platforms, using systim_init(NULL) will apply the default setup.
   */
-#ifdef PLATFORM_POSIX
-    void platform_init_gptim(ot_u16 prescaler, void (*timer_handler)(int));
-#else
-    void platform_init_gptim(ot_u16 prescaler);
-#endif
+void systim_init(void* tim_init);
+
 
 
 
@@ -155,15 +150,15 @@ void platform_stop_itimer();
   * @retval ot_u32      Elapsed time since last refresh
   * @ingroup Platform
   */
-ot_u32 platform_get_ktim();
+ot_u32 systim_get();
 
 
-/** @brief Reloads ktim to update calls to platform_get_ktim()
+/** @brief Reloads ktim to update calls to systim_get()
   * @param None
   * @retval None
   * @ingroup Platform
   */
-void platform_flush_ktim();
+void systim_flush();
 
 
 /** @brief Returns the amount of timer clocks until the next interrupt
@@ -171,10 +166,10 @@ void platform_flush_ktim();
   * @retval ot_u16      timer clocks until next interrupt
   * @ingroup Platform
   */
-ot_u16 platform_next_ktim();
+ot_u16 systim_next();
 
 
-void platform_pend_ktim();
+void systim_pend();
 
 
 /** @brief Enables GPTIM interrupt
@@ -182,13 +177,13 @@ void platform_pend_ktim();
   * @retval None
   * @ingroup Platform
   */
-void platform_enable_ktim();
-void platform_enable_gptim2();
+void systim_enable();
+void systim_enable_insertion();
 
 
 
-void platform_disable_ktim();
-void platform_disable_gptim2();
+void systim_disable();
+void systim_disable_insertion();
 
 
 
@@ -198,12 +193,12 @@ void platform_disable_gptim2();
   * @ingroup Platform
   */
 void platform_set_ktim(ot_u16 value);
-void platform_set_gptim2(ot_u16 value);
-void platform_set_gptim3(ot_u16 value);
-void platform_set_gptim4(ot_u16 value);
-void platform_set_gptim5(ot_u16 value);
+void systim_set_insertion(ot_u16 value);
+void platform_set_systim3(ot_u16 value);
+void platform_set_systim4(ot_u16 value);
+void platform_set_systim5(ot_u16 value);
 
-ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead);
+ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead);
 
 
 

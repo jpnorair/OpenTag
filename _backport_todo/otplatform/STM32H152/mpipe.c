@@ -129,7 +129,7 @@ DMA1_Channel2_IRQHandler()
 volatile ot_u8 data_two;
 
 /* returns the count of bytes still to be transmitted: blocking returns zero */
-ot_int mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
+ot_int mpipe_tx(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
 #ifndef RADIO_DEBUG
     ot_uni16 crcval;
     ot_int data_length = data[2];

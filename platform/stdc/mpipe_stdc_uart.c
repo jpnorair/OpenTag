@@ -423,8 +423,8 @@ mpipe_state mpipe_status() {
 
 
 
-#ifndef EXTF_mpipe_txndef
-void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXTF_mpipe_tx
+void mpipe_tx(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
 /// Data TX will only occur if this function is called when the MPipe state is
 /// idle.  The exception is when the function is called with ACK priority, in
 /// which case the state doesn't need to be Idle.  Lastly, if you specify the 
@@ -435,12 +435,12 @@ void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
 #if (MPIPE_USE_ACKS)
     if (data_priority == MPIPE_Ack)) {
         mpipe.priority  = data_priority;
-        goto mpipe_txndef_SETUP;
+        goto mpipe_tx_SETUP;
     }
 #endif
     if (mpipe.state == MPIPE_Idle) {
         mpipe.state     = MPIPE_Tx_Done; //MPIPE_Tx_Wait;
-        mpipe_txndef_SETUP:
+        mpipe_tx_SETUP:
         MPIPE_DMAEN(OFF);
 
 #       if (MPIPE_DMANUM == 0)
@@ -549,7 +549,7 @@ void mpipe_isr() {
 #           if (MPIPE_USE_ACKS)
             // ACKs must be used when Broadcast mode is off
             if (mpipe.priority != MPIPE_Broadcast) {
-                // 1. On ACKs, txndef() requires caller to choose state 
+                // 1. On ACKs, tx() requires caller to choose state 
                 // 2. Copy RX'ed sequence number into local sequence number
                 // 3. Copy NACK/ACK status to 6th byte in NDEF header
                 {
@@ -564,7 +564,7 @@ void mpipe_isr() {
                 if (crc16drv_block(mpipe_alp.inq->front, q_length(mpipe_alp.inq)) {
                 	mpipe.outq->front[5] = 0x7F;
                 }
-                mpipe_txndef(NULL, False, MPIPE_Ack);
+                mpipe_tx(NULL, False, MPIPE_Ack);
                 return;
             }
 #           endif
@@ -603,7 +603,7 @@ void mpipe_isr() {
         case MPIPE_RxAck:
 #           if (MPIPE_USE_ACKS)
             if (crc16drv_block(mpipe_alp.inq->front, 10) != 0) { //RX'ed NACK
-                mpipe_txndef(NULL, False, mpipe.priority);
+                mpipe_tx(NULL, False, mpipe.priority);
                 break;
             }
 #           endif

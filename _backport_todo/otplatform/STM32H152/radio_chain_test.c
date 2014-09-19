@@ -304,8 +304,8 @@ main(void)
 
     TIM_ETRClockMode2Config(TIM11, TIM_ExtTRGPSC_OFF, TIM_ExtTRGPolarity_NonInverted, 0);
 
-    // put gptim into the so-called "free running", counting from 0->0xffff without ISR firing
-    platform_flush_gptim();
+    // put systim into the so-called "free running", counting from 0->0xffff without ISR firing
+    platform_flush_systim();
 
     test_rx_timeout = 0x4;  // 0x400 = 1024 = 1 second
     test_channel = 0x12;

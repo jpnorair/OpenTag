@@ -415,7 +415,7 @@ void RTC_IRQHandler(void) {
 void platform_ot_preempt() {
 /// Assure interrupt is enabled and cause a SW update interrupt
     OT_GPTIM->DIER  = 0;
-    OT_GPTIM->ARR   = platform_get_gptim();
+    OT_GPTIM->ARR   = platform_get_systim();
     OT_GPTIM->DIER  = TIM_DIER_UIE;
     OT_GPTIM->EGR   = TIM_EGR_UG;
     __NOP();  //No-op to let forced update event (TIM_EGR_UG) stabilize
@@ -423,7 +423,7 @@ void platform_ot_preempt() {
 
 void platform_ot_pause() {
     platform_ot_preempt();
-    platform_flush_gptim();
+    platform_flush_systim();
 }
 
 
@@ -442,7 +442,7 @@ void platform_ot_run() {
             next_event = OT_PARAM(KERNEL_LIMIT);
 #   endif
 
-    platform_set_gptim(next_event);
+    platform_set_systim(next_event);
 }
 
 
@@ -463,7 +463,7 @@ void platform_poweron() {
     platform_init_busclk();         // extra bus clock setup not in SystemInit()
     platform_init_periphclk();      // Peripherals OpenTag cares about
     platform_init_interruptor();    // Interrupts OpenTag cares about
-    platform_init_gptim(0);         // Initialize GPTIM (to 1024 Hz)
+    systim_init(NULL);         // Initialize GPTIM (to 1024 Hz)
     platform_init_gpio();           // Set up connections on the board
 
     /// Restore vworm (following save on shutdown)
@@ -603,8 +603,8 @@ void platform_init_gpio() {
 
 
 
-void platform_init_gptim(ot_uint prescaler) {
-/// Right now, prescaler input is ignored.
+void systim_init(void* tim_init) {
+/// Right now, input is ignored.
 /// GPTIM is put into a normal upcounting mode, but in "one pulse mode" so that
 /// the counter is halted after reaching the limit
     OT_GPTIM->CR1   = 0;
@@ -674,12 +674,12 @@ void platform_init_memcpy() {
   * ========================================================================<BR>
   */
 
-ot_u16 platform_get_gptim() {
+ot_u16 platform_get_systim() {
 /// Return Present value of the counter
     return OT_GPTIM->CNT;
 }
 
-void platform_set_gptim(ot_u16 value) {
+void platform_set_systim(ot_u16 value) {
 /// Flush GPTIM and assure it is in up-counting interrupt mode
     OT_GPTIM->DIER  = 0;
     OT_GPTIM->ARR   = value;
@@ -689,7 +689,7 @@ void platform_set_gptim(ot_u16 value) {
 	OT_GPTIM->DIER  = TIM_DIER_UIE;
 }
 
-void platform_flush_gptim() {
+void platform_flush_systim() {
 /// Flush GPTIM, resume in continuous mode with interrupt off.
     OT_GPTIM->DIER  = 0;
     OT_GPTIM->ARR   = 65535;

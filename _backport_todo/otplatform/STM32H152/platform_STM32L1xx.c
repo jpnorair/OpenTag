@@ -192,22 +192,21 @@ platform_init_spi(void)
     // platform_gpio_init(): NSS under software-gpio control
 }
 
-void
-platform_init_gptim(ot_uint prescaler)
+void systim_init(void* tim_init)
 {
     TIM_TimeBaseInitTypeDef tbase_in;
 
     TIM_DeInit(OT_GPTIM);
 
 /*    tbase_in.TIM_Prescaler      = 0;
-    tbase_in.TIM_Period         = prescaler;*/
-    tbase_in.TIM_Prescaler      = prescaler;
+    tbase_in.TIM_Period         = *(ot_u32*)tim_init;*/
+    tbase_in.TIM_Prescaler      = *(ot_u32*)tim_init;
     tbase_in.TIM_Period         = 1;
     tbase_in.TIM_CounterMode    = TIM_CounterMode_Up;
     tbase_in.TIM_ClockDivision  = TIM_CKD_DIV1;
     TIM_TimeBaseInit(OT_GPTIM, &tbase_in);
 
-    TIM_SetCompare1(OT_GPTIM, prescaler);
+    TIM_SetCompare1(OT_GPTIM, *(ot_u32*)tim_init);
 
     // Timers 9/10/11 have external clock wired to RTC crystal.
     // (The fact that the clock mode is called "Mode2" is a coincidence)
@@ -544,14 +543,15 @@ void platform_init_periphclk() {
 }
 
 void
-platform_poweron()
-{
+platform_poweron() {
+	ot_u32 prescaler = 32;
+
     /// Hardware turn-on stuff
     SystemInit();                   // comes from STLib, does lots of startup
     platform_init_busclk();         // extra bus clock setup not in SystemInit()
     platform_init_periphclk();      // Peripherals OpenTag cares about
     platform_init_interruptor();    // Interrupts OpenTag cares about
-    platform_init_gptim(32);        // Initialize GPTIM (to 1024 Hz)
+    systim_init((void*)&prescaler);        // Initialize GPTIM (to 1024 Hz)
     platform_init_gpio();           // Set up connections on the board
     platform_init_spi();            // initialize command interface to radio
 
@@ -585,7 +585,7 @@ void platform_init_OT() {
 
 
 static void
-sub_gptim_reattach(ot_u16 next_event)
+sub_systim_reattach(ot_u16 next_event)
 {
     // Flush GPTIM and switch it back to up-counting interrupt mode
     TIM_Cmd(OT_GPTIM, DISABLE);    // TI: MC=00b stop mode
@@ -606,7 +606,7 @@ platform_ot_preempt()
     // sys_event_manager() run again when the radio I/O finishes.
     if ( (OT_GPTIM->ARR == 0xffff) || !(OT_GPTIM->CR1 & TIM_CR1_CEN) ) {
         /* timer was "unattached" (i.e. in "continuous" mode with interrupts off) */
-        sub_gptim_reattach(1);
+        sub_systim_reattach(1);
         /* XXX ?? valididity/importance of next elapsed_time passed to sys_event_manager() ?? XXX */
     }
 
@@ -734,13 +734,13 @@ TIM9_IRQHandler(void)
 }
 
 ot_u16
-platform_get_gptim()
+platform_get_systim()
 {
     return OT_GPTIM->CNT;
 }
 
 static void
-sub_gptim_unattach()
+sub_systim_unattach()
 {
     // Stop GPTIM, resume in continuous mode with interrupt off.
     TIM_Cmd(OT_GPTIM, DISABLE);    // TI: MC=00b stop mode
@@ -753,10 +753,10 @@ sub_gptim_unattach()
 
 
 void
-platform_flush_gptim()
+platform_flush_systim()
 {
     // Zeros GPTIM, turns off interrupt, and puts into free-running
-    sub_gptim_unattach();
+    sub_systim_unattach();
 }
 
 void
@@ -773,13 +773,13 @@ platform_ot_run()
 
     /// Clear and disable the timer interrupt while in the ISR
     /// (Also stop it, and restart it in continuous mode).
-    sub_gptim_unattach();
+    sub_systim_unattach();
 
     next_event = sys_event_manager( elapsed_time );
     /* next_event will be 1 if nextevent occured during radio i/o */
 
     /// Flush GPTIM and switch it back to up-counting interrupt mode
-    sub_gptim_reattach(next_event);
+    sub_systim_reattach(next_event);
 }
 
 void

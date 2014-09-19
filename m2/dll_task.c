@@ -824,7 +824,7 @@ OT_WEAK void dll_init_rx(m2session* active) {
 
     //For synchronization test only
     //if ((active->netstate & M2_NETFLAG_BG) == 0) {
-    //    sample_t1 = platform_get_interval(&sample_t0);
+    //    sample_t1 = systim_chronstamp(&sample_t0);
     //    sample_t0 = 0;
     //}
 
@@ -964,7 +964,7 @@ OT_WEAK void dll_rfevt_brx(ot_int scode, ot_int fcode) {
         //rxq.front[5] = 0x01;    // countdown (upper)
         //rxq.front[6] = 0x00;    // countdown (lower)
         //if (network_parse_bf()) {
-        //    sample_t0 = platform_get_interval(NULL);
+        //    sample_t0 = systim_chronstamp(NULL);
         //    goto dll_rfevt_SUCCESS;
         //}
         __DEBUG_ERRCODE_EVAL(=102);

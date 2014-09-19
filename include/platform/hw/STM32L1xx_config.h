@@ -616,7 +616,7 @@ typedef struct {
     ot_u32  evt_stamp;
     ot_u32  evt_span;
 #   endif
-} gptim_struct;
+} systim_struct;
 
 typedef struct {
     ot_u8   disabled;
@@ -632,7 +632,7 @@ typedef struct {
 
 
 //extern rtc_struct rtc;
-extern gptim_struct gptim;
+extern systim_struct systim;
 
 
 

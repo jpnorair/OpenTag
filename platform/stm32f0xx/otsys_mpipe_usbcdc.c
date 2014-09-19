@@ -23,9 +23,9 @@
   * @ingroup    MPipe
   *
   * CDC ACM stands for "Communication Device Class Abstract Control Model."
-  * Windows people call it a virtual COM port.  
+  * Windows people call it a virtual COM port.
   *
-  * This implementation utilizes a modestly upgraded, but functionally 
+  * This implementation utilizes a modestly upgraded, but functionally
   * identical, version of STMicro's standard USB library for STM32.  The code
   * for the USB library is stored in:
   * /otplatform/stm32_mculib/STM32_USB-FS-Device_Driver
@@ -40,7 +40,7 @@
   * Byte structure:     8N1
   * Duplex:             Half
   * Flow control:       None
-  * 
+  *
   * MPipe Protocol for USB-CDC-ACM:
   * <PRE>
   * +-------+-----------+-------+-----------+----------+---------+---------+
@@ -52,16 +52,16 @@
   *
   * The protocol includes an ACK/NACK feature, although this is only of any
   * importance if you have a lossy link between client and server.  If you are
-  * using a USB->UART converter, USB has a reliable MAC implementation that 
-  * eliminates the need for MPipe ACKing.  
-  * 
-  * Anyway, after receiving a message, the Mpipe send an ACK/NACK.  The "YY" 
-  * byte is 0 for ACK and non-zero for ACK.  Presently, 0x7F is used as the YY 
+  * using a USB->UART converter, USB has a reliable MAC implementation that
+  * eliminates the need for MPipe ACKing.
+  *
+  * Anyway, after receiving a message, the Mpipe send an ACK/NACK.  The "YY"
+  * byte is 0 for ACK and non-zero for ACK.  Presently, 0x7F is used as the YY
   * NACK value.
   * <PRE>
   * [ Seq ID ] 0xDD 0x00 0x00 0x02 0x00 0xYY  [ CRC16 ]
   * </PRE>
-  * 
+  *
   ******************************************************************************
   */
 
@@ -109,17 +109,17 @@
 #define _IRQGROUP   ((PLATFORM_NVIC_IO_GROUP + _SUBGROUP) << 4)
 
 #if ((BOARD_FEATURE_MPIPE_CS == ENABLED) || (BOARD_FEATURE_MPIPE_FLOWCTL == ENABLED))
-#   define _CTS_IRQ     
+#   define _CTS_IRQ
 #endif
 #if (BOARD_FEATURE_MPIPE_BREAK == ENABLED)
-#   define _BREAK_IRQ   
+#   define _BREAK_IRQ
 #endif
 
 /** Platform Clock Configuration   <BR>
   * ========================================================================<BR>
   * MPIPE typically requires the system clock to be set to a certain speed in
   * order for the baud rate generation to work.  So, platforms that are using
-  * multispeed clocking will need some extra logic in the MPIPE driver to 
+  * multispeed clocking will need some extra logic in the MPIPE driver to
   * assure that the clock speed is on the right setting during MPIPE usage.
   */
 
@@ -128,7 +128,7 @@
 
 
 
-/** MPipe Macros 
+/** MPipe Macros
   * ========================================================================<BR>
   */
 
@@ -162,8 +162,8 @@ cdcacm_struct cdcacm;
 
 
 ///@note the MANT+FRAC baud rate selection can be achieved by the div16 term
-static const ot_u32 br_hssel[] = { 
-    9600, 28800, 57600, 115200, 125000, 250000, 500000, 1000000 
+static const ot_u32 br_hssel[] = {
+    9600, 28800, 57600, 115200, 125000, 250000, 500000, 1000000
 };
 
 
@@ -387,9 +387,9 @@ volatile ot_bool fSuspendEnabled= False;         // true when suspend is possibl
 
 
 //ot_u32 wCNTR                    = 0;
-volatile ot_u16 wIstr           = 0;                // ISTR register last read value 
+volatile ot_u16 wIstr           = 0;                // ISTR register last read value
 ot_int esof_counter             = 0;
-volatile ot_u8  bIntPackSOF     = 0;            // SOFs received between 2 consecutive packets 
+volatile ot_u8  bIntPackSOF     = 0;            // SOFs received between 2 consecutive packets
 
 ot_u8 Request = 0;
 
@@ -624,7 +624,7 @@ ONE_DESCRIPTOR String_Descriptor[4] = {
   * modularized from the rest of your code (which can be nice), but you can't
   * use the ISRs for other things.
   */
-    
+
 
 
 /** USB Powering Routines  <BR>
@@ -639,31 +639,31 @@ ONE_DESCRIPTOR String_Descriptor[4] = {
 void Leave_LowPowerMode() {
 #   if defined USB_CLOCK_SOURCE_CRS
     // Enable HSI48 oscillator, let it settle, and configure it
-    RCC_HSI48Cmd(ENABLE);       
+    RCC_HSI48Cmd(ENABLE);
     while(RCC_GetFlagStatus(RCC_FLAG_HSI48RDY) == RESET);
 
     RCC_SYSCLKConfig(RCC_SYSCLKSource_HSI48);
-  
+
 #   else
     // After wake-up from STOP mode restore system clock (system clock = PLL clock
     // from HSE source )
     RCC_HSEConfig(RCC_HSE_ON);
     while (RCC_GetFlagStatus(RCC_FLAG_HSERDY) == RESET);
-  
+
     RCC_PLLCmd(ENABLE);
     while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
-  
+
     RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
     while (RCC_GetSYSCLKSource() != 0x08);
-    
+
 #   endif
-  
-    ///@todo this part below must be audited.  The commented-out section is 
+
+    ///@todo this part below must be audited.  The commented-out section is
     ///      from the F1/L1 implementation
-  
+
     // Low Power Sleep on Exit Disabled
     NVIC_SystemLPConfig(NVIC_LP_SLEEPONEXIT, DISABLE);
-    
+
 //    bDeviceState = ATTACHED;
 //    if (Device_Info.Current_Configuration != 0) {
 //        bDeviceState    = CONFIGURED;
@@ -672,18 +672,18 @@ void Leave_LowPowerMode() {
 }
 
 
-  
+
 RESULT PowerOn(void) {
     ot_u16 wRegVal;
     //USB_Cable_Config(ENABLE);   // cable plugged-in?
     //SYSCFG->PMC |= (ot_u32)SYSCFG_PMC_USB_PU;
     BOARD_USB_PORTENABLE();
-    
+
     wRegVal = CNTR_FRES;        // CNTR_PWDN = 0
     _SetCNTR(wRegVal);
     wInterrupt_Mask = 0;        // CNTR_FRES = 0
     _SetCNTR(wInterrupt_Mask);
-    _SetISTR(0);                // Clear pending interrupts 
+    _SetISTR(0);                // Clear pending interrupts
     wInterrupt_Mask = CNTR_RESETM | CNTR_SUSPM | CNTR_WKUPM;
     _SetCNTR(wInterrupt_Mask);
     return USB_SUCCESS;
@@ -692,11 +692,11 @@ RESULT PowerOn(void) {
 
 RESULT PowerOff() {
     _SetCNTR(CNTR_FRES);                // disable all interrupts and force USB reset
-    _SetISTR(0);                        // clear interrupt status register 
-    //USB_Cable_Config(DISABLE);          // Disable the Pull-Up  
+    _SetISTR(0);                        // clear interrupt status register
+    //USB_Cable_Config(DISABLE);          // Disable the Pull-Up
     //SYSCFG->PMC &= ~(ot_u32)SYSCFG_PMC_USB_PU;
     BOARD_USB_PORTDISABLE();
-    
+
     _SetCNTR(CNTR_FRES + CNTR_PDWN);    // switch-off device
     return USB_SUCCESS;
 }
@@ -704,34 +704,34 @@ RESULT PowerOff() {
 
 void Suspend(void) {
     uint16_t wCNTR;
-    
-    // store CNTR value 
-    wCNTR = _GetCNTR();   
+
+    // store CNTR value
+    wCNTR = _GetCNTR();
     // Set FSUSP bit in USB_CNTR register
     wCNTR |= CNTR_FSUSP;
     _SetCNTR(wCNTR);
-    
-    // force low-power mode in the macrocell 
+
+    // force low-power mode in the macrocell
     wCNTR = _GetCNTR();
     wCNTR |= CNTR_LPMODE;
     _SetCNTR(wCNTR);
-  
+
 //#   ifdef USB_DEVICE_LOW_PWR_MGMT_SUPPORT
-//    // enter system in STOP mode, only when wakeup flag in not set 
-//    if((_GetISTR()&ISTR_WKUP)==0) { 
+//    // enter system in STOP mode, only when wakeup flag in not set
+//    if((_GetISTR()&ISTR_WKUP)==0) {
 //        // Enter STOP mode with SLEEPONEXIT
 //        PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_SLEEPONEXIT);
 //    }
 //    else {
-//        // Clear Wakeup flag 
+//        // Clear Wakeup flag
 //        _SetISTR(CLR_WKUP);
-//        // clear FSUSP to abort entry in suspend mode  
+//        // clear FSUSP to abort entry in suspend mode
 //        wCNTR = _GetCNTR();
 //        wCNTR&=~CNTR_FSUSP;
 //        _SetCNTR(wCNTR);
 //    }
 //#   endif
-	
+
 	// prepare entry in low power mode
     mpipedrv_detach(NULL);
 }
@@ -739,7 +739,7 @@ void Suspend(void) {
 
 void Resume_Init(void) {
     uint16_t wCNTR;
-  
+
     /* ------------------ ONLY WITH BUS-POWERED DEVICES ---------------------- */
     /* restart the clocks */
     /* ...  */
@@ -748,8 +748,8 @@ void Resume_Init(void) {
     wCNTR = _GetCNTR();
     wCNTR &= (~CNTR_LPMODE);
     _SetCNTR(wCNTR);
-        
-#   ifdef USB_DEVICE_LOW_PWR_MGMT_SUPPORT   
+
+#   ifdef USB_DEVICE_LOW_PWR_MGMT_SUPPORT
         /* restore full power */
         /* ... on connected devices */
         Leave_LowPowerMode();
@@ -775,28 +775,28 @@ void Resume(RESUME_STATE eResumeSetVal) {
                                     ResumeS.eState = RESUME_ON;
                                 }
                                 break;
-                                
+
         case RESUME_INTERNAL:   Resume_Init();
                                 ResumeS.eState = RESUME_START;
                                 remotewakeupon = 1;
                                 break;
-      
+
         case RESUME_LATER:      ResumeS.bESOFcnt = 2;
                                 ResumeS.eState = RESUME_WAIT;
                                 break;
-                                
+
         case RESUME_WAIT:       ResumeS.bESOFcnt--;
                                 if (ResumeS.bESOFcnt == 0)
                                     ResumeS.eState = RESUME_START;
                                 break;
-      
+
         case RESUME_START:      wCNTR   = _GetCNTR();
                                 wCNTR  |= CNTR_RESUME;
                                 _SetCNTR(wCNTR);
                                 ResumeS.eState = RESUME_ON;
                                 ResumeS.bESOFcnt = 10;
                                 break;
-    
+
         case RESUME_ON:         ResumeS.bESOFcnt--;
                                 if (ResumeS.bESOFcnt == 0) {
                                     wCNTR   = _GetCNTR();
@@ -825,7 +825,7 @@ void Resume(RESUME_STATE eResumeSetVal) {
 static void IntToUnicode (ot_u32 value , ot_u8 *pbuf , ot_u8 len) {
     ot_u8 idx;
     len <<= 1;
-  
+
     for(idx=0; idx<len; idx+=2) {
         pbuf[idx]   = (value >> 28);
         pbuf[idx]  += (pbuf[idx] < 0xA) ? '0' : ('A' - 10);
@@ -862,7 +862,7 @@ void cdcacm_Reset(void) {
     // - Set Virtual_Com_Port DEVICE as not configured
     // - Current Feature initialization
     // - Set Virtual_Com_Port DEVICE with the default Interface
-    pInformation->Current_Configuration = 0;  
+    pInformation->Current_Configuration = 0;
     pInformation->Current_Feature       = cdcacm_ConfigDescriptor[7];
     pInformation->Current_Interface     = 0;
 
@@ -877,13 +877,13 @@ void cdcacm_Reset(void) {
     SetEPRxCount(ENDP0, Device_Property.MaxPacketSize);
     SetEPRxValid(ENDP0);
 
-    // Initialize Endpoint 1 
+    // Initialize Endpoint 1
     SetEPType(ENDP1, EP_BULK);
     SetEPTxAddr(ENDP1, ENDP1_TXADDR);
     SetEPTxStatus(ENDP1, EP_TX_NAK);
     SetEPRxStatus(ENDP1, EP_RX_DIS);
 
-    // Initialize Endpoint 2 
+    // Initialize Endpoint 2
     SetEPType(ENDP2, EP_INTERRUPT);
     SetEPTxAddr(ENDP2, ENDP2_TXADDR);
     SetEPRxStatus(ENDP2, EP_RX_DIS);
@@ -896,20 +896,20 @@ void cdcacm_Reset(void) {
     SetEPRxStatus(ENDP3, EP_RX_VALID);
     SetEPTxStatus(ENDP3, EP_TX_DIS);
 
-    // Set this device to response on default address 
+    // Set this device to response on default address
     SetDeviceAddress(0);
 
     bDeviceState = ATTACHED;
 }
 
-  
+
 void cdcacm_SetConfiguration(void) {
     if (Device_Info.Current_Configuration != 0) {
         bDeviceState = CONFIGURED;  // Device configured
         //mpipe.state  = MPIPE_Idle;
     }
 }
-  
+
 
 void cdcacm_SetDeviceAddress (void) {
     bDeviceState = ADDRESSED;
@@ -981,12 +981,12 @@ RESULT cdcacm_NoData_Setup(ot_u8 RequestNo) {
 //}
 //uint8_t *  USBD_USR_LangIDStrDescriptor( uint8_t speed , uint16_t *length)
 //{
-//  *length =  sizeof(USBD_LangIDDesc);  
+//  *length =  sizeof(USBD_LangIDDesc);
 //  return (uint8_t*)USBD_LangIDDesc;
 //}
 //uint8_t *  USBD_USR_ProductStrDescriptor( uint8_t speed , uint16_t *length)
 //{
-//  USBD_GetString ( (uint8_t*)USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);    
+//  USBD_GetString ( (uint8_t*)USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
 //  return USBD_StrDesc;
 //}
 //uint8_t *  USBD_USR_ManufacturerStrDescriptor( uint8_t speed , uint16_t *length)
@@ -1001,7 +1001,7 @@ ot_u8 *cdcacm_GetDeviceDescriptor(ot_u16 Length) {
 }
 //uint8_t *  USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length)
 //{
-//  *length = USB_SIZ_STRING_SERIAL; 
+//  *length = USB_SIZ_STRING_SERIAL;
 //  return USBD_StringSerial;
 //}
 
@@ -1010,8 +1010,8 @@ ot_u8 *cdcacm_GetConfigDescriptor(ot_u16 Length) {
     return Standard_GetDescriptorData(Length, &Config_Descriptor);
 }
 //uint8_t *  USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length){
-//  USBD_GetString ( (uint8_t*)USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length); 
-//  return USBD_StrDesc;  
+//  USBD_GetString ( (uint8_t*)USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length);
+//  return USBD_StrDesc;
 //}
 
 
@@ -1021,7 +1021,7 @@ ot_u8 *cdcacm_GetStringDescriptor(ot_u16 Length) {
 }
 //uint8_t *  USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length) {
 //  USBD_GetString ( (uint8_t*)USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
-//  return USBD_StrDesc;  
+//  return USBD_StrDesc;
 //}
 
 
@@ -1063,7 +1063,7 @@ void platform_isr_usblp(void) {
     ot_u16 wCNTR;
     ot_u32 i    = 0;
     wIstr       = _GetISTR();
-    
+
 #   if (IMR_MSK & ISTR_SOF)
         if (wIstr & ISTR_SOF & wInterrupt_Mask) {
             _SetISTR((ot_u16)CLR_SOF);
@@ -1076,7 +1076,7 @@ void platform_isr_usblp(void) {
 #   if (IMR_MSK & ISTR_CTR)
         if (wIstr & ISTR_CTR & wInterrupt_Mask) {
             // servicing of the endpoint correct transfer interrupt
-            // clear of the CTR flag into the sub 
+            // clear of the CTR flag into the sub
             CTR_LP();
 #           ifdef CTR_CALLBACK
             CTR_Callback();
@@ -1130,31 +1130,31 @@ void platform_isr_usblp(void) {
 #   endif
 #   if (IMR_MSK & ISTR_ESOF)
         if (wIstr & ISTR_ESOF & wInterrupt_Mask) {
-            _SetISTR((ot_u16)CLR_ESOF);   // resume handling timing is made with ESOFs 
+            _SetISTR((ot_u16)CLR_ESOF);   // resume handling timing is made with ESOFs
             if ((_GetFNR()&FNR_RXDP) != 0) {
                 esof_counter++;
                 if ((esof_counter > 3) && ((_GetCNTR() & CNTR_FSUSP) == 0)) {
                     volatile ot_u16 EP[8];
                     esof_counter = 0;
-                    
+
                     //Sequence to apply forced-reset
-                    wCNTR = _GetCNTR(); 
+                    wCNTR = _GetCNTR();
                     for (i=0;i<8;i++) EP[i] = _GetENDPOINT(i);
-                    
+
                     wCNTR  |=CNTR_FRES;     _SetCNTR(wCNTR);
                     wCNTR  &=~CNTR_FRES;    _SetCNTR(wCNTR);
-                    
+
                     while((_GetISTR() & ISTR_RESET) == 0);
                     _SetISTR((ot_u16)CLR_RESET);
-                    
+
                     for (i=0;i<8;i++) _SetENDPOINT(i, EP[i]);
                 }
             }
             else {
                 esof_counter = 0;
             }
-            
-            Resume(RESUME_ESOF); 
+
+            Resume(RESUME_ESOF);
 #           ifdef ESOF_CALLBACK
             ESOF_Callback();
 #           endif
@@ -1165,7 +1165,7 @@ void platform_isr_usblp(void) {
 
 
 /// EP1_IN is for USB TX (Host Input = Device TX)
-void EP1_IN_Callback (void) { 
+void EP1_IN_Callback (void) {
     mpipedrv_isr();
 }
 
@@ -1182,7 +1182,7 @@ void EP3_OUT_Callback(void) {
     ot_int  rxbytes;
     ot_int  maxbytes;
     ot_u8*  cursor;
-        
+
     // Get amount of bytes in the Endpoint
     rxbytes = GetEPRxCount(ENDP3);
 
@@ -1191,29 +1191,29 @@ void EP3_OUT_Callback(void) {
     if (cdcacm.pktend == NULL) {
         rxbytes -= 8;
         PMAToUserBufferCopy(&cdcacm.header.syncFF, ENDP3_RXADDR, 8);
-        
+
         // Get partial CRC and endian-ize the payload length
         cdcacm.header.crc16 = crc16drv_block((ot_u8*)&cdcacm.header.crc16, 6);
         cdcacm.header.plen  = PLATFORM_ENDIAN16(cdcacm.header.plen);
-        
+
         // Protect against too-long packets (they get cropped)
         cdcacm.pktend = cdcacm.pkt + cdcacm.header.plen;
         if (cdcacm.pktend > mpipe.alp.inq->back) {
             cdcacm.pktend = mpipe.alp.inq->back;
         }
     }
-    
+
     // Protect against pending overflow
     maxbytes = cdcacm.pktend - cdcacm.pkt;
     if (rxbytes > maxbytes) {
         rxbytes = maxbytes;
     }
-    
+
     // Load the packet and advance cursors
     cursor      = cdcacm.pkt;
     cdcacm.pkt += rxbytes;
     PMAToUserBufferCopy(cursor, ENDP3_RXADDR, rxbytes);
-    
+
     // call virtual ISR to frame the data
     mpipedrv_isr();
 }
@@ -1227,7 +1227,7 @@ void EP3_OUT_Callback(void) {
   * This would do something for setups with attachable USB
   */
 void platform_isr_fswkup() {
-    
+
 }
 
 
@@ -1250,7 +1250,7 @@ void sub_usb_loadtx(ot_int pad_bytes) {
     ot_int transfer_size;
     ot_int remaining_bytes;
     ot_u8* transfer_start;
-        
+
     transfer_start  = cdcacm.pkt;
     remaining_bytes = cdcacm.pktend - cdcacm.pkt;
     transfer_size   = CDCACM_DATA_SIZE - pad_bytes;
@@ -1261,18 +1261,18 @@ void sub_usb_loadtx(ot_int pad_bytes) {
 
     UserToPMABufferCopy(transfer_start, ENDP1_TXADDR, transfer_size);
     SetEPTxCount(ENDP1, transfer_size);
-    SetEPTxValid(ENDP1); 
+    SetEPTxValid(ENDP1);
 }
 
 void sub_gen_mpipecrc() {
-    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)&cdcacm.header.plen, 
-                                                    4, 
+    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)&cdcacm.header.plen,
+                                                    4,
                                                     0xFFFF  );
-                                                    
-    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)mpipe.alp.outq->getcursor, 
-                                                    cdcacm.header.plen, 
+
+    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)mpipe.alp.outq->getcursor,
+                                                    cdcacm.header.plen,
                                                     cdcacm.header.crc16 );
-    
+
 }
 
 
@@ -1310,15 +1310,15 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
     cdcacm.pkt              = mpipe.alp.outq->front;
     cdcacm.header.seq       = 0;                        // not actually necessary
     mpipe.state             = MPIPE_Null;               // Disconnected
-    
+
     mpipedrv_setspeed(MPIPE_115200bps);     //default baud rate
-    
+
     /// Enable USB Clocks & Peripheral
     platform_flank_speed();
     __USB_CLKON();
     //BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
                             | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
-    
+
     /// Set USB-Wakeup interrupt on Line 18: optional
     /// @todo get this working properly
     //EXTI->PR                                   &= ~(1<<18);
@@ -1337,11 +1337,11 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 
     /// Initialize USB (using ST library function)
     USB_Init();
-    
+
 #   if defined(__DEBUG__) || defined(__PROTO__)
     //cdcacm_Reset();
 #   endif
-    
+
     return 255;
 }
 #endif
@@ -1389,9 +1389,9 @@ void mpipedrv_unblock() {
 #ifndef EXTF_mpipedrv_kill
 void mpipedrv_kill() {
     mpipe.state = MPIPE_Idle;
-	
+
 	q_empty(mpipe.alp.outq);
-	cdcacm.pkt = mpipe.alp.outq->front; 
+	cdcacm.pkt = mpipe.alp.outq->front;
 }
 #endif
 
@@ -1407,38 +1407,38 @@ void mpipedrv_wait() {
 
 
 
-#ifndef EXTF_mpipedrv_txndef
-ot_uint mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXTF_mpipedrv_tx
+ot_uint mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     // Adding a packet is an atomic operation
     ///@todo disable USB interrupt(s)
-    
+
     // Move getcursor to end of packet, to allow another packet to be added
     cdcacm.pkt                  = mpipe.alp.outq->getcursor;
     mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
     cdcacm.packets++;
-    
+
     // If MPipe is not doing something else now, initiate the TX
     if (mpipe.state == MPIPE_Idle) {
         sub_txopen();
         ///@todo enable USB interrupt(s)
-        
+
         if (blocking) {
-            mpipedrv_wait();   
+            mpipedrv_wait();
         }
     }
-    
+
     ///@todo enable USB interrupt(s)
-    
+
     return (10 + (q_length(mpipe.alp.outq) >> 8));
 }
 #endif
 
-void sub_txopen() {  
+void sub_txopen() {
     ot_u16 length;
-    
+
     mpipe.state     = MPIPE_Tx_Wait;
     cdcacm.packets -= 1;
-    
+
     // Setup Header information
     length                  = mpipe.alp.outq->getcursor[1] + 4;
     cdcacm.header.syncFF    = 0xff;
@@ -1447,7 +1447,7 @@ void sub_txopen() {
     cdcacm.header.ctl       = 0;
     cdcacm.header.plen      = PLATFORM_ENDIAN16(length);
     sub_gen_mpipecrc();
-    
+
     sub_usb_loadheader();
     sub_usb_loadtx(8);
 }
@@ -1456,8 +1456,8 @@ void sub_txopen() {
 
 
 
-#ifndef EXTF_mpipedrv_rxndef
-void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXTF_mpipedrv_rx
+void mpipedrv_rx(ot_bool blocking, mpipe_priority data_priority) {
     if (blocking) {
         mpipedrv_wait();
     }
@@ -1478,35 +1478,35 @@ void mpipedrv_rxndef(ot_bool blocking, mpipe_priority data_priority) {
 void mpipedrv_isr() {
     switch (mpipe.state) {
         case MPIPE_Idle: //note, case doesn't break!
-        
+
         /// The first page is received, so change state.  Fall through if there
         /// is an empty payload
-        case MPIPE_RxHeader: 
+        case MPIPE_RxHeader:
             if (cdcacm.header.plen != 0) {
                 mpipe.state = MPIPE_RxPayload;
                 mpipeevt_rxdetect(10);
                 break;
             }
-        
+
         /// The reception is completely done.  Move the putcursor to account for
         /// new data, while cropping the footer.  Go to Idle and do callback.
-        case MPIPE_RxPayload: 
+        case MPIPE_RxPayload:
             if (cdcacm.pkt == cdcacm.pktend) {
                 if (crc16drv_block_manual(cdcacm.pkt, cdcacm.header.plen, cdcacm.header.crc16) == 0) {
                     mpipe.alp.inq->putcursor    = cdcacm.pktend;
                     mpipe.state                 = MPIPE_Idle;
                     mpipeevt_rxdone(0);
                 }
-                mpipedrv_rxndef(False, 0);
+                mpipedrv_rx(False, 0);
             }
             break;
-        
+
         /// Transmit another page of the outbound packet
         case MPIPE_Tx_Wait:
             sub_usb_loadtx(0);
             mpipe.state += (cdcacm.pktend == cdcacm.pkt);
             break;
-        
+
         /// The last transmission is done.  If there are additional packets
         /// in the queue, send them without returning to the kernel.
         case MPIPE_Tx_Done: {
@@ -1514,7 +1514,7 @@ void mpipedrv_isr() {
                 sub_txopen();
             }
             else {
-                mpipedrv_rxndef(False, 0);
+                mpipedrv_rx(False, 0);
                 mpipeevt_txdone(0);
             }
         } break;

@@ -26,6 +26,7 @@
   ******************************************************************************
   */
 
+#if 0
 
 #include <otstd.h>
 #include <platform/config.h>
@@ -108,4 +109,4 @@ ot_u16 crc32_get() {
     return CRC->DR;
 }
 
-
+#endif

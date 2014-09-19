@@ -199,7 +199,7 @@ OT_WEAK void sys_panic(ot_u8 err_code) {
         dll_idle();
 #   endif
 
-    platform_disable_ktim();
+    systim_disable();
 
 #   if defined(EXTF_sys_sig_panic)
         sys_sig_panic(err_code);
@@ -221,7 +221,7 @@ OT_WEAK void sys_powerdown() {
 ///@todo universalize EXOTASK driver states via CURSOR field
 
     ot_int code;
-    code    = 3; //(platform_next_ktim() <= 3) ? 0 : 3;
+    code    = 3; //(systim_next() <= 3) ? 0 : 3;
 #   if (1)
     //code   -= (sys.task_RFA.event != 0);
     code   -= (radio.state != RADIO_Idle);
@@ -260,7 +260,7 @@ OT_WEAK void sys_halt(Halt_Request halt_request) {
 
 #   else
     sys_kill_all();
-    platform_disable_ktim();
+    systim_disable();
     sys_powerdown();
 
 #   endif
@@ -387,7 +387,7 @@ void sys_task_setnext(ot_task task, ot_u16 nextevent_ti) {
 }
 
 void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
-    task->nextevent = nextevent_clocks + (ot_long)platform_get_ktim();
+    task->nextevent = nextevent_clocks + (ot_long)systim_get();
 }
 
 
@@ -447,9 +447,9 @@ OT_WEAK ot_uint sys_event_manager() {
 
     /// 1. Get the elapsed time since the scheduler last run.  We also update
     ///    the time, which does nothing unless time is enabled.
-    elapsed = platform_get_ktim();
+    elapsed = systim_get();
     time_add_ti(elapsed);
-    platform_flush_ktim();
+    systim_flush();
 
 
     /// 2. Clock all the tasks, to find out which one to do next.
@@ -519,11 +519,11 @@ OT_WEAK ot_uint sys_event_manager() {
     /// 3. Set the active task callback to the selected
     sys.active = select;
 
-    /// 4. The event manager is done here.  platform_schedule_ktim() will
+    /// 4. The event manager is done here.  systim_schedule() will
     ///    make sure that the task hasn't been pended during the scheduler
     ///    runtime.
 #   if (OT_PARAM_SYSTHREADS == 0)
-    return platform_schedule_ktim( nextevent, platform_get_ktim() );
+    return systim_schedule( nextevent, systim_get() );
 
 #   else
     ///@todo this isn't ready yet... experimental code
@@ -531,7 +531,7 @@ OT_WEAK ot_uint sys_event_manager() {
         ot_u16 interval;
         ot_u16 retval;
 
-        interval    = platform_get_ktim();
+        interval    = systim_get();
         nextevent  -= interval;
         nextnext   -= interval;
         if (nextevent > 0) {
@@ -587,7 +587,7 @@ OT_INLINE void sys_run_task() {
 
     // Co-operative mode: disable timer because ktasks should always run to
     // completion without interference from the scheduler.
-    platform_disable_ktim();
+    systim_disable();
 
     sys_run_task_CALL:
     TASK_CALL(sys.active);

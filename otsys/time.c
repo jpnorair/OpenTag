@@ -41,7 +41,7 @@ void sub_load_now(ot_time* now) {
     ot_u32 ticks;
     ot_u32 scratch;
     *now        = systime;
-    ticks       = platform_get_ktim();
+    ticks       = systim_get();
     scratch     = ticks + now->ticks;
     now->upper  = (scratch < ticks);
     now->ticks  = scratch;
@@ -104,7 +104,7 @@ ot_u32 time_uptime_ti(void) {
 ot_u32 time_uptime_sti(void)
     ot_u32 up_sti;
     up_sti  = (systime.ticks - starttime.ticks) << 5;
-    up_sti += gptim_get_chrono();
+    up_sti += systim_get_clocker();
     return up_sti;
 }
 */

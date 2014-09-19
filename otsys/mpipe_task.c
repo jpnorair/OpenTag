@@ -21,7 +21,7 @@
   * @brief      Message Pipe (MPIPE) Task Interface
   * @ingroup    MPipe
   *
-  * 
+  *
   ******************************************************************************
   */
 
@@ -59,7 +59,7 @@ mpipe_state mpipe_status() {
 
 void mpipe_open() {
 	sys.task_MPA.event = 0;
-	mpipedrv_rxndef(False, MPIPE_High );
+	mpipedrv_rx(False, MPIPE_High );
 }
 
 void mpipe_close() {
@@ -80,7 +80,7 @@ void sub_mpipe_actuate(ot_u8 new_event, ot_u8 new_reserve, ot_uint new_nextevent
 void mpipe_send() {
 ///@todo A session stack could be implemented for MPipe Task.  For now, Sending (TX)
 /// will just fall-through if mpipe is occupied
-	sub_mpipe_actuate(3, 1, (ot_uint)mpipedrv_txndef(False, MPIPE_High));
+	sub_mpipe_actuate(3, 1, (ot_uint)mpipedrv_tx(False, MPIPE_High));
 }
 
 
@@ -98,7 +98,7 @@ void mpipeevt_txdone(ot_int code) {
     // If driver returns 0, it closes connection itself.  Reopen in RX.
     // If driver returns >0, the task must delay the connection termination.
     ot_u8 nextevent;
-    nextevent = 3 + (code==0); 
+    nextevent = 3 + (code==0);
     sub_mpipe_actuate(nextevent, 1, code);
     //sub_mpipe_actuate(4, 1, code);
 }
@@ -123,7 +123,7 @@ void mpipeevt_rxdone(ot_int code) {
 #else
     static const ot_u8 params[] = { 1, 32, 4, 1 };
     ot_u8* task_params;
-    
+
     task_params  = params;
     task_params += (code != 0) << 1;
     sub_mpipe_actuate(task_params[0], task_params[1], 0);
@@ -137,7 +137,7 @@ void mpipe_systask(ot_task task) {
         //Task destructor: close mpipe
         case 0: mpipedrv_kill();
                 break;
-    
+
         // RX successful: process the new frames -- note case fall through
         case 1: {
             ALP_status status;
@@ -146,16 +146,16 @@ void mpipe_systask(ot_task task) {
             switch (status) {
                 //wipe queue and go back to idle listening
                 case MSG_Null:          //goto systask_mpipe_IDLE;
-    
+
                 //listen for next record/message
                 case MSG_Chunking_In:   goto systask_mpipe_RX;
-    
+
                 //transmit next record/message (case fall-through)
                 //case MSG_Chunking_Out:
                 //case MSG_End:           //goto systask_mpipe_TX;
             }
         }
-    
+
         // Initialize TX: mpipe_send is used.
         case 2: mpipe_send();
                 break;
@@ -163,7 +163,7 @@ void mpipe_systask(ot_task task) {
         // TX/RX timeout -- note case fall-through
         case 3: mpipedrv_kill();
                 //mpipedrv_clear();
-        
+
         // Return to idle (passive RX)
         case 4:
         systask_mpipe_RX:

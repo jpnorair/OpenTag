@@ -159,7 +159,7 @@ void sys_init() {
 #   endif
 
     // Flush GPTIM (Kernel Timer): unnecessary, b/c should done in platform init
-    //platform_flush_ktim();
+    //systim_flush();
 }
 #endif
 
@@ -171,7 +171,7 @@ void sys_panic(ot_u8 err_code) {
     dll.idle_state = 0;
     session_flush();
     dll_idle();
-    platform_disable_ktim();
+    systim_disable();
 
 #   if defined(EXTF_sys_sig_panic)
         sys_sig_panic(err_code);
@@ -190,7 +190,7 @@ void sys_powerdown() {
 /// code = 1: MPipe or other local peripheral I/O task active
 /// code = 0: Use fastest-exit powerdown mode
     ot_int code;
-    code    = 3; //(platform_next_ktim() <= 3) ? 0 : 3;
+    code    = 3; //(systim_next() <= 3) ? 0 : 3;
 #   if (1)
     code   -= (sys.task_RFA.event != 0);
 #   endif
@@ -232,7 +232,7 @@ void sys_halt(Halt_Request halt_request) {
 
 #   else
     sys_kill_all();
-    platform_disable_ktim();
+    systim_disable();
     sys_powerdown();
 
 #   endif
@@ -335,7 +335,7 @@ void sys_task_setnext(ot_task task, ot_u16 nextevent_ti) {
 }
 
 void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
-	task->nextevent = (ot_long)platform_get_ktim() + nextevent_clocks;
+	task->nextevent = (ot_long)systim_get() + nextevent_clocks;
 }
 
 
@@ -396,8 +396,8 @@ ot_uint sys_event_manager() {
     /// 1. On entry, we need to know the time that has passed since the last
     ///    run of this function, and then we can flush the timer and begin a
     ///    new loop of tasking.
-    elapsed = platform_get_ktim();
-    platform_flush_ktim();
+    elapsed = systim_get();
+    systim_flush();
 
     /// 2. Clock all the tasks, to find out which one to do next.
     /// <LI> Run DLL clocker.  DLL module manages some irregular tasks. </LI>
@@ -465,7 +465,7 @@ ot_uint sys_event_manager() {
     ///    event management loop from the nextevent time that was determined
     ///    in the loop.  return 0 if there is an event that should happen
     ///    immediately.
-    nextevent -= platform_get_ktim();
+    nextevent -= systim_get();
     if (nextevent > 0) {
     	ot_u16 interval = (ot_u16)nextevent;
     	platform_set_ktim(interval);

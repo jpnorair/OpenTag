@@ -40,11 +40,17 @@
 #include <otstd.h>
 //#include <platform/config.h>
 
+
 #include <otlib/memcpy.h>
+
 #include <otlib/delay.h>
 
+
+
 ///@todo right now these are used with m2DLL.... move those functions elsewhere
+
 #include <m2/dll.h>
+
 
 // These only for driver testing purposes (spirit1_coredump())
 #include <otlib/utils.h>
@@ -446,7 +452,7 @@ ot_u8   spirit1_rssi()          { return spirit1_read( RFREG(RSSI_LEVEL) ); }
 ot_u32 macstamp;
 
 void spirit1_start_counter() {
-    macstamp = platform_get_interval(NULL);
+    macstamp = systim_chronstamp(NULL);
 }
 
 void spirit1_stop_counter() {
@@ -454,7 +460,7 @@ void spirit1_stop_counter() {
 
 ot_u16 spirit1_get_counter() {
     ot_u16 value;
-    value = dll.counter - (ot_u16)platform_get_interval(&macstamp);
+    value = dll.counter - (ot_u16)systim_chronstamp(&macstamp);
     return value;
 }
 

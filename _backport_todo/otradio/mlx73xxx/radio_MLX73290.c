@@ -1444,7 +1444,7 @@ ot_int sub_check_crc() {
 ///MLX73 does not support FEC, so CRC on FEC packets needs to be done in SW.
 #if ((M2_FEATURE(FEC_RX) == ENABLED) && (RF_FEATURE(CRC) == ENABLED))
     if (rxq.options.ubyte[LOWER]) {
-        return crc_get();
+        return crc_get(&em2.crc);
     }
     return (ot_int)mlx73_check_crc();
 
@@ -1452,7 +1452,7 @@ ot_int sub_check_crc() {
     return (ot_int)mlx73_check_crc();
 
 #else
-    return (ot_int)crc_get();
+    return (ot_int)crc_get(&em2.crc);
 
 #endif
 }

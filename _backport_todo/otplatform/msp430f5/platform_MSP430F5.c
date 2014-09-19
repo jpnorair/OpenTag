@@ -460,7 +460,7 @@ void platform_ot_preempt() {
 #ifndef EXTF_platform_pause
 //void platform_ot_pause() {
 //    platform_ot_preempt();
-//    platform_flush_gptim();
+//    platform_flush_systim();
 //}
 #endif
 
@@ -473,7 +473,7 @@ void platform_ot_run() {
 	/// The kernel timer should not cause an interrupt during the runtime of
 	/// the kernel task (disable ktim).  Exotask interrupts (interrupts that
 	/// are not ktim) must be enabled, though, so exotasks can run.
-	platform_disable_ktim();
+	systim_disable();
 	platform_enable_interrupts();
 
 	/// 2. Program Stack Shenanigans, Part 1:
@@ -531,6 +531,7 @@ void platform_poweron() {
     /// <LI> Enable High Side (Vcc) NMI, and low side (Vcore) Reset     </LI>
     /// <LI> Clear Power Manager Flags and reset the Voltage Monitor    </LI>
     /// <LI> Enable User NMI's (SW NMI, Osc Fault, Flash Violation)     </LI>
+	ot_u16 prescaler;
 
     WDTA->CTL = WDTPW + WDTHOLD;
 
@@ -543,7 +544,8 @@ void platform_poweron() {
     SFRIFG1 &= ~(NMIIFG | OFIFG | VMAIFG);
     SFRIE1   = (NMIIE | /* OFIE | */ ACCVIE);   //Oscillator fault can be glitchy
 
-    platform_init_gptim(0x01C3);        // Initialize GPTIM (to 1024 Hz)
+    prescaler = 0x01C3;					// Initialize GPTIM (to 1024 Hz)
+    systim_init( (void*)&prescaler );
     platform_init_gpio();
     platform_init_memcpy();
     rand_prnseed( *((ot_u16*)0x1A10) );   // Seed is part of Chip ID
@@ -743,15 +745,15 @@ void platform_init_gpio() {
 
 
 
-#ifndef EXTF_platform_init_gptim
-void platform_init_gptim(ot_uint prescaler) {
-/// With the MSP430, the timer prescaler input is a code, since the MSP430 core
+#ifndef EXTF_systim_init
+void systim_init(void* tim_init) {
+/// With the MSP430F5, the timer prescaler input is a code, since the MSP430 core
 /// doesn't have a conventional prescaler.  The breakdown is:  <BR>
 /// bits 9:8 - Clock select (TASSEL) -  {01 = ACLK, 10 = SMCLK}           <BR>
 /// bits 7:6 - Input Divider (ID) -     values {0,1,2,3} yield division by {1,2,4,8}  <BR>
 /// bits 2:0 - Input Divider 2 (IDEX) - values b000-b111 yield division by 1 to 8  <BR>
-    ot_u16 ctl      = (prescaler & 0x01C0);
-    ot_u16 idex     = (prescaler & 0x0007);
+    ot_u16 ctl      = ( *(ot_u16*)tim_init & 0x01C0);
+    ot_u16 idex     = ( *(ot_u16*)tim_init & 0x0007);
 
     OT_GPTIM->CTL  |= TIMA_FLG_TACLR;   //Clear the timer before changing mode
     OT_GPTIM->CTL   = ctl;
@@ -879,27 +881,27 @@ void platform_init_memcpy() {
 /** Platform Peripheral Access Routines <BR>
   * ========================================================================<BR>
   */
-ot_u16 platform_get_ktim() {
+ot_u16 systim_get() {
     return (OT_GPTIM->R - OT_GPTIM->CCR0);
 }
 
-ot_u16 platform_next_ktim() {
+ot_u16 systim_next() {
     return (OT_GPTIM->CCR1 - OT_GPTIM->R);
 }
 
-void platform_enable_ktim() {
+void systim_enable() {
     OT_GPTIM->CCTL1 |= 0x0010;  //enable interrupt for CC0
 }
 
-void platform_disable_ktim() {
+void systim_disable() {
     OT_GPTIM->CCTL1 &= ~0x0010; //disable interrupt for CC0
 }
 
-void platform_pend_ktim() {
+void systim_pend() {
     OT_GPTIM->CCTL1 |= 1; //Set CCIFG bit
 }
 
-void platform_flush_ktim() {
+void systim_flush() {
     OT_GPTIM->CCTL1 = 0x0000;
     OT_GPTIM->CCR0  = OT_GPTIM->R;
 }
@@ -914,7 +916,7 @@ void platform_set_ktim(ot_u16 value) {
     OT_GPTIM->CCTL1 = 0x0030;               //Put CC in SET mode, enable compare-SET interrupt
 }
 
-void platform_set_gptim2(ot_u16 value) {
+void systim_set_insertion(ot_u16 value) {
 /// Note that if value == 0, the counter interrupt will not go until one full
 /// loop, which is not the desired behavior, so an interrupt will be forced.
     OT_GPTIM->CCTL2 = 0x0000;

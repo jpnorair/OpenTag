@@ -394,7 +394,7 @@ void sub_set_clockhz(ot_ulong cpu_clock_hz) {
 #ifndef EXTF_platform_ext_wakefromstop
 void platform_ext_wakefromstop() {
     // Always start chrono when coming out of STOP
-    gptim_start_chrono();
+    systim_start_clocker();
 
     // Use the lowest allowed speed coming from STOP
 #   if BOARD_FEATURE(STDSPEED)
@@ -611,7 +611,7 @@ void platform_flank_speed() {
 
 /** Platform Interrupts <BR>
   * ========================================================================<BR>
-  */ 
+  */
 
 #ifndef EXTF_platform_disable_interrupts
 OT_INLINE void platform_disable_interrupts(void) {
@@ -634,7 +634,7 @@ OT_INLINE void platform_enable_interrupts(void) {
 
 /** Platform Initialization & Control <BR>
   * ========================================================================<BR>
-  */ 
+  */
 #ifndef EXTF_platform_poweron
 void platform_poweron() {
 
@@ -674,11 +674,11 @@ void platform_poweron() {
     /// 6. Final initialization of OpenTag system resources
                // Set up connections on the board
     platform_init_interruptor();    // Interrupts OpenTag cares about
-    platform_init_gptim(0);         // Initialize GPTIM (to 1024 Hz)
+    systim_init(NULL);         // Initialize GPTIM (to 1024 Hz)
 
     /// 7. Start the chronometer if not in debug mode
 #   if !defined(__DEBUG__)
-    gptim_start_chrono();
+    systim_start_clocker();
 #   endif
 
     /// 8. Initialize Low-Level Drivers (worm, mpipe)
@@ -1071,7 +1071,7 @@ void platform_init_gpio() {
 
 
 
-// platform_init_gptim() is implemented in platform_gptim_STM32L1xx.c
+// systim_init() is implemented in platform_systim_STM32L1xx.c
 
 
 

@@ -174,7 +174,7 @@ void platform_ot_preempt() {
 #ifndef EXTF_platform_pause
 //void platform_ot_pause() {
 //    platform_ot_preempt();
-//    platform_flush_gptim();
+//    platform_flush_systim();
 //}
 #endif
 
@@ -197,14 +197,14 @@ OT_INLINE void platform_ot_run() {
     ///    time to go to sleep (or more likely STOP mode).  The powerdown
     ///    routine MUST re-enable interrupts immediately before issuing the WFI
     ///    instruction.
-    while (gptim.flags & GPTIM_FLAG_SLEEP) {
+    while (systim.flags & GPTIM_FLAG_SLEEP) {
         platform_disable_interrupts();
-        platform_enable_ktim();
+        systim_enable();
         sys_powerdown();
     }
 
     /// Stop the interval timer, which is used as a kernel watchdog
-    platform_stop_itimer();
+    systim_stop_ticker();
 
     /// 3. Save the current P-stack pointer (PSP), and push the return address
     ///    onto this position.  If the task is killed during its runtime, this

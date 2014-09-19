@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/gptim_driver.c
+  * @file       /otplatform/stm32l1xx/systim_driver.c
   * @author     JP Norair
   * @version    R101
   * @date       30 Aug 2013
@@ -34,7 +34,7 @@
 #include <otplatform.h>
 #include <otsys/syskern.h>
 
-gptim_struct gptim;
+systim_struct systim;
 
 
 
@@ -45,11 +45,11 @@ gptim_struct gptim;
 
 void platform_isr_rtcwakeup(void) {
 /// This ISR is normally used as a watchdog for the kernel scheduler.  itimer,
-/// however, can be used for other purposes as well (generally on startup 
+/// however, can be used for other purposes as well (generally on startup
 /// before the kernel gets fully started).  So the watchdog code (restarting
 /// the kernel) will only get called if the kernel is actually running in Idle.
 
-    if (gptim.flags & GPTIM_FLAG_SLEEP) {
+    if (systim.flags & GPTIM_FLAG_SLEEP) {
         ///@todo log a glitch
         platform_init_OT();
     }
@@ -60,12 +60,12 @@ void platform_isr_rtcwakeup(void) {
 
 
 
-#ifndef EXTF_platform_init_itimer
-void platform_init_itimer(ot_uint period) {
+#ifndef EXTF_systim_set_ticker
+void systim_set_ticker(ot_uint period) {
 /// OpenTag does NOT use the ARM Cortex M SysTick.  Instead, it uses the RTC
 /// Wakeup Timer feature to produce a 1 ti (1/1024sec) interval, which actually
 /// is implemented as GPTIM for STM32L.  So, the setup for establishing this
-/// interval is done in the gptim initialization (above).
+/// interval is done in the systim initialization (above).
     ot_u32 rtc_cr;
 
     // Ensure Wakeup Timer is off
@@ -82,8 +82,8 @@ void platform_init_itimer(ot_uint period) {
 }
 #endif
 
-#ifndef EXTF_platform_stop_itimer
-void platform_stop_itimer() {
+#ifndef EXTF_systim_stop_ticker
+void systim_stop_ticker() {
 /// STOP RTC Interval Timer
     RTC->CR &= ~RTC_CR_WUTE;
 }
@@ -98,7 +98,7 @@ void platform_stop_itimer() {
 /** Debug Implementation <BR>
   * ========================================================================<BR>
   * @note Using __DEBUG__
-  * When __DEBUG__ is defined, we use TIM9 and we don't send the system to 
+  * When __DEBUG__ is defined, we use TIM9 and we don't send the system to
   * STOP mode.  Using TIM9 for the GPTIM disallows STOP mode, but it allows
   * the breakpoints to stop the timer.  That is very important for debugging.
   *
@@ -120,32 +120,32 @@ void platform_isr_tim9() {
     }
 #   endif
     if (test & TIM_SR_CC1IF) {
-        gptim.flags = 0;
+        systim.flags = 0;
     }
 }
 
 
-#ifndef EXTF_platform_init_gptim
-void platform_init_gptim(ot_uint prescaler) {
+#ifndef EXTF_systim_init
+void systim_init(void* tim_init) {
 /// This is the DEBUG implementation that uses TIM9 at 1024 Hz rather than
 /// the RTC hybrid method.
 
     /// 1. Configure the RTC.
     ///    <LI> WKUP is used as Advertising flood counter. </LI>
     ///    <LI> RTC clock output (idealy 1024 Hz) can be used as input to TIM10 </LI>
-    // Unlock RTC as a whole, put into INIT mode 
+    // Unlock RTC as a whole, put into INIT mode
     RTC->WPR    = 0xCA;
     RTC->WPR    = 0x53;
     RTC->CR     = 0;
     RTC->ISR    = RTC_ISR_INIT;
-    
+
     // Wait for init to be ready, then set to 1-ti (1s/1024) update period.
     while((RTC->ISR & RTC_ISR_INITF) == 0);
     RTC->TR     = 0;
 
     // If 32768 Hz LSE is used for RTC clock, prescaler is 32
     // If ~37kHz LSI is used, we need to calibrate it and use the best prescale value
-#   if (BOARD_FEATURE(LFXTAL))    
+#   if (BOARD_FEATURE(LFXTAL))
         RTC->PRER   = (31 << 16) | 0;
         //RTC->CALIBR = ...;    // Calibration could be here
 #   else
@@ -161,9 +161,9 @@ void platform_init_gptim(ot_uint prescaler) {
     RTC->ISR    = 0;
 
     /// 2. In debug mode, we must configure TIM9 to act as GPTIM.
-    gptim.flags     = 0;
-    gptim.stamp1    = 0;
-    gptim.stamp2    = 0;
+    systim.flags     = 0;
+    systim.stamp1    = 0;
+    systim.stamp2    = 0;
 
     NVIC->IP[(uint32_t)(TIM9_IRQn)]         = ((b0001) << 4);
     NVIC->ISER[((uint32_t)(TIM9_IRQn)>>5)]  = (1 << ((uint32_t)(TIM9_IRQn) & 0x1F));
@@ -175,7 +175,7 @@ void platform_init_gptim(ot_uint prescaler) {
     TIM9->OR    = 0;
 
     // Timer Mode 2 with (1/8) prescale yields 4096 Hz
-    TIM9->SMCR  = TIM_SMCR_ECE | TIM_SMCR_ETPS_DIV8;   
+    TIM9->SMCR  = TIM_SMCR_ECE | TIM_SMCR_ETPS_DIV8;
 
     // Set TIM9 OC interrupts
 #   if (RF_FEATURE(CSMATIMER) != ENABLED)
@@ -184,7 +184,7 @@ void platform_init_gptim(ot_uint prescaler) {
 #   else
     TIM9->DIER  = TIM_DIER_CC1IE;
     TIM9->CCER  = TIM_CCER_CC1E;                    // Only Enable Kernel Timer
-#   endif    
+#   endif
 
     // Re-enable Timer with continuous mode and update disabled
     TIM9->ARR   = 65535;
@@ -196,7 +196,7 @@ void platform_init_gptim(ot_uint prescaler) {
 
 
 
-ot_u32 platform_get_interval(ot_u32* timestamp) {
+ot_u32 systim_chronstamp(ot_u32* timestamp) {
     ot_u16 timer_cnt;
     timer_cnt = TIM9->CNT >> 2;
 
@@ -209,97 +209,97 @@ ot_u32 platform_get_interval(ot_u32* timestamp) {
 }
 
 
-ot_u32 platform_get_ktim() {
+ot_u32 systim_get() {
     ot_u16 timer_cnt;
-    timer_cnt   = (TIM9->CNT - (ot_u16)gptim.stamp1);
+    timer_cnt   = (TIM9->CNT - (ot_u16)systim.stamp1);
     timer_cnt >>= 2;
     return ((ot_u32)timer_cnt & 0x3FFF);
 }
 
-ot_u16 platform_next_ktim() {
-    return ((gptim.stamp1 - TIM9->CNT) >> 2);
+ot_u16 systim_next() {
+    return ((systim.stamp1 - TIM9->CNT) >> 2);
 }
 
-void platform_enable_ktim() {
+void systim_enable() {
     TIM9->DIER |= TIM_DIER_CC1IE;
 }
 
-void platform_disable_ktim() {
+void systim_disable() {
     TIM9->DIER &= ~TIM_DIER_CC1IE;
 }
 
-void platform_pend_ktim() {
+void systim_pend() {
     TIM9->EGR |= TIM_EGR_CC1G;
 }
 
-void platform_flush_ktim() {
+void systim_flush() {
     TIM9->DIER     &= ~TIM_DIER_CC1IE;
-    gptim.stamp1    = TIM9->CNT;
+    systim.stamp1    = TIM9->CNT;
 }
 
-ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
-/// This should only be called from the scheduler.  
+ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
+/// This should only be called from the scheduler.
 
     /// If the task to be scheduled is already due (considering the runtime of
-    /// the scheduler itself) return 0.  This will cause the sleep process to 
+    /// the scheduler itself) return 0.  This will cause the sleep process to
     /// be ignored and the task to start immediately.
     if ( (ot_long)(nextevent-overhead) <= 0 ) {
-        gptim.flags = 0;
+        systim.flags = 0;
         return 0;
     }
-    
-    /// Start the interval timer, using some additional ticks more than the 
+
+    /// Start the interval timer, using some additional ticks more than the
     /// scheduled arrival time of the kernel timer.
-    platform_init_itimer(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
-    
+    systim_set_ticker(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
+
     /// Program the scheduled time into the timer, in ticks.
-    gptim.flags     = GPTIM_FLAG_SLEEP;
+    systim.flags     = GPTIM_FLAG_SLEEP;
     TIM9->DIER     &= ~TIM_DIER_CC1IE;
-    gptim.stamp1    = TIM9->CNT;
-    TIM9->CCR1      = gptim.stamp1 + (ot_u16)(nextevent << 2);
+    systim.stamp1    = TIM9->CNT;
+    TIM9->CCR1      = systim.stamp1 + (ot_u16)(nextevent << 2);
     TIM9->DIER     |= TIM_DIER_CC1IE;
-    
+
     return (ot_u16)nextevent;
 }
 
 
 
-void platform_set_gptim2(ot_u16 value) {
-/// gptim2 is often used for RF MAC timing.  It includes "value" = 0 protection 
+void systim_set_insertion(ot_u16 value) {
+/// systim2 is often used for RF MAC timing.  It includes "value" = 0 protection
 /// because often a time-slot is started at position 0.
     TIM9->DIER     &= ~TIM_DIER_CC2IE;
-    gptim.stamp2    = TIM9->CNT;
-    
+    systim.stamp2    = TIM9->CNT;
+
     if (value == 0) TIM9->EGR   = TIM_EGR_CC2G;
-    else            TIM9->CCR2  = gptim.stamp2 + (ot_u16)(value << 2);
-    
+    else            TIM9->CCR2  = systim.stamp2 + (ot_u16)(value << 2);
+
     TIM9->DIER     |= TIM_DIER_CC2IE;
 }
 
 
-void platform_enable_gptim2() {
+void systim_enable_insertion() {
     TIM9->DIER |= TIM_DIER_CC2IE;
 }
 
 
-void platform_disable_gptim2() {
+void systim_disable_insertion() {
     TIM9->DIER &= ~TIM_DIER_CC2IE;
     TIM9->SR   &= ~TIM_SR_CC2IF;
 }
 
 
 
-void gptim_start_chrono() {
+void systim_start_clocker() {
 }
 
-void gptim_restart_chrono() {
+void systim_restart_clocker() {
 }
 
-ot_u16 gptim_get_chrono() {
-    return (TIM9->CNT - (ot_u16)gptim.stamp1) << 3;
+ot_u16 systim_get_clocker() {
+    return (TIM9->CNT - (ot_u16)systim.stamp1) << 3;
 }
 
-void gptim_stop_chrono() {
+void systim_stop_clocker() {
 }
 
 
@@ -348,33 +348,33 @@ void platform_isr_rtcalarm() {
 /// ALARM-B.  Some radios may have internal timers that can do the the role of
 /// ALARM-B, in which case it will be unused.
     ot_u32 flags;
-    
+
     /// Get timeout flags for Alarm A and B.  Alarm B can also be set by SW
     /// interrupt, so the flags are modified if that occurs.
     flags       = RTC->ISR;
-    RTC->ISR    = flags & ~(RTC_ISR_ALRBF | RTC_ISR_ALRAF); 
+    RTC->ISR    = flags & ~(RTC_ISR_ALRBF | RTC_ISR_ALRAF);
     flags      |= (EXTI->SWIER & (1<<17)) >> 8;    //shift to bit 9, i.e. ALRBF
     EXTI->PR    = (1<<17);
-    
+
     /// ALARM B event: Radio MAC alarm, only if not in radio HW
     if (flags & RTC_ISR_ALRBF) {
         RTC->CR &= ~RTC_CR_ALRBE;
-        gptim_start_chrono();
+        systim_start_clocker();
 #       if (RF_FEATURE(CSMATIMER) != ENABLED)
             radio_mac_isr();
 #       endif
     }
-    
+
     /// ALARM A event: Task is pending
-    /// <LI> To update ALARM A later, we must disable it now.  The RTC TR and 
+    /// <LI> To update ALARM A later, we must disable it now.  The RTC TR and
     ///        ALRM registers are blocked for at most 61 us coming-out of STOP
     ///        mode.  The task and scheduler runtimes will eat-up this delay. </LI>
-    /// <LI> ALARM A is set and re-enabled via platform_set_ktim(), which is 
+    /// <LI> ALARM A is set and re-enabled via platform_set_ktim(), which is
     ///        called by sys_event_manager() after a task is scheduled. </LI>
     if (flags & RTC_ISR_ALRAF) {
         RTC->CR     &= ~RTC_CR_ALRAE;
-        gptim.flags  = GPTIM_FLAG_RTCBYPASS;    // a GPTIM flag
-        gptim_restart_chrono();                         // flush the chrono
+        systim.flags  = GPTIM_FLAG_RTCBYPASS;    // a GPTIM flag
+        systim_restart_clocker();                         // flush the chrono
 
 #       if (OT_PARAM(SYSTHREADS) != 0)
         ///@todo I'll need to implement a check to see if this is a task-end or
@@ -402,34 +402,34 @@ void platform_isr_tim10() {
 
 /** Standard Platform functions implemented here <BR>
   * ========================================================================<BR>
-  * <LI> platform_init_gptim()                      </LI>
-  * <LI> ot_u32 platform_get_ktim(ot_u16* marker)   </LI>
-  * <LI> void platform_flush_ktim()                 </LI>
-  * <LI> ot_u16 platform_next_ktim()                </LI>
-  * <LI> void platform_enable_ktim()                </LI>
-  * <LI> void platform_disable_ktim()               </LI>
-  * <LI> void platform_pend_ktim()                  </LI>
+  * <LI> systim_init()                      </LI>
+  * <LI> ot_u32 systim_get(ot_u16* marker)   </LI>
+  * <LI> void systim_flush()                 </LI>
+  * <LI> ot_u16 systim_next()                </LI>
+  * <LI> void systim_enable()                </LI>
+  * <LI> void systim_disable()               </LI>
+  * <LI> void systim_pend()                  </LI>
   * <LI> void platform_set_ktim(ot_u16 value)       </LI>
-  * <LI> void platform_set_gptim2(ot_u16 value)     </LI>
-  * <LI> void platform_enable_gptim2()              </LI>
-  * <LI> void platform_disable_gptim2()             </LI>
-  * <LI> ot_u16 platform_get_gptim()                </LI>
+  * <LI> void systim_set_insertion(ot_u16 value)     </LI>
+  * <LI> void systim_enable_insertion()              </LI>
+  * <LI> void systim_disable_insertion()             </LI>
+  * <LI> ot_u16 platform_get_systim()                </LI>
   */
 
-#ifndef EXTF_platform_init_gptim
-void platform_init_gptim(ot_uint prescaler) {
+#ifndef EXTF_systim_init
+void systim_init(void* tim_init) {
 /// For STM32L, the RTC must be used as the Kernel Timer because it is the only
 /// timer of any kind that can bring the system out of STOP and/or STANDBY
 /// modes.  To make matters worse, the STM32L RTC has an inflexible and annoying
 /// design.  But, at least STM32L has a fast hardware ALU needed to do the
 /// time-base conversions.
-/// <LI> The RTC is configured as a free-running counter (as you would expect),  
+/// <LI> The RTC is configured as a free-running counter (as you would expect),
 ///        and the kernel timer is utilizing ALARM A.</LI>
 /// <LI> Some radios have internal resources sufficient for performing common
-///        requirements of GPTIM2 as MAC-Timer. Otherwise GPTIM2 is normally 
+///        requirements of GPTIM2 as MAC-Timer. Otherwise GPTIM2 is normally
 ///        connected to ALARM B of the RTC.</LI>
 /// <LI> Yet in other setups, GPTIM2 can be connected to TIM9, 10, or 11, using
-///        the LSI/LSE divided by 8 to yield 4096Hz timebase. </LI> 
+///        the LSI/LSE divided by 8 to yield 4096Hz timebase. </LI>
 
 #   if (RF_FEATURE(TXTIMER) != ENABLED)
 #       define _IE_ALARMB   RTC_CR_ALRBIE
@@ -438,22 +438,22 @@ void platform_init_gptim(ot_uint prescaler) {
 #       define _IE_ALARMB   0
 #       define _IE_WAKEUP   0
 #   endif
-    
+
     /// 1. Configure RTC to use as main Kernel & MAC timer
-    
-    // Unlock RTC as a whole, put into INIT mode 
+
+    // Unlock RTC as a whole, put into INIT mode
     RTC->WPR    = 0xCA;
     RTC->WPR    = 0x53;
     RTC->CR     = 0;
     RTC->ISR    = 0xFFFFFFFF;
-    
+
     // Wait for init to be ready, then set to 1 ti (1s/1024) update period.
     while((RTC->ISR & RTC_ISR_INITF) == 0);
     RTC->TR = 0;
-    
-    // Select LSE or LSI as RTC input clock. If LSI, get the calibrated Hz 
+
+    // Select LSE or LSI as RTC input clock. If LSI, get the calibrated Hz
     // value and adjust the RTC prescaling to compensate as well as possible.
-#   if (BOARD_FEATURE(LFXTAL) != ENABLED)    
+#   if (BOARD_FEATURE(LFXTAL) != ENABLED)
     platform_ext.lsi_khz    = platform_ext_lsihz();                 // first returns clocks/Hz
     platform_ext.lsi_remhz  = (platform_ext.lsi_khz & 1023);        // = remainder for clocks/tick
     platform_ext.lsi_khz  >>= 10;                                   // = floored clocks/tick
@@ -466,38 +466,38 @@ void platform_init_gptim(ot_uint prescaler) {
 
     ///@todo Calibration could be here
     //RTC->CALIBR = ...
-    
+
     // Re-enable RTC.  Wakeup timer is set to 1 sec (1024 ticks), although not
-    // always enabled.  ALARMB and wakeup interrupts are always on.  ALARMA is 
+    // always enabled.  ALARMB and wakeup interrupts are always on.  ALARMA is
     // controlled by the platform_...ktim() functions
     RTC->CR     = _IE_WAKEUP | _IE_ALARMB | b100;
     RTC->ISR    = 0;
-    
+
     /// 3. Clear local static variables
-    gptim.evt_span  = 0;
-    gptim.evt_stamp = 0;
-    gptim.flags     = 0;
-    
+    systim.evt_span  = 0;
+    systim.evt_stamp = 0;
+    systim.flags     = 0;
+
     /// 4a. If using LF XTAL, configure TIM10 to use the LSE as a clock source,
-    ///     thus becoming a ~32768 Hz chronometer.  It will get enabled on-demand 
-    ///     by platform_flush_gptim().
-    
-    /// 4b. If using LSI, configure TIM10 as a normal timer, driven by HSI/HSE, 
+    ///     thus becoming a ~32768 Hz chronometer.  It will get enabled on-demand
+    ///     by platform_flush_systim().
+
+    /// 4b. If using LSI, configure TIM10 as a normal timer, driven by HSI/HSE,
     ///     with roughly 32768Hz frequency.
-    
+
     RCC->APB2RSTR  |= RCC_APB2RSTR_TIM10RST;
     RCC->APB2RSTR  &= ~RCC_APB2RSTR_TIM10RST;
-    
+
 #   if (BOARD_FEATURE(LFXTAL))
     TIM10->SMCR     = TIM_SMCR_ECE;     // External Clock Mode 2, using LSE
     TIM10->PSC      = 7;                // No reason to run sampling domain too hard.
     TIM10->CCR1     = 2;                // RTC registers stabilize after 2 LF clock periods.
-    
+
 #   else
     TIM10->PSC      = (BOARD_PARAM_HFHz / 32768);
-    
+
 #   endif
-    
+
 }
 #endif
 
@@ -509,59 +509,59 @@ void platform_init_gptim(ot_uint prescaler) {
   * is not in powerdown.
   */
 
-void gptim_start_chrono() {
+void systim_start_clocker() {
 /// This function should be called in the ISR Wakeup hook of any ISR that is
 /// able to bring the system out of STOP mode... except for the RTC ALARM ISR
 /// which handles it in a special way.
     if (TIM10->CR1 == 0) {
-        gptim_restart_chrono();
+        systim_restart_clocker();
     }
 }
 
-void gptim_restart_chrono() {
+void systim_restart_clocker() {
 /// This function should be called in the ALARM-A section of the RTC ALARM ISR.
-    gptim.chron_stamp   = 0;
+    systim.chron_stamp   = 0;
     TIM10->CR1          = (TIM_CR1_UDIS | TIM_CR1_CEN);
     TIM10->EGR          = TIM_EGR_UG;
 }
 
 
-inline ot_u16 gptim_get_chrono() {
+inline ot_u16 systim_get_clocker() {
     return TIM10->CNT;
 }
 
-inline void gptim_stop_chrono() {
+inline void systim_stop_clocker() {
     TIM10->CR1 = 0;
 }
 
 
 
-ot_u32 platform_get_ktim() {
-/// platform_get_ktim() should be called only from the scheduler or preemptor:
+ot_u32 systim_get() {
+/// systim_get() should be called only from the scheduler or preemptor:
 /// sys_event_manager() and sys_preempt() respectively.  When it is called, the
-/// Scheduler MUST be invoked before the system goes back to sleep.  This is 
+/// Scheduler MUST be invoked before the system goes back to sleep.  This is
 /// way things will always work unless you are hacking the kernel and having
 /// problems.  :)
 
-    // RTC is not needed for this get.  Return the elapsed time read from the 
+    // RTC is not needed for this get.  Return the elapsed time read from the
     // chronometer, plus whatever is on the marker.
-    if (gptim.flags & GPTIM_FLAG_RTCBYPASS) {
+    if (systim.flags & GPTIM_FLAG_RTCBYPASS) {
         ot_u16 elapsed_chron;
-        elapsed_chron   = gptim_get_chrono() - gptim.chron_stamp;
+        elapsed_chron   = systim_get_clocker() - systim.chron_stamp;
         elapsed_chron >>= (5-OT_GPTIM_SHIFT);       // divide by 32 to get ticks
-        return gptim.evt_span + elapsed_chron;
+        return systim.evt_span + elapsed_chron;
     }
-    
+
     // RTC is needed for this get.  We need to wait for it to be ready to read.
-    // It might be ready now, depending on how long the process has been 
+    // It might be ready now, depending on how long the process has been
     // between STOP mode and now (it must be >= 2 RTC Clocks, i.e. 61us).
-    
-    ///@todo Could use some type of TIM10 input capture method, plus WFE/WFI, to 
+
+    ///@todo Could use some type of TIM10 input capture method, plus WFE/WFI, to
     ///      wait for the signal.  Right now, just busy-looping on RTC RDY signal.
-    
+
     RTC->CR &= ~RTC_CR_ALRAE;
     while ((RTC->ISR & RTC_ISR_RSF) == 0);
-    
+
     //while ((TIM10->SR & TIM_SR_CC1IF) == 0) {
     //    TIM10->DIER = TIM_DIER_CC1IE;
     //    ///@todo get WFE working... now just looping
@@ -572,80 +572,80 @@ ot_u32 platform_get_ktim() {
     // Compute the elapsed time from the RTC, but also synchronize the chrono
     // so that it can be used from now-on
     {   ot_long elapsed_time;
-        elapsed_time = sub_rtc2ticks() - gptim.evt_stamp;
+        elapsed_time = sub_rtc2ticks() - systim.evt_stamp;
         if (elapsed_time < 0)
             elapsed_time += 86400;
-        
-        gptim.evt_span      = elapsed_time;
-        gptim.chron_stamp   = gptim_get_chrono();
-        gptim.flags        |= GPTIM_FLAG_RTCBYPASS;
-        
+
+        systim.evt_span      = elapsed_time;
+        systim.chron_stamp   = systim_get_clocker();
+        systim.flags        |= GPTIM_FLAG_RTCBYPASS;
+
         return (ot_u32)elapsed_time;
     }
 }
 
 
 
-void platform_flush_ktim() {
-/// Only called in scheduler after platform_get_ktim, so BYPASS always ON
-    gptim.chron_stamp   = gptim_get_chrono();
-    gptim.evt_span      = 0;
-    gptim.evt_stamp     = sub_rtc2ticks();
+void systim_flush() {
+/// Only called in scheduler after systim_get, so BYPASS always ON
+    systim.chron_stamp   = systim_get_clocker();
+    systim.evt_span      = 0;
+    systim.evt_stamp     = sub_rtc2ticks();
 }
 
 
-ot_u16 platform_next_ktim() {
+ot_u16 systim_next() {
 /// This should only be used in the sys_powerdown() function.  This version is
 /// indeed a bit kludgey, but it works for this purpose.
-    return gptim.evt_span;
+    return systim.evt_span;
 }
 
-void platform_enable_ktim() {
-    RTC->CR |= RTC_CR_ALRAIE; 
+void systim_enable() {
+    RTC->CR |= RTC_CR_ALRAIE;
 }
 
-void platform_disable_ktim() {
-    RTC->CR &= ~RTC_CR_ALRAIE; 
+void systim_disable() {
+    RTC->CR &= ~RTC_CR_ALRAIE;
 }
 
 
-//void platform_pend_ktim() {
+//void systim_pend() {
 // Not supported on STM32L ... not used in the kernel anyway
 //}
 
 
 
-ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
+ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
 /// This should only be called from the scheduler.
-    
+
     /// If the task to be scheduled is already due (considering the runtime of
-    /// the scheduler itself) return 0.  This will cause the sleep process to 
+    /// the scheduler itself) return 0.  This will cause the sleep process to
     /// be ignored and the task to start immediately.
     ///@todo Should overhead be (overhead+X) to account for possible alarm
     ///      misses when the scheduled time is very small (=1)?
     if ( (ot_long)(nextevent-overhead) <= 0 ) {
-        gptim.flags &= ~GPTIM_FLAG_SLEEP;
+        systim.flags &= ~GPTIM_FLAG_SLEEP;
         return 0;
     }
-    
-    /// Start the interval timer, using some additional ticks more than the 
+
+    /// Start the interval timer, using some additional ticks more than the
     /// scheduled arrival time of the kernel timer.
     ///@todo this is broken right now, at least with strobes
 
-    //platform_init_itimer(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
-    
-    // Wait for the Alarm flag to go high.  There is no easy way to do this 
-    // with an interrupt or event.  This loop will only get used if you are 
+    //systim_set_ticker(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
+
+    // Wait for the Alarm flag to go high.  There is no easy way to do this
+    // with an interrupt or event.  This loop will only get used if you are
     // running the system & scheduler very fast (above 16 MHz)
     while ((RTC->ISR & RTC_ISR_ALRAWF) == 0);
-    
-    // Set-up the Alarm.  gptim.evt_stamp is refreshed straight from the RTC.
-    gptim.flags     = GPTIM_FLAG_SLEEP;
-    gptim.evt_span  = nextevent;
+
+    // Set-up the Alarm.  systim.evt_stamp is refreshed straight from the RTC.
+    systim.flags     = GPTIM_FLAG_SLEEP;
+    systim.evt_span  = nextevent;
     RTC->ALRMAR     = sub_get_nextalarm(nextevent);
     RTC->CR        |= RTC_CR_ALRAE;
     RTC->ISR       &= ~RTC_ISR_RSF;     // Clear RTC-ShadowRegs-Ready flag
-    
+
     return (ot_u16)nextevent;
 }
 
@@ -658,40 +658,40 @@ ot_u16 platform_schedule_ktim(ot_u32 nextevent, ot_u32 overhead) {
 
 
 
-void platform_set_gptim2(ot_u16 value) {
-/// gptim2 is often used for RF MAC timing.  It includes "value" = 0 protection 
+void systim_set_insertion(ot_u16 value) {
+/// systim2 is often used for RF MAC timing.  It includes "value" = 0 protection
 /// because often a time-slot is started at position 0.  In that case, fuck the
 /// annoying RTC, just force it with a software interrupt on the EXTI.
 
     // RTC alarm event is tied to EXTI line 17
     if (value == 0) {
-        EXTI->SWIER |= (1<<17); 
+        EXTI->SWIER |= (1<<17);
     }
-    
+
     // This should be familiar from platform_set_ktim()
     else {
         ot_u32 scratch;
         while ((RTC->ISR & RTC_ISR_ALRBWF) == 0);
         RTC->ALRMBR = sub_get_nextalarm(value);
         RTC->CR    |= RTC_CR_ALRBE;
-    }    
+    }
 }
 
 
-void platform_enable_gptim2() {
+void systim_enable_insertion() {
     //OT_GPTIM->CCER |= TIM_CCER_CC2E;
     //EXTI->IMR      |= BOARD_GPTIM2_PIN;
 }
 
 
-void platform_disable_gptim2() {
+void systim_disable_insertion() {
     //OT_GPTIM->CCER &= ~TIM_CCER_CC2E;
     //EXTI->IMR      &= ~BOARD_GPTIM2_PIN;
 }
 
 
 // Not supported on STM32L
-//ot_u16 platform_get_gptim() {
+//ot_u16 platform_get_systim() {
 //    return TIM11->CNT;
 //}
 
@@ -711,7 +711,7 @@ void platform_disable_gptim2() {
 /** RTC Banging <BR>
   * ========================================================================<BR>
   * Unfortunately the STM32L does not have a suitable low-power timer.  Also
-  * unfortunately, it has an inflexible RTC.  Fortunately, however, it has an 
+  * unfortunately, it has an inflexible RTC.  Fortunately, however, it has an
   * ALU that can annihilate anything short of a PowerPC 6xx, so this seemingly
   * elaborate conversion actually happens in under 3us at 16 MHz.
   */
@@ -720,21 +720,21 @@ void platform_disable_gptim2() {
 #define _INT(I) ((I&15) + ((I>>4)*10))
 
 const ot_u8 int2bcd_lut[60] = {
-    _BCD(0,0),  _BCD(0,1),  _BCD(0,2),  _BCD(0,3),  _BCD(0,4),  
-    _BCD(0,5),  _BCD(0,6),  _BCD(0,7),  _BCD(0,8),  _BCD(0,9), 
-    _BCD(1,0),  _BCD(1,1),  _BCD(1,2),  _BCD(1,3),  _BCD(1,4),  
-    _BCD(1,5),  _BCD(1,6),  _BCD(1,7),  _BCD(1,8),  _BCD(1,9), 
-    _BCD(2,0),  _BCD(2,1),  _BCD(2,2),  _BCD(2,3),  _BCD(2,4),  
-    _BCD(2,5),  _BCD(2,6),  _BCD(2,7),  _BCD(2,8),  _BCD(2,9), 
-    _BCD(3,0),  _BCD(3,1),  _BCD(3,2),  _BCD(3,3),  _BCD(3,4),  
-    _BCD(3,5),  _BCD(3,6),  _BCD(3,7),  _BCD(3,8),  _BCD(3,9), 
-    _BCD(4,0),  _BCD(4,1),  _BCD(4,2),  _BCD(4,3),  _BCD(4,4),  
-    _BCD(4,5),  _BCD(4,6),  _BCD(4,7),  _BCD(4,8),  _BCD(4,9), 
-    _BCD(5,0),  _BCD(5,1),  _BCD(5,2),  _BCD(5,3),  _BCD(5,4),  
+    _BCD(0,0),  _BCD(0,1),  _BCD(0,2),  _BCD(0,3),  _BCD(0,4),
+    _BCD(0,5),  _BCD(0,6),  _BCD(0,7),  _BCD(0,8),  _BCD(0,9),
+    _BCD(1,0),  _BCD(1,1),  _BCD(1,2),  _BCD(1,3),  _BCD(1,4),
+    _BCD(1,5),  _BCD(1,6),  _BCD(1,7),  _BCD(1,8),  _BCD(1,9),
+    _BCD(2,0),  _BCD(2,1),  _BCD(2,2),  _BCD(2,3),  _BCD(2,4),
+    _BCD(2,5),  _BCD(2,6),  _BCD(2,7),  _BCD(2,8),  _BCD(2,9),
+    _BCD(3,0),  _BCD(3,1),  _BCD(3,2),  _BCD(3,3),  _BCD(3,4),
+    _BCD(3,5),  _BCD(3,6),  _BCD(3,7),  _BCD(3,8),  _BCD(3,9),
+    _BCD(4,0),  _BCD(4,1),  _BCD(4,2),  _BCD(4,3),  _BCD(4,4),
+    _BCD(4,5),  _BCD(4,6),  _BCD(4,7),  _BCD(4,8),  _BCD(4,9),
+    _BCD(5,0),  _BCD(5,1),  _BCD(5,2),  _BCD(5,3),  _BCD(5,4),
     _BCD(5,5),  _BCD(5,6),  _BCD(5,7),  _BCD(5,8),  _BCD(5,9)
 };
 
-// 60 + ((16-10)*(60/10 - 1)) = 90 
+// 60 + ((16-10)*(60/10 - 1)) = 90
 const ot_u8 bcd2int_lut[90] = {
     _INT(0),    _INT(1),    _INT(2),    _INT(3),    _INT(4),
     _INT(5),    _INT(6),    _INT(7),    _INT(8),    _INT(9),
@@ -773,7 +773,7 @@ ot_u32 sub_rtc2ticks() {
     ticks  += 60 * bcd2int_lut[(ot_u8)time];    // extract "minutes," add to seconds
     time  >>= 8;
     ticks  += 3600 * bcd2int_lut[time];         // extract "hours," add to seconds
-    
+
     return ticks;
 }
 
@@ -792,31 +792,31 @@ ot_u32 sub_ticks2alarm(ot_u32 ticks) {
     time   |= int2bcd_lut[tmins];       // put "minutes" into [15:8]
     time  <<= 8;
     time   |= int2bcd_lut[ticks];       // put "seconds" into [7:0]
-    
+
     return (RTC_ALRMAR_MSK4 | time);
 }
 
 
 ot_u32 sub_get_nextalarm(ot_u16 next) {
     ot_long alarm_ticks;
-    alarm_ticks = gptim.evt_stamp + next;
+    alarm_ticks = systim.evt_stamp + next;
     if (alarm_ticks >= 86400)
-        alarm_ticks -= 86400; 
-        
+        alarm_ticks -= 86400;
+
     return sub_ticks2alarm(alarm_ticks);
 }
 
 
 
 
-ot_u32 platform_get_interval(ot_u32* timestamp) {
+ot_u32 systim_chronstamp(ot_u32* timestamp) {
     ot_long timer_cnt;
-    
+
     // Wait for RTC to be readable
     while ((RTC->ISR & RTC_ISR_RSF) == 0);
-    
+
     // Get RTC value in ticks.  Return as-is if there is no timestamp pointer.
-    // Else, return the difference between the timestamp and the RTC timer 
+    // Else, return the difference between the timestamp and the RTC timer
     // value.  If the timer has looped, we need to deal with it.
     timer_cnt = sub_rtc2ticks();
     if (timestamp != NULL) {
@@ -847,7 +847,7 @@ void sub_juggle_rtc_alarm() {
     ot_u32 comp;
     ot_u32 next     = ~0;
     ot_u32 rtcval   = RTC_GetCounter();
-    
+
     for (i=0; i<RTC_ALARMS; i++) {
         if (otrtc.alarm[i].active) {
             comp    = rtcval & ((ot_u32)otrtc.alarm[i].mask << RTC_OVERSAMPLE);

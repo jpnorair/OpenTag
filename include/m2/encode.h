@@ -1,4 +1,4 @@
-/* Copyright 2009-2013 JP Norair
+/* Copyright 2009-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_encode.h
   * @author     JP Norair
-  * @version    R102
-  * @date       6 Nov 2013
+  * @version    R103
+  * @date       18 Sept 2014
   * @brief      Encoding and Decoding of bytewise data for the Radio
   * @defgroup   Encode (Encode Module)
   * @ingroup    Encode
@@ -44,19 +44,29 @@
 #include <otplatform.h>
 #include <otsys/types.h>
 #include <otlib/queue.h>
+#include <otlib/crc16.h>
 
 
 typedef struct {
+    // Core Encoder State Variables
     ot_u8   lctl;
     ot_u8   crc5;
     ot_int  bytes;
     ot_int  state;              // could be changed to ot_s8
+    
+    // CRC Streaming object for M2 encoding module
+    crcstream_t crc;
 
+    // PN9 register needed for SW PN9 
+    // You should pick a radio that has this in HW, so this is mostly relegated
+    // to Software Simulation.
 #   if ( (RF_FEATURE(PN9) != ENABLED) || \
          ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) != ENABLED)) )
         ot_uni16 PN9_lfsr;
 #   endif
 
+    // FEC registers needed for SW FEC
+    // SW FEC is fairly slow and not recommended
 #   if ((M2_FEATURE(FECRX) == ENABLED) && (RF_FEATURE(FEC) != ENABLED))
         ot_int  databytes;
         ot_int  path_bits;

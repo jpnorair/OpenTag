@@ -1416,8 +1416,8 @@ mpipe_state mpipe_status() {
 
 
 
-#ifndef EXT_mpipe_txndef
-void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXT_mpipe_tx
+void mpipe_tx(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
     if (mpipe.state == MPIPE_Idle) {
         ot_uni16 crcval;
         mpipe.pktbuf    = data;

@@ -431,20 +431,20 @@ mpipe_state mpipe_status() {
 #endif
 
 
-#ifndef EXT_mpipe_txndef
-void mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXT_mpipe_tx
+void mpipe_tx(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
     ot_uni16 crcval;
     ot_int data_length;
     
 #if (MPIPE_USE_ACKS)
     if (data_priority == MPIPE_Ack)) {
         mpipe.priority  = data_priority;
-        goto mpipe_txndef_SETUP;
+        goto mpipe_tx_SETUP;
     }
 #endif
     if (mpipe.state == MPIPE_Idle) {
         mpipe.state     = MPIPE_Tx_Wait
-        mpipe_txndef_SETUP:
+        mpipe_tx_SETUP:
         mpipe.pktbuf    = data;
         data_length     = data[2] + 6;
         //mpipe.pktlen    = data[2] + 6;
@@ -522,7 +522,7 @@ void mpipe_isr() {
 #           if (MPIPE_USE_ACKS)
             // ACKs must be used when Broadcast mode is off
             if (mpipe.priority != MPIPE_Broadcast) {
-                // 1. On ACKs, txndef() requires caller to choose state 
+                // 1. On ACKs, tx() requires caller to choose state 
                 // 2. Copy RX'ed sequence number into local sequence number
                 // 3. Copy NACK/ACK status to 6th byte in NDEF header
                 {
@@ -533,7 +533,7 @@ void mpipe_isr() {
                     mpipe.sequence.ubyte[LOWER] = *scratch;
                 }
                 mpipe.ackbuf[5] = (crc16drv_block(mpipe.pktbuf, mpipe.pktlen)) ? 0x7F : 0;
-                mpipe_txndef(mpipe.ackbuf, False, MPIPE_Ack);
+                mpipe_tx(mpipe.ackbuf, False, MPIPE_Ack);
                 return;
             }
 #           endif
@@ -575,7 +575,7 @@ void mpipe_isr() {
         case MPIPE_RxAck: 
 #           if (MPIPE_USE_ACKS)
             if (crc16drv_block(mpipe.ackbuf, 10) != 0) { //RX'ed NACK
-                mpipe_txndef(mpipe.pktbuf, False, mpipe.priority);
+                mpipe_tx(mpipe.pktbuf, False, mpipe.priority);
                 break;
             }
 #           endif
