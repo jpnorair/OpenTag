@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2010-14 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/queue.c
   * @author     JP Norair
-  * @version    R102
-  * @date       21 Aug 2014
+  * @version    R103
+  * @date       20 Sept 2014
   * @brief      A module and ADT for buffering data packets.
   * @ingroup    ot_queue
   *
@@ -25,6 +25,8 @@
   * but it does not intend to provide programmatic safeguards.  In other words,
   * the user must do his own boundary checking, or overrun may occur.
   *
+  * R103: Some improvements and getting ready for multithreading
+  * 
   * R102: Updates to multibyte read and write functions including __bswap...()
   *       functions for endian conversion as well as unaligned memory access.
   *
@@ -43,6 +45,12 @@
 #include <otsys/veelite.h>
 
 
+
+
+
+/** Queue "Object" functions
+  * ========================
+  */
 
 #ifndef EXTF_q_init
 void q_init(ot_queue* q, ot_u8* buffer, ot_u16 alloc) {
@@ -71,6 +79,14 @@ void q_copy(ot_queue* q1, ot_queue* q2) {
 #endif
 
 
+
+
+
+
+/** Queue Info functions
+  * ====================
+  */
+
 #ifndef EXTF_q_length
 ot_int q_length(ot_queue* q) {
     return (q->putcursor - q->front);
@@ -90,6 +106,47 @@ ot_int q_space(ot_queue* q) {
     return (q->back - q->putcursor);
 }
 #endif
+
+
+
+
+
+
+/** Queue Threading/Blocking functions
+  * ==================================
+  */
+
+OT_INLINE ot_uint q_blocktime(ot_queue* q) {
+    return q->options.ushort;
+}
+
+OT_INLINE void q_blockwrite(ot_queue* q, ot_uint blocktime) {
+    q->options.ushort = blocktime;
+}
+
+
+void q_lock(ot_queue* q) {
+    while (q->options.ushort != 0) {
+        //ot_tid tid = systhread_this_tid();
+        //if (tid != systhread_kernel_tid()) {
+        //    systhread_mark_tmask( &(q->tmask), tid );
+        //    systhread_wait();
+        //    systhread_unmark_tmask( &(q->tmask), tid );
+        //}
+        //else 
+        {   delay_ti(q->options.ushort);
+        }
+    }
+    q->options.ushort = 1;
+}
+
+void q_unlock(ot_queue* q) {
+    // systhread_release_any( &(q->tmask) );
+    q->options.ushort = 0;
+}
+
+
+
 
 
 #ifndef EXTF_q_empty

@@ -1,4 +1,4 @@
-/* Copyright 2010-2013 JP Norair
+/* Copyright 2010-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       otlib/queue.h
   * @author     JP Norair
-  * @version    R101
-  * @date       18 Sept 2013
+  * @version    R102
+  * @date       18 Sept 2014
   * @brief      A module and ADT for data stream management
   * @defgroup   Queue (Queue Module)
   * @ingroup    Queue
@@ -37,7 +37,7 @@ extern "C" {
 #endif
 
 #include <otstd.h>
-
+//#include <otsys/threads.h>
 
 
 /** @typedef ot_queue
@@ -55,6 +55,7 @@ extern "C" {
 typedef struct {
     ot_u16      alloc;
     ot_uni16    options;
+  //ot_tmask    tmask;    
     ot_u8*      getcursor;
     ot_u8*      putcursor;
     ot_u8*      front;
@@ -63,6 +64,9 @@ typedef struct {
 
 
 
+/** Queue "Object" functions
+  * ========================
+  */
 
 /** @brief Generic initialization routine for ot_queues.
   * @param q        (ot_queue*) Pointer to the ot_queue ADT
@@ -95,18 +99,121 @@ void q_copy(ot_queue* q1, ot_queue* q2);
 
 
 
-/** @brief Returns the length of the queue
+
+
+/** Queue Info functions
+  * ====================
+  */
+
+/** @brief Returns the accessible length of the queue (bytes between front and back)
   * @param q        (ot_queue*) ot_queue to determine length 
   * @retval none
   * @ingroup Queue
   */
 ot_int q_length(ot_queue* q);
 
+/** @brief Returns the active length of the queue (bytes between get and put)
+  * @param q        (ot_queue*) ot_queue to determine span 
+  * @retval none
+  * @ingroup Queue
+  */
 ot_int q_span(ot_queue* q);
 
+/** @brief Returns the amount of unused bytes at end of the queue (bytes
+  *        between put and back)
+  * @param q        (ot_queue*) ot_queue to determine space 
+  * @retval none
+  * @ingroup Queue
+  */
 ot_int q_space(ot_queue* q);
 
 
+
+
+/** Queue Threading/Blocking functions
+  * ==================================
+  */
+  
+/** @brief Returns an estimated amount of ticks between now and when the queue
+  *        will become unblocked.
+  * @param q        (ot_queue*) ot_queue to inspect blocktime
+  * @retval none
+  * @ingroup Queue
+  * @sa q_blockwrite()
+  *
+  * q_blocktime() returns an estimated number of ticks between now and when the
+  * supplied queue will be unblocked.  This amount of ticks can be used to 
+  * improve the intelligence of task scheduling, although it is merely advisory
+  * and not a guarantee that a queue will be unblocked.
+  * 
+  * I/O drivers and tasks that may share a queue with other I/O or tasks need
+  * to be careful about ruining each others' data.  A queue-user can call
+  * q_blockwrite() to inform other users that the queue is not to be written-to
+  * or emptied as long as the blocking user is keeping it blocked.  
+  */
+ot_uint q_blocktime(ot_queue* q);
+
+
+/** @brief Blocks a queue against writing or emptying until unblocked
+  * @param q        (ot_queue*) ot_queue to inspect blocktime
+  * @retval none
+  * @ingroup Queue
+  * @sa q_blocktime()
+  *
+  * I/O drivers and tasks that may share a queue with other I/O or tasks need
+  * to be careful about ruining each others' data.  A queue-user can call
+  * q_blockwrite() to inform other users that the queue is not to be written-to
+  * or emptied as long as the blocking user is keeping it blocked.  
+  * 
+  * Keep in mind that queue blocking is not more than a "gentlemen's agreement"
+  * and that the data is not protected by any special means.  The blocktime
+  * parameter the user must supply is indeed an advisory amount, and the user
+  * may update it however frequently the author/architect determines is 
+  * necessary.
+  */
+void q_blockwrite(ot_queue* q, ot_uint blocktime);
+
+
+/** @brief Blocks the user thread until the queue is unblocked, then provides
+  *        blocking to any other user trying to access it.
+  * @param q        (ot_queue*) ot_queue to wait for
+  * @retval none
+  * @ingroup Queue
+  * @sa q_unlock()
+  *
+  * q_lock() and q_unlock() implement a built-in type of Mutex available to 
+  * queues.  In builds of OpenTag without threads, q_lock() implements a 
+  * blocking wait and therefore it is perfectly functional to use q_lock() in
+  * threaded as well as non-threaded builds of OpenTag.  However, in non-
+  * threaded builds q_lock() can be inefficient and lead to unresponsiveness,
+  * so it is not recommended for usage in deep parts of the kernel or drivers.
+  *
+  * After q_lock() returns in user-thread X, all other users (e.g. W,Y,Z) 
+  * waiting for their own calls to q_lock() will keep waiting.  When user X 
+  * calls q_unlock(), one of the other threads (W,Y,Z) will have q_lock() 
+  * return and will have control of the queue.  This is how mutexes work.
+  */
+void q_lock(ot_queue* q);
+
+
+/** @brief Unlocks a queue that the user is finished manipulating
+  * @param q        (ot_queue*) ot_queue to wait for
+  * @retval none
+  * @ingroup Queue
+  * @sa q_lock()
+  *
+  * See q_lock() for documentation
+  */
+void q_unlock(ot_queue* q);
+
+
+
+
+
+
+/** Data Control functions
+  * ======================
+  */
 
 /** @brief Empties the supplied ot_queue, but doesn't actually erase data
   * @param q        (ot_queue*) Pointer to the ot_queue ADT
@@ -126,6 +233,13 @@ void q_empty(ot_queue* q);
 ot_u8* q_start(ot_queue* q, ot_uint offset, ot_u16 options);
 
 
+
+
+
+
+/** Data Read/Write functions
+  * =========================
+  */
 
 /** @brief Returns the current getcursor position, and then moves it forward
   * @param q        (ot_queue*) Pointer to the ot_queue ADT
