@@ -375,6 +375,7 @@ typedef struct {
     ot_int          packets;
     ot_u8*          pkt;
     crcstream_t     crc;
+    ot_queue        lq;
     ot_u8           rxbuffer[MPIPE_BUFFERSIZE];
     mpipe_header    header;
 
@@ -441,8 +442,7 @@ void sub_mpipe_open() {
 }
 
 void sub_mpipe_close() {
-    ot_u32 scratch;
-    scratch                 = BOARD_UART_PORT->MODER;
+    ot_u32 scratch          = BOARD_UART_PORT->MODER;
     scratch                &= ~((3 << (BOARD_UART_TXPINNUM*2)) | (3 << (BOARD_UART_RXPINNUM*2)));
     scratch                |= (1 << (BOARD_UART_TXPINNUM*2)) | (0 << (BOARD_UART_RXPINNUM*2));
     BOARD_UART_PORT->MODER  = scratch;
@@ -581,8 +581,6 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 
     ///@todo this will need to be adjusted in the final version
     alp_init(&mpipe.alp, &otmpin, &otmpout);
-    //uart.packets            = 0;
-    //uart.pkt                = mpipe.alp.outq->front;
 
     return 255;
 }
@@ -628,9 +626,8 @@ void mpipedrv_kill() {
     sub_mpipe_close();
 
     // Clear the TX queue
-	q_empty(mpipe.alp.outq);
-//    uart.packets          = 0;
-//    uart.pkt              = mpipe.alp.outq->front;
+    ///@note I just commented-out this on 20 Sept
+	//q_empty(mpipe.alp.outq);
 }
 #endif
 
@@ -646,16 +643,11 @@ void mpipedrv_wait() {
 
 #ifndef EXTF_mpipedrv_tx
 void sub_txopen() {
-    ot_u16 length;
-
     // set state to TX wait, which will come after header is TX'ed
     mpipe.state         = MPIPE_Tx_Wait;
-
-    // Setup output header
-    length              = uart.pkt[1] + 4;
     uart.header.syncFF  = 0xff;
     uart.header.sync55  = 0x55;
-    uart.header.plen    = PLATFORM_ENDIAN16(length);
+    uart.header.plen    = PLATFORM_ENDIAN16( q_span(&uart.lq) );
     uart.header.ctl     = 0;
     uart.header.seq    += 1;
     sub_gen_mpipecrc();
@@ -666,12 +658,19 @@ void sub_txopen() {
     __DMA_TXOPEN(&uart.header.syncFF, 8);
 }
 
-void sub_txcont() {
-    uart.header.plen = PLATFORM_ENDIAN16(uart.header.plen);
-    __DMA_TXOPEN(uart.pkt, uart.header.plen+2);
+OT_INLINE_H void sub_txcont() {
+    __DMA_TXOPEN(uart.lq.getcursor, q_span(&uart.lq));
 }
 
-void sub_txstart(ot_bool blocking, mpipe_priority data_priority) {
+ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
+/// Data TX will only occur if this function is called when the MPipe state is
+/// idle.  The exception is when the function is called with ACK priority, in
+/// which case the state doesn't need to be Idle.  Lastly, if you specify the
+/// blocking parameter, the function will not return until the packet is
+/// completely transmitted.
+    ot_u16 holdtime;
+    ot_u16 pktlen;
+    
 #   if (MPIPE_USE_ACKS)
 //    if (data_priority == MPIPE_Ack)) {
 //        uart.priority  = data_priority;
@@ -681,34 +680,28 @@ void sub_txstart(ot_bool blocking, mpipe_priority data_priority) {
 //    ///@todo In this space, swap to the standard mpipe queue
 #   endif
 
+    holdtime = q_blocktime(mpipe.alp.outq);
+    if (holdtime != 0) {
+        return -holdtime;
+    }
+    
     //getcursor to end of packet, to allow another packet to be added
-    uart.pkt                    = mpipe.alp.outq->getcursor;
+    uart.lq.front               = mpipe.alp.outq->getcursor;
     mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
-    uart.packets++;
+    uart.lq.back                = mpipe.alp.outq->putcursor;
+    pktlen                      = q_length(&uart.lq)
+    holdtime                    = __MPIPE_TIMEOUT(pktlen);
 
     if (mpipe.state == MPIPE_Idle) {
-        uart.packets--;
+        uart.lq.getcursor   = uart.front;
+        uart.lq.putcursor   = uart.front + pktlen;
         mpipedrv_tx_GO:
         __SYS_CLKON();
         sub_txopen();
-
-        if (blocking) {
-           mpipedrv_wait();
-        }
+        q_blockwrite(mpipe.alp.outq, blocking ? holdtime : 0);
     }
-}
 
-ot_uint mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
-/// Data TX will only occur if this function is called when the MPipe state is
-/// idle.  The exception is when the function is called with ACK priority, in
-/// which case the state doesn't need to be Idle.  Lastly, if you specify the
-/// blocking parameter, the function will not return until the packet is
-/// completely transmitted.
-
-    /// Direct UART Only
-    sub_txstart(blocking, data_priority);
-
-    return __MPIPE_TIMEOUT( q_span(mpipe.alp.outq) );
+    return __MPIPE_TIMEOUT( holdtime );
 }
 #endif
 
@@ -805,7 +798,7 @@ void mpipedrv_isr() {
 ///      Acks.  In this case, a complete TX process also requires RX'ing an
 ///      Ack, and a complete RX process requires TX'ing an Ack. </LI>
     ot_bool tx_process = False;
-    ot_u16 crc_result;
+    ot_int  error_code;
 
     __DMA_ALL_CLOSE();
     __DMA_ALL_CLEAR();
@@ -813,70 +806,94 @@ void mpipedrv_isr() {
     switch (mpipe.state) {
         case MPIPE_Idle: //note, case doesn't break!
 
-        case MPIPE_RxHeader: 
-            // Start-up the CRC streamer manually.
-            uart.crc.count  = uart.header.plen;
-            uart.crc.val    = 0;
-            uart.crc.cursor = NULL;
-            
-            if ((uart.header.ctl & 7) != 7) {
-                uart.crc.writeout   = False;
-                uart.crc.cursor     = (ot_u8*)&uart.header.crc16;
-                uart.crc.count     += 6;
-                crc_calc_nstream(&uart.crc, 6);
-            }
-            
-            // Convert to proper endian, and re-set the DMA to grab the rest of
-            // the packet now that we know the packet parameters.
+        case MPIPE_RxHeader: {
+            // Use local queue, in order to protect the pending data from
+            // getting accessed by other users of the main queue.
+            q_copy(&uart.lq, mpipe.alq.inq);
+        
+            // If there is no payload or if the input queue is being used by 
+            // someone else, this packet is registered as an error.
             uart.header.plen = PLATFORM_ENDIAN16(uart.header.plen);
-            if (uart.header.plen != 0) {
-                ot_u16 framesize = (uart.header.plen < MPIPE_BUFFER_SIZE) ? \
-                                    uart.header.plen : MPIPE_BUFFER_SIZE;
+            if (uart.header.plen == 0)                          error_code = -1;
+            else if (q_blocktime(mpipe.alp.inq))                error_code = -11;
+            else if (q_space(mpipe.alp.inq) < uart.header.plen) error_code = -7;
+            
+            // No error, start receiving packet formally
+            // Most important first thing is to reset DMA to grab first frame.
+            else {
+                ot_u16 blockticks;
+                ot_u16 framesize;
+                
+                blockticks = __MPIPE_TIMEOUT(uart.header.plen);
+                q_blockwrite(mpipe.alp.inq, blockticks);
+                
+                framesize = (uart.header.plen <= MPIPE_BUFFER_SIZE) ? uart.header.plen : MPIPE_BUFFER_SIZE;
                 __DMA_RXOPEN(&uart.rxbuffer, framesize);
-                mpipeevt_rxdetect( __MPIPE_TIMEOUT(uart.header.plen) );     ///@todo current value only relevant for 115200
+                mpipeevt_rxdetect(blockticks);
                 mpipe.state = MPIPE_RxPayload;
-                return;
+                
+                // Start-up the CRC streamer manually.
+                // uart.crc.count is also used to track the bytes left to receive
+                uart.crc.count  = uart.header.plen;
+                uart.crc.val    = 0;
+                if (uart.header.ctl & 7) {
+                    uart.crc.writeout   = False;
+                    uart.crc.cursor     = (ot_u8*)&uart.header.crc16;
+                    uart.crc.count     += 6;
+                    crc_calc_nstream(&uart.crc, 6);
+                    uart.crc.cursor     = uart.lq.putcursor;
+                }
+                return;             // Wait for next DMA RX interrupt
             }
-            // Note case fall-through!!!
+        } goto mpipedrv_isr_RXSIG;  // handle error
 
         case MPIPE_RxPayload: {
-            ot_u16 framesize = (uart.crc.count < MPIPE_BUFFER_SIZE) ? \
-                                    uart.crc.count : MPIPE_BUFFER_SIZE;
+            ot_u16  lastframe   = _DMARX->CNDTR;    // Last transferred amount of bytes
+            ot_u16  nextframe;
             
-            q_writestring(mpipe.alp.inq, uart.rxbuffer, framesize);                        
-            
-            if (uart.crc.cursor != NULL) {
-                uart.crc.cursor = &uart.rxbuffer;       // reset cursor to front of frame!
-                crc_calc_nstream(&uart.crc, framesize);
-            }
-            else {
-                uart.crc.count -= framesize;
-            }
-            
-            // Packet is done being received
-            if (uart.crc.count <= 0) {
-            
-                // Dump the last packet if the CRC is found not valid
-                if (uart.crc.val != mpipe.header.crc16) {
-                    
+            // If there are more frames after this one, refresh DMA buffering
+            if (uart.crc.count > MPIPE_BUFFER_SIZE) {
+                nextframe = uart.crc.count - MPIPE_BUFFER_SIZE;
+                if (nextframe > MPIPE_BUFFER_SIZE) {
+                    nextframe = MPIPE_BUFFER_SIZE;
                 }
-                
-                
+                __DMA_RXOPEN(&uart.rxbuffer, nextframe);
             }
             
+            // Write the last frame data received to the app/alp queue.
+            q_writestring(&uart.lq, uart.rxbuffer, lastframe);
+            
+            // Do CRC if required, else manually adjust crc.count
+            if (uart.header.ctl & 7)    crc_calc_nstream(&uart.crc, lastframe);
+            else                        uart.crc.count -= lastframe;
 
-#           if (MPIPE_USE_ACKS)
-            // ACKs must be used when Broadcast mode is off
-            // 1. On ACKs, tx() requires caller to choose state
-            // 2. Copy RX'ed seq number into local seq number
-            // 3. Copy NACK/ACK status to 6th byte in NDEF header
-            if (uart.priority != MPIPE_Broadcast) {
-                mpipe.state = MPIPE_TxAck_Done; //MPIPE_TxAck_Wait;
-                sub_txack_header(crc_result);
-                mpipedrv_tx(False, MPIPE_Ack);
-                return;
+            // Update the hold time on the main queue.  This is not required,
+            // and it is a bit of a hack, but it is nice to do
+            mpipe.alp.inq->options  = __MPIPE_TIMEOUT(uart.crc.count);
+
+            // Packet is done being received: check CRC and, if valid, refresh
+            // the main alp queue.
+            if (uart.crc.count <= 0) {
+                if (uart.crc.val == mpipe.header.crc16) {
+                    q_copy(mpipe.alp.inq, &uart.lq);
+                    error_code = 0;   
+                }
+                else {
+                    error_code = -2;
+                }         
+#               if (MPIPE_USE_ACKS)
+                // ACKs must be used when Broadcast mode is off
+                // 1. On ACKs, tx() requires caller to choose state
+                // 2. Copy RX'ed seq number into local seq number
+                // 3. Copy NACK/ACK status to 6th byte in NDEF header
+                if (uart.priority != MPIPE_Broadcast) {
+                    mpipe.state = MPIPE_TxAck_Done; //MPIPE_TxAck_Wait;
+                    sub_txack_header(error_code);
+                    mpipedrv_tx(False, MPIPE_Ack);
+                    return;
+                }
+#               endif    
             }
-#           endif
         } goto mpipedrv_isr_RXSIG;
 
 #       if (MPIPE_USE_ACKS)
@@ -927,8 +944,9 @@ void mpipedrv_isr() {
     // - If no, then close Mpipe and call txdone event handler in the MPipe Task
     mpipedrv_isr_TXSIG:
     while ((BOARD_UART_PORT->IDR & BOARD_UART_TXPIN) == 0);
-    if (uart.packets > 0) {
-        uart.pkt += PLATFORM_ENDIAN16(uart.header.plen);
+    if (uart.lq.putcursor < uart.lq.back) {
+        uart.lq.getcursor = uart.lq.putcursor;
+        uart.lq.putcursor = uart.lq.back;
         sub_txopen();
         return;
     }
@@ -941,7 +959,7 @@ void mpipedrv_isr() {
     // - If RX CRC matters, then make sure to compute it.
     mpipedrv_isr_RXSIG:
     mpipedrv_rx(False, 0);
-    mpipeevt_rxdone((ot_int)crc_result);
+    mpipeevt_rxdone(error_code);
 }
 
 #endif
