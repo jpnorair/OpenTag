@@ -13,6 +13,12 @@
   * limitations under the License.
   *
 
+NOTE: This works with latest version of RIDE and arm-gcc, as of 09/2014.
+
+If you are building with RIDE, you can make sure the project looks for this
+linker script at the following location:
+$(ApplicationDir)/../../_common/linker/stm32l1xx_128_16.ld
+
 Default linker script for STM32L1xx with 128KB Flash + 16KB SRAM + 4KB EEPROM
 
 DETAILS
@@ -37,7 +43,7 @@ PROVIDE ( _Stack_Init = __Stack_Init ) ;
 
 
 /* There will be a link error if there is not this amount of RAM free at the end. */
-_Minimum_Stack_Size = 0x100 ;
+PROVIDE ( _Minimum_Stack_Size = 0x100 );
 
 
 
@@ -195,25 +201,48 @@ PROVIDE ( SCB             = (SCS_BASE + 0x0D00) ) ;
 
 MEMORY
 {
-  RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 0x4000
+    RAM (xrw)       : ORIGIN = 0x20000000,  LENGTH = 0x4000
   
-  FLASH (rx)       : ORIGIN = 0x08000000, LENGTH = 0x20000 
+/* This section for Program Flash */
+    FLASH (rx)      : ORIGIN = 0x08000000,  LENGTH = 0x20000
+    STARTFLASH (rx) : ORIGIN = 0x0,         LENGTH = 0x0
+    CRPPATCH (r)    : ORIGIN = 0x0,         LENGTH = 0
+    FLASHPATCH (r)  : ORIGIN = 0x00000000,  LENGTH = 0
+    ENDFLASH (rx)   : ORIGIN = 0x00000000,  LENGTH = 0
+/* End of Program Flash */
+
+/* This section for Veelite FS stored in EEPROM */
+    FLASHOV (r)     : ORIGIN = 0x08080000,  LENGTH = 0x360
+    FLASHISFS (r)   : ORIGIN = 0x08080360,  LENGTH = 0xA0
+/*  FLASHGFB (r)    : ORIGIN = 0x08080400,  LENGTH = 0x400*/
+    FLASHISF (r)    : ORIGIN = 0x08080400,  LENGTH = 0xC00
+/*  FLASHWL (r)     : ORIGIN = 0x08080C00,  LENGTH = 0x400*/
+/* End of Veelite / EEPROM */
   
-  FLASHOV (r)      : ORIGIN = 0x08080000, LENGTH = 0x360
-  FLASHISFS (r)    : ORIGIN = 0x08080360, LENGTH = 0xA0
-/*FLASHGFB (r)     : ORIGIN = 0x08080400, LENGTH = 0x400*/
-  FLASHISF (r)     : ORIGIN = 0x08080400, LENGTH = 0xC00
-/*FLASHWL (r)      : ORIGIN = 0x08080C00, LENGTH = 0x400*/
+/* This section for Parameter ROM */
+    CONFIG   (r)    : ORIGIN = 0x1FF80000,   LENGTH = 0x10
+    CONFIG2  (r)    : ORIGIN = 0x00000000,   LENGTH = 0x0
+/* End of Parameter ROM */
   
-  EXTMEMB0 (rx)    : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB1 (rx)    : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB2 (rx)    : ORIGIN = 0x00000000, LENGTH = 0
-  EXTMEMB3 (rx)    : ORIGIN = 0x00000000, LENGTH = 0
+/* This section for External memory interface, generally unused */
+    EXTMEMB0 (rx)   : ORIGIN = 0x00000000,  LENGTH = 0
+    EXTMEMB1 (rx)   : ORIGIN = 0x00000000,  LENGTH = 0
+    EXTMEMB2 (rx)   : ORIGIN = 0x00000000,  LENGTH = 0
+    EXTMEMB3 (rx)   : ORIGIN = 0x00000000,  LENGTH = 0
+/* End of External Memory */
 }
 
 
-_estack     = ORIGIN(RAM)+LENGTH(RAM);      /* end of the user mode stack */
-_sveelite   = ORIGIN(FLASHOV);             /* start of veelite fs */
+/* RIDE needs this "Starter Kit" limiter, otherwise it will have all kinds of
+   problems.  __SK_limit__ should get set-up in RIDE if you have the lite 
+   version.  If you have Lite and still have problems, try reducing FLASH 
+   section to 64 KB (0x10000) */
+PROVIDE ( ___SK_limit___ = 0 ) ;
+
+
+/* These variables are automatically derived from above */
+_estack     = ORIGIN(RAM) + LENGTH(RAM);        /* end of the user mode stack */
+_sveelite   = ORIGIN(FLASHOV);                  /* start of veelite fs */
 
 
 
@@ -222,7 +251,8 @@ _sveelite   = ORIGIN(FLASHOV);             /* start of veelite fs */
 
 SECTIONS
 {
-    /* for Cortex devices, the beginning of the startup code is stored in the .isr_vector section, which goes to FLASH */
+    /* for Cortex devices, the beginning of the startup code is stored in the 
+       .isr_vector section, which goes to FLASH */
     .isr_vector :
     {
 	. = ALIGN(4);
@@ -230,26 +260,147 @@ SECTIONS
 	. = ALIGN(4);
     } >FLASH
  
+    /* for Cortex LPC devices, the CRP forces to have a separate region for the 
+       vectors at the beginning of the falsh */
+    .flash_start :
+    {
+	. = ALIGN(4);
+        KEEP(*(.flash_start))            /* vectors */
+        KEEP(*(.flash_start.*))          /* rest of startup */
+	. = ALIGN(4);
+    } >STARTFLASH
+    
+    /* for Cortex LPC devices, the CRP contains a code to protect the flash */
+    .crp_patch :
+    {
+	. = ALIGN(4);
+        KEEP(*(.crp_patch))            /* CRP word */
+	. = ALIGN(4);
+    } >CRPPATCH
+    
 	/* the program code is stored in the .text section, which goes to Flash */
     .text :
     {
 	    . = ALIGN(4);
+	    
         *(.text)                   /* remaining code */
         *(.text.*)                   /* remaining code */
         *(.rodata)                 /* read-only data (constants) */
-        *(.rodata*)
+        *(.rodata.*)
         *(.glue_7)
         *(.glue_7t)
+
+        /* now make sure we keep the C++ constructors */
+	   *(.eh_frame)
+        . = ALIGN(4);
+        KEEP (*(.init))
+        . = ALIGN(4);
+        KEEP (*(.fini))
+
+        . = ALIGN(4);
+        __preinit_array_start = .;
+        KEEP (*(.preinit_array))
+        __preinit_array_end = .;
+
+        . = ALIGN(4);
+        __init_array_start = .;
+        KEEP (*(SORT(.init_array.*)))
+        KEEP (*(.init_array))
+        __init_array_end = .;
+
+        . = ALIGN(4);
+        __fini_array_start = .;
+        KEEP (*(.fini_array))
+        KEEP (*(SORT(.fini_array.*)))
+        __fini_array_end = .;
+
+        . = ALIGN(0x4);
+        KEEP (*crtbegin.o(.ctors))
+        KEEP (*(EXCLUDE_FILE (*crtend.o) .ctors))
+        KEEP (*(SORT(.ctors.*)))
+        KEEP (*crtend.o(.ctors))
+
+        . = ALIGN(0x4);
+        KEEP (*crtbegin.o(.dtors))
+        KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
+        KEEP (*(SORT(.dtors.*)))
+        KEEP (*crtend.o(.dtors))
+
 	    . = ALIGN(4);
-		
-   	    _etext = .;
-		
-		/* This is used by the startup in order to initialize the .data secion */
-   	    _sidata = .;
-    } >FLASH  
+        _etext = .;
+    } >FLASH
+ 
+    .ARM.extab :
+    {
+        *(.ARM.extab* .gnu.linkonce.armextab.*)
+    } >FLASH
+    
+    .ARM :
+    {
+        __exidx_start = .;
+        *(.ARM.exidx*)
+        __exidx_end = .;
+    } >FLASH
+ 
+    /* This is used by the startup in order to initialize the .data secion */
+    _sidata = .;
+    
+    /* for some LPC devices, there is a FLASH patch to place at a specified address */
+    .flashpatch :
+    {
+	. = ALIGN(4);
+        KEEP(*(.flashpatch))            /* flashpatch data */
+	. = ALIGN(4);
+    } >FLASHPATCH
+    
+    /* for some LPC devices, there is a FLASH patch to place at a specified address
+    and then there is the rest of the flash */
+    .endflash :
+    {
+	. = ALIGN(4);
+        *(.endflash)            /* endflash code */
+	. = ALIGN(4);
+	_e_endflash = . ;
+    } >ENDFLASH
+
+    
+    /* for some devices, there is FLASH config to place at a specified address*/
+    .config :
+    {
+	. = ALIGN(4);
+        KEEP(*(.config))            /* config data */
+	. = ALIGN(4);
+    } > CONFIG
+    
+    /* for STM32 devices, there are FLASH Option Bytes to place at a specified address*/
+    .optionbytes :
+    {
+	. = ALIGN(4);
+        KEEP(*(.optionbytes))            /* option bytes data */
+	. = ALIGN(4);
+	_e_config = . ;
+    } > CONFIG
+    
+    /* for some devices, there are two config regions*/
+    .config2 :
+    {
+	. = ALIGN(4);
+        KEEP(*(.config2))            /* config data */
+	. = ALIGN(4);
+    } > CONFIG2
+    
+    /* for some STM32 devices, there are two Option Bytes regions*/
+    .optionbytes2 :
+    {
+	. = ALIGN(4);
+        KEEP(*(.optionbytes2))            /* option bytes data */
+	. = ALIGN(4);
+	_e_config2 = . ;
+    } > CONFIG2
  
  
-	/* VEELITE VWORM FLASH */
+ 
+	/* VEELITE FS Sections */
     .vl_ov : {
 	    . = ALIGN(4);
 		KEEP(*(.vl_ov))
@@ -287,6 +438,7 @@ SECTIONS
     */
     
     
+    
  /* This is the initialized data section
     The program executes knowing that the data is in the RAM
     but the loader puts the initial values in the FLASH (inidata).
@@ -297,6 +449,14 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
         _data = . ;
+        __data_start__ = .;
+
+        KEEP(*(.ram_start1))
+		. = ALIGN(4);
+        KEEP(*(.ram_start2))
+		. = ALIGN(4);
+        KEEP(*(.ram_start3))
+		. = ALIGN(4);
         
         *(.data)
         *(.data.*)
@@ -304,15 +464,18 @@ SECTIONS
 
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .data secion */
-   	 _edata = . ;
+        _edata = . ;
+        __data_end__ = .;
     } >RAM
     
     /*calculate end address of idata*/
-    _eidata = _sidata + _edata - _sdata;
+    _eidata = _sidata + (_edata - _sdata);
     
     /*check that idata remains in FLASH region*/
     _lastdataromaddress = ORIGIN(FLASH) + LENGTH(FLASH);
-    toobig = ( _eidata > _lastdataromaddress) ? "!!!!!!!!! FLASH IS FULL !!!!!!!!!" : 0 ;
+    ___toobig___ = ( _eidata > _lastdataromaddress) ? 1 : 0 ;
+    ___SK_limit_msg___ = ( ___toobig___ & ___SK_limit___) ? "!!! RKit-ARM Lite limit reached. See !Starter Kit Limited! linker option !!!" : 0 ;
+    ___toobigmsg___ = ( ___toobig___ ) ? "!!!!!!!!! FLASH IS FULL !!!!!!!!!" : 0 ;
 
     
 
@@ -323,13 +486,16 @@ SECTIONS
         /* This is used by the startup in order to initialize the .bss secion */
         _sbss = .;
         _bss = .;
+        __bss_start__ = .;
         
         *(.bss)
+        *(.bss.*)
         *(COMMON)
         
 	    . = ALIGN(4);
 	    /* This is used by the startup in order to initialize the .bss secion */
-   	 _ebss = . ;
+        _ebss = . ;
+        __bss_end__ = .;
     } >RAM
     
     PROVIDE ( end = _ebss );
@@ -337,8 +503,7 @@ SECTIONS
     
     /* This is the user stack section 
     This is just to check that there is enough RAM left for the User mode stack
-    It should generate an error if it's full.
-     */
+    It should generate an error if it's full. */
     ._usrstack :
     {
 	    . = ALIGN(4);
@@ -388,53 +553,18 @@ SECTIONS
         *(.eb3rodata*)
     } >EXTMEMB3
     
-    __exidx_start = .;
-    __exidx_end = .;
     
+
     /* after that it's only debugging information. */
     
-    
-    
-    
-    /* remove the debugging information from the standard libraries */
+    /* Remove debug information from the standard libraries */
     /DISCARD/ :
     {
-     libc.a ( * )
-     libm.a ( * )
-     libgcc.a ( * )
-     }
+        libc.a ( * )
+        libc_s.a ( * )
+        libm.a ( * )
+        libgcc.a ( * )
+    }
 
-    /* Stabs debugging sections.  */
-    .stab          0 : { *(.stab) }
-    .stabstr       0 : { *(.stabstr) }
-    .stab.excl     0 : { *(.stab.excl) }
-    .stab.exclstr  0 : { *(.stab.exclstr) }
-    .stab.index    0 : { *(.stab.index) }
-    .stab.indexstr 0 : { *(.stab.indexstr) }
-    .comment       0 : { *(.comment) }
-    /* DWARF debug sections.
-       Symbols in the DWARF debugging sections are relative to the beginning
-       of the section so we begin them at 0.  */
-    /* DWARF 1 */
-    .debug          0 : { *(.debug) }
-    .line           0 : { *(.line) }
-    /* GNU DWARF 1 extensions */
-    .debug_srcinfo  0 : { *(.debug_srcinfo) }
-    .debug_sfnames  0 : { *(.debug_sfnames) }
-    /* DWARF 1.1 and DWARF 2 */
-    .debug_aranges  0 : { *(.debug_aranges) }
-    .debug_pubnames 0 : { *(.debug_pubnames) }
-    /* DWARF 2 */
-    .debug_info     0 : { *(.debug_info .gnu.linkonce.wi.*) }
-    .debug_abbrev   0 : { *(.debug_abbrev) }
-    .debug_line     0 : { *(.debug_line) }
-    .debug_frame    0 : { *(.debug_frame) }
-    .debug_str      0 : { *(.debug_str) }
-    .debug_loc      0 : { *(.debug_loc) }
-    .debug_macinfo  0 : { *(.debug_macinfo) }
-    /* SGI/MIPS DWARF 2 extensions */
-    .debug_weaknames 0 : { *(.debug_weaknames) }
-    .debug_funcnames 0 : { *(.debug_funcnames) }
-    .debug_typenames 0 : { *(.debug_typenames) }
-    .debug_varnames  0 : { *(.debug_varnames) }
+    .ARM.attributes 0 : { *(.ARM.attributes) } 
 }

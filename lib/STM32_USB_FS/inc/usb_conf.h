@@ -22,6 +22,7 @@
 
 // OpenTag Platform header contains board and feature information
 #include <platform/config.h>
+#include <otlib.h>
 
 ///@todo If more modes of USB operation are present, then this will need to be
 ///      expanded and made more intelligent.

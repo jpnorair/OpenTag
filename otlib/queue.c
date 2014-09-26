@@ -127,11 +127,11 @@ OT_INLINE void q_blockwrite(ot_queue* q, ot_uint blocktime) {
 
 void q_lock(ot_queue* q) {
     while (q->options.ushort != 0) {
-        //ot_tid tid = systhread_this_tid();
-        //if (tid != systhread_kernel_tid()) {
-        //    systhread_mark_tmask( &(q->tmask), tid );
-        //    systhread_wait();
-        //    systhread_unmark_tmask( &(q->tmask), tid );
+        //ot_thandle thandle = otthread_this_thandle();
+        //if (thandle != otthread_kernel_thandle()) {
+        //    otthread_set_tmask( &(q->tmask), thandle );
+        //    otthread_wait();
+        //    otthread_clear_tmask( &(q->tmask), thandle );
         //}
         //else 
         {   delay_ti(q->options.ushort);
@@ -141,7 +141,7 @@ void q_lock(ot_queue* q) {
 }
 
 void q_unlock(ot_queue* q) {
-    // systhread_release_any( &(q->tmask) );
+    // otthread_release_any( &(q->tmask) );
     q->options.ushort = 0;
 }
 

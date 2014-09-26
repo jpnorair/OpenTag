@@ -13,6 +13,13 @@
   * limitations under the License.
   *
 
+NOTE: This works with older versions of RIDE and arm-gcc.  It is for versions
+prior to 7.50, which is from 09/2014.
+
+If you are building with RIDE, you can make sure the project looks for this
+linker script at the following location:
+$(ApplicationDir)/../../_common/linker/stm32l1xx_128_16.ld
+
 Default linker script for STM32L1xx with 128KB Flash + 16KB SRAM + 4KB EEPROM
 
 DETAILS

@@ -29,6 +29,7 @@
 
 
 #include <otstd.h>
+#include <platform/config.h>
 #include <otlib/crc16.h>
 #include <otlib/utils.h>
 
@@ -66,7 +67,7 @@ void crc_calc_nstream(crcstream_t* stream, ot_u16 n) {
         stream->count  -= n;
         data            = stream->cursor;
         stream->cursor += n;
-        stream->val     = crc16drv_block_manual(dst, n, stream->val);
+        stream->val     = crc16drv_block_manual(data, n, stream->val);
     }
     else if (stream->writeout) {
         stream->writeout    = False;

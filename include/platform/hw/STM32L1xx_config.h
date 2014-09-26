@@ -43,7 +43,12 @@
   * part number for the MCU on the board.  The preprocessing below will set up
   * other attributes based on the part number.
   */
-  
+
+#define __STM32__
+#define __STM32L__
+#define __STM32L1__
+#define __STM32L1xx__
+
 // 48 Pin STM32L's have ports A, B, C   (although C is limited)
 #if (   defined(__STM32L151C6__) \
     ||  defined(__STM32L151C8__) \
@@ -285,9 +290,6 @@ ot_u16 platform_ext_lsihz();
   */
 
 #define PLATFORM(VAL)           PLATFORM_##VAL
-#define __STM32__
-#define __STM32L__
-#define __STM32L1xx__
 #define PLATFORM_STM32L1xx
 
 #ifndef __LITTLE_ENDIAN__

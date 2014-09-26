@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/mpipe_usbcdc_driver.c
+  * @file       /platform/stm32l1xx/mpipe_usbcdc_driver.c
   * @author     JP Norair
   * @version    R101
   * @date       14 Nov 2013
-  * @brief      Message Pipe (MPIPE) USB CDC ACM implementation for STM32L
+  * @brief      Message Pipe (MPIPE) USB CDC ACM implementation for STM32L1
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
   *
@@ -73,7 +73,7 @@
 #   define BOARD_PARAM_MPIPE_IFS 1
 #endif
 
-#if (defined(__STM32L__) && OT_FEATURE(MPIPE) && (BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_USB))
+#if (defined(__STM32L1__) && OT_FEATURE(MPIPE) && (BOARD_PARAM(MPIPE_IFS) == 1) && defined(MPIPE_USB))
 
 #include <otlib/buffers.h>
 #include <otsys/mpipe.h>
@@ -1183,14 +1183,9 @@ void sub_usb_loadtx(ot_int pad_bytes) {
 }
 
 void sub_gen_mpipecrc() {
-    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)&cdcacm.header.plen,
-                                                    4,
-                                                    0xFFFF  );
-
-    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)mpipe.alp.outq->getcursor,
-                                                    cdcacm.header.plen,
-                                                    cdcacm.header.crc16 );
-
+    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)&cdcacm.header.plen, 4, 0xFFFF);
+    cdcacm.header.crc16 = \
+        crc16drv_block_manual((ot_u8*)mpipe.alp.outq->getcursor, cdcacm.header.plen, cdcacm.header.crc16 );
 }
 
 
@@ -1201,16 +1196,10 @@ void sub_gen_mpipecrc() {
   * ========================================================================
   */
 #ifndef EXTF_mpipedrv_setspeed
-
 void mpipedrv_setspeed(mpipe_speed speed) {
-
     linecoding.bitrate = br_hssel[speed];
-
 }
-
 #endif
-
-
 
 
 #ifndef EXTF_mpipedrv_footerbytes
@@ -1312,7 +1301,6 @@ void mpipedrv_unblock() {
 #ifndef EXTF_mpipedrv_kill
 void mpipedrv_kill() {
     mpipe.state = MPIPE_Idle;
-
 	q_empty(mpipe.alp.outq);
 	cdcacm.pkt = mpipe.alp.outq->front;
 }
@@ -1331,7 +1319,7 @@ void mpipedrv_wait() {
 
 
 #ifndef EXTF_mpipedrv_tx
-ot_uint mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
+ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     // Adding a packet is an atomic operation
     ///@todo disable USB interrupt(s)
 
@@ -1415,12 +1403,12 @@ void mpipedrv_isr() {
         /// new data, while cropping the footer.  Go to Idle and do callback.
         case MPIPE_RxPayload:
             if (cdcacm.pkt == cdcacm.pktend) {
-                if (crc16drv_block_manual(cdcacm.pkt, cdcacm.header.plen, cdcacm.header.crc16) == 0) {
+                //if (crc16drv_block_manual(cdcacm.pkt, cdcacm.header.plen, cdcacm.header.crc16) == 0) {
                     mpipe.alp.inq->putcursor    = cdcacm.pktend;
                     mpipe.state                 = MPIPE_Idle;
                     mpipeevt_rxdone(0);
-                }
-                mpipedrv_rx(False, 0);
+                //}
+                //mpipedrv_rx(False, 0);
             }
             break;
 

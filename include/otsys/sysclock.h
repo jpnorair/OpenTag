@@ -32,9 +32,9 @@
 #include <otsys/syskern.h>
 
 typedef enum {
-    SPEED_Std   = -1;
-    SPEED_Full  = 0;
-    SPEED_Flank = 1;
+    SPEED_Std   = -1,
+    SPEED_Full  = 0,
+    SPEED_Flank = 1
 } SPEED_enum;
 
 /** @brief  Request a system-speed.  Returns a handle.

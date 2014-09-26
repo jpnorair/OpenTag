@@ -88,14 +88,14 @@
   * On this board, the Jupiter DK, you can use USB or UART for MPipe
   */
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
-#define MCU_CONFIG_MULTISPEED           DISABLED         // Allows usage of MF-HF clock boosting
+#define MCU_CONFIG_MULTISPEED           DISABLED                            // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             ENABLED         // USB-CDC MPipe implementation
-#define MCU_CONFIG_MPIPEUART            DISABLED         // UART MPipe Implementation
-#define MCU_CONFIG_MPIPEI2C             DISABLED        // I2C MPipe Implementation
-#define MCU_CONFIG_MEMCPYDMA            ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
-#define MCU_CONFIG_USB                  ((MCU_CONFIG_MPIPECDC == ENABLED) || 0)
-#define MCU_CONFIG_VOLTLEVEL            2               // 3=1.2, 2=1.5V, 1=1.8V
+#define MCU_CONFIG_MPIPECDC             ENABLED                             // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC != ENABLED)    // UART MPipe Implementation
+#define MCU_CONFIG_MPIPEI2C             DISABLED                            // I2C MPipe Implementation
+#define MCU_CONFIG_MEMCPYDMA            ENABLED                             // MEMCPY DMA should be lower priority than MPIPE DMA
+#define MCU_CONFIG_USB                  (MCU_CONFIG_MPIPECDC == ENABLED)
+#define MCU_CONFIG_VOLTLEVEL            2  // 3=1.2, 2=1.5V, 1=1.8V
 
 
 
@@ -169,8 +169,8 @@
 
 #define BOARD_FEATURE_MPIPE             ENABLED
 #define BOARD_FEATURE_USBCONVERTER      BOARD_FEATURE_MPIPE         // Is UART connected via USB converter?
-#define BOARD_FEATURE_MPIPE_DIRECT      BOARD_FEATURE_MPIPE
-#define BOARD_FEATURE_MPIPE_BREAK       ENABLED                     // Send/receive leading break for wakeup
+#define BOARD_FEATURE_MPIPE_DIRECT      DISABLED //BOARD_FEATURE_MPIPE
+#define BOARD_FEATURE_MPIPE_BREAK       BOARD_FEATURE_MPIPE                     // Send/receive leading break for wakeup
 #define BOARD_FEATURE_MPIPE_CS          DISABLED                    // Chip-Select / DTR wakeup control
 #define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                    // RTS/CTS style flow control 
 
@@ -181,7 +181,7 @@
 #define BOARD_FEATURE_RFXTALOUT         MCU_CONFIG_USB
 #define BOARD_FEATURE_PLL               MCU_CONFIG_USB
 #define BOARD_FEATURE_STDSPEED          (MCU_CONFIG_MULTISPEED == ENABLED)
-#define BOARD_FEATURE_FULLSPEED         ((MCU_CONFIG_MULTISPEED == ENABLED) || (MCU_CONFIG_USB != ENABLED))
+#define BOARD_FEATURE_FULLSPEED         ENABLED
 #define BOARD_FEATURE_FULLXTAL          DISABLED
 #define BOARD_FEATURE_FLANKSPEED        ((MCU_CONFIG_MULTISPEED == ENABLED) || (MCU_CONFIG_USB != ENABLED))
 #define BOARD_FEATURE_FLANKXTAL         MCU_CONFIG_USB
@@ -285,41 +285,41 @@
 #define BOARD_RFSPI_SCLKPIN             (1<<BOARD_RFSPI_SCLKPINNUM)
 #define BOARD_RFSPI_CSNPIN              (1<<BOARD_RFSPI_CSNPINNUM)
 
-// HCOM bus (implements MPIPE)
-#define BOARD_HCOMI2C_PORTNUM           1
-#define BOARD_HCOMI2C_PORT              GPIOB
-#define BOARD_HCOMI2C_ID                2
-#define BOARD_HCOMI2C_SCLPINNUM         10
-#define BOARD_HCOMI2C_SDAPINNUM         11
-#define BOARD_HCOMI2C_SCLPIN            (1<<BOARD_HCOMI2C_SCLPINNUM)
-#define BOARD_HCOMI2C_SDAPIN            (1<<BOARD_HCOMI2C_SDAPINNUM)
-#define BOARD_HCOMUART_PORTNUM          0
-#define BOARD_HCOMUART_PORT             GPIOA
-#define BOARD_HCOMUART_ID               1
-#define BOARD_HCOMUART_TXPINNUM         9
-#define BOARD_HCOMUART_RXPINNUM         10
-#define BOARD_HCOMUART_RTSPINNUM        11
-#define BOARD_HCOMUART_CTSPINNUM        12
-#define BOARD_HCOMUART_DTRPINNUM        BOARD_HCOMUART_CTSPINNUM
-#define BOARD_HCOMUART_TXPIN            (1<<BOARD_HCOMUART_TXPINNUM)
-#define BOARD_HCOMUART_RXPIN            (1<<BOARD_HCOMUART_RXPINNUM)
-#define BOARD_HCOMUART_RTSPIN           (1<<BOARD_HCOMUART_RTSPINNUM)
-#define BOARD_HCOMUART_CTSPIN           (1<<BOARD_HCOMUART_CTSPINNUM)
-#define BOARD_HCOMUART_DTRPIN           (1<<BOARD_HCOMUART_DTRPINNUM)
-#define BOARD_HCOMUSB_PORTNUM           0
-#define BOARD_HCOMUSB_PORT              GPIOA
-#define BOARD_HCOMUSB_DMPINNUM          11
-#define BOARD_HCOMUSB_DPPINNUM          12
-#define BOARD_HCOMUSB_DMPIN             (1<<BOARD_HCOMUSB_DMPINNUM)
-#define BOARD_HCOMUSB_DPPIN             (1<<BOARD_HCOMUSB_DPPINNUM)
-#define BOARD_HCOMSRES_PORTNUM          0
-#define BOARD_HCOMSRES_PORT             GPIOA
-#define BOARD_HCOMSRES_PINNUM           15
-#define BOARD_HCOMSRES_PIN              (1<<BOARD_HCOMSRES_PINNUM)
-#define BOARD_HCOMUSEN_PORTNUM          2
-#define BOARD_HCOMUSEN_PORT             GPIOC
-#define BOARD_HCOMUSEN_PINNUM           13
-#define BOARD_HCOMUSEN_PIN              (1<<BOARD_HCOMUSEN_PINNUM)
+// Main serial connections, used at least by MPIPE
+#define BOARD_I2C_PORTNUM           1
+#define BOARD_I2C_PORT              GPIOB
+#define BOARD_I2C_ID                2
+#define BOARD_I2C_SCLPINNUM         10
+#define BOARD_I2C_SDAPINNUM         11
+#define BOARD_I2C_SCLPIN            (1<<BOARD_I2C_SCLPINNUM)
+#define BOARD_I2C_SDAPIN            (1<<BOARD_I2C_SDAPINNUM)
+#define BOARD_UART_PORTNUM          0
+#define BOARD_UART_PORT             GPIOA
+#define BOARD_UART_ID               1
+#define BOARD_UART_TXPINNUM         9
+#define BOARD_UART_RXPINNUM         10
+#define BOARD_UART_RTSPINNUM        11
+#define BOARD_UART_CTSPINNUM        12
+#define BOARD_UART_DTRPINNUM        BOARD_UART_CTSPINNUM
+#define BOARD_UART_TXPIN            (1<<BOARD_UART_TXPINNUM)
+#define BOARD_UART_RXPIN            (1<<BOARD_UART_RXPINNUM)
+#define BOARD_UART_RTSPIN           (1<<BOARD_UART_RTSPINNUM)
+#define BOARD_UART_CTSPIN           (1<<BOARD_UART_CTSPINNUM)
+#define BOARD_UART_DTRPIN           (1<<BOARD_UART_DTRPINNUM)
+#define BOARD_USB_PORTNUM           0
+#define BOARD_USB_PORT              GPIOA
+#define BOARD_USB_DMPINNUM          11
+#define BOARD_USB_DPPINNUM          12
+#define BOARD_USB_DMPIN             (1<<BOARD_USB_DMPINNUM)
+#define BOARD_USB_DPPIN             (1<<BOARD_USB_DPPINNUM)
+#define BOARD_SRES_PORTNUM          0
+#define BOARD_SRES_PORT             GPIOA
+#define BOARD_SRES_PINNUM           15
+#define BOARD_SRES_PIN              (1<<BOARD_SRES_PINNUM)
+#define BOARD_USEN_PORTNUM          2
+#define BOARD_USEN_PORT             GPIOC
+#define BOARD_USEN_PINNUM           13
+#define BOARD_USEN_PIN              (1<<BOARD_USEN_PINNUM)
 
 // ADC Analog inputs
 #define BOARD_ADC_PORTNUM               1
@@ -346,7 +346,7 @@
 // GPIO Bus: available pins are 3-9
 // - Pins 0-2 are radio transceiver inputs, which you can certainly read if you want
 // - Pin 3 is the TRACE PIN, so avoid using it if you can
-// - Pins 10-11 are used with the HCOM I2C, which are alternate function by default
+// - Pins 10-11 are used with the  I2C, which are alternate function by default
 // - Pins 12-15 are the ADC inputs
 #define BOARD_IOBUS_PORTNUM             1
 #define BOARD_IOBUS_PORT                GPIOB
@@ -536,14 +536,14 @@ static inline void BOARD_EXTI_STARTUP(void) {
     // EXTI8-11: IOBUS_8, IOBUS_9, UART RX-Break, I2C RX-Break
     SYSCFG->EXTICR[2]  |= (BOARD_IOBUS_PORTNUM << 0) \
                         | (BOARD_IOBUS_PORTNUM << 4) \
-                        | (BOARD_HCOMUART_PORTNUM << 8) \
-                        | (BOARD_HCOMI2C_PORTNUM << 12);
+                        | (BOARD_UART_PORTNUM << 8) \
+                        | (BOARD_I2C_PORTNUM << 12);
     
     // EXTI12-15: CTS/DTR (if UART), USBSENSE, USER_B14, SRES
-    SYSCFG->EXTICR[3]  |= (BOARD_HCOMUART_PORTNUM << 0) \
-                        | (BOARD_HCOMUSEN_PORTNUM << 4) \
+    SYSCFG->EXTICR[3]  |= (BOARD_UART_PORTNUM << 0) \
+                        | (BOARD_USEN_PORTNUM << 4) \
                         | (BOARD_IOBUS_PORTNUM << 8) \
-                        | (BOARD_HCOMSRES_PORTNUM << 12);
+                        | (BOARD_SRES_PORTNUM << 12);
 }
 
 
@@ -555,19 +555,19 @@ static inline void BOARD_PORT_STARTUP(void) {
 /// A. Trigger Pins
 /// B. Random Number ADC pins: A Zener can be used to generate noise.
        /// Configure Port A IO.  
-    /// Port A is used for internal features and HCOM.
+    /// Port A is used for internal features and .
     // - A0:1 are used for LED push-pull outputs.  They can link to TIM2 in the future.
     // - A2 is the radio shutdown push-pull output
     // - A3 is the radio signal input for RFIO3.  It should be HiZ input or open-drain out.
     // - A4 is the radio SPI CS pin, which is a push-pull output
     // - A5:7 are radio SPI bus, set to ALT.  MISO is pull-down
     // - A8 is the MCO pin, which by default we use as output ground
-    // - A9 is HCOM UART TX, which is ALT open-drain output
-    // - A10 is HCOM UART RX, which is ALT pullup input
+    // - A9 is  UART TX, which is ALT open-drain output
+    // - A10 is  UART RX, which is ALT pullup input
     // - A11 is UART RTS, which is pull-up open drain output by default
     // - A12 is UART CTS, which is pull-up input by default
     // - A13:14 are SWD, which are ALT
-    // - A15 is HCOM SRES, which is pull-up input by default
+    // - A15 is  SRES, which is pull-up input by default
     GPIOA->BSRRL    = BOARD_RFCTL_SDNPIN | BOARD_RFSPI_CSNPIN;
     /*
     GPIOA->MODER    = (GPIO_MODER_OUT << (0*2)) \
@@ -603,7 +603,7 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_MODER_ALT << (13*2)) \
                     | (GPIO_MODER_ALT << (14*2)) \
                     | (GPIO_MODER_IN  << (15*2));
-    /**/
+    /* */
     
     GPIOA->OTYPER   = (1 << (9)) | (1 << (11)) | (1 << 14);
     
@@ -629,12 +629,14 @@ static inline void BOARD_PORT_STARTUP(void) {
     GPIOA->AFR[0]   = (5 << ((BOARD_RFSPI_MOSIPINNUM)*4)) \
                     | (5 << ((BOARD_RFSPI_MISOPINNUM)*4)) \
                     | (5 << ((BOARD_RFSPI_SCLKPINNUM)*4));
-    /* 
-    GPIOA->AFR[1]   = (7 << ((BOARD_HCOMUART_TXPINNUM-8)*4)) \
-                    | (7 << ((BOARD_HCOMUART_RXPINNUM-8)*4));
-    */
-    GPIOA->AFR[1]   = (10 << ((BOARD_HCOMUSB_DMPINNUM-8)*4)) \
-                    | (10 << ((BOARD_HCOMUSB_DPPINNUM-8)*4));
+                    
+#   if (MCU_CONFIG(MPIPEUART))
+    GPIOA->AFR[1]   = (7 << ((BOARD_UART_TXPINNUM-8)*4)) \
+                    | (7 << ((BOARD_UART_RXPINNUM-8)*4));
+#   elif (MCU_CONFIG(USB))
+    GPIOA->AFR[1]   = (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
+                    | (10 << ((BOARD_USB_DPPINNUM-8)*4));
+#   endif
     /* */
 
     /// Configure Port B IO.
@@ -642,7 +644,7 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - B0:2 are radio IRQs, which are input HiZ by startup default
     // - B3: is the TRACE pin, which is a pullup input for test
     // - B4:9 are USER IOBUS pins, which are input HiZ by startup default
-    // - B10:11 are the HCOM I2C pins, which input HiZ by startup default
+    // - B10:11 are the  I2C pins, which input HiZ by startup default
     // - B12:15 are the ADC pins, which are set to floating ADC (HiZ)
     GPIOB->MODER    = (GPIO_MODER_ANALOG << (12*2)) \
                     | (GPIO_MODER_ANALOG << (13*2)) \
@@ -1089,7 +1091,7 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 
 
 
-/** Jupiter STM32L HCOM/MPipe Setup <BR>
+/** Jupiter STM32L MPipe Setup <BR>
   * ========================================================================<BR>
   * USB MPipe requires a CDC firmware library subsystem, which typically uses
   * memcpy to move data across HW buffers and such.  UART MPipe *REQUIRES* a,
@@ -1113,24 +1115,24 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #   endif
 #   define MPIPE_USB_ID         0
 #   define MPIPE_USB            USB0
-#   define MPIPE_USBDP_PORT     BOARD_HCOMUSB_PORT
-#   define MPIPE_USBDM_PORT     BOARD_HCOMUSB_PORT
-#   define MPIPE_USBDP_PIN      BOARD_HCOMUSB_DPPIN
-#   define MPIPE_USBDM_PIN      BOARD_HCOMUSB_DMPIN
+#   define MPIPE_USBDP_PORT     BOARD_USB_PORT
+#   define MPIPE_USBDM_PORT     BOARD_USB_PORT
+#   define MPIPE_USBDP_PIN      BOARD_USB_DPPIN
+#   define MPIPE_USBDM_PIN      BOARD_USB_DMPIN
 #endif
 
 #if (MCU_CONFIG_MPIPEUART == ENABLED)
 #   define MPIPE_DMANUM         1
 #   define MPIPE_DMA            DMA1
-#   define MPIPE_UART_ID        BOARD_HCOMUART_ID
-#   define MPIPE_UART_PORTNUM   BOARD_HCOMUART_PORTNUM
-#   define MPIPE_UART_PORT      BOARD_HCOMUART_PORT
-#   define MPIPE_UART_RXPIN     BOARD_HCOMUART_RXPIN
-#   define MPIPE_UART_TXPIN     BOARD_HCOMUART_TXPIN
-#   define MPIPE_RTS_PORT       BOARD_HCOMUART_PORT
-#   define MPIPE_CTS_PORT       BOARD_HCOMUART_PORT
-#   define MPIPE_RTS_PIN        BOARD_HCOMUART_RTSPIN
-#   define MPIPE_CTS_PIN        BOARD_HCOMUART_CTSPIN
+#   define MPIPE_UART_ID        BOARD_UART_ID
+#   define MPIPE_UART_PORTNUM   BOARD_UART_PORTNUM
+#   define MPIPE_UART_PORT      BOARD_UART_PORT
+#   define MPIPE_UART_RXPIN     BOARD_UART_RXPIN
+#   define MPIPE_UART_TXPIN     BOARD_UART_TXPIN
+#   define MPIPE_RTS_PORT       BOARD_UART_PORT
+#   define MPIPE_CTS_PORT       BOARD_UART_PORT
+#   define MPIPE_RTS_PIN        BOARD_UART_RTSPIN
+#   define MPIPE_CTS_PIN        BOARD_UART_CTSPIN
 #   define MPIPE_UART_PINS      (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
 #   if (MPIPE_UART_ID != 1)
 #       error "MPIPE UART must be on USART1 for this board."
@@ -1143,12 +1145,12 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #endif
 
 #if (MCU_CONFIG_MPIPEI2C == ENABLED)
-#   define MPIPE_I2C_ID         BOARD_HCOMI2C_ID
+#   define MPIPE_I2C_ID         BOARD_I2C_ID
 #   define MPIPE_I2C            I2C2
-#   define MPIPE_I2C_PORTNUM    BOARD_HCOMI2C_PORTNUM
-#   define MPIPE_I2C_PORT       BOARD_HCOMI2C_PORT
-#   define MPIPE_I2C_RXPIN      BOARD_HCOMI2C_SCLPIN
-#   define MPIPE_I2C_TXPIN      BOARD_HCOMI2C_SDAPIN
+#   define MPIPE_I2C_PORTNUM    BOARD_I2C_PORTNUM
+#   define MPIPE_I2C_PORT       BOARD_I2C_PORT
+#   define MPIPE_I2C_RXPIN      BOARD_I2C_SCLPIN
+#   define MPIPE_I2C_TXPIN      BOARD_I2C_SDAPIN
 #   define MPIPE_I2C_PINS       (MPIPE_I2C_RXPIN | MPIPE_I2C_TXPIN)
 #   if (MPIPE_I2C_ID != 2)
 #       error "MPIPE I2C must be on I2C2 for this board."

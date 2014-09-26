@@ -7,6 +7,7 @@
 # Compiler/Linker Generated Files #
 ###################################
 *.o
+*.d
 *.so
 *.hex
 *.pp

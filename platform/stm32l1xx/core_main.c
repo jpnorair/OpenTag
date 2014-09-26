@@ -178,7 +178,7 @@ void otapi_pause()      { platform_ot_pause(); }
 #endif
 
 // Fullspeed uses HSE or HSI without PLL
-#if BOARD_FEATURE(FULLSPEED)
+#if (BOARD_FEATURE(FULLSPEED))
 #   if (PLATFORM_HSCLOCK_HZ > 32000000)
 #       error "High Speed Clock must be less than 32 MHz"
 #   elif (PLATFORM_HSCLOCK_HZ > 16000000)
@@ -397,11 +397,11 @@ void platform_ext_wakefromstop() {
     systim_start_clocker();
 
     // Use the lowest allowed speed coming from STOP
-#   if BOARD_FEATURE(STDSPEED)
+#   if (BOARD_FEATURE(STDSPEED))
         platform_standard_speed();
-#   elif BOARD_FEATURE(FULLSPEED)
+#   elif (BOARD_FEATURE(FULLSPEED))
         platform_full_speed();
-#   elif BOARD_FEATURE(FLANKSPEED)
+#   elif (BOARD_FEATURE(FLANKSPEED))
         platform_flank_speed();
 #   endif
 }
@@ -502,7 +502,7 @@ void platform_standard_speed() {
 /// Best efficient speed.  (MSI)
 /// typ config: 4.2 MHz, Power Level 2, 0 wait state.  ~1mA, 5.2 DMIPS
 /// @note Going into STOP will automatically put system into Standard Speed.
-#if BOARD_FEATURE(STDSPEED)
+#if (BOARD_FEATURE(STDSPEED))
     if ((RCC->CR & RCC_CR_MSION) == 0) {
         sub_osc_startup(300, RCC_CR_MSION);
 
@@ -537,9 +537,9 @@ void platform_full_speed() {
 /// <LI> typ config: 16MHz, Power Level 2, 1 wait state. ~4mA, 16.5 DMIPS </LI>
 /// <LI> Only enter fullspeed from MSI (stdspeed) </LI>
 /// <LI> In system with attachable USB, check for flank-enable </LI>
-#if BOARD_FEATURE(FULLSPEED)
+#if (BOARD_FEATURE(FULLSPEED))
     if (RCC->CR & RCC_CR_MSION) {
-        // Change Voltage to FULLSPEED level, if different than STDSPEED
+        // Change Voltage to FULLSPEEu,D level, if different than STDSPEED
 #       if ( _FULLSPEED_VOLTAGE != _STDSPEED_VOLTAGE)
         sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
 #       endif
@@ -567,7 +567,7 @@ void platform_full_speed() {
 void platform_flank_speed() {
 /// Coming in hot!  (HSI or HSE + PLL)
 /// typ config: 32MHz, Power Level 1, 1 wait state.  ~9mA, 33 DMIPS.
-#if BOARD_FEATURE(FLANKSPEED)
+#if (BOARD_FEATURE(FLANKSPEED))
 #   if (BOARD_FEATURE(PLL) != ENABLED)
 #       error "Cannot have Flank Speed without PLL"
 #   endif
@@ -804,7 +804,7 @@ void platform_init_busclk() {
     ///    <LI> Specified as PLATFORM_MSCLOCK_HZ in board support header </LI>
     ///    <LI> MSI is only used as standard clock if BOARD_FEATURE_STDSPEED
     ///           is also ENABLED in board support header.
-#   if BOARD_FEATURE(STDSPEED)
+#   if (BOARD_FEATURE(STDSPEED))
         // Change MSI to required frequency
 #       if (PLATFORM_MSCLOCK_HZ == 4200000)
         sub_voltage_config((POWER_1V5 | PWR_CR_DBP));
@@ -833,7 +833,7 @@ void platform_init_busclk() {
     ///    <LI> HSE is used if BOARD_FEATURE_HFXTAL is ENABLED, else HSI used. </LI>
     ///    <LI> Boards using HSE can declare any value into PLATFORM_HSCLOCK_HZ.
     ///           Board using HSI may only declare 2, 4, 8, or 16 MHz</LI>
-#   elif BOARD_FEATURE(FULLSPEED)
+#   elif (BOARD_FEATURE(FULLSPEED))
         // Basic Flash setup, then run normal routine
         FLASH->ACR |= FLASH_ACR_ACC64;
         FLASH->ACR |= FLASH_ACR_PRFTEN;
@@ -846,7 +846,7 @@ void platform_init_busclk() {
     ///           particular PLL configuration.  For example, if using USB
     ///           (BOARD_PARAM_HFHz * BOARD_PARAM_PLLmult) must be 96 MHz, and
     ///           (96 MHz / BOARD_PARAM_PLLdiv) == PLATFORM_HSCLOCK_HZ. </LI>
-#   elif BOARD_FEATURE(FLANKSPEED)
+#   elif (BOARD_FEATURE(FLANKSPEED))
         // Basic Flash setup, then run normal routine
         FLASH->ACR |= FLASH_ACR_ACC64;
         FLASH->ACR |= FLASH_ACR_PRFTEN;

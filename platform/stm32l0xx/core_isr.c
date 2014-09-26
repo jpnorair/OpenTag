@@ -800,7 +800,7 @@ void USB_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     EXTI->PR = (1<<18);
     __ISR_WAKEUP_HOOK();
-    platform_isr_usb();
+    platform_isr_usb(); //HAL_PCD_IRQHandler(&hpcd);
     __ISR_EXIT_HOOK();
 }
 #endif

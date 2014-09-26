@@ -403,7 +403,7 @@ void mpipedrv_wait();
 /** @brief  Transmits an NDEF structured datastream over the MPIPE
   * @param  blocking    (ot_bool) True/False for blocking/non-blocking call
   * @param  data_priority (mpipe_priority) Priority of the TX
-  * @retval ot_uint     Number of ticks before TX stream timeout
+  * @retval ot_int     Number of ticks before TX stream timeout
   * @ingroup Mpipe
   * @sa mpipe_rxndef, mpipe_status
   *
@@ -418,7 +418,7 @@ void mpipedrv_wait();
   * underway if its own priority is higher.
   *
   */
-ot_uint mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority);
+ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority);
 
 
 

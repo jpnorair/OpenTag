@@ -116,7 +116,7 @@ void crc_calc_stream(crcstream_t* stream);
   * @sa crc_calc_stream()
   * @sa crc_init_stream()
   */
-void crc_calc_nstream(ot_u16 n);
+void crc_calc_nstream(crcstream_t* stream, ot_u16 n);
 
 
 

@@ -1,4 +1,4 @@
-/* Copyright 2010-2013 JP Norair
+/* Copyright 2010-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /platform/stm32l0xx/otsys_mpipe_uart.c
   * @author     JP Norair
-  * @version    R102
-  * @date       11 Sept 2014
+  * @version    R103
+  * @date       21 Sept 2014
   * @brief      Message Pipe v2 (MPIPEv2) UART implementation for STM32L0xx
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
@@ -79,11 +79,12 @@
 #endif
 
 #define MPIPEDRV_ENABLED        (BOARD_FEATURE(MPIPE))
-#define THIS_MPIPEDRV_SUPPORTED ((BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_UART))
+#define THIS_MPIPEDRV_SUPPORTED ((BOARD_PARAM(MPIPE_IFS) == 1) && defined(MPIPE_UART))
 
 #if (defined(__STM32L0__) && MPIPEDRV_ENABLED && THIS_MPIPEDRV_SUPPORTED)
 
 #include <otlib/buffers.h>
+#include <otlib/crc16.h>
 #include <otsys/mpipe.h>
 #include <otsys/sysclock.h>
 
@@ -140,8 +141,9 @@
   * usage, this will never happen, but it is something to think about if you
   * are doing cool new hacks.
   */
-#define MPIPE_BUFFERSIZE    64
+#define MPIPE_BUFFER_SIZE    64
 
+#define MPIPE_CTL_NOCRC     1
 
 
 
@@ -376,7 +378,7 @@ typedef struct {
     ot_u8*          pkt;
     crcstream_t     crc;
     ot_queue        lq;
-    ot_u8           rxbuffer[MPIPE_BUFFERSIZE];
+    ot_u8           rxbuffer[MPIPE_BUFFER_SIZE];
     mpipe_header    header;
 
 } uart_struct;
@@ -511,22 +513,6 @@ void __DMATX_ISR(void) {
 
 
 
-/** Mpipe Main Subroutines   <BR>
-  * ========================================================================
-  */
-void sub_gen_mpipecrc() {
-    uart.header.crc16 = crc16drv_block_manual((ot_u8*)&uart.header.plen,
-                                                    4,
-                                                    0xFFFF  );
-
-    uart.header.crc16 = crc16drv_block_manual((ot_u8*)mpipe.alp.outq->getcursor,
-                                                    uart.header.plen,
-                                                    uart.header.crc16 );
-
-    uart.header.crc16 = PLATFORM_ENDIAN16(uart.header.crc16);
-}
-
-
 
 
 /** Mpipe Main Public Functions  <BR>
@@ -552,7 +538,7 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 
     /// UART Setup (RX & TX setup takes place at time of startup)
     __UART_CLKON();
-    MPIPE->BRR      = __UART_CLKHZ() / _brtable[uart.baudrate];
+    MPIPE_UART->BRR = __UART_CLKHZ() / _brtable[uart.baudrate];
     MPIPE_UART->CR3 = USART_CR3_DMAR | USART_CR3_DMAT;
     MPIPE_UART->CR2 = 0;
     MPIPE_UART->CR1 = 0;
@@ -650,7 +636,15 @@ void sub_txopen() {
     uart.header.plen    = PLATFORM_ENDIAN16( q_span(&uart.lq) );
     uart.header.ctl     = 0;
     uart.header.seq    += 1;
-    sub_gen_mpipecrc();
+    
+    //CTL in this is always enabling CRC (see above)
+    //if ((uart.header.ctl & MPIPE_CTL_NOCRC) == 0) {
+        uart.header.crc16 = crc16drv_block_manual((ot_u8*)&uart.header.plen, 4, 0xFFFF);
+        uart.header.crc16 = crc16drv_block_manual(  uart.lq.getcursor,
+                                                    uart.header.plen,
+                                                    uart.header.crc16   );
+        uart.header.crc16 = PLATFORM_ENDIAN16(uart.header.crc16);
+    //}
 
     sub_mpipe_close();
     sub_mpipe_open();
@@ -689,12 +683,12 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     uart.lq.front               = mpipe.alp.outq->getcursor;
     mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
     uart.lq.back                = mpipe.alp.outq->putcursor;
-    pktlen                      = q_length(&uart.lq)
+    pktlen                      = q_length(&uart.lq);
     holdtime                    = __MPIPE_TIMEOUT(pktlen);
 
     if (mpipe.state == MPIPE_Idle) {
-        uart.lq.getcursor   = uart.front;
-        uart.lq.putcursor   = uart.front + pktlen;
+        uart.lq.getcursor   = uart.lq.front;
+        uart.lq.putcursor   = uart.lq.front + pktlen;
         mpipedrv_tx_GO:
         __SYS_CLKON();
         sub_txopen();
@@ -809,7 +803,7 @@ void mpipedrv_isr() {
         case MPIPE_RxHeader: {
             // Use local queue, in order to protect the pending data from
             // getting accessed by other users of the main queue.
-            q_copy(&uart.lq, mpipe.alq.inq);
+            q_copy(&uart.lq, mpipe.alp.inq);
         
             // If there is no payload or if the input queue is being used by 
             // someone else, this packet is registered as an error.
@@ -836,7 +830,7 @@ void mpipedrv_isr() {
                 // uart.crc.count is also used to track the bytes left to receive
                 uart.crc.count  = uart.header.plen;
                 uart.crc.val    = 0;
-                if (uart.header.ctl & 7) {
+                if ((uart.header.ctl & MPIPE_CTL_NOCRC) == 0) {
                     uart.crc.writeout   = False;
                     uart.crc.cursor     = (ot_u8*)&uart.header.crc16;
                     uart.crc.count     += 6;
@@ -864,17 +858,21 @@ void mpipedrv_isr() {
             q_writestring(&uart.lq, uart.rxbuffer, lastframe);
             
             // Do CRC if required, else manually adjust crc.count
-            if (uart.header.ctl & 7)    crc_calc_nstream(&uart.crc, lastframe);
-            else                        uart.crc.count -= lastframe;
-
+            if ((uart.header.ctl & MPIPE_CTL_NOCRC) == 0) {
+                crc_calc_nstream(&uart.crc, lastframe);
+            }
+            else {
+                uart.crc.count -= lastframe;
+            }
+            
             // Update the hold time on the main queue.  This is not required,
             // and it is a bit of a hack, but it is nice to do
-            mpipe.alp.inq->options  = __MPIPE_TIMEOUT(uart.crc.count);
+            q_blockwrite(mpipe.alp.inq, __MPIPE_TIMEOUT(uart.crc.count));
 
             // Packet is done being received: check CRC and, if valid, refresh
             // the main alp queue.
             if (uart.crc.count <= 0) {
-                if (uart.crc.val == mpipe.header.crc16) {
+                if (uart.crc.val == uart.header.crc16) {
                     q_copy(mpipe.alp.inq, &uart.lq);
                     error_code = 0;   
                 }

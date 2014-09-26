@@ -74,11 +74,12 @@ INPUT("R:\OpenTag\apps\demo_ponglt\proj_ride7\build\system_gulp.o")
 INPUT("R:\OpenTag\apps\demo_ponglt\proj_ride7\build\system_hicculp.o")
 INPUT("R:\OpenTag\apps\demo_ponglt\proj_ride7\build\time.o")
 GROUP(
-"std_sbrk_thumb.lib"
 "smallprintf_thumb.a"
 "libc.a"
 "libm.a"
 
 )
-INCLUDE "R:\OpenTag\apps\demo_ponglt\proj_ride7\stm32l1xx_128_16.ld"
+INCLUDE "R:\OpenTag\apps\demo_ponglt\proj_ride7/../../_common/linker/stm32l1xx_128_16.ld"
+PROVIDE ( _Minimum_Stack_Size = 0x20 );
+PROVIDE ( malloc_getpagesize_P = 0x100 );
 OUTPUT("R:\OpenTag\apps\demo_ponglt\proj_ride7\build\ponglt.elf")
