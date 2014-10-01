@@ -1207,6 +1207,10 @@ typedef struct
 #define  DMA_CCR_PL                          ((uint32_t)0x00003000)        /*!< PL[1:0] bits(Channel Priority level)*/
 #define  DMA_CCR_PL_0                        ((uint32_t)0x00001000)        /*!< Bit 0                               */
 #define  DMA_CCR_PL_1                        ((uint32_t)0x00002000)        /*!< Bit 1                               */
+#define  DMA_CCR_PL_LOW                      ((uint16_t)0x0000) 
+#define  DMA_CCR_PL_MED                      ((uint16_t)0x1000) 
+#define  DMA_CCR_PL_HI                       ((uint16_t)0x2000) 
+#define  DMA_CCR_PL_VHI                      ((uint16_t)0x3000) 
 
 #define  DMA_CCR_MEM2MEM                     ((uint32_t)0x00004000)        /*!< Memory to memory mode               */
 
@@ -1463,6 +1467,8 @@ typedef struct
 /*                                                                            */
 /******************************************************************************/
 /*******************  Bit definition for GPIO_MODER register  *****************/
+
+
 #define GPIO_MODER_MODE0          ((uint32_t)0x00000003)
 #define GPIO_MODER_MODE0_0        ((uint32_t)0x00000001)
 #define GPIO_MODER_MODE0_1        ((uint32_t)0x00000002)
@@ -1511,6 +1517,14 @@ typedef struct
 #define GPIO_MODER_MODE15         ((uint32_t)0xC0000000)
 #define GPIO_MODER_MODE15_0       ((uint32_t)0x40000000)
 #define GPIO_MODER_MODE15_1       ((uint32_t)0x80000000)
+#define GPIO_MODER_INPUT           ((uint32_t)0x00000000)
+#define GPIO_MODER_OUTPUT          ((uint32_t)0x00000001)
+#define GPIO_MODER_ALT             ((uint32_t)0x00000002)
+#define GPIO_MODER_ANALOG          ((uint32_t)0x00000003)
+#define GPIO_MODER_IN              ((uint32_t)0x00000000)
+#define GPIO_MODER_OUT             ((uint32_t)0x00000001)
+#define GPIO_MODER_ALT             ((uint32_t)0x00000002)
+#define GPIO_MODER_AN              ((uint32_t)0x00000003)
 
 /******************  Bit definition for GPIO_OTYPER register  *****************/
 #define GPIO_OTYPER_OT_0           ((uint32_t)0x00000001)
@@ -1529,6 +1543,8 @@ typedef struct
 #define GPIO_OTYPER_OT_13          ((uint32_t)0x00002000)
 #define GPIO_OTYPER_OT_14          ((uint32_t)0x00004000)
 #define GPIO_OTYPER_OT_15          ((uint32_t)0x00008000)
+#define GPIO_OTYPER_PUSHPULL        ((uint32_t)0x00000000)
+#define GPIO_OTYPER_OPENDRAIN       ((uint32_t)0x00000001)
 
 /****************  Bit definition for GPIO_OSPEEDR register  ******************/
 #define GPIO_OSPEEDER_OSPEED0     ((uint32_t)0x00000003)
@@ -1579,6 +1595,11 @@ typedef struct
 #define GPIO_OSPEEDER_OSPEED15    ((uint32_t)0xC0000000)
 #define GPIO_OSPEEDER_OSPEED15_0  ((uint32_t)0x40000000)
 #define GPIO_OSPEEDER_OSPEED15_1  ((uint32_t)0x80000000)
+#define GPIO_OSPEEDR_400kHz        ((uint32_t)0x00000000)
+#define GPIO_OSPEEDR_2MHz          ((uint32_t)0x00000001) 
+#define GPIO_OSPEEDR_10MHz         ((uint32_t)0x00000002)
+#define GPIO_OSPEEDR_40MHz         ((uint32_t)0x00000003)
+
 
 /*******************  Bit definition for GPIO_PUPDR register ******************/
 #define GPIO_PUPDR_PUPD0          ((uint32_t)0x00000003)

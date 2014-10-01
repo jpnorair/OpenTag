@@ -35,7 +35,7 @@
 #define __nucleo_STM32L053_H
 
 /// MCU definition for the board must be the first thing
-#define __STM32L053K8__
+#define __STM32L053R8__
 
 /// Uncomment this if you are connecting the radio (SPIRIT1)
 //#define __USE_RADIO
@@ -96,7 +96,7 @@
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED                            // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             ENABLED                             // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPECDC             DISABLED                             // USB-CDC MPipe implementation
 #define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC != ENABLED)    // UART MPipe Implementation
 #define MCU_CONFIG_MPIPEI2C             DISABLED                            // I2C MPipe Implementation
 #define MCU_CONFIG_MEMCPYDMA            ENABLED                             // MEMCPY DMA should be lower priority than MPIPE DMA
@@ -478,8 +478,8 @@
 #define _GPIOCLK_LP      (_GPIOCLK_N)
 
 
-#define _IOPENR_STARTUP  (_DMACLK_N | _FLITFCLK_N | _CRCCLK_N | _GPIOCLK_SU)
-#define _IOPENR_RUNTIME  (_CRYPCLK_N | _FLITFCLK_N | _CRCCLK_N | _GPIOCLK_N)
+#define _IOPENR_STARTUP  (_DMACLK_N | _MIFCLK_N | _CRCCLK_N | _GPIOCLK_SU)
+#define _IOPENR_RUNTIME  (_CRYPCLK_N | _MIFCLK_N | _CRCCLK_N | _GPIOCLK_N)
 
 
 //@note BOARD Macro for Peripheral Clock initialization at startup
@@ -496,7 +496,7 @@ static inline void BOARD_PERIPH_INIT(void) {
     // enable/disable their clocks as needed.  SYSCFG and Debug Module are on
     // without needing driver support
 #   if defined(__DEBUG__) || defined(__PROTO__)
-    RCC->APB2ENR   = (RCC_APB2ENR_DBGEN | RCC_APB2ENR_SYSCFGEN);
+    RCC->APB2ENR   = (RCC_APB2ENR_DBGMCUEN | RCC_APB2ENR_SYSCFGEN);
 #   else
     RCC->APB2ENR   = (RCC_APB2ENR_SYSCFGEN);
 #   endif
@@ -505,7 +505,7 @@ static inline void BOARD_PERIPH_INIT(void) {
     // The default is all-off, and it is the job of the peripheral drivers to 
     // enable/disable their clocks as needed.  The exceptions are LPTIM1 and 
     // PWR, which are fundamental to OpenTag.
-    RCC->APB1ENR   = (RCC_API1ENR_LPTIM1 | RCC_APB1ENR_PWREN); 
+    RCC->APB1ENR   = (RCC_APB1ENR_LPTIM1EN | RCC_APB1ENR_PWREN); 
 }
 
 
@@ -529,33 +529,33 @@ static inline void BOARD_DMA_CLKOFF(void) {
 ///      bottom of the page.
 static inline void BOARD_EXTI_STARTUP(void) {
     // EXTI0-3: A0, A1, B2, UART-RX Break
-    SYSCFG->EXTICR1     = (0 << 0) \
+    SYSCFG->EXTICR[0]   = (0 << 0) \
                         | (0 << 4) \
                         | (1 << 8) \
                         | (BOARD_UART_PORTNUM << 12);
     
     // EXTI4-7: B4, B5, B6, C7
-    SYSCFG->EXTICR2     = (1 << 0) \
+    SYSCFG->EXTICR[1]   = (1 << 0) \
                         | (1 << 4) \
                         | (1 << 5) \
                         | (2 << 12);
     
 #ifdef __USE_RADIO
     // EXTI8-11: RFGPIO1 (A8), RFGPIO0 (A9), RFGPIO2 (A10), A11
-    SYSCFG->EXTICR3     = (BOARD_RFGPIO_1PORTNUM << 0) \
+    SYSCFG->EXTICR[2]   = (BOARD_RFGPIO_1PORTNUM << 0) \
                         | (BOARD_RFGPIO_0PORTNUM << 4) \
                         | (BOARD_RFGPIO_2PORTNUM << 8) \
                         | (0 << 12);
 #else
     // EXTI8-11: RFGPIO1 A8, A9, A10, A11
-    SYSCFG->EXTICR3     = (0 << 0) \
+    SYSCFG->EXTICR[2]   = (0 << 0) \
                         | (0 << 4) \
                         | (0 << 8) \
                         | (0 << 12);
 #endif
     
     // EXTI12-15: A12, B13, B14, A15
-    SYSCFG->EXTICR4     = (0 << 0) \
+    SYSCFG->EXTICR[3]   = (0 << 0) \
                         | (1 << 4) \
                         | (1 << 8) \
                         | (0 << 12);
@@ -579,7 +579,9 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - A8:10 are inputs (often used with radio)
     // - A11:12 are inputs which are not available on the Arduino pinout
     // - A13:14 are SWD, set to ALT
-    GPIOA->BSRRL    = BOARD_RFSPI_CSNPIN;
+#   ifdef __USE_RADIO
+    GPIOA->BSRR     = BOARD_RFSPI_CSNPIN;
+#   endif
 
     GPIOA->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
                     | (GPIO_MODER_ANALOG << (1*2)) \
@@ -607,14 +609,21 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_OSPEEDR_40MHz << (13*2)) \
                     | (GPIO_OSPEEDR_40MHz << (14*2));
     
-    GPIOA->PUPDR    = (1 << (3*2)) |
+    GPIOA->PUPDR    = (1 << (3*2)) \
                     | (1 << (13*2)) | (2 << (14*2));
     
+
+#   ifndef __USE_RADIO
+    GPIOA->AFR[0]   = (7 << (BOARD_UART_TXPINNUM*4)) \
+                    | (7 << (BOARD_UART_RXPINNUM*4));
+#   else
     GPIOA->AFR[0]   = (7 << (BOARD_UART_TXPINNUM*4)) \
                     | (7 << (BOARD_UART_RXPINNUM*4)) \
                     | (5 << ((BOARD_RFSPI_MOSIPINNUM)*4)) \
                     | (5 << ((BOARD_RFSPI_MISOPINNUM)*4)) \
                     | (5 << ((BOARD_RFSPI_SCLKPINNUM)*4));
+#   endif
+
     
     GPIOA->AFR[1]   = (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
                     | (10 << ((BOARD_USB_DPPINNUM-8)*4));
@@ -634,8 +643,8 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - B10 is a PWM output, set to Analog until configured
     // - B11:15 are unused and set to Analog mode
     GPIOB->OTYPER   = (1 << (8)) | (1 << (9));
-    GPIOB->BSRRL    = (1 << (8)) | (1 << (9));
-    
+    GPIOB->BSRR     = (1 << (8)) | (1 << (9));
+
     GPIOB->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
                     | (GPIO_MODER_ANALOG << (1*2)) \
                     | (GPIO_MODER_ANALOG << (2*2)) \
@@ -664,8 +673,10 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - C8:12 are unused and set to analog
     // - C13 is the user button, set to input HiZ
     // - C14:15 are 32kHz crystal driving, set to ALT
-    GPIOC->BSRRL    = BOARD_RFCTL_SDNPIN;
-    
+#   ifdef __USE_RADIO
+    GPIOC->BSRR     = BOARD_RFCTL_SDNPIN;
+#   endif
+
     GPIOC->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
                     | (GPIO_MODER_ANALOG << (1*2)) \
                     | (GPIO_MODER_ANALOG << (2*2)) \
@@ -703,6 +714,7 @@ static inline void BOARD_PORT_STARTUP(void) {
 
 
 static inline void BOARD_RFSPI_CLKON(void) {
+#ifdef __USE_RADIO
     BOARD_RFSPI_PORT->MODER &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
                             | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
                             | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
@@ -714,9 +726,11 @@ static inline void BOARD_RFSPI_CLKON(void) {
   //BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
                             | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
                             | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+#endif
 }
 
 static inline void BOARD_RFSPI_CLKOFF(void) {
+#ifdef __USE_RADIO
     BOARD_RFSPI_PORT->MODER &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
                             | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
                             | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
@@ -728,6 +742,7 @@ static inline void BOARD_RFSPI_CLKOFF(void) {
   //BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
                             | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
                             | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+#endif
 }
 
 
@@ -760,7 +775,7 @@ static inline void BOARD_STOP(ot_int code) {
 #   endif
 
     SysTick->CTRL = 0;
-    SCB->SCR   |= SCB_SCR_SLEEPDEEP;
+    SCB->SCR   |= SCB_SCR_SLEEPDEEP_Msk;
     scratch     = PWR->CR;
     scratch    &= ~(PWR_CR_DBP | PWR_CR_PDDS | PWR_CR_LPSDSR);
     scratch    |= stop_flags[code];
@@ -776,7 +791,7 @@ static inline void BOARD_STOP(ot_int code) {
     PWR->CR |= (PWR_CR_DBP | PWR_CR_CWUF | PWR_CR_CSBF);
     
     // On wakeup, immediately reset SLEEPDEEP bit
-    SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+    SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP_Msk);
     
     // Re-enable ports
 #   if defined(__RELEASE__)
@@ -851,11 +866,11 @@ static inline void BOARD_USB_PORTENABLE(void) {
     
     //BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
                             | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
-    SYSCFG->PMC |= SYSCFG_PMC_USB_PU;
+    //SYSCFG->PMC |= SYSCFG_PMC_USB_PU;
 }
 
 static inline void BOARD_USB_PORTDISABLE(void) {
-    SYSCFG->PMC &= ~SYSCFG_PMC_USB_PU;
+    //SYSCFG->PMC &= ~SYSCFG_PMC_USB_PU;
     //BOARD_USB_PORT->MODER  &= ~( (3 << (BOARD_USB_DMPINNUM*2)) \
                                | (3 << (BOARD_USB_DPPINNUM*2)) );
     BOARD_USBCLK_OFF();
@@ -1007,22 +1022,22 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define OT_TRIG(NUM, SET)   OT_TRIG##NUM##_##SET##()
 
 #if (OT_TRIG1_POLARITY != 0)
-#   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRRL = OT_TRIG1_PIN;
-#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BSRRH = OT_TRIG1_PIN;
+#   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRR  = OT_TRIG1_PIN;
+#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BSRR  = (OT_TRIG1_PIN << 16);
 #   define OT_TRIG1_TOG()   OT_TRIG1_PORT->ODR  ^= OT_TRIG1_PIN;
 #else 
-#   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRRH = OT_TRIG1_PIN;
-#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BSRRL = OT_TRIG1_PIN;
+#   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRR  = (OT_TRIG1_PIN <<16);
+#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BSRR  = OT_TRIG1_PIN;
 #   define OT_TRIG1_TOG()   OT_TRIG1_PORT->ODR  ^= OT_TRIG1_PIN;
 #endif
 
 #if (OT_TRIG2_POLARITY != 0)
-#   define OT_TRIG2_ON()    OT_TRIG2_PORT->BSRRL = OT_TRIG2_PIN;
-#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRRH = OT_TRIG2_PIN;
+#   define OT_TRIG2_ON()    OT_TRIG2_PORT->BSRR  = OT_TRIG2_PIN;
+#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRR  = (OT_TRIG2_PIN << 16);
 #   define OT_TRIG2_TOG()   OT_TRIG2_PORT->ODR  ^= OT_TRIG2_PIN;
 #else 
-#   define OT_TRIG2_ON()    OT_TRIG2_PORT->BSRRH = OT_TRIG2_PIN;
-#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRRL = OT_TRIG2_PIN;
+#   define OT_TRIG2_ON()    OT_TRIG2_PORT->BSRR  = (OT_TRIG2_PIN << 16);
+#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRR  = OT_TRIG2_PIN;
 #   define OT_TRIG2_TOG()   OT_TRIG2_PORT->ODR  ^= OT_TRIG2_PIN;
 #endif
 
@@ -1140,6 +1155,7 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
   * during which the core can be shut-off for reducing power.
   */
  
+#ifdef __USE_RADIO
 #define RADIO_SPI_ID    BOARD_RFSPI_ID
 #if (BOARD_RFSPI_ID != 1)
 #   error "RADIO_SPI must be SPI1 on this board"
@@ -1153,7 +1169,6 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #   define __N_ISR_DMA1_Channel2
 #   define __N_ISR_DMA1_Channel3
 #endif
-
 
 #define RADIO_SPI_PORT              BOARD_RFSPI_PORT
 #define RADIO_SPIMOSI_PORT          BOARD_RFSPI_PORT
@@ -1184,7 +1199,7 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #define RADIO_IRQ1_PIN              BOARD_RFGPIO_1PIN
 #define RADIO_IRQ2_PIN              BOARD_RFGPIO_2PIN
 #define RADIO_IRQ3_PIN              BOARD_RFGPIO_3PIN
-
+#endif
 
 
 
@@ -1297,16 +1312,25 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 
 
 //Wipe-out some temporary constants which have generic names
-///@todo get the rest of these for STM32L0
-#undef _DMACLK_N
-#undef _MIFCLK_N
+#undef _CRYPCLK_N
+#undef _CRYPCLK_LP 
+#undef _RNGCLK_N 
+#undef _RNGCLK_LP 
+#undef _TOUCHCLK_N 
+#undef _TOUCHCLK_LP 
 #undef _CRCCLK_N
-#undef _GPIOCLK_N
-#undef _DMACLK_LP
-#undef _SRAMCLK_LP
-#undef _MIFCLK_LP
-#undef _CRCCLK_LP
-#undef _GPIOCLK_LP
+#undef _CRCCLK_LP 
+#undef _SRAMCLK_LP 
+#undef _MIFCLK_N
+#undef _MIFCLK_LP 
+#undef _DMACLK_N 
+#undef _DMACLK_LP 
+#undef _DMACLK_DYNAMIC
+#undef _GPIOCLK_N 
+#undef _GPIOCLK_SU 
+#undef _GPIOCLK_LP 
+#undef _IOPENR_STARTUP 
+#undef _IOPENR_RUNTIME 
 
 
 

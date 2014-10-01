@@ -14,22 +14,37 @@
   *
   */
 /**
-  * @file       /lib/CMSIS/Include/cm3_endian.h
+  * @file       /lib/CMSIS/Include/_local/cm_byteswap.h
   * @author     JP Norair
   * @version    R100
   * @date       21 Aug 2014
-  * @brief      Endian setup for ARM CM3
+  * @brief      Byteswap functions for ARM CM
   *
   ******************************************************************************
   */
   
 
-#ifndef __CM3_ENDIAN_H
-#define __CM3_ENDIAN_H
+#ifndef __CM_BYTESWAP_H
+#define __CM_BYTESWAP_H
 
-#include <stdint.h>
-#include <core_cm3.h>
 
-#inclued "_local/cm_endian.h"
+/** byteswap.h implementation      <BR>
+  * ========================================================================<BR>
+  * Uses CMSIS assembly functions
+  */  
+#define __bswap_16(x)   __REV16(x)
+#define __bswap_32(x)   __REV(x)
+
+#if defined(__GNUC__)
+static inline uint64_t __bswap_64(uint64_t word64)   { 
+    register uint32_t a     = __REV( ((uint32_t*)&word64)[0] );
+    register uint32_t b     = __REV( ((uint32_t*)&word64)[1] );
+    ((uint32_t*)&word64)[0] = b;
+    ((uint32_t*)&word64)[1] = a;
+    return word64;
+}
+
+#endif
+
 
 #endif

@@ -14,22 +14,23 @@
   *
   */
 /**
-  * @file       /lib/CMSIS/Include/cm3_endian.h
+  * @file       /lib/CMSIS/Include/cm0plus_bitrotate.h
   * @author     JP Norair
   * @version    R100
   * @date       21 Aug 2014
-  * @brief      Endian setup for ARM CM3
+  * @brief      Bit Rotation functions for ARM CM0+
   *
   ******************************************************************************
   */
   
 
-#ifndef __CM3_ENDIAN_H
-#define __CM3_ENDIAN_H
+#ifndef __CM0PLUS_BITROTATE_H
+#define __CM0PLUS_BITROTATE_H
 
 #include <stdint.h>
-#include <core_cm3.h>
+#include <core_cm0plus.h>
 
-#inclued "_local/cm_endian.h"
+#include "_local/cm_bitrotate.h"
+
 
 #endif

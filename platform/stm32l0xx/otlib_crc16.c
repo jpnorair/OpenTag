@@ -61,11 +61,11 @@ ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) 
         block_addr += 4;
     }
     if (block_size & 2) {
-        (__IO ot_u16)CRC->DR = *(ot_u16*)block_addr;
+        CRC->DR = *(ot_u16*)block_addr;
         block_addr += 2;
     }
     if (block_size & 1) {
-        (__IO ot_u8)CRC->DR = *(ot_u8*)block_addr;
+        CRC->DR = *(ot_u8*)block_addr;
         block_addr++;
     }
     

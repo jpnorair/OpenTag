@@ -101,13 +101,29 @@ void PendSV_Handler(void) {
 #ifndef EXTF_platform_save_context
 OT_INLINE void* platform_save_context(void) {
 /// Save the current P-Stack context (thread) onto its stack.
+///@note Cortex M0/M0+ is using ARMv6-M rather than ARMv7-M, so it cannot do
+///      an "STMDB Rn!, {r4-r11}" instruction like Cortex M3/M4/M7 can do.
+///      Instead it must use the less efficient routine below.
     ot_u32 tsp;
     asm volatile (
-    "   MRS    %0, psp\n"
-    "   STMDB  %0!, {r4-r11}\n"
-    "   MSR    psp, %0\n"
-        : "=r" (tsp)
+    "   PUSH    {r4-r7}\n"
+    "   MOV     r4, r8\n"
+    "   MOV     r5, r9\n"
+    "   MOV     r6, r10\n"
+    "   MOV     r7, r11\n"
+    "   PUSH    {r4-r7}\n"
+    "   MSR     psp, %0 : "=r" (tsp)"
     );
+
+// Here is the CM3/4/7 routine, for comparison
+//    ot_u32 tsp;
+//    asm volatile (
+//    "   MRS    %0, psp\n"
+//    "   STMDB  %0!, {r4-r11}\n"     // note: not supported by CM0
+//    "   MSR    psp, %0\n"
+//        : "=r" (tsp)
+//    );
+
     return (void*)tsp;
 }
 #endif
@@ -115,13 +131,14 @@ OT_INLINE void* platform_save_context(void) {
 #ifndef EXTF_platform_load_context
 OT_INLINE void platform_load_context(void* tsp) {
 /// Load the current P-Stack context (thread) from its stack.
-    ot_u32 scratch;
-    asm volatile (
-    "   MRS    %0, psp\n"
-    "   LDMFD  %0!, {r4-r11}\n"
-    "   MSR    psp, %0\n"
-        : "=r" (scratch)
-    );
+///@note need to find workaround, LDM instruction balks on CM0
+//    ot_u32 scratch;
+//    asm volatile (
+//    "   MRS    %0, psp\n"
+//    "   LDM    %0!, {R4-R11}\n" 
+//    "   MSR    psp, %0\n"
+//        : "=r" (scratch)
+//    );
 }
 #endif
 

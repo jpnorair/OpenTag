@@ -222,7 +222,7 @@ OT_WEAK void sys_powerdown() {
 
     ot_int code;
     code    = 3; //(systim_next() <= 3) ? 0 : 3;
-#   if (1)
+#   if (OT_FEATURE(M2))
     //code   -= (sys.task_RFA.event != 0);
     code   -= (radio.state != RADIO_Idle);
 #   endif

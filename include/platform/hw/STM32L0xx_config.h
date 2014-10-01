@@ -32,7 +32,7 @@
 
 //Stored in App Code folder
 #include <app/board_config.h>
-#include <app/isr_config_STM32L.h>
+#include <app/isr_config_STM32L0.h>
 
 
 
@@ -208,12 +208,12 @@
   */
 
 // From lib/CMSIS/Device
-#include <stm32l1xx.h>
+#include <stm32l0xx.h>
 
 // From lib/CMSIS/Include
-#include <cm3_endian.h>
-#include <cm3_byteswap.h>
-#include <cm3_bitrotate.h>
+#include <cm0plus_endian.h>
+#include <cm0plus_byteswap.h>
+#include <cm0plus_bitrotate.h>
 
 
 
@@ -221,11 +221,11 @@
   * ========================================================================<BR>
   * Needed to build AES128 or other types of Crypto
   */
-#ifndef CORTEX_M3
-#   define CORTEX_M3
+#ifndef CORTEX_M0
+#   define CORTEX_M0
 #endif
-#ifndef STM32L1XX
-#   define STM32L1XX
+#ifndef STM32L0XX
+#   define STM32L0XX
 #endif
 
   
