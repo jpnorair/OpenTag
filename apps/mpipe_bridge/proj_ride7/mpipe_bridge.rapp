@@ -478,7 +478,7 @@
 		<Config Header="Nucleo_STM32L053" >
 			<Set Header="Target" >
 				<Section Header="ProcessorARM" >
-					<Property Header="Processor" Value="STM32F051x8" />
+					<Property Header="Processor" Value="STM32L052x8" />
 				</Section>
 			</Set>
 			<Set Header="GCC" >

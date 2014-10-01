@@ -34,9 +34,9 @@
 
 
 #include <otplatform.h>
-#if defined(__STM32L1xx__)
+#if defined(__STM32L0xx__)
 
-#include "stm32l1xx_hal.h"
+#include "stm32l0xx_hal.h"
 
 #include <otlib/logger.h>
 #include <otsys/veelite_core.h>
@@ -251,8 +251,9 @@ ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
 
     // Set FTDW bit... might not be necessary... check
     FLASH->PECR        |= (uint32_t)FLASH_PECR_FTDW;   
-    *(__IO ot_u16*)addr = Data;
-    retval              = (ot_u8)FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE));
+    *(__IO ot_u16*)addr = value;
+    //retval              = (ot_u8)FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE);
+    retval              = (ot_u8)FLASH_WaitForLastOperation((uint32_t)500);
     return retval;
     
 #else
