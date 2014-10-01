@@ -58,7 +58,7 @@ void SVC_Handler(void) {
 
     // 6 word offset is where LR from caller stack is stored.
     // LR will be instruction after SVC
-    task_lr = (ot_u8*)(stack[6]);
+    task_lr = (ot_u8*)(stack + (6*4));
 
     // The 16bit Thumb2 instruction before the LR address is the SVC.
     // The lower byte of this instruction is the immediate code
@@ -69,13 +69,89 @@ void SVC_Handler(void) {
             SVC_Handler_eventmgr:
             break;
 
-        // Call 1: Task Killer
-        case 1: //sys_kill()
 
+        // Call 1: Task & Thread Killer
+        // Initial Task LR was placed on P-stack by NVIC HW when this interrupt
+        // occurred.  By design it has a 6-word offset from PSP.  Overwrite it
+        // with the saved address that sends code to RETURN_FROM_TASK.
+        case 1: 
+            #   if (OT_PARAM_SYSTHREADS != 0)
+                // Here would go some context clearing jazz
+            #   endif
+            
+            if (platform_ext.task_exit != NULL) {
+                stack[6] = (ot_u32)platform_ext.task_exit;
+            }
+            break;
+
+
+        // Call 2: Save a Context.  
+        //         This also acts as a context switch, because it falls-through to
+        //         the "load context" operation.
+        case 2: {
+            asm volatile (
+            // 1. Offset Stack by 32 because we are going to store 8 registers on it
+            "   SUB     %0, %0, #32\n" : "=r"(stack)
+    
+            // 2. Use Store-Multiple to do R4-R7.  It works in reverse and auto-
+            //    increments Stack (%0)
+            "   STM     %0!, {r4-r7}\n"
+    
+            // 3. Move r8-r11 into r4-r7 since store instructions cannot use r8-11 on CM0.
+            "   MOV     r4, r8\n"
+            "   MOV     r5, r9\n"
+            "   MOV     r6, r10\n"
+            "   MOV     r7, r11\n"
+    
+            // 4. Use Store-Multiple to do R8-R11, just like previously
+            "   STM     %0!, {r4-r7}\n"
+    
+            // 5. Re-offset the Stack, because two calls to STM have brought it back
+            //    to its starting point. (not necessary, simply used as a feature)
+            //"   SUB     %0, %0, #32\n"
+            );
+        }
+        
+        
+        // Call 3: Load a context.
+        //         - if sys_thread_manager() returns 0, there is no thread to run.
+        //         - else, it returns the dormant thread stack pointer (dtsp)
+        case 3: {
+            register ot_u32 dtsp;
+            dtsp = (ot_u32)sys_thread_manager();
+            if (dtsp == 0) break;
+            
+            asm volatile (
+            // 1. First get the high registers via LDM, which requires subtracting 
+            //    16 bytes to get to the front of that block.
+            "   SUB     %0, %0, #16\n" : "=r"(dtsp)
+            "   LDMIA   %0!, {r4-r7}\n"
+    
+            // 2. LDM cannot directly access r8-r11, so they must be paged out.
+            "   MOV     r8, r4\n"
+            "   MOV     r9, r5\n"
+            "   MOV     r10, r6\n"
+            "   MOV     r11, r7\n"
+    
+            // 4. Get the low regisers via LDM, which requires subtracting 32 bytes
+            //    to get to the front of that block.
+            "   SUB     %0, %0, #32\n"
+            "   LDMIA   %0!, {r4-r7}\n"
+    
+            // 5. Add the DTSP by 16, to put it where it must be
+            "   ADD     %0, %0, #16\n"
+            
+            // 6. Set PSP to DTSP, thus activating it
+            "   MRS
+            );
+        } break;
+        
+        
         // Other calls are process notifications
        default: //sys_notify();
                 break;  //goto SVC_Handler_eventmgr;
     }
+
 #endif
 }
 
@@ -89,39 +165,28 @@ void PendSV_Handler(void) {
     // There is an erratum that PendSV bit is not adequately cleared in HW
     __CLR_PENDSV();
 
-    // halt system until RTC is known to be ready
-
     // Disable interrupts during scheduler runtime
     __SEND_SVC(0);
 }
 
 
-
+///@note these need to be implemented flatly into SVC
 
 #ifndef EXTF_platform_save_context
-OT_INLINE void* platform_save_context(void) {
+OT_INLINE void platform_save_context(void) {
 /// Save the current P-Stack context (thread) onto its stack.
-    ot_u32 tsp;
-    asm volatile (
-    "   MRS    %0, psp\n"
-    "   STMDB  %0!, {r4-r11}\n"
-    "   MSR    psp, %0\n"
-        : "=r" (tsp)
-    );
-    return (void*)tsp;
+/// The "tpc" input parameter should be the thread program counter, which on
+/// ARM is obtained by the kernel by inspecting the LR register upon thread
+/// interrupt or manual switch.
+    __SEND_SVC(2);
 }
 #endif
 
 #ifndef EXTF_platform_load_context
 OT_INLINE void platform_load_context(void* tsp) {
 /// Load the current P-Stack context (thread) from its stack.
-    ot_u32 scratch;
-    asm volatile (
-    "   MRS    %0, psp\n"
-    "   LDMFD  %0!, {r4-r11}\n"
-    "   MSR    psp, %0\n"
-        : "=r" (scratch)
-    );
+///@note need to find workaround, LDM instruction balks on CM0
+    __SEND_SVC(3);
 }
 #endif
 
@@ -140,7 +205,9 @@ void platform_drop_context(ot_uint i) {
 /// In normal sytems it is used via sys_kill().  In applications using threads,
 /// sys_kill() (or code by-way-of sys_kill()) is responsible for calling the
 /// task exit function and emptying the thread stack.
-
+    __SEND_SVC(1);
+    
+    /*
 #   if (OT_PARAM_SYSTHREADS != 0)
         // Here would go some context clearing jazz
 #   endif
@@ -154,6 +221,7 @@ void platform_drop_context(ot_uint i) {
         asm volatile ("MRS  %0, PSP" : "=r"(task_lr) );
         ((ot_u32*)task_lr)[6] = (ot_u32)platform_ext.task_exit;
     }
+    */
 }
 #endif
 

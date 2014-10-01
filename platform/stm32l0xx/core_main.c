@@ -30,6 +30,7 @@
 // OT modules that need initialization
 #include <otlib/auth.h>
 #include <otlib/buffers.h>
+#include <otsys/sysclock.h>
 #include <otsys/veelite.h>
 #include <otsys/veelite_core.h>
 
@@ -52,7 +53,9 @@ void otapi_pause()      { platform_ot_pause(); }
 
 
 
-
+///@note for some reason, the Constant "RCC_CR_HSION" from the device header
+/// is possessed by Satan.  Compiler flails and flails over it.
+#define _RCC_CR_HSI     1
 
 
 
@@ -165,7 +168,7 @@ void otapi_pause()      { platform_ot_pause(); }
 #           define _FLANKOSC_TIMEOUT    3000 //HSE_STARTUP_TIMEOUT
 #       endif
 #   else
-#       define _FLANKOSC_ONBIT      RCC_CR_HSION
+#       define _FLANKOSC_ONBIT      _RCC_CR_HSI
 #       define _FLANKOSC_RDYFLAG    RCC_CR_HSIRDY
 #       define _FLANKOSC_CLOCKBIT   (3 | RCC_CFGR_STOPWUCK)
 #       define _FLANKOSC_TIMEOUT    300 //HSI_STARTUP_TIMEOUT
@@ -197,7 +200,7 @@ void otapi_pause()      { platform_ot_pause(); }
 #       define _FULLSPEED_VOLTAGE   POWER_1V2
 #       define _FULLSPEED_FLASHWAIT DISABLED
 #   endif
-#   if BOARD_FEATURE(FULLXTAL)
+#   if (BOARD_FEATURE(FULLXTAL))
 #       define _FULLOSC_RDYFLAG         RCC_CR_HSERDY
 #       define _FULLOSC_CLOCKBIT        2
 #       if BOARD_FEATURE(HFBYPASS)
@@ -208,10 +211,10 @@ void otapi_pause()      { platform_ot_pause(); }
 #           define _FULLOSC_TIMEOUT     3000 //HSE_STARTUP_TIMEOUT
 #       endif
 #   else
-#       define _FULLOSC_ONBIT           RCC_CR_HSION
+#       define _FULLOSC_ONBIT           _RCC_CR_HSI
 #       define _FULLOSC_RDYFLAG         RCC_CR_HSIRDY
-#       define _FULLOSC_CLOCKBIT    (1 | RCC_CFGR_STOPWUCK)
-#       define _FULLOSC_TIMEOUT    300 //HSI_STARTUP_TIMEOUT
+#       define _FULLOSC_CLOCKBIT        (1 | RCC_CFGR_STOPWUCK)
+#       define _FULLOSC_TIMEOUT         300 //HSI_STARTUP_TIMEOUT
 #   endif
 #endif
 
@@ -301,7 +304,7 @@ void otapi_pause()      { platform_ot_pause(); }
 #   define _FULLRQ()            1
 #   define _FLANKRQ()           0
 #   define _FLANK_UPVOLT()      (_FULLSPEED_VOLTAGE != _FLANKSPEED_VOLTAGE)
-#if BOARD_FEATURE(FLANKSPEED)
+#elif BOARD_FEATURE(FLANKSPEED)
 #   define _FLANKSPEED_ON()     (RCC->CR & RCC_CR_PLLON)
 #   define _FLANKSPEED_OFF()    ((RCC->CR & RCC_CR_PLLON) == 0)
 #   define _FLANK_UPVOLT()      0
@@ -465,13 +468,13 @@ void platform_ext_wakefromstop() {
         if ( _FLANKRQ() ) {
             platform_flank_speed();
         }
-        else if ( _FULLRQ() && ((_FULLOSC_ONBIT & RCC_CR_HSION) == 0)) {
+        else if ( _FULLRQ() && ((_FULLOSC_ONBIT & _RCC_CR_HSI) == 0)) {
             platform_full_speed();
         }
 
     // Same basic rules as above apply to single-speed configurations.
     // MSI and HSI based clocks will be already running on wakeup.
-#   elif (BOARD_FEATURE(FULLSPEED) && ((_FULLOSC_ONBIT & RCC_CR_HSION) == 0))       
+#   elif (BOARD_FEATURE(FULLSPEED) && ((_FULLOSC_ONBIT & _RCC_CR_HSI) == 0))       
         platform_full_speed();
 #   elif BOARD_FEATURE(FLANKSPEED)
         platform_flank_speed();
@@ -637,10 +640,10 @@ void platform_standard_speed() {
         }
         
         // Turn off non-MSI clocks to save power
-#       if (BOARD_FEATURE(FULLSPEED) && (_FULLOSC_ONBIT & RCC_CR_HSION))
+#       if (BOARD_FEATURE(FULLSPEED) && (_FULLOSC_ONBIT & _RCC_CR_HSI))
         RCC->CFGR  &= ~(RCC_CFGR_STOPWUCK);
 #       endif
-        RCC->CR    &= ~(RCC_CR_PLLON | RCC_CR_HSEON | RCC_CR_HSION);
+        RCC->CR    &= ~(RCC_CR_PLLON | RCC_CR_HSEON | _RCC_CR_HSI);
         sub_set_clockhz(PLATFORM_MSCLOCK_HZ);
         platform_ensable_interrupts();
     }
@@ -683,7 +686,7 @@ void platform_full_speed() {
             sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
         }
 
-#       if ((_FLANKOSC_ONBIT & RCC_CR_HSION) || (BOARD_FEATURE(FULLSPEED) && (_FULLOSC_ONBIT & RCC_CR_HSION)))
+#       if ((_FLANKOSC_ONBIT & _RCC_CR_HSI) || (BOARD_FEATURE(FULLSPEED) && (_FULLOSC_ONBIT & _RCC_CR_HSI)))
         RCC->CFGR  |= RCC_CFGR_STOPWUCK;
 #       endif
         RCC->CR    &= ~(RCC_CR_MSION | RCC_CR_PLLON);
@@ -884,7 +887,7 @@ void platform_init_OT() {
     ///
     /// @note for production (__RELEASE__) the default UID should be written to
     ///      the default file location by the manufacturer firmware upload.
-#   if (defined(__DEBUG__) || defined(__PROTO__)
+#   if (defined(__DEBUG__) || defined(__PROTO__))
     {   vlFILE* fpid;
         ot_u16* hwid;
         ot_int  i;
@@ -923,7 +926,7 @@ void platform_init_busclk() {
     // Reset HSION, HSEON, HSEBYP, CSSON and PLLON bits
     // Disable all clocker interrupts (default)
     RCC->CR    &= (uint32_t)0xEEFAFFFE;
-    RCC->CIR    = 0x00000000;
+    //RCC->CIR    = 0x00000000;
 
 
     ///2. Prepare external Memory bus (not currently supported)
@@ -1132,11 +1135,11 @@ void platform_init_interruptor() {
     EXTI->RTSR |= (1<<20) | (1<<29);
 
 #   if OT_FEATURE(M2)
-        NVIC->IP[(uint32_t)(RTC_WKUP_IRQn)]         = ((_KERNEL_GROUP+_OT_SUB1) << 4);
-        NVIC->ISER[((uint32_t)(RTC_WKUP_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
+        NVIC->IP[(uint32_t)(RTC_IRQn)]         = ((_KERNEL_GROUP+_OT_SUB1) << 4);
+        NVIC->ISER[((uint32_t)(RTC_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
 #   else
-        NVIC->IP[(uint32_t)(RTC_WKUP_IRQn)]         = ((_LOPRI_BASE) << 4);
-        NVIC->ISER[((uint32_t)(RTC_WKUP_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
+        NVIC->IP[(uint32_t)(RTC_IRQn)]         = ((_LOPRI_BASE) << 4);
+        NVIC->ISER[((uint32_t)(RTC_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_IRQn) & 0x1F));
 #   endif
 
     NVIC->IP[(uint32_t)(LPTIM1_IRQn)]           = ((_KERNEL_GROUP+_OT_SUB2) << 4);

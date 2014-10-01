@@ -47,7 +47,7 @@
 #ifndef ALP_DASHFORTH
 #   define ALP_DASHFORTH   (OT_FEATURE(DASHFORTH) == ENABLED)
 #endif
-#define ALP_API         ((OT_FEATURE(ALPAPI) == ENABLED)*3)
+#define ALP_API         ((OT_FEATURE(ALPAPI) == ENABLED) * ((OT_FEATURE(M2) == ENABLED) *3))
 #define ALP_EXT         (OT_FEATURE(ALPEXT) == ENABLED)
 
 

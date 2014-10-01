@@ -59,9 +59,9 @@ void platform_isr_lptim1() {
     // Also make sure only the CMP interrupt is in usage
     LPTIM1->ICR = 0x7F;
 #if OT_FEATURE(TIME)
-    LPTIM1->IER = LPTIM_ISR_CMPMIE | LPTIM_ISR_ARRMIE;
+    LPTIM1->IER = LPTIM_IER_CMPMIE | LPTIM_IER_ARRMIE;
 #else
-    LPTIM1->IER = LPTIM_ISR_CMPMIE;
+    LPTIM1->IER = LPTIM_IER_CMPMIE;
 #endif
 #if OT_FEATURE(TIME)
     if (lptim_flags & LPTIM_ISR_ARRM) {
@@ -80,16 +80,16 @@ void platform_isr_lptim1() {
 /// - The ticker doesn't do a damn thing except wakeup from sleep 
 /// - The Insertor manually vectors to radio_mac_isr(), although this should be
 ///   changed in the future to a dynamic callback.
-void platform_isr_rtcwakeup() {
-
-#   if ((OT_FEATURE(M2) == ENABLED) && (RF_FEATURE(CSMATIMER) != ENABLED))
-    if (systim.opt & SYSTIM_INSERTION_ON) {
-        systim.opt ^= SYSTIM_INSERTION_ON;
-        RTC->CR &= ~RTC_CR_WUTE;
-        radio_mac_isr();
-    }
+void platform_isr_rtcwakeup() { 
+#   if (OT_FEATURE(M2))
+#       if (RF_FEATURE(CSMATIMER) != ENABLED))
+        if (systim.opt & SYSTIM_INSERTION_ON) {
+            systim.opt ^= SYSTIM_INSERTION_ON;
+            RTC->CR &= ~RTC_CR_WUTE;
+            radio_mac_isr();
+        }
+#       endif
 #   endif
-
 }
 
 
@@ -143,12 +143,12 @@ void systim_init(void* tim_init) {
     LPTIM1->CMP     = 65535;
     LPTIM1->ARR     = 65535;
 #   if OT_FEATURE(TIME)
-    LPTIM->IER      = LPTIM_IER_ARRMIE | LPTIM_IER_CMPIE;
+    LPTIM->IER      = LPTIM_IER_ARRMIE | LPTIM_IER_CMPMIE;
 #   else
-    LPTIM->IER      = LPTIM_IER_CMPIE;
+    LPTIM1->IER     = LPTIM_IER_CMPMIE;
 #   endif
-    LPTIM->CR       = LPTIM_CR_ENABLE;
-    LPTIM->CR       = LPTIM_CR_CNTSTART | LPTIM_CR_ENABLE;
+    LPTIM1->CR      = LPTIM_CR_ENABLE;
+    LPTIM1->CR      = LPTIM_CR_CNTSTRT | LPTIM_CR_ENABLE;
 
 
     /// 3. Clear flags and stamps
@@ -181,16 +181,10 @@ ot_u16 __read_lptim_cnt() {
     do {
         a = b;
         b = LPTIM1->CNT;
-    while (b != a);
+    } while (b != a);
 
     return b;
 }
-
-
-
-
-
-
 
 
 
@@ -205,6 +199,7 @@ ot_u32 systim_get() {
 ot_u16 systim_next() {
     return systim.stamp1 - __read_lptim_cnt();
 }
+
 
 void systim_enable() {
 #   if OT_FEATURE(TIME)
@@ -302,14 +297,14 @@ void sub_enable_wkuptim() {
 /// <LI> Wakeup Timer interrupt is always enabled (see systim_init()) </LI>
     ot_u32 scratch;
 
-#   if (PLATFORM_FEATURE(HWRTC) != ENABLED)
-    scratch = RCC->CSR;
-    if !(scratch & RCC_CSR_RTCEN) {
-        RCC->CSR = scratch | RCC_CSR_RTCEN;
-    }
-#   endif
+//#   if (BOARD_FEATURE(HWRTC) != ENABLED)
+//    scratch = RCC->CSR;
+//    if !(scratch & RCC_CSR_RTCEN) {
+//        RCC->CSR = scratch | RCC_CSR_RTCEN;
+//    }
+//#   endif
     scratch = RTC->CR;
-    if !(scratch & RTC_CR_WUTE);
+    if ((scratch & RTC_CR_WUTE) == 0) {
         RTC->CR = scratch | RTC_CR_WUTE;
     }
 }
@@ -321,15 +316,15 @@ void sub_disable_wkuptim() {
     ot_u32 scratch;
     
     scratch = RTC->CR;
-    if (scratch & RTC_CR_WUTE);
+    if (scratch & RTC_CR_WUTE) {
         RTC->CR = scratch ^ RTC_CR_WUTE;
     }
-#   if (PLATFORM_FEATURE(HWRTC) != ENABLED)
-    scratch = RCC->CSR;
-    if (scratch & RCC_CSR_RTCEN) {
-        RCC->CSR = scratch ^ RCC_CSR_RTCEN;
-    }
-#   endif
+//#   if (PLATFORM_FEATURE(HWRTC) != ENABLED)
+//    scratch = RCC->CSR;
+//    if (scratch & RCC_CSR_RTCEN) {
+//        RCC->CSR = scratch ^ RCC_CSR_RTCEN;
+//    }
+//#   endif
 }
 
 void sub_set_wkuptim(ot_uint period) {

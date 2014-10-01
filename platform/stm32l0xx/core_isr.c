@@ -600,7 +600,6 @@ void ADC1_COMP_IRQHandler(void) {
         if ((ADC1->ISR & ADC1->IER) && (ADC1->CR & 1))
             platform_isr_adc1();
 #   endif
-#endif
     __ISR_EXIT_HOOK();
 }
 #endif

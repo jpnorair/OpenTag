@@ -14,22 +14,32 @@
   *
   */
 /**
-  * @file       /lib/CMSIS/Include/cm3_endian.h
+  * @file       /lib/CMSIS/Include/_local/cm_endian.h
   * @author     JP Norair
   * @version    R100
   * @date       21 Aug 2014
-  * @brief      Endian setup for ARM CM3
+  * @brief      Endian setup for ARM Cortex-M
   *
+  * This file should be included from cm0_endian.h, cm3_endian.h, etc.
+  * 
   ******************************************************************************
   */
   
 
-#ifndef __CM3_ENDIAN_H
-#define __CM3_ENDIAN_H
+#ifndef __CM_ENDIAN_H
+#define __CM_ENDIAN_H
 
-#include <stdint.h>
-#include <core_cm3.h>
+// Conversions to/from network endian
+#define __netendian16(x)        __REV16(x)
 
-#inclued "_local/cm_endian.h"
+#define __netendian32(x)        __REV(x)
+
+#define __netendian16_imm(n)    (uint16_t)( (((uint16_t)n)<<8) | (((uint16_t)n)>>8) )
+
+#define __netendian32_imm(n)    (uint32_t)( \
+                                ((((uint32_t)n) << 24) & (0xff000000)) \
+                              | ((((uint32_t)n) << 8)  & (0x00ff0000)) \
+                              | ((((uint32_t)n) >> 8)  & (0x0000ff00)) \
+                              | ((((uint32_t)n) >> 24) & (0x000000ff)) )
 
 #endif

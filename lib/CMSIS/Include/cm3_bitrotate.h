@@ -30,56 +30,7 @@
 #include <stdint.h>
 #include <core_cm3.h>
 
-
-/** bit rotation functions      <BR>
-  * ========================================================================<BR>
-  * ARM Cortex M3 contains rotate-right instruction but no rotate-left.  To do
-  * rotate-left, simply rotate-right using the the bit conjugate.
-  */  
-
-#if defined(__GNUC__)
-
-static inline __attribute__((always_inline))
-uint32_t __rotr32_imm(uint32_t v, uint32_t sh) {
-    uint32_t d;
-    asm ("ROR %[Rd], %[Rm], %[Is]" : [Rd] "=r" (d) : [Rm] "r" (v), [Is] "i" (sh));
-    return d;
-}
- 
-static inline __attribute__((always_inline))
-uint32_t __rotr32(uint32_t v, uint32_t sh) {
-    uint32_t d;
-    asm ("ROR %[Rd], %[Rm], %[Rs]" : [Rd] "=r" (d) : [Rm] "r" (v), [Rs] "r" (sh));
-    return d;
-}
-
-static inline __attribute__((always_inline))
-uint16_t __rotr16_imm(uint16_t v, uint32_t sh) {
-    uint32_t d, tmp = v;
-    asm ("ROR %[Rd], %[Rm], %[Is]" : [Rd] "=r" (d) : [Rm] "r" (tmp), [Is] "i" (sh));
-    return (uint16_t)(d | (d >> 16));
-}
-
-static inline __attribute__((always_inline))
-uint16_t __rotr16(uint16_t v, uint32_t sh) {
-    uint32_t d, tmp = v;
-    asm ("ROR %[Rd], %[Rm], %[Rs]" : [Rd] "=r" (d) : [Rm] "r" (tmp), [Rs] "r" (sh));
-    return (uint16_t)(d | (d >> 16));
-}
-
-#define __rotl32_imm(v, sh)     __rotr32_imm(v, (32-sh))
-#define __rotl32(v, sh)         __rotr32(v, (32-sh))
-#define __rotl16_imm(v, sh)     __rotr16_imm(v, (16-sh))
-#define __rotl16(v, sh)         __rotr16(v, (16-sh))
-
-
-
-
-#else
-#   error "Only GCC inline assembly is supported at the moment."
-#endif
-
-
+#include "_local/cm_bitrotate.h"
 
 
 #endif

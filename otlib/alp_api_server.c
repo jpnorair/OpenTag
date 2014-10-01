@@ -38,7 +38,8 @@
 
 #if (   (OT_FEATURE(SERVER) == ENABLED) \
      && (OT_FEATURE(ALP) == ENABLED) \
-     && (OT_FEATURE(ALPAPI) == ENABLED) )
+     && (OT_FEATURE(ALPAPI) == ENABLED) \
+     && (OT_FEATURE(M2) == ENABLED))
 
 #include <m2/capi.h>
 #include <otlib/auth.h>

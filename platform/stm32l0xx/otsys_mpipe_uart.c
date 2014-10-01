@@ -79,7 +79,7 @@
 #endif
 
 #define MPIPEDRV_ENABLED        (BOARD_FEATURE(MPIPE))
-#define THIS_MPIPEDRV_SUPPORTED ((BOARD_PARAM(MPIPE_IFS) == 1) && defined(MPIPE_UART))
+#define THIS_MPIPEDRV_SUPPORTED ((BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_UART))
 
 #if (defined(__STM32L0__) && MPIPEDRV_ENABLED && THIS_MPIPEDRV_SUPPORTED)
 
@@ -156,7 +156,7 @@
 #   define BUILD_NVIC_SUBGROUP_MPIPE 0
 #endif
 
-#define _SUBGROUP   (BUILD_NVIC_SUBGROUP_MPIPE & (16 - (16/__CM3_NVIC_GROUPS)))
+#define _SUBGROUP   (BUILD_NVIC_SUBGROUP_MPIPE & (16 - (16/__CM0_NVIC_GROUPS)))
 #define _IRQGROUP   ((PLATFORM_NVIC_IO_GROUP + _SUBGROUP) << 4)
 
 #if ((BOARD_FEATURE_MPIPE_CS == ENABLED) || (BOARD_FEATURE_MPIPE_FLOWCTL == ENABLED))
@@ -214,8 +214,8 @@
 #   define _UART_IRQ        USART1_IRQn
 #   define _DMARX           DMA1_Channel5
 #   define _DMATX           DMA1_Channel4
-#   define _DMARX_IRQ       DMA1_Channel5_IRQn
-#   define _DMATX_IRQ       DMA1_Channel4_IRQn
+#   define _DMARX_IRQ       DMA1_Channel4_5_6_7_IRQn
+#   define _DMATX_IRQ       DMA1_Channel4_5_6_7_IRQn
 #   define _DMARX_IFG       (0xF << (4*(5-1)))
 #   define _DMATX_IFG       (0xF << (4*(4-1)))
 #   define __UART_ISR       platform_isr_usart1
@@ -229,8 +229,8 @@
 #   define _UART_IRQ        USART2_IRQn
 #   define _DMARX           DMA1_Channel5
 #   define _DMATX           DMA1_Channel4
-#   define _DMARX_IRQ       DMA1_Channel5_IRQn
-#   define _DMATX_IRQ       DMA1_Channel4_IRQn
+#   define _DMARX_IRQ       DMA1_Channel4_5_6_7_IRQn
+#   define _DMATX_IRQ       DMA1_Channel4_5_6_7_IRQn
 #   define _DMARX_IFG       (0xF << (4*(5-1)))
 #   define _DMATX_IFG       (0xF << (4*(4-1)))
 #   define __UART_ISR       platform_isr_usart2
@@ -255,38 +255,39 @@
 /** Peripheral Control Macros  <BR>
   * ========================================================================<BR>
   */
+///@todo need to verify writes to ->ICR
 #if (BOARD_FEATURE(MPIPE_DIRECT))
 #   define __UART_TXOPEN() do { \
             MPIPE_UART->CR1 = 0; \
-            MPIPE_UART->SR  = 0; \
+            MPIPE_UART->ICR = 0xffff; \
             MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_TE); \
         } while (0)
 
 #   define __UART_RXOPEN() do { \
             MPIPE_UART->CR1 = 0; \
-            MPIPE_UART->SR  = 0; \
+            MPIPE_UART->ICR = 0xffff; \
             MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_RE);   \
         } while (0)
 
 #   define __UART_CLOSE()   (MPIPE_UART->CR1 = 0)
-#   define __UART_CLEAR()   (MPIPE_UART->SR  = 0)
+#   define __UART_CLEAR()   (MPIPE_UART->ICR = 0xffff)
 #   define __CLR_MPIPE()    (mpipe.state = MPIPE_Idle)
 
 #elif (BOARD_FEATURE(MPIPE_BREAK))
 #   define __UART_TXOPEN() do { \
             MPIPE_UART->CR1 = 0; \
-            MPIPE_UART->SR  = 0; \
+            MPIPE_UART->ICR = 0xffff; \
             MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_TE); \
         } while (0)
 
 #   define __UART_RXOPEN() do { \
             MPIPE_UART->CR1 = 0; \
-            MPIPE_UART->SR  = 0; \
+            MPIPE_UART->ICR = 0xffff; \
             MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_RE | USART_CR1_RXNEIE);   \
         } while (0)
 
 #   define __UART_CLOSE()   (MPIPE_UART->CR1 = 0)
-#   define __UART_CLEAR()   (MPIPE_UART->SR  = 0)
+#   define __UART_CLEAR()   (MPIPE_UART->ICR = 0xffff)
 #   define __CLR_MPIPE()    (mpipe.state = MPIPE_Null)
 #endif
 
@@ -297,7 +298,7 @@
             _DMATX->CMAR    = (uint32_t)SRC;    \
             _DMATX->CNDTR   = (ot_u16)SIZE;     \
             DMA1->IFCR      = (_DMARX_IFG | _DMATX_IFG);       \
-            _DMATX->CCR     = (DMA_CCR1_DIR | DMA_CCR1_MINC | DMA_CCR1_PL_HI | DMA_CCR1_TCIE | DMA_CCR1_EN); \
+            _DMATX->CCR     = (DMA_CCR_DIR | DMA_CCR_MINC | DMA_CCR_PL_HI | DMA_CCR_TCIE | DMA_CCR_EN); \
         } while (0)
 
 #define __DMA_RXOPEN(DEST, SIZE) do { \
@@ -305,7 +306,7 @@
             _DMARX->CMAR    = (ot_u32)DEST;     \
             _DMARX->CNDTR   = (ot_u16)SIZE;     \
             DMA1->IFCR      = (_DMARX_IFG | _DMATX_IFG);       \
-            _DMARX->CCR     = (DMA_CCR1_MINC | DMA_CCR1_PL_HI | DMA_CCR1_TCIE | DMA_CCR1_EN); \
+            _DMARX->CCR     = (DMA_CCR_MINC | DMA_CCR_PL_HI | DMA_CCR_TCIE | DMA_CCR_EN); \
         } while (0)
 
 #define __DMA_RX_CLOSE()    (_DMATX->CCR = 0)
@@ -471,7 +472,7 @@ void mpipe_rxsync_isr(void) {
 
 void __UART_ISR(void) {
 //    if (MPIPE_UART->SR & USART_SR_RXNE) {
-        uart.rxbuffer[0] = MPIPE_UART->DR;
+        uart.rxbuffer[0] = MPIPE_UART->RDR;
         mpipe.state     += (uart.rxbuffer[0] == 0x55);
 
         if (mpipe.state > MPIPE_Idle) {
@@ -480,7 +481,7 @@ void __UART_ISR(void) {
             __DMA_RXOPEN((ot_u8*)&uart.header.plen, MPIPE_HEADERBYTES-2);
         }
 //    }
-//    else if (MPIPE_UART->SR & USART_SR_TXE) {
+//    else if (MPIPE_UART->ISR & USART_ISR_TXE) {
 //        if (--uart.trailer == 0) {
 //            mpipedrv_isr_TXSIG:
 //            mpipedrv_kill();
@@ -545,8 +546,8 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
     __UART_CLKOFF();
 
     /// Set up DMA channels for RX and TX
-    _DMARX->CPAR    = (uint32_t)&(MPIPE_UART->DR);
-    _DMATX->CPAR    = (uint32_t)&(MPIPE_UART->DR);
+    _DMARX->CPAR    = (uint32_t)&(MPIPE_UART->RDR);
+    _DMATX->CPAR    = (uint32_t)&(MPIPE_UART->TDR);
 
     /// MPipe RX & TX DMA Interrupts
     NVIC->IP[(ot_u32)_DMARX_IRQ]        = _IRQGROUP;
@@ -707,7 +708,7 @@ ot_u16 mpipedrv_txsync() {
 /// We don't care about interrupts, because it is just one byte.
     sub_mpipe_open();
     __UART_TXOPEN();
-    MPIPE_UART->DR = 0xFF;
+    MPIPE_UART->TDR = 0xFF;
     return 6;
 }
 

@@ -14,22 +14,22 @@
   *
   */
 /**
-  * @file       /lib/CMSIS/Include/cm3_endian.h
+  * @file       /lib/CMSIS/Include/cm0plus_byteswap.h
   * @author     JP Norair
   * @version    R100
   * @date       21 Aug 2014
-  * @brief      Endian setup for ARM CM3
+  * @brief      Byteswap functions for ARM CM0+
   *
   ******************************************************************************
   */
   
 
-#ifndef __CM3_ENDIAN_H
-#define __CM3_ENDIAN_H
+#ifndef __CM0PLUS_BYTESWAP_H
+#define __CM0PLUS_BYTESWAP_H
 
 #include <stdint.h>
-#include <core_cm3.h>
+#include <core_cm0plus.h>
 
-#inclued "_local/cm_endian.h"
+#include "_local/cm_byteswap.h"
 
 #endif

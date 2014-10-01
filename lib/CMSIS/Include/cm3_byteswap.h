@@ -30,24 +30,6 @@
 #include <stdint.h>
 #include <core_cm3.h>
 
-
-/** byteswap.h implementation      <BR>
-  * ========================================================================<BR>
-  * Uses CMSIS assembly functions from core_cm3.h
-  */  
-#define __bswap_16(x)   __REV16(x)
-#define __bswap_32(x)   __REV(x)
-
-#if defined(__GNUC__)
-static inline uint64_t __bswap_64(uint64_t word64)   { 
-    register uint32_t a     = __REV( ((uint32_t*)&word64)[0] );
-    register uint32_t b     = __REV( ((uint32_t*)&word64)[1] );
-    ((uint32_t*)&word64)[0] = b;
-    ((uint32_t*)&word64)[1] = a;
-    return word64;
-}
-
-#endif
-
+#include "_local/cm_byteswap.h"
 
 #endif
