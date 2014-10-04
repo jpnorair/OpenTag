@@ -36,6 +36,7 @@
 
 #include <otsys/types.h>
 #include <otsys/config.h>
+#include <platform/config.h>
 #include <app/build_config.h>
 
 

@@ -914,22 +914,22 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 ///@todo implement non-mpipe uart with break feature 
 #endif
 
-#define BOARD_UART_EXTI0_ISR();
-#define BOARD_UART_EXTI1_ISR();
-#define BOARD_UART_EXTI2_ISR();
-#define BOARD_UART_EXTI3_ISR()   _UART_RXSYNC_ISR()
-#define BOARD_UART_EXTI4_ISR();
-#define BOARD_UART_EXTI5_ISR();
-#define BOARD_UART_EXTI6_ISR();     
-#define BOARD_UART_EXTI7_ISR();     
-#define BOARD_UART_EXTI8_ISR();     
-#define BOARD_UART_EXTI9_ISR();
-#define BOARD_UART_EXTI10_ISR();   
-#define BOARD_UART_EXTI11_ISR();
-#define BOARD_UART_EXTI12_ISR();
-#define BOARD_UART_EXTI13_ISR();
-#define BOARD_UART_EXTI14_ISR();
-#define BOARD_UART_EXTI15_ISR();
+#define BOARD_COM_EXTI0_ISR();
+#define BOARD_COM_EXTI1_ISR();
+#define BOARD_COM_EXTI2_ISR();
+#define BOARD_COM_EXTI3_ISR()   _UART_RXSYNC_ISR()
+#define BOARD_COM_EXTI4_ISR();
+#define BOARD_COM_EXTI5_ISR();
+#define BOARD_COM_EXTI6_ISR();     
+#define BOARD_COM_EXTI7_ISR();     
+#define BOARD_COM_EXTI8_ISR();     
+#define BOARD_COM_EXTI9_ISR();
+#define BOARD_COM_EXTI10_ISR();   
+#define BOARD_COM_EXTI11_ISR();
+#define BOARD_COM_EXTI12_ISR();
+#define BOARD_COM_EXTI13_ISR();
+#define BOARD_COM_EXTI14_ISR();
+#define BOARD_COM_EXTI15_ISR();
 
 
 

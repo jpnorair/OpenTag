@@ -969,26 +969,26 @@ HAL_StatusTypeDef HAL_RCC_ClockConfig(RCC_ClkInitTypeDef  *RCC_ClkInitStruct, ui
   *     @arg RCC_MCODIV_16: division by 16 applied to MCO clock        
   * @retval None
   */
-void HAL_RCC_MCOConfig( uint32_t RCC_MCOx, uint32_t RCC_MCOSource, uint32_t RCC_MCODiv)
-{
-  GPIO_InitTypeDef GPIO_InitStruct;
-  /* Check the parameters */
-  assert_param(IS_RCC_MCO(RCC_MCOx));
-  assert_param(IS_RCC_MCODIV(RCC_MCODiv));
-  assert_param(IS_RCC_MCO1SOURCE(RCC_MCOSource));
+  
+// Don't compile this if HAL GPIO is not available
+#ifdef HAL_GPIO_MODULE_ENABLED
+void HAL_RCC_MCOConfig( uint32_t RCC_MCOx, uint32_t RCC_MCOSource, uint32_t RCC_MCODiv) {
+    GPIO_InitTypeDef GPIO_InitStruct;
+    /* Check the parameters */
+    assert_param(IS_RCC_MCO(RCC_MCOx));
+    assert_param(IS_RCC_MCODIV(RCC_MCODiv));
+    assert_param(IS_RCC_MCO1SOURCE(RCC_MCOSource));
     
     /* MCO Clock Enable */
     __MCO1_CLK_ENABLE();
     
     /* Configure the MCO1 pin in alternate function mode */    
-  if(RCC_MCOx == RCC_MCO1)
-  {    
-    GPIO_InitStruct.Pin = MCO1_PIN;
-  }
-    else
-  {    
-    GPIO_InitStruct.Pin = MCO2_PIN;
-  }    
+    if (RCC_MCOx == RCC_MCO1) {    
+        GPIO_InitStruct.Pin = MCO1_PIN;
+    }
+    else {    
+        GPIO_InitStruct.Pin = MCO2_PIN;
+    }    
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -998,6 +998,13 @@ void HAL_RCC_MCOConfig( uint32_t RCC_MCOx, uint32_t RCC_MCOSource, uint32_t RCC_
     /* Mask MCO1 and MCO1PRE[2:0] bits then Select MCO1 clock source and prescaler */
     MODIFY_REG(RCC->CFGR, (RCC_CFGR_MCOSEL | RCC_CFGR_MCO_PRE), ((RCC_MCOSource << 24 | RCC_MCODiv )));
 }
+#else
+void HAL_RCC_MCOConfig(uint32_t RCC_MCOx, uint32_t RCC_MCOSource, uint32_t RCC_MCODiv) {
+    //!!! Must enable HAL_GPIO to use HAL_RCC_MCOConfig !!!
+    assert(NULL);
+}
+#endif
+
 
 /**
   * @brief  Enables the Clock Security System.
@@ -1009,8 +1016,7 @@ void HAL_RCC_MCOConfig( uint32_t RCC_MCOx, uint32_t RCC_MCOSource, uint32_t RCC_
   * @param  None
   * @retval None
   */
-void HAL_RCC_EnableCSS(void)
-{
+void HAL_RCC_EnableCSS(void) {
    SET_BIT(RCC->CR, RCC_CR_CSSHSEON) ;
 }
 

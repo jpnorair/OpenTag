@@ -48,7 +48,7 @@ ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) 
     ot_int units;
     ot_u16 output;
 
-    platfom_disable_interrupts();
+    platform_disable_interrupts();
     CRC->INIT   = init;
     CRC->POL    = 0x8005;
     CRC->CR     = (b01 << 3) | 1; 

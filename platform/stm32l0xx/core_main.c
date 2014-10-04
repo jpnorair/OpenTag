@@ -73,18 +73,6 @@ void otapi_pause()      { platform_ot_pause(); }
   * Usually, these configuration parameters are set in the compiler or in the
   * build_config.h file.  If they are not set, defaults are used.
   */
-#if (__CM0_NVIC_GROUPS < 2)
-#   define _GROUP_PRIORITY  7
-#elif (__CM0_NVIC_GROUPS < 4)
-#   define _GROUP_PRIORITY  6
-#elif (__CM0_NVIC_GROUPS < 8)
-#   define _GROUP_PRIORITY  5
-#elif (__CM0_NVIC_GROUPS < 16)
-#   define _GROUP_PRIORITY  4
-#else
-#   error "Cortex M3 may support more than 8 NVIC Groups, but STM32L supports no more than 8"
-#endif
-
 
 
 
@@ -668,7 +656,7 @@ void platform_full_speed() {
     if ( _FULLSPEED_OFF() /* && !_FLANKRQ() */ ) {
         platform_disable_interrupts();
         
-        if (FULL_UPVOLT()) {
+        if (_FULL_UPVOLT()) {
             sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
         }
         
@@ -682,7 +670,7 @@ void platform_full_speed() {
             FLASH->ACR = FLASH_ACR_PRFTEN;
 #       endif
 
-        if (FULL_DOWNVOLT()) {
+        if (_FULL_DOWNVOLT()) {
             sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
         }
 
@@ -1052,34 +1040,18 @@ void platform_init_interruptor() {
 /// Kernel interrupts go in the next highest group.  Everything else is above.
 /// Apps/Builds can get quite specific about how to set up the groups.
 
-#define _KERNEL_GROUP   b0000
-
-#   if (__CM0_NVIC_GROUPS == 1)
-#       define _HIPRI_BASE  b0000
-#       define _LOPRI_BASE  b0000
-#       define _SUB_LIMIT   b1111
-#   elif (__CM0_NVIC_GROUPS == 2)
-#       define _HIPRI_BASE  b1000
-#       define _LOPRI_BASE  b1000
-#       define _SUB_LIMIT   b0111
-#   elif (__CM0_NVIC_GROUPS == 4)
-#       define _HIPRI_BASE  b0100
-#       define _LOPRI_BASE  b1100
-#       define _SUB_LIMIT   b0011
-#   elif (__CM0_NVIC_GROUPS == 8)
-#       define _HIPRI_BASE  b0010
-#       define _LOPRI_BASE  b1110
-#       define _SUB_LIMIT   b0001
-#   endif
+#   define _KERNEL_GROUP    b0000
+#   define _HIPRI_BASE      b0000
+#   define _LOPRI_BASE      b1100
+#   define _SUB_LIMIT       b1111
 
     /// 1. Set the EXTI channels using the board function.  Different boards
     ///    are connected differently, so this function must be implemented in
     ///    the board support header.
     BOARD_EXTI_STARTUP();
 
-    /// 2. Set main NVIC parameters: Vector Table @ 0x08000000 (offset = 0),
-    ///    _GROUP_PRIORITY is a constant set above in this C file
-    NVIC_SetPriorityGrouping(_GROUP_PRIORITY);
+    /// 2. Cortex M0 doesn't have NVIC priority grouping, so nothing to do here
+    //NVIC_SetPriorityGrouping(_GROUP_PRIORITY);
 
     /// 3. Setup Cortex-M system interrupts
     /// <LI> Fault IRQs (Mem management, bus-fault, usage-fault) can be enabled
@@ -1099,7 +1071,7 @@ void platform_init_interruptor() {
     // Systick needs SCB and NVIC to be enabled in order to run.
 #   if defined(YOU_ARE_AN_IDIOT)
     SCB->SHP[((uint32_t)(SysTick_IRQn)&0xF)-4]  = (_LOPRI_BASE << 4);
-    NVIC->IP[(uint32_t)(SysTick_IRQn)]          = ((_KERNEL_GROUP+_OT_SUB2) << 4);
+    NVIC->IP[(uint32_t)(SysTick_IRQn)]          = ((_KERNEL_GROUP+2) << 4);
     NVIC->ISER[((uint32_t)(SysTick_IRQn)>>5)]   = (1 << ((uint32_t)(SysTick_IRQn) & 0x1F));
 #   endif
 
@@ -1127,22 +1099,19 @@ void platform_init_interruptor() {
     // Line 28: LPUART1-wakeup
     // Line 29: LPTIM-wakeup
 
-#   define _OT_SUB1         (b0001)
-#   define _OT_SUB2         ((_OT_SUB1+1)*(_SUB_LIMIT >= (_OT_SUB1+1)))
-#   define _OT_SUB3         ((_OT_SUB2+1)*(_SUB_LIMIT >= (_OT_SUB2+1)))
     EXTI->PR    = (1<<20) | (1<<29);
     EXTI->IMR  |= (1<<20) | (1<<29);
     EXTI->RTSR |= (1<<20) | (1<<29);
 
 #   if OT_FEATURE(M2)
-        NVIC->IP[(uint32_t)(RTC_IRQn)]         = ((_KERNEL_GROUP+_OT_SUB1) << 4);
+        NVIC->IP[(uint32_t)(RTC_IRQn)]         = ((_KERNEL_GROUP+1) << 4);
         NVIC->ISER[((uint32_t)(RTC_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
 #   else
         NVIC->IP[(uint32_t)(RTC_IRQn)]         = ((_LOPRI_BASE) << 4);
         NVIC->ISER[((uint32_t)(RTC_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_IRQn) & 0x1F));
 #   endif
 
-    NVIC->IP[(uint32_t)(LPTIM1_IRQn)]           = ((_KERNEL_GROUP+_OT_SUB2) << 4);
+    NVIC->IP[(uint32_t)(LPTIM1_IRQn)]           = ((_KERNEL_GROUP+2) << 4);
     NVIC->ISER[((uint32_t)(LPTIM1_IRQn)>>5)]    = (1 << ((uint32_t)(LPTIM1_IRQn) & 0x1F));
 
 

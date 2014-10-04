@@ -34,10 +34,14 @@
   */
 
 
+#include <otstd.h>
+#include <board.h>
+#if defined(__SPIRIT1__)
+
+
 #include <io/spirit1/interface.h>
 #include <io/spirit1/config.h>
 
-#include <otstd.h>
 //#include <platform/config.h>
 
 
@@ -572,6 +576,6 @@ void spirit1_set_txpwr(ot_u8* pwr_code) {
 }
 
 
-
+#endif
 
 

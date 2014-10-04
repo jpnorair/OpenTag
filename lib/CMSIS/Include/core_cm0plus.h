@@ -712,9 +712,7 @@ __STATIC_INLINE void NVIC_SetPriority(IRQn_Type IRQn, uint32_t priority)
     \return             Interrupt Priority. Value is aligned automatically to the implemented
                         priority bits of the microcontroller.
  */
-__STATIC_INLINE uint32_t NVIC_GetPriority(IRQn_Type IRQn)
-{
-
+__STATIC_INLINE uint32_t NVIC_GetPriority(IRQn_Type IRQn) {
   if(IRQn < 0) {
     return((uint32_t)(((SCB->SHP[_SHP_IDX(IRQn)] >> _BIT_SHIFT(IRQn) ) & 0xFF) >> (8 - __NVIC_PRIO_BITS)));  } /* get priority for Cortex-M0 system interrupts */
   else {

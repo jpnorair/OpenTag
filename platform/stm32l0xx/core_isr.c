@@ -553,23 +553,23 @@ void DMA1_Channel4_5_6_7_IRQHandler(void) {
     ot_u32 chan_x;
     __ISR_ENTRY_HOOK();
 #   if (_DMA4)
-        chan_x = DMA->CCR4;
-        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA->ISR & (1<<12))
+        chan_x = DMA1_Channel4->CCR;
+        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<12)))
             platform_isr_dma1ch4();
 #   endif
 #   if (_DMA5)
-        chan_x = DMA->CCR5;
-        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA->ISR & (1<<16))
+        chan_x = DMA1_Channel5->CCR;
+        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<16)))
             platform_isr_dma1ch5();
 #   endif
 #   if (_DMA6)
-        chan_x = DMA->CCR6;
-        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA->ISR & (1<<20))
+        chan_x = DMA1_Channel6->CCR;
+        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<20)))
             platform_isr_dma1ch6();
 #   endif
 #   if (_DMA7)
-        chan_x = DMA->CCR7;
-        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA->ISR & (1<<24))
+        chan_x = DMA1_Channel7->CCR;
+        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<24)))
             platform_isr_dma1ch7();
 #   endif
     __ISR_EXIT_HOOK();

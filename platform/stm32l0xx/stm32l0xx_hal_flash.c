@@ -579,39 +579,43 @@ FLASH_ErrorTypeDef HAL_FLASH_GetError(void)
   * @param  Timeout: maximum flash operationtimeout
   * @retval HAL_StatusTypeDef HAL Status
   */
-HAL_StatusTypeDef FLASH_WaitForLastOperation(uint32_t Timeout)
-{
-  uint32_t tickstart = 0;
+HAL_StatusTypeDef FLASH_WaitForLastOperation(uint32_t Timeout) {
+    uint32_t tickstart = 0;
 
-  /* Wait for the FLASH operation to complete by polling on BUSY flag to be reset.
+    /* Wait for the FLASH operation to complete by polling on BUSY flag to be reset.
      Even if the FLASH operation fails, the BUSY flag will be reset and an error
      flag will be set */
     
-  tickstart = HAL_GetTick();
+#   if (0) // The systick is bad to use.  Use OT chronstamp instead.
+    tickstart = HAL_GetTick();
      
-  while(__HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY)) 
-  { 
-    if(Timeout != HAL_MAX_DELAY)
-    {
-      if((Timeout == 0)||((HAL_GetTick() - tickstart ) > Timeout))
-      {
-        return HAL_TIMEOUT;
-      }
-    } 
-  }
+    while(__HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY)) { 
+        if(Timeout != HAL_MAX_DELAY) {
+            if((Timeout == 0)||((HAL_GetTick() - tickstart ) > Timeout)) {
+                return HAL_TIMEOUT;
+            }
+        } 
+    }
+#   else
+    tickstart = systim_chronstamp(NULL);
+    while (__HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY)) {
+        if (systim_chronstamp(&tickstart) >= Timeout) {
+            return HAL_TIMEOUT;
+        }
+    }
+#   endif
   
-
-   if( (__HAL_FLASH_GET_FLAG(FLASH_FLAG_WRPERR) != RESET) ||(__HAL_FLASH_GET_FLAG(FLASH_FLAG_PGAERR) != RESET) || \
+    if( (__HAL_FLASH_GET_FLAG(FLASH_FLAG_WRPERR) != RESET) ||(__HAL_FLASH_GET_FLAG(FLASH_FLAG_PGAERR) != RESET) || \
       (__HAL_FLASH_GET_FLAG(FLASH_FLAG_SIZERR) != RESET)||(__HAL_FLASH_GET_FLAG(FLASH_FLAG_OPTVERR) != RESET) || \
       (__HAL_FLASH_GET_FLAG(FLASH_FLAG_RDERR) != RESET) ||(__HAL_FLASH_GET_FLAG(FLASH_FLAG_NOTZEROERR) != RESET))
     {
-    /*Save the error code*/
-    FLASH_SetErrorCode();
-    return HAL_ERROR;
-   }
+        /*Save the error code*/
+        FLASH_SetErrorCode();
+        return HAL_ERROR;
+    }
 
-  /* If there is an error flag set */
-  return HAL_OK;  
+    /* If there is an error flag set */
+    return HAL_OK;  
 }
 
 /**

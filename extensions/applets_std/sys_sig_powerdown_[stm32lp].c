@@ -41,7 +41,13 @@
 #include <otstd.h>
 #include <platform/config.h>
 
-
+#if defined(__STM32L0xx__)
+    // any L0-specific things
+#elif defined(__STM32L1xx__)
+    // any L1-specific things
+#else 
+#   warning "unsupported type of STM32 defined, it should work OK, but no guarantee."
+#endif
 
 //#ifdef EXTF_sys_sig_powerdown
 void sys_sig_powerdown(ot_int code) {
@@ -66,7 +72,7 @@ void sys_sig_powerdown(ot_int code) {
     else 
 #   endif
     {   // Normal Sleeping mode (not deep sleep)
-        SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP);
+        SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP_Msk);
         PWR->CR    &= ~(PWR_CR_PDDS | PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP);
         platform_enable_interrupts();
         __WFI();

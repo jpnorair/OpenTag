@@ -33,7 +33,7 @@
 #define __board_IKR001_H
 
 /// MCU definition for the board must be the first thing
-#define __STM32L151CB__
+#define __STM32L152VB__
 
 #include <app/app_config.h>
 #include <platform/hw/STM32L1xx_config.h>
@@ -42,6 +42,7 @@
 #ifdef __NULL_RADIO__
 #   include <io/null_radio/config.h>
 #else
+#   define __SPIRIT1__
 #   include <io/spirit1/config.h>
 #endif
 
@@ -89,8 +90,8 @@
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED         // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             ENABLED         // USB-CDC MPipe implementation
-#define MCU_CONFIG_MPIPEUART            DISABLED        // UART MPipe Implementation
+#define MCU_CONFIG_MPIPECDC             DISABLED //ENABLED         // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC == DISABLED)        // UART MPipe Implementation
 #define MCU_CONFIG_MPIPEI2C             DISABLED        // I2C MPipe Implementation
 #define MCU_CONFIG_MEMCPYDMA            ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 #define MCU_CONFIG_USB                  ((MCU_CONFIG_MPIPECDC == ENABLED) || 0)

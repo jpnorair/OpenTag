@@ -45,6 +45,7 @@
 #ifdef __NULL_RADIO__
 #   include <io/null_radio/config.h>
 #else
+#   define __SPIRIT1__
 #   include <io/spirit1/config.h>
 #endif
 

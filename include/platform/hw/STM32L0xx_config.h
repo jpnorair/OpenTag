@@ -1,4 +1,4 @@
-/* Copyright 2009-2013 JP Norair
+/* Copyright 2009-2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -43,6 +43,12 @@
   * part number for the MCU on the board.  The preprocessing below will set up
   * other attributes based on the part number.
   */
+
+#define __STM32__
+#define __STM32L__
+#define __STM32L0__
+#define __STM32L0xx__
+
 
 // All STM32L0's available at this time have:
 // 8KB SRAM
@@ -263,9 +269,6 @@ ot_u16 platform_ext_lsihz();
   */
 
 #define PLATFORM(VAL)           PLATFORM_##VAL
-#define __STM32__
-#define __STM32L0__
-#define __STM32L0xx__
 #define PLATFORM_STM32L0xx
 
 #ifndef __LITTLE_ENDIAN__
@@ -415,17 +418,6 @@ ot_u16 platform_ext_lsihz();
 #   define __CM0_NVIC_GROUPS    2
 #endif
 
-#if (__CM0_NVIC_GROUPS == 1)
-#   error "__CM0_NVIC_GROUPS is set to 1, but GULP Kernel not supported on this device yet."
-//#   ifndef __KERNEL_GULP__
-//#       define __KERNEL_GULP__
-//#   endif
-//#   define PLATFORM_NVIC_KERNEL_GROUP   0
-//#   define PLATFORM_NVIC_RF_GROUP       0
-//#   define PLATFORM_NVIC_IO_GROUP       0
-//#   define PLATFORM_NVIC_TASK_GROUP     0
-
-#elif (__CM0_NVIC_GROUPS == 2)
 #   ifndef __KERNEL_HICCULP__
 #       define __KERNEL_HICCULP__
 #   endif
@@ -434,31 +426,6 @@ ot_u16 platform_ext_lsihz();
 #   define PLATFORM_NVIC_IO_GROUP       b1000
 #   define PLATFORM_NVIC_INT_GROUP      b1000
 #   define PLATFORM_NVIC_TASK_GROUP     b1000 
-
-#elif (__CM0_NVIC_GROUPS == 4)
-#   ifndef __KERNEL_HICCULP__
-#       define __KERNEL_HICCULP__
-#   endif
-#   define PLATFORM_NVIC_KERNEL_GROUP   b0000
-#   define PLATFORM_NVIC_RF_GROUP       b0100
-#   define PLATFORM_NVIC_IO_GROUP       b0100
-#   define PLATFORM_NVIC_INT_GROUP      b1000
-#   define PLATFORM_NVIC_TASK_GROUP     b1100
-
-#elif (__CM0_NVIC_GROUPS == 8)
-#   ifndef __KERNEL_HICCULP__
-#       define __KERNEL_HICCULP__
-#   endif
-#   define PLATFORM_NVIC_KERNEL_GROUP   b0000
-#   define PLATFORM_NVIC_RF_GROUP       b0010
-#   define PLATFORM_NVIC_IO_GROUP       b0100
-#   define PLATFORM_NVIC_SLOWIO_GROUP   b0110
-#   define PLATFORM_NVIC_INT_GROUP      b1100
-#   define PLATFORM_NVIC_TASK_GROUP     b1110
-
-#else
-#   error "__CM0_NVIC_GROUPS must be set to 1, 2, 4, or 8"
-#endif
 
 
 /// These Primary ISR functions are typically implemented in core_errors.c

@@ -1,4 +1,4 @@
 
 <Project Header="Project 'mpipe_bridge'" Path=".\mpipe_bridge.rprj" Project="Yes" OutputFile="" sate="96" ActiveApp="mpipe_bridge" >
-	<ApplicationBuild Header="mpipe_bridge" Extern=".\mpipe_bridge.rapp" Path=".\mpipe_bridge.rapp" OutputFile=".\mpipe_bridge.elf" sate="98" Config="Nucleo_STM32L053" />
+	<ApplicationBuild Header="mpipe_bridge" Extern=".\mpipe_bridge.rapp" Path=".\mpipe_bridge.rapp" OutputFile=".\build\mpipe_bridge.elf" sate="98" Config="IKR001_Debug" />
 </Project>

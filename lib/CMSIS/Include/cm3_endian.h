@@ -30,6 +30,6 @@
 #include <stdint.h>
 #include <core_cm3.h>
 
-#inclued "_local/cm_endian.h"
+#include "_local/cm_endian.h"
 
 #endif
