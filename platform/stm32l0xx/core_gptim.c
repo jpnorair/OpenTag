@@ -115,7 +115,7 @@ void systim_init(void* tim_init) {
     ///         (set to 0).  For LSI, this is...
     RTC->WPR    = 0xCA;
     RTC->WPR    = 0x53;
-    RTC->CR     = 0;
+    RTC->CR     =  0;   //(1<<5);
     RTC->ISR    = 0xFFFFFFFF;
     while((RTC->ISR & RTC_ISR_INITF) == 0);
     RTC->TR     = 0;

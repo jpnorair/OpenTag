@@ -652,10 +652,10 @@ void platform_poweron() {
     //platform_init_gpio();
     BOARD_PORT_STARTUP();
 
-    /// 3. Configure Clocks
-    platform_init_busclk();
+    /// 3. Configure Clocks: Periph-clock MUST BE FIRST
     platform_init_periphclk();
-
+    platform_init_busclk();
+    
     /// 5. Debugging setup
 #   if defined(__DEBUG__) || defined(__PROTO__)
     DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP \

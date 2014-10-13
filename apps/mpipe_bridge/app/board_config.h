@@ -40,7 +40,7 @@
 
 #if (   !defined(BOARD_IKR001)          \
     &&  !defined(BOARD_Pluto)               \
-    &&  !defined(BOARD_Charon)              \
+    &&  !defined(BOARD_Charon_R0)           \
     &&  !defined(BOARD_Nucleo_STM32L053)    \
     )
 #   define BOARD_Pluto
@@ -62,9 +62,9 @@
 #   include <app/isr_config_STM32L0.h>
 #   include <board/stm32l0xx/nucleo_STM32L053.h>
 
-#elif defined(BOARD_Charon)
+#elif defined(BOARD_Charon_R0)
 #   include <app/isr_config_STM32L0.h>
-#   include <board/stm32l0xx/Charon.h>
+#   include <board/stm32l0xx/charon_r0.h>
 
 #elif defined(BOARD_Nucleo_STM32L053)
 #   include <app/isr_config_STM32L0.h>

@@ -370,36 +370,34 @@ void RCC_CRS_IRQHandler(void) {
 
 
 #if (OT_FEATURE(M2))
-#   define __EXTI_MACRO_LOW(NUM);  \
-    EXTI->PR = (1<<NUM);  \
-    BOARD_RADIO_EXTI##NUM##_ISR(); \
-    BOARD_COM_EXTI##NUM##_ISR(); \
-    APPLICATION_EXTI##NUM##_ISR();
-    
-#   define __EXTI_MACRO(NUM);   \
-    if (EXTI->PR & (1<<NUM)) { \
-        EXTI->PR = (1<<NUM);  \
-        BOARD_RADIO_EXTI##NUM##_ISR(); \
-        BOARD_COM_EXTI##NUM##_ISR(); \
-        APPLICATION_EXTI##NUM##_ISR(); \
-    } \
-    else
-        
+#   define __RADIO_EXTI(NUM)    BOARD_RADIO_EXTI##NUM##_ISR()
 #else
-#   define __EXTI_MACRO_LOW(NUM);  \
+#   define __RADIO_EXTI(NUM); 
+#endif
+#if (BOARD_FEATURE(MPIPE) && defined(BOARD_COM_EXTI0))
+#   define __MPIPE_EXTI(NUM)    BOARD_COM_EXTI##NUM##_ISR()
+#elif (BOARD_FEATURE(MPIPE) && defined(BOARD_MPIPE_EXTI0))
+#   define __MPIPE_EXTI(NUM)    BOARD_MPIPE_EXTI##NUM##_ISR()
+#else
+#   define __MPIPE_EXTI(NUM); 
+#endif
+
+
+
+#define __EXTI_MACRO_LOW(NUM);  \
     EXTI->PR = (1<<NUM);  \
-    BOARD_COM_EXTI##NUM##_ISR(); \
+    __RADIO_EXTI(NUM); \
+    __MPIPE_EXTI(NUM); \
     APPLICATION_EXTI##NUM##_ISR();
     
-#   define __EXTI_MACRO(NUM);   \
+#define __EXTI_MACRO(NUM);   \
     if (EXTI->PR & (1<<NUM)) { \
         EXTI->PR = (1<<NUM);  \
-        BOARD_COM_EXTI##NUM##_ISR(); \
+        __RADIO_EXTI(NUM); \
+        __MPIPE_EXTI(NUM); \
         APPLICATION_EXTI##NUM##_ISR(); \
     } \
     else
-    
-#endif
 
 
 

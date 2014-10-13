@@ -97,7 +97,8 @@ void otapi_pause()      { platform_ot_pause(); }
 
 // If GPTIM/KTIM uses RTC as a time source, we need to keep it open,
 // and unfortunately this access tends to be in the same place as clocking.
-#if (OT_GPTIM_ID == 'R')
+// Also, the interval-timer uses WUTE, so basically DBP is always set
+#if 1 || (OT_GPTIM_ID == 'R')
 #   define _RTC_PROTECTION  PWR_CR_DBP
 #else
 #   define _RTC_PROTECTION  0
@@ -398,6 +399,7 @@ void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
     ///@todo figure out a way to do this with WFE
     // Wait for Oscillator to get ready, counter goes to 0 on failure
     RCC->CR    |= osc_mask;
+    osc_mask  <<= (osc_mask & 1);   // hack for STM32L0 HSI
     osc_mask  <<= 1;
     while ( ((RCC->CR & osc_mask) == 0) && (--counter) );
 
@@ -412,9 +414,9 @@ void sub_osc_setclock(ot_u32 clock_mask) {
     ot_u32 scratch;
     scratch         = RCC->CFGR & ~(3 | RCC_CFGR_STOPWUCK);
     scratch        |= clock_mask;
-    clock_mask    <<= 2;
+    clock_mask      = (clock_mask & 3) << 2;
     RCC->CFGR       = scratch;
-    while ( (RCC->CFGR & clock_mask) != clock_mask);
+    while ( (RCC->CFGR & (3<<2)) != clock_mask);
 }
 
 
@@ -776,8 +778,8 @@ void platform_poweron() {
     BOARD_PORT_STARTUP();
 
     /// 3. Configure Clocks
-    platform_init_busclk();
     platform_init_periphclk();
+    platform_init_busclk();
 
     /// 5. Debugging setup: apply to all peripherals
 #   if defined(__DEBUG__)
@@ -1000,7 +1002,7 @@ void platform_init_periphclk() {
 #define DBP_BitNumber            0x08
 #define CR_DBP_BB                (PERIPH_BB_BASE + (CR_OFFSET * 32) + (DBP_BitNumber * 4))
 */
-    ot_u32  pwr_cr_save = PWR->CR;
+    ot_u32  pwr_cr_save = (PWR->CR | PWR_CR_DBP);
 
 #   if BOARD_FEATURE(LFXTAL)
     PWR->CR     = ((1 << 11) | PWR_CR_DBP);
