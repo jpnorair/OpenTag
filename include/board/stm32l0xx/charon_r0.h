@@ -73,7 +73,7 @@
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED                            // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             DISABLED                             // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPECDC             ENABLED                             // USB-CDC MPipe implementation
 #define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC!=ENABLED)      // UART MPipe Implementation
 #define MCU_CONFIG_MPIPEI2C             DISABLED                            // I2C MPipe Implementation
 #define MCU_CONFIG_MEMCPYDMA            ENABLED                             // MEMCPY DMA should be lower priority than MPIPE DMA
@@ -165,12 +165,21 @@
 #define BOARD_FEATURE_HFCRS             (BOARD_FEATURE_HFXTAL != ENABLED)       // Use STM32L0's Clock-Recovery-System for USB
 #define BOARD_FEATURE_RFXTAL            DISABLED                                // XTAL for RF chipset
 #define BOARD_FEATURE_RFXTALOUT         DISABLED
-#define BOARD_FEATURE_PLL               MCU_CONFIG_USB
+#define BOARD_FEATURE_PLL               (MCU_CONFIG_MULTISPEED == ENABLED)
 #define BOARD_FEATURE_STDSPEED          (MCU_CONFIG_MULTISPEED == ENABLED)
 #define BOARD_FEATURE_FULLSPEED         ENABLED
 #define BOARD_FEATURE_FULLXTAL          DISABLED
 #define BOARD_FEATURE_FLANKSPEED        (MCU_CONFIG_MULTISPEED == ENABLED)
 #define BOARD_FEATURE_FLANKXTAL         (BOARD_FEATURE_HFCRS != ENABLED)
+#if (MCU_CONFIG(USB) && BOARD_FEATURE(PLL) && (BOARD_FEATURE(HFXTAL) || BOARD_FEATURE(HFBYPASS)))
+#   warning "Charon board does not normally support XTAL-based USB."
+#   define BOARD_FEATURE_USBPLL         ENABLED
+#elif MCU_CONFIG(USB)
+#   undef BOARD_FEATURE_HFCRS
+#   define BOARD_FEATURE_HFCRS          ENABLED
+#   define BOARD_FEATURE_USBPLL         DISABLED
+#endif
+
 #define BOARD_FEATURE_INVERT_TRIG1      DISABLED
 #define BOARD_FEATURE_INVERT_TRIG2      DISABLED
 
@@ -184,10 +193,10 @@
 #define BOARD_PARAM_HFHz                16000000
 #define BOARD_PARAM_HFtol               0.02
 #define BOARD_PARAM_HFppm               20000
-#define BOARD_PARAM_RFHz                48000000
-#define BOARD_PARAM_RFdiv               6
-#define BOARD_PARAM_RFout               (BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)
-#define BOARD_PARAM_RFtol               0.00003
+//#define BOARD_PARAM_RFHz                48000000
+//#define BOARD_PARAM_RFdiv               6
+//#define BOARD_PARAM_RFout               (BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)
+//#define BOARD_PARAM_RFtol               0.00003
 #define BOARD_PARAM_PLLout              96000000
 #define BOARD_PARAM_PLLmult             (BOARD_PARAM_PLLout/BOARD_PARAM_HFHz)
 #define BOARD_PARAM_PLLdiv              3
@@ -211,27 +220,72 @@
 #define BOARD_TRACESWO_PINNUM           (1<<3)
 #define BOARD_TRACESWO_PIN              3
 
-// SW1 is implemented on the SRES Pin, active low
-#define BOARD_SW1_PORTNUM               2                   // Port B
-#define BOARD_SW1_PORT                  GPIOC
-#define BOARD_SW1_PINNUM                13
-#define BOARD_SW1_PIN                   (BOARD_SW1_PINNUM<<3)
-#define BOARD_SW1_POLARITY              0
-#define BOARD_SW1_PULLING               0
 
-// TEST0, TEST1 pins are usually outputs but they could be pull-up inputs also
-#define BOARD_TEST0_PORTNUM             1                   // Port B
-#define BOARD_TEST0_PORT                GPIOB
-#define BOARD_TEST0_PINNUM              4
-#define BOARD_TEST0_PIN                 (1<<4)
-#define BOARD_TEST0_POLARITY            0
-#define BOARD_TEST0_PULLING             1
-#define BOARD_TEST1_PORTNUM             1                   // Port B
-#define BOARD_TEST1_PORT                GPIOB
-#define BOARD_TEST1_PINNUM              5
-#define BOARD_TEST1_PIN                 (1<<5)
-#define BOARD_TEST1_POLARITY            0
-#define BOARD_TEST1_PULLING             1
+// ADC Analog inputs on PA0,PA1,PA4,PB0,PC1,PC0 or "A0,A1,A2,A3,A4,A5"
+#define BOARD_ADC_PINS                  1
+#define BOARD_ADC_PORTS                 1
+#define BOARD_ADC_0_PORTNUM             0
+#define BOARD_ADC_0_PORT                GPIOA
+#define BOARD_ADC_0_CHAN                1
+#define BOARD_ADC_0_PINNUM              1
+#define BOARD_ADC_0_PIN                 (1<<BOARD_ADC_0PINNUM)
+#define BOARD_ADC_0E                    ENABLED
+#define BOARD_ADC_0E_PORTNUM            0
+#define BOARD_ADC_0E_PORT               GPIOA
+#define BOARD_ADC_0E_PINNUM             2
+#define BOARD_ADC_0E_PIN                (1<<BOARD_ADC_0E_PINNUM)
+#define BOARD_ADC_0E_OTYPE              (GPIO_OTYPE_OPENDRAIN)      //OPEN DRAIN
+#define BOARD_ADC_0E_POLARITY           0                           //ACTIVE LOW
+#define BOARD_ADC_0_ENABLE()            (BOARD_ADC_0E_PORT->BSRR = (BOARD_ADC_0E_PIN<<16))
+#define BOARD_ADC_0_DISABLE()           (BOARD_ADC_0E_PORT->BSRR = BOARD_ADC_0E_PIN)
+
+
+// SW1 is on PB8, which is also the IFRES pin used to reset the I/O Interface.
+// IFRES is active-low with a pullup.
+//#define BOARD_SW1_PORTNUM               1
+//#define BOARD_SW1_PORT                  GPIOB
+//#define BOARD_SW1_PINNUM                8
+//#define BOARD_SW1_PIN                   (BOARD_SW1_PINNUM<<3)
+//#define BOARD_SW1_POLARITY              0
+//#define BOARD_SW1_PULLING               1
+//#define BOARD_IFRES_PORTNUM             BOARD_SW1_PORTNUM
+//#define BOARD_IFRES_PORT                BOARD_SW1_PORT
+//#define BOARD_IFRES_PINNUM              BOARD_SW1_PINNUM
+//#define BOARD_IFRES_PIN                 BOARD_SW1_PIN
+//#define BOARD_IFRES_POLARITY            BOARD_SW1_POLARITY
+//#define BOARD_IFRES_PULLING             BOARD_SW1_PULLING
+
+
+// SPI Interface on PB3,4,5 and PA15
+#define BOARD_SPI_ID                    1        //SPI1
+#define BOARD_SPI_PORTNUM               1        //Port B
+#define BOARD_SPI_PORT                  GPIOB    
+#define BOARD_SPI_MOSIPINNUM            5
+#define BOARD_SPI_MISOPINNUM            4
+#define BOARD_SPI_SCLKPINNUM            3
+#define BOARD_SPI_CSNPORTNUM            0        //Port A
+#define BOARD_SPI_CSNPORT               GPIOA
+#define BOARD_SPI_CSNPINNUM             15
+#define BOARD_SPI_MOSIPIN               (1<<BOARD_SPI_MOSIPINNUM)
+#define BOARD_SPI_MISOPIN               (1<<BOARD_SPI_MISOPINNUM)
+#define BOARD_SPI_SCLKPIN               (1<<BOARD_SPI_SCLKPINNUM)
+#define BOARD_SPI_CSNPIN                (1<<BOARD_SPI_CSNPINNUM)
+
+
+// TEST0, TEST1 pins are shared with SPI
+// They are also connected to the LEDs
+#define BOARD_TEST0_PORTNUM             BOARD_SPI_PORTNUM 
+#define BOARD_TEST0_PORT                BOARD_SPI_PORT
+#define BOARD_TEST0_PINNUM              BOARD_SPI_MOSIPINNUM
+#define BOARD_TEST0_PIN                 BOARD_SPI_MOSIPIN
+#define BOARD_TEST0_POLARITY            1
+#define BOARD_TEST0_PULLING             0
+#define BOARD_TEST1_PORTNUM             BOARD_SPI_CSNPORTNUM
+#define BOARD_TEST1_PORT                BOARD_SPI_CSNPORT
+#define BOARD_TEST1_PINNUM              BOARD_SPI_CSNPINNUM
+#define BOARD_TEST1_PIN                 BOARD_SPI_CSNPIN
+#define BOARD_TEST1_POLARITY            1
+#define BOARD_TEST1_PULLING             0
 #define BOARD_LEDG_PORTNUM              BOARD_TEST0_PORTNUM
 #define BOARD_LEDG_PORT                 BOARD_TEST0_PORT
 #define BOARD_LEDG_PINNUM               BOARD_TEST0_PINNUM
@@ -247,57 +301,31 @@
 
 // Main serial connections, used at least by MPIPE
 
-// I2C on PB8/PB9 
-//#define BOARD_I2C_PORTNUM           1                       
-//#define BOARD_I2C_PORT              GPIOB
-//#define BOARD_I2C_ID                1
-//#define BOARD_I2C_SCLPINNUM         8
-//#define BOARD_I2C_SDAPINNUM         9
-//#define BOARD_I2C_SCLPIN            (1<<BOARD_I2C_SCLPINNUM)
-//#define BOARD_I2C_SDAPIN            (1<<BOARD_I2C_SDAPINNUM)
+// I2C on PB6/PB7 
+//#define BOARD_I2C_PORTNUM               1                       
+//#define BOARD_I2C_PORT                  GPIOB
+//#define BOARD_I2C_ID                    1
+//#define BOARD_I2C_SCLPINNUM             6
+//#define BOARD_I2C_SDAPINNUM             7
+//#define BOARD_I2C_SCLPIN                (1<<BOARD_I2C_SCLPINNUM)
+//#define BOARD_I2C_SDAPIN                (1<<BOARD_I2C_SDAPINNUM)
 
-// SPI on ... 
-#define BOARD_SPI_PORTNUM           1                       
-#define BOARD_SPI_PORT              GPIOB
-#define BOARD_SPI_ID                1
-#define BOARD_SPI_MOSIPINNUM        5
-#define BOARD_SPI_MISOPINNUM        4
-#define BOARD_SPI_SCLKPINNUM        3
-#define BOARD_SPI_CSNPORTNUM        0
-#define BOARD_SPI_CSNPORT           GPIOA
-#define BOARD_SPI_CSNPINNUM         15
-#define BOARD_SPI_MOSIPIN           (1<<BOARD_SPI_MOSIPINNUM)
-#define BOARD_SPI_MISOPIN           (1<<BOARD_SPI_MISOPINNUM)
-#define BOARD_SPI_SCKPIN            (1<<BOARD_SPI_SCLKPINNUM)
-#define BOARD_SPI_CSNPIN            (1<<BOARD_SPI_CSNPINNUM)
-
-// UART on ...
-#define BOARD_UART_PORTNUM          0
-#define BOARD_UART_PORT             GPIOA
-#define BOARD_UART_ID               1
-#define BOARD_UART_TXPINNUM         2
-#define BOARD_UART_RXPINNUM         3
-#define BOARD_UART_TXPIN            (1<<BOARD_UART_TXPINNUM)
-#define BOARD_UART_RXPIN            (1<<BOARD_UART_RXPINNUM)
+// UART on PB6/PB7
+//#define BOARD_UART_PORTNUM          1
+//#define BOARD_UART_PORT             GPIOB
+//#define BOARD_UART_ID               1
+//#define BOARD_UART_TXPINNUM         6
+//#define BOARD_UART_RXPINNUM         7
+//#define BOARD_UART_TXPIN            (1<<BOARD_UART_TXPINNUM)
+//#define BOARD_UART_RXPIN            (1<<BOARD_UART_RXPINNUM)
 
 // USB is always on PA11/A12
-#define BOARD_USB_PORTNUM           0
-#define BOARD_USB_PORT              GPIOA
-#define BOARD_USB_DMPINNUM          11
-#define BOARD_USB_DPPINNUM          12
-#define BOARD_USB_DMPIN             (1<<BOARD_USB_DMPINNUM)
-#define BOARD_USB_DPPIN             (1<<BOARD_USB_DPPINNUM)
-
-// ADC Analog inputs on ... PA0,PA1,PA4,PB0,PC1,PC0 
-#define BOARD_ADC_PINS                  6
-#define BOARD_ADC_PORTS                 3
-#define BOARD_ADC_0PORTNUM              0
-#define BOARD_ADC_0PORT                 GPIOA
-#define BOARD_ADC_0CHAN                 0
-#define BOARD_ADC_0PINNUM               0
-#define BOARD_ADC_0PIN                  (1<<BOARD_ADC_0PINNUM)
-
-
+#define BOARD_USB_PORTNUM               0
+#define BOARD_USB_PORT                  GPIOA
+#define BOARD_USB_DMPINNUM              11
+#define BOARD_USB_DPPINNUM              12
+#define BOARD_USB_DMPIN                 (1<<BOARD_USB_DMPINNUM)
+#define BOARD_USB_DPPIN                 (1<<BOARD_USB_DPPINNUM)
 
 
 
@@ -431,62 +459,54 @@ static inline void BOARD_PORT_STARTUP(void) {
     
     /// Configure Port A IO.  
     /// Port A is used for internal features and .
-    // - A0,1,4 are used for Analog Inputs
-    // - A2 is UART-TX, which is ALT push-pull output
-    // - A3 is UART-RX, which is ALT push-pull input
-    // - A5:7 are SPI bus, set to ALT.
-    // - A8:10 are inputs (often used with radio)
-    // - A11:12 are inputs which are not available on the Arduino pinout
-    // - A13:14 are SWD, set to ALT
+    // - A0 is unused, set to ANALOG (default)
+    // - A1 is the ADC_0 input 
+    // - A2 is the ADC_0E open drain output (active low, no-pullup)
+    // - A3:10 are unused, set to ANALOG (default)
+    // - A11:12 are USB I/O, which gets configured in the driver.  Set to HiZ
+    // - A13:14 are SWD, set to ALT-DEBUG
+    // - A15 is SPI-NSS and TEST1, set to push-pull output
+#   ifdef __USE_SPI
+    GPIOA->BSRR     = BOARD_SPI_CSNPIN;
+#   endif
 
-    GPIOA->MODER    = (3 << (0*2)) \
-                    | (3 << (1*2)) \
-                    | (2 << (2*2)) \
-                    | (2 << (3*2)) \
-                    | (3 << (4*2)) \
-                    | (2 << (5*2)) \
-                    | (2 << (6*2)) \
-                    | (2 << (7*2)) \
-                    | (0  << (8*2)) \
-                    | (0  << (9*2)) \
-                    | (0  << (10*2)) \
-                    | (0  << (11*2)) \
-                    | (0  << (12*2)) \
-                    | (2 << (13*2)) \
-                    | (2 << (14*2)) \
-                    | (0  << (15*2));
+    GPIOA->AFR[1]   = (2 << ((BOARD_USB_DMPINNUM-8)*4)) \
+                    | (2 << ((BOARD_USB_DPPINNUM-8)*4));
 
-    GPIOA->OTYPER   = 0;
-    
-    GPIOA->OSPEEDR  = (1 << (2*2)) \
-                    | (1 << (3*2)) \
-                    | (2 << (6*2)) \
-                    | (2 << (7*2)) \
-                    | (3 << (13*2)) \
-                    | (3 << (14*2));
-    
-    GPIOA->PUPDR    = (1 << (3*2)) \
-                    | (1 << (13*2)) | (2 << (14*2));
-    
+    GPIOA->MODER    = (GPIO_MODER_ANALOG    << (0*2)) \
+                    | (GPIO_MODER_ANALOG    << (1*2)) \
+                    | (GPIO_MODER_OUT       << (2*2)) \
+                    | (GPIO_MODER_ANALOG    << (3*2)) \
+                    | (GPIO_MODER_ANALOG    << (4*2)) \
+                    | (GPIO_MODER_ANALOG    << (5*2)) \
+                    | (GPIO_MODER_ANALOG    << (6*2)) \
+                    | (GPIO_MODER_ANALOG    << (7*2)) \
+                    | (GPIO_MODER_ANALOG    << (8*2)) \
+                    | (GPIO_MODER_ANALOG    << (9*2)) \
+                    | (GPIO_MODER_ANALOG    << (10*2)) \
+                    | (GPIO_MODER_ALT       << (11*2)) \
+                    | (GPIO_MODER_ALT       << (12*2)) \
+                    | (GPIO_MODER_ALT       << (13*2)) \
+                    | (GPIO_MODER_ALT       << (14*2)) \
+                    | (GPIO_MODER_IN        << (15*2));
 
-    GPIOA->AFR[0]   = (7 << (BOARD_UART_TXPINNUM*4)) \
-                    | (7 << (BOARD_UART_RXPINNUM*4)) \
-                    | (5 << ((BOARD_SPI_MOSIPINNUM)*4)) \
-                    | (5 << ((BOARD_SPI_MISOPINNUM)*4)) \
-                    | (5 << ((BOARD_SPI_SCLKPINNUM)*4));
+    GPIOA->OTYPER   = (1<<2);
+    
+    GPIOA->OSPEEDR  = (GPIO_OSPEEDR_40MHz << (11*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (12*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (13*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (14*2));
+    
+    GPIOA->PUPDR    = 0;
 
     
-    GPIOA->AFR[1]   = (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
-                    | (10 << ((BOARD_USB_DPPINNUM-8)*4));
 
     /* */
-
     /// Configure Port B IO.
     /// Port B is used for external (module) IO.
-    // - B0 is an Analog Input
-    // - B1:2 are unused and set to Analog mode
-    // - B3 is by default an input
-    // - B4 is a PWM output, set to Analog until configured
+    // - B0:2 are unused and set to Analog mode
+    // - B3:5 are SPI pins, which are managed by the driver.  Default=Analog
+    // - B6:15 are unused and set to Analog mode
     // - B5 is used as a radio input by default
     // - B6 is used as SPI-CS, an output
     // - B7 is unused and set to Analog mode
@@ -496,34 +516,40 @@ static inline void BOARD_PORT_STARTUP(void) {
     GPIOB->OTYPER   = (1 << (8)) | (1 << (9));
     GPIOB->BSRR     = (1 << (8)) | (1 << (9));
 
-    GPIOB->MODER    = (3 << (0*2)) \
-                    | (3 << (1*2)) \
-                    | (3 << (2*2)) \
-                    | (0     << (3*2)) \
-                    | (3 << (4*2)) \
-                    | (0     << (5*2)) \
-                    | (1    << (6*2)) \
-                    | (3 << (7*2)) \
-                    | (1    << (8*2)) \
-                    | (1    << (9*2)) \
-                    | (3 << (10*2)) \
-                    | (3 << (11*2)) \
-                    | (3 << (12*2)) \
-                    | (3 << (13*2)) \
-                    | (3 << (14*2)) \
-                    | (3 << (15*2));
+    GPIOB->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
+                    | (GPIO_MODER_ANALOG << (1*2)) \
+                    | (GPIO_MODER_ANALOG << (2*2)) \
+                    | (GPIO_MODER_ANALOG << (3*2)) \
+                    | (GPIO_MODER_ANALOG << (4*2)) \
+                    | (GPIO_MODER_ANALOG << (5*2)) \
+                    | (GPIO_MODER_ANALOG << (6*2)) \
+                    | (GPIO_MODER_ANALOG << (7*2)) \
+                    | (GPIO_MODER_ANALOG << (8*2)) \
+                    | (GPIO_MODER_ANALOG << (9*2)) \
+                    | (GPIO_MODER_ANALOG << (10*2)) \
+                    | (GPIO_MODER_ANALOG << (11*2)) \
+                    | (GPIO_MODER_ANALOG << (12*2)) \
+                    | (GPIO_MODER_ANALOG << (13*2)) \
+                    | (GPIO_MODER_ANALOG << (14*2)) \
+                    | (GPIO_MODER_ANALOG << (15*2));
     
-    GPIOB->OSPEEDR  = (2 << (8*2)) \
-                    | (2 << (9*2));
+    GPIOB->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (3*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (4*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (5*2));
     
+#   if defined(__USE_SPI)
+    GPIOB->AFR[0]   = (0 << ((BOARD_SPI_MOSIPINNUM)*4)) \
+                    | (0 << ((BOARD_SPI_MISOPINNUM)*4)) \
+                    | (0 << ((BOARD_SPI_SCLKPINNUM)*4));
+#   endif
+
+
     /// Configure Port C IO.
-    /// Port C is used only for 32kHz crystal driving
-    // - C14:15 are 32kHz crystal driving, set to ALT
-    GPIOC->MODER    = (1    << (14*2)) \
-                    | (2    << (15*2));
+    /// Port C is unused
     
-    /// Configure Port H for Crystal Bypass
-    /// By default it is set to HiZ input.  It is changed on-demand in FW
+    // - C14:15 are 32kHz crystal driving, but there is no crystal
+    GPIOC->MODER    = (GPIO_MODER_ANALOG << (14*2)) \
+                    | (GPIO_MODER_ANALOG << (15*2));
     
     // Disable GPIOC and GPIOH, they are never altered after this.
     RCC->IOPENR = _IOPENR_RUNTIME;
@@ -534,31 +560,35 @@ static inline void BOARD_PORT_STARTUP(void) {
 
 
 static inline void BOARD_SPI_CLKON(void) {
+#ifdef __USE_SPI
     BOARD_SPI_PORT->MODER &= ~((3 << (BOARD_SPI_SCLKPINNUM*2)) \
                             | (3 << (BOARD_SPI_MISOPINNUM*2)) \
                             | (3 << (BOARD_SPI_MOSIPINNUM*2)) );
     
-    BOARD_SPI_PORT->MODER |= (2 << (BOARD_SPI_SCLKPINNUM*2)) \
-                            | (2 << (BOARD_SPI_MISOPINNUM*2)) \
-                            | (2 << (BOARD_SPI_MOSIPINNUM*2));
+    BOARD_SPI_PORT->MODER |= (GPIO_MODER_ALT << (BOARD_SPI_SCLKPINNUM*2)) \
+                            | (GPIO_MODER_ALT << (BOARD_SPI_MISOPINNUM*2)) \
+                            | (GPIO_MODER_ALT << (BOARD_SPI_MOSIPINNUM*2));
     
   //BOARD_SPI_PORT->MODER ^= (3 << (BOARD_SPI_SCLKPINNUM*2)) \
                             | (2 << (BOARD_SPI_MISOPINNUM*2)) \
                             | (3 << (BOARD_SPI_MOSIPINNUM*2));
+#endif
 }
 
 static inline void BOARD_SPI_CLKOFF(void) {
+#ifdef __USE_SPI
     BOARD_SPI_PORT->MODER &= ~((3 << (BOARD_SPI_SCLKPINNUM*2)) \
                             | (3 << (BOARD_SPI_MISOPINNUM*2)) \
                             | (3 << (BOARD_SPI_MOSIPINNUM*2)) );
     
-    BOARD_SPI_PORT->MODER |= (1 << (BOARD_SPI_SCLKPINNUM*2)) \
-                            | (0 << (BOARD_SPI_MISOPINNUM*2)) \
-                            | (1 << (BOARD_SPI_MOSIPINNUM*2));
+    BOARD_SPI_PORT->MODER |= (GPIO_MODER_OUT << (BOARD_SPI_SCLKPINNUM*2)) \
+                            | (GPIO_MODER_IN << (BOARD_SPI_MISOPINNUM*2)) \
+                            | (GPIO_MODER_OUT << (BOARD_SPI_MOSIPINNUM*2));
     
   //BOARD_SPI_PORT->MODER ^= (3 << (BOARD_SPI_SCLKPINNUM*2)) \
                             | (2 << (BOARD_SPI_MISOPINNUM*2)) \
                             | (3 << (BOARD_SPI_MOSIPINNUM*2));
+#endif
 }
 
 
@@ -642,54 +672,60 @@ static inline void BOARD_POWER_STARTUP(void) {
 
 
 ///@note BOARD Macro for initializing the STM32 Crystal startup routine, done
-///      at startup.  For any build using CMSIS libraries (standard), this will
-///      be blank.  In those cases, crystal init is done in the CMSIS system
-///      startup function.
+///      at startup.  It must startup ALL the crystals that you want to run 
+///      during normal operation.
 static inline void BOARD_XTAL_STARTUP(void) {
-// Currently this is handled in the system startup function.  OpenTag requires
-// a 32768Hz clock
 }
 
 
 
-///@note BOARD Macro for initializing the STM32 Crystal startup routine, done
-///      at startup.  For any build using CMSIS libraries (standard), this will
-///      be blank.  In those cases, crystal init is done in the CMSIS system
-///      startup function.
-
+///@note BOARD Macros for turning-on and turning-off the High-speed XTAL.
+///      High speed XTAL does not exist on this board, so it is empty.
 static inline void BOARD_HSXTAL_ON(void) {
-///@todo turn on high speed oscillator
+}
+static inline void BOARD_HSXTAL_OFF(void) {
 }
 
-static inline void BOARD_HSXTAL_OFF(void) {
-///@todo turn off high speed oscillator
-}
+
+
+///@brief BOARD Macros for turning-on and turning-off the USB Clock, which may
+///       be implemented in a lot of different ways depending on the board, the
+///       MCU, and the configuration.
+///
+///@note  For STM32L0, the standard implementation is to use the CRS system in
+///       combination with the PLL.
+///
 
 static inline void BOARD_USBCLK_ON(void) {
-///@todo Use CRS or HSXTAL-on based on configuration.  Then turn on PLL
-    // ...
+#if BOARD_FEATURE(USBPLL)
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
     platform_ext_pllon();
+#else
+    platform_ext_usbcrson();
+#endif
 }
 
 static inline void BOARD_USBCLK_OFF(void) {
-///@todo deal with CRS or turn-off HSXTAL based on configuration
+#if BOARD_FEATURE(USBPLL)
     platform_ext_plloff();
-    // ...
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
+#else
+    platform_ext_usbcrsoff();
+#endif
 }
 
 static inline void BOARD_USB_PORTENABLE(void) {
-    BOARD_USBCLK_ON();
+    USB->BCDR |= (ot_u32)USB_BCDR_DPPU;
     
     //BOARD_USB_PORT->MODER  |= (2 << (BOARD_USB_DMPINNUM*2)) \
                             | (2 << (BOARD_USB_DPPINNUM*2));
-    //SYSCFG->PMC |= SYSCFG_PMC_USB_PU;
 }
 
 static inline void BOARD_USB_PORTDISABLE(void) {
-    //SYSCFG->PMC &= ~SYSCFG_PMC_USB_PU;
+    USB->BCDR &= ~(ot_u32)USB_BCDR_DPPU;
+    
     //BOARD_USB_PORT->MODER  &= ~( (3 << (BOARD_USB_DMPINNUM*2)) \
                                | (3 << (BOARD_USB_DPPINNUM*2)) );
-    BOARD_USBCLK_OFF();
 }
 
    
@@ -759,7 +795,7 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define PLATFORM_MSCLOCK_ERROR      BOARD_PARAM_MFtol
 #define PLATFORM_HSCLOCK_HZ         BOARD_PARAM_HFHz
 #define PLATFORM_HSCLOCK_ERROR      BOARD_PARAM_HFtol
-#define PLATFORM_PLLCLOCK_OUT       ((BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)*BOARD_PARAM_PLLmult)
+#define PLATFORM_PLLCLOCK_OUT       ((BOARD_PARAM_HFHz/BOARD_PARAM_HFdiv)*BOARD_PARAM_PLLmult)
 #define PLATFORM_PLLCLOCK_HZ        (PLATFORM_PLLCLOCK_OUT/BOARD_PARAM_PLLdiv)
 #define PLATFORM_PLLCLOCK_ERROR     BOARD_PARAM_RFtol
 
@@ -859,12 +895,15 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 
 
 
-/** Jupiter STM32L MPipe Setup <BR>
+/** Charon STM32L0 MPipe Setup <BR>
   * ========================================================================<BR>
   * USB MPipe requires a CDC firmware library subsystem, which typically uses
-  * memcpy to move data across HW buffers and such.  UART MPipe *REQUIRES* a,
-  * DMA however.  You could implement a driver without a DMA, but DMA makes it 
-  * so much cleaner and better.
+  * memcpy to move data across HW buffers and such, and memcpy typically is
+  * implemented using a DMA.  
+  *
+  * UART MPipe standard drivers REQUIRE DMA CHANNELS FOR RX AND TX.  You could
+  * re-implement them without DMA, but this will impact the performance in a
+  * very negative way and is not recommended.
   */
 #if (MCU_CONFIG_USB == ENABLED)
 // USB is mostly independent from OT, but the startup code does need to know 
@@ -872,14 +911,11 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #   if (BOARD_PARAM_HFHz != 2000000) && (BOARD_PARAM_HFHz != 3000000) \
       && (BOARD_PARAM_HFHz != 4000000) && (BOARD_PARAM_HFHz != 6000000) \
       && (BOARD_PARAM_HFHz != 8000000) && (BOARD_PARAM_HFHz != 12000000) \
-      && (BOARD_PARAM_HFHz != 16000000) && (BOARD_PARAM_HFHz != 24000000) \
-      && (BOARD_PARAM_RFHz != 24000000) && (BOARD_PARAM_RFHz != 48000000)
-#       error "USB requires 2, 3, 4, 6, 8, 12, 16, or 24 MHz HSE XTAL, or alternatively 24 or 48 MHz RF crystal."
+      && (BOARD_PARAM_HFHz != 16000000) && (BOARD_PARAM_HFHz != 24000000)
+#       error "USB requires 2, 3, 4, 6, 8, 12, 16, or 24 MHz HSE XTAL, or alternatively 16 MHz HSI+CRS"
 #   endif
-#   if (BOARD_PARAM_RFHz != 24000000)   \
-      && (BOARD_PARAM_RFHz != 48000000) \
-      && (BOARD_PARAM_HFppm > 50)
-#       error "USB requires that the tolerance of the HSE is < +/- 50ppm"
+#   if ((BOARD_PARAM_HFppm > 50) && (BOARD_FEATURE_HFCRS != ENABLED))
+#       error "USB requires an HS-XTAL with tolerance < +/- 50ppm, or alternatively usage of the CRS system"
 #   endif
 #   define MPIPE_USB_ID         0
 #   define MPIPE_USB            USB0

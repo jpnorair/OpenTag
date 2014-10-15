@@ -88,11 +88,11 @@ void otapi_pause()      { platform_ot_pause(); }
 #if (BOARD_FEATURE(HFXTAL) && BOARD_FEATURE(HFBYPASS))
 #   error "BOARD_FEATURE_HFXTAL and BOARD_FEATURE_HFBYPASS cannot be both ENABLED."
 #endif
-#if (MCU_CONFIG(USB) && (BOARD_FEATURE(PLL) != ENABLED))
-#   error "To use built-in USB, you must ENABLE the PLL"
+#if (MCU_CONFIG(USB) && (BOARD_FEATURE(USBPLL) != ENABLED) && (BOARD_FEATURE(HFCRS) != ENABLED))
+#   error "To use built-in USB, you must ENABLE the PLL or CRS"
 #endif
-#if (MCU_CONFIG(USB) && (PLATFORM_PLLCLOCK_OUT != 96000000))
-#   error "STM32L requires PLL output to be 96 MHz when using internal USB."
+#if (MCU_CONFIG(USB) && BOARD_FEATURE(USBPLL) && (PLATFORM_PLLCLOCK_OUT != 96000000))
+#   error "STM32L0 requires PLL output to be 96 MHz when using it for internal USB."
 #endif
 
 // If GPTIM/KTIM uses RTC as a time source, we need to keep it open,
@@ -170,12 +170,16 @@ void otapi_pause()      { platform_ot_pause(); }
 #endif
 
 // Fullspeed uses HSE or HSI without PLL
+///@todo See if USB requires 1V8 for sure, and make it dynamic only when active.
 #if BOARD_FEATURE(FULLSPEED)
 #   if (PLATFORM_HSCLOCK_HZ > 32000000)
-#       error "High Speed Clock must be less than 32 MHz"
+#       error "High Speed Clock must be less than 32 MHz"     
 #   elif (PLATFORM_HSCLOCK_HZ > 16000000)
 #       define _FULLSPEED_VOLTAGE   POWER_1V8
 #       define _FULLSPEED_FLASHWAIT ENABLED
+#   elif (MCU_CONFIG(USB) && (PLATFORM_HSCLOCK_HZ <= 16000000))
+#       define _FULLSPEED_VOLTAGE   POWER_1V8
+#       define _FULLSPEED_FLASHWAIT DISABLED
 #   elif (PLATFORM_HSCLOCK_HZ > 8000000)
 #       define _FULLSPEED_VOLTAGE   POWER_1V5
 #       define _FULLSPEED_FLASHWAIT ENABLED
@@ -472,6 +476,49 @@ void platform_ext_wakefromstop() {
 #   endif
 }
 #endif
+
+
+#ifndef EXTF_platform_ext_usbcrson
+void platform_ext_usbcrson(void) {
+    RCC->CRRCR      = RCC_CRRCR_HSI48ON;
+    {   ot_int limit = 3;
+        while (((RCC->CRRCR & RCC_CRRCR_HSI48RDY) == 0) && --limit);
+        if (limit == 0) {
+            __NOP();
+            //HW Fault;
+            //Reset
+        }
+    }
+    
+    RCC->APB1ENR   |= (RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
+    CRS->CFGR       = CRS_CFGR_SYNCPOL_RISING \
+                    | CRS_CFGR_SYNCSRC_USB \
+                    | (0x22 << 16) /* Default FELIM */ \
+                    | (0xBB7F);    /* Default RELOAD (1ms USB SOF) */
+
+    ///@todo make sure CEN doesn't need to be set as an independent follow-up
+    CRS->CR         = (32 << 8) | CRS_CR_AUTOTRIMEN | CRS_CR_CEN;
+    
+    
+    // HSI48 requires 6 pulses to stabilize (according to ref manual), so by 
+    // this point it should be stable even if CPU is running at 32 MHz.
+    // nop nop nop
+    //if ((RCC->CRRCR & RCC_CRRCR_HSI48RDY) == 0) {
+    //    platform_ext_usbcrsoff();
+    //    ///@todo HW Fault
+    //}
+}
+#endif
+
+
+#ifndef EXTF_platform_ext_usbcrsoff
+void platform_ext_usbcrsoff(void) {
+    CRS->CR         = (32 << 8) | CRS_CR_AUTOTRIMEN | 0;
+    RCC->APB1ENR   &= ~(RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
+    RCC->CRRCR      = 0;
+}
+#endif
+
 
 
 #ifndef EXTF_platform_ext_pllon
@@ -924,6 +971,7 @@ void platform_init_busclk() {
 //        SystemInit_ExtMemCtl();
 //#   endif
 
+
     ///3a. Begin clocking system with MSI clock at specified frequency.
     ///    <LI> Specified as PLATFORM_MSCLOCK_HZ in board support header </LI>
     ///    <LI> MSI is only used as standard clock if BOARD_FEATURE_STDSPEED
@@ -949,6 +997,9 @@ void platform_init_busclk() {
     ///    <LI> Boards using HSE can declare any value into PLATFORM_HSCLOCK_HZ.
     ///           Board using HSI may only declare 2, 4, 8, or 16 MHz</LI>
 #   elif BOARD_FEATURE(FULLSPEED)
+#       if ((_FULLSPEED_VOLTAGE != POWER_1V5) && (_FULL_UPVOLT() == 0))
+            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
+#       endif
         // Basic Flash setup, then run normal routine
         FLASH->ACR = FLASH_ACR_PRFTEN;
         platform_full_speed();
@@ -961,6 +1012,9 @@ void platform_init_busclk() {
     ///           (BOARD_PARAM_HFHz * BOARD_PARAM_PLLmult) must be 96 MHz, and
     ///           (96 MHz / BOARD_PARAM_PLLdiv) == PLATFORM_HSCLOCK_HZ. </LI>
 #   elif BOARD_FEATURE(FLANKSPEED)
+#       if ((_FLANKSPEED_VOLTAGE != POWER_1V5) && (_FLANK_UPVOLT() == 0))
+            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
+#       endif
         // Basic Flash setup, then run normal routine
         FLASH->ACR = FLASH_ACR_PRFTEN;
         platform_flank_speed();
@@ -968,6 +1022,16 @@ void platform_init_busclk() {
 #   else
 #       error "At least one of BOARD_FEATURE_STDSPEED, _FULLSPEED, or _FLANKSPEED must be ENABLED"
 #   endif
+
+    
+    ///4. Clock selection for special buses
+    RCC->CCIPR  = ((BOARD_FEATURE(USBPLL)!=ENABLED) << 26)  /* HSI48MSEL */ \
+                | (BOARD_FEATURE(LFXTAL) << 19) | (1 << 18) /* LSI/LSE for LPTIM */ \
+                | ((MCU_CONFIG(MULTISPEED)*2) << 12)        /* APB/HSI16 for I2C1 */ \
+                | ((BOARD_FEATURE(LFXTAL)*3) << 10)         /* APB/LSE for LPUART */ \
+                | ((MCU_CONFIG(MULTISPEED)*2) << 2)         /* Use APB/HSI16 for USART2 */ \
+                | ((MCU_CONFIG(MULTISPEED)*2) << 0);        /* APB/HSI16 for USART1 Clock */
+
 
     /// X. Vector Table Relocation in Internal SRAM or FLASH.
 #   ifdef VECT_TAB_SRAM
@@ -1042,10 +1106,10 @@ void platform_init_interruptor() {
 /// Kernel interrupts go in the next highest group.  Everything else is above.
 /// Apps/Builds can get quite specific about how to set up the groups.
 
-#   define _KERNEL_GROUP    b0000
-#   define _HIPRI_BASE      b0000
-#   define _LOPRI_BASE      b1100
-#   define _SUB_LIMIT       b1111
+#   define _KERNEL_GROUP    b00
+#   define _HIPRI_BASE      b00
+#   define _LOPRI_BASE      b11
+#   define _SUB_LIMIT       b11
 
     /// 1. Set the EXTI channels using the board function.  Different boards
     ///    are connected differently, so this function must be implemented in
@@ -1063,18 +1127,17 @@ void platform_init_interruptor() {
     /// <LI> Debug-Monitor is not used </LI>
     /// <LI> Systick is not used and it is inadvisable to use because it is a
     ///         power hog and because it is mostly useless with OpenTag. </LI>
-//  SCB->SHP[((uint32_t)(MemoryManagement_IRQn)&0xF)-4] = (b0000 << 4);
-//  SCB->SHP[((uint32_t)(BusFault_IRQn)&0xF)-4]         = (b0000 << 4);
-//  SCB->SHP[((uint32_t)(UsageFault_IRQn)&0xF)-4]       = (b0000 << 4);
-    SCB->SHP[((uint32_t)(SVC_IRQn)&0xF)-4]              = (b0000 << 4);
-    SCB->SHP[((uint32_t)(PendSV_IRQn)&0xF)-4]           = (b1111 << 4);
-//  SCB->SHP[((uint32_t)(DebugMonitor_IRQn)&0xF)-4]     = (b0000 << 4);
+//  SCB->SHP[_SHP_IDX(MemoryManagement_IRQn)  = (b00 << 4);
+//  SCB->SHP[_SHP_IDX(BusFault_IRQn)]         = (b00 << 4);
+//  SCB->SHP[_SHP_IDX(UsageFault_IRQn)]       = (b00 << 4);
+    SCB->SHP[_SHP_IDX(SVC_IRQn)]            = (b00 << 4);
+    SCB->SHP[_SHP_IDX(PendSV_IRQn)]         = (b11 << 4);
+//  SCB->SHP[_SHP_IDX(DebugMonitor_IRQn)]     = (b00 << 4);
 
     // Systick needs SCB and NVIC to be enabled in order to run.
 #   if defined(YOU_ARE_AN_IDIOT)
-    SCB->SHP[((uint32_t)(SysTick_IRQn)&0xF)-4]  = (_LOPRI_BASE << 4);
-    NVIC->IP[(uint32_t)(SysTick_IRQn)]          = ((_KERNEL_GROUP+2) << 4);
-    NVIC->ISER[((uint32_t)(SysTick_IRQn)>>5)]   = (1 << ((uint32_t)(SysTick_IRQn) & 0x1F));
+    NVIC_SetPriority(IRQn_Type IRQn, _LOPRI_BASE);
+    NVIC_EnableIRQ(SysTick_IRQn);
 #   endif
 
     /// 4. Setup NVIC for Kernel Interrupts.  Kernel interrupts cannot interrupt
@@ -1106,34 +1169,33 @@ void platform_init_interruptor() {
     EXTI->RTSR |= (1<<20) | (1<<29);
 
 #   if OT_FEATURE(M2)
-        NVIC->IP[(uint32_t)(RTC_IRQn)]         = ((_KERNEL_GROUP+1) << 4);
-        NVIC->ISER[((uint32_t)(RTC_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
+        NVIC_SetPriority(RTC_IRQn, (_KERNEL_GROUP+1));
+        NVIC_EnableIRQ(RTC_IRQn);
 #   else
-        NVIC->IP[(uint32_t)(RTC_IRQn)]         = ((_LOPRI_BASE) << 4);
-        NVIC->ISER[((uint32_t)(RTC_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_IRQn) & 0x1F));
+        NVIC_SetPriority(RTC_IRQn, (_LOPRI_BASE+1));
+        NVIC_EnableIRQ(RTC_IRQn);
 #   endif
 
-    NVIC->IP[(uint32_t)(LPTIM1_IRQn)]           = ((_KERNEL_GROUP+2) << 4);
-    NVIC->ISER[((uint32_t)(LPTIM1_IRQn)>>5)]    = (1 << ((uint32_t)(LPTIM1_IRQn) & 0x1F));
-
+    NVIC_SetPriority(LPTIM1_IRQn, (_KERNEL_GROUP+2));
+    NVIC_EnableIRQ(LPTIM1_IRQn);
 
 
     /// 5. Setup other external interrupts
     /// @note Make sure board files use the __USE_EXTI(N) definitions
 #   if defined(__USE_EXTI0) || defined(__USE_EXTI1)
-    NVIC->IP[(uint32_t)(EXTI0_1_IRQn)]          = (_HIPRI_BASE << 4);
-    NVIC->ISER[((uint32_t)(EXTI0_1_IRQn)>>5)]   = (1 << ((uint32_t)(EXTI0_1_IRQn) & 0x1F));
+    NVIC_SetPriority(EXTI0_1_IRQn, _HIPRI_BASE);
+    NVIC_EnableIRQ(EXTI0_1_IRQn);
 #   endif
 #   if defined(__USE_EXTI2) || defined(__USE_EXTI3)
-    NVIC->IP[(uint32_t)(EXTI2_3_IRQn)]          = (_HIPRI_BASE << 4);
-    NVIC->ISER[((uint32_t)(EXTI2_3_IRQn)>>5)]   = (1 << ((uint32_t)(EXTI2_3_IRQn) & 0x1F));
+    NVIC_SetPriority(EXTI2_3_IRQn, _HIPRI_BASE);
+    NVIC_EnableIRQ(EXTI2_3_IRQn);
 #   endif
 #   if( defined(__USE_EXTI4)  || defined(__USE_EXTI5)  || defined(__USE_EXTI6) \
     ||  defined(__USE_EXTI7)  || defined(__USE_EXTI8)  || defined(__USE_EXTI9) \
     ||  defined(__USE_EXTI10) || defined(__USE_EXTI11) || defined(__USE_EXTI12) \
     ||  defined(__USE_EXTI13) || defined(__USE_EXTI14) )
-    NVIC->IP[(uint32_t)(EXTI4_15_IRQn)]         = (_HIPRI_BASE << 4);
-    NVIC->ISER[((uint32_t)(EXTI4_15_IRQn)>>5)]  = (1 << ((uint32_t)(EXTI4_15_IRQn) & 0x1F));
+    NVIC_SetPriority(EXTI4_15_IRQn, _HIPRI_BASE);
+    NVIC_EnableIRQ(EXTI4_15_IRQn);
 #   endif
 
 
@@ -1141,8 +1203,8 @@ void platform_init_interruptor() {
     ///    but ADC is used for true-random-number generation as well as actual
     ///    analog voltage sensing.
 //#   if defined(__USE_ADC1)
-    NVIC->IP[(uint32_t)(ADC1_COMP_IRQn)]        = (_HIPRI_BASE << 4);
-    NVIC->ISER[((uint32_t)(ADC1_COMP_IRQn)>>5)] = (1 << ((uint32_t)(ADC1_COMP_IRQn) & 0x1F));
+    NVIC_SetPriority(ADC1_COMP_IRQn, _HIPRI_BASE);
+    NVIC_EnableIRQ(ADC1_COMP_IRQn);
 //#   endif
 
 }

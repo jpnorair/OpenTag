@@ -992,8 +992,13 @@ typedef struct
 #define  CRS_CFGR_SYNCSRC                    ((uint32_t)0x30000000) /* SYNC signal source selection       */
 #define  CRS_CFGR_SYNCSRC_0                  ((uint32_t)0x10000000) /* Bit 0                              */
 #define  CRS_CFGR_SYNCSRC_1                  ((uint32_t)0x20000000) /* Bit 1                              */
+#define  CRS_CFGR_SYNCSRC_GPIO              ((uint32_t)0x00000000)
+#define  CRS_CFGR_SYNCSRC_LSE               ((uint32_t)0x10000000)
+#define  CRS_CFGR_SYNCSRC_USB               ((uint32_t)0x20000000)
 
 #define  CRS_CFGR_SYNCPOL                    ((uint32_t)0x80000000) /* SYNC polarity selection            */
+#define  CRS_CFGR_SYNCPOL_RISING            ((uint32_t)0x00000000)
+#define  CRS_CFGR_SYNCPOL_FALLING           ((uint32_t)0x80000000)
   
 /*******************  Bit definition for CRS_ISR register  *********************/
 #define  CRS_ISR_SYNCOKF                     ((uint32_t)0x00000001) /* SYNC event OK flag             */
@@ -1524,6 +1529,8 @@ typedef struct
 #define GPIO_OTYPER_OT_13          ((uint32_t)0x00002000)
 #define GPIO_OTYPER_OT_14          ((uint32_t)0x00004000)
 #define GPIO_OTYPER_OT_15          ((uint32_t)0x00008000)
+#define GPIO_OTYPER_PUSHPULL        ((uint32_t)0x00000000)
+#define GPIO_OTYPER_OPENDRAIN       ((uint32_t)0x00000001)
 
 /****************  Bit definition for GPIO_OSPEEDR register  ******************/
 #define GPIO_OSPEEDER_OSPEED0     ((uint32_t)0x00000003)
@@ -1574,6 +1581,10 @@ typedef struct
 #define GPIO_OSPEEDER_OSPEED15    ((uint32_t)0xC0000000)
 #define GPIO_OSPEEDER_OSPEED15_0  ((uint32_t)0x40000000)
 #define GPIO_OSPEEDER_OSPEED15_1  ((uint32_t)0x80000000)
+#define GPIO_OSPEEDR_400kHz        ((uint32_t)0x00000000)
+#define GPIO_OSPEEDR_2MHz          ((uint32_t)0x00000001) 
+#define GPIO_OSPEEDR_10MHz         ((uint32_t)0x00000002)
+#define GPIO_OSPEEDR_40MHz         ((uint32_t)0x00000003)
 
 /*******************  Bit definition for GPIO_PUPDR register ******************/
 #define GPIO_PUPDR_PUPD0          ((uint32_t)0x00000003)

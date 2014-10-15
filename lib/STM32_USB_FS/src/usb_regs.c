@@ -745,14 +745,14 @@ uint16_t ToWord(uint8_t bh, uint8_t bl) {
 * Return         : resulted word.
 *******************************************************************************/
 uint16_t ByteSwap(uint16_t wSwW) {
-//  uint8_t bTemp;
-//  uint16_t wRet;
-//  bTemp = (uint8_t)(wSwW & 0xff);
-//  wRet =  (wSwW >> 8) | ((uint16_t)bTemp << 8);
-//  return(wRet);
+    uint8_t bTemp;
+    uint16_t wRet;
+    bTemp = (uint8_t)(wSwW & 0xff);
+    wRet =  (wSwW >> 8) | ((uint16_t)bTemp << 8);
+    return(wRet);
   
-  ///@note altered to use cortex-m primitive
-  return (uint16_t)__REV16(wSwW);
+    ///@note altered to use cortex-m primitive
+    //return (uint16_t)__REV16(wSwW);
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -159,7 +159,7 @@ void main(void) {
         vlFILE* fp;
         fp = ISF_open_su(ISF_ID(user_id));
         if (fp != NULL) {
-            vl_store(fp, sizeof(appstr), appstr);
+            vl_store(fp, sizeof(appstr), (ot_u8*)appstr);
         }
         vl_close(fp);
     }

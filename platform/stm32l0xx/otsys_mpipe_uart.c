@@ -156,8 +156,8 @@
 #   define BUILD_NVIC_SUBGROUP_MPIPE 0
 #endif
 
-#define _SUBGROUP   (BUILD_NVIC_SUBGROUP_MPIPE & (16 - (16/__CM0_NVIC_GROUPS)))
-#define _IRQGROUP   ((PLATFORM_NVIC_IO_GROUP + _SUBGROUP) << 4)
+#define _SUBGROUP   (0)
+#define _IRQGROUP   (PLATFORM_NVIC_IO_GROUP + _SUBGROUP)
 
 #if ((BOARD_FEATURE_MPIPE_CS == ENABLED) || (BOARD_FEATURE_MPIPE_FLOWCTL == ENABLED))
 #   define _CTS_IRQ
@@ -550,17 +550,17 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
     _DMATX->CPAR    = (uint32_t)&(MPIPE_UART->TDR);
 
     /// MPipe RX & TX DMA Interrupts
-    NVIC->IP[(ot_u32)_DMARX_IRQ]        = _IRQGROUP;
-    NVIC->ISER[(ot_u32)(_DMARX_IRQ>>5)] = (1 << ((ot_u32)_DMARX_IRQ & 0x1F));
-    NVIC->IP[(ot_u32)_DMATX_IRQ]        = _IRQGROUP;
-    NVIC->ISER[(ot_u32)(_DMATX_IRQ>>5)] = (1 << ((ot_u32)_DMATX_IRQ & 0x1F));
+    NVIC_SetPriority(_DMARX_IRQ, _IRQGROUP);
+    NVIC_EnableIRQ(_DMARX_IRQ);
+    NVIC_SetPriority(_DMATX_IRQ, _IRQGROUP);
+    NVIC_EnableIRQ(_DMATX_IRQ);
 
     /// MPipe RXNE/TXE USART Interrupt & RX Pin Interrupts are used with
     /// the "Break" mode of operation.  NVIC configuration of Line interrupts
     /// must be in core_main.c, due to the way EXTIs are shared on STM32.
 #   if (BOARD_FEATURE(MPIPE_BREAK))
-        NVIC->IP[(ot_u32)_UART_IRQ]         = _IRQGROUP;
-        NVIC->ISER[(ot_u32)(_UART_IRQ>>5)]  = (1 << ((ot_u32)_UART_IRQ & 0x1F));
+        NVIC_SetPriority(_UART_IRQ, _IRQGROUP);
+        NVIC_EnableIRQ(_UART_IRQ);
         EXTI->PR                            = MPIPE_UART_RXPIN;
         EXTI->RTSR                         |= MPIPE_UART_RXPIN;
 #   endif

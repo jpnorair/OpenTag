@@ -242,6 +242,8 @@
   * These must be defined before including platform_config.h, so that they
   * can be used for inline functions.
   */
+void platform_ext_usbcrson(void);
+void platform_ext_usbcrsoff(void);
 void platform_ext_pllon();
 void platform_ext_plloff();
 void platform_ext_wakefromstop();
@@ -415,17 +417,17 @@ ot_u16 platform_ext_lsihz();
 
 
 #ifndef __CM0_NVIC_GROUPS
-#   define __CM0_NVIC_GROUPS    2
+#   define __CM0_NVIC_GROUPS    4
 #endif
 
 #   ifndef __KERNEL_HICCULP__
 #       define __KERNEL_HICCULP__
 #   endif
-#   define PLATFORM_NVIC_KERNEL_GROUP   b0000
-#   define PLATFORM_NVIC_RF_GROUP       b0100
-#   define PLATFORM_NVIC_IO_GROUP       b1000
-#   define PLATFORM_NVIC_INT_GROUP      b1000
-#   define PLATFORM_NVIC_TASK_GROUP     b1000 
+#   define PLATFORM_NVIC_KERNEL_GROUP   b00
+#   define PLATFORM_NVIC_RF_GROUP       b01
+#   define PLATFORM_NVIC_IO_GROUP       b10
+#   define PLATFORM_NVIC_INT_GROUP      b10
+#   define PLATFORM_NVIC_TASK_GROUP     b11
 
 
 /// These Primary ISR functions are typically implemented in core_errors.c

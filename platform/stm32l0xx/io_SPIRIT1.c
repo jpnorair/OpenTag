@@ -180,7 +180,7 @@
 #   endif
 
 
-#define __DMA_CLEAR_IRQ()  (NVIC->ICPR[(ot_u32)(_DMARX_IRQ>>5)] = (1 << ((ot_u32)_DMARX_IRQ & 0x1F)))
+#define __DMA_CLEAR_IRQ()  (NVIC_ClearPendingIRQ(_DMARX_IRQ))
 #define __DMA_ENABLE()     do { \
                                 _DMARX->CCR = (DMA_CCR1_MINC | DMA_CCR1_PL_VHI | DMA_CCR1_TCIE | DMA_CCR1_EN); \
                                 _DMATX->CCR |= (DMA_CCR1_DIR | DMA_CCR1_MINC | DMA_CCR1_PL_VHI | DMA_CCR1_EN); \
@@ -260,8 +260,8 @@ void spirit1_init_bus() {
     BOARD_DMA_CLKOFF();
 
     // Don't enable NVIC, because we want an EVENT, not an interrupt.
-    //NVIC->IP[(ot_u32)_DMARX_IRQ]        = PLATFORM_NVIC_RF_GROUP;
-    //NVIC->ISER[(ot_u32)(_DMARX_IRQ>>5)] = (1 << ((ot_u32)_DMARX_IRQ & 0x1F));
+    //NVIC_SetPriority(_DMARX_IRQ, PLATFORM_NVIC_RF_GROUP);
+    //NVIC_EnableIRQ(_DMARX_IRQ);
 
     /// 3. Connect GPIOs from SPIRIT1 to STM32L External Interrupt sources
     /// The GPIO configuration should be done in BOARD_PORT_STARTUP() and the
@@ -283,16 +283,16 @@ void spirit1_init_bus() {
     EXTI->RTSR |= (RFI_SOURCE1 | RFI_SOURCE2);
 
 #   if defined(_EXTI0_1_USED)
-    NVIC->IP[(uint32_t)EXTI0_1_IRQn]         = (PLATFORM_NVIC_RF_GROUP << 4);
-    NVIC->ISER[((uint32_t)EXTI0_1_IRQn>>5)]  = (1 << ((uint32_t)EXTI0_1_IRQn & 0x1F));
+    NVIC_SetPriority(EXTI0_1_IRQn, PLATFORM_NVIC_RF_GROUP);
+    NVIC_EnableIRQ(EXTI0_1_IRQn);
 #   endif
 #   if defined(_EXTI2_3_USED)
-    NVIC->IP[(uint32_t)EXTI2_3_IRQn]         = (PLATFORM_NVIC_RF_GROUP << 4);
-    NVIC->ISER[((uint32_t)EXTI2_3_IRQn>>5)]  = (1 << ((uint32_t)EXTI2_3_IRQn & 0x1F));
+    NVIC_SetPriority(EXTI2_3_IRQn, PLATFORM_NVIC_RF_GROUP);
+    NVIC_EnableIRQ(EXTI2_3_IRQn);
 #   endif
 #   if defined(_EXTI4_15_USED)
-    NVIC->IP[(uint32_t)EXTI4_15_IRQn]        = (PLATFORM_NVIC_RF_GROUP << 4);
-    NVIC->ISER[((uint32_t)EXTI4_15_IRQn>>5)] = (1 << ((uint32_t)EXTI4_15_IRQn & 0x1F));
+    NVIC_SetPriority(EXTI4_15_IRQn, PLATFORM_NVIC_RF_GROUP);
+    NVIC_EnableIRQ(EXTI4_15_IRQn);
 #   endif
 
     ///4. The best way to wait for the SPIRIT1 to start is to wait for the reset
