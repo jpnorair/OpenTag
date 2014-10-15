@@ -470,8 +470,8 @@ static inline void BOARD_PORT_STARTUP(void) {
     GPIOA->BSRR     = BOARD_SPI_CSNPIN;
 #   endif
 
-    GPIOA->AFR[1]   = (2 << ((BOARD_USB_DMPINNUM-8)*4)) \
-                    | (2 << ((BOARD_USB_DPPINNUM-8)*4));
+    //GPIOA->AFR[1]   = (0 << ((BOARD_USB_DMPINNUM-8)*4)) \
+    //                | (0 << ((BOARD_USB_DPPINNUM-8)*4));
 
     GPIOA->MODER    = (GPIO_MODER_ANALOG    << (0*2)) \
                     | (GPIO_MODER_ANALOG    << (1*2)) \
@@ -484,8 +484,8 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_MODER_ANALOG    << (8*2)) \
                     | (GPIO_MODER_ANALOG    << (9*2)) \
                     | (GPIO_MODER_ANALOG    << (10*2)) \
-                    | (GPIO_MODER_ALT       << (11*2)) \
-                    | (GPIO_MODER_ALT       << (12*2)) \
+                    | (GPIO_MODER_IN       << (11*2)) \
+                    | (GPIO_MODER_IN       << (12*2)) \
                     | (GPIO_MODER_ALT       << (13*2)) \
                     | (GPIO_MODER_ALT       << (14*2)) \
                     | (GPIO_MODER_IN        << (15*2));
