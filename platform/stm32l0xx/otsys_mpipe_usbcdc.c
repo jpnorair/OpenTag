@@ -1232,9 +1232,9 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 
     /// Set USB-Wakeup interrupt on Line 18: optional
     /// @todo get this working properly
-    EXTI->PR   &= ~(1<<18);
-    EXTI->RTSR |= (1<<18);
-    EXTI->IMR  |= (1<<18);
+    //EXTI->PR   &= ~(1<<18);
+    //EXTI->RTSR |= (1<<18);
+    //EXTI->IMR  |= (1<<18);
     
     /// Set USB System Interrupt
     NVIC_SetPriority(USB_IRQn, _IRQGROUP);
