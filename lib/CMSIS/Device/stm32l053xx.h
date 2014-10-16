@@ -1009,8 +1009,13 @@ typedef struct
 #define  CRS_CFGR_SYNCSRC                    ((uint32_t)0x30000000) /* SYNC signal source selection       */
 #define  CRS_CFGR_SYNCSRC_0                  ((uint32_t)0x10000000) /* Bit 0                              */
 #define  CRS_CFGR_SYNCSRC_1                  ((uint32_t)0x20000000) /* Bit 1                              */
+#define  CRS_CFGR_SYNCSRC_GPIO              ((uint32_t)0x00000000)
+#define  CRS_CFGR_SYNCSRC_LSE               ((uint32_t)0x10000000)
+#define  CRS_CFGR_SYNCSRC_USB               ((uint32_t)0x20000000)
 
 #define  CRS_CFGR_SYNCPOL                    ((uint32_t)0x80000000) /* SYNC polarity selection            */
+#define  CRS_CFGR_SYNCPOL_RISING            ((uint32_t)0x00000000)
+#define  CRS_CFGR_SYNCPOL_FALLING           ((uint32_t)0x80000000)
   
 /*******************  Bit definition for CRS_ISR register  *********************/
 #define  CRS_ISR_SYNCOKF                     ((uint32_t)0x00000001) /* SYNC event OK flag             */

@@ -96,7 +96,7 @@
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED                            // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             DISABLED                             // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPECDC             ENABLED                             // USB-CDC MPipe implementation
 #define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC != ENABLED)    // UART MPipe Implementation
 #define MCU_CONFIG_MPIPEI2C             DISABLED                            // I2C MPipe Implementation
 #define MCU_CONFIG_MEMCPYDMA            ENABLED                             // MEMCPY DMA should be lower priority than MPIPE DMA
@@ -186,16 +186,24 @@
 #define BOARD_FEATURE_HFXTAL            DISABLED                                // HF XTAL used as Clock source
 #define BOARD_FEATURE_HFBYPASS          DISABLED                                // Use an externally driven oscillator
 #define BOARD_FEATURE_HFCRS             (BOARD_FEATURE_HFXTAL != ENABLED)       // Use STM32L0's Clock-Recovery-System for USB
-#define BOARD_FEATURE_RFXTAL            (defined(__USE_RADIO))                  // XTAL for RF chipset
+#define BOARD_FEATURE_RFXTAL            DISABLED                                // XTAL for RF chipset
 #define BOARD_FEATURE_RFXTALOUT         DISABLED
-#define BOARD_FEATURE_PLL               MCU_CONFIG_USB
+#define BOARD_FEATURE_PLL               (MCU_CONFIG_MULTISPEED == ENABLED)
 #define BOARD_FEATURE_STDSPEED          (MCU_CONFIG_MULTISPEED == ENABLED)
 #define BOARD_FEATURE_FULLSPEED         ENABLED
 #define BOARD_FEATURE_FULLXTAL          DISABLED
 #define BOARD_FEATURE_FLANKSPEED        (MCU_CONFIG_MULTISPEED == ENABLED)
 #define BOARD_FEATURE_FLANKXTAL         (BOARD_FEATURE_HFCRS != ENABLED)
-#define BOARD_FEATURE_INVERT_TRIG1      DISABLED
-#define BOARD_FEATURE_INVERT_TRIG2      DISABLED
+#if (MCU_CONFIG(USB) && BOARD_FEATURE(PLL) && (BOARD_FEATURE(HFXTAL) || BOARD_FEATURE(HFBYPASS)))
+#   warning "Nucleo board does not normally support XTAL-based USB."
+#   define BOARD_FEATURE_USBPLL         ENABLED
+#elif MCU_CONFIG(USB)
+#   undef BOARD_FEATURE_HFCRS
+#   define BOARD_FEATURE_HFCRS          ENABLED
+#   define BOARD_FEATURE_USBPLL         DISABLED
+#else
+#   define BOARD_FEATURE_USBPLL         DISABLED
+#endif
 
 #define BOARD_PARAM_TRIGS               2
 #define BOARD_PARAM_LFHz                32768
@@ -207,10 +215,10 @@
 #define BOARD_PARAM_HFHz                16000000
 #define BOARD_PARAM_HFtol               0.02
 #define BOARD_PARAM_HFppm               20000
-#define BOARD_PARAM_RFHz                48000000
-#define BOARD_PARAM_RFdiv               6
-#define BOARD_PARAM_RFout               (BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)
-#define BOARD_PARAM_RFtol               0.00003
+//#define BOARD_PARAM_RFHz                48000000
+//#define BOARD_PARAM_RFdiv               6
+//#define BOARD_PARAM_RFout               (BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)
+//#define BOARD_PARAM_RFtol               0.00003
 #define BOARD_PARAM_PLLout              96000000
 #define BOARD_PARAM_PLLmult             (BOARD_PARAM_PLLout/BOARD_PARAM_HFHz)
 #define BOARD_PARAM_PLLdiv              3
@@ -577,7 +585,7 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - A3 is UART-RX, which is ALT push-pull input
     // - A5:7 are SPI bus, set to ALT.
     // - A8:10 are inputs (often used with radio)
-    // - A11:12 are inputs which are not available on the Arduino pinout
+    // - A11:12 are inputs which are not available on the Arduino pinout (USB)
     // - A13:14 are SWD, set to ALT
 #   ifdef __USE_RADIO
     GPIOA->BSRR     = BOARD_RFSPI_CSNPIN;
@@ -826,55 +834,62 @@ static inline void BOARD_POWER_STARTUP(void) {
 
 
 ///@note BOARD Macro for initializing the STM32 Crystal startup routine, done
-///      at startup.  For any build using CMSIS libraries (standard), this will
-///      be blank.  In those cases, crystal init is done in the CMSIS system
-///      startup function.
+///      at startup.  It must startup ALL the crystals that you want to run 
+///      during normal operation.
 static inline void BOARD_XTAL_STARTUP(void) {
-// Currently this is handled in the system startup function.  OpenTag requires
-// a 32768Hz clock
 }
 
 
 
-///@note BOARD Macro for initializing the STM32 Crystal startup routine, done
-///      at startup.  For any build using CMSIS libraries (standard), this will
-///      be blank.  In those cases, crystal init is done in the CMSIS system
-///      startup function.
-
+///@note BOARD Macros for turning-on and turning-off the High-speed XTAL.
+///      High speed XTAL does not exist on this board, so it is empty.
 static inline void BOARD_HSXTAL_ON(void) {
-///@todo turn on high speed oscillator
+}
+static inline void BOARD_HSXTAL_OFF(void) {
 }
 
-static inline void BOARD_HSXTAL_OFF(void) {
-///@todo turn off high speed oscillator
-}
+
+
+///@brief BOARD Macros for turning-on and turning-off the USB Clock, which may
+///       be implemented in a lot of different ways depending on the board, the
+///       MCU, and the configuration.
+///
+///@note  For STM32L0, the standard implementation is to use the CRS system in
+///       combination with the PLL.
+///
 
 static inline void BOARD_USBCLK_ON(void) {
-///@todo Use CRS or HSXTAL-on based on configuration.  Then turn on PLL
-    // ...
+#if BOARD_FEATURE(USBPLL)
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
     platform_ext_pllon();
+#else
+    platform_ext_usbcrson();
+#endif
 }
 
 static inline void BOARD_USBCLK_OFF(void) {
-///@todo deal with CRS or turn-off HSXTAL based on configuration
+#if BOARD_FEATURE(USBPLL)
     platform_ext_plloff();
-    // ...
+    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
+#else
+    platform_ext_usbcrsoff();
+#endif
 }
 
 static inline void BOARD_USB_PORTENABLE(void) {
-    BOARD_USBCLK_ON();
+    USB->BCDR |= (ot_u32)USB_BCDR_DPPU;
     
-    //BOARD_USB_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_USB_DMPINNUM*2)) \
-                            | (GPIO_MODER_ALT << (BOARD_USB_DPPINNUM*2));
-    //SYSCFG->PMC |= SYSCFG_PMC_USB_PU;
+    //BOARD_USB_PORT->MODER  |= (2 << (BOARD_USB_DMPINNUM*2)) \
+                            | (2 << (BOARD_USB_DPPINNUM*2));
 }
 
 static inline void BOARD_USB_PORTDISABLE(void) {
-    //SYSCFG->PMC &= ~SYSCFG_PMC_USB_PU;
+    USB->BCDR &= ~(ot_u32)USB_BCDR_DPPU;
+    
     //BOARD_USB_PORT->MODER  &= ~( (3 << (BOARD_USB_DMPINNUM*2)) \
                                | (3 << (BOARD_USB_DPPINNUM*2)) );
-    BOARD_USBCLK_OFF();
 }
+
 
    
 
@@ -884,22 +899,22 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 ///      radio interface header documentation (it's really quite simple). 
 ///      These Macros will get called in the universal EXTI interrupt handler,
 ///      typically implemented in platform_isr_STM32L.c
-#define BOARD_RADIO_EXTI0_ISR(); 
-#define BOARD_RADIO_EXTI1_ISR();   
-#define BOARD_RADIO_EXTI2_ISR();
-#define BOARD_RADIO_EXTI3_ISR();
-#define BOARD_RADIO_EXTI4_ISR();
-#define BOARD_RADIO_EXTI5_ISR();
-#define BOARD_RADIO_EXTI6_ISR();     
-#define BOARD_RADIO_EXTI7_ISR();     
-#define BOARD_RADIO_EXTI8_ISR()     spirit1_irq0_isr()
-#define BOARD_RADIO_EXTI9_ISR()     spirit1_irq1_isr()
-#define BOARD_RADIO_EXTI10_ISR()    spirit1_irq2_isr()
-#define BOARD_RADIO_EXTI11_ISR();
-#define BOARD_RADIO_EXTI12_ISR();
-#define BOARD_RADIO_EXTI13_ISR();
-#define BOARD_RADIO_EXTI14_ISR();
-#define BOARD_RADIO_EXTI15_ISR();
+//#define BOARD_RADIO_EXTI0_ISR(); 
+//#define BOARD_RADIO_EXTI1_ISR();   
+//#define BOARD_RADIO_EXTI2_ISR();
+//#define BOARD_RADIO_EXTI3_ISR();
+//#define BOARD_RADIO_EXTI4_ISR();
+//#define BOARD_RADIO_EXTI5_ISR();
+//#define BOARD_RADIO_EXTI6_ISR();     
+//#define BOARD_RADIO_EXTI7_ISR();     
+//#define BOARD_RADIO_EXTI8_ISR()     spirit1_irq0_isr()
+//#define BOARD_RADIO_EXTI9_ISR()     spirit1_irq1_isr()
+//#define BOARD_RADIO_EXTI10_ISR()    spirit1_irq2_isr()
+//#define BOARD_RADIO_EXTI11_ISR();
+//#define BOARD_RADIO_EXTI12_ISR();
+//#define BOARD_RADIO_EXTI13_ISR();
+//#define BOARD_RADIO_EXTI14_ISR();
+//#define BOARD_RADIO_EXTI15_ISR();
 
 
 ///@todo Create a more intelligent setup that knows how to use the UART, even
@@ -1066,12 +1081,15 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 
 
 
-/** Jupiter STM32L MPipe Setup <BR>
+/** Nucleo STM32L0 MPipe Setup <BR>
   * ========================================================================<BR>
   * USB MPipe requires a CDC firmware library subsystem, which typically uses
-  * memcpy to move data across HW buffers and such.  UART MPipe *REQUIRES* a,
-  * DMA however.  You could implement a driver without a DMA, but DMA makes it 
-  * so much cleaner and better.
+  * memcpy to move data across HW buffers and such, and memcpy typically is
+  * implemented using a DMA.  
+  *
+  * UART MPipe standard drivers REQUIRE DMA CHANNELS FOR RX AND TX.  You could
+  * re-implement them without DMA, but this will impact the performance in a
+  * very negative way and is not recommended.
   */
 #if (MCU_CONFIG_USB == ENABLED)
 // USB is mostly independent from OT, but the startup code does need to know 
@@ -1079,14 +1097,11 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #   if (BOARD_PARAM_HFHz != 2000000) && (BOARD_PARAM_HFHz != 3000000) \
       && (BOARD_PARAM_HFHz != 4000000) && (BOARD_PARAM_HFHz != 6000000) \
       && (BOARD_PARAM_HFHz != 8000000) && (BOARD_PARAM_HFHz != 12000000) \
-      && (BOARD_PARAM_HFHz != 16000000) && (BOARD_PARAM_HFHz != 24000000) \
-      && (BOARD_PARAM_RFHz != 24000000) && (BOARD_PARAM_RFHz != 48000000)
-#       error "USB requires 2, 3, 4, 6, 8, 12, 16, or 24 MHz HSE XTAL, or alternatively 24 or 48 MHz RF crystal."
+      && (BOARD_PARAM_HFHz != 16000000) && (BOARD_PARAM_HFHz != 24000000)
+#       error "USB requires 2, 3, 4, 6, 8, 12, 16, or 24 MHz HSE XTAL, or alternatively 16 MHz HSI+CRS"
 #   endif
-#   if (BOARD_PARAM_RFHz != 24000000)   \
-      && (BOARD_PARAM_RFHz != 48000000) \
-      && (BOARD_PARAM_HFppm > 50)
-#       error "USB requires that the tolerance of the HSE is < +/- 50ppm"
+#   if ((BOARD_PARAM_HFppm > 50) && (BOARD_FEATURE_HFCRS != ENABLED))
+#       error "USB requires an HS-XTAL with tolerance < +/- 50ppm, or alternatively usage of the CRS system"
 #   endif
 #   define MPIPE_USB_ID         0
 #   define MPIPE_USB            USB0

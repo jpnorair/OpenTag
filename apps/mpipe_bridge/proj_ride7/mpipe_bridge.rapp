@@ -1,5 +1,5 @@
 
-<ApplicationBuild Header="mpipe_bridge" Extern=".\mpipe_bridge.rapp" Path=".\mpipe_bridge.rapp" OutputFile="..\proj_ride7/build\mpipe_bridge.elf" sate="96" Config="Charon_R0" >
+<ApplicationBuild Header="mpipe_bridge" Extern=".\mpipe_bridge.rapp" Path=".\mpipe_bridge.rapp" OutputFile="..\proj_ride7/build\mpipe_bridge.elf" sate="98" Config="Charon_R0" >
 	<Group Header="app" Marker="-1" OutputFile="" sate="96" >
 		<NodeH Path="..\app\app_config.h" Header="app_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\app\board_config.h" Header="board_config.h" Marker="-1" OutputFile="" sate="0" />
@@ -25,7 +25,7 @@
 		</Group>
 	</Group>
 	<Group Header="lib" Marker="-1" OutputFile="" sate="96" >
-		<Group Header="STM32_USB_FS" Marker="0" OutputFile="" sate="0" >
+		<Group Header="STM32_USB_FS" Marker="0" OutputFile="" sate="96" >
 			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_core.c" Header="usb_core.c" Marker="-1" OutputFile="..\proj_ride7/build\usb_core.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
@@ -138,7 +138,7 @@
 				<Config Header="Nucleo_STM32L053" >
 					<Set Header="Group" >
 						<Section Header="Build" >
-							<Property Header="Exclude" Value="Yes" Removable="1" />
+							<Property Header="Exclude" Value="No" Removable="1" />
 						</Section>
 					</Set>
 				</Config>
@@ -152,7 +152,7 @@
 				<Config Header="IKR001_Debug" >
 					<Set Header="Group" >
 						<Section Header="Build" >
-							<Property Header="Exclude" Value="Yes" Removable="1" />
+							<Property Header="Exclude" Value="No" Removable="1" />
 						</Section>
 					</Set>
 				</Config>
@@ -243,7 +243,7 @@
 				</Config>
 			</Options>
 		</Group>
-		<Group Header="stm32l0xx" Marker="-1" OutputFile="" sate="32" >
+		<Group Header="stm32l0xx" Marker="-1" OutputFile="" sate="96" >
 			<Group Header="_usb_acm" Marker="-1" OutputFile="" sate="0" />
 			<Group Header="_startup" Marker="-1" OutputFile="" sate="0" >
 				<NodeASM Path="..\..\..\platform\stm32l0xx\_startup\gcc\startup_stm32l051xx.s" Header="startup_stm32l051xx.s" Marker="0" OutputFile="..\proj_ride7/build\startup_stm32l051xx.o" sate="0" >
@@ -404,7 +404,7 @@
 					</Set>
 				</Config>
 			</Options>
-			<NodeC Path="..\..\..\platform\stm32l0xx\otsys_mpipe_usbcdc.c" Header="otsys_mpipe_usbcdc.c" Marker="-1" OutputFile="..\proj_ride7/build\otsys_mpipe_usbcdc.o" />
+			<NodeC Path="..\..\..\platform\stm32l0xx\otsys_mpipe_usbcdc.c" Header="otsys_mpipe_usbcdc.c" Marker="-1" OutputFile="..\proj_ride7/build\otsys_mpipe_usbcdc.o" sate="0" />
 		</Group>
 	</Group>
 	<Group Header="otlib" Marker="-1" OutputFile="" sate="0" >
@@ -586,6 +586,9 @@
 			<Set Header="Target" >
 				<Section Header="ProcessorARM" >
 					<Property Header="Processor" Value="STM32L052x8" />
+				</Section>
+				<Section Header="DebugARM" >
+					<Property Header="DebugTool_CORTEX" Value="STLINK_CORTEX" Removable="1" />
 				</Section>
 			</Set>
 			<Set Header="GCC" >

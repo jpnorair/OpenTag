@@ -84,6 +84,28 @@ void otapi_pause()      { platform_ot_pause(); }
 #define POWER_1V5   0x1000
 #define POWER_1V2   0x1800
 
+
+///@todo build a board-defaults file with all of these
+#ifndef BOARD_FEATURE_HFXTAL
+#   define BOARD_FEATURE_HFXTAL     DISABLED
+#endif
+#ifndef BOARD_FEATURE_HFBYPASS
+#   define BOARD_FEATURE_HFBYPASS   DISABLED
+#endif
+#ifndef MCU_CONFIG_USB
+#   define MCU_CONFIG_USB           DISABLED
+#endif
+#ifndef BOARD_FEATURE_HFCRS
+#   define BOARD_FEATURE_HFCRS      DISABLED
+#endif
+#ifndef BOARD_FEATURE_USBPLL
+#   define BOARD_FEATURE_USBPLL     DISABLED
+#endif
+#ifndef PLATFORM_PLLCLOCK_OUT
+#   define PLATFORM_PLLCLOCK_OUT    96000000
+#endif
+
+
 // error checks
 #if (BOARD_FEATURE(HFXTAL) && BOARD_FEATURE(HFBYPASS))
 #   error "BOARD_FEATURE_HFXTAL and BOARD_FEATURE_HFBYPASS cannot be both ENABLED."

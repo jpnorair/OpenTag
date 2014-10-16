@@ -90,7 +90,7 @@
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED         // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             DISABLED //ENABLED         // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPECDC             ENABLED         // USB-CDC MPipe implementation
 #define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC == DISABLED)        // UART MPipe Implementation
 #define MCU_CONFIG_MPIPEI2C             DISABLED        // I2C MPipe Implementation
 #define MCU_CONFIG_MEMCPYDMA            ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA

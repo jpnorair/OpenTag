@@ -69,6 +69,13 @@
 #include <otstd.h>
 #include <otplatform.h>
 
+// Some Quick-and-Dirty parameters that control when mpipe_standby() loop
+// gets broken on startup.  Uncomment one or the other
+//#define _START_ON_ENUMERATE     //loop broken on enumeration
+#define _START_ON_PORTOPEN      //loop broken when client accesses the port
+
+
+
 #ifndef BOARD_PARAM_MPIPE_IFS
 #   define BOARD_PARAM_MPIPE_IFS 1
 #endif
@@ -871,7 +878,9 @@ void cdcacm_Reset(void) {
 void cdcacm_SetConfiguration(void) {
     if (Device_Info.Current_Configuration != 0) {
         bDeviceState = CONFIGURED;  // Device configured
-        //mpipe.state  = MPIPE_Idle;
+#       ifdef _START_ON_ENUMERATE
+            mpipe.state  = MPIPE_Idle;
+#       endif
     }
 }
 
@@ -961,7 +970,9 @@ ot_u8 *cdcacm_GetLineCoding(ot_u16 Length) {
 ot_u8 *cdcacm_SetLineCoding(ot_u16 Length) {
     if (Length == 0) {
         pInformation->Ctrl_Info.Usb_wLength = sizeof(linecoding);
-        mpipe.state = MPIPE_Idle;
+#       ifdef _START_ON_PORTOPEN
+            mpipe.state = MPIPE_Idle;
+#       endif
         return NULL;
     }
    return(ot_u8 *)&linecoding;
