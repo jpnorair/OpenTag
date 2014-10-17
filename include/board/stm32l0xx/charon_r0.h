@@ -488,7 +488,7 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_MODER_IN       << (12*2)) \
                     | (GPIO_MODER_ALT       << (13*2)) \
                     | (GPIO_MODER_ALT       << (14*2)) \
-                    | (GPIO_MODER_IN        << (15*2));
+                    | (GPIO_MODER_OUT       << (15*2));
 
     GPIOA->OTYPER   = (1<<2);
     
@@ -505,10 +505,8 @@ static inline void BOARD_PORT_STARTUP(void) {
     /// Configure Port B IO.
     /// Port B is used for external (module) IO.
     // - B0:2 are unused and set to Analog mode
-    // - B3:5 are SPI pins, which are managed by the driver.  Default=Analog
-    // - B6:15 are unused and set to Analog mode
-    // - B5 is used as a radio input by default
-    // - B6 is used as SPI-CS, an output
+    // - B3:4 are SPI pins, which are managed by the driver.  Default=Analog
+    // - B5 is used as a SPI-MOSI, but also TEST0.  Default=OUT
     // - B7 is unused and set to Analog mode
     // - B8:9 are setup for I2C bus: They start as output with Open Drain
     // - B10 is a PWM output, set to Analog until configured
@@ -521,7 +519,7 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_MODER_ANALOG << (2*2)) \
                     | (GPIO_MODER_ANALOG << (3*2)) \
                     | (GPIO_MODER_ANALOG << (4*2)) \
-                    | (GPIO_MODER_ANALOG << (5*2)) \
+                    | (GPIO_MODER_OUT    << (5*2)) \
                     | (GPIO_MODER_ANALOG << (6*2)) \
                     | (GPIO_MODER_ANALOG << (7*2)) \
                     | (GPIO_MODER_ANALOG << (8*2)) \

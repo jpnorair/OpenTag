@@ -635,6 +635,9 @@
 				<Section Header="Defines" >
 					<Property Header="Defines" Value="__OPENTAG__;__GCC__;__DEBUG__;BOARD_Charon_R0" Removable="1" />
 				</Section>
+				<Section Header="OPTIMIZE" >
+					<Property Header="Optimize" Value="-Og" Removable="1" />
+				</Section>
 			</Set>
 			<Set Header="LD" >
 				<Section Header="Startup" >

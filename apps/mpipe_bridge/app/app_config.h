@@ -80,7 +80,7 @@
 // User/App task lists: comment-out if none.  
 // Use comma separated with TASK_xxx nomenclature (e.g. TASK_0, TASK_1, TASK_2)
 //#define OT_PARAM_USER_EXOTASKS
-//#define OT_PARAM_USER_KERNELTASKS       TASK_external
+#define OT_PARAM_USER_KERNELTASKS       TASK_external
 
 #define OT_PARAM_VLFPS                  3                                   // Number of files that can be open simultaneously
 #define OT_PARAM_SESSION_DEPTH          4                                   // Max simultaneous sessions (i.e. tasks)
@@ -116,7 +116,7 @@
 #define OT_FEATURE_M2                   DISABLED                            // Mode 2 Featureset: Implemented
 #define OT_FEATURE_SESSION_DEPTH        OT_PARAM_SESSION_DEPTH
 #define OT_FEATURE_BUFFER_SIZE          OT_PARAM_BUFFER_SIZE
-#define OT_FEATURE_EXT_TASK             DISABLED
+#define OT_FEATURE_EXT_TASK             ENABLED
 #define OT_FEATURE_SYSKERN_CALLBACKS    DISABLED                            // Dynamic Kernel Callbacks (panic, sleep, etc)
 #define OT_FEATURE_SYSTASK_CALLBACKS    DISABLED                            // Dynamic Task callbacks
 #define OT_FEATURE_DLLRF_CALLBACKS      DISABLED                            // Dynamic RF Init, Terminate Callbacks

@@ -132,7 +132,7 @@ void app_init() {
         if (i&1)    BOARD_led1_on();
         else        BOARD_led2_on();
 
-        delay_ms(30);
+        delay_ms(100);
         BOARD_led2_off();
         BOARD_led1_off();
         i--;
