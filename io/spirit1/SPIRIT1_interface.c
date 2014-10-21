@@ -317,7 +317,7 @@ ot_bool spirit1_check_cspin(void) {
     return (ot_bool)spirit1_cspin_ishigh();
 }
 
-ot_int sub_failsafe_standby(void) {
+/* ot_int sub_failsafe_standby(void) {
 /// This code is a failsafe way to bring SPIRIT1 into shutdown, mainly for
 /// testing purposes.  It has been observed to have the same result as
 /// the normal standby routine.
@@ -365,7 +365,7 @@ ot_int sub_failsafe_standby(void) {
 
     if (watchdog == 0)  return 2;
     else                goto sub_failsafe_standby_TOP;
-}
+} */
 
 void spirit1_waitforabort() {
 /// Wait for the RX/TX indicator pin to go off.

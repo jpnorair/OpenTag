@@ -69,7 +69,7 @@ void crc_calc_nstream(crcstream_t* stream, ot_u16 n) {
         stream->cursor += n;
         stream->val     = crc16drv_block_manual(data, n, stream->val);
     }
-    else if (stream->writeout) {
+    if ((stream->count == 0) && (stream->writeout)) {
         stream->writeout    = False;
         *stream->cursor++   = (ot_u8)(stream->val >> 8);
         *stream->cursor++   = (ot_u8)(stream->val);

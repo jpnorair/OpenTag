@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "../../include/otsys/types.h"
-#include "../../include/otlib/crc16_table.h"
+#include "../../otlib/OT_types.h"
+#include "../../otlib/crc16_table.h"
 
 
 #   ifdef __BIG_ENDIAN__
@@ -84,17 +84,18 @@ typedef struct {
     ot_u8*      cursor;
     ot_int      count;
     ot_bool     writeout;
+    //ot_u8*      end;
+    //void        (*stream)();
     ot_u16      val;
-} crcstream_t;
+} crc_struct;
 
+crc_struct crc;
 
-
-void crc_init_stream(crcstream_t* stream, ot_bool writeout, ot_int size, ot_u8* data);
-ot_u16 crc_block(crcstream_t* stream, ot_bool writeout, ot_int size, ot_u8* data);
-void crc_calc_stream(crcstream_t* stream);
-void crc_calc_nstream(crcstream_t* stream, ot_u16 n);
-ot_bool crc_check(crcstream_t* stream);
-ot_u16 crc_get(crcstream_t* stream);
+void crc_init_stream(ot_bool writeout, ot_int stream_size, ot_u8* stream);
+void crc_calc_stream();
+void crc_calc_nstream(ot_u16 n);
+ot_bool crc_check();
+ot_u16 crc_get();
 
 
 
@@ -440,49 +441,50 @@ void q_readstring(ot_queue* q, ot_u8* string, ot_int length) {
 
 
 
-void crc_init_stream(crcstream_t* stream, ot_bool writeout, ot_int size, ot_u8* data) {
-    stream->writeout    = writeout;
-    stream->cursor      = data;
-    stream->count       = size;
-    stream->val         = crc16drv_init();
+void crc_init_stream(ot_bool writeout, ot_int stream_size, ot_u8* stream) {
+    crc.writeout= writeout;
+    crc.cursor  = stream;
+    crc.count   = stream_size+1;
+  //crc.stream  = &sub_stream0;
+  //crc.val     = crc16drv_init();
+    crc16drv_init();
 }
 
 
-void crc_calc_stream(crcstream_t* stream) {
-    crc_calc_nstream(stream, 1);
-}
-
-
-void crc_calc_nstream(crcstream_t* stream, ot_u16 n) {
-    if (stream->count > 0) {
-        ot_u8* data;
-        if (n > stream->count) {
-            n = stream->count;
-        }
-        stream->count  -= n;
-        data            = stream->cursor;
-        stream->cursor += n;
-        stream->val     = crc16drv_block_manual(data, n, stream->val);
+void crc_calc_stream() {
+    //crc.stream();
+    crc.count--;
+    if (crc.count > 0) {
+        crc16drv_byte( *crc.cursor++ );
     }
-    if ((stream->count == 0) && (stream->writeout)) {
-        stream->writeout    = False;
-        *stream->cursor++   = (ot_u8)(stream->val >> 8);
-        *stream->cursor++   = (ot_u8)(stream->val);
+    else if ((crc.writeout) && (crc.count > -2)) {
+        ot_u16 crc_val  = crc16drv_result();
+        //printf("writeout\n");
+        *crc.cursor++   = (ot_u8)(crc_val >> ((crc.count == 0) << 3));
     }
+    
+}
+
+
+void crc_calc_nstream(ot_u16 n) {
+    do {
+        //crc.stream();
+        crc_calc_stream();
+    } while (--n);
 }
 
 
 
-ot_bool crc_check(crcstream_t* stream) {
+ot_bool crc_check() {
 ///@todo deprecate this function in OT, in favor of crc_get(), and checking with 0.
-    return (stream->val == 0);
-    //return (crc16drv_result() == 0);
+    //return (ot_bool)(crc.val == 0);
+    return (crc16drv_result() == 0);
 }
 
 
-ot_u16 crc_get(crcstream_t* stream) {
-    return stream->val;
-    //return crc16drv_result();
+ot_u16 crc_get() {
+    //return crc.val;
+    return crc16drv_result();
 }
 
 
@@ -528,7 +530,6 @@ ot_int sub_load_rand(ot_queue* q, ot_int max) {
 int main(void) {
     const char refstring[] = "123456789";
     int i;
-    crcstream_t crcstream;
     
     srand(time(NULL));
     
@@ -547,8 +548,8 @@ int main(void) {
         numbytes = q_span(&testq);
         
         // compute CRC16 using iterative method
-        crc_init_stream(&crcstream, True, numbytes, testq.getcursor);
-        crc_calc_nstream(&crcstream, numbytes);
+        crc_init_stream(True, numbytes, testq.getcursor);
+        crc_calc_nstream(numbytes+2);
         
         // compute CRC16 using block method
         crc_result = crc16drv_block(testq.getcursor, numbytes);
@@ -559,33 +560,27 @@ int main(void) {
                     testq.getcursor[numbytes], testq.getcursor[numbytes+1], 
                     (ot_u8)(crc_result>>8), (ot_u8)crc_result   );
         
-        printf("block  %04X\n", crc_result);
-        printf("stream %04X\n", crc_get(&crcstream)); 
+        //printf("block  %04X\n", crc_result);
+        //printf("stream %04X\n", crc_get()); 
         
         // Compare Encoding results
-        if (crc_result == crc_get(&crcstream)) 
-            printf("    PASS: Block CRC Calc == Iterative CRC Calc\n");
-        else                         
-            printf("    FAIL: Block CRC Calc != Iterative CRC Calc\n");
+        if (crc_result == crc_get()) printf("    PASS: Block CRC Calc == Iterative CRC Calc\n");
+        else                         printf("    FAIL: Block CRC Calc != Iterative CRC Calc\n");
         
         
         // Now do decoding
         numbytes += 2;
         
-        crc_init_stream(&crcstream, False, numbytes, testq.getcursor);
-        crc_calc_nstream(&crcstream, numbytes);
+        crc_init_stream(False, numbytes, testq.getcursor);
+        crc_calc_nstream(numbytes);
         
         crc_result = crc16drv_block(testq.getcursor, numbytes);
         
-        if (crc_get(&crcstream) == 0) 
-            printf("    PASS: Iterative CRC Calc Decoding == 0\n");
-        else                
-            printf("    FAIL: Iterative CRC Calc Decoding != 0\n");
+        if (crc_get() == 0) printf("    PASS: Iterative CRC Calc Decoding == 0\n");
+        else                printf("    FAIL: Iterative CRC Calc Decoding != 0\n");
         
-        if (crc_result == 0) 
-            printf("    PASS: Block CRC Calc Decoding == 0\n");
-        else                 
-            printf("    FAIL: Block CRC Calc Decoding != 0\n");
+        if (crc_result == 0) printf("    PASS: Block CRC Calc Decoding == 0\n");
+        else                 printf("    FAIL: Block CRC Calc Decoding != 0\n");
     }
         
     
