@@ -90,8 +90,8 @@
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED         // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             ENABLED         // USB-CDC MPipe implementation
-#define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC == DISABLED)        // UART MPipe Implementation
+#define MCU_CONFIG_MPIPECDC             DISABLED && OT_FEATURE(MPIPE)                               // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC != ENABLED) && OT_FEATURE(MPIPE)       // UART MPipe Implementation
 #define MCU_CONFIG_MPIPEI2C             DISABLED        // I2C MPipe Implementation
 #define MCU_CONFIG_MEMCPYDMA            ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 #define MCU_CONFIG_USB                  ((MCU_CONFIG_MPIPECDC == ENABLED) || 0)
@@ -150,17 +150,24 @@
   * 4. The SPIRIT1 SPI benefits from the highest speed clock up to 20 MHz.
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
-#define BOARD_FEATURE_MPIPE             ENABLED
-#define BOARD_FEATURE_USBCONVERTER      BOARD_FEATURE_MPIPE                 // Is UART connected via USB converter?
-#define BOARD_FEATURE_MPIPE_DIRECT      BOARD_FEATURE_MPIPE
-#define BOARD_FEATURE_MPIPE_BREAK       DISABLED                 // Send/receive leading break for wakeup (I2C)
-#define BOARD_FEATURE_MPIPE_CS          DISABLED                 // Chip-Select / DTR wakeup control (UART)
-#define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                 // RTS/CTS style flow control (UART)
+#define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
 
-#define BOARD_FEATURE_LFXTAL            ENABLED                 // LF XTAL attached
-#define BOARD_FEATURE_HFXTAL            (MCU_CONFIG_USB != ENABLED)                 // HF XTAL attached
+#define BOARD_FEATURE_SWITCHES          ENABLED
+#define BOARD_FEATURE_MPIPE             OT_FEATURE(MPIPE)
+#define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
+#define BOARD_FEATURE_MPIPE_DIRECT      ENABLED
+#define BOARD_FEATURE_MPIPE_BREAK       DISABLED                 // Send/receive leading break for wakeup
+#define BOARD_FEATURE_MPIPE_CS          DISABLED                 // Chip-Select / DTR wakeup control 
+#define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                 // RTS/CTS style flow control
+
+#define BOARD_FEATURE_UART              ENABLED
+#define BOARD_FEATURE_I2C               (DISABLED || MCU_CONFIG_MPIPEI2C)
+#define BOARD_FEATURE_LED               (!defined(__RELEASE__))
+
+#define BOARD_FEATURE_LFXTAL            ENABLED                  // LF XTAL attached
+#define BOARD_FEATURE_HFXTAL            DISABLED                 // Use HF XTAL ... might need to for USB, check back
 #define BOARD_FEATURE_HFBYPASS          DISABLED
-#define BOARD_FEATURE_RFXTAL            ENABLED                 // XTAL for RF chipset
+#define BOARD_FEATURE_RFXTAL            ENABLED                  // XTAL for RF chipset
 #define BOARD_FEATURE_RFXTALOUT         DISABLED
 #define BOARD_FEATURE_PLL               MCU_CONFIG_USB
 #define BOARD_FEATURE_STDSPEED          DISABLED
@@ -171,7 +178,6 @@
 #define BOARD_FEATURE_INVERT_TRIG1      ENABLED
 #define BOARD_FEATURE_INVERT_TRIG2      ENABLED
 
-#define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
 #define BOARD_PARAM_TRIGS               4
 #define BOARD_PARAM_LFHz                32768
 #define BOARD_PARAM_LFtol               0.00002
@@ -522,13 +528,14 @@
                         |   RCC_AHBLPENR_GPIODLPEN  \
                         |   RCC_AHBLPENR_GPIOELPEN  )
 
-
+#define _AHBENR_STARTUP  (_DMACLK_N | _FLITFCLK_N | _CRCCLK_N | _GPIOCLK_SU)
+#define _AHBENR_RUNTIME  (_DMACLK_N | _FLITFCLK_N | _CRCCLK_N | _GPIOCLK_N)
 
 
 //@note BOARD Macro for Peripheral Clock initialization at startup
 static inline void BOARD_PERIPH_INIT(void) {
     //1. AHB Clock Setup for Active Mode
-    RCC->AHBENR    = (_DMACLK_N | _FLITFCLK_N | _CRCCLK_N | _GPIOCLK_N);
+    RCC->AHBENR    = _AHBENR_STARTUP;
 
     // 1b. AHB Clock Setup for Sleep Mode
     RCC->AHBLPENR  = (_DMACLK_LP | _SRAMCLK_LP | _FLITFCLK_LP | _CRCCLK_LP | _GPIOCLK_LP);
@@ -645,7 +652,9 @@ static inline void BOARD_PORT_STARTUP(void) {
                                | (7 << (BOARD_UART_TXPINNUM*4));
 
     // External USB interface
-    // Make sure to disable Crystal on PortH when USB is not used
+    // - For some reason, USB only works if it is in startup-default when accessed
+    //   by the USB library
+    // - Make sure to disable Crystal on PortH when USB is not used
 #   elif (MCU_CONFIG(MPIPECDC) == ENABLED)
       //GPIOH->MODER            = (GPIO_MODER_OUT << (0*2));
       //BOARD_USB_PORT->PUPDR  |= (1 << (BOARD_USB_DMPINNUM*2)) \
@@ -691,56 +700,38 @@ static inline void BOARD_PORT_STARTUP(void) {
     //BOARD_SDCSN_PORT->MODER    |= (GPIO_MODER_OUT << (BOARD_SDCSN_PINNUM*2));
     
     
-    //SPIRIT1 RF Interface, using SPI1 and some GPIOs
-    //GPIO0-3 are pull-down inputs, SDN is 2MHz push-pull output
-    //SPI bus is pull-down, CSN pin is pull-up
-    BOARD_RFGPIO_PORT->MODER   |= (GPIO_MODER_OUT << (BOARD_RFCTL_SDNPINNUM*2));
-    BOARD_RFGPIO_PORT->OSPEEDR |= (GPIO_OSPEEDR_2MHz << (BOARD_RFCTL_SDNPINNUM*2));
-    BOARD_RFGPIO_PORT->PUPDR   |= (2 << (BOARD_RFGPIO_0PINNUM*2)) \
-                                | (2 << (BOARD_RFGPIO_1PINNUM*2)) \
-                                | (2 << (BOARD_RFGPIO_2PINNUM*2)) \
-                                | (0 << (BOARD_RFCTL_3PINNUM*2));
-    BOARD_RFGPIO_PORT->BSRRL    = BOARD_RFCTL_SDNPIN;
+    // SPIRIT1 RF Interface, using SPI1 and some GPIOs
+    // - SDN is 2MHz push-pull output, which is asserted via BSRRL
+    // - GPIO0-3 are HiZ inputs, which is the startup default condition
+    // - SPI bus is ALT, MISO is pulldown, CS pin is push-pull output
     
-    BOARD_RFSPI_PORT->PUPDR    |= ( (2 << (BOARD_RFSPI_MOSIPINNUM*2)) \
-                                  | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                                  | (2 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                                  | (0 << (BOARD_RFSPI_CSNPINNUM*2)) );
+    BOARD_RFCTL_PORT->MODER    |= (GPIO_MODER_OUT << (BOARD_RFCTL_SDNPINNUM*2));
+    BOARD_RFCTL_PORT->OSPEEDR  |= (GPIO_OSPEEDR_2MHz << (BOARD_RFCTL_SDNPINNUM*2));
+    BOARD_RFCTL_PORT->BSRRL     = BOARD_RFCTL_SDNPIN;
+    
+    //BOARD_RFGPIO_PORT->MODER	  |= 0;
+    
+    BOARD_RFSPI_PORT->BSRRL     = BOARD_RFSPI_CSNPIN;
+    BOARD_RFSPI_PORT->AFR[1]   |= (5 << ((BOARD_RFSPI_MOSIPINNUM-8)*4)) \
+                                  | (5 << ((BOARD_RFSPI_MISOPINNUM-8)*4)) \
+                                  | (5 << ((BOARD_RFSPI_SCLKPINNUM-8)*4));
     BOARD_RFSPI_PORT->MODER    |= ( (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM*2)) \
                                   | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
                                   | (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2)) \
                                   | (GPIO_MODER_OUT << (BOARD_RFSPI_CSNPINNUM*2)) );
+    BOARD_RFSPI_PORT->PUPDR    |= (2 << (BOARD_RFSPI_MOSIPINNUM*2));
     BOARD_RFSPI_PORT->OSPEEDR  |= ( (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_MOSIPINNUM*2)) \
                                   | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_MISOPINNUM*2)) \
                                   | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_SCLKPINNUM*2)) \
                                   | (GPIO_OSPEEDR_10MHz << (BOARD_RFSPI_CSNPINNUM*2)) );
-    BOARD_RFSPI_PORT->AFR[1]   |= (5 << ((BOARD_RFSPI_MOSIPINNUM-8)*4)) \
-                                  | (5 << ((BOARD_RFSPI_MISOPINNUM-8)*4)) \
-                                  | (5 << ((BOARD_RFSPI_SCLKPINNUM-8)*4));
-    BOARD_RFSPI_PORT->BSRRL     = BOARD_RFSPI_CSNPIN;
     
     
     // SPIRIT1 Current Monitor Interface
     // PS input and RFV inputs are set by default
+    /// does this need AFR config?
     BOARD_SCMOUT_PORT->MODER   |= ( (GPIO_MODER_ALT << (BOARD_SCMOUT_SCMENPINNUM*2)) \
                                   | (GPIO_MODER_ALT << (BOARD_SCMOUT_CMENPINNUM*2)) );
-    /// does this need AFR config?
     
-    
-    // TIMER9 interface (used for GPTIM)
-    // Note: this pins appear NC, but they are used internally
-    //BOARD_TIM9CH1_PORT->MODER  |= (GPIO_MODER_ALT << (BOARD_TIM9CH1_PINNUM*2)) \
-                                | (GPIO_MODER_ALT << (BOARD_TIM9CH2_PINNUM*2));
-    //BOARD_TIM9CH1_PORT->PUPDR  |= (2 << (BOARD_TIM9CH1_PINNUM*2)) \
-                                | (2 << (BOARD_TIM9CH2_PINNUM*2));
-    //BOARD_TIM9CH1_PORT->AFR[1] |= ( (3 << ((BOARD_TIM9CH1_PINNUM-8)*4)) ) \
-                                | ( (3 << ((BOARD_TIM9CH2_PINNUM-8)*4)) ); 
-    
-
-    // GPTIM interrupt interface: Floating Inputs (default case)
-    // These pins should be connected directly to TIM9 CH1 and CH2
-    //BOARD_GPTIM1_PORT->MODER   |= (GPIO_MODER_IN << (BOARD_GPTIM1_PINNUM*2)) \
-                                | (GPIO_MODER_IN << (BOARD_GPTIM2_PINNUM*2));
     
     // Set up all not-connected pins as output ground
     // PA4, PA6, PA7-10
@@ -762,7 +753,16 @@ static inline void BOARD_PORT_STARTUP(void) {
                       | (GPIO_MODER_OUT << (2*2)) | (GPIO_MODER_OUT << (10*2)) \
                       | (GPIO_MODER_OUT << (11*2)) );
     
-    //The END
+    /// Configure Port C IO.
+    /// Port C for 32kHz crystal driving: update
+    // - C13 is Attach Detect, a grounded output
+    // - C14:15 are 32kHz crystal driving, set to ALT
+    //GPIOC->MODER    = (GPIO_MODER_OUT << (13*2)) \
+                    | (GPIO_MODER_OUT << (14*2)) \
+                    | (GPIO_MODER_ALT << (15*2));
+    
+    // Certain ports get disabled for runtime (like GPIOH)
+    RCC->AHBENR    = _AHBENR_RUNTIME;
 }
 
 
@@ -791,31 +791,27 @@ static inline void BOARD_DMA_CLKOFF(void) {
 
 
 static inline void BOARD_RFSPI_CLKON(void) {
-    BOARD_RFSPI_PORT->MODER &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
-    
-    BOARD_RFSPI_PORT->MODER |= (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM*2));
-    
-  //BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+	uint32_t moder;
+	moder                      = BOARD_RFSPI_PORT->MODER;
+	moder                     &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                                 | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                                 | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
+	moder                     |= (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                               | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
+                               | (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM*2));
+    BOARD_RFSPI_PORT->MODER    = moder;
 }
 
 static inline void BOARD_RFSPI_CLKOFF(void) {
-    BOARD_RFSPI_PORT->MODER &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
-    
-    BOARD_RFSPI_PORT->MODER |= (GPIO_MODER_OUT << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (GPIO_MODER_IN << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (GPIO_MODER_OUT << (BOARD_RFSPI_MOSIPINNUM*2));
-    
-  //BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+    uint32_t moder;
+	moder                      = BOARD_RFSPI_PORT->MODER;
+	moder                     &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                                 | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                                 | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
+	moder                     |= (GPIO_MODER_OUT << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                               | (GPIO_MODER_IN << (BOARD_RFSPI_MISOPINNUM*2)) \
+                               | (GPIO_MODER_OUT << (BOARD_RFSPI_MOSIPINNUM*2));
+    BOARD_RFSPI_PORT->MODER    = moder;
 }
 
 

@@ -264,6 +264,10 @@ void spirit1_init_bus() {
     EXTI->FTSR |= (RFI_SOURCE0 /*| RFI_SOURCE1*/);
     EXTI->RTSR |= (RFI_SOURCE1 | RFI_SOURCE2);
 
+    ///@note This block redefines priorities of the RF GPIO interrupts.
+    ///      It is not always required, since default EXTI prorities are
+    ///      already defined at startup, and they are usually the same.
+#   if (PLATFORM_NVIC_RF_GROUP != PLATFORM_NVIC_IO_GROUP)
     NVIC->IP[(uint32_t)_RFIRQ0]         = (PLATFORM_NVIC_RF_GROUP << 4);
     NVIC->ISER[((uint32_t)_RFIRQ0>>5)]  = (1 << ((uint32_t)_RFIRQ0 & 0x1F));
 #   ifdef _RFIRQ1
@@ -277,6 +281,7 @@ void spirit1_init_bus() {
 #   ifdef _RFIRQ3
     NVIC->IP[(uint32_t)_RFIRQ3]         = (PLATFORM_NVIC_RF_GROUP << 4);
     NVIC->ISER[((uint32_t)_RFIRQ3>>5)]  = (1 << ((uint32_t)_RFIRQ3 & 0x1F));
+#   endif
 #   endif
 
     ///4. The best way to wait for the SPIRIT1 to start is to wait for the reset

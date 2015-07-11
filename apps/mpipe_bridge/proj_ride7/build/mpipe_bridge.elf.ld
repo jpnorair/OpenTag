@@ -7,7 +7,7 @@ It also includes the secondary/main linker script that is specified in the Ride 
 
 SEARCH_DIR(".")
 SEARCH_DIR("R:\OpenTag\apps\mpipe_bridge\proj_ride7/build")
-SEARCH_DIR("C:\Program Files\Raisonance\Ride\Lib\ARM")
+SEARCH_DIR("C:\Raisonance\Ride\Lib\ARM")
 STARTUP("R:\OpenTag\apps\mpipe_bridge\proj_ride7/build/startup_stm32l052xx.o")
 INPUT("R:\OpenTag\apps\mpipe_bridge\proj_ride7/build\main.o")
 INPUT("R:\OpenTag\apps\mpipe_bridge\proj_ride7/build\sys_sig_powerdown_[stm32lp].o")
@@ -81,7 +81,7 @@ INPUT("R:\OpenTag\apps\mpipe_bridge\proj_ride7/build\system_hicculp.o")
 INPUT("R:\OpenTag\apps\mpipe_bridge\proj_ride7/build\time.o")
 GROUP(
 "smallprintf_thumb.a"
-"libc_s.a"
+"libc_nano.a"
 "libm.a"
 
 )
