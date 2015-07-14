@@ -1,6 +1,6 @@
 
-<ApplicationBuild Header="ponglt" Extern=".\ponglt.rapp" Path=".\ponglt.rapp" OutputFile=".\build\ponglt.elf" sate="96" Config="Jupiter" >
-	<Group Header="app" Marker="-1" OutputFile="" sate="96" >
+<ApplicationBuild Header="ponglt" Extern=".\ponglt.rapp" Path=".\ponglt.rapp" OutputFile=".\build\ponglt.elf" sate="98" Config="IKR001_Debug" >
+	<Group Header="app" Marker="-1" OutputFile="" sate="0" >
 		<NodeH Path="..\app\app_config.h" Header="app_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\app\board_config.h" Header="board_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\app\build_config.h" Header="build_config.h" Marker="-1" OutputFile="" sate="0" />
@@ -26,7 +26,7 @@
 	</Group>
 	<Group Header="lib" Marker="-1" OutputFile="" sate="0" >
 		<Group Header="STM32_USB_FS" Marker="-1" OutputFile="" sate="0" >
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_core.c" Header="usb_core.c" Marker="0" OutputFile=".\build\usb_core.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_core.c" Header="usb_core.c" Marker="-1" OutputFile=".\build\usb_core.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -37,7 +37,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_init.c" Header="usb_init.c" Marker="0" OutputFile=".\build\usb_init.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_init.c" Header="usb_init.c" Marker="-1" OutputFile=".\build\usb_init.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -48,7 +48,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_int.c" Header="usb_int.c" Marker="0" OutputFile=".\build\usb_int.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_int.c" Header="usb_int.c" Marker="-1" OutputFile=".\build\usb_int.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -59,7 +59,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_mem.c" Header="usb_mem.c" Marker="0" OutputFile=".\build\usb_mem.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_mem.c" Header="usb_mem.c" Marker="-1" OutputFile=".\build\usb_mem.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -70,7 +70,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_regs.c" Header="usb_regs.c" Marker="0" OutputFile=".\build\usb_regs.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_regs.c" Header="usb_regs.c" Marker="-1" OutputFile=".\build\usb_regs.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -81,7 +81,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_sil.c" Header="usb_sil.c" Marker="0" OutputFile=".\build\usb_sil.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_sil.c" Header="usb_sil.c" Marker="-1" OutputFile=".\build\usb_sil.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -108,7 +108,7 @@
 		<Config Header="IKR001_Debug" />
 		<Config Header="Jupiter" />
 	</Configs>
-	<Group Header="platform" Marker="-1" OutputFile="" sate="96" >
+	<Group Header="platform" Marker="-1" OutputFile="" sate="0" >
 		<Group Header="stm32l1xx" Marker="-1" OutputFile="" sate="96" >
 			<Group Header="_startup" Marker="-1" OutputFile="" sate="0" >
 				<NodeASM Path="..\..\..\platform\stm32l1xx\_startup\gcc_ride7\startup_stm32l1xx_md.s" Header="startup_stm32l1xx_md.s" Marker="0" OutputFile=".\build\startup_stm32l1xx_md.o" sate="0" >
@@ -142,7 +142,7 @@
 			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_memcpy.c" Header="otlib_memcpy.c" Marker="-1" OutputFile=".\build\otlib_memcpy.o" sate="0" />
 			<NodeC Path="..\..\..\platform\stm32l1xx\otlib_rand.c" Header="otlib_rand.c" Marker="-1" OutputFile=".\build\otlib_rand.o" sate="0" />
 			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_mpipe_uart.c" Header="otsys_mpipe_uart.c" Marker="-1" OutputFile=".\build\otsys_mpipe_uart.o" sate="0" />
-			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_mpipe_usbcdc.c" Header="otsys_mpipe_usbcdc.c" Marker="-1" OutputFile=".\build\otsys_mpipe_usbcdc.o" sate="2" >
+			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_mpipe_usbcdc.c" Header="otsys_mpipe_usbcdc.c" Marker="-1" OutputFile=".\build\otsys_mpipe_usbcdc.o" sate="0" >
 				<Options/>
 			</NodeC>
 			<NodeC Path="..\..\..\platform\stm32l1xx\otsys_veelite_EE.c" Header="otsys_veelite_EE.c" Marker="-1" OutputFile=".\build\otsys_veelite_EE.o" sate="0" />
@@ -182,6 +182,70 @@
 		<NodeC Path="..\..\..\otsys\system_hicculp.c" Header="system_hicculp.c" Marker="-1" OutputFile=".\build\system_hicculp.o" sate="0" />
 		<NodeH Path="..\..\..\otsys\system_hicculp.h" Header="system_hicculp.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeC Path="..\..\..\otsys\time.c" Header="time.c" Marker="-1" OutputFile=".\build\time.o" sate="0" />
+	</Group>
+	<Group Header="OTEAX" Marker="-1" OutputFile="" sate="0" >
+		<NodeH Path="..\..\..\..\OTEAX\oteax.h" Header="oteax.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\..\OTEAX\oteax.c" Header="oteax.c" Marker="0" OutputFile=".\build\oteax.o" sate="0" >
+			<Options>
+				<Config Header="IKR001_Debug" >
+					<Set Header="GCC" >
+						<Section Header="OPTIMIZE" >
+							<Property Header="Optimize" Value="-O2" Removable="1" />
+						</Section>
+					</Set>
+				</Config>
+			</Options>
+		</NodeC>
+		<NodeH Path="..\..\..\..\OTEAX\mode_hdr.h" Header="mode_hdr.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\..\OTEAX\brg_types.h" Header="brg_types.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\..\OTEAX\brg_endian.h" Header="brg_endian.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeH Path="..\..\..\..\OTEAX\aestab.h" Header="aestab.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\..\OTEAX\aestab.c" Header="aestab.c" Marker="0" OutputFile=".\build\aestab.o" sate="0" >
+			<Options>
+				<Config Header="IKR001_Debug" >
+					<Set Header="GCC" >
+						<Section Header="OPTIMIZE" >
+							<Property Header="Optimize" Value="-O2" Removable="1" />
+						</Section>
+					</Set>
+				</Config>
+			</Options>
+		</NodeC>
+		<NodeH Path="..\..\..\..\OTEAX\aesopt.h" Header="aesopt.h" Marker="-1" OutputFile="" sate="0" />
+		<NodeC Path="..\..\..\..\OTEAX\aeskey.c" Header="aeskey.c" Marker="0" OutputFile=".\build\aeskey.o" sate="0" >
+			<Options>
+				<Config Header="IKR001_Debug" >
+					<Set Header="GCC" >
+						<Section Header="OPTIMIZE" >
+							<Property Header="Optimize" Value="-O2" Removable="1" />
+						</Section>
+					</Set>
+				</Config>
+			</Options>
+		</NodeC>
+		<NodeC Path="..\..\..\..\OTEAX\aescrypt.c" Header="aescrypt.c" Marker="0" OutputFile=".\build\aescrypt.o" sate="0" >
+			<Options>
+				<Config Header="IKR001_Debug" >
+					<Set Header="GCC" >
+						<Section Header="OPTIMIZE" >
+							<Property Header="Optimize" Value="-O3" Removable="1" />
+						</Section>
+					</Set>
+				</Config>
+			</Options>
+		</NodeC>
+		<NodeC Path="..\..\..\..\OTEAX\aes_modes_m2.c" Header="aes_modes_m2.c" Marker="0" OutputFile=".\build\aes_modes_m2.o" sate="0" >
+			<Options>
+				<Config Header="IKR001_Debug" >
+					<Set Header="GCC" >
+						<Section Header="OPTIMIZE" >
+							<Property Header="Optimize" Value="-O3" Removable="1" />
+						</Section>
+					</Set>
+				</Config>
+			</Options>
+		</NodeC>
+		<NodeH Path="..\..\..\..\OTEAX\aes.h" Header="aes.h" Marker="-1" OutputFile="" sate="0" />
 	</Group>
 	<Options>
 		<Config Header="Standard" >
@@ -229,12 +293,12 @@
 		<Config Header="IKR001_Debug" >
 			<Set Header="LD" >
 				<Section Header="Startup" >
-					<Property Header="DEFAULTSTARTUP" Value="No" Removable="1" />
-					<Property Header="File" Value="$(ApplicationDir)/build/startup_stm32l1xx_md.o" Removable="1" />
+					<Property Header="DEFAULTSTARTUP" Value="Yes" Removable="1" />
+					<Property Header="File" Value="" Removable="1" />
 				</Section>
 				<Section Header="Scripts" >
 					<Property Header="SCRIPTFILES" Value="No" Removable="1" />
-					<Property Header="File" Value="$(ApplicationDir)\stm32l1xx_128_16.ld" Removable="1" />
+					<Property Header="File" Value="$(ApplicationDir)/../../_common/linker/stm32l1xx_128_16.ld" Removable="1" />
 				</Section>
 				<Section Header="LIB" >
 					<Property Header="UART0PUTC" Value="0" Removable="1" />
@@ -245,7 +309,7 @@
 			</Set>
 			<Set Header="ApplicationBuild" >
 				<Section Header="Directories" >
-					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;$(ApplicationDir)\..;$(ApplicationDir)\..\..\..\include;$(ApplicationDir)\..\..\..\lib\CMSIS\Include;$(ApplicationDir)\..\..\..\lib\CMSIS\Device;$(ApplicationDir)/../../../lib/STM32_USB_FS/inc" Removable="1" />
+					<Property Header="IncDir" Value=".;$(RkitLib)\ARM\include;$(ApplicationDir)/..;$(ApplicationDir)/../../../include;$(ApplicationDir)/../../../lib/CMSIS/Include;$(ApplicationDir)/../../../lib/CMSIS/Device;$(ApplicationDir)/../../../lib/STM32_USB_FS/inc;$(ApplicationDir)/../../../../OTEAX;$(ApplicationDir)/../../../extensions/crc32" Removable="1" />
 					<Property Header="OutDir" Value="$(ApplicationDir)\build" Removable="1" />
 					<Property Header="LinkerOutputDir" Value="Application Directory" Removable="1" />
 					<Property Header="ListDir" Value="$(ApplicationDir)\build" Removable="1" />

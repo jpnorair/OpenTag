@@ -90,8 +90,8 @@
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED         // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             DISABLED && OT_FEATURE(MPIPE)                               // USB-CDC MPipe implementation
-#define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC != ENABLED) && OT_FEATURE(MPIPE)       // UART MPipe Implementation
+#define MCU_CONFIG_MPIPECDC             ENABLED                               // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC != ENABLED)       // UART MPipe Implementation
 #define MCU_CONFIG_MPIPEI2C             DISABLED        // I2C MPipe Implementation
 #define MCU_CONFIG_MEMCPYDMA            ENABLED         // MEMCPY DMA should be lower priority than MPIPE DMA
 #define MCU_CONFIG_USB                  ((MCU_CONFIG_MPIPECDC == ENABLED) || 0)
@@ -153,7 +153,7 @@
 #define BOARD_PARAM(VAL)                BOARD_PARAM_##VAL
 
 #define BOARD_FEATURE_SWITCHES          ENABLED
-#define BOARD_FEATURE_MPIPE             OT_FEATURE(MPIPE)
+#define BOARD_FEATURE_MPIPE             ENABLED
 #define BOARD_FEATURE_USBCONVERTER      ENABLED                 // Is UART connected via USB converter?
 #define BOARD_FEATURE_MPIPE_DIRECT      ENABLED
 #define BOARD_FEATURE_MPIPE_BREAK       DISABLED                 // Send/receive leading break for wakeup
@@ -830,9 +830,11 @@ static inline void BOARD_STOP(ot_int code) {
 
     static const ot_u16 stop_flags[2] = {  
         (PWR_CR_LPSDSR | PWR_CR_CSBF), (PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP | PWR_CR_CSBF) };
-        
+
+#   if defined(__RELEASE__)
     static const ot_u32 rcc_flags[2] = { ~_STOP2_GPIO, ~_STOP3_GPIO };
-    
+#   endif
+
     ot_u16 scratch;
     
     code &= 1;
@@ -876,7 +878,6 @@ static inline void BOARD_STOP(ot_int code) {
 
 
 static inline void BOARD_PORT_STANDBY() {
-
     // JTAG/SWD Interface: Keep Alive
     
     // Pushbutton Interface: Keep Alive

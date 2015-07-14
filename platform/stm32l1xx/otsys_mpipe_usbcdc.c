@@ -1363,6 +1363,7 @@ void sub_txopen() {
 
     // Setup Header information
     length                  = mpipe.alp.outq->getcursor[1] + 4;
+    cdcacm.pktend           = cdcacm.pkt + length;
     cdcacm.header.syncFF    = 0xff;
     cdcacm.header.sync55    = 0x55;
     cdcacm.header.seq      += 1;

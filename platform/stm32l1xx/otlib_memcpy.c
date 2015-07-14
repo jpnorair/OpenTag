@@ -57,11 +57,11 @@
 
 
 #if MCU_CONFIG(MEMCPYDMA)
-#   define MEMCPY_DMA_INT  (1 << ((MEMCPY_DMA_CHAN_ID-1)*4))
+#   define MEMCPY_DMA_INT  (2 << ((MEMCPY_DMA_CHAN_ID-1)*4))
 
 void sub_memcpy_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
 /// Use 8, 16, or 32 bit chunks based on detected alignment
-    static const ot_u16 ccr[4]      = { 0x4AD1, 0x40D1, 0x45D1, 0x40D1 };
+    static const ot_u16 ccr[4]      = { 0x4A51, 0x4051, 0x4551, 0x4051 };
     static const ot_u16 len_div[4]  = { 2, 0, 1, 0 };
     ot_int align;
 
@@ -179,9 +179,7 @@ void ot_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
         MEMCPY_DMACHAN->CPAR    = (ot_u32)dst;
         MEMCPY_DMACHAN->CMAR    = (ot_u32)&value;
         MEMCPY_DMACHAN->CNDTR   = length;
-        MEMCPY_DMACHAN->CCR     = DMA_CCR1_DIR      | DMA_CCR1_PINC     | \
-                                  DMA_CCR1_PL_LOW   | DMA_CCR1_MEM2MEM  | \
-                                  DMA_CCR1_EN;
+        MEMCPY_DMACHAN->CCR     = 0x4051;
         while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 #   else
         DUFF_DEVICE_8(*dst++, value, length);

@@ -88,7 +88,7 @@
 #define RF_PARAM(VAL)                   RF_PARAM_##VAL
 #define RF_PARAM_SSBIT_US               
 #define RF_PARAM_RAMP_BYTES             1                   // Ramp-up + Down
-#define RF_PARAM_PREAMBLE_BYTES         8                   // 8 seems to work best on SPIRIT1
+#define RF_PARAM_PREAMBLE_BYTES         9                   // 8 seems to work best on SPIRIT1
 #define RF_PARAM_SYNC_BYTES             4                   // Always 4
 #define RF_PARAM_PKT_OVERHEAD           (RF_PARAM_RAMP_BYTES+RF_PARAM_PREAMBLE_BYTES+RF_PARAM_SYNC_BYTES)
 #define RF_PARAM_RCO_CAL_INTERVAL       32                      //SPIRIT1-Specific

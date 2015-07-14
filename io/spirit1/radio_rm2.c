@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /otradio/spirit1/radio_rm2.c
+  * @file       /io/spirit1/radio_rm2.c
   * @author     JP Norair
   * @version    R103
   * @date       23 Jan 2013

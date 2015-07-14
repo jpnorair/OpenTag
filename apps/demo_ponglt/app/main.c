@@ -58,6 +58,7 @@
 
 #include <otstd.h>
 #include <otplatform.h>
+#include <board.h>
 #include <otlib/rand.h>
 #include <otlib/logger.h>
 
@@ -98,6 +99,7 @@ app_struct app;
   * ========================================================================
   */
 // Main Application Functions
+void app_blink();
 void app_init();
 void app_invoke(ot_u8 call_type);
 
@@ -140,7 +142,6 @@ void sub_button_init();
 #   endif
 
 void sub_button_init() {
-
 #   if (OT_SWITCH1_PULLING)
     OT_SWITCH1_PORT->REN   |= OT_SWITCH1_PIN;       //Enable Internal Pull up/down
 #   endif
@@ -170,20 +171,19 @@ void PLATFORM_ISR_SW() {
 }
 
 #elif (defined(__STM32__) && defined(OT_SWITCH1_PINNUM) && (OT_SWITCH1_PINNUM >= 0))
-///@todo need to put this somewhere else, like in board file
-#   define PLATFORM_ISR_SW  platform_isr_exti6
-
-void PLATFORM_ISR_SW(void) {
-    // Ignore the button press if the task is in progress already
-    if (APP_TASK->event == 0) {
-        app_invoke(7);              // Initialize Ping Task on channel 7
+    void OT_SWITCH1_ISR(void) {
+        // Ignore the button press if the task is in progress already
+        if (APP_TASK->event == 0) {
+            app_invoke(7);              // Initialize Ping Task on channel 7
+        }
     }
-}
 
-void sub_button_init() {
-/// ARM Cortex M boards must prepare all EXTI line interrupts in their board
-/// configuration files.
-}
+    void sub_button_init() {
+    /// ARM Cortex M boards must prepare all EXTI line interrupts in their board
+    /// configuration files, but the actual line interrupt must be enabled here.
+        EXTI->RTSR |= OT_SWITCH1_PIN;
+        EXTI->IMR  |= OT_SWITCH1_PIN;
+    }
 
 
 #else
@@ -432,7 +432,8 @@ void applet_send_query(m2session* active) {
   * ==================================================================<BR>
   *
   */
-void app_init() {
+  
+void app_blink() {
 #if defined(BOARD_eZ430Chronos)
 /// Setup LCD
 
@@ -452,7 +453,9 @@ void app_init() {
         i--;
     }
 #endif
-
+}
+  
+void app_init() {
     sub_button_init();
 }
 
@@ -494,11 +497,10 @@ void app_invoke(ot_u8 channel) {
 void main(void) {
     ///1. Standard Power-on routine (Clocks, Timers, IRQ's, etc)
     ///2. Standard OpenTag Init (most stuff actually will not be used)
+    ///3. Indicate the app is alive
     platform_poweron();
     platform_init_OT();
-
-    ///3. Initialize the User Applet & interrupts
-    app_init();
+    app_blink();
 
     ///4. Set the app name (PongLT) as a cookie in the User-ID.
     ///   This is used for query filtering
@@ -519,13 +521,14 @@ void main(void) {
     logger_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 #   endif
 
-
     ///6. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>
     ///<LI> You could put code before or after sys_runtime_manager, which will
     ///     run before or after the (task + kernel).  If you do, keep the code
     ///     very short or else you are risking timing glitches.</LI>
     ///<LI> To run any significant amount of user code, use tasks. </LI>
+    app_init();
+    
     while(1) {
         platform_ot_run();
     }

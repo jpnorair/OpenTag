@@ -212,12 +212,12 @@ const ot_u8 overhead_files[] = {
     SPLIT_SHORT_LE(ISF_BASE(beacon_transmit_sequence)),
     SPLIT_SHORT_LE(ISF_MIRROR(beacon_transmit_sequence)),
 
-    ISF_LEN(protocol_list), 0x00,
-    SPLIT_SHORT_LE(ISF_ALLOC(protocol_list)),
-    ISF_ID(protocol_list),
-    ISF_MOD(protocol_list),
-    SPLIT_SHORT_LE(ISF_BASE(protocol_list)),
-    SPLIT_SHORT_LE(ISF_MIRROR(protocol_list)),
+    ISF_LEN(isf_list), 0x00,
+    SPLIT_SHORT_LE(ISF_ALLOC(isf_list)),
+    ISF_ID(isf_list),
+    ISF_MOD(isf_list),
+    SPLIT_SHORT_LE(ISF_BASE(isf_list)),
+    SPLIT_SHORT_LE(ISF_MIRROR(isf_list)),
 
     ISF_LEN(isfs_list), 0x00,
     SPLIT_SHORT_LE(ISF_ALLOC(isfs_list)),
@@ -417,12 +417,18 @@ const ot_u8 isf_stock_files[] = {
     'O','T','v',BV0,' ',' ',
     BT0,BC0,BC1,BC2,BC3,BC4,BC5,BC6,BC7, 0,             /* Firmware & Version as C-string */
 
-    /* channel configuration: id=0x02, len=32, alloc=48 */
+    /* channel configuration: id=0x02, len=24, alloc=48 */
     0x00, 0x00,                                         /* Header: 2 bytes RFU */
     0x00,                                               /* Header: Regulatory Code */
     0x00,                                               /* Header: TX Duty Cycle */
     0x00,                                               /* Header: TX Power Autoscaling Control */
     0x00,                                               /* Header: RFU */
+
+    (0x00), 0x00,                                       /* Channel Spectrum ID & RFU */
+    (ot_u8)(( (3) + 40 )*2),                            /* Channel TX Power Limit */
+    (ot_u8)( 130 ),                                     /* Channel Link Quality Filter Level */
+    (ot_u8)( (-120) + 140 ),                            /* CS RSSI Threshold */
+    (ot_u8)( (-100) + 140 ),                            /* CCA RSSI Threshold*/
 
     (0x10), 0x00,                                       /* Channel Spectrum ID & RFU */
     (ot_u8)(( (0) + 40 )*2),                            /* Channel TX Power Limit (dBm) */
@@ -431,12 +437,11 @@ const ot_u8 isf_stock_files[] = {
     (ot_u8)( (-100) + 140 ),                            /* CCA RSSI Threshold*/
 
     (0x20), 0x00,                                       /* Channel Spectrum ID & RFU */
-    (ot_u8)(( (0) + 40 )*2),                            /* Channel TX Power Limit (dBm) */
-    (ot_u8)( 140 ),                                     /* Channel Link Quality Filter Level */
+    (ot_u8)(( (-20) + 40 )*2),                          /* Channel TX Power Limit (dBm) */
+    (ot_u8)( 100 ),                                     /* Channel Link Quality Filter Level */
     (ot_u8)( (-104) + 140 ),                            /* CS RSSI Threshold */
     (ot_u8)( (-94) + 140 ),                             /* CCA RSSI Threshold*/
 
-    _ERS, _ERS, _ERS, _ERS, _ERS, _ERS,
     _ERS, _ERS, _ERS, _ERS, _ERS, _ERS,
     _ERS, _ERS, _ERS, _ERS, _ERS, _ERS,
     _ERS, _ERS, _ERS, _ERS, _ERS, _ERS,
@@ -479,8 +484,9 @@ const ot_u8 isf_stock_files[] = {
     0x2B, 0x06, 0x20, 0x00, 0x00, 0x08, 0x10, 0x00,
     _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS,
 
-    /* App Protocol List: id=0x07, len=4, alloc=16 */
-    0x00, 0x01, 0x02, 0x04, _ERS, _ERS, _ERS, _ERS,     /* List of Protocols supported (Tentative)*/
+    /* User ISF List: id=0x07, len=1, alloc=24 */
+    0xFF, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS,     /* List of Protocols supported (Tentative)*/
+    _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS,
     _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS,
 
     /* ISFS list: id=0x08, len=12, alloc=16 */

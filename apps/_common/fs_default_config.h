@@ -229,7 +229,7 @@
 #define ISF_ID_hold_scan_sequence               0x04
 #define ISF_ID_sleep_scan_sequence              0x05
 #define ISF_ID_beacon_transmit_sequence         0x06
-#define ISF_ID_protocol_list                    0x07
+#define ISF_ID_isf_list                         0x07
 #define ISF_ID_isfs_list                        0x08
 #define ISF_ID_gfb_file_list                    0x09
 #define ISF_ID_location_data_list               0x0A
@@ -258,7 +258,7 @@
 #define ISF_ENMIRROR_hold_scan_sequence         0
 #define ISF_ENMIRROR_sleep_scan_sequence        0
 #define ISF_ENMIRROR_beacon_transmit_sequence   0
-#define ISF_ENMIRROR_protocol_list              0
+#define ISF_ENMIRROR_isf_list                   0
 #define ISF_ENMIRROR_isfs_list                  0
 #define ISF_ENMIRROR_gfb_file_list              0
 #define ISF_ENMIRROR_location_data_list         1
@@ -293,7 +293,7 @@
 #define ISF_MOD_hold_scan_sequence              ISF_MOD_file_standard
 #define ISF_MOD_sleep_scan_sequence             ISF_MOD_file_standard
 #define ISF_MOD_beacon_transmit_sequence        ISF_MOD_file_standard
-#define ISF_MOD_protocol_list                   b00100100
+#define ISF_MOD_isf_list                        b00100100
 #define ISF_MOD_isfs_list                       b00100100
 #define ISF_MOD_gfb_file_list                   ISF_MOD_file_standard
 #define ISF_MOD_location_data_list              b00100100
@@ -316,12 +316,12 @@
 #define ISF_LEN(VAL)                            ISF_LEN_##VAL
 #define ISF_LEN_network_settings                10
 #define ISF_LEN_device_features                 48
-#define ISF_LEN_channel_configuration           32
+#define ISF_LEN_channel_configuration           24
 #define ISF_LEN_real_time_scheduler             12
 #define ISF_LEN_hold_scan_sequence              4
 #define ISF_LEN_sleep_scan_sequence             4
 #define ISF_LEN_beacon_transmit_sequence        16
-#define ISF_LEN_protocol_list                   4
+#define ISF_LEN_isf_list                        1
 #define ISF_LEN_isfs_list                       12
 #define ISF_LEN_gfb_file_list                   GFB_NUM_FILES
 #define ISF_LEN_location_data_list              0
@@ -344,12 +344,12 @@
 #define ISF_MAX_USER_FILE                       255
 #define ISF_MAX_network_settings                10
 #define ISF_MAX_device_features                 48
-#define ISF_MAX_channel_configuration           64
+#define ISF_MAX_channel_configuration           48
 #define ISF_MAX_real_time_scheduler             12
 #define ISF_MAX_hold_scan_sequence              32  //8 scans
 #define ISF_MAX_sleep_scan_sequence             32  //8 scans
 #define ISF_MAX_beacon_transmit_sequence        24  //3 beacons
-#define ISF_MAX_protocol_list                   16  //16 protocols
+#define ISF_MAX_isf_list                        24  //24 isf
 #define ISF_MAX_isfs_list                       16  //16 isfs indices
 #define ISF_MAX_gfb_file_list                   8   //8 gfb files
 #define ISF_MAX_location_data_list              64  //8 location vertices (or 16 if using VIDs)
@@ -383,8 +383,8 @@
 #define ISF_BASE_hold_scan_sequence             (ISF_BASE_real_time_scheduler+ISF_ALLOC(real_time_scheduler))
 #define ISF_BASE_sleep_scan_sequence            (ISF_BASE_hold_scan_sequence+ISF_ALLOC(hold_scan_sequence))
 #define ISF_BASE_beacon_transmit_sequence       (ISF_BASE_sleep_scan_sequence+ISF_ALLOC(sleep_scan_sequence))
-#define ISF_BASE_protocol_list                  (ISF_BASE_beacon_transmit_sequence+ISF_ALLOC(beacon_transmit_sequence))
-#define ISF_BASE_isfs_list                      (ISF_BASE_protocol_list+ISF_ALLOC(protocol_list))
+#define ISF_BASE_isf_list                       (ISF_BASE_beacon_transmit_sequence+ISF_ALLOC(beacon_transmit_sequence))
+#define ISF_BASE_isfs_list                      (ISF_BASE_isf_list+ISF_ALLOC(isf_list))
 #define ISF_BASE_gfb_file_list                  (ISF_BASE_isfs_list+ISF_ALLOC(isfs_list))
 #define ISF_BASE_location_data_list             (0xFFFF)
 #define ISF_BASE_ipv6_addresses                 (ISF_BASE_gfb_file_list+ISF_ALLOC(gfb_file_list))
@@ -411,8 +411,8 @@
 #define ISF_MIRROR_hold_scan_sequence           (ISF_MIRROR_real_time_scheduler+ISF_MIRALLOC(real_time_scheduler))
 #define ISF_MIRROR_sleep_scan_sequence          (ISF_MIRROR_hold_scan_sequence+ISF_MIRALLOC(hold_scan_sequence))
 #define ISF_MIRROR_beacon_transmit_sequence     (ISF_MIRROR_sleep_scan_sequence+ISF_MIRALLOC(sleep_scan_sequence))
-#define ISF_MIRROR_protocol_list                (ISF_MIRROR_beacon_transmit_sequence+ISF_MIRALLOC(beacon_transmit_sequence))
-#define ISF_MIRROR_isfs_list                    (ISF_MIRROR_protocol_list+ISF_MIRALLOC(protocol_list))
+#define ISF_MIRROR_isf_list                     (ISF_MIRROR_beacon_transmit_sequence+ISF_MIRALLOC(beacon_transmit_sequence))
+#define ISF_MIRROR_isfs_list                    (ISF_MIRROR_isf_list+ISF_MIRALLOC(isf_list))
 #define ISF_MIRROR_gfb_file_list                (ISF_MIRROR_isfs_list+ISF_MIRALLOC(isfs_list))
 #define ISF_MIRROR_location_data_list           (ISF_MIRROR_gfb_file_list+ISF_MIRALLOC(gfb_file_list))
 #define ISF_MIRROR_ipv6_addresses               (ISF_MIRROR_location_data_list+ISF_MIRALLOC(location_data_list))
@@ -438,7 +438,7 @@
                                 ISF_ALLOC(hold_scan_sequence) + \
                                 ISF_ALLOC(sleep_scan_sequence) + \
                                 ISF_ALLOC(beacon_transmit_sequence) + \
-                                ISF_ALLOC(protocol_list) + \
+                                ISF_ALLOC(isf_list) + \
                                 ISF_ALLOC(isfs_list) + \
                                 ISF_ALLOC(gfb_file_list) + \
                                 ISF_ALLOC(location_data_list) + \
