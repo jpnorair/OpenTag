@@ -1193,11 +1193,10 @@ void sub_usb_loadtx(ot_int pad_bytes) {
     SetEPTxValid(ENDP1);
 }
 
-void sub_gen_mpipecrc() {
-    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)&cdcacm.header.plen, 4, 0xFFFF);
-    cdcacm.header.crc16 = \
-        crc16drv_block_manual((ot_u8*)mpipe.alp.outq->getcursor, cdcacm.header.plen, cdcacm.header.crc16 );
-}
+//void sub_gen_mpipecrc() {
+//   cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)&cdcacm.header.plen, 4, 0xFFFF);
+//    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)mpipe.alp.outq->getcursor, cdcacm.header.plen, cdcacm.header.crc16 );
+//}
 
 
 
@@ -1369,7 +1368,10 @@ void sub_txopen() {
     cdcacm.header.seq      += 1;
     cdcacm.header.ctl       = 0;
     cdcacm.header.plen      = PLATFORM_ENDIAN16(length);
-    sub_gen_mpipecrc();
+
+    //sub_gen_mpipecrc();
+    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)&cdcacm.header.plen, 4, 0xFFFF);
+    cdcacm.header.crc16 = crc16drv_block_manual((ot_u8*)mpipe.alp.outq->getcursor, length, cdcacm.header.crc16);
 
     sub_usb_loadheader();
     sub_usb_loadtx(8);
