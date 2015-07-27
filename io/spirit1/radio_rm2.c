@@ -221,7 +221,7 @@ OT_WEAK void radio_set_mactimer(ot_u16 clocks) {
 #ifndef EXTF_radio_mac_isr
 OT_WEAK void radio_mac_isr() {
     /// Used as CA insertion timer
-    //if (radio.state == RADIO_Csma) {
+    //if (radio.state == RADIO_Csma) { //this "if" is redundant
         systim_disable_insertion();
         rm2_txcsma_isr();
     //}
@@ -905,8 +905,8 @@ OT_WEAK void rm2_txcsma_isr() {
 
             // No CSMA enabled, so jump to transmit
             ///@todo properly build CSMA
-            if (1) {
-            //if (dll.comm.csmaca_params & M2_CSMACA_NOCSMA) {
+            //if (1) {
+            if (dll.comm.csmaca_params & M2_CSMACA_NOCSMA) {
                 spirit1_spibus_io(3, 0, timcfg);
                 goto rm2_txcsma_START;
             }
