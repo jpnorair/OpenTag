@@ -166,7 +166,7 @@ void PLATFORM_ISR_SW() {
 
     // Ignore the button press if the task is in progress already
     if (APP_TASK->event == 0) {
-        app_invoke(7);              // Initialize Ping Task on channel 7
+        app_invoke(0x18);              // Initialize Ping Task on channel 18
     }
 }
 
@@ -174,7 +174,7 @@ void PLATFORM_ISR_SW() {
     void OT_SWITCH1_ISR(void) {
         // Ignore the button press if the task is in progress already
         if (APP_TASK->event == 0) {
-            app_invoke(7);              // Initialize Ping Task on channel 7
+            app_invoke(0x18);              // Initialize Ping Task on channel 18
         }
     }
 
@@ -232,7 +232,7 @@ ot_bool alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 
         // Start a ping
         if (cmd == 0) {
-            app_invoke(7);
+            app_invoke(0x18);
         }
 
         // Request: copy ping val to pong

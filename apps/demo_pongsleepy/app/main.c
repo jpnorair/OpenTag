@@ -98,6 +98,7 @@ app_struct app;
   * ========================================================================
   */
 // Main Application Functions
+void app_blink();
 void app_init();
 void app_invoke(ot_u8 call_type);
 
@@ -140,7 +141,6 @@ void sub_button_init();
 #   endif
 
 void sub_button_init() {
-
 #   if (OT_SWITCH1_PULLING)
     OT_SWITCH1_PORT->REN   |= OT_SWITCH1_PIN;       //Enable Internal Pull up/down
 #   endif
@@ -165,25 +165,24 @@ void PLATFORM_ISR_SW() {
 
     // Ignore the button press if the task is in progress already
     if (APP_TASK->event == 0) {
-        app_invoke(7);              // Initialize Ping Task on channel 7
+        app_invoke(0x18);              // Initialize Ping Task on channel 18
     }
 }
 
 #elif (defined(__STM32__) && defined(OT_SWITCH1_PINNUM) && (OT_SWITCH1_PINNUM >= 0))
-///@todo need to put this somewhere else, like in board file
-#   define PLATFORM_ISR_SW  platform_isr_exti6
-
-void PLATFORM_ISR_SW(void) {
-    // Ignore the button press if the task is in progress already
-    if (APP_TASK->event == 0) {
-        app_invoke(7);              // Initialize Ping Task on channel 7
+    void OT_SWITCH1_ISR(void) {
+        // Ignore the button press if the task is in progress already
+        if (APP_TASK->event == 0) {
+            app_invoke(0x18);              // Initialize Ping Task on channel 18
+        }
     }
-}
 
-void sub_button_init() {
-/// ARM Cortex M boards must prepare all EXTI line interrupts in their board
-/// configuration files.
-}
+    void sub_button_init() {
+    /// ARM Cortex M boards must prepare all EXTI line interrupts in their board
+    /// configuration files, but the actual line interrupt must be enabled here.
+        EXTI->RTSR |= OT_SWITCH1_PIN;
+        EXTI->IMR  |= OT_SWITCH1_PIN;
+    }
 
 
 #else
@@ -232,7 +231,7 @@ ot_bool alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 
         // Start a ping
         if (cmd == 0) {
-            app_invoke(7);
+            app_invoke(0x18);
         }
 
         // Request: copy ping val to pong
@@ -242,8 +241,9 @@ ot_bool alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id) {
         }
 
         // Response: Compare PING Val to PONG Val and write output to MPipe
-        else {
+        
 #       if (OT_FEATURE(MPIPE))
+        else if (mpipe_status() != MPIPE_Null) {
             static const char* label[]  = { "PongID: ", ", RSSI: ", ", Link: " };
             ot_u8   i;
             ot_u8   scratch;
@@ -278,8 +278,8 @@ ot_bool alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id) {
             // Close the log file, send it out, return success
             m2qp_sig_udp_PRINTDONE:
             logger_direct();
-#       endif
         }
+#       endif
 
     } break;
     }
@@ -318,13 +318,16 @@ ot_bool alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 
 void ext_systask(ot_task task) {
     session_tmpl    s_tmpl;
+    advert_tmpl     a_tmpl;
 
     if (task->event == 1) {
         task->event = 0;
 
-        // this is the same as the length of the response window,
-        // which is set in applet_send_query()
-        task->nextevent = 512;
+        // Block repititions of the task.
+        // This is the same as the length of the response window,
+        // which is set in applet_send_query(), plus the advertising
+        // duration set below
+        task->nextevent = 512 + 1024;
 
         // Generate a pseudo random 16 bit number to be used as a ping check value
         app.pingval = PLATFORM_ENDIAN16(rand_prn16());
@@ -333,14 +336,24 @@ void ext_systask(ot_task task) {
         // so if you are sending a DASH7 dialog this log message will usually
         // come-out after the dialog finishes.
 #       if (OT_FEATURE(MPIPE))
-        logger_msg(MSG_raw, 5, 2, (ot_u8*)"PING:", (ot_u8*)&app.pingval);
+        if (mpipe_status() != MPIPE_Null) {
+            logger_msg(MSG_raw, 5, 2, (ot_u8*)"PING:", (ot_u8*)&app.pingval);
+        }
 #       endif
 
         // Load the session template: Only used for communication tasks
         s_tmpl.channel      = task->cursor;
         s_tmpl.flagmask     = 0;
         s_tmpl.subnetmask   = 0;
-        m2task_immediate(&s_tmpl, &applet_send_query);
+        
+        a_tmpl.duty_off     = 0;
+        a_tmpl.duty_on      = 0;
+        a_tmpl.subnet       = 0;
+        a_tmpl.channel      = task->cursor;
+        a_tmpl.duration     = 1024;
+        
+        //m2task_immediate(&s_tmpl, &applet_send_query);
+        m2task_advertise(&a_tmpl, &s_tmpl, &applet_send_query);
     }
 
     // Turn off the task after 512 ticks (what is set above)
@@ -396,11 +409,11 @@ void applet_send_query(m2session* active) {
         otapi_put_dialog_tmpl(&status, &dialog);
     }
     { //write the query to search for the sensor protocol id
-        static const ot_u8 query_str[10] = "APP=PongLT";
+        static const ot_u8 query_str[14] = "APP=PongSleepy";
         query_tmpl query;
-        query.code      = M2QC_COR_SEARCH + 10; // do a 100% length=10 correlation search
+        query.code      = M2QC_COR_SEARCH + 14; // do a 100% length=14 correlation search
         query.mask      = NULL;                 // don't do any masking (no partial matching)
-        query.length    = 10;                   // query_str is 10 bytes
+        query.length    = 14;                   // query_str is 14 bytes
         query.value     = (ot_u8*)query_str;
         otapi_put_query_tmpl(&status, &query);
     }
@@ -432,7 +445,7 @@ void applet_send_query(m2session* active) {
   * ==================================================================<BR>
   *
   */
-void app_init() {
+void app_blink() {
 #if defined(BOARD_eZ430Chronos)
 /// Setup LCD
 
@@ -452,7 +465,9 @@ void app_init() {
         i--;
     }
 #endif
-
+}
+  
+void app_init() {
     sub_button_init();
 }
 
@@ -494,11 +509,10 @@ void app_invoke(ot_u8 channel) {
 void main(void) {
     ///1. Standard Power-on routine (Clocks, Timers, IRQ's, etc)
     ///2. Standard OpenTag Init (most stuff actually will not be used)
+    ///3. Indicate the app is alive
     platform_poweron();
     platform_init_OT();
-
-    ///3. Initialize the User Applet & interrupts
-    app_init();
+    app_blink();
 
     ///4. Set some data elements to application-specific settings.
     ///   Alternatively, you could make a new default-data include just for 
@@ -527,8 +541,13 @@ void main(void) {
     ///    it to a valid console app.
     ///5b. Load a message to show that main startup has passed
 #   if (OT_FEATURE(MPIPE))
-    mpipedrv_standby();
-    logger_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+    if ((OT_SWITCH1_PORT->IDR & OT_SWITCH1_PIN) == OT_SWITCH1_POLARITY) {
+        mpipe_disconnect(NULL);
+    }
+    else {
+        mpipedrv_standby();
+        logger_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+    }
 #   endif
 
 
@@ -538,6 +557,8 @@ void main(void) {
     ///     run before or after the (task + kernel).  If you do, keep the code
     ///     very short or else you are risking timing glitches.</LI>
     ///<LI> To run any significant amount of user code, use tasks. </LI>
+    app_init();
+    
     while(1) {
         platform_ot_run();
     }

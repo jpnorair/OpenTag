@@ -53,6 +53,8 @@
 // #define OT_PARAM_... 
 // ...etc
 
+//#define OT_FEATURE_MPIPE    DISABLED
+
 #include <../_common/features_default_config.h>
 
 
@@ -65,5 +67,7 @@
   * /apps/_common/
   */
 #include <../_common/fs_default_config.h>
+
+
 
 #endif 

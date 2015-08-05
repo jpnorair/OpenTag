@@ -7,7 +7,7 @@ It also includes the secondary/main linker script that is specified in the Ride 
 
 SEARCH_DIR(".")
 SEARCH_DIR("R:\OpenTag\apps\demo_pongsleepy\proj_ride7\build")
-SEARCH_DIR("C:\Program Files\Raisonance\Ride\Lib\ARM")
+SEARCH_DIR("C:\Raisonance\Ride\Lib\ARM")
 STARTUP("R:\OpenTag\apps\demo_pongsleepy\proj_ride7/build/startup_stm32l1xx_md.o")
 INPUT("R:\OpenTag\apps\demo_pongsleepy\proj_ride7\build\main.o")
 INPUT("R:\OpenTag\apps\demo_pongsleepy\proj_ride7\build\sys_sig_powerdown_[stm32lp].o")
@@ -75,11 +75,11 @@ INPUT("R:\OpenTag\apps\demo_pongsleepy\proj_ride7\build\system_hicculp.o")
 INPUT("R:\OpenTag\apps\demo_pongsleepy\proj_ride7\build\time.o")
 GROUP(
 "smallprintf_thumb.a"
-"libc_s.a"
+"libc_nano.a"
 "libm.a"
 
 )
 INCLUDE "R:\OpenTag\apps\demo_pongsleepy\proj_ride7/../../_common/linker/stm32l1xx_128_16.ld"
 PROVIDE ( _Minimum_Stack_Size = 0x20 );
-PROVIDE ( malloc_getpagesize_P = 0x100 );
+PROVIDE ( malloc_getpagesize_P = 0x1000 );
 OUTPUT("R:\OpenTag\apps\demo_pongsleepy\proj_ride7\build\pongsleepy.elf")

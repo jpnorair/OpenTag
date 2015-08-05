@@ -1,5 +1,5 @@
 
-<ApplicationBuild Header="pongsleepy" Extern=".\pongsleepy.rapp" Path=".\pongsleepy.rapp" OutputFile=".\build\pongsleepy.elf" sate="96" Config="Jupiter" >
+<ApplicationBuild Header="pongsleepy" Extern=".\pongsleepy.rapp" Path=".\pongsleepy.rapp" OutputFile=".\build\pongsleepy.elf" sate="98" Config="IKR001_Debug" >
 	<Group Header="app" Marker="-1" OutputFile="" sate="0" >
 		<NodeH Path="..\app\app_config.h" Header="app_config.h" Marker="-1" OutputFile="" sate="0" />
 		<NodeH Path="..\app\board_config.h" Header="board_config.h" Marker="-1" OutputFile="" sate="0" />
@@ -43,8 +43,8 @@
 		</Group>
 	</Group>
 	<Group Header="lib" Marker="-1" OutputFile="" sate="96" >
-		<Group Header="STM32_USB_FS" Marker="-1" OutputFile="" sate="96" >
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_core.c" Header="usb_core.c" Marker="0" OutputFile=".\build\usb_core.o" sate="0" >
+		<Group Header="STM32_USB_FS" Marker="-1" OutputFile="" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_core.c" Header="usb_core.c" Marker="-1" OutputFile=".\build\usb_core.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -55,7 +55,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_init.c" Header="usb_init.c" Marker="0" OutputFile=".\build\usb_init.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_init.c" Header="usb_init.c" Marker="-1" OutputFile=".\build\usb_init.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -66,7 +66,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_int.c" Header="usb_int.c" Marker="0" OutputFile=".\build\usb_int.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_int.c" Header="usb_int.c" Marker="-1" OutputFile=".\build\usb_int.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -77,7 +77,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_mem.c" Header="usb_mem.c" Marker="0" OutputFile=".\build\usb_mem.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_mem.c" Header="usb_mem.c" Marker="-1" OutputFile=".\build\usb_mem.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -88,7 +88,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_regs.c" Header="usb_regs.c" Marker="0" OutputFile=".\build\usb_regs.o" sate="0" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_regs.c" Header="usb_regs.c" Marker="-1" OutputFile=".\build\usb_regs.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -99,7 +99,7 @@
 					</Config>
 				</Options>
 			</NodeC>
-			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_sil.c" Header="usb_sil.c" Marker="0" OutputFile=".\build\usb_sil.o" sate="2" >
+			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_sil.c" Header="usb_sil.c" Marker="-1" OutputFile=".\build\usb_sil.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
 						<Set Header="GCC" >
@@ -127,7 +127,7 @@
 		<Config Header="Jupiter" />
 	</Configs>
 	<Group Header="platform" Marker="-1" OutputFile="" sate="96" >
-		<Group Header="stm32l1xx" Marker="-1" OutputFile="" sate="96" >
+		<Group Header="stm32l1xx" Marker="-1" OutputFile="" sate="0" >
 			<Group Header="_startup" Marker="-1" OutputFile="" sate="0" >
 				<NodeASM Path="..\..\..\platform\stm32l1xx\_startup\gcc_ride7\startup_stm32l1xx_md.s" Header="startup_stm32l1xx_md.s" Marker="0" OutputFile=".\build\startup_stm32l1xx_md.o" sate="0" >
 					<Options>
