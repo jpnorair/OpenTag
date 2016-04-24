@@ -287,20 +287,12 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
                 //input_position[0]   = 0;          //non-atomic app should wipe flags!
                 alp->inq->getcursor = nextrecord;
 
-
-
                 ///@note HACK
-
                 /// added by JPN 7-April-14, in order to batch multiple reads.
-
                 /// It might be kept or removed.  Also note that "continue" statement
-
                 /// will not work properly here, goto must be used.
-
                 if (alp->inq->putcursor > alp->inq->getcursor) {
-
                     goto alp_parse_message_LOOP;
-
                 }
             }
 
@@ -310,11 +302,8 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
     }
     while (exit_code != MSG_Null);
 
-
     /// Unlock the ot_queues after ALP is parsing/processing
-
     alp->inq->options.ubyte[0]  = 0;
-
     alp->outq->options.ubyte[0] = 0;
 
     return exit_code;
