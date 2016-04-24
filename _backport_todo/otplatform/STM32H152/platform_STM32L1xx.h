@@ -28,7 +28,7 @@
 #ifndef __PLATFORM_STM32L1xx_H
 #define __PLATFORM_STM32L1xx_H
 
-#include "OT_support.h"
+#include <otsys/support.h>
 #include "stm32l1xx.h"
 #include "stm32l1xx_conf.h"
 

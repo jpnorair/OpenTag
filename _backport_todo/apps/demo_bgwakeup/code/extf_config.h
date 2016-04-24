@@ -85,10 +85,10 @@
 
 
 /// OTAPI EXTFs
-#define EXTF_otapi_alpext_proc
+#define EXTF_alp_ext_proc
 
 
-/// Queue EXTFs
+/// ot_queue EXTFs
 
 
 /// Radio EXTFs

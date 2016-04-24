@@ -47,7 +47,7 @@
   */
 
 #include "OTAPI.h"
-#include "OT_platform.h"
+#include <otplatform.h>
 #include "palfi.h"
 
 
@@ -278,7 +278,7 @@ void ext_systask(ot_task task) {
                                         ALERT_CHAN1 : ALERT_CHAN2;
                 s_tmpl.subnetmask   = 0;
                 s_tmpl.flagmask     = 0;
-                otapi_task_immediate(&s_tmpl, &applet_adcpacket);
+                m2task_immediate(&s_tmpl, &applet_adcpacket);
             }
             return;
         
@@ -341,7 +341,7 @@ void applet_adcpacket(m2session* session) {
 /// is over before starting a new one.
 ///
 /// In order to create a new communication task and bind this applet to it, use
-/// otapi_task_immediate() or one of the other tasker functions.
+/// m2task_immediate() or one of the other tasker functions.
 ///
 /// This applet does two things:
 /// 1. Do an ADC capture
@@ -385,7 +385,7 @@ void sub_adc_measurement(ot_int* buffer) {
 
     /// 2. Start ADC and Wait for ADC to finish.  Wait 75us for REF.
     ///    Grab the data, then kill everything
-    platform_swdelay_us(75);
+    delay_us(75);
     ADC12CTL0  |= ADC12ENC;
     ADC12CTL0  |= ADC12SC;
     while ((ADC12CTL1 & ADC12BUSY) == ADC12BUSY);

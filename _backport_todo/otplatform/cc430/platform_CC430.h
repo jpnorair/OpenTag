@@ -28,8 +28,8 @@
 #ifndef __PLATFORM_CC430_H
 #define __PLATFORM_CC430_H
 
-#include "build_config.h"
-#include "OT_support.h"
+#include <app/build_config.h>
+#include <otsys/support.h>
 #include "cc430_lib.h"
 #include "cc430_conf.h"
 
@@ -134,7 +134,7 @@
   * platform_ext stores data that is required for OpenTag to work properly on
   * the CC430, and the data is not platform-independent.
   */
-#if (OT_FEATURE_RTC == ENABLED)
+#if (OT_FEATURE_TIME == ENABLED)
 #define RTC_ALARMS          1        // Max=3
 #else
 #define RTC_ALARMS          0

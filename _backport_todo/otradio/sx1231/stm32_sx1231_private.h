@@ -62,4 +62,4 @@ void rx_done_isr(ot_int pcode);
 void rm2_rxtimeout_isr(void);
 #endif /* SYS_RECEIVE == ENABLED */
 
-extern Twobytes sync_value; // global for access from transmitter
+extern ot_uni16 sync_value; // global for access from transmitter

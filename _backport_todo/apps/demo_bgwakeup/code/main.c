@@ -24,16 +24,16 @@
   * <LI> Show how to set up and use background advertising for wakeup </LI>
   * <LI> Show a simple way how anycast queries can be used </LI>
   * <LI> Show how a command session can be initiated by a button press </LI>
-  * <LI> Provide a simple way to do link testing between a demonstration 
+  * <LI> Provide a simple way to do link testing between a demonstration
   *      system of two or more devices </LI>
   *
-  * It is otherwise very similar to the PongLT demo.  It is a masterless 
-  * application that allows one device to send a query and all the others to 
-  * respond.  It does not use any sort of  power conservation measures -- all 
-  * the devices are listening all the time. This is what makes it good for link 
+  * It is otherwise very similar to the PongLT demo.  It is a masterless
+  * application that allows one device to send a query and all the others to
+  * respond.  It does not use any sort of  power conservation measures -- all
+  * the devices are listening all the time. This is what makes it good for link
   * testing.  It is also an incredibly simple starting point for OpenTag users.
   *
-  * The Ping is a UDP-with-inventory packet on port 255, which uses the 
+  * The Ping is a UDP-with-inventory packet on port 255, which uses the
   * "User ID" ISF to store a small cookie that qualifies devices that have the
   * string "APP=PongLT" somewhere in that file.  Only these devices will fully
   * process the Ping request and produce a Pong response.
@@ -58,14 +58,14 @@
   */
 
 #include "OTAPI.h"
-#include "OT_platform.h"
-
-
+#include <otplatform.h>
+#include <otlib/rand.h>
+#include <otlib/logger.h>
 
 
 /** Data Mapping <BR>
   * ===========================================================================
-  * The Opmode Demo needs a particular data mapping.  It is not unusual, but 
+  * The Opmode Demo needs a particular data mapping.  It is not unusual, but
   * the demo may not work if the data is not set correctly.  This define below
   * uses the default data mapping (/apps/demo_opmode/code/data_default.c)
   */
@@ -78,7 +78,7 @@
 
 /** Application Global Variables <BR>
   * ========================================================================<BR>
-  * opmode_devicemode must be volatile, since it is set in an interrupt service 
+  * opmode_devicemode must be volatile, since it is set in an interrupt service
   * routine.
   */
 typedef struct {
@@ -113,7 +113,7 @@ void opmode_goto_endpoint();
 
 /** Application local subroutines (platform & board dependent) <BR>
   * ========================================================================<BR>
-  * sub_button_init() is a board-dependent function, as 
+  * sub_button_init() is a board-dependent function, as
   */
 void sub_button_init();
 
@@ -139,10 +139,10 @@ void sub_button_init();
 /** Application Events <BR>
   * ========================================================================<BR>
   * This Application can be initialized by a button-press or by an ALP command.
-  * The ALP command is treated at a higher-level (see ALP callback later).  
+  * The ALP command is treated at a higher-level (see ALP callback later).
   * The button-press is unique to this application, and it is treated here.
   */
-  
+
 #if (defined(_MSP430F5_CORE) && defined(OT_SWITCH1_PORT))
 void sub_button_init() {
 
@@ -190,7 +190,7 @@ void sub_button_init() {}
 /** ALP Processor Callback for Starting a Ping <BR>
   * ========================================================================<BR>
   * "ALP" is the NDEF-based set of low-level API protocols that OpenTag uses.
-  * ALP messages can come-in over any communication method: wire, wireless, 
+  * ALP messages can come-in over any communication method: wire, wireless,
   * telepathy... anything that can transfer a packet payload.
   *
   * Some ALPs are standardized. Those get handled by OTlib automatically.  ALPs
@@ -202,12 +202,12 @@ void sub_button_init() {}
   * ALP Protocol Commands:      0-127 (00-7F) corresponding to channel to ping
   *
   * The "user_id" parameter corresponds to the Device ID that sent this ALP.
-  * 
+  *
   * A quickstart guide to the ALP API is available on the Indigresso Wiki.
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
-  */ 
+  */
 
-void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
+void alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 /// The function app_invoke() will cause the kernel to call ext_systask() as
 /// soon as resources are available.
 
@@ -215,7 +215,7 @@ void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
     if (    auth_isroot(user_id)    \
         &&  (alp->inrec.id == 0xFF) \
         &&  (APP_TASK.event == 0)   )   {
-        
+
         app_invoke(alp->inrec.cmd);     // Initialize Ping Task on supplied channel
         alp_load_retval(alp, 1);        // Write back 1 (success)
     }
@@ -248,13 +248,13 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 
 #   if defined(BOARD_eZ430Chronos)
     // Chronos doesn't have a normal MPipe, so print-out responses on the LCD
-    
+
 #   else
     // Response: Compare PING Val to PONG Val and write output to MPipe
     if ((dstport == 255) && (app.pingval == pongval)) {
         // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
-        otapi_log_header(1, 0);
-        
+        logger_header(1, 0);
+
         // Print out the three parameters for PongLT, one at a time.
         // If you are new to OpenTag, this is a common example of a state-
         // based code structure JP likes to use.
@@ -262,27 +262,27 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
         while (1) {
             q_writestring(mpipe.alp.outq, (ot_u8*)label[i], 8);
             switch (i++) {
-                case 0: scratch = otutils_bin2hex(  mpipe.alp.outq->putcursor, 
+                case 0: scratch = otutils_bin2hex(  mpipe.alp.outq->putcursor,
                                                     user_id->value,
                                                     user_id->length     );
                         break;
-                
+
                 case 1: scratch = otutils_int2dec(mpipe.alp.outq->putcursor, radio.last_rssi);
                         break;
-                        
+
                 case 2: scratch = otutils_int2dec(mpipe.alp.outq->putcursor, dll.last_nrssi);
                         break;
-                        
+
                 case 3: goto m2qp_sig_udp_PRINTDONE;
             }
-            
+
             mpipe.alp.outq->putcursor  += scratch;
          //#mpipe.alp.outq->length     += scratch;
         }
 
         // Close the log file, send it out, return success
         m2qp_sig_udp_PRINTDONE:
-        otapi_log_direct();
+        logger_direct();
         return True;
     }
 #   endif
@@ -318,9 +318,9 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
   * =======================================================================<BR>
   * This function will be activated by the kernel when the external task is
   * active and there are resources available to run the task.  This task will
-  * just activate the DLL session (also a task) and then turn itself off. 
-  * Then, the kernel will call the DLL session task as soon as necessary 
-  * resources are available to run that task (by default DLL task is top 
+  * just activate the DLL session (also a task) and then turn itself off.
+  * Then, the kernel will call the DLL session task as soon as necessary
+  * resources are available to run that task (by default DLL task is top
   * priority, so it should get called right away).
   */
 
@@ -330,35 +330,35 @@ void ext_systask(ot_task task) {
 
     if (task->event == 1) {
         task->event++;
-        
+
         // this is the same as the length of the response window,
         // which is set in applet_send_query()
-        task->nextevent = 512;  
-    
+        task->nextevent = 512;
+
         // Generate a pseudo random 16 bit number to be used as a ping check value
-        app.pingval = platform_prand_u16();
-    
+        app.pingval = rand_prn16();
+
 #       if defined(BOARD_eZ430Chronos)
 
 #       else
         // Log a message.  It is scheduled, and the RF task has higher priority,
         // so if you are sending a DASH7 dialog this log message will usually
         // come-out after the dialog finishes.
-        otapi_log_msg(MSG_raw, 5, 8, (ot_u8*)"PING:", (ot_u8*)&app.pingval);
+        logger_msg(MSG_raw, 5, 8, (ot_u8*)"PING:", (ot_u8*)&app.pingval);
 #       endif
-        
+
         // Advert Tmpl: most of the parameters are for special purposes only
         adv_tmpl.channel    = 7;
         adv_tmpl.duration   = 1024;
-        
+
         // Load the session template: Only used for communication tasks
         s_tmpl.channel      = task->cursor;
         s_tmpl.flagmask     = 0;
         s_tmpl.subnetmask   = 0;
-        
-        otapi_task_advertise(&adv_tmpl, &s_tmpl, &applet_send_query);
+
+        m2task_advertise(&adv_tmpl, &s_tmpl, &applet_send_query);
     }
-    
+
     // Turn off the task after 512 ticks (what is set above)
     // Note that this task will not be activated by the button press or ALP
     // when event != 0, because those routines have conditionals in them.
@@ -454,23 +454,23 @@ void applet_send_query(m2session* session) {
   *
   */
 void app_init() {
-/// 1. Blink the board LEDs to show that it is starting up.  
+/// 1. Blink the board LEDs to show that it is starting up.
 /// 2. Configure the board input button, which for this app will send a ping
     ot_u8 i;
 
     i=4;
     while (i != 0) {
-        if (i&1)    otapi_led1_on();
-        else        otapi_led2_on();
+        if (i&1)    BOARD_led1_on();
+        else        BOARD_led2_on();
 
-        platform_swdelay_ms(30);
-        otapi_led2_off();
-        otapi_led1_off();
+        delay_ms(30);
+        BOARD_led2_off();
+        BOARD_led1_off();
         i--;
     }
 
     sub_button_init();
-    
+
     //If you have a chronometer applet, you can initialize it here.
     //The commented function below is for example purposes.
     //chron_init(TIM0A5);
@@ -509,8 +509,8 @@ void app_invoke(ot_u8 channel) {
 }
 
 
-  
-  
+
+
 void main(void) {
     ///1. Standard Power-on routine (Clocks, Timers, IRQ's, etc)
     ///2. Standard OpenTag Init (most stuff actually will not be used)
@@ -525,7 +525,7 @@ void main(void) {
     mpipedrv_standby();
 
     ///4b. Load a message to show that main startup has passed
-    otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+    logger_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>

@@ -23,13 +23,13 @@
   *
   ******************************************************************************
   */
-  
+
 
 #ifndef __radio_CC1101_H
 #define __radio_CC1101_H
 
-#include "OT_types.h"
-#include "OT_support.h"
+#include <otsys/types.h>
+#include <otsys/support.h>
 
 
 #ifndef ENABLED

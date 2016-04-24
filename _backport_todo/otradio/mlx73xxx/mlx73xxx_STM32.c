@@ -24,11 +24,11 @@
   ******************************************************************************
   */
 
-#include "OT_utils.h"
-#include "OT_types.h"
-#include "OT_config.h"
-#include "OT_platform.h"
-
+#include <otlib/utils.h>
+#include <otsys/types.h>
+#include <otsys/config.h>
+#include <otplatform.h>
+#include <otlib/logger.h>
 #include "mlx73xxx_interface.h"
 
 //For test
@@ -159,18 +159,18 @@ mlx73_struct mlx73;
 void mlx73_coredump(ot_int bank) {
 ///debugging function to dump-out register values of RF core
     ot_int i;
-    
+
     i = (bank >= 0) ? 0 : 4;
 
     for (; i<255; i+=2) {
         ot_u8 output[6];
         ot_u8 regaddr;
-        ot_u8 regval; 
+        ot_u8 regval;
         regaddr     = (ot_u8)i;
-    
+
         if (bank >= 0)  regval = mlx73_read_bank(BANK_0, regaddr);
         else            regval = mlx73_read(regaddr);
-        
+
         regaddr   >>= 1;
         output[0]   = regaddr >> 4;
         output[0]  += (output[0] < 10) ? '0' : ('A'-10);
@@ -181,9 +181,9 @@ void mlx73_coredump(ot_int bank) {
         output[3]  += (output[3] < 10) ? '0' : ('A'-10);
         output[4]   = regval & 0xF;
         output[4]  += (output[4] < 10) ? '0' : ('A'-10);
-    
-        otapi_log_msg(4, 5, "DUMP", output);
-        platform_swdelay_ms(5);
+
+        logger_msg(4, 5, "DUMP", output);
+        delay_ms(5);
     }
 }
 
@@ -201,13 +201,13 @@ void sub_prototype_defaults() {
 /*        0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F  */
 /*30*/                          0x00, 0xad, 0x00, 0x00, 0x12, 0x13, 0x34, 0x14, 0x00, 0x00, 0x00, 0x00, \
 /*40*/  0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
-/*50*/  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00 }; 
+/*50*/  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00 };
 
     static const ot_u8 unbanked3[] = { 0x60<<1, \
 /*        0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F  */
 /*60*/  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
 /*70*/  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11 };
-    
+
     static const ot_u8 bank0_all[] = { 0x00, 0x00, \
 /*        0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F  */
 /*00*/  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x12, 0x01, \
@@ -218,7 +218,7 @@ void sub_prototype_defaults() {
 /*50*/  0x06, 0x19, 0x12, 0x1f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
 /*60*/  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
 /*70*/  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-    
+
     mlx73_spibus_io(0, sizeof(unbanked1), 0, (ot_u8*)unbanked1, NULL);
     mlx73_spibus_io(0, sizeof(unbanked2), 0, (ot_u8*)unbanked2, NULL);
     mlx73_spibus_io(0, sizeof(unbanked3), 0, (ot_u8*)unbanked3, NULL);
@@ -228,7 +228,7 @@ void sub_prototype_defaults() {
 
 
 void mlx73_load_defaults() {
-/// Register defaults are stored in static arrays: { ADDR, VAL } 
+/// Register defaults are stored in static arrays: { ADDR, VAL }
 /// <LI> Default Bank0 registers are for recommended operation of DASH7 @ 433 MHz </LI>
 /// <LI> Note: some settings in Bank 0 will be improved after further characterization </LI>
 /// <LI> Default Unbanked registers are for recommended operation of DASH7 @ 433 MHz,
@@ -253,7 +253,7 @@ void mlx73_load_defaults() {
       //{0x41<<1, 0x80},   /* Symbol Clock Recovery time constant = 32 */
       //{0x42<<1, 0x80},   /* Data rate recovery time constant = 255 (max) */
         {0x43<<1, 0x4B},   /* Fine carrier recovery amplitude setting 0 */
-        {0x44<<1, 0x4B},   /* Fine carrier recovery amplitude setting 1 */ 
+        {0x44<<1, 0x4B},   /* Fine carrier recovery amplitude setting 1 */
         {0x45<<1, 0x4B},   /* Fine carrier recovery amplitude setting 2 */
         {0x46<<1, 0x4B},   /* ISI coefficient */
       //{0x48<<1, 0xFF},   /* Using slowest settings for PLL locking, VCO calibration, and VCO settling */
@@ -263,14 +263,14 @@ void mlx73_load_defaults() {
     };
 
     static const ot_u8 unbanked_defaults[][2] = {
-        //{ RFREG(AFC_L),         RFDEF(AFC_L) }, 
-        //{ RFREG(AFC_H),         RFDEF(AFC_H) }, 
-        //{ RFREG(IQCORR_GAIN),   RFDEF(IQCORR_GAIN) }, 
-        //{ RFREG(IQCORR_PHASE),  RFDEF(IQCORR_PHASE) }, 
-        //{ RFREG(DROFFSET),      RFDEF(DROFFSET) }, 
+        //{ RFREG(AFC_L),         RFDEF(AFC_L) },
+        //{ RFREG(AFC_H),         RFDEF(AFC_H) },
+        //{ RFREG(IQCORR_GAIN),   RFDEF(IQCORR_GAIN) },
+        //{ RFREG(IQCORR_PHASE),  RFDEF(IQCORR_PHASE) },
+        //{ RFREG(DROFFSET),      RFDEF(DROFFSET) },
         { RFREG(LNACFG),        RFDEF(LNACFG) },            // Will prob need to go into chan selection
         { RFREG(FILTER_GAIN),   RFDEF(FILTER_GAIN) },       // Will need to go into chan selection
-        { RFREG(RXDSPCFG),      RFDEF(RXDSPCFG) }, 
+        { RFREG(RXDSPCFG),      RFDEF(RXDSPCFG) },
         //{ RFREG(RXPWR1),        RFDEF(RXPWR1) },
         //{ RFREG(RXPWR2),        RFDEF(RXPWR2) },
         //{ RFREG(TXPWR1),        RFDEF(TXPWR1) },          // Set in channel selection
@@ -280,27 +280,27 @@ void mlx73_load_defaults() {
         //{ RFREG(PATTERN2),      RFDEF(PATTERN2) },        // Set in RX Init
         //{ RFREG(PATTERN3),      RFDEF(PATTERN3) },        // Set in RX Init
 #   if ((M2_FEATURE(FEC) != ENABLED) && (M2_FEATURE(MULTIFRAME) != ENABLED))
-        { RFREG(PKTCFG0),       RFDEF(PKTCFG0) }, 
+        { RFREG(PKTCFG0),       RFDEF(PKTCFG0) },
 #   endif
         //{ RFREG(PKTCFG1),       RFDEF(PKTCFG1) },         // set in buffer config
         //{ RFREG(FREQ0),         RFDEF(FREQ0) },           // Set in channel selection
         //{ RFREG(FREQ1),         RFDEF(FREQ1) },           // Set in channel selection
         //{ RFREG(FREQ2),         RFDEF(FREQ2) },           // Set in channel selection
         //{ RFREG(FREQ3),         RFDEF(FREQ3) },           // Set in channel selection
-        { RFREG(MDMCFG0),       RFDEF(MDMCFG0) }, 
+        { RFREG(MDMCFG0),       RFDEF(MDMCFG0) },
         //{ RFREG(MDMCFG1),       RFDEF(MDMCFG1) },         // Set in channel selection
         //{ RFREG(MDMCFG2),       RFDEF(MDMCFG2) },         // Set in channel selection
-        { RFREG(MULTCFG),       RFDEF(MULTCFG) }, 
-        { RFREG(TXRAMP),        RFDEF(TXRAMP) }, 
+        { RFREG(MULTCFG),       RFDEF(MULTCFG) },
+        { RFREG(TXRAMP),        RFDEF(TXRAMP) },
         //{ RFREG(PREAMBLE),      RFDEF(PREAMBLE_NORMAL) },        // Set in channel selection (length)
         //{ RFREG(DEMODCFG),      RFDEF(DEMODCFG_NORMAL) },  // Set in channel selection
 #   if (M2_FEATURE(FEC) != ENABLED)
         { RFREG(DATACFG),       RFDEF(DATACFG_NONFEC) },
 #   endif
-        { RFREG(MODCFG),        RFDEF(MODCFG) }, 
+        { RFREG(MODCFG),        RFDEF(MODCFG) },
         //{ RFREG(CSCFG),         RFDEF(CSCFG) },           // Set in channel selection
         //{ RFREG(RXTIMEOUT),     RFDEF(RXTIMEOUT) },       // Set during RX init
-        { RFREG(MCSM0),         RFDEF(MCSM0) }, 
+        { RFREG(MCSM0),         RFDEF(MCSM0) },
         { RFREG(PWRUPCFG),      RFDEF(PWRUPCFG) },
         { RFREG(MCSM1),         RFDEF(MCSM1) },           // Uses chip reset defaults
         //{ RFREG(GPIODRV),       RFDEF(GPIODRV) },         // Uses chip reset defaults
@@ -310,7 +310,7 @@ void mlx73_load_defaults() {
         //{ RFREG(GPIO3CFG),      RFDEF(GPIO3CFG) },        // Uses chip reset defaults
         //{ RFREG(ADCCFG0),       RFDEF(ADCCFG0) },         // ADC not currently used
         //{ RFREG(ADCCFG1),       RFDEF(ADCCFG1) },         // ADC not currently used
-        //{ RFREG(TMRCFG0),       RFDEF(TMRCFG0) },         // Uses chip reset defaults  
+        //{ RFREG(TMRCFG0),       RFDEF(TMRCFG0) },         // Uses chip reset defaults
         //{ RFREG(SYSTIMECFG3),   RFDEF(SYSTIMECFG3) },     // System time not currently used
         //{ RFREG(POLLOFFSET0),   RFDEF(POLLOFFSET0) },     // HW Poll not currently used
         //{ RFREG(POLLOFFSET1),   RFDEF(POLLOFFSET1) },     // HW Poll not currently used
@@ -318,7 +318,7 @@ void mlx73_load_defaults() {
         //{ RFREG(POLLPERIOD1),   RFDEF(POLLPERIOD1) },     // HW Poll not currently used
         //{ RFREG(POLLCFG),       RFDEF(POLLCFG) },         // HW Poll not currently used
         //{ RFREG(RCOSCCFG0),     RFDEF(RCOSCCFG0) },       // Uses chip reset defaults
-        //{ RFREG(RCOSCCFG1),     RFDEF(RCOSCCFG1) },       // Uses chip reset defaults 
+        //{ RFREG(RCOSCCFG1),     RFDEF(RCOSCCFG1) },       // Uses chip reset defaults
         //{ LFREG(TUNING1),       LFDEF(TUNING1) },         // LF not implemented yet
         //{ LFREG(TUNING2),       LFDEF(TUNING2) },         // LF not implemented yet
         //{ LFREG(TUNING3),       LFDEF(TUNING3) },         // LF not implemented yet
@@ -332,7 +332,7 @@ void mlx73_load_defaults() {
     };
 
     ot_int i;
-    
+
 #   ifdef MLX_PROTOTYPE
         /// Write Chip Defaults to the prototype board
         sub_prototype_defaults();
@@ -342,7 +342,7 @@ void mlx73_load_defaults() {
     for (i=0; i<(sizeof(bank0_defaults)/2); i++) {
         mlx73_write_bank(BANK_0, bank0_defaults[i][0], bank0_defaults[i][1]);
     }
-    
+
     /// 4. Load unbanked defaults for DASH7
     for (i=0; i<(sizeof(unbanked_defaults)/2); i++) {
         mlx73_write(unbanked_defaults[i][0], unbanked_defaults[i][1]);
@@ -413,7 +413,7 @@ void mlx73_iqcorrection() {
     mlx73_write(RFREG(GPIO0CFG), SIG(IQ_CORR_CAL) );
     mlx73_write(RFREG(DEMODCFG), (RFDEF(DEMODCFG) | CAL_IQ_CORR));
     while((RADIO_IRQ0_PORT->IDR & RADIO_IRQ0_PIN) == 0);
-    
+
     mlx73_write(RFREG(STATUS1), 0);
 }
 
@@ -425,9 +425,9 @@ void mlx73_iqcorrection() {
 
 /** Bus interface (SPI + 4x GPIO) <BR>
   * ============================================================================
-  * @note MAJOR IMPORTANT NOTE: 
-  * The MLX73xxx chip specifies that SPI Chip Select (SS, CS, etc) needs to be 
-  * ACTIVE HIGH.  However, the Xilinx prototype platform uses ACTIVE LOW.  So, 
+  * @note MAJOR IMPORTANT NOTE:
+  * The MLX73xxx chip specifies that SPI Chip Select (SS, CS, etc) needs to be
+  * ACTIVE HIGH.  However, the Xilinx prototype platform uses ACTIVE LOW.  So,
   * when migrating to the release chip, switch the defines below.
   */
 
@@ -441,13 +441,13 @@ void mlx73_iqcorrection() {
 #define __SPI_GET(VAL)  (VAL = RADIO_SPI->DR)
 #define __SPI_PUT(VAL)  (RADIO_SPI->DR = VAL)
 
-  
+
 #if (RADIO_SPI_INDEX == 1)
 #elif (RADIO_SPI_INDEX == 2)
 #elif (RADIO_SPI_INDEX == 3)
 #else
 #   error "RADIO_SPI & RADIO_SPI_INDEX not defined as SPI1, 2, or 3."
-#endif  
+#endif
 
 
 
@@ -481,7 +481,7 @@ void mlx73_init_bus() {
 
 
     ///2. Set-up GPIO to match SPI & IRQ requirements.  The GPIO init routine
-    ///   could be optimized quite a bit at the cost of port/pin assignment 
+    ///   could be optimized quite a bit at the cost of port/pin assignment
     ///   flexibility.  Current implementation is flexible.
     {
         GPIO_InitTypeDef GPIOinit;
@@ -493,46 +493,46 @@ void mlx73_init_bus() {
         GPIOinit.GPIO_Mode  = GPIO_Mode_AF_PP;
         GPIOinit.GPIO_Pin   = (RADIO_SPISCK_PIN | RADIO_SPIMOSI_PIN);
         GPIO_Init(RADIO_SPISCK_PORT, &GPIOinit);
-        
-        //MISO on MLX chip is tri-state when not used, so it is good to pull-up or 
+
+        //MISO on MLX chip is tri-state when not used, so it is good to pull-up or
         //pull-down on STM32.  Pull-up allows you to see the MISO usage on a logic
         //analyzer, when the MLX activates it and pulls the signal to ground.
         GPIOinit.GPIO_Mode  = GPIO_Mode_IPU;
         GPIOinit.GPIO_Pin   = (RADIO_SPIMISO_PIN);
         GPIO_Init(RADIO_SPISCK_PORT, &GPIOinit);
-        
+
         GPIOinit.GPIO_Mode  = GPIO_Mode_Out_PP;
         GPIOinit.GPIO_Pin   = RADIO_SPICS_PIN;
-        GPIO_Init(RADIO_SPICS_PORT, &GPIOinit); 
+        GPIO_Init(RADIO_SPICS_PORT, &GPIOinit);
         __SPI_CS_OFF();
-    
+
         GPIOinit.GPIO_Mode  = GPIO_Mode_IPD;
         GPIOinit.GPIO_Pin   = RADIO_IRQ0_PIN;
         GPIO_Init(RADIO_IRQ0_PORT, &GPIOinit);
-        
+
         GPIOinit.GPIO_Pin   = RADIO_IRQ1_PIN;
         GPIO_Init(RADIO_IRQ1_PORT, &GPIOinit);
-        
+
         GPIOinit.GPIO_Pin   = RADIO_IRQ2_PIN;
         GPIO_Init(RADIO_IRQ2_PORT, &GPIOinit);
-        
+
         GPIOinit.GPIO_Pin   = RADIO_IRQ3_PIN;
         GPIO_Init(RADIO_IRQ3_PORT, &GPIOinit);
-        
+
         //GPIO_EXTILineConfig(RADIO_IRQ0_SRCPORT, RADIO_IRQ0_SRCPIN);
         GPIO_EXTILineConfig(RADIO_IRQ1_SRCPORT, RADIO_IRQ1_SRCPIN);
         GPIO_EXTILineConfig(RADIO_IRQ2_SRCPORT, RADIO_IRQ2_SRCPIN);
         GPIO_EXTILineConfig(RADIO_IRQ3_SRCPORT, RADIO_IRQ3_SRCPIN);
     }
-    
+
     ///3. Set-up external source interrupts on RADIO_IRQ pins.  Note that the
     ///   NVIC configuration takes place in platform_init_interruptor() in the
     ///   platform_MLX73290.c file, as that setup has ramification to other
-    ///   OpenTag components (namely, which interrupts have priority).  We 
-    ///   cannot set that up here because there is no knowledge of the 
+    ///   OpenTag components (namely, which interrupts have priority).  We
+    ///   cannot set that up here because there is no knowledge of the
     ///   requirements of the other interrupts used by OpenTag
     sub_clear_irqs();
-    
+
     // Using Interrupt Priority 0,1 per OpenTag requirements
     NVIC->IP[(uint32_t)(RADIO_IRQ0_IRQn)]       = b0001 << (8 - __NVIC_PRIO_BITS);
     NVIC->IP[(uint32_t)(RADIO_IRQ1_IRQn)]       = b0001 << (8 - __NVIC_PRIO_BITS);
@@ -542,11 +542,11 @@ void mlx73_init_bus() {
     NVIC->ISER[((uint32_t)(RADIO_IRQ1_IRQn)>>5)]= (1 << ((uint32_t)(RADIO_IRQ1_IRQn) & 0x1F));
     NVIC->ISER[((uint32_t)(RADIO_IRQ2_IRQn)>>5)]= (1 << ((uint32_t)(RADIO_IRQ2_IRQn) & 0x1F));
     NVIC->ISER[((uint32_t)(RADIO_IRQ3_IRQn)>>5)]= (1 << ((uint32_t)(RADIO_IRQ3_IRQn) & 0x1F));
-    
- 
+
+
     ///4. Set-up Radio DMA's.  The MLX implementation requires DMAs to manage
     ///   the SPI transfer.  Suitable channels for the DMA are shown below:
-    ///   
+    ///
     ///   | RADIO_SPI | RADIO_DMA | RX Chan | TX Chan |
     ///   +-----------+-----------+---------+---------+
     ///   |   SPI1    |   DMA1    | Chan 2  | Chan 3  |
@@ -567,7 +567,7 @@ void mlx73_init_bus() {
                                 DMA_MemoryDataSize_Byte     | \
                                 DMA_Priority_VeryHigh       | \
                                 DMA_M2M_Disable;
-    
+
     RADIO_DMA_TXCHAN->CCR   =   DMA_DIR_PeripheralDST       | \
                                 DMA_Mode_Circular           | \
                                 DMA_PeripheralInc_Disable   | \
@@ -576,18 +576,18 @@ void mlx73_init_bus() {
                                 DMA_MemoryDataSize_Byte     | \
                                 DMA_Priority_VeryHigh       | \
                                 DMA_M2M_Disable;
-    
+
     RADIO_DMA_RXCHAN->CPAR  = (ot_u32)&RADIO_SPI->DR;
     RADIO_DMA_TXCHAN->CPAR  = (ot_u32)&RADIO_SPI->DR;
-    
+
     // If Interrupts are used with DMA, Priority should be 0,0
     //NVIC->IP[(uint32_t)(RADIO_DMA_RXIRQn)]          = b0000 << (8 - __NVIC_PRIO_BITS);
     //NVIC->IP[(uint32_t)(RADIO_DMA_TXIRQn)]          = b0000 << (8 - __NVIC_PRIO_BITS);
     //NVIC->ISER[((uint32_t)(RADIO_DMA_RXIRQn)>>5)]   = (1 << ((uint32_t)(RADIO_DMA_RXIRQn) & 0x1F));
     //NVIC->ISER[((uint32_t)(RADIO_DMA_TXIRQn)>>5)]   = (1 << ((uint32_t)(RADIO_DMA_TXIRQn) & 0x1F));
 #   endif
-    
-    
+
+
 }
 
 
@@ -600,7 +600,7 @@ void mlx73_spibus_wait() {
 
 
 
-ot_s8 mlx73_spibus_io(ot_u8 bank, ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd, ot_u8* resp) {   
+ot_s8 mlx73_spibus_io(ot_u8 bank, ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd, ot_u8* resp) {
 #ifdef MLX73_DMA_BUFFER
     ///Still experimental, use with care
     ///DMA is recommended if: Desired SPI clock < (System Clock / 16)
@@ -613,7 +613,7 @@ ot_s8 mlx73_spibus_io(ot_u8 bank, ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd, ot_
 
     /// If you modify this function to be non-blocking, make sure to wait
     //mlx73_spibus_wait();
-    
+
     /// The Radio DMA's should be mostly configured via mlx73_init_bus().
     /// What remains is to make the lengths correspond.
     data[bank]             |= (resp_len != 0);  //Add read bit if required
@@ -627,29 +627,29 @@ ot_s8 mlx73_spibus_io(ot_u8 bank, ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd, ot_
     RADIO_SPI->CR2          = (SPI_I2S_DMAReq_Tx | SPI_I2S_DMAReq_Rx);
     __SPI_CS_ON();
     __SPI_ENABLE();
-    
+
     //blocking: wait for RX to be done
     while ((RADIO_DMA->ISR & RADIO_DMA_RXINT) == 0);
     __SPI_CS_OFF();
     __SPI_DISABLE();
     RADIO_DMA_TXCHAN->CCR  &= ~DMA_CCR1_EN;
     RADIO_DMA_RXCHAN->CCR  &= ~DMA_CCR1_EN;
-    
+
     return 0;
 
 #else
     ot_u8 dummy;
-    
+
     /// Put read bit high if required
     /// This needs to be in an "if" so that static memory can be used to write.
     if (resp_len != 0) {
         cmd[bank] |= 1;
     }
-    
+
     /// Enable SPI and write first byte
     __SPI_CS_ON();
     __SPI_ENABLE();
-    
+
     ///Wait for TX to be done.  RX needs to happen too (or else SPI will
     ///die), so we save it to a dummy variable.
     while (cmd_len != 0) {
@@ -671,7 +671,7 @@ ot_s8 mlx73_spibus_io(ot_u8 bank, ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd, ot_
 
     __SPI_CS_OFF();
     __SPI_DISABLE();
-    
+
     return 0;
 #endif
 }
@@ -761,7 +761,7 @@ ot_u8 mlx73_calc_csthr(ot_u8 cs_code) {
 
 
 ot_u8 mlx73_calc_rxtimeout(ot_u16 ticks) {
-/// This implementation uses a fixed lookup table to reduce the amount of 
+/// This implementation uses a fixed lookup table to reduce the amount of
 /// required division/multiplication.  The LUT is the same size as 20 CPU
 /// instructions on 16 bit ISA (e.g. MSP430, ARM Thumb2)
 /// Timeout = C + (C<<EXP)*MANT + (C<<EXP)*16, C = 2048/Fxtal (64us @ 32MHz)
@@ -776,19 +776,19 @@ ot_u8 mlx73_calc_rxtimeout(ot_u16 ticks) {
         4096/RADIO_TICKBASE, 81932/RADIO_TICKBASE, 16384/RADIO_TICKBASE, 32768/RADIO_TICKBASE, \
         65536/RADIO_TICKBASE, 131072/RADIO_TICKBASE, 262144/RADIO_TICKBASE, 524288/RADIO_TICKBASE \
     };
-    
+
     ot_int exp, mant;
     ot_u8 output;
 
     for (exp=5; (ticks < calc_lut[exp]) && (exp < 20); exp++);
-    
+
     exp    -= 1;
     ticks  -= calc_lut[exp];
     exp    -= 4;
     mant    = ticks / calc_lut[exp];
     output  = (exp << 4) | (mant & 0x0F);
     output += (ticks != 0);                 //round-up
-    
+
     return output;
 }
 
@@ -818,7 +818,7 @@ void mlx73_set_fc(ot_u8 ch_index) {
 #   define int_pll  27
     ot_u32 frac_pll;
     ot_u8 fc_data[5];
-    
+
     frac_pll    = 77033 + ((ot_u32)ch_index * 7078);
     frac_pll   += (ch_index > 2);       //account for rounding
     fc_data[0]  = RFREG(FREQ0);
@@ -853,7 +853,7 @@ static const ot_u8 iocfg_listen[] = \
 
 static const ot_u8 iocfg_rxdata[] = \
     { RFREG(GPIO1CFG), SIG(RF_ERRSTOP), SIG(RF_PKTDONE), SIG(RFRX_FIFO64BYTES)  };
-    
+
 static const ot_u8 iocfg_txdata[] = \
     { RFREG(GPIO1CFG), SIG_N(RFTX_PAYLOAD), SIG_N(RFTX_FIFO64BYTES), SIG(RFTX_FIFOERR) };
 
@@ -879,7 +879,7 @@ void mlx73_intcfg_listen() {
     EXTI->RTSR |= /*RFINT(XTALRDY) | RFINT(TMRFLAG) |*/ RFINT(PAYLOADRX) /*| RFINT(RSSICS)*/;
 }
 
-void mlx73_intcfg_txcsma() { 
+void mlx73_intcfg_txcsma() {
     mlx73.imode = MODE_CSMA;
     sub_clear_irqs();
     EXTI->IMR  |= /*RFINT(XTALRDY) |*/ RFINT(TMRFLAG) | RFINT(PAYLOADRX) | RFINT(RSSICS);
@@ -889,14 +889,14 @@ void mlx73_intcfg_txcsma() {
 void mlx73_intcfg_rxdata() {
     mlx73.imode = MODE_RXData;
     sub_clear_irqs();
-    EXTI->IMR  |= /*RFINT(XTALRDY) |*/ RFINT(RXPKTERR) | RFINT(PKTDONE) | RFINT(RXFIFOTHR); 
-    EXTI->RTSR |= /*RFINT(XTALRDY) |*/ RFINT(RXPKTERR) | RFINT(PKTDONE) | RFINT(RXFIFOTHR); 
+    EXTI->IMR  |= /*RFINT(XTALRDY) |*/ RFINT(RXPKTERR) | RFINT(PKTDONE) | RFINT(RXFIFOTHR);
+    EXTI->RTSR |= /*RFINT(XTALRDY) |*/ RFINT(RXPKTERR) | RFINT(PKTDONE) | RFINT(RXFIFOTHR);
 }
 
-void mlx73_intcfg_txdata() { 
+void mlx73_intcfg_txdata() {
     mlx73.imode = MODE_TXData;
     sub_clear_irqs();
-    EXTI->IMR  |= /*RFINT(XTALRDY) |*/ RFINT(TXPAYLOAD) | RFINT(TXFIFOTHR) /*| RFINT(TXFIFOERR)*/; 
+    EXTI->IMR  |= /*RFINT(XTALRDY) |*/ RFINT(TXPAYLOAD) | RFINT(TXFIFOTHR) /*| RFINT(TXFIFOERR)*/;
     EXTI->RTSR |= /*RFINT(XTALRDY) |*/ RFINT(TXPAYLOAD) | RFINT(TXFIFOTHR) /*| RFINT(TXFIFOERR)*/;
 }
 

@@ -15,34 +15,34 @@
   */
 /**
   * @file       /OTlib/STM32H152/platform_STM32L1xx.c
-  * @author     
+  * @author
   * @version    V1.0
   * @date       16 Feb 2012
   * @brief      ISRs and hardware services abstracted by the platform module
   * @ingroup    Platform
   *
-  * ISRs implemented in this file shall use only the Platform module macro 
-  * abstractions, not functions or register nomenclature specific to any given 
+  * ISRs implemented in this file shall use only the Platform module macro
+  * abstractions, not functions or register nomenclature specific to any given
   * hardware platform.
   *
   ******************************************************************************
   */
 
 #define _plat_  1
-#include "OT_utils.h"
-#include "OT_types.h"
-#include "OT_config.h"
-#include "OT_platform.h"
+#include <otlib/utils.h>
+#include <otsys/types.h>
+#include <otsys/config.h>
+#include <otplatform.h>
 
 // OT modules that need initialization
-#include "veelite.h"
-#include "veelite_core.h"
-#include "buffers.h"
-#include "auth.h"
-#include "mpipe.h"
-#include "radio.h"
-#include "system.h"
-#include "session.h"
+#include <otsys/veelite.h>
+#include <otsys/veelite_core.h>
+#include <otlib/buffers.h>
+#include <otlib/auth.h>
+#include <otsys/mpipe.h>
+#include <m2/radio.h>
+#include <otsys/syskern.h>
+#include <m2/session.h>
 #ifdef RADIO_DEBUG
 #   include "debug_uart.h"
 #endif
@@ -81,7 +81,7 @@ platform_uart_init(void)
 
         USART_DMACmd(USART3, USART_DMAReq_Tx, ENABLE);  // non-blocking dma for usart3 tx
     }
-    
+
     /* Enable USART */
     USART_Cmd(USART3, ENABLE);
 
@@ -143,7 +143,7 @@ rng_seed()
     RCC_HSICmd(DISABLE); // assuming HSI not used
 }
 
-ot_u8 platform_prand_u8() {
+ot_u8 rand_prn8() {
     static unsigned int Y;
     // TODO: some random number from STM32L
     if (r==0 || r==1 || r==-1)
@@ -154,10 +154,10 @@ ot_u8 platform_prand_u8() {
     return Y;
 }
 
-ot_u16 platform_prand_u16() {
-    ot_u16 ret = platform_prand_u8();
+ot_u16 rand_prn16() {
+    ot_u16 ret = rand_prn8();
     ret <<= 8;
-    return ret + platform_prand_u8();
+    return ret + rand_prn8();
 }
 
 static void
@@ -166,7 +166,7 @@ platform_init_spi(void)
     SPI_InitTypeDef  SPI_InitStructure;
 
     /* expecting platform_init_periphclk() to have already enabled SPI2 clock and GPIO clocks */
-  
+
     /* SPI configuration -------------------------------------------------------*/
     SPI_I2S_DeInit(SPI2);
     SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
@@ -177,7 +177,7 @@ platform_init_spi(void)
     SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_32;
     SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
     //SPI_InitStructure.SPI_CRCPolynomial = 7;
-  
+
 
     /* Initializes the SPI communication */
     SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
@@ -192,35 +192,34 @@ platform_init_spi(void)
     // platform_gpio_init(): NSS under software-gpio control
 }
 
-void
-platform_init_gptim(ot_uint prescaler)
+void systim_init(void* tim_init)
 {
     TIM_TimeBaseInitTypeDef tbase_in;
 
     TIM_DeInit(OT_GPTIM);
 
 /*    tbase_in.TIM_Prescaler      = 0;
-    tbase_in.TIM_Period         = prescaler;*/
-    tbase_in.TIM_Prescaler      = prescaler;
+    tbase_in.TIM_Period         = *(ot_u32*)tim_init;*/
+    tbase_in.TIM_Prescaler      = *(ot_u32*)tim_init;
     tbase_in.TIM_Period         = 1;
     tbase_in.TIM_CounterMode    = TIM_CounterMode_Up;
     tbase_in.TIM_ClockDivision  = TIM_CKD_DIV1;
     TIM_TimeBaseInit(OT_GPTIM, &tbase_in);
-    
-    TIM_SetCompare1(OT_GPTIM, prescaler);
+
+    TIM_SetCompare1(OT_GPTIM, *(ot_u32*)tim_init);
 
     // Timers 9/10/11 have external clock wired to RTC crystal.
     // (The fact that the clock mode is called "Mode2" is a coincidence)
     // mode1: external input pin (TIx)
     // mode2: external trigger input (ETR)
-    TIM_ETRClockMode2Config(OT_GPTIM, 
-                            TIM_ExtTRGPSC_OFF, 
+    TIM_ETRClockMode2Config(OT_GPTIM,
+                            TIM_ExtTRGPSC_OFF,
                             TIM_ExtTRGPolarity_NonInverted,
                             0);
 
 }
 
-void platform_init_interruptor() { 
+void platform_init_interruptor() {
 /// Configures the NVIC and the External interrupt.  The NVIC controllers are
 /// enabled by default so that, to turn the interrupts on or off, only the
 /// peripheral interrupt bits need to be set.
@@ -289,12 +288,12 @@ void platform_init_interruptor() {
     nvic_in.NVIC_IRQChannel                     = EXTI2_IRQn;    // from PA2 IRQ1
     NVIC_Init(&nvic_in);
 #endif
-    
+
     // TIM3 interrupt (for RX Timeout Timer, unused presently)
     //nvic_in.NVIC_IRQChannel                     = TIM10_IRQChannel;
     //nvic_in.NVIC_IRQChannelSubPriority          = 2;
     //NVIC_Init(&nvic_in);
-    
+
     ///2. OpenTag Interrupts
     ///   - Mpipe, GPTIM, RTC
     nvic_in.NVIC_IRQChannelPreemptionPriority   = 1;
@@ -303,7 +302,7 @@ void platform_init_interruptor() {
     NVIC_Init(&nvic_in);
     nvic_in.NVIC_IRQChannel                     = DMA1_Channel3_IRQn; //MPIPE RX DMA Channel;
     NVIC_Init(&nvic_in);
-    
+
     nvic_in.NVIC_IRQChannelSubPriority          = 1;
     nvic_in.NVIC_IRQChannel                     = OT_GPTIM_IRQn;
     NVIC_Init(&nvic_in);
@@ -311,7 +310,7 @@ void platform_init_interruptor() {
     nvic_in.NVIC_IRQChannelSubPriority          = 1;
     nvic_in.NVIC_IRQChannel                     = RXTIM_IRQn;
     NVIC_Init(&nvic_in);
-    
+
     //nvic_in.NVIC_IRQChannelSubPriority          = 2;
     //nvic_in.NVIC_IRQChannel                     = RTC_IRQChannel;
     //NVIC_Init(&nvic_in);
@@ -331,7 +330,7 @@ void platform_init_interruptor() {
 
 void
 platform_init_busclk()
-{ 
+{
     ///@todo enable RTC Clock
 
 #   ifdef __DEBUG__
@@ -379,12 +378,12 @@ void platform_init_gpio() {
 /// PB1            <=  Generic Input
 /// -------------------------------------------------------------
     GPIO_InitTypeDef    gpio_in;
-        
+
     // Assume 10MHz for everything
     // Also, all outputs in the schematic are push-pull (no drains)
     gpio_in.GPIO_Speed      = GPIO_Speed_10MHz;
     gpio_in.GPIO_OType      = GPIO_OType_PP;
-    
+
     /// Generic Input
     // (not established right now)
 
@@ -393,7 +392,7 @@ void platform_init_gpio() {
     gpio_in.GPIO_PuPd       = GPIO_PuPd_NOPULL;
     gpio_in.GPIO_Pin        = GPIO_Pin_5;
     GPIO_Init(GPIOA, &gpio_in);
-    
+
     /// LED Interface
     gpio_in.GPIO_Mode       = GPIO_Mode_OUT;    ///@todo check IPD/IPU
     gpio_in.GPIO_Pin        = GPIO_Pin_LED_RED | GPIO_Pin_LED_GREEN;
@@ -446,7 +445,7 @@ void platform_init_gpio() {
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource13, GPIO_AF_SPI2);    // SCK
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource14, GPIO_AF_SPI2);    // MISO
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource15, GPIO_AF_SPI2);    // MOSI
-    
+
     /// Serial UART to breakout board
     // (have driver module set up the UART interface)
     gpio_in.GPIO_Pin        = GPIO_Pin_10 | GPIO_Pin_11;
@@ -454,14 +453,14 @@ void platform_init_gpio() {
     GPIO_Init(GPIOB, &gpio_in);
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource10, GPIO_AF_USART3);
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource11, GPIO_AF_USART3);
-    
+
     /// I2C Bus to sensors
     // (have driver module set up the I2C interface)
     gpio_in.GPIO_Pin        = GPIO_Pin_6 | GPIO_Pin_7;
     GPIO_Init(GPIOB, &gpio_in);
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource6, GPIO_AF_I2C1);
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource7, GPIO_AF_I2C1);
-    
+
     /// USB to I/O connector
     // (have driver module set up the I2C interface)
     gpio_in.GPIO_Pin        = GPIO_Pin_11 | GPIO_Pin_12;
@@ -480,9 +479,9 @@ void platform_init_periphclk() {
     /// 1. Enable AHB clocks
     /// AHB is set to whatever clock frequency the CPU is using.
     ///
-    /// RCC_AHBPeriph_GPIOA (*), RCC_AHBPeriph_GPIOB (*), RCC_AHBPeriph_GPIOC (*), 
-    /// RCC_AHBPeriph_GPIOD, RCC_AHBPeriph_GPIOE, RCC_AHBPeriph_GPIOH, 
-    /// RCC_AHBPeriph_CRC, RCC_AHBPeriph_FLITF, RCC_AHBPeriph_SRAM, 
+    /// RCC_AHBPeriph_GPIOA (*), RCC_AHBPeriph_GPIOB (*), RCC_AHBPeriph_GPIOC (*),
+    /// RCC_AHBPeriph_GPIOD, RCC_AHBPeriph_GPIOE, RCC_AHBPeriph_GPIOH,
+    /// RCC_AHBPeriph_CRC, RCC_AHBPeriph_FLITF, RCC_AHBPeriph_SRAM,
     /// RCC_AHBPeriph_DMA1 (*)
     RCC_AHBPeriphClockCmd(  RCC_AHBPeriph_GPIOA     |   \
                             RCC_AHBPeriph_GPIOB     |   \
@@ -496,11 +495,11 @@ void platform_init_periphclk() {
 
     /// Enable APB1 clocks (16 MHz)
     /// Available peripherals on APB1, (*) denotes known Platform usage:
-    /// RCC_APB1Periph_TIM2, RCC_APB1Periph_TIM3, RCC_APB1Periph_TIM4, 
-    /// RCC_APB1Periph_TIM6, RCC_APB1Periph_TIM7, RCC_APB1Periph_LCD, 
-    /// RCC_APB1Periph_WWDG, RCC_APB1Periph_SPI2 (*), RCC_APB1Periph_USART2, 
-    /// RCC_APB1Periph_USART3 (*), RCC_APB1Periph_I2C1, RCC_APB1Periph_I2C2 (*), 
-    /// RCC_APB1Periph_USB (*), RCC_APB1Periph_PWR (*), RCC_APB1Periph_DAC, 
+    /// RCC_APB1Periph_TIM2, RCC_APB1Periph_TIM3, RCC_APB1Periph_TIM4,
+    /// RCC_APB1Periph_TIM6, RCC_APB1Periph_TIM7, RCC_APB1Periph_LCD,
+    /// RCC_APB1Periph_WWDG, RCC_APB1Periph_SPI2 (*), RCC_APB1Periph_USART2,
+    /// RCC_APB1Periph_USART3 (*), RCC_APB1Periph_I2C1, RCC_APB1Periph_I2C2 (*),
+    /// RCC_APB1Periph_USB (*), RCC_APB1Periph_PWR (*), RCC_APB1Periph_DAC,
     /// RCC_APB1Periph_COMP
     RCC_APB1PeriphClockCmd( RCC_APB1Periph_SPI2     |   \
                             RCC_APB1Periph_USART3   |   \
@@ -532,7 +531,7 @@ void platform_init_periphclk() {
     /// Enable APB2 clocks (1 MHz)
     /// Available peripherals on APB2, (*) denotes OpenTag usage:
     /// RCC_APB2Periph_SYSCFG, RCC_APB2ENR_SYSCFGEN, RCC_APB2Periph_TIM9 (*),
-    /// RCC_APB2Periph_TIM10 (*), RCC_APB2Periph_TIM11, RCC_APB2Periph_ADC1 (*), 
+    /// RCC_APB2Periph_TIM10 (*), RCC_APB2Periph_TIM11, RCC_APB2Periph_ADC1 (*),
     /// RCC_APB2Periph_SPI1, RCC_APB2Periph_USART1
     RCC_APB2PeriphClockCmd( RCC_APB2Periph_TIM9     |   \
                             RCC_APB2Periph_TIM10    |   \
@@ -544,17 +543,18 @@ void platform_init_periphclk() {
 }
 
 void
-platform_poweron()
-{
+platform_poweron() {
+	ot_u32 prescaler = 32;
+
     /// Hardware turn-on stuff
     SystemInit();                   // comes from STLib, does lots of startup
     platform_init_busclk();         // extra bus clock setup not in SystemInit()
     platform_init_periphclk();      // Peripherals OpenTag cares about
     platform_init_interruptor();    // Interrupts OpenTag cares about
-    platform_init_gptim(32);        // Initialize GPTIM (to 1024 Hz)
+    systim_init((void*)&prescaler);        // Initialize GPTIM (to 1024 Hz)
     platform_init_gpio();           // Set up connections on the board
     platform_init_spi();            // initialize command interface to radio
-    
+
 #if ( defined(RADIO_DEBUG) || (OT_FEATURE(MPIPE) == ENABLED) )
     platform_uart_init();
 #endif /* RADIO_DEBUG */
@@ -566,7 +566,7 @@ platform_poweron()
 
     /// Restore vworm (following save on shutdown)
     vworm_init();
-    
+
 #   if (OT_FEATURE(MPIPE) == ENABLED)
         /// Mpipe (message pipe) typically used for serial-line comm.
         mpipe_init(NULL);
@@ -585,7 +585,7 @@ void platform_init_OT() {
 
 
 static void
-sub_gptim_reattach(ot_u16 next_event)
+sub_systim_reattach(ot_u16 next_event)
 {
     // Flush GPTIM and switch it back to up-counting interrupt mode
     TIM_Cmd(OT_GPTIM, DISABLE);    // TI: MC=00b stop mode
@@ -606,14 +606,14 @@ platform_ot_preempt()
     // sys_event_manager() run again when the radio I/O finishes.
     if ( (OT_GPTIM->ARR == 0xffff) || !(OT_GPTIM->CR1 & TIM_CR1_CEN) ) {
         /* timer was "unattached" (i.e. in "continuous" mode with interrupts off) */
-        sub_gptim_reattach(1);
+        sub_systim_reattach(1);
         /* XXX ?? valididity/importance of next elapsed_time passed to sys_event_manager() ?? XXX */
     }
 
     TIM_GenerateEvent(OT_GPTIM, TIM_EventSource_CC1);
 }
 
-void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
+void ot_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 /// Behavior is always blocking.
 
 #if (OS_FEATURE(MEMCPY) == ENABLED)
@@ -636,11 +636,11 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
     while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 
 #else
-    /// Uses the "Duff's Device" for loop unrolling.  If this is incredibly 
+    /// Uses the "Duff's Device" for loop unrolling.  If this is incredibly
     /// confusing to you, check the internet for "Duff's Device."
     if (length > 0) {
         ot_int loops = (length + 7) >> 3;
-        
+
         switch (length & 0x7) {
             case 0: do {    *dest++ = *src++;
             case 7:         *dest++ = *src++;
@@ -650,40 +650,40 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
             case 3:         *dest++ = *src++;
             case 2:         *dest++ = *src++;
             case 1:         *dest++ = *src++;
-                        } 
+                        }
                         while (--loops > 0);
         }
     }
-    
+
 #endif
 }
 
 /** Platform Debug Triggers <BR>
   * ========================================================================<BR>
-  * Triggers are optional pins used for debugging.  Sometimes they are 
+  * Triggers are optional pins used for debugging.  Sometimes they are
   * hooked up to LEDs, logic probes, etc.  There are 2 triggers defined
   * by default, but you could add more.
   */
 #ifdef __DEBUG__
-void platform_trig1_high() {    }      //Green LED
-void platform_trig1_low() {     }
-void platform_trig1_toggle() {  }
-void platform_trig2_high() {    }      // Red LED
-void platform_trig2_low() {     }
-void platform_trig2_toggle() {  }
+void trigger(TR1, high) {    }      //Green LED
+void trigger(TR1, low) {     }
+void trigger(TR1, toggle) {  }
+void trigger(TR2, high) {    }      // Red LED
+void trigger(TR2, low) {     }
+void trigger(TR2, toggle) {  }
 #else
-void platform_trig1_high() { }
-void platform_trig1_low() { }
-void platform_trig1_toggle() { }
-void platform_trig2_high() { }
-void platform_trig2_low() { }
-void platform_trig2_toggle() { }
+void trigger(TR1, high) { }
+void trigger(TR1, low) { }
+void trigger(TR1, toggle) { }
+void trigger(TR2, high) { }
+void trigger(TR2, low) { }
+void trigger(TR2, toggle) { }
 #endif
 
 #define CNT1us    (PLATFORM_HSCLOCK_HZ/(1000000 * 5))
 #define CNT1ms    (CNT1us*1000)
 
-void platform_swdelay_ms(ot_u16 n) {
+void delay_ms(ot_u16 n) {
 	ot_u32 c;
 
 	c = n * CNT1ms;
@@ -691,7 +691,7 @@ void platform_swdelay_ms(ot_u16 n) {
 }
 
 
-void platform_swdelay_us(ot_u16 n) {
+void delay_us(ot_u16 n) {
 	ot_u32 c;
 
 	c = n * CNT1us;
@@ -734,13 +734,13 @@ TIM9_IRQHandler(void)
 }
 
 ot_u16
-platform_get_gptim()
+platform_get_systim()
 {
     return OT_GPTIM->CNT;
 }
 
 static void
-sub_gptim_unattach()
+sub_systim_unattach()
 {
     // Stop GPTIM, resume in continuous mode with interrupt off.
     TIM_Cmd(OT_GPTIM, DISABLE);    // TI: MC=00b stop mode
@@ -753,10 +753,10 @@ sub_gptim_unattach()
 
 
 void
-platform_flush_gptim()
-{ 
+platform_flush_systim()
+{
     // Zeros GPTIM, turns off interrupt, and puts into free-running
-    sub_gptim_unattach();
+    sub_systim_unattach();
 }
 
 void
@@ -764,22 +764,22 @@ platform_ot_run()
 {
     ot_u16 next_event;
     ot_u16 elapsed_time;
-    
+
     elapsed_time = OT_GPTIM->CCR1;
     //debug_printf("otrun: %d:%d\r\n", OT_GPTIM->CNT, OT_GPTIM->CCR1);
     if (OT_GPTIM->CNT != OT_GPTIM->CCR1) {
         asm("nop");
     }
-    
+
     /// Clear and disable the timer interrupt while in the ISR
     /// (Also stop it, and restart it in continuous mode).
-    sub_gptim_unattach();
-    
+    sub_systim_unattach();
+
     next_event = sys_event_manager( elapsed_time );
     /* next_event will be 1 if nextevent occured during radio i/o */
 
     /// Flush GPTIM and switch it back to up-counting interrupt mode
-    sub_gptim_reattach(next_event);
+    sub_systim_reattach(next_event);
 }
 
 void

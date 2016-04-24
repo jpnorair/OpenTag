@@ -45,17 +45,17 @@
   */
 
 #include "OTAPI.h"
-#include "OT_platform.h"
-//#include "radio.h"
+#include <otplatform.h>
+//#include <m2/radio.h>
 
-
+#include <otlib/logger.h>
 
 
 
 
 /** Application Global Variables <BR>
   * ========================================================================<BR>
-  * app_usbhold must be volatile, or else the ISR code that should set it 
+  * app_usbhold must be volatile, or else the ISR code that should set it
   * might get optimized-out during compilation.
   */
 
@@ -180,7 +180,7 @@ void sub_trig_init() { }
 
 /** User Applet and Button Management Routines <BR>
   * ===========================================================================<BR>
-  * The User applet is primarily activated by callbacks from the kernel.  
+  * The User applet is primarily activated by callbacks from the kernel.
   * However, in this system some features are also activated by button presses.
   */
 void app_init() {
@@ -191,12 +191,12 @@ void app_init() {
 
     i=4;
     while (i != 0) {
-        if (i&1)    otapi_led1_on();
-        else        otapi_led2_on();
+        if (i&1)    BOARD_led1_on();
+        else        BOARD_led2_on();
 
-        platform_swdelay_ms(30);
-        otapi_led2_off();
-        otapi_led1_off();
+        delay_ms(30);
+        BOARD_led2_off();
+        BOARD_led1_off();
         i--;
     }
 }
@@ -236,12 +236,12 @@ void app_init() {
   * The data payload is from the RX queue (a reserved buffer)  You can do
   * anything you want with the RX queue data -- by the time it gets to the
   * application layer, the lower layers don't need it anymore.  To put response
-  * data, use the TX Queue, another reserved buffer: q_writebyte(&txq, BYTE)
+  * data, use the TX ot_queue, another reserved buffer: q_writebyte(&txq, BYTE)
   */
 
 #ifdef EXTF_m2qp_sig_error
 ot_bool m2qp_sig_error(ot_u8 code, ot_u8 subcode, id_tmpl* user_id) {
-    otapi_log_msg(MSG_raw, 6, rxq.front, (ot_u8*)"RX_ERR", q_length(&rxq));
+    logger_msg(MSG_raw, 6, rxq.front, (ot_u8*)"RX_ERR", q_length(&rxq));
     return False;
 }
 #endif
@@ -268,7 +268,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
     //}
 
     // Prepare logging header: UTF8 (text log) is subcode 1, dummy length is 0
-    otapi_log_header(1, 0);
+    logger_header(1, 0);
 
     // Grab application protocol Type-Length-Value block and convert it into
     // human readable data, which added to the log.
@@ -294,14 +294,14 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
         else if (index == 'T')  index = 4;      // Temperature (2 bytes)
         else if (index == 'V')  index = 5;      // Voltage (2 bytes)
         else    break;
-        
+
         input_data      = rxq.getcursor;
         input_len	    = len[index];
         rxq.getcursor  += size[index];
     }
-    
+
     // Close the log file, send it out, return success
-    otapi_log_direct();
+    logger_direct();
     return True;
 #else
     return False;
@@ -320,7 +320,7 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
   * There is an example implementation below, which can be uncommented to match
   * the example in the API Quickstart Guide:
   * http://www.indigresso.com/wiki/doku.php?id=opentag:api:quickstart
-  */ 
+  */
 
 //void app_invoke(ot_u8 call_type) {
 /// The "External Task" is the place where the kernel runs the main user app.
@@ -349,19 +349,19 @@ ot_bool m2qp_sig_udp(ot_u8 srcport, ot_u8 dstport, id_tmpl* user_id) {
 //Do application stuff in here
 //    switch (task->event) {
 //        case 0: break;  //empty process, also used for destructor
-//        
-//        case 1: //Task state 1 
+//
+//        case 1: //Task state 1
 //                break;
-//        
+//
 //        case 2: //Task state 2
 //                break;
 //    }
 //}
 
 
-//void otapi_alpext_proc(alp_tmpl* alp, id_tmpl* user_id) {
+//void alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id) {
 /// For this example, the directive ID is 0x90 and the commands are 0-3.  You
-/// can change these values simply by changing the implementation of this 
+/// can change these values simply by changing the implementation of this
 /// function.
 /// Alternatively, instead of using the User Task (extprocess) you can use the
 /// sys.loadapi link to an app function: sys.loadapi = &opmode_goto_gateway;
@@ -403,13 +403,13 @@ void main(void) {
 
     ///3. Initialize the User Applet & interrupts
     app_init();
-    
+
     ///4a. The device will wait (and block anything else) until you connect
     ///    it to a valid console that will "enumerate" this USB device
     mpipedrv_standby();
 
     ///4b. Load a message to show that main startup has passed
-    otapi_log_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
+    logger_msg(MSG_utf8, 6, 26, (ot_u8*)"SYS_ON", (ot_u8*)"System on and Mpipe active");
 
     ///5. MAIN RUNTIME (post-init)  <BR>
     ///<LI> Use a main loop with platform_ot_run(), and nothing more. </LI>

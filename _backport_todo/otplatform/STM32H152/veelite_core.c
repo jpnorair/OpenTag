@@ -1,10 +1,10 @@
-#include "OT_types.h"
-#include "OT_config.h"
-#include "OT_platform.h"
+#include <otsys/types.h>
+#include <otsys/config.h>
+#include <otplatform.h>
 
 #include "OTAPI.h"              // for logging faults
 
-#include "veelite_core.h"
+#include <otsys/veelite_core.h>
 
 #if (VSRAM_SIZE > 0)
     static ot_u16 vsram[ (VSRAM_SIZE/2) ];
@@ -101,15 +101,15 @@ ot_u8 vworm_mark(vaddr addr, ot_u16 value) {
 ot_u8 vworm_wipeblock(vaddr addr, ot_uint wipe_span) {
 #if (VWORM_SIZE <= 0)
     return ~0;
-    
+
 #else
     ot_u8 output = 0;
-    
+
     wipe_span += addr;
     for (; ((addr < (vaddr)wipe_span) && (output == 0)); addr+=2) {
         output |= vworm_write(addr, NULL_vaddr);
     }
-    
+
     return output;
 
 #endif
@@ -145,7 +145,7 @@ ot_u8 vworm_init( )
 #endif /* RADIO_DEBUG */
         for (;;)
             asm("nop");
-    } 
+    }
 
 #if (GFB_TOTAL_BYTES > 0)
     if ( gfb_stock_files != (ot_u8 *)(EEPROM_START_ADDR + GFB_START_VADDR) ) {
@@ -156,7 +156,7 @@ ot_u8 vworm_init( )
             asm("nop");
     }
 #endif /* if (GFB_TOTAL_BYTES > 0) */
-    
+
 
     if ( isf_stock_files != (ot_u8 *)(EEPROM_START_ADDR + ISF_START_VADDR) ) {
 #ifdef RADIO_DEBUG   // 22

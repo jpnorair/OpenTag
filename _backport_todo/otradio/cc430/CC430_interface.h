@@ -27,8 +27,8 @@
 #ifndef __CC430_interface_H
 #define __CC430_interface_H
 
-#include "OT_types.h"
-#include "OT_platform.h"
+#include <otsys/types.h>
+#include <otplatform.h>
 #include "CC430_registers.h"
 #include "CC430_defaults.h"
 
@@ -90,13 +90,13 @@
 
 
 
-  
+
 
 /** @brief  Configures GDOs for listen: RX Sync + RX Idle
   * @param  None
   * @retval None
   * @ingroup CC430
-  */ 
+  */
 OT_INLINE_H void cc430_iocfg_listen() {
     RFWord->IFG = 0;
 #   if (RF_FEATURE(RXTIMER) == ENABLED)
@@ -113,7 +113,7 @@ OT_INLINE_H void cc430_iocfg_listen() {
   * @param  None
   * @retval None
   * @ingroup CC430
-  */ 
+  */
 OT_INLINE_H void cc430_iocfg_rxdata() {
 	RFWord->IFG = 0;
     RFWord->IE  = (ot_u16)((RF_CoreIT_RXFull | RF_CoreIT_EndState) >> 16);
@@ -125,10 +125,10 @@ OT_INLINE_H void cc430_iocfg_rxdata() {
   * @param  None
   * @retval None
   * @ingroup CC430
-  */ 
+  */
 OT_INLINE_H void cc430_iocfg_txcsma() {
     RFWord->IFG = 0;
-    RFWord->IE  = (ot_u16)(RF_CoreIT_IOCFG1 >> 16); 
+    RFWord->IE  = (ot_u16)(RF_CoreIT_IOCFG1 >> 16);
     RFWord->IES = (ot_u16)RF_CoreIT_IOCFG1;
 }
 
@@ -142,7 +142,7 @@ OT_INLINE_H void cc430_iocfg_txcsma() {
   *       feature") where certain combinations of RFIFG interrupts do not work
   *       properly when both enabled.  The EndState and TXBelowThresh are
   *       examples of two IRQs that don't work reliably together.
-  */ 
+  */
 OT_INLINE_H void cc430_iocfg_txdata() {
     RFWord->IFG = 0;
     RFWord->IE  = (ot_u16)((RF_CoreIT_TXUnderflow | RF_CoreIT_TXBelowThresh /*| RF_CoreIT_EndState*/) >> 16);
@@ -173,8 +173,8 @@ OT_INLINE_H void cc430_iocfg_txend() {
   * ========================================================================<BR>
   */
 
-/// Packet overhead & slop, 
-/// These are parts of the packet that do not carry preamble, sync word, or 
+/// Packet overhead & slop,
+/// These are parts of the packet that do not carry preamble, sync word, or
 /// frame data.  The units are in bytes.
 #define RADIO_RAMP_UP       1
 #define RADIO_RAMP_DOWN     1
@@ -229,8 +229,8 @@ OT_INLINE_H void cc430_iocfg_txend() {
 
 /// Some stuff that is basically just used for the simulator
 #define RFCONFIG_TXINIT();
-#define RFPUT_TXDATA(); 
-#define RFGET_RXDATA(); 
+#define RFPUT_TXDATA();
+#define RFGET_RXDATA();
 
 
 /// tell chip to go to idle after TX
@@ -348,7 +348,7 @@ OT_INLINE_H void cc430_iocfg_txend() {
     RFWord->IES = (ot_u16)(RF_CoreIT_IOCFG0 | RF_CoreIT_SyncWord ); \
     RFCTRL_RX(); \
 } while(0)
-//sub_sim_init(); 
+//sub_sim_init();
 
 
 
@@ -454,7 +454,7 @@ OT_INLINE_H void cc430_iocfg_txend() {
 #define RFCONFIG_PN9FECHW();
 
 /// Set HW FEC to ON
-#define RFCONFIG_FECHW(); 
+#define RFCONFIG_FECHW();
 
 /// Set FEC to OFF and PN9 to ON
 /// @note, done in buffer call

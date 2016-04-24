@@ -28,19 +28,20 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 #if defined(__CC430__)
 
 
 #include "OTAPI.h"
 
 // OT low-level modules that need initialization
-#include "veelite_core.h"
-#include "mpipe.h"
-#include "radio.h"
+#include <otsys/veelite_core.h>
+#include <otsys/mpipe.h>
+#include <m2/radio.h>
+#include <otlib/rand.h>
 
-//#include "auth.h"         //should be initialized via DLL (dll_init())
-//#include "session.h"      //should be initialized via DLL (dll_init())
+//#include <otlib/auth.h>         //should be initialized via DLL (dll_init())
+//#include <m2/session.h>      //should be initialized via DLL (dll_init())
 
 
 //API wrappers
@@ -51,42 +52,42 @@ void otapi_exec()       { platform_ot_run(); }
 void otapi_preempt()    { platform_ot_preempt(); }
 void otapi_pause()      { platform_ot_pause(); }
 
-#ifndef EXTF_otapi_led1_on
-void otapi_led1_on() {
+#ifndef EXTF_BOARD_led1_on
+void BOARD_led1_on() {
 #if (BOARD_FEATURE(INVERT_TRIG1) == ENABLED)
-    platform_trig1_low();
+    trigger(TR1, low);
 #else
-    platform_trig1_high();
+    trigger(TR1, high);
 #endif
 }
 #endif
 
-#ifndef EXTF_otapi_led2_on
-void otapi_led2_on() {
+#ifndef EXTF_BOARD_led2_on
+void BOARD_led2_on() {
 #if (BOARD_FEATURE(INVERT_TRIG2) == ENABLED)
-    platform_trig2_low();
+    trigger(TR2, low);
 #else
-    platform_trig2_high();
+    trigger(TR2, high);
 #endif
 }
 #endif
 
-#ifndef EXTF_otapi_led1_off
-void otapi_led1_off() {
+#ifndef EXTF_BOARD_led1_off
+void BOARD_led1_off() {
 #if (BOARD_FEATURE(INVERT_TRIG1) == ENABLED)
-    platform_trig1_high();
+    trigger(TR1, high);
 #else
-    platform_trig1_low();
+    trigger(TR1, low);
 #endif
 }
 #endif
 
-#ifndef EXTF_otapi_led2_off
-void otapi_led2_off() {
+#ifndef EXTF_BOARD_led2_off
+void BOARD_led2_off() {
 #if (BOARD_FEATURE(INVERT_TRIG2) == ENABLED)
-    platform_trig2_high();
+    trigger(TR2, high);
 #else
-    platform_trig2_low();
+    trigger(TR2, low);
 #endif
 }
 #endif
@@ -101,8 +102,8 @@ void otapi_led2_off() {
   * These should be defined in apps/.../app_config.h.  If one or more are
   * missing, use the defaults.
   */
-#ifndef OT_FEATURE_RTC
-#   define OT_FEATURE_RTC       DISABLED
+#ifndef OT_FEATURE_TIME
+#   define OT_FEATURE_TIME       DISABLED
 #endif
 #ifndef OT_FEATURE_MPIPE
 #   define OT_FEATURE_MPIPE     DISABLED
@@ -248,7 +249,7 @@ void platform_isr_usernmi(void) {
 /// <LI> 6 / 10: HW Data Error (Flash Access Violation)             </LI>
 /// <LI> 8 / 12: MPipe Bus Error (not used on CC430)                </LI>
     ot_int code = 0;
-    
+
     switch (__even_in_range(SYS->UNIV, 6)) {
     case 0: break;
     case 2: code    = 10;           //11
@@ -346,20 +347,20 @@ void platform_isr_wdti(void) {
 
 
 /// 6. RTC Interrupt
-#if (OT_FEATURE(RTC) == ENABLED)
+#if (OT_FEATURE(TIME) == ENABLED)
 
 #if (RTC_OVERSAMPLE != 0)
-#   error "RTC Oversampling is not supported on CC430"   
+#   error "RTC Oversampling is not supported on CC430"
 #endif
 
 #if (!defined(EXTF_platform_isr_rtca))
 void platform_isr_rtca(void) {
 /// The only supported interrupt for CC430 is the 1 second interval interrupt.
-/// CC430 (and MSP430) do not have an RTC that is well-suited to some of the 
+/// CC430 (and MSP430) do not have an RTC that is well-suited to some of the
 /// more advanced RTC-based MAC features of OpenTag/DASH7, so I keep the RTC
 /// implementation as simple as possible.
     ot_int  i;
-    
+
     RTC->PS1CTL &= ~RT1PSIFG;
 
     for (i=(RTC_ALARMS-1); i>=0; i--) {
@@ -416,7 +417,7 @@ void platform_drop_context(ot_uint i) {
 ///
     if (platform_ext.task_entry != NULL) {
     	OT_GPTIM->CCR0 |= 0x0011;
-    } 
+    }
 }
 #endif
 
@@ -439,7 +440,7 @@ void platform_ot_preempt() {
 #ifndef EXTF_platform_pause
 //void platform_ot_pause() {
 //    platform_ot_preempt();
-//    platform_flush_gptim();
+//    platform_flush_systim();
 //}
 #endif
 
@@ -452,19 +453,19 @@ void platform_ot_run() {
 	/// The kernel timer should not cause an interrupt during the runtime of
 	/// the kernel task (disable ktim).  Exotask interrupts (interrupts that
 	/// are not ktim) must be enabled, though, so exotasks can run.
-	platform_disable_ktim();
+	systim_disable();
 	platform_enable_interrupts();
-    
+
 	/// 2. Program Stack Shenanigans, Part 1:
 	/// Save the present address of the program stack.  The task has not been
 	/// started yet, so the stack offset should be 0, but we save it anyway
 	/// in case of future changes to the system structure by me or you.
 #   if (CC_SUPPORT == GCC)
-        asm volatile("MOV.W   SP,%0" : "=m"(platform_ext.task_entry)  );     
-#   elif (CC_SUPPORT == CL430)  
+        asm volatile("MOV.W   SP,%0" : "=m"(platform_ext.task_entry)  );
+#   elif (CC_SUPPORT == CL430)
         platform_ext.task_entry = (ot_u16*)_get_SP_register();
 #   endif
-    
+
     /// 3. Invoke the kernel task!
 	sys_run_task();
 
@@ -474,7 +475,7 @@ void platform_ot_run() {
 	/// it will clobber whatever task data is left on the stack.
 #   if (CC_SUPPORT == GCC)
 	RETURN_FROM_TASK:
-        asm ("MOV.W   %0,SP" : : "m"(platform_ext.task_entry)  );  
+        asm ("MOV.W   %0,SP" : : "m"(platform_ext.task_entry)  );
 #   elif (CC_SUPPORT == CL430)
         asm ("RETURN_FROM_TASK:");
         _set_SP_register((ot_u16)platform_ext.task_entry);
@@ -507,11 +508,12 @@ void platform_poweron() {
     /// 1. CC430-specific Initial Power-On Routine
     /// <LI> Hold Watchdog timer through the power-on routine           </LI>
     /// <LI> Run Board-specific Inline Function Power Routine           </LI>
+	ot_u16	prescaler;
 
     WDTA->CTL = WDTPW + WDTHOLD;
 
     BOARD_POWER_STARTUP();
-    
+
     /// 2. Initialize OpenTag platform peripherals
     platform_init_busclk();
     platform_init_interruptor();
@@ -519,10 +521,12 @@ void platform_poweron() {
     SFRIFG1 &= ~(NMIIFG | OFIFG | VMAIFG);
     SFRIE1   = (NMIIE | /* OFIE | */ ACCVIE);   //Oscillator fault can be glitchy
 
-    platform_init_gptim(0x01C3);        // Initialize GPTIM (to 1024 Hz)
+	prescaler = 0x01C3;					// Initialize GPTIM (to 1024 Hz)
+    systim_init( (void*)&prescaler );
     platform_init_gpio();
     platform_init_memcpy();
-    platform_init_prand( *((ot_u16*)0x1A10) );  //seed using part of HW Chip ID
+
+    rand_prnseed( *((ot_u16*)0x1A10) );  //seed using part of HW Chip ID
 
     /// 3. Initialize Low-Level Drivers (worm, mpipe)
     // Restore vworm (following save on shutdown)
@@ -541,7 +545,7 @@ void platform_poweroff() {
     ISF_syncmirror();
     vworm_save();
     SFRIE1 = old_sfrie1;
-    
+
 #   if (OT_FEATURE(MPIPE) && MCU_FEATURE_MPIPECDC)
     	mpipe_disconnect(NULL);
 #   endif
@@ -558,23 +562,23 @@ void platform_init_OT() {
     vl_init();
 
     /// 2. Initialize the RTC, if available.
-#   if (OT_FEATURE(RTC))
+#   if (OT_FEATURE(TIME))
         platform_init_rtc(364489200);
 #   endif
-    
+
     /// 3. Initialize the System (Kernel & more).  The System initializer must
     ///    initialize all modules that are built onto the kernel.  These include
     ///    the DLL and MPipe.
     sys_init();
 
     /// 4. If debugging, find the Chip ID and use 6 out of 8 bytes of it to
-    ///    yield the UID.  This ID might not be entirely unique -- technically, 
-    ///    there is 1/65536 chance of non-uniqueness, but practically the 
-    ///    chance is much lower, given the way chips are distributed.  For 
+    ///    yield the UID.  This ID might not be entirely unique -- technically,
+    ///    there is 1/65536 chance of non-uniqueness, but practically the
+    ///    chance is much lower, given the way chips are distributed.  For
     ///    test/debug, this is adequately unique.
     ///
-    /// @note the ID is inserted via Veelite, so it is abstracted from the 
-    /// file memory configuration of your board and/or app. 
+    /// @note the ID is inserted via Veelite, so it is abstracted from the
+    /// file memory configuration of your board and/or app.
 #   if (defined(__DEBUG__) || defined(__PROTO__))
     {
         vlFILE* fpid;
@@ -687,7 +691,7 @@ void platform_init_gpio() {
 /// B. Random Number ADC pins: A Zener can be used to generate noise.
 
     // This must be an inline function in the board header
-    BOARD_PORT_STARTUP();  
+    BOARD_PORT_STARTUP();
 
 #if (defined(OT_TRIG1_PORT) && defined(OT_TRIG2_PORT) && (OT_TRIG1_PORTNUM == OT_TRIG2_PORTNUM))
   //OT_TRIG1_PORT->SEL     &= ~(OT_TRIG1_PIN | OT_TRIG2_PIN);
@@ -716,15 +720,15 @@ void platform_init_gpio() {
 #endif
 
 
-#ifndef EXTF_platform_init_gptim
-void platform_init_gptim(ot_uint prescaler) {
+#ifndef EXTF_systim_init
+void systim_init(void* tim_init) {
 /// With the CC430, the timer prescaler input is a code, since the MSP430 core
 /// doesn't have a conventional prescaler.  The breakdown is:  <BR>
 /// bits 9:8 - Clock select (TASSEL) -  {01 = ACLK, 10 = SMCLK}           <BR>
 /// bits 7:6 - Input Divider (ID) -     values {0,1,2,3} yield division by {1,2,4,8}  <BR>
 /// bits 2:0 - Input Divider 2 (IDEX) - values b000-b111 yield division by 1 to 8  <BR>
-    ot_u16 ctl      = (prescaler & 0x01C0);
-    ot_u16 idex     = (prescaler & 0x0007);
+    ot_u16 ctl      = ( *(ot_u16*)tim_init & 0x01C0);
+    ot_u16 idex     = ( *(ot_u16*)tim_init & 0x0007);
 
     OT_GPTIM->CTL  |= TIMA_FLG_TACLR;   //Clear the timer before changing mode
     OT_GPTIM->CTL   = ctl;
@@ -783,7 +787,7 @@ void platform_init_systick(ot_uint period) {
 
 #ifndef EXTF_platform_init_rtc
 void platform_init_rtc(ot_u32 value) {
-#if (OT_FEATURE(RTC) || defined(OT_GPTIM_USERTC))
+#if (OT_FEATURE(TIME) || defined(OT_GPTIM_USERTC))
 
 #   if (BOARD_PARAM_LFHz != 32768)
 #       error "Currently, the RTC must use 32768Hz"
@@ -793,7 +797,7 @@ void platform_init_rtc(ot_u32 value) {
 #       error "The MSP430 cannot elegantly support RTC as GPTIM, however, GPTIM can use same ACLK"
 #   endif
 
-    /// Set Prescalers for 1 second RTC increments (assuming 32768 Hz), but 
+    /// Set Prescalers for 1 second RTC increments (assuming 32768 Hz), but
     /// do not activate RTC interrupts (the RTC interrupt is used by the RTC
     /// task scheduler).  When a Task is bound to the scheduler using function
     /// platform_set_rtc_alarm(), the interrupt is activated.  RTC interrupt is
@@ -850,27 +854,27 @@ void platform_init_memcpy() {
   * ========================================================================<BR>
   */
 
-ot_u16 platform_get_ktim() {
+ot_u16 systim_get() {
     return (OT_GPTIM->R - OT_GPTIM->CCR0);
 }
 
-ot_u16 platform_next_ktim() {
+ot_u16 systim_next() {
     return (OT_GPTIM->CCR1 - OT_GPTIM->R);
 }
 
-void platform_enable_ktim() {
+void systim_enable() {
     OT_GPTIM->CCTL1 |= 0x0010;  //enable interrupt for CC0
 }
 
-void platform_disable_ktim() {
+void systim_disable() {
     OT_GPTIM->CCTL1 &= ~0x0010; //disable interrupt for CC0
 }
 
-void platform_pend_ktim() {
+void systim_pend() {
     OT_GPTIM->CCTL1 |= 1; //Set CCIFG bit
 }
 
-void platform_flush_ktim() {
+void systim_flush() {
     OT_GPTIM->CCTL1 = 0x0000;
     OT_GPTIM->CCR0  = OT_GPTIM->R;
 }
@@ -885,7 +889,7 @@ void platform_set_ktim(ot_u16 value) {
     OT_GPTIM->CCTL1 = 0x0030;               //Put CC in SET mode, enable compare-SET interrupt
 }
 
-void platform_set_gptim2(ot_u16 value) {
+void systim_set_insertion(ot_u16 value) {
 /// Note that if value == 0, the counter interrupt will not go until one full
 /// loop, which is not the desired behavior, so an interrupt will be forced.
     OT_GPTIM->CCTL2 = 0x0000;
@@ -948,16 +952,16 @@ void platform_set_time(ot_u32 utc_time) {
 
 #ifndef EXTF_platform_get_time
 ot_u32 platform_get_time() {
-#if (OT_FEATURE(RTC) == ENABLED)
+#if (OT_FEATURE(TIME) == ENABLED)
 #   if (RTC_OVERSAMPLE)
     return platform_ext.utc;
-    
+
 #   else
     ot_uni32 output;
     output.ushort[LOWER]	= RTC->TIM0;
     output.ushort[UPPER]	= RTC->TIM1;
     return output.ulong;
-     
+
 #   endif
 
 #else
@@ -969,7 +973,7 @@ ot_u32 platform_get_time() {
 
 #ifndef EXTF_platform_set_rtc_alarm
 void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
-#if (OT_FEATURE(RTC) == ENABLED)
+#if (OT_FEATURE(TIME) == ENABLED)
 #   ifdef __DEBUG__
     if (alarm_id < RTC_ALARMS)
 #   endif
@@ -980,7 +984,7 @@ void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
         platform_ext.alarm[alarm_id].mask       = PLATFORM_ENDIAN16(ISF_read(fp, offset));
         platform_ext.alarm[alarm_id].value      = PLATFORM_ENDIAN16(ISF_read(fp, offset+2));
         vl_close(fp);
-        
+
         platform_enable_rtc();
     }
 #endif
@@ -990,7 +994,7 @@ void platform_set_rtc_alarm(ot_u8 alarm_id, ot_u8 task_id, ot_u16 offset) {
 
 #ifndef EXTF_platform_clear_rtc_alarm
 void platform_clear_rtc_alarms() {
-#if (OT_FEATURE(RTC) == ENABLED)
+#if (OT_FEATURE(TIME) == ENABLED)
     platform_disable_rtc();
 
 #   if (RTC_ALARMS > 0)
@@ -1023,23 +1027,23 @@ void platform_clear_rtc_alarms() {
 
 ///@todo find a way to inline these
 #ifdef OT_TRIG1_PORT
-void platform_trig1_high() {    OT_TRIG1_PORT->DOUT |= OT_TRIG1_PIN; }
-void platform_trig1_low() {     OT_TRIG1_PORT->DOUT &= ~OT_TRIG1_PIN; }
-void platform_trig1_toggle() {  OT_TRIG1_PORT->DOUT ^= OT_TRIG1_PIN; }
+void trigger(TR1, high) {    OT_TRIG1_PORT->DOUT |= OT_TRIG1_PIN; }
+void trigger(TR1, low) {     OT_TRIG1_PORT->DOUT &= ~OT_TRIG1_PIN; }
+void trigger(TR1, toggle) {  OT_TRIG1_PORT->DOUT ^= OT_TRIG1_PIN; }
 #else
-void platform_trig1_high() { }
-void platform_trig1_low() { }
-void platform_trig1_toggle() { }
+void trigger(TR1, high) { }
+void trigger(TR1, low) { }
+void trigger(TR1, toggle) { }
 #endif
 
 #ifdef OT_TRIG2_PORT
-void platform_trig2_high() {    OT_TRIG2_PORT->DOUT |= OT_TRIG2_PIN; }
-void platform_trig2_low() {     OT_TRIG2_PORT->DOUT &= ~OT_TRIG2_PIN; }
-void platform_trig2_toggle() {  OT_TRIG2_PORT->DOUT ^= OT_TRIG2_PIN; }
+void trigger(TR2, high) {    OT_TRIG2_PORT->DOUT |= OT_TRIG2_PIN; }
+void trigger(TR2, low) {     OT_TRIG2_PORT->DOUT &= ~OT_TRIG2_PIN; }
+void trigger(TR2, toggle) {  OT_TRIG2_PORT->DOUT ^= OT_TRIG2_PIN; }
 #else
-void platform_trig2_high() { }
-void platform_trig2_low() { }
-void platform_trig2_toggle() { }
+void trigger(TR2, high) { }
+void trigger(TR2, low) { }
+void trigger(TR2, toggle) { }
 #endif
 
 
@@ -1053,15 +1057,15 @@ void platform_trig2_toggle() { }
   * string "123456789" produce 0x29B1.
   */
 
-#ifndef EXTF_platform_crc_init
-ot_u16 platform_crc_init() {
+#ifndef EXTF_crc16drv_init
+ot_u16 crc16drv_init() {
 	CRC->INIRES = 0xFFFF;
     return CRC->INIRES;
 }
 #endif
 
-#ifndef EXTF_platform_crc_block
-ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
+#ifndef EXTF_crc16drv_block
+ot_u16 crc16drv_block(ot_u8* block_addr, ot_int block_size) {
     ot_u8* data = block_addr;
     CRC->INIRES = 0xFFFF;
 
@@ -1073,14 +1077,14 @@ ot_u16 platform_crc_block(ot_u8* block_addr, ot_int block_size) {
 }
 #endif
 
-#ifndef EXTF_platform_crc_byte
-void platform_crc_byte(ot_u8 databyte) {
+#ifndef EXTF_crc16drv_byte
+void crc16drv_byte(ot_u8 databyte) {
 	CRCb->DIRB_L = databyte;
 }
 #endif
 
-#ifndef EXTF_platform_crc_result
-ot_u16 platform_crc_result() {
+#ifndef EXTF_crc16drv_result
+ot_u16 crc16drv_result() {
     return CRC->INIRES;
 }
 #endif
@@ -1092,10 +1096,11 @@ ot_u16 platform_crc_result() {
 /** Platform Random Number Generation Routines <BR>
   * ========================================================================<BR>
   * The platform must be able to compute a strong random number (via function
-  * platform_rand()) and a "pseudo" random number (via platform_prand_u8()).
+  * platform_rand()) and a "pseudo" random number (via rand_prn8()).
   */
-#ifndef EXTF_platform_rand
-void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
+#include <otlib/rand.h>
+
+void rand_stream(ot_u8* rand_out, ot_int bytes_out) {
 /// This random number generator is quite fast.  A 128 bit number can be
 /// generated in less than 50us, typically.
 
@@ -1154,7 +1159,7 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
                 reg    |= ((1<<OT_GWNADC_BITS)-1) & ADC->MEM0;
             }
 #       endif
-        
+
         *rand_out++ = reg;
     }
 
@@ -1167,26 +1172,23 @@ void platform_rand(ot_u8* rand_out, ot_int bytes_out) {
         OT_GWNZENER_PORT->DOUT &= ~OT_GWNZENER_PIN;
 #   endif
 }
-#endif
 
 
 
-#ifndef EXTF_platform_init_prand
-void platform_init_prand(ot_u16 seed) {
-    platform_ext.prand_reg = seed;
+void rand_prnseed(ot_u32 seed) {
+    platform_ext.prand_reg = (ot_u16)seed;
 }
-#endif
 
 
-#ifndef EXTF_platform_prand_u8
-ot_u8 platform_prand_u8() {
-    return (ot_u8)platform_prand_u16();
+
+ot_u8 rand_prn8() {
+    return (ot_u8)rand_prn16();
 }
-#endif
 
 
-#ifndef EXTF_platform_prand_u16
-ot_u16 platform_prand_u16() {
+
+
+ot_u16 rand_prn16() {
 /// Run the HW CRC on the prand register stored value.  Always save the value in
 /// the CRC HW and return it when the process is done.  prand_reg should be
 /// initialized at startup with the device ID or serial number (or something)
@@ -1198,7 +1200,7 @@ ot_u16 platform_prand_u16() {
 
     return platform_ext.prand_reg;
 }
-#endif
+
 
 
 
@@ -1210,7 +1212,7 @@ ot_u16 platform_prand_u16() {
   * Behavior is always blocking
   */
 
-void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
+void ot_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 #if (OS_FEATURE(MEMCPY) == ENABLED)
     memcpy(dest, src, length);
 
@@ -1230,7 +1232,7 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
     //while ((MEMCPY_DMA->CTL & DMAIFG) == 0);
     //DMA must be manually cleared on zero-length copy
     MEMCPY_DMA->CTL    &= ~(0x10);
-    
+
 #else
 /// Uses the "Duff's Device" for loop unrolling.  If this is incredibly
 /// confusing to you, check the internet for "Duff's Device."
@@ -1252,7 +1254,7 @@ void platform_memcpy(ot_u8* dest, ot_u8* src, ot_int length) {
 
 
 
-void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length) {
+void ot_memcpy2(ot_u16* dest, ot_u16* src, ot_int length) {
 #if (MCU_FEATURE(MEMCPYDMA) == ENABLED)
 /// DMA driven method: CC430 DMA Block Transfer is blocking, and the CPU is
 /// stopped during the data movement.  Thus the while loop is not needed.
@@ -1273,14 +1275,14 @@ void platform_memcpy_2(ot_u16* dest, ot_u16* src, ot_int length) {
     MEMCPY_DMA->CTL    &= ~(0x10);
 
 #else
-    platform_memcpy((ot_u8*)dest, (ot_u8*)src, length<<1);
+    ot_memcpy((ot_u8*)dest, (ot_u8*)src, length<<1);
 
 #endif
 }
 
 
 
-void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
+void ot_memset(ot_u8* dest, ot_u8 value, ot_int length) {
 #if (OS_FEATURE(MEMCPY) == ENABLED)
     memset(dest, value, length);
 
@@ -1333,7 +1335,7 @@ void platform_memset(ot_u8* dest, ot_u8 value, ot_int length) {
   * Random crap
   */
 
-void platform_block(ot_u16 sti) {
+void delay_sti(ot_u16 sti) {
 /// Low power blocking function.
 /// Drop clock to a very low amount, then do a pointless DMA transfer.  The DMA
 /// transfer is well known as 2 clocks per transfer.  The input sti should be
@@ -1341,17 +1343,17 @@ void platform_block(ot_u16 sti) {
 #if 0 // (MCU_FEATURE(MEMCPYDMA) == ENABLED)
     ot_u16 a, b;
     ot_int cycles;
-    
+
     cycles              = (ot_int)((sti>>1)-5);
     MEMCPY_DMA->SZ      = (cycles < 0) ? 0 : cycles;
     MEMCPY_DMA->SA_L    = (ot_u16)&a;
     MEMCPY_DMA->DA_L    = (ot_u16)&b;
-    
+
     //drop CPU clock to 32768Hz
     UCS->CTL4   = (CLKSRC_32768 << clockACLK) | \
                   (CLKSRC_32768 << clockMCLK) | \
                   (sourceDCO << clockSMCLK);
-    
+
     // Do meaningless, repetitive copy between "a" and "b"
     MEMCPY_DMA->CTL     = ( DMA_Mode_Block | \
                             DMA_DestinationInc_Disable | \
@@ -1378,8 +1380,8 @@ void platform_block(ot_u16 sti) {
 
 
 
-#ifndef EXTF_platform_delay
-void platform_delay(ot_u16 n) {
+#ifndef EXTF_delay_ti
+void delay_ti(ot_u16 n) {
     ot_u16 reg;
 
     reg         = 0x007F & WDTA->CTL;              // clear hold bit and passkey
@@ -1408,8 +1410,8 @@ void platform_delay(ot_u16 n) {
 #define CNT1us_20MHz    (20/2)
 #define CNT1ms_20MHz    (CNT1us_20MHz*1000)
 
-#ifndef EXTF_platform_swdelay_ms
-void platform_swdelay_ms(ot_u16 n) {
+#ifndef EXTF_delay_ms
+void delay_ms(ot_u16 n) {
     while (n-- != 0) {
         __delay_cycles(20000);
     }
@@ -1417,8 +1419,8 @@ void platform_swdelay_ms(ot_u16 n) {
 #endif
 
 
-#ifndef EXTF_platform_swdelay_us
-void platform_swdelay_us(ot_u16 n) {
+#ifndef EXTF_delay_us
+void delay_us(ot_u16 n) {
     while (n-- != 0) {
         __delay_cycles(20);
     }

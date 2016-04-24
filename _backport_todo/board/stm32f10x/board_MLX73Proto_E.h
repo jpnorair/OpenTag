@@ -28,7 +28,7 @@
 #ifndef __board_MLX73Proto_E_H
 #define __board_MLX73Proto_E_H
 
-#include "build_config.h"
+#include <app/build_config.h>
 #include "platform_STM32F10x.h"
 #include "radio_MLX73290.h"
 

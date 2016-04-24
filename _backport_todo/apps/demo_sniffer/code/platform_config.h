@@ -28,7 +28,7 @@
 #ifndef __PLATFORM_CONFIG_H
 #define __PLATFORM_CONFIG_H
 
-#include "build_config.h"
+#include <app/build_config.h>
 
 
 

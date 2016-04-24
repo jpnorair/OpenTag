@@ -45,7 +45,7 @@
 #include "usb_cdc_driver/usb_isr.h"
 #include "usb_cdc_driver/usb_main.h"
 
-#include "OT_utils.h"
+#include <otlib/utils.h>
 
 #ifdef _CDC_
 

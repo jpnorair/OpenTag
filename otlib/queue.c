@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2010-14 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,25 +16,41 @@
 /**
   * @file       /otlib/queue.c
   * @author     JP Norair
-  * @version    R101
-  * @date       18 Sept 2013
+  * @version    R103
+  * @date       20 Sept 2014
   * @brief      A module and ADT for buffering data packets.
-  * @ingroup    Queue
+  * @ingroup    ot_queue
   *
   * The queue module intends to abstract the user from the queue implementation,
   * but it does not intend to provide programmatic safeguards.  In other words,
   * the user must do his own boundary checking, or overrun may occur.
+  *
+  * R103: Some improvements and getting ready for multithreading
+  * 
+  * R102: Updates to multibyte read and write functions including __bswap...()
+  *       functions for endian conversion as well as unaligned memory access.
+  *
+  * R101: Updates for new ot_queue definition, which no longer has explicit
+  *       "length" attribute.  Use q_length() and q_span() instead.
+  *
   ******************************************************************************
   */
 
 
-#include "OT_config.h"
-#include "OT_platform.h"
-#include "queue.h"
+#include <otstd.h>
+#include <platform/config.h>
+#include <otlib/queue.h>
+#include <otlib/memcpy.h>
 
-#include "veelite.h"
+#include <otsys/veelite.h>
 
 
+
+
+
+/** Queue "Object" functions
+  * ========================
+  */
 
 #ifndef EXTF_q_init
 void q_init(ot_queue* q, ot_u8* buffer, ot_u16 alloc) {
@@ -63,6 +79,14 @@ void q_copy(ot_queue* q1, ot_queue* q2) {
 #endif
 
 
+
+
+
+
+/** Queue Info functions
+  * ====================
+  */
+
 #ifndef EXTF_q_length
 ot_int q_length(ot_queue* q) {
     return (q->putcursor - q->front);
@@ -80,13 +104,53 @@ ot_int q_span(ot_queue* q) {
 #ifndef EXTF_q_space
 ot_int q_space(ot_queue* q) {
     return (q->back - q->putcursor);
-} 
+}
 #endif
+
+
+
+
+
+
+/** Queue Threading/Blocking functions
+  * ==================================
+  */
+
+OT_INLINE ot_uint q_blocktime(ot_queue* q) {
+    return q->options.ushort;
+}
+
+OT_INLINE void q_blockwrite(ot_queue* q, ot_uint blocktime) {
+    q->options.ushort = blocktime;
+}
+
+
+void q_lock(ot_queue* q) {
+    while (q->options.ushort != 0) {
+        //ot_thandle thandle = otthread_this_thandle();
+        //if (thandle != otthread_kernel_thandle()) {
+        //    otthread_set_tmask( &(q->tmask), thandle );
+        //    otthread_wait();
+        //    otthread_clear_tmask( &(q->tmask), thandle );
+        //}
+        //else 
+        {   delay_ti(q->options.ushort);
+        }
+    }
+    q->options.ushort = 1;
+}
+
+void q_unlock(ot_queue* q) {
+    // otthread_release_any( &(q->tmask) );
+    q->options.ushort = 0;
+}
+
+
+
 
 
 #ifndef EXTF_q_empty
 void q_empty(ot_queue* q) {
-    //#q->length           = 0;
     q->options.ushort   = 0;
     q->back             = q->front + q->alloc;
     q->putcursor        = q->front;
@@ -96,14 +160,13 @@ void q_empty(ot_queue* q) {
 
 
 #ifndef EXTF_q_start
-ot_u8* q_start(ot_queue* q, ot_uint offset, ot_u16 options) {  
+ot_u8* q_start(ot_queue* q, ot_uint offset, ot_u16 options) {
     q_empty(q);
 
-    if (offset >= q->alloc) 
-        return NULL;  
-    
+    if (offset >= q->alloc)
+        return NULL;
+
     q->options.ushort  = options;
-    //#q->length          = offset;
     q->putcursor      += offset;
     q->getcursor      += offset;
     return q->getcursor;
@@ -124,42 +187,37 @@ ot_u8* q_markbyte(ot_queue* q, ot_int shift) {
 #ifndef EXTF_q_writebyte
 void q_writebyte(ot_queue* q, ot_u8 byte_in) {
     *q->putcursor++ = byte_in;
-    //#q->length++;
 }
 #endif
 
 
+
 #ifndef EXTF_q_writeshort
 void q_writeshort(ot_queue* q, ot_uint short_in) {
-    ot_u8* data;
-    data = (ot_u8*)&short_in;
-
-#   ifdef __BIG_ENDIAN__
-        *q->putcursor++ = data[0];
-        *q->putcursor++ = data[1];
+#   if defined(__UNALIGNED_ACCESS__)
+        *(ot_u16*)q->putcursor  = PLATFORM_ENDIAN16(short_in);
+        q->putcursor           += 2;
 #   else
-        *q->putcursor++ = data[1];
-        *q->putcursor++ = data[0];
+        ot_u8* data     = (ot_u8*)&short_in;
+        *q->putcursor++ = data[UPPER];
+        *q->putcursor++ = data[LOWER];
 #   endif
-    
-    //#q->length     += 2;
 }
 #endif
 
 
 #ifndef EXTF_q_writeshort_be
 void q_writeshort_be(ot_queue* q, ot_uint short_in) {
-#   ifdef __BIG_ENDIAN__
+#   if defined(__BIG_ENDIAN__)
         q_writeshort(q, short_in);
-
+#   elif defined(__UNALIGNED_ACCESS__)
+        *(ot_u16*)q->putcursor = short_in;
+        q->putcursor          += 4;
 #   else
-        ot_u8* data;
-        data            = (ot_u8*)&short_in;
+        ot_u8* data     = (ot_u8*)&short_in;
         *q->putcursor++ = data[0];
         *q->putcursor++ = data[1];
-        
-        //#q->length     += 2;
-#   endif    
+#   endif
 }
 #endif
 
@@ -167,23 +225,17 @@ void q_writeshort_be(ot_queue* q, ot_uint short_in) {
 
 #ifndef EXTF_q_writelong
 void q_writelong(ot_queue* q, ot_ulong long_in) {
-    ot_u8* data;
-    data = (ot_u8*)&long_in;
-
-#   ifdef __BIG_ENDIAN__
-        *q->putcursor++ = data[0];
-        *q->putcursor++ = data[1];
-        *q->putcursor++ = data[2];
-        *q->putcursor++ = data[3];
+#   if defined(__UNALIGNED_ACCESS__)
+        *(ot_u32*)q->putcursor = PLATFORM_ENDIAN32(long_in);
+        q->putcursor          += 4;
 #   else
-        *q->putcursor++ = data[3];
-        *q->putcursor++ = data[2];
-        *q->putcursor++ = data[1];
-        *q->putcursor++ = data[0];
+        ot_u8* data;
+        data = (ot_u8*)&long_in;
+        *q->putcursor++ = data[B3];
+        *q->putcursor++ = data[B2];
+        *q->putcursor++ = data[B1];
+        *q->putcursor++ = data[B0];
 #   endif
-    
-    //q->putcursor  += 4;
-    //#q->length     += 4;
 }
 #endif
 
@@ -195,33 +247,35 @@ ot_u8 q_readbyte(ot_queue* q) {
 #endif
 
 
+
 #ifndef EXTF_q_readshort
 ot_u16 q_readshort(ot_queue* q) {
-    ot_uni16 data;
-
-#   ifdef __BIG_ENDIAN__
-        data.ubyte[0]   = *q->getcursor++;
-        data.ubyte[1]   = *q->getcursor++;
+#   if defined(__UNALIGNED_ACCESS__)
+        ot_u16 data     = *(ot_u16*)q->getcursor;
+        q->getcursor   += 2;
+        return PLATFORM_ENDIAN16(data);
 #   else
-        data.ubyte[1]   = *q->getcursor++;
-        data.ubyte[0]   = *q->getcursor++;
+        ot_uni16 data;
+        data.ubyte[UPPER] = *q->getcursor++;
+        data.ubyte[LOWER] = *q->getcursor++;
+        return data.ushort;
 #   endif
-    
-    //q->getcursor  += 2;
-    return data.ushort;
 }
 #endif
 
 
 #ifndef EXTF_q_readshort_be
 ot_u16 q_readshort_be(ot_queue* q) {
-#   ifdef __BIG_ENDIAN__
+#   if defined(__BIG_ENDIAN__)
         return q_readshort(q);
+#   elif defined(__UNALIGNED_ACCESS__)
+        ot_u16 data     = *(ot_u16*)q->getcursor;
+        q->getcursor   += 2
+        return data;
 #   else
         ot_uni16 data;
         data.ubyte[0]   = *q->getcursor++;
         data.ubyte[1]   = *q->getcursor++;
-
         return data.ushort;
 #   endif
 }
@@ -230,21 +284,18 @@ ot_u16 q_readshort_be(ot_queue* q) {
 
 #ifndef EXTF_q_readlong
 ot_u32 q_readlong(ot_queue* q)  {
-    ot_uni32 data;
-
-#   ifdef __BIG_ENDIAN__
-        data.ubyte[0]   = *q->getcursor++;
-        data.ubyte[1]   = *q->getcursor++;
-        data.ubyte[2]   = *q->getcursor++;
-        data.ubyte[3]   = *q->getcursor++;
+#   if defined(__UNALIGNED_ACCESS__)
+        ot_u32 data     = *(ot_u32*)q->getcursor;
+        q->getcursor   += 4;
+        return PLATFORM_ENDIAN32(data);
 #   else
-        data.ubyte[3]   = *q->getcursor++;
-        data.ubyte[2]   = *q->getcursor++;
-        data.ubyte[1]   = *q->getcursor++;
-        data.ubyte[0]   = *q->getcursor++;
+        ot_uni32 data;
+        data.ubyte[B3]  = *q->getcursor++;
+        data.ubyte[B2]  = *q->getcursor++;
+        data.ubyte[B1]  = *q->getcursor++;
+        data.ubyte[B0]  = *q->getcursor++;
+        return data.ulong;
 #   endif
-    
-    return data.ulong;
 }
 #endif
 
@@ -252,7 +303,6 @@ ot_u32 q_readlong(ot_queue* q)  {
 #ifndef EXTF_q_writestring
 void q_writestring(ot_queue* q, ot_u8* string, ot_int length) {
     memcpy(q->putcursor, string, length);
-    //#q->length      += length;
     q->putcursor   += length;
 }
 #endif
@@ -275,11 +325,11 @@ void q_print(ot_queue* q) {
     int i;
     int row;
     length = q_length(q);
-    
-    printf("Queue Length/Alloc: %d/%d\n", length, q->alloc);
-    printf("Queue Getcursor:    %d\n", (int)(q->getcursor-q->front));
-    printf("Queue Putcursor:    %d\n", (int)(q->putcursor-q->front));
-    
+
+    printf("ot_queue Length/Alloc: %d/%d\n", length, q->alloc);
+    printf("ot_queue Getcursor:    %d\n", (int)(q->getcursor-q->front));
+    printf("ot_queue Putcursor:    %d\n", (int)(q->putcursor-q->front));
+
     for (i=0, row=0; length>0; ) {
         length -= 8;
         row    += (length>0) ? 8 : 8+length;

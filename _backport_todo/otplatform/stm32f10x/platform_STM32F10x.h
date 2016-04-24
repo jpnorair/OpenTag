@@ -28,7 +28,7 @@
 #ifndef __PLATFORM_STM32F10x_H
 #define __PLATFORM_STM32F10x_H
 
-#include "OT_support.h"
+#include <otsys/support.h>
 #include "stm32f10x.h"
 #include "stm32f10x_conf.h"
 

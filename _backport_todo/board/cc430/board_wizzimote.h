@@ -31,7 +31,7 @@
 #ifndef __board_WIZZIMOTE_H
 #define __board_WIZZIMOTE_H
 
-#include "build_config.h"
+#include <app/build_config.h>
 #include "platform_CC430.h"
 
 #ifdef __NULL_RADIO__

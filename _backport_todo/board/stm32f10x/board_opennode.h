@@ -28,7 +28,7 @@
 #ifndef __board_OPENNODE_H
 #define __board_OPENNODE_H
 
-#include "build_config.h"
+#include <app/build_config.h>
 #include "platform_STM32F10x.h"
 #include "radio_cc1101.h"
 

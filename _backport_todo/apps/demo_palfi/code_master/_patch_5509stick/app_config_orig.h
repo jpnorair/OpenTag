@@ -27,7 +27,7 @@
 #ifndef __APP_CONFIG_H
 #define __APP_CONFIG_H
 
-#include "build_config.h"
+#include <app/build_config.h>
 
 /// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
 #ifdef ENABLED
@@ -96,7 +96,7 @@
 #define OT_FEATURE_AUTOCOPY             NOT_AVAILABLE                       // A DMA method for moving batch data (experimental)
 #define OT_FEATURE_CRC_TXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
 #define OT_FEATURE_CRC_RXSTREAM         ENABLED                             // Streams CRC computation inline with encoding
-#define OT_FEATURE_RTC                  DISABLED                            // Do you have a precise 32768 Hz clock?
+#define OT_FEATURE_TIME                  DISABLED                            // Do you have a precise 32768 Hz clock?
 #define OT_FEATURE_M1                   NOT_AVAILABLE                       // Mode 1 Featureset: Generally not implemented
 #define OT_FEATURE_M2                   ENABLED                             // Mode 2 Featureset: Implemented
 #define OT_FEATURE_EXTERNAL_EVENT       DISABLED
@@ -219,7 +219,7 @@
                                 ((ot_u32)OT_FEATURE_M1 << 14) | \
                                 ((ot_u32)OT_FEATURE_LF << 13) | \
                                 ((ot_u32)OT_FEATURE_HF << 11) | \
-                                ((ot_u32)OT_FEATURE_RTC << 7)       )
+                                ((ot_u32)OT_FEATURE_TIME << 7)       )
 
 
 

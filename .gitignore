@@ -6,14 +6,16 @@
 ###################################
 # Compiler/Linker Generated Files #
 ###################################
+*.gcccmd
 *.o
+*.d
 *.so
 *.hex
 *.pp
 *.map
 *.depend
 *.lst
-*.elf
+*.elf*
 *.hdo*
 
 ######################

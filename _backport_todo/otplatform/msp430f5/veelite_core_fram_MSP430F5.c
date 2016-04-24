@@ -33,11 +33,11 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 #if defined(__MSP430F5__) && defined(__FRAM__)
 
 #include "OTAPI.h"              // for logging faults
-#include "veelite_core.h"
+#include <otsys/veelite_core.h>
 
 #ifndef OT_FEATURE_VLNVWRITE
 #   define OT_FEATURE_VLNVWRITE ENABLED
@@ -228,7 +228,7 @@ ot_u8* vfram_get(vaddr addr) {
 
 ot_u8 vfram_wipeblock(vaddr addr, ot_uint wipe_span) {
     SEGFAULT_CHECK(addr, in_vworm, 15, "vfram_wipeblock");
-    platform_memset((ot_u16*)addr, 0, wipe_span);
+    ot_memset((ot_u16*)addr, 0, wipe_span);
     return 0;
 }
 

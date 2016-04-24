@@ -58,7 +58,7 @@
   * </PRE>                           
   *****************************************************************************/
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 #include "usb_cdc_driver/usb_descriptors.h"
 #include "usb_cdc_driver/defMSP430USB.h"
@@ -77,7 +77,7 @@ void usbisr_vbuson(void) {
     //volatile unsigned int i;
     // waiting till voltage will be stable (1ms delay)
     //for (i=0; i < USB_MCLK_FREQ/1000*1/10; i++);          
-    platform_swdelay_ms(1);
+    delay_ms(1);
     
     USBKEYPID   = 0x9628;                   // set KEY and PID to 0x9628 -> access to configuration registers enabled
     USBPWRCTL  |= VBOFFIE;                  // enable interrupt VBUSoff
@@ -89,7 +89,7 @@ void usbisr_vbuson(void) {
 void usbisr_vbusoff(void) {
     //volatile unsigned int i;
     //for (i =0; i < USB_MCLK_FREQ/1000*1/10; i++); // 1ms delay
-    platform_swdelay_ms(1);
+    delay_ms(1);
     
     if (!(USBPWRCTL & USBBGVBV)) {
         USBKEYPID           = 0x9628;        // set KEY and PID to 0x9628 -> access to configuration registers enabled
@@ -176,7 +176,7 @@ void usbisr_setuppkt(void) {
     
     // clear out return data buffer
     usbctl.action = ACTION_nothing;
-    platform_memset(usbctl.response, 0, USB_RETURN_DATA_LENGTH);
+    ot_memset(usbctl.response, 0, USB_RETURN_DATA_LENGTH);
     //for (bTemp=0; bTemp<USB_RETURN_DATA_LENGTH; bTemp++) {
     //    usbctl.response[bTemp] = 0x00;
     //}
@@ -198,8 +198,8 @@ void usbisr_setuppkt(void) {
 
 
 
-#include "mpipe.h"
-#include "system.h"
+#include <otsys/mpipe.h>
+#include <otsys/syskern.h>
 
 void platform_isr_usb (void) {
 /// Check if the setup interrupt is pending.  We need to check it before other 

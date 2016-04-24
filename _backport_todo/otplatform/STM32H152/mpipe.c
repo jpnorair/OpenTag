@@ -41,9 +41,9 @@
   */
 
 #define __wbr__    1
-#include "OT_config.h"
-#include "mpipe.h"
-#include "OT_platform.h"
+#include <otsys/config.h>
+#include <otsys/mpipe.h>
+#include <otplatform.h>
 
 /*#if (OT_FEATURE(MPIPE) == ENABLED)
 #error mpipe_enabled
@@ -59,8 +59,8 @@
 // Compile only when MPipe is enabled, but USB is disabled
 #if ((OT_FEATURE(MPIPE) == ENABLED) && (MCU_CONFIG(MPIPECDC) != ENABLED))
 
-//#include "OT_utils.h"
-#include "crc16.h"
+//#include <otlib/utils.h>
+#include <otlib/crc16.h>
 
 /** Mpipe Module Data
   * At present this consumes 24 bytes of SRAM.  6 bytes could be freed by
@@ -69,7 +69,7 @@
 typedef struct {
     mpipe_state     state;
     mpipe_priority  priority;
-    Twobytes        sequence;
+    ot_uni16        sequence;
     ot_u8*          pktbuf;
     ot_int          pktlen;
     ot_u8           ackbuf[10];
@@ -129,9 +129,9 @@ DMA1_Channel2_IRQHandler()
 volatile ot_u8 data_two;
 
 /* returns the count of bytes still to be transmitted: blocking returns zero */
-ot_int mpipe_txndef(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
+ot_int mpipe_tx(ot_u8* data, ot_bool blocking, mpipe_priority data_priority) {
 #ifndef RADIO_DEBUG
-    Twobytes crcval;
+    ot_uni16 crcval;
     ot_int data_length = data[2];
     int i;
 

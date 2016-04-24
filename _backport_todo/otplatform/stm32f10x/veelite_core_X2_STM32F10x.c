@@ -26,25 +26,25 @@
   * and write filesystem functionality.  This variant is meant for systems that
   * use NAND FLASH as the source of non-volatile memory.  In most cases you can
   * copy this file into any NAND-based platform without changing anything.
-  * 
+  *
   * X2 Design Notes:
   * The X2 Method offers Flash wear leveling and has some tricks to reduce the
   * number of page erasures by 4x when compared to a naive approach and by
   * about 2X when compared to the X1 approach.  The main trick is to treat data
   * as the XNOR of the matching block addresses (offsets).
   *
-  * The X2 Method is faster at reading and writing than the X1 Method, not to 
-  * mention less complex and lighter on code size.  In typical cases, it has 
-  * about the same storage overhead as the X1 method, although it scales better 
-  * when more blocks are used.  It requires slightly more SRAM data for storing 
-  * the block lookup tables.  The only real downside is that it is not as 
+  * The X2 Method is faster at reading and writing than the X1 Method, not to
+  * mention less complex and lighter on code size.  In typical cases, it has
+  * about the same storage overhead as the X1 method, although it scales better
+  * when more blocks are used.  It requires slightly more SRAM data for storing
+  * the block lookup tables.  The only real downside is that it is not as
   * failsafe as the X1 method.  The vworm_save() function must be run before the
   * device's SRAM shuts off.  In most types of devices (anything without a user
   * removable battery) this is not a big problem.
   *
-  * 
+  *
   * Compatibility Notes:
-  * As far as I know, this module works with every FLASH controller that is 
+  * As far as I know, this module works with every FLASH controller that is
   * programmable in 16 bit increments. The following chips are known to work
   * fine with this setup:
   * - TI CC430
@@ -52,18 +52,19 @@
   * - ST STM32 (and all STM32-based devices)
   *
   * The following chips may work with this module, but have not been tested.
-  * Most chips with 32 bit words can be dealt with at the NAND access level, 
+  * Most chips with 32 bit words can be dealt with at the NAND access level,
   * and this file can stay the same.
   * - ADI ADµCRF101 (uses 32 bit Flash words)
   *
   ******************************************************************************
   */
 
-#include "OT_types.h"
-#include "OT_config.h"
-#include "OT_platform.h"
+#include <otsys/types.h>
+#include <otsys/config.h>
+#include <otplatform.h>
 #include "OTAPI.h"              // for logging faults
-#include "veelite_core.h"
+#include <otsys/veelite_core.h>
+
 
 #ifndef OT_FEATURE_VLNVWRITE
 #   define OT_FEATURE_VLNVWRITE ENABLED
@@ -73,7 +74,7 @@
 
 /** MACROS for STM32F10x library <BR>
   * ========================================================================<BR>
-  * @note If you are upgrading the STM32 FW lib, you need to modify the file 
+  * @note If you are upgrading the STM32 FW lib, you need to modify the file
   * stm32f10x_flash.h file in a simple way.  The FLASH_Status enum type needs to
   * have FLASH_COMPLETE = 0 instead of 4.
   */
@@ -89,7 +90,7 @@
 /// NAND wrappers
 ot_u8 NAND_erase_page(ot_u16* page_addr) {
     ot_u8 output;
-    
+
     NAND_unlock();
     output = (ot_u8)FLASH_ErasePage((uint32_t)page_addr);
     NAND_lock();
@@ -110,7 +111,7 @@ ot_u8 NAND_write_short(ot_u16* addr, ot_u16 data) {
 // SCB_SHCSR_USGFAULTENA_Msk
 // SCB_SHCSR_USGFAULTPENDED_Msk
 // SCB_SHCSR_USGFAULTACT_Msk
-// 
+//
 
 /// VLX2 Debugging
 /// This driver is quite stable, so debugging features are not implemented
@@ -122,15 +123,16 @@ ot_u8 NAND_write_short(ot_u16* addr, ot_u16 data) {
 /// Set Segmentation Fault (code 11) if trying to access an invalid virtual
 /// address.  Vector to NMI
 #if ((defined VLX2_DEBUG_ON) && (LOG_FEATURE(FAILS) == ENABLED))
+#	include <otlib/logger.h>
 #   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
         do { \
             if (vas_check(ADDR) != BANK) { \
                 platform.error_code = 11; \
-                otapi_log_code(MSGLEN, (ot_u8*)MSG, 11); \
+                logger_code(MSGLEN, (ot_u8*)MSG, 11); \
                 SCB->ICSR |= SCB_ICSR_NMIPENDSET_Msk; \
             } \
-        } while (0)  
-                  
+        } while (0)
+
 #elif ((defined VLX2_DEBUG_ON) && (LOG_FEATURE(FAILS) == DISABLED))
 #   define SEGFAULT_CHECK(ADDR, BANK, MSGLEN, MSG) \
         do { \
@@ -149,15 +151,16 @@ ot_u8 NAND_write_short(ot_u16* addr, ot_u16 data) {
 /// Set Bus Error (code 7) on physical flash access faults (X2table errors).
 /// Vector to Access Violation ISR (CC430 Specific)
 #if (LOG_FEATURE(FAULTS) == ENABLED)
+#	include <otlib/logger.h>
 #   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
         do { \
             if (EXPR) { \
-                otapi_log_code(MSGLEN, (ot_u8*)MSG, 7); \
+                logger_code(MSGLEN, (ot_u8*)MSG, 7); \
                 platform.error_code = 7; \
                 SCB->ICSR |= SCB_ICSR_NMIPENDSET_Msk; \
             } \
-        } while (0)  
-                  
+        } while (0)
+
 #else
 #   define BUSERROR_CHECK(EXPR, MSGLEN, MSG) \
         do { \
@@ -182,13 +185,13 @@ ot_u8 NAND_write_short(ot_u16* addr, ot_u16 data) {
 
 /// VSRAM (Mirror) memory buffer
 #if (VSRAM_SIZE > 0)
-    
+
     ot_u16 vsram[ (VSRAM_SIZE/2) ];
 #endif
 
 
 /// Constant used to quickly divide input address by the physical block size
-#if (VWORM_SIZE > 0)    
+#if (VWORM_SIZE > 0)
 #   define PRIMARY_PAGE_START   0
 #   define FALLOW_PAGE_START    VWORM_PRIMARY_PAGES
 
@@ -226,7 +229,7 @@ typedef union {
 /** @typedef block_ptr
   * Each block contains a primary block.  A block may additionally contain an
   * ancillary block.  Blocks that contain both primary and ancillary blocks have
-  * their XNOR'ed across these two blocks.  It is part of the wear-leveling 
+  * their XNOR'ed across these two blocks.  It is part of the wear-leveling
   * technique.
   */
 typedef struct {
@@ -247,7 +250,7 @@ typedef struct {
 } X2_struct;
 
 X2_struct X2table;
-    
+
 
 
 
@@ -269,9 +272,9 @@ ot_u16* sub_recombine_block(block_ptr* block_in, ot_int skip, ot_int span);
   * @retval none
   */
 void sub_attach_fallow(block_ptr* block_in);
-    
-    
-#endif 
+
+
+#endif
 
 
 
@@ -312,20 +315,20 @@ ot_u8 vworm_format( ) {
     ot_int      i;
     ot_u16*     cursor;
     ot_u8       output = 0;
-    
+
     /// 1. Load default cursor (using embedded method)
     cursor = (ot_u16*)(OTF_VWORM_START_ADDR);
-    
+
     /// 2. Format all Blocks, Put Block IDs into Primary Blocks
     for (i=0; i<VWORM_PRIMARY_PAGES; i++) {
         output |= NAND_erase_page(cursor);
         cursor  = PTR_OFFSET(cursor, VWORM_PAGESIZE);
-    }    
+    }
     for (i=0; i<VWORM_FALLOW_PAGES; i++) {
         output |= NAND_erase_page(cursor);
-        cursor  = PTR_OFFSET(cursor, VWORM_PAGESIZE); 
+        cursor  = PTR_OFFSET(cursor, VWORM_PAGESIZE);
     }
-    
+
     return output;
 #else
     return 0;
@@ -337,43 +340,43 @@ ot_u8 vworm_init( ) {
 #if (VWORM_SIZE > 0)
     ot_u8   test    = 0;
     ot_u16* s_ptr;
-    
+
     s_ptr = (ot_u16*)(VWORM_BASE_PHYSICAL + (VWORM_PAGESIZE*(VWORM_NUM_PAGES-1)));
 
-    /// 1. If the last block starts with FFFF, assume that a format just 
+    /// 1. If the last block starts with FFFF, assume that a format just
     ///    happened, in which case we can ignore doing anything.
     if (*s_ptr != 0xFFFF) {
         ot_u16* b_ptr;
         ot_int  i;
-    
+
         /// 2. Load the addresses supplied in the saved data into the lookup table
         ///    @note init & save processes have not been tested enough.
         b_ptr = (ot_u16*)&X2table;
         for (i=0; i<(sizeof(X2_struct)/2); i++) {
             b_ptr[i] = s_ptr[i];
         }
-        
+
         /// 3. Erase the last page, which is once again a fallow block
         test = NAND_erase_page( s_ptr );
     }
-    
+
     /// Load the lookup table with initial values
     else {
         ot_u16* cursor;
         ot_int i;
         cursor = (ot_u16*)(OTF_VWORM_START_ADDR);
-    	
+
         for (i=0; i<VWORM_PRIMARY_PAGES; i++) {
             X2table.block[i].primary    = cursor;
             X2table.block[i].ancillary  = NULL;
             cursor = PTR_OFFSET(cursor, VWORM_PAGESIZE);
-        }    
+        }
         for (i=0; i<VWORM_FALLOW_PAGES; i++) {
-            X2table.fallow[i] = cursor; 
-            cursor = PTR_OFFSET(cursor, VWORM_PAGESIZE); 
+            X2table.fallow[i] = cursor;
+            cursor = PTR_OFFSET(cursor, VWORM_PAGESIZE);
         }
     }
-    
+
     return test;
 #else
     return 0;
@@ -385,7 +388,7 @@ ot_u8 vworm_init( ) {
 void vworm_print_table() {
 #ifdef VLX2_DEBUG_ON
 //    ot_int i;
-// 
+//
 //    printf("VWORM X2table: Primaries\n");
 //    for (i=0; i<VWORM_PRIMARY_PAGES; i++) {
 //        printf("%02d: %08X - %08X\n", i, \
@@ -405,7 +408,7 @@ void vworm_print_table() {
 ot_u8 vworm_save( ) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
     /// @note init & save processes have not been tested enough.
-    /// Saves the state of the vworm onto the last physical block, which may 
+    /// Saves the state of the vworm onto the last physical block, which may
     /// require recombination before being able to be used.
 
     ot_u8   test    = 0;
@@ -413,8 +416,8 @@ ot_u8 vworm_save( ) {
     ot_u16* b_ptr;
     ot_u16* s_ptr   = (ot_u16*)(VWORM_BASE_PHYSICAL + \
                         (VWORM_PAGESIZE*(VWORM_PRIMARY_PAGES+VWORM_FALLOW_PAGES-1)));
-    
-    /// 1.  look through used blocks to see if the last physical block is  
+
+    /// 1.  look through used blocks to see if the last physical block is
     ///     somewhere inside.  In this case, we need to recombine it.
     for (i=0; i<VWORM_PRIMARY_PAGES; i++) {
         if ( (X2table.block[i].primary == s_ptr) || (X2table.block[i].ancillary == s_ptr) ) {
@@ -422,17 +425,17 @@ ot_u8 vworm_save( ) {
             break;
         }
     }
-    
+
     /// 2.  The last block is now in the list of fallows, either because it was
     ///     already there or because it was just erased and fallowed following
     ///     recombination.
-    
-    // 2a. Write [Number of Primary blocks] 
+
+    // 2a. Write [Number of Primary blocks]
     //test |= vworm_mark_physical(s_ptr, VWORM_PRIMARY_PAGES);    s_ptr++;
-    
-    // 2b. Write [Number of Fallow blocks] 
+
+    // 2b. Write [Number of Fallow blocks]
     //test |= vworm_mark_physical(s_ptr, VWORM_FALLOW_PAGES);     s_ptr++;
-    
+
     /// 2c. Write each Primary & Ancillar Base Pointer to the save
     /// 2d. Write each Fallow Pointer to the save
     /// @todo optimize the block & fallow data
@@ -441,7 +444,7 @@ ot_u8 vworm_save( ) {
         test |= vworm_mark_physical(s_ptr, b_ptr[i]);
         s_ptr++;
     }
-    
+
     return test;
 #else
     return 0;
@@ -458,20 +461,20 @@ ot_u16 vworm_read(vaddr addr) {
     ot_int  index;
 
     SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_460");   //__LINE__
-    
+
     /// 1.  Resolve the vaddr directly
     offset  = addr & (VWORM_PAGESIZE-1);
     index   = (addr-VWORM_BASE_VADDR) >> VWORM_PAGESHIFT;
     p_ptr   = PTR_OFFSET(X2table.block[index].primary, offset);
-    
+
     /// 2. return either the primary pointer in full or the XNOR
     if (X2table.block[index].ancillary == NULL) {
         return *p_ptr;
     }
-    
+
     a_ptr   = PTR_OFFSET(X2table.block[index].ancillary, offset);
-    
-    return ~(*p_ptr ^ *a_ptr); 
+
+    return ~(*p_ptr ^ *a_ptr);
 #else
     return 0;
 #endif
@@ -487,16 +490,16 @@ ot_u8 vworm_write(vaddr addr, ot_u16 data) {
     ot_u16* p_ptr;
     ot_u16* a_ptr;
 
-    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_490");   //__LINE__      
+    SEGFAULT_CHECK(addr, in_vworm, 7, "VLC_490");   //__LINE__
 
     /// 1.  Resolve the vaddr directly
     offset  = addr & (VWORM_PAGESIZE-1);
     index   = (addr-VWORM_BASE_VADDR) >> VWORM_PAGESHIFT;
     p_ptr   = PTR_OFFSET(X2table.block[index].primary, offset);
-    
+
     /// 2. No ancillary block, but try a write anyway
     if (X2table.block[index].ancillary == NULL) {
-        
+
         /// 2a. If no 0->1 write requirement, then we're good to go
         if ((data & ~(*p_ptr)) == 0) {
             return vworm_mark_physical(p_ptr, data);
@@ -505,16 +508,16 @@ ot_u8 vworm_write(vaddr addr, ot_u16 data) {
         /// 2b. Attach a fallow to this bitch (it becomes ancillary)
         sub_attach_fallow(&X2table.block[index]);
     }
-    
+
     /// 3. There is ancillary block, so go through the logical write process,
     ///    which is designed to shake out a write out of whatever it can get.
     ///    The only bit combination that cannot be managed is [1->0 via 0,0]
     a_ptr   = PTR_OFFSET(X2table.block[index].ancillary, offset);
     wrtest  = ~data & ~(*p_ptr) & ~(*a_ptr);
-    
+
     if (wrtest == 0) {
         ot_u8   test = 0;
-    
+
         /// 3a. Adjust cases where [1->0 via 1,1] or [0->1 via 1,0]
         wrtest  = ~data & *p_ptr & *a_ptr;
         wrtest |= data & *p_ptr & ~(*a_ptr);
@@ -527,11 +530,11 @@ ot_u8 vworm_write(vaddr addr, ot_u16 data) {
         if (wrtest != 0) {
             test |= vworm_mark_physical(a_ptr, *a_ptr ^ wrtest);
         }
-        
+
         return test;
     }
-    
-    /// 4. Recombine this block, with the exception of the given addr offset, 
+
+    /// 4. Recombine this block, with the exception of the given addr offset,
     ///    which we will then write-to
     else {
         p_ptr = sub_recombine_block(&X2table.block[index], offset, 2);
@@ -539,9 +542,9 @@ ot_u8 vworm_write(vaddr addr, ot_u16 data) {
     }
 #else
     return 0;
-#endif 
+#endif
 }
-    
+
 
 
 ot_u8 vworm_mark(vaddr addr, ot_u16 value) {
@@ -554,7 +557,7 @@ ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
     BUSERROR_CHECK( ((addr < VWORM_BASE_PHYSICAL) || \
                     (addr >= (VWORM_BASE_PHYSICAL+VWORM_ALLOC))), 7, "VLC_556");    //__LINE__
-      
+
     return NAND_write_short(addr, value);
 #else
     return 0;
@@ -566,12 +569,12 @@ ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
 ot_u8 vworm_wipeblock(vaddr addr, ot_uint wipe_span) {
 #if ((VWORM_SIZE > 0) && (OT_FEATURE_VLNVWRITE == ENABLED))
     ot_u8 output = 0;
-    
+
     wipe_span += addr;
     for (; ((addr < (vaddr)wipe_span) && (output == 0)); addr+=2) {
         output |= vworm_write(addr, NULL_vaddr);
     }
-    
+
     return output;
 #else
     return 0;
@@ -659,7 +662,7 @@ ot_u16* sub_recombine_block(block_ptr* block_in, ot_int skip, ot_int span) {
     a_ptr   = block_in->ancillary;
     new_ptr = X2table.fallow[(VWORM_FALLOW_PAGES-1)];
     f_ptr   = new_ptr;
-    
+
     /// 2. Combine the old blocks into the fallow block
     span+=skip;
     for (i=0; i<OTF_VWORM_PAGESIZE; i+=2) {
@@ -670,23 +673,23 @@ ot_u16* sub_recombine_block(block_ptr* block_in, ot_int skip, ot_int span) {
         p_ptr++;
         a_ptr++;
     }
-    
+
 //    i += span;
 //    PTR_OFFSET(f_ptr, span);
 //    PTR_OFFSET(p_ptr, span);
 //    PTR_OFFSET(a_ptr, span);
-//    
+//
 //    for (; i<VWORM_PAGESIZE; i+=2) {
 //        test |= vworm_mark_physical(f_ptr, ~(*p_ptr ^ *a_ptr));
 //        f_ptr++;
 //        p_ptr++;
 //        a_ptr++;
 //    }
-    
+
     /// 3. Erase the old blocks
     NAND_erase_page( block_in->primary );
     NAND_erase_page( block_in->ancillary );
-    
+
     /// 4. Make the two erased blocks fallow blocks. If we are in this function,
     /// we can deduce that there is at least one ancillary and one fallow, so we
     /// stop when NULL is discovered or when at the end of the fallows.
@@ -699,12 +702,12 @@ ot_u16* sub_recombine_block(block_ptr* block_in, ot_int skip, ot_int span) {
 #   else
         X2table.fallow[1]   = block_in->primary;
         X2table.fallow[0]   = block_in->ancillary;
-#   endif     
-    
+#   endif
+
     /// 5. Set the primary block to its new position, and ancillary to NULL
     block_in->ancillary = NULL;
     block_in->primary   = new_ptr;
-    
+
     /// 6. return the (physical) skip address
     return PTR_OFFSET(new_ptr, skip);
 }
@@ -714,7 +717,7 @@ ot_u16* sub_recombine_block(block_ptr* block_in, ot_int skip, ot_int span) {
 
 void sub_attach_fallow(block_ptr* block_in) {
     ot_int  i;
-    
+
     /// If there is only one fallow block left, we need to recombine some other
     /// blocks first (the one fallow left will get rotated).
     if (X2table.fallow[(VWORM_FALLOW_PAGES-2)] == NULL) {
@@ -723,13 +726,13 @@ void sub_attach_fallow(block_ptr* block_in) {
                 sub_recombine_block(&X2table.block[i], 0, 0);
                 break;
             }
-        } 
+        }
     }
-    
+
     /// Make the fallow at the back of the fallow table become the new ancillary
     /// for the supplied primary.
     block_in->ancillary = X2table.fallow[(VWORM_FALLOW_PAGES-1)];
-    
+
     /// Shift-up other fallow blocks and make the new bottom fallow NULL
     for (i=(VWORM_FALLOW_PAGES-1); i>0; i--) {
         X2table.fallow[i] = X2table.fallow[i-1];
@@ -737,6 +740,6 @@ void sub_attach_fallow(block_ptr* block_in) {
     X2table.fallow[0] = NULL;
 }
 
-    
-#endif 
+
+#endif
 

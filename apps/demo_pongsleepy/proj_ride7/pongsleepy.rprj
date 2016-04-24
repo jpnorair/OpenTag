@@ -1,0 +1,4 @@
+
+<Project Header="Project 'pongsleepy'" Path=".\pongsleepy.rprj" Project="Yes" OutputFile="" sate="96" ActiveApp="pongsleepy" >
+	<ApplicationBuild Header="pongsleepy" Extern=".\pongsleepy.rapp" Path=".\pongsleepy.rapp" OutputFile=".\build\pongsleepy.elf" sate="98" Config="IKR001_Debug" />
+</Project>

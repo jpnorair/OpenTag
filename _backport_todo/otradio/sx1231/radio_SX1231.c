@@ -16,7 +16,7 @@
   */
 /**
   * @file       /Platforms/SX1231/radio_SX1231.c
-  * @author     
+  * @author
   * @version    V1.0
   * @date       8 Feb 2012
   * @brief      Radio Driver (RF transceiver) for SX1231
@@ -35,18 +35,18 @@
   ******************************************************************************
   */
 
-#include "OT_types.h"
-#include "OT_config.h"
-#include "OT_utils.h"
-#include "OT_platform.h"
+#include <otsys/types.h>
+#include <otsys/config.h>
+#include <otlib/utils.h>
+#include <otplatform.h>
 
-#include "radio.h"
-#include "m2_encode.h"
-#include "crc16.h"
-#include "buffers.h"
-#include "queue.h"
-#include "veelite.h"
-#include "session.h"
+#include <m2/radio.h>
+#include <m2/encode.h>
+#include <otlib/crc16.h>
+#include <otlib/buffers.h>
+#include <otlib/queue.h>
+#include <otsys/veelite.h>
+#include <m2/session.h>
 
 #ifdef RADIO_DEBUG
 #   include "debug_uart.h"
@@ -54,7 +54,7 @@
 #include "sx1231_registers.h"
 #include "stm32_sx1231_private.h"
 
-#define RXBW_25KHZ      (RF_RXBW_MANT_20 | RF_RXBW_EXP_4) 
+#define RXBW_25KHZ      (RF_RXBW_MANT_20 | RF_RXBW_EXP_4)
 #define RXBW_31KHZ      (RF_RXBW_MANT_16 | RF_RXBW_EXP_4)
 #define RXBW_42KHZ      (RF_RXBW_MANT_24 | RF_RXBW_EXP_3)
 #define RXBW_50KHZ      (RF_RXBW_MANT_20 | RF_RXBW_EXP_3)
@@ -144,8 +144,8 @@ sub_set_txpower( ot_u8 eirp_code )
 static void
 sub_chan_config(ot_u8 old_chan, ot_u8 old_eirp)
 {
-    ot_u8 fc_i;   
-    Twobytes cur_frf;
+    ot_u8 fc_i;
+    ot_uni16 cur_frf;
 
     /// Center Frequency index = lower four bits channel ID
     fc_i = (phymac[0].channel & 0x0F);
@@ -170,7 +170,7 @@ sub_chan_config(ot_u8 old_chan, ot_u8 old_eirp)
                 // slower bitrate, slightly less occupied bandwidth
                 RegRxBw.bits.RxBw = RXBW_83KHZ;
                 break;
-            case 2: 
+            case 2:
             case 3:     /// 200 kS/s method
                 WriteReg_Sx1231(REG_BITRATEMSB, REG_BITRATEMSB_200KBPS);
                 WriteReg_Sx1231(REG_BITRATELSB, REG_BITRATELSB_200KBPS);
@@ -198,14 +198,14 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
 {
 /// Called during channel scans.
 /// Duty: (a) See if the supplied channel is supported on this device & config.
-///       If yes, return true.  (b) Determine if recalibration is required 
+///       If yes, return true.  (b) Determine if recalibration is required
 ///       before changing to the new channel, and recalibrate if so.
 
     ot_u8       fec_id;
     ot_u8       spectrum_id;
     ot_int      i;
-    Twobytes    scratch;
-    
+    ot_uni16    scratch;
+
     //debug_printf("sub_channel_lookup(%x)", chan_id);
     /// Only do the channel lookup if the new channel is different than before
     if (chan_id == phymac[0].channel) {
@@ -215,13 +215,13 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
 #ifdef RADIO_DEBUG
     debug_printf("sub_channel_lookup(%x) ", chan_id);
 #endif /* RADIO_DEBUG */
-    
+
     /// pull spectrum id and encoding type out of chan_id
     fec_id      = chan_id & 0x80;
     spectrum_id = chan_id & ~0x80;
-    
 
-#if (0) 
+
+#if (0)
     /// Upper layer debugging, to make sure spectrum id is in scope
     if ((spectrum_id != RM2_CHAN_BASE) && \
         (spectrum_id != RM2_CHAN_LEGACY) && \
@@ -243,12 +243,12 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
         (spectrum_id != RM2_CHAN_BLINK_2) && \
         (spectrum_id != RM2_CHAN_BLINK_C) && \
         (spectrum_id != RM2_CHAN_WILDCARD)) {
-     
+
         /// @note good to put a break here, or a trap
-        return False;   
+        return False;
     }
-#endif    
-    
+#endif
+
     /// If FEC is requested by the new channel, but this device does not support
     /// FEC, then make sure to return False.
     if (fec_id) {
@@ -264,7 +264,7 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
 #           if (M2_FEATURE(FECTX) == ENABLED)
                 i  |= (radio.state & RADIO_STATE_TXMASK);
 #           endif
-            
+
             if (i == 0) {
                 return False;
             }
@@ -295,10 +295,10 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
 #   else
 #       define AUTOSCALE_MASK(VAL)      (VAL)
 #   endif
-    
+
     for (i=0; i<fp->length; i+=8) {
         scratch.ushort = vl_read(fp, i);
-        
+
         if (spectrum_id == scratch.ubyte[0]) {
             ot_u8 old_chan_id   = phymac[0].channel;
             ot_u8 old_tx_eirp   = phymac[0].tx_eirp;
@@ -332,19 +332,19 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
             return True;
         }
     }
-    
+
 #ifdef RADIO_DEBUG
     debug_printf("spectrum_id %x not found ", spectrum_id);
 #endif /* RADIO_DEBUG */
     return False;
 }
 
-Twobytes sync_value; // global for access from transmitter
+ot_uni16 sync_value; // global for access from transmitter
 
 static void
 sub_syncword_config(ot_u8 sync_class)
 {
-    
+
 #   if (M2_FEATURE(FEC) == ENABLED)
     if (phymac[0].channel & 0x80) {   //Actual= 0xF498 : 0x192F;
         sync_value.ushort = (sync_class == 0) ? 0xF498 : 0x192F;
@@ -365,7 +365,7 @@ sub_syncword_config(ot_u8 sync_class)
     }
 
     /* sync_value is transmitted in start_tx() */
-    
+
     /* sync byte order is for CC430 compatability:
      * for example, where 0x0b67 is used, 0x67 is transmitted first in time, then 0x0b.
      * And MSbit (of each byte) is sent first.
@@ -500,17 +500,17 @@ radio_init(void)
     tbase_in.TIM_Period         = 0xffff;    // ARR
     TIM_TimeBaseInit(RXTIM, &tbase_in);
     TIM_ETRClockMode2Config(RXTIM, TIM_ExtTRGPSC_OFF, TIM_ExtTRGPolarity_NonInverted, 0);
-    
+
     radio.evtdone       = &otutils_sig2_null;   // in case enabling RXTIM interrupt causes evtdone()
     TIM_ITConfig(RXTIM, TIM_IT_CC1, ENABLE);
 
     {
-        vlFILE* fp          = ISF_open_su( ISF_ID(channel_configuration) );        
+        vlFILE* fp          = ISF_open_su( ISF_ID(channel_configuration) );
         debug_printf("fp=%p\r\n", fp);
         phymac[0].channel   = 0x55;         // 55=invalid, forces calibration.
         phymac[0].tx_eirp   = 0x00;
         radio.state         = 0;            // (idle)
-        
+
         sub_channel_lookup(0x00, fp);
         vl_close(fp);
     }
@@ -552,7 +552,7 @@ sub_kill(ot_int main_err, ot_int frame_err)
     radio.state = 0;
     sys_quit_rf();
     radio_gag();
-    
+
     radio_sleep();
 
     radio.evtdone(main_err, frame_err);
@@ -722,17 +722,17 @@ void
 start_tx(ot_bool initial)
 {
     num_bytes_to_send = 0;    // initialize rf buffer
-    num_bytes_sent = 0;    // initialize 
+    num_bytes_sent = 0;    // initialize
 
     // SX1231 sends by itself preamble and sync word in unlimited packet length format
 
     if (initial) {
 #       if (SYS_FLOOD == ENABLED)
-        /// Packet flooding.  Only needed on devices that can send M2AdvP        
+        /// Packet flooding.  Only needed on devices that can send M2AdvP
         if (radio.flags & RADIO_FLAG_FLOOD) {
             sub_syncword_config(0);     // use syncword class 0
         }
-        else 
+        else
 #       endif
         {
             sub_syncword_config(1);     // use syncword class 1
@@ -759,7 +759,7 @@ start_tx(ot_bool initial)
         SPI2_DMA_Init.DMA_BufferSize = num_bytes_to_send;
 
     /* SPI2_TX DMA will be started in SPI2 ISR (burst transfer to radio) */
-    SPI_DataSizeConfig(SPI2, SPI_DataSize_8b); 
+    SPI_DataSizeConfig(SPI2, SPI_DataSize_8b);
     ASSERT_NSS_CONFIG();
     SPI_I2S_SendData(SPI2, 0x80);   // bit 7 to address 0: write to fifo
     spi2_state = SPI2_STATE__START_TX_DMA;
@@ -778,30 +778,30 @@ rm2_default_tgd(ot_u8 chan_id)
 
 #elif ((M2_FEATURE(FEC) == ENABLED) && (M2_FEATURE(TURBO) == DISABLED))
     return (chan_id & 0x80) ? M2_TGD_55FULL : M2_TGD_55HALF;
-    
+
 #elif ((M2_FEATURE(FEC) == ENABLED) && (M2_FEATURE(TURBO) == ENABLED))
-    /// @note This is an incredible hack, but it is fast and compact.  
+    /// @note This is an incredible hack, but it is fast and compact.
     /// To understand it, you need to know the way the channel ID works.
-    static const ot_int tgd[4] = { 
-        M2_TGD_55FULL, 
-        M2_TGD_200FULL, 
-        M2_TGD_55HALF, 
+    static const ot_int tgd[4] = {
+        M2_TGD_55FULL,
+        M2_TGD_200FULL,
+        M2_TGD_55HALF,
         M2_TGD_200HALF
     };
-    
+
     chan_id    += 0x20;
     chan_id   >>= 6;
-    
+
     return tgd[chan_id];
-    
+
 #else
 #   error "Missing definitions of M2_FEATURE(FEC) and/or M2_FEATURE(TURBO)"
     return 0;
 #endif
 }
 
-/** Packet overhead & slop, 
-  * These are parts of the packet that do not carry preamble, sync word, or 
+/** Packet overhead & slop,
+  * These are parts of the packet that do not carry preamble, sync word, or
   * frame data.  The units are in bytes.
   */
 #define RADIO_RAMP_UP       1
@@ -816,7 +816,7 @@ rm2_pkt_duration(ot_int pkt_bytes)
 /// Slop = preamble bytes + sync bytes + ramp-up + ramp-down + padding
 
     pkt_bytes  += RADIO_PKT_OVERHEAD;
-    pkt_bytes  += ((phymac[0].channel & 0x60) != 0) << 1; 
+    pkt_bytes  += ((phymac[0].channel & 0x60) != 0) << 1;
 
     return rm2_scale_codec(pkt_bytes + 8);
 }
@@ -825,7 +825,7 @@ static ot_bool
 sub_chan_scan( void ) {
     vlFILE* fp;
     ot_int  i;
-    
+
     fp = ISF_open_su( ISF_ID(channel_configuration) );
     ///@todo assert fp
 
@@ -839,7 +839,7 @@ sub_chan_scan( void ) {
             break;
         }
     }
-    
+
     vl_close(fp);
     return (ot_bool)(i < dll.comm.tx_channels);
 }
@@ -857,7 +857,7 @@ sub_csma_init() {
 /// Called directly by TX radio function(s)
 /// Duty: Initialize csma process, and run scan.
     ot_bool cca1_status;
-    
+
     /// Setup channel, scan it, and power down RF on scan fail
     cca1_status = sub_chan_scan( );
     if (cca1_status == False) {         //Optimizers may remove this if() for
@@ -866,7 +866,7 @@ sub_csma_init() {
 
     if (RegOpMode.bits.Mode != CHIP_MODE_RECEIVER)
         set_chip_mode(CHIP_MODE_RECEIVER, 0);
-    
+
     return cca1_status;
 }
 
@@ -896,7 +896,7 @@ rm2_txcsma()
             }
             return RM2_ERR_BADCHANNEL;
         }
-            
+
         if (sub_csma_init() == False) {
             return RM2_ERR_CCAFAIL;
         }
@@ -998,13 +998,13 @@ rm2_txcsma()
 #endif /* DISABLE_TRANSMIT */
     }
 
-    
+
     return -1;
 }
 
 void
 radio_sleep()
-{ 
+{
     /* might go to sleep for lower current, with awareness of longer wakeup time */
     if (RegOpMode.bits.Mode != CHIP_MODE_STANDBY) {
         //called from isr.. debug_printf("radio_sleep    %x    (chip_mode=%x)\r\n", radio.state, mcparam1.bits.chip_mode);
@@ -1016,15 +1016,15 @@ radio_sleep()
 ot_int rm2_scale_codec(ot_int buf_bytes) {
 /// Turns a number of bytes (buf_bytes) into a number of ti units.
 /// To refresh your memory: 1 ti = ((1sec/32768) * 2^5) = 2^-10 sec = ~0.977 ms
-    
+
     /// Pursuant to DASH7 Mode 2 spec, b6:4 of channel ID corresponds to kS/s.
     /// 55.555 kS/s = 144us per buffer byte
     /// 200.00 kS/s = 40us per buffer bytes
     buf_bytes *= (phymac[0].channel & 0x60) ? 40 : 144;
-    
+
     /// Divide us into Ticks
     /// (shift right 10 = divide by 1024)
-#   if ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) == ENABLED))     
+#   if ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) == ENABLED))
         buf_bytes >>= (10 - ((phymac[0].channel & 0x80) != 0) );
 #   else
         buf_bytes >>= 10;
@@ -1061,7 +1061,7 @@ void radio_putbyte(ot_u8 databyte)
 }
 
 static void
-sub_prep_q(Queue* q)
+sub_prep_q(ot_queue* q)
 {
 /// Put some special data in the queue options field.
 /// Lower byte is encoding options (i.e. FEC)
@@ -1100,7 +1100,7 @@ void rm2_txinit_ff(ot_int est_frames, ot_sig2 callback)
     /// Prepare the foreground frame packet
     txq.getcursor   = txq.front;
     txq.front[1]    = phymac[0].tx_eirp;
-    
+
     sub_prep_q(&txq);
 
 }
@@ -1117,12 +1117,12 @@ sub_test_channel(ot_u8 channel, ot_u8 netstate) {
         /// for this host, and make sure the channel we want to use is available
         fp = ISF_open_su( ISF_ID(channel_configuration) );
         ///@todo assert fp
-    
+
         //debug_printf("sub_test_channel(0x%02x)\r\n", channel);
         test = sub_channel_lookup(channel, fp);
         vl_close(fp);
     }
-    
+
     return test;
 #else
     return True;
@@ -1230,7 +1230,7 @@ rm2_txinit_bf(ot_sig2 callback)
     /// Prepare the foreground frame packet
     txq.getcursor   = txq.front;
     txq.front[1]    = phymac[0].tx_eirp;
-    
+
     sub_prep_q(&txq);
 #endif /* ...SYS_FLOOD == ENABLED */
 }
@@ -1366,7 +1366,7 @@ radio_console_service()
             update_shadow_regs(nlo, val);
         }
 #ifndef _STM32L152VBT6_
-    } else if (uart_rx_buf[0] == 's' && uart_rx_buf[1] == 'w') {    
+    } else if (uart_rx_buf[0] == 's' && uart_rx_buf[1] == 'w') {
         if (uart_rx_buf[2] == '1') {
             // on-board antenna
             GPIO_WriteBit(GPIO_Port_RFSW_V1, GPIO_Pin_RFSW_V1, Bit_RESET);

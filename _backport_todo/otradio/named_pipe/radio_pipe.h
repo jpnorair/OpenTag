@@ -1,4 +1,4 @@
-#include "OT_types.h"
+#include <otsys/types.h>
 
 int open_pipe_for_rx(int timeout, ot_u8 sid);
 

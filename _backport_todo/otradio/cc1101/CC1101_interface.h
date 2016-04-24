@@ -25,7 +25,7 @@
   */
 
 
-#include "OT_types.h"
+#include <otsys/types.h>
 #include "CC1101_registers.h"
 #include "CC1101_defaults.h"
 
@@ -184,7 +184,7 @@ ot_u8 cc1101_txbytes();
   * @ingroup CC1101
   * @sa radio_init()
   *
-  * This function does not set the default registers.  That is done in the 
+  * This function does not set the default registers.  That is done in the
   * generic radio module function, radio_init().  This function needs to be run
   * before radio_init(), since radio_init() requires the bus.  Best practice is
   * to actually call this function inside radio_init(), at the beginning.
@@ -321,7 +321,7 @@ void cc1101_set_txpwr(ot_u8 pwr_code);
 
 /** Common GDO setup & interrupt functions <BR>
   * ========================================================================<BR>
-  * Your radio ISR function should be of the type void radio_isr(ot_u8), as it 
+  * Your radio ISR function should be of the type void radio_isr(ot_u8), as it
   * will be a soft ISR.  The input parameter is an interrupt vector.  The vector
   * values are shown below:
   *
@@ -384,40 +384,40 @@ void cc1101_set_txpwr(ot_u8 pwr_code);
 #endif
 
 
-  
+
 /** @brief  Configures GDOs for startup: Chip Ready + HiZ
   * @param  None
   * @retval None
   * @ingroup CC1101
-  */ 
+  */
 void cc1101_iocfg_startup();
 
 /** @brief  Configures GDOs for listen: RX Sync + RX Idle
   * @param  None
   * @retval None
   * @ingroup CC1101
-  */ 
+  */
 void cc1101_iocfg_listen();
 
 /** @brief  Configures GDOs for RX'ing: RX-end (invert Sync) + RX FIFO thresh
   * @param  None
   * @retval None
   * @ingroup CC1101
-  */ 
+  */
 void cc1101_iocfg_rxdata();
 
 /** @brief  Configures GDOs for TX CSMA: Carrier Sense + Clear Channel Assement
   * @param  None
   * @retval None
   * @ingroup CC1101
-  */ 
+  */
 void cc1101_iocfg_txcsma();
 
 /** @brief  Configures GDOs for TX'ing: TX FIFO underflow + TX FIFO threshold
   * @param  None
   * @retval None
   * @ingroup CC1101
-  */ 
+  */
 void cc1101_iocfg_txdata();
 
 

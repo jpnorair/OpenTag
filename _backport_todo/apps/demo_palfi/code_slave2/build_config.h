@@ -27,7 +27,7 @@
 #ifndef __BUILD_CONFIG_H
 #define __BUILD_CONFIG_H
 
-#include "OT_support.h"
+#include <otsys/support.h>
 
 
 

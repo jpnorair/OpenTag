@@ -1,0 +1,112 @@
+The following list provides a brief overview of all CMSIS-RTOS functions. 
+
+Functions marked with $ are optional. 
+
+A CMSIS RTOS implementation may not provided functions, but this is clearly 
+indicated with osFeatureXXXX defines.
+
+
+
+Kernel Information and Control
+
+osKernelInitialize : Initialize the RTOS kernel.
+platform_poweron() + platform_init_ot()
+
+osKernelStart : Start the RTOS kernel.
+Nothing actually needed
+
+osKernelRunning : Query if the RTOS kernel is running.
+Just look at if kernel timer is on
+
+osKernelSysTick $ : Get RTOS kernel system timer counter.
+Use this with the clocker to get better resolution, like using micros() in
+Arduino.
+
+osKernelSysTickFrequency $ : RTOS kernel system timer frequency in Hz.
+probably going to be 32768 or 250,000 (Hz)
+
+osKernelSysTickMicroSec $ : Convert microseconds value to RTOS kernel system timer value.
+basically 31 or 4
+
+
+Thread Management
+osThreadCreate : Start execution of a thread function.
+osThreadTerminate : Stop execution of a thread function.
+osThreadYield : Pass execution to next ready thread function.
+osThreadGetId : Get the thread identifier to reference this thread.
+osThreadSetPriority : Change the execution priority of a thread function.
+osThreadGetPriority : Obtain the current execution priority of a thread function.
+
+
+
+Generic Wait Functions
+osDelay : Wait for a specified time.
+osWait $ : Wait for any event of the type Signal, Message, or Mail.
+
+
+
+Timer Management $
+osTimerCreate : Define attributes of the timer callback function.
+osTimerStart : Start or restart the timer with a time value.
+osTimerStop : Stop the timer.
+osTimerDelete : Delete a timer.
+
+
+
+Signal Management
+osSignalSet : Set signal flags of a thread.
+osSignalClear : Reset signal flags of a thread.
+osSignalWait : Suspend execution until specific signal flags are set.
+
+
+
+
+Mutex Management $
+osMutexCreate : Define and initialize a mutex.
+returns a uint mask
+
+osMutexWait : Obtain a mutex or Wait until it becomes available.
+Basically this is lock
+
+osMutexRelease : Release a mutex.
+Basically this is unlock.
+
+osMutexDelete : Delete a mutex.
+
+
+
+
+
+Semaphore Management $
+osSemaphoreCreate : Define and initialize a semaphore.
+osSemaphoreWait : Obtain a semaphore token or Wait until it becomes available.
+osSemaphoreRelease : Release a semaphore token.
+osSemaphoreDelete : Delete a semaphore.
+
+
+
+Memory Pool Management $
+osPoolCreate : Define and initialize a fix-size memory pool.
+osPoolAlloc : Allocate a memory block.
+osPoolCAlloc : Allocate a memory block and zero-set this block.
+osPoolFree : Return a memory block to the memory pool.
+
+
+
+-- This might be alp or just queue.
+Message Queue Management $
+osMessageCreate : Define and initialize a message queue.
+osMessagePut : Put a message into a message queue.
+osMessageGet : Get a message or suspend thread execution until message arrives.
+
+
+
+
+-- These probably not implemented
+Mail Queue Management $
+osMailCreate : Define and initialize a mail queue with fix-size memory blocks.
+osMailAlloc : Allocate a memory block.
+osMailCAlloc : Allocate a memory block and zero-set this block.
+osMailPut : Put a memory block into a mail queue.
+osMailGet : Get a mail or suspend thread execution until mail arrives.
+osMailFree : Return a memory block to the mail queue.

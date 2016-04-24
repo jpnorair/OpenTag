@@ -67,12 +67,12 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 #if (defined(__MSP430F5__) && OT_FEATURE(MPIPE) && defined(MPIPE_UART))
 
-#include "buffers.h"
-#include "mpipe.h"
+#include <otlib/buffers.h>
+#include <otsys/mpipe.h>
 
 #if ((MPIPE_UART_ID != 0xA0) && (MPIPE_UART_ID != 0xA1))
 #   error "MPIPE_UART_ID not defined to an available UART on this MSP430"
@@ -391,8 +391,8 @@ void mpipedrv_setspeed(mpipe_speed speed) {
 
 
 
-#ifndef EXTF_mpipedrv_txndef
-void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXTF_mpipedrv_tx
+void mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
 /// Data TX will only occur if this function is called when the MPipe state is
 /// idle.  The exception is when the function is called with ACK priority, in
 /// which case the state doesn't need to be Idle.  Lastly, if you specify the 
@@ -404,12 +404,12 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
 #if (MPIPE_USE_ACKS)
     if (data_priority == MPIPE_Ack)) {
         tty.priority  = data_priority;
-        goto mpipedrv_txndef_SETUP;
+        goto mpipedrv_tx_SETUP;
     }
 #endif
     if (mpipe.state == MPIPE_Idle) {
         mpipe.state     = MPIPE_Tx_Done; //MPIPE_Tx_Wait;
-        mpipedrv_txndef_SETUP:
+        mpipedrv_tx_SETUP:
         MPIPE_DMAEN(OFF);
         UART_CLOSE();
 
@@ -424,7 +424,7 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
         q_writeshort(mpipe.alp.outq, tty.seq.ushort);                // Sequence Number
 
         scratch = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;    //data length
-        scratch = platform_crc_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
+        scratch = crc16drv_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
         q_writeshort(mpipe.alp.outq, scratch);                              //Put CRC
         
         scratch                     = mpipe.alp.outq->putcursor \
@@ -524,18 +524,18 @@ void mpipedrv_isr() {
             
             // CRC is Good (==0) or bad (!=0) Discard the packet if bad
 #           if (BOARD_FEATURE_USBCONVERTER != ENABLED)
-            crc_result = platform_crc_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
+            crc_result = crc16drv_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
 #           endif
             
 #           if (MPIPE_USE_ACKS)
             // ACKs must be used when Broadcast mode is off
-            // 1. On ACKs, txndef() requires caller to choose state 
+            // 1. On ACKs, tx() requires caller to choose state 
             // 2. Copy RX'ed seq number into local seq number
             // 3. Copy NACK/ACK status to 6th byte in NDEF header
             if (tty.priority != MPIPE_Broadcast) {
                 mpipe.state = MPIPE_TxAck_Done; //MPIPE_TxAck_Wait;
                 sub_txack_header(crc_result);
-                mpipedrv_txndef(False, MPIPE_Ack);
+                mpipedrv_tx(False, MPIPE_Ack);
                 return;
             }
 #           endif
@@ -573,8 +573,8 @@ void mpipedrv_isr() {
             
         case MPIPE_RxAck:
 #           if (MPIPE_USE_ACKS)
-            if (platform_crc_block(mpipe.alp.inq->front, 10) != 0) { //RX'ed NACK
-                mpipedrv_txndef(False, tty.priority);
+            if (crc16drv_block(mpipe.alp.inq->front, 10) != 0) { //RX'ed NACK
+                mpipedrv_tx(False, tty.priority);
                 return;
             }
             goto mpipedrv_isr_TXDONE;  //RX'ed ACK

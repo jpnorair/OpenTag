@@ -18,7 +18,7 @@
   * @author     JP Norair
   * @version    R100
   * @date       8 Oct 2013
-  * @brief      An inline, volatile set of stream buffers used with Queues
+  * @brief      An inline, volatile set of stream buffers used with ot_queues
   * @ingroup    Buffers
   *
   * @todo cleanup buffers allocation model, so that each buffer allocation is
@@ -26,7 +26,8 @@
   ******************************************************************************
   */
 
-#include "buffers.h"
+#include <otstd.h>
+#include <otlib/buffers.h>
 
 
 #define ALP_ENABLED (OT_FEATURE(NDEF) || OT_FEATURE(ALP) || OT_FEATURE(MPIPE))
@@ -34,9 +35,9 @@
 #define ALP_SIZE    ((OT_PARAM_BUFFER_SIZE - (TXRX_SIZE*2))/2)
 
 #if ((ALP_SIZE < 0) && ALP_ENABLED)
-#   error "ALP Queues (Needed for ALP/NDEF/MPIPE) are configured with negative allocation."
+#   error "ALP ot_queues (Needed for ALP/NDEF/MPIPE) are configured with negative allocation."
 #elif ((ALP_SIZE < 256) && ALP_ENABLED)
-#   warn "ALP Queues (Needed for ALP/NDEF/MPIPE) are configured with < 256 byte allocation."
+#   warn "ALP ot_queues (Needed for ALP/NDEF/MPIPE) are configured with < 256 byte allocation."
 #endif
 
 

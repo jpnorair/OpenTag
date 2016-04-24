@@ -35,13 +35,13 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 #if ( defined(BOARD_eZ430Chronos) &&  OT_FEATURE(MPIPE) &&  defined(MPIPE_LCD) )
 
 #include "chronoslcd.h"
-#include "buffers.h"
-#include "mpipe.h"
+#include <otlib/buffers.h>
+#include <otsys/mpipe.h>
 
 
 //Local Data storage
@@ -732,8 +732,8 @@ void mpipedrv_setspeed(mpipe_speed speed) {
 
 
 
-#ifndef EXTF_mpipedrv_txndef
-void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXTF_mpipedrv_tx
+void mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     ot_u8 line;
     ot_u8 string[8];
 

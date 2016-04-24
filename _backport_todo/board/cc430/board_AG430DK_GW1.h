@@ -33,7 +33,7 @@
 #ifndef __board_AG430DK_GW1_H
 #define __board_AG430DK_GW1_H
 
-#include "build_config.h"
+#include <app/build_config.h>
 #include "platform_CC430.h"
 #include "radio_CC430.h"
 

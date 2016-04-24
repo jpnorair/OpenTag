@@ -28,7 +28,7 @@
 #ifndef __radio_SX1231_H
 #define __radio_SX1231_H
 
-#include "OT_support.h"
+#include <otsys/support.h>
 
 
 #ifndef ENABLED

@@ -28,12 +28,12 @@
   */
 
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 #if (defined(__CC430__))
 #if (OT_FEATURE(PALFI))
 
-#include "buffers.h"
+#include <otlib/buffers.h>
 #include "palfi.h"
 
 
@@ -173,8 +173,8 @@ void mpipedrv_setspeed(mpipe_speed speed) {
 
 
 
-#ifndef EXTF_mpipedrv_txndef
-void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXTF_mpipedrv_tx
+void mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
 
 }
 #endif

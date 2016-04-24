@@ -32,7 +32,7 @@
 #ifndef __board_RF430USB_5509_H
 #define __board_RF430USB_5509_H
 
-#include "build_config.h"
+#include <app/build_config.h>
 #include "platform_MSP430F5.h"
 #include "radio_CC1101.h"
 

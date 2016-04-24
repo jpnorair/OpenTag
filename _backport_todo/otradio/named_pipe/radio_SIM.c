@@ -1,20 +1,20 @@
 
-#include "OT_types.h"
-#include "OT_config.h"
-#include "OT_utils.h"
-#include "OT_platform.h"
+#include <otsys/types.h>
+#include <otsys/config.h>
+#include <otlib/utils.h>
+#include <otplatform.h>
 
-#include "radio.h"
+#include <m2/radio.h>
 #include "encode.h"
-#include "buffers.h"
-#include "queue.h"
-#include "veelite.h"
-#include "session.h"
-#include "crc16.h"
+#include <otlib/buffers.h>
+#include <otlib/queue.h>
+#include <otsys/veelite.h>
+#include <m2/session.h>
+#include <otlib/crc16.h>
 
 //#include "radio_SIM.h"      // register definitions file
 #include <stdio.h>
-#include <sys/stat.h>    // for open()
+#include <otsys/stat.h>    // for open()
 #include <fcntl.h>    // for open()
 #include <unistd.h>    // for write()
 
@@ -55,7 +55,7 @@ radio_gag()
 
 void
 radio_sleep()
-{ 
+{
 }
 
 ot_int rm2_default_tgd(ot_u8 chan_id) {
@@ -72,19 +72,19 @@ ot_int rm2_default_tgd(ot_u8 chan_id) {
 #elif ((M2_FEATURE(FEC) == ENABLED) && (M2_FEATURE(TURBO) == DISABLED))
     //output = (chan_id & 0x80) ? M2_TGD_55FULL : M2_TGD_55HALF;
     return (chan_id & 0x80) ? M2_TGD_55FULL : M2_TGD_55HALF;
-    
+
 #elif ((M2_FEATURE(FEC) == ENABLED) && (M2_FEATURE(TURBO) == ENABLED))
-    /// @note This is an incredible hack, but it is fast and compact.  
+    /// @note This is an incredible hack, but it is fast and compact.
     /// To understand it, you need to know the way the channel ID works.
     chan_id += 0x20;
-    
+
     switch ( chan_id >> 6) {
         case 0: return M2_TGD_55FULL;
         case 1: return M2_TGD_200FULL;
         case 2: return M2_TGD_55HALF;
         case 3: return M2_TGD_200HALF;
     }
-    
+
 #else
     // seemingly impossible condition
     return 0;
@@ -92,13 +92,13 @@ ot_int rm2_default_tgd(ot_u8 chan_id) {
     // I commented out this section because I have a simpler way of doing the
     // timing, in the system module.  Basically, the lag can be cancelled out
     // because it will be about the same each time.
-    
+
     // return Tg minus the time it takes to bring the radio back
     // up, and make sure to set to 0 on negative.
     //output  -= (output < (RADIO_COLDSTART_STI_TYP >> 5)) ?
     //            (RADIO_WARMSTART_STI_TYP >> 5) :
     //            (RADIO_COLDSTART_STI_TYP >> 5);
-                
+
 //#   if ( (RADIO_COLDSTART_STI_TYP >> 5) > 2) || ((RADIO_WARMSTART_STI_TYP >> 5) > 2))
     //    output  *= (output > 0);
 //#   endif
@@ -107,7 +107,7 @@ ot_int rm2_default_tgd(ot_u8 chan_id) {
 }
 
 static void
-sub_prep_q(Queue* q)
+sub_prep_q(ot_queue* q)
 {
 /// Put some special data in the queue options field.
 /// Lower byte is encoding options (i.e. FEC)
@@ -132,7 +132,7 @@ sub_set_txpower( ot_u8 eirp_code )
 static void
 sub_chan_config(ot_u8 old_chan, ot_u8 old_eirp)
 {
-    ot_u8 fc_i;   
+    ot_u8 fc_i;
 
     /// Center Frequency index = lower four bits channel ID
     fc_i = (phymac[0].channel & 0x0F);
@@ -149,7 +149,7 @@ sub_chan_config(ot_u8 old_chan, ot_u8 old_eirp)
             case 0: fc_i = 7;
             case 1:     /// 55 kS/s method
                 break;
-            case 2: 
+            case 2:
             case 3:     /// 200 kS/s method
                 break;
         }
@@ -168,14 +168,14 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
 {
 /// Called during channel scans.
 /// Duty: (a) See if the supplied channel is supported on this device & config.
-///       If yes, return true.  (b) Determine if recalibration is required 
+///       If yes, return true.  (b) Determine if recalibration is required
 ///       before changing to the new channel, and recalibrate if so.
 
     ot_u8       fec_id;
     ot_u8       spectrum_id;
     ot_int      i;
-    Twobytes    scratch;
-    
+    ot_uni16    scratch;
+
     //printf("sub_channel_lookup(%x)", chan_id);
     /// Only do the channel lookup if the new channel is different than before
     if (chan_id == phymac[0].channel) {
@@ -183,13 +183,13 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
         return True;
     }
     printf("sub_channel_lookup(%x) ", chan_id);
-    
+
     /// pull spectrum id and encoding type out of chan_id
     fec_id      = chan_id & 0x80;
     spectrum_id = chan_id & ~0x80;
-    
 
-#if (0) 
+
+#if (0)
     /// Upper layer debugging, to make sure spectrum id is in scope
     if ((spectrum_id != RM2_CHAN_BASE) && \
         (spectrum_id != RM2_CHAN_LEGACY) && \
@@ -211,12 +211,12 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
         (spectrum_id != RM2_CHAN_BLINK_2) && \
         (spectrum_id != RM2_CHAN_BLINK_C) && \
         (spectrum_id != RM2_CHAN_WILDCARD)) {
-     
+
         /// @note good to put a break here, or a trap
-        return False;   
+        return False;
     }
-#endif    
-    
+#endif
+
     /// If FEC is requested by the new channel, but this device does not support
     /// FEC, then make sure to return False.
     if (fec_id) {
@@ -230,7 +230,7 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
 #           if (M2_FEATURE(FECTX) == ENABLED)
                 i  |= (radio.state & RADIO_STATE_TXMASK);
 #           endif
-            
+
             if (i == 0) {
                 return False;
             }
@@ -255,10 +255,10 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
 #   else
 #       define AUTOSCALE_MASK(VAL)      (VAL)
 #   endif
-    
+
     for (i=0; i<fp->length; i+=8) {
         scratch.ushort = vl_read(fp, i);
-        
+
         if (spectrum_id == scratch.ubyte[0]) {
             ot_u8 old_chan_id   = phymac[0].channel;
             ot_u8 old_tx_eirp   = phymac[0].tx_eirp;
@@ -285,7 +285,7 @@ sub_channel_lookup(ot_u8 chan_id, vlFILE* fp)
             return True;
         }
     }
-    
+
     printf("spectrum_id %x not found ", spectrum_id);
     return False;
 }
@@ -301,11 +301,11 @@ static ot_bool sub_test_channel(ot_u8 channel, ot_u8 netstate) {
         /// for this host, and make sure the channel we want to use is available
         fp = ISF_open_su( ISF_ID(channel_configuration) );
         ///@todo assert fp
-    
+
         test = sub_channel_lookup(channel, fp);
         vl_close(fp);
     }
-    
+
     return test;
 }
 #endif
@@ -315,8 +315,8 @@ static void
 sub_syncword_config(ot_u8 sync_class)
 {
 #if 0
-    Twobytes sync_value;
-    
+    ot_uni16 sync_value;
+
 #   if (M2_FEATURE(FEC) == ENABLED)
         if (phymac[0].channel & 0x80) {   //Actual= 0xF498 : 0x192F;
             sync_value.ushort = (sync_class == 0) ? 0xF498 : 0x192F;
@@ -328,7 +328,7 @@ sub_syncword_config(ot_u8 sync_class)
     }
 
     /* sync_value is transmitted in start_tx() */
-    
+
     /* sync byte order is for CC430 compatability:
      * for example, where 0x0b67 is used, 0x67 is transmitted first in time, then 0x0b.
      * And MSbit (of each byte) is sent first.
@@ -348,7 +348,7 @@ sub_kill(ot_int main_err, ot_int frame_err)
     radio_gag();
 
     radio_pipe_close();
-    
+
     radio.evtdone(main_err, frame_err);
     radio.evtdone = &otutils_sig2_null;
 }
@@ -369,7 +369,7 @@ rx_done_isr(ot_int pcode)
 
     printf("[0m rssi=%ddBm c=%d pcode=%d\r\n", dBm, c, pcode);
     //debug_printf("crc_check(): %x\r\n", c);
-    sub_kill(pcode, c-1);    
+    sub_kill(pcode, c-1);
 }
 
 /** Initializes RX engine for "foreground" packet reception
@@ -489,7 +489,7 @@ void rm2_txinit_ff(ot_int est_frames, ot_sig2 callback)
     /// Prepare the foreground frame packet
     txq.getcursor   = txq.front;
     txq.front[1]    = phymac[0].tx_eirp;
-    
+
     sub_prep_q(&txq);
 
 }
@@ -609,7 +609,7 @@ tx_done_isr()
 ot_bool sub_chan_scan( void ) {
     vlFILE* fp;
     ot_int  i;
-    
+
     fp = ISF_open_su( ISF_ID(channel_configuration) );
     ///@todo assert fp
 
@@ -625,7 +625,7 @@ ot_bool sub_chan_scan( void ) {
         }
         //printf("\r\n");
     }
-    
+
     vl_close(fp);
     return (ot_bool)(i < dll.comm.tx_channels);
 }
@@ -643,13 +643,13 @@ sub_csma_init() {
 /// Called directly by TX radio function(s)
 /// Duty: Initialize csma process, and run scan.
     ot_bool cca1_status;
-    
+
     /// Setup channel, scan it, and power down RF on scan fail
     cca1_status = sub_chan_scan( );
     if (cca1_status == False) {         //Optimizers may remove this if() for
         radio_sleep();                  //certain implementations
     }
-    
+
     return cca1_status;
 }
 
@@ -669,7 +669,7 @@ rm2_txcsma()
             }
             return RM2_ERR_BADCHANNEL;
         }
-            
+
         if (sub_csma_init() == False) {
             return RM2_ERR_CCAFAIL;
         }
@@ -691,7 +691,7 @@ rm2_txcsma()
             radio.evtdone(RM2_ERR_GENERIC, 0);
             return -1;
         }
-        
+
         rf_buf_idx = 0;
 
         em2_encode_data();  // this encodes *entire* message, calling radio_putbyte() for each
@@ -712,15 +712,15 @@ rm2_scale_codec(ot_int buf_bytes)
 {
 /// Turns a number of bytes (buf_bytes) into a number of ti units.
 /// To refresh your memory: 1 ti = ((1sec/32768) * 2^5) = 2^-10 sec = ~0.977 ms
-    
+
     /// Pursuant to DASH7 Mode 2 spec, b6:4 of channel ID corresponds to kS/s.
     /// 55.555 kS/s = 144us per buffer byte
     /// 200.00 kS/s = 40us per buffer byte
     buf_bytes *= ((phymac[0].channel & 0x70) < 0x20) ? 144 : 40;
-    
+
     /// Divide us into Ticks
     /// (shift right 10 = divide by 1024)
-#   if ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) == ENABLED))     
+#   if ((M2_FEATURE(FEC) == ENABLED) && (RF_FEATURE(FEC) == ENABLED))
         buf_bytes >>= (10 - ((phymac[0].channel & 0x80) != 0) );
 #   else
         buf_bytes >>= 10;
@@ -772,12 +772,12 @@ radio_init(void)
 #endif /* #if 0 */
 
     {
-        vlFILE* fp          = ISF_open_su( ISF_ID(channel_configuration) );        
+        vlFILE* fp          = ISF_open_su( ISF_ID(channel_configuration) );
         phymac[0].channel   = 0x55;         // 55=invalid, forces calibration.
         phymac[0].tx_eirp   = 0x00;
         radio.state         = 0;            // (idle)
         radio.evtdone       = &otutils_sig2_null;
-        
+
         sub_channel_lookup(0x00, fp);
         vl_close(fp);
     }
@@ -810,7 +810,7 @@ rm2_txinit_bf(ot_sig2 callback)
     /// Prepare the foreground frame packet
     txq.getcursor   = txq.front;
     txq.front[1]    = phymac[0].tx_eirp;
-    
+
     sub_prep_q(&txq);
 #endif /* ...SYS_FLOOD == ENABLED */
 }

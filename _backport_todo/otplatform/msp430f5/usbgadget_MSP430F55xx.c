@@ -41,7 +41,7 @@
   ******************************************************************************
   */
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 /// The Board Support Header must define OMG_FEATURE_USBGADGET as ENABLED in 
 /// order for this code to compile
@@ -733,8 +733,8 @@ void mpipedrv_setspeed(mpipe_speed speed) {
 
 
 
-#ifndef EXTF_mpipedrv_txndef
-void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
+#ifndef EXTF_mpipedrv_tx
+void mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
 /// @note Using blocking: OpenTag currently does not implement blocking TX,
 ///       because it can interfere with time-critical radio processes.  You can
 ///       achieve a similar affect by calling "mpipedrv_wait()" after a logging
@@ -748,7 +748,7 @@ void mpipedrv_txndef(ot_bool blocking, mpipe_priority data_priority) {
         q_writeshort(mpipe.alp.outq, mpmac.seq.ushort);                // Sequence Number
 
         //scratch = mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor;    //data length
-        //scratch = platform_crc_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
+        //scratch = crc16drv_block(mpipe.alp.outq->getcursor, scratch);   //CRC value
         //q_writeshort(mpipe.alp.outq, scratch);                              //Put CRC
         
         scratch                     = mpipe.alp.outq->putcursor \
@@ -818,7 +818,7 @@ void mpipedrv_isr() {
             mpmac.seq.ubyte[UPPER]  = *footer++;
             mpmac.seq.ubyte[LOWER]  = *footer;
 
-            //crc_result = platform_crc_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
+            //crc_result = crc16drv_block(mpipe.alp.inq->front, q_length(mpipe.alp.inq));
             //mpipeevt_rxdone((ot_int)crc_result);
             mpipeevt_rxdone(0);
         }   break;

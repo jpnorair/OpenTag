@@ -39,7 +39,7 @@
 #ifndef _DESCRIPTORS_H_
 #define _DESCRIPTORS_H_
 
-#include "OT_platform.h"
+#include <otplatform.h>
 
 // USB_API is stored in OTplatform/~MCU_MSP430/
 #include "usb_cdc_driver/usb_types.h"

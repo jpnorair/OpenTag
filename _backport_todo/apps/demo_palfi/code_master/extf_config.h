@@ -32,7 +32,7 @@
 #define __EXTF_CONFIG_H
 
 // Special Inclusion, as this app can use two very different boards
-#include "platform_config.h"
+#include <app/board_config.h>
 
 
 
@@ -94,20 +94,20 @@
 
 /// OTAPI C EXTFs
 #ifdef BOARD_RF430USB_5509
-#   define EXTF_otapi_led1_on
-#   define EXTF_otapi_led2_on
-#   define EXTF_otapi_led1_off
-#   define EXTF_otapi_led2_off
+#   define EXTF_BOARD_led1_on
+#   define EXTF_BOARD_led2_on
+#   define EXTF_BOARD_led1_off
+#   define EXTF_BOARD_led2_off
 #endif
 
 
 
 /// OTAPI EXTFs
-//#define EXTF_otapi_alpext_proc
+//#define EXTF_alp_ext_proc
 
 
 
-/// Queue EXTFs
+/// ot_queue EXTFs
 
 
 

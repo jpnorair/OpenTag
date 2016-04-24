@@ -19,16 +19,16 @@
   * @version    R100
   * @date       7 Mar 2013
   * @brief      7LAN app default data for filesystem
-  * 
+  *
   ******************************************************************************
   */
 
 #ifndef _DEFAULT_DATA_C
 #define _DEFAULT_DATA_C
 
-#include "OT_support.h"
-#include "OT_version.h"
-#include "OT_types.h"
+#include <otsys/support.h>
+#include <otsys/version.h>
+#include <otsys/types.h>
 
 
 #if defined(__DEBUG__) || defined(__PROTO__)
@@ -146,7 +146,7 @@ const ot_u8 overhead_files[] = {
     ISFS_MOD(location_data),
     SPLIT_SHORT_LE(ISFS_BASE(location_data)),
     0xFF, 0xFF,
-    
+
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -371,7 +371,7 @@ const ot_u8 gfb_stock_files[] = {0xFF, 0xFF};
 /// This will look something like "OTv1  xyyyyyyy" where x is a letter and
 /// yyyyyyy is a Base64 string containing a 16 bit build-id and a 32 bit mask
 /// indicating the features compiled-into the build.
-#include "OT_version.h"
+#include <otsys/version.h>
 
 #define BV0     (ot_u8)(OT_VERSION_MAJOR + 48)
 #define BT0     (ot_u8)(OT_BUILDTYPE)
@@ -495,7 +495,7 @@ const ot_u8 isf_stock_files[] = {
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240
     0x90, 0x06, 0x20, 0x00, 0x00, 0x08, 0x01, 0x00,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
-    0x10, 0x06, 0x20, 0x00, 0x00, 0x08, 0x01, 0x00, 
+    0x10, 0x06, 0x20, 0x00, 0x00, 0x08, 0x01, 0x00,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 
     /* App Protocol List: id=0x07, len=4, alloc=16 */

@@ -42,7 +42,7 @@
 #ifndef __board_TIProto_EXP5529_H
 #define __board_TIProto_EXP5529_H
 
-#include "build_config.h"
+#include <app/build_config.h>
 #include "platform_MSP430F5.h"
 #include "radio_CC1101.h"
 

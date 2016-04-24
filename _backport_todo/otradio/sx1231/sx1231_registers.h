@@ -1,4 +1,4 @@
-#include "OT_types.h"
+#include <otsys/types.h>
 
 #define SX1231_FIFO_SIZE_HALF   (RF_FEATURE_TXFIFO_BYTES >> 1)
 
@@ -441,12 +441,12 @@
 
 // RegPaLevel
 #define RF_PALEVEL_PA0_ON                           0x80  // Default
-#define RF_PALEVEL_PA0_OFF                          0x00  
+#define RF_PALEVEL_PA0_OFF                          0x00
 
-#define RF_PALEVEL_PA1_ON                           0x40  
+#define RF_PALEVEL_PA1_ON                           0x40
 #define RF_PALEVEL_PA1_OFF                          0x00  // Default
 
-#define RF_PALEVEL_PA2_ON                           0x20  
+#define RF_PALEVEL_PA2_ON                           0x20
 #define RF_PALEVEL_PA2_OFF                          0x00  // Default
 
 #define RF_PALEVEL_OUTPUTPOWER_00000                0x00
@@ -481,8 +481,8 @@
 #define RF_PALEVEL_OUTPUTPOWER_11101                0x1D
 #define RF_PALEVEL_OUTPUTPOWER_11110                0x1E
 #define RF_PALEVEL_OUTPUTPOWER_11111                0x1F  // Default
- 
- 
+
+
 // RegPaRamp
 #define RF_PARAMP_3400                              0x00
 #define RF_PARAMP_2000                              0x01
@@ -503,30 +503,30 @@
 
 
 // RegOcp
-#define RF_OCP_OFF                                  0x00  
+#define RF_OCP_OFF                                  0x00
 #define RF_OCP_ON                                   0x10  // Default
 
 #define RF_OCP_TRIM_45                              0x00
-#define RF_OCP_TRIM_50                              0x01   
-#define RF_OCP_TRIM_55                              0x02 
-#define RF_OCP_TRIM_60                              0x03 
-#define RF_OCP_TRIM_65                              0x04 
-#define RF_OCP_TRIM_70                              0x05 
-#define RF_OCP_TRIM_75                              0x06 
-#define RF_OCP_TRIM_80                              0x07  
+#define RF_OCP_TRIM_50                              0x01
+#define RF_OCP_TRIM_55                              0x02
+#define RF_OCP_TRIM_60                              0x03
+#define RF_OCP_TRIM_65                              0x04
+#define RF_OCP_TRIM_70                              0x05
+#define RF_OCP_TRIM_75                              0x06
+#define RF_OCP_TRIM_80                              0x07
 #define RF_OCP_TRIM_85                              0x08
-#define RF_OCP_TRIM_90                              0x09 
-#define RF_OCP_TRIM_95                              0x0A 
+#define RF_OCP_TRIM_90                              0x09
+#define RF_OCP_TRIM_95                              0x0A
 #define RF_OCP_TRIM_100                             0x0B  // Default
-#define RF_OCP_TRIM_105                             0x0C 
-#define RF_OCP_TRIM_110                             0x0D 
-#define RF_OCP_TRIM_115                             0x0E 
-#define RF_OCP_TRIM_120                             0x0F 
+#define RF_OCP_TRIM_105                             0x0C
+#define RF_OCP_TRIM_110                             0x0D
+#define RF_OCP_TRIM_115                             0x0E
+#define RF_OCP_TRIM_120                             0x0F
 
 
 // RegAgcRef
 #define RF_AGCREF_AUTO_ON                                 0x40  // Default
-#define RF_AGCREF_AUTO_OFF                                0x00  
+#define RF_AGCREF_AUTO_OFF                                0x00
 
 #define RF_AGCREF_LEVEL_MINUS80                     0x00  // Default
 #define RF_AGCREF_LEVEL_MINUS81                     0x01
@@ -644,7 +644,7 @@
 #define RF_AGCTHRESH2_STEP2_2                       0x20
 #define RF_AGCTHRESH2_STEP2_3                       0x30  // Default
 #define RF_AGCTHRESH2_STEP2_4                       0x40
-#define RF_AGCTHRESH2_STEP2_5                       0x50  
+#define RF_AGCTHRESH2_STEP2_5                       0x50
 #define RF_AGCTHRESH2_STEP2_6                       0x60
 #define RF_AGCTHRESH2_STEP2_7                       0x70
 #define RF_AGCTHRESH2_STEP2_8                       0x80
@@ -665,7 +665,7 @@
 #define RF_AGCTHRESH2_STEP3_6                       0x06
 #define RF_AGCTHRESH2_STEP3_7                       0x07
 #define RF_AGCTHRESH2_STEP3_8                       0x08
-#define RF_AGCTHRESH2_STEP3_9                       0x09  
+#define RF_AGCTHRESH2_STEP3_9                       0x09
 #define RF_AGCTHRESH2_STEP3_10                      0x0A
 #define RF_AGCTHRESH2_STEP3_11                      0x0B  // Default
 #define RF_AGCTHRESH2_STEP3_12                      0x0C
@@ -691,7 +691,7 @@
 #define RF_AGCTHRESH3_STEP4_13                      0xD0
 #define RF_AGCTHRESH3_STEP4_14                      0xE0
 #define RF_AGCTHRESH3_STEP4_15                      0xF0
-                             
+
 #define RF_AGCTHRESH3_STEP5_0                       0x00
 #define RF_AGCTHRESH3_STEP5_1                       0x01
 #define RF_AGCTHRESH3_STEP5_2                       0x02
@@ -700,7 +700,7 @@
 #define RF_AGCTHRESH3_STEP5_5                       0x05
 #define RF_AGCTHRESH3_STEP5_6                       0x06
 #define RF_AGCTHRESH3_STEP5_7                       0x07
-#define RF_AGCTHRES33_STEP5_8                       0x08  
+#define RF_AGCTHRES33_STEP5_8                       0x08
 #define RF_AGCTHRESH3_STEP5_9                       0x09
 #define RF_AGCTHRESH3_STEP5_10                      0x0A
 #define RF_AGCTHRESH3_STEP5_11                      0x0B  // Default
@@ -711,13 +711,13 @@
 
 
 // RegLna
-#define RF_LNA_ZIN_50                               0x00  
+#define RF_LNA_ZIN_50                               0x00
 #define RF_LNA_ZIN_200                              0x80  // Default
 
 #define RF_LNA_LOWPOWER_OFF                         0x00  // Default
 #define RF_LNA_LOWPOWER_ON                          0x40
 
-#define RF_LNA_CURRENTGAIN                          0x38  
+#define RF_LNA_CURRENTGAIN                          0x38
 
 #define RF_LNA_GAINSELECT_AUTO                      0x00  // Default
 #define RF_LNA_GAINSELECT_MAX                       0x01
@@ -729,7 +729,7 @@
 
 
 // RegRxBw
-#define RF_RXBW_DCCFREQ_000                                0x00  
+#define RF_RXBW_DCCFREQ_000                                0x00
 #define RF_RXBW_DCCFREQ_001                                 0x20
 #define RF_RXBW_DCCFREQ_010                                0x40  // Default
 #define RF_RXBW_DCCFREQ_011                               0x60
@@ -738,18 +738,18 @@
 #define RF_RXBW_DCCFREQ_110                                0xC0
 #define RF_RXBW_DCCFREQ_111                                0xE0
 
-#define RF_RXBW_MANT_16                                    0x00  
-#define RF_RXBW_MANT_20                                    0x08  
-#define RF_RXBW_MANT_24                                    0x10  // Default 
+#define RF_RXBW_MANT_16                                    0x00
+#define RF_RXBW_MANT_20                                    0x08
+#define RF_RXBW_MANT_24                                    0x10  // Default
 
-#define RF_RXBW_EXP_0                                     0x00 
-#define RF_RXBW_EXP_1                                     0x01 
-#define RF_RXBW_EXP_2                                     0x02 
-#define RF_RXBW_EXP_3                                     0x03 
-#define RF_RXBW_EXP_4                                      0x04 
+#define RF_RXBW_EXP_0                                     0x00
+#define RF_RXBW_EXP_1                                     0x01
+#define RF_RXBW_EXP_2                                     0x02
+#define RF_RXBW_EXP_3                                     0x03
+#define RF_RXBW_EXP_4                                      0x04
 #define RF_RXBW_EXP_5                                     0x05  // Default
-#define RF_RXBW_EXP_6                                     0x06  
-#define RF_RXBW_EXP_7                                     0x07 
+#define RF_RXBW_EXP_6                                     0x06
+#define RF_RXBW_EXP_7                                     0x07
 
 
 // RegAfcBw
@@ -758,22 +758,22 @@
 #define RF_AFCBW_DCCFREQAFC_010                             0x40
 #define RF_AFCBW_DCCFREQAFC_011                            0x60
 #define RF_AFCBW_DCCFREQAFC_100                            0x80  // Default
-#define RF_AFCBW_DCCFREQAFC_101                            0xA0  
+#define RF_AFCBW_DCCFREQAFC_101                            0xA0
 #define RF_AFCBW_DCCFREQAFC_110                            0xC0
 #define RF_AFCBW_DCCFREQAFC_111                            0xE0
 
-#define RF_AFCBW_MANTAFC_16                                0x00  
+#define RF_AFCBW_MANTAFC_16                                0x00
 #define RF_AFCBW_MANTAFC_20                                0x08  // Default
-#define RF_AFCBW_MANTAFC_24                                0x10  
+#define RF_AFCBW_MANTAFC_24                                0x10
 
-#define RF_AFCBW_EXPAFC_0                                0x00 
-#define RF_AFCBW_EXPAFC_1                                  0x01 
-#define RF_AFCBW_EXPAFC_2                                  0x02  
+#define RF_AFCBW_EXPAFC_0                                0x00
+#define RF_AFCBW_EXPAFC_1                                  0x01
+#define RF_AFCBW_EXPAFC_2                                  0x02
 #define RF_AFCBW_EXPAFC_3                                 0x03  // Default
-#define RF_AFCBW_EXPAFC_4                                  0x04 
-#define RF_AFCBW_EXPAFC_5                                  0x05 
-#define RF_AFCBW_EXPAFC_6                                  0x06  
-#define RF_AFCBW_EXPAFC_7                                 0x07 
+#define RF_AFCBW_EXPAFC_4                                  0x04
+#define RF_AFCBW_EXPAFC_5                                  0x05
+#define RF_AFCBW_EXPAFC_6                                  0x06
+#define RF_AFCBW_EXPAFC_7                                 0x07
 
 
 // RegOokPeak
@@ -872,7 +872,7 @@
 #define RF_DIOMAPPING1_DIO3_11                      0x03
 
 
-// RegDioMapping2 
+// RegDioMapping2
 #define RF_DIOMAPPING2_DIO4_00                      0x00  // Default
 #define RF_DIOMAPPING2_DIO4_01                      0x40
 #define RF_DIOMAPPING2_DIO4_10                      0x80
@@ -888,7 +888,7 @@
 #define RF_DIOMAPPING2_CLKOUT_8                     0x02
 #define RF_DIOMAPPING2_CLKOUT_4                     0x03
 #define RF_DIOMAPPING2_CLKOUT_2                     0x04
-#define RF_DIOMAPPING2_CLKOUT_1                     0x05  
+#define RF_DIOMAPPING2_CLKOUT_1                     0x05
 #define RF_DIOMAPPING2_CLKOUT_RC                    0x06
 #define RF_DIOMAPPING2_CLKOUT_OFF                   0x07  // Default
 
@@ -955,7 +955,7 @@
 
 #define RF_SYNC_SIZE_1                              0x00
 #define RF_SYNC_SIZE_2                              0x08
-#define RF_SYNC_SIZE_3                              0x10  
+#define RF_SYNC_SIZE_3                              0x10
 #define RF_SYNC_SIZE_4                              0x18  // Default
 #define RF_SYNC_SIZE_5                              0x20
 #define RF_SYNC_SIZE_6                              0x28
@@ -1040,7 +1040,7 @@
 
 
 // RegFifoThresh
-#define RF_FIFOTHRESH_TXSTART_FIFOTHRESH            0x00  
+#define RF_FIFOTHRESH_TXSTART_FIFOTHRESH            0x00
 #define RF_FIFOTHRESH_TXSTART_FIFONOTEMPTY          0x80  // Default
 
 #define RF_FIFOTHRESH_VALUE                         0x0F  // Default
@@ -1048,29 +1048,29 @@
 
 // RegPacketConfig2
 #define RF_PACKET2_RXRESTARTDELAY_1BIT              0x00  // Default
-#define RF_PACKET2_RXRESTARTDELAY_2BITS             0x10 
-#define RF_PACKET2_RXRESTARTDELAY_4BITS             0x20 
+#define RF_PACKET2_RXRESTARTDELAY_2BITS             0x10
+#define RF_PACKET2_RXRESTARTDELAY_4BITS             0x20
 #define RF_PACKET2_RXRESTARTDELAY_8BITS             0x30
 #define RF_PACKET2_RXRESTARTDELAY_16BITS            0x40
-#define RF_PACKET2_RXRESTARTDELAY_32BITS            0x50 
-#define RF_PACKET2_RXRESTARTDELAY_64BITS            0x60 
-#define RF_PACKET2_RXRESTARTDELAY_128BITS           0x70 
+#define RF_PACKET2_RXRESTARTDELAY_32BITS            0x50
+#define RF_PACKET2_RXRESTARTDELAY_64BITS            0x60
+#define RF_PACKET2_RXRESTARTDELAY_128BITS           0x70
 #define RF_PACKET2_RXRESTARTDELAY_256BITS           0x80
-#define RF_PACKET2_RXRESTARTDELAY_512BITS           0x90 
-#define RF_PACKET2_RXRESTARTDELAY_1024BITS          0xA0 
-#define RF_PACKET2_RXRESTARTDELAY_2048BITS          0xB0 
-#define RF_PACKET2_RXRESTARTDELAY_NONE              0xC0 
+#define RF_PACKET2_RXRESTARTDELAY_512BITS           0x90
+#define RF_PACKET2_RXRESTARTDELAY_1024BITS          0xA0
+#define RF_PACKET2_RXRESTARTDELAY_2048BITS          0xB0
+#define RF_PACKET2_RXRESTARTDELAY_NONE              0xC0
 
-#define RF_PACKET2_RXRESTART                        0x04  
+#define RF_PACKET2_RXRESTART                        0x04
 
 #define RF_PACKET2_AUTORXRESTART_ON                 0x02  // Default
-#define RF_PACKET2_AUTORXRESTART_OFF                0x00  
+#define RF_PACKET2_AUTORXRESTART_OFF                0x00
 
-#define RF_PACKET2_AES_ON                           0x01 
+#define RF_PACKET2_AES_ON                           0x01
 #define RF_PACKET2_AES_OFF                          0x00  // Default
 
 
-// RegAesKey1-16 
+// RegAesKey1-16
 #define RF_AESKEY1_VALUE                            0x00  // Default
 #define RF_AESKEY2_VALUE                            0x00  // Default
 #define RF_AESKEY3_VALUE                            0x00  // Default
@@ -1095,7 +1095,7 @@
 #define RF_TEMP1_MEAS_RUNNING                             0x04
 
 #define RF_TEMP1_ADCLOWPOWER_ON                            0x01  // Default
-#define RF_TEMP1_ADCLOWPOWER_OFF                         0x00  
+#define RF_TEMP1_ADCLOWPOWER_OFF                         0x00
 
 // RegDagcGain 0x67: receiver baseband digital gain
 #define RF_DAGC_MANUAL          0x10
@@ -1290,7 +1290,7 @@ typedef union {
         ot_u8 dio0_ana_sel      : 1;    // 0
         ot_u8 dio1_ana_sel      : 1;    // 1
         ot_u8 dio2_ana_sel      : 1;    // 2
-        ot_u8 dio3_ana_sel      : 1;    // 3 
+        ot_u8 dio3_ana_sel      : 1;    // 3
         ot_u8 demod_symmetry    : 1;    // 4    V2C only
         ot_u8 continuous        : 1;    // 5    V2C dagc updated continuously
         ot_u8 io_mode           : 2;    // 6,7
