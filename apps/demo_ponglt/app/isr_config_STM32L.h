@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /apps/demo_ponglt/code/isr_config_STM32L.h
+  * @file       /apps/demo_ponglt/app/isr_config_STM32L.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    R100
   * @date       10 December 2012

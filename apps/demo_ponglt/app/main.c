@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /apps/demo_ponglt/code/main.c
+  * @file       /apps/demo_ponglt/app/main.c
   * @author     JP Norair
   * @version    R100
   * @date       27 Nov 2012

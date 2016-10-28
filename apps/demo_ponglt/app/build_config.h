@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /apps/demo_ponglt/code/build_config.h
+  * @file       /apps/demo_ponglt/app/build_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    R100
   * @date       31 July 2012
@@ -29,7 +29,7 @@
 #define __BUILD_CONFIG_H
 
 #include <otsys/support.h>
-
+#include <board_select.h>
 
 
 /** Endian Configuration  <BR>
@@ -75,14 +75,9 @@
   * MSP430 boards default to GULP, Cortex-M boards default to HICCULP
   */
 #if (!defined(KERNEL_GULP) && !defined(KERNEL_HICCULP))
-#   if (   defined(BOARD_OMG_CC430)    \
-        ||  defined(BOARD_EM430RF)      \
-        ||  defined(BOARD_eZ430Chronos) \
-        ||  defined(BOARD_RF430USB_5509) \
-        )
+#   if (!BOARD_SUPPORTS_HICCULP())
 #       define KERNEL_GULP
 #       define __KERNEL_GULP__
-
 #   else
 #       define KERNEL_HICCULP
 #       define __KERNEL_HICCULP__

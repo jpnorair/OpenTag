@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /otlib/session.h
+  * @file       /include/m2/session.h
   * @author     JP Norair
   * @version    R103
   * @date       20 Mar 2014
