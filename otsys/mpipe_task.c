@@ -134,8 +134,8 @@ void mpipeevt_rxdone(ot_int code) {
 
 void mpipe_systask(ot_task task) {
     switch (sys.task_MPA.event) {
-        //Task destructor: close mpipe
-        case 0: mpipedrv_kill();
+        //Task destructor & initializer: close mpipe
+        case 0: sys_taskinit_macro(task, mpipedrv_kill(), mpipe_connect()); 
                 break;
 
         // RX successful: process the new frames -- note case fall through
