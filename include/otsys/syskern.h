@@ -248,6 +248,36 @@ void sys_init();
 
 
 
+
+/** @brief System Task Initialization MACRO
+  * @param SELF         (ot_task) This is the handle to the task 
+  * @param DESTRUCTOR   (macro) This will be evaluated to kill the task
+  * @param INITIALIZER  (macro) This will be evaluated to initialize the task
+  * @param SELF
+  * @retval none
+  * @ingroup System
+  *
+  * As this is a MACRO, the DESTRUCTOR and INITIALIZER parameters get evaluated
+  * as supplied, allowing the freedom to pass parameters from the task context.
+  *
+  * Per the way OpenTag Kernel Tasks work, if task->cursor = 0, the task will
+  * be killed and not restarted.  If task->cursor != 0, the task will be killed
+  * and restarted.
+  * 
+  * This MACRO should be executed from the task.  It is the normal procedure
+  * for task->event = 0.  You could alternatively write your own routine for
+  * event=0, but 99% of the time this is what you should do.  System functions
+  * sys_init(), sys_kill_active(), and other kill/restart functions will call
+  * the task(s) using event=0 to activate this MACRO (or whatever is implemented
+  * for the 0-event, in the task).
+  *
+  */
+#define sys_taskinit_macro(SELF, DESTRUCTOR, INITIALIZER)  do { \
+    DESTRUCTOR; if(SELF->cursor) { INITIALIZER; SELF->cursor=0; }} while(0)
+
+
+
+
 /** @brief System Call to instantiate "Kernel Panic"
   * @param err_code     (ot_u8) error code, similar to some LINUX signals
   * @retval None
