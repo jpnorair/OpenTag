@@ -1137,8 +1137,8 @@ void spirit1drv_buffer_config(MODE_enum mode, ot_u16 param) {
     is_fec      = (phymac[0].channel & 0x80) >> 4;      // 0 when no fec, 8 when FEC
     mode       += is_fec;
     buf_cfg[3]  = _WHIT_EN | (is_fec >> 3);
-    buf_cfg[4]  = ((ot_u8*)&param)[UPPER];
-    buf_cfg[5]  = ((ot_u8*)&param)[LOWER];
+    buf_cfg[4]  = ((ot_u8*)&param)[UPPER];  // Packet Length (or limit)
+    buf_cfg[5]  = ((ot_u8*)&param)[LOWER];  // Packet Length (or limit)
     buf_cfg[6]  = sync_matrix[mode];
     buf_cfg[7]  = sync_matrix[mode+1];
     buf_cfg[8]  = sync_matrix[mode+2];
