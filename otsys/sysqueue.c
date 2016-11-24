@@ -62,6 +62,28 @@ typedef struct {
 
 
 
+
+/** Local Subroutines <BR>
+  * ======================================================================= <BR>
+  */
+  
+ot_sqnode* sub_storenode(ot_sqnode* store, ot_sqnode* nodedata) {
+/// Attach node to location specified
+    *store = *nodedata;
+    return store;
+}
+
+ot_sqnode* sub_storenode_fromargs(ot_sqnode* store, void* handle, ot_u32 cntext) {
+/// Attach node to location specified
+    store->handle       = handle;
+    _Counter32(store)   = cntext;
+    return store;
+}
+
+
+
+
+
 /** sq_init() <BR>
   * ======================================================================= <BR>
   */
@@ -93,7 +115,7 @@ OT_WEAK ot_uint sq_activate(ot_sq* sq) {
 
 #ifndef EXTF_sq_activate_cnt32
 OT_WEAK ot_u32 sq_activate_cnt32(ot_sq* sq) {
-    ot_u32 wait = 0xFFFFFFFF;
+    ot_u32 wait = 0; //0xFFFFFFFF;
     if (sq->length != 0) {
         wait                = _Counter32(sq->top);
         sq->top->counter    = 0;
@@ -111,7 +133,7 @@ OT_WEAK ot_u32 sq_activate_cnt32(ot_sq* sq) {
   */
 
 #ifndef EXTF_sq_clock
-OT_WEAK ot_uint sq_clock(ot_sq* sq, ot_u16 ticks) {
+OT_WEAK void sq_clock(ot_sq* sq, ot_u16 ticks) {
     ot_sqnode* node = sq->top;
     while (node < &_HEAP_END(sq)) {
         if (node->counter != 0) {
@@ -119,12 +141,12 @@ OT_WEAK ot_uint sq_clock(ot_sq* sq, ot_u16 ticks) {
         }
         node++;   
     }
-    return sq->top->counter;
+    //return sq->top->counter;
 }
 #endif
 
 #ifndef EXTF_sq_clock_cnt32
-OT_WEAK ot_u32 sq_clock_cnt32(ot_sq* sq, ot_u32 ticks) {
+OT_WEAK void sq_clock_cnt32(ot_sq* sq, ot_u32 ticks) {
     ot_sqnode* node = sq->top;
     while (node < &_HEAP_END(sq)) {
         if (_Counter32(node) != 0) {
@@ -132,27 +154,9 @@ OT_WEAK ot_u32 sq_clock_cnt32(ot_sq* sq, ot_u32 ticks) {
         }
         node++;   
     }
-    return _Counter32(sq->top);
+    //return _Counter32(sq->top);
 }
 #endif
-
-
-
-
-
-
-ot_sqnode* sub_storenode(ot_sqnode* store, ot_sqnode* nodedata) {
-/// Attach node to location specified
-    *store = *nodedata;
-    return store;
-}
-
-ot_sqnode* sub_storenode_fromargs(ot_sqnode* store, void* handle, ot_u32 cntext) {
-/// Attach node to location specified
-    store->handle       = handle;
-    _Counter32(store)   = cntext;
-    return store;
-}
 
 
 
@@ -327,26 +331,73 @@ OT_WEAK ot_sqnode* sq_extend_fromargs(ot_sq* sq, ot_sqcond condfn, void* handle,
   */
 
 #ifndef EXTF_sq_pop
-OT_WEAK void sq_pop(ot_sq* sq) {
+OT_WEAK ot_sqnode* sq_pop(ot_sq* sq) {
 /// Boundary checked pointer increment to pop a node
+    ot_sqnode* output = NULL;
     if (sq->length != 0) {
         sq->length--;
-        sq->top++;
+        output = sq->top++;
     }
+    return output;
+}
+#endif
+
+#ifndef EXTF_sq_clear
+OT_WEAK void sq_clear(ot_sq* sq) {
+    sq->top     = &_HEAP_END(sq);
+    sq->length  = 0;
 }
 #endif
 
 #ifndef EXTF_sq_flush
 OT_WEAK void sq_flush(ot_sq* sq, ot_sqcond condfn) {
-    while (sq->length != 0) {
-        sq->length--;
-        if (condfn(sq->top)) {
-            break;
-        }
+    ot_sqnode*  cursor;
+    ot_sqnode*  marker;
+    
+    // Purge deletables at the top of the queue:
+    // Starting from the top, wipe out contiguous nodes that meet the condition
+    while (condfn(sq->top)) {
         sq->top++;
+        sq->length--;
+        if (sq->top >= &_HEAP_END(sq))
+            return;
+    }
+    
+    // Purge the rest of the deletables:
+    // Find first delete condition, starting from back of queue
+    cursor  = &_HEAP_LAST(sq);
+    while ((cursor >= sq->top) && !condfn(cursor)) {
+        cursor--;
+    }
+    
+    // If there are any deletables, deal with them
+    if (cursor >= sq->top) {
+        marker = &cursor[1];
+        
+        while (1) {
+            // Go past all deletable nodes: cursor is assumed condfn()==True from above
+            do {
+                cursor--;
+                if (cursor < sq->top) {
+                    goto flush_END;
+                }
+            } while (condfn(cursor));
+            
+            // While nodes are good, move them back over bad spaces
+            do {
+                *--marker = *cursor--;
+                if (cursor < sq->top) {
+                    goto flush_END;
+                }
+            } while (!condfn(cursor));
+        }
+        flush_END:
+        sq->top     = marker;
+        sq->length  = (ot_uint)((ot_u8*)&_HEAP_END(sq) - (ot_u8*)sq->top) / sizeof(ot_sqnode);
     }
 }
 #endif
+
 
 #ifndef EXTF_sq_top
 OT_WEAK ot_sqnode* sq_top(ot_sq* sq) {
@@ -419,11 +470,11 @@ ot_int _cnt16_cmp(ot_sqnode* a, ot_sqnode* b) {
 }
 
 ot_bool _evenext_cond(ot_sqnode* a) {
-    return (ot_bool)~(a->ext & 1);
+    return (ot_bool)((a->ext & 1) == 0);
 }
 
-ot_bool _false_cond(ot_sqnode* a) {
-    return False;
+ot_bool _true_cond(ot_sqnode* a) {
+    return (ot_bool)((a->ext & 1) == 0);
 }
 
 int main(void) {
@@ -439,7 +490,9 @@ int main(void) {
     
     sq_print(&test_sq);
     
+    node = sq_new_fromargs(&test_sq, &_cnt16_cmp, NULL, 0x1234, 0x1245);
     node = sq_new_fromargs(&test_sq, &_cnt16_cmp, NULL, 0x1234, 0x1234);
+    node = sq_new_fromargs(&test_sq, &_cnt16_cmp, NULL, 0x1888, 0x1888);
     node = sq_new_fromargs(&test_sq, &_cnt16_cmp, NULL, 0x0101, 0x0101);
     node = sq_new_fromargs(&test_sq, &_cnt16_cmp, NULL, 0x8310, 0x8310);
     node = sq_new_fromargs(&test_sq, &_cnt16_cmp, NULL, 0x5555, 0x5555);
@@ -454,7 +507,7 @@ int main(void) {
     node = sq_extend_fromargs(&test_sq, &_evenext_cond, NULL, 0, 0);
     sq_print(&test_sq);
 
-    sq_flush(&test_sq, &_false_cond);
+    sq_flush(&test_sq, &_true_cond);
     sq_print(&test_sq);
 
     node = sq_new_fromargs(&test_sq, &_cnt16_cmp, NULL, 0x0500, 0x0500);

@@ -16,7 +16,7 @@ SYSQUEUE_O = ./sysqueue.o
 
 
 INCLUDES = -I$(INC_DIR) -I$(APP_DIR) 
-FLAGS = -O 
+FLAGS = -O -D __UNITTEST_SYSQUEUE__
 
 all: sysqueue_out
 sysqueue: sysqueue_out
