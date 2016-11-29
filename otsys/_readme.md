@@ -55,3 +55,25 @@ deploy on both GULP and HICCULP, it is better to design on GULP and then port  t
 ### Advanced Kernel
 Currently just called "Advanced Kernel," this is an outgrowth of HICCULP.  It is built on top of HICCULP and features a versatile thread scheduling and API system just that guest Operating Systems can be ported rather easily.  This is the ideal choice if you want to bridge another RTOS onto OpenTag, for example if you want to integrate some other protocol stack that is baked-into some other RTOS.  Even if you don't want to do that, the Advanced Kernel has the best features for supporting Multi-Threading and and any type of extrinsic middleware or driver library. 
 
+## System Exotasks
+There are a few Exotasks that are included with the System Module.  These are frequently "built into the kernel."  These tend to provide essential I/O and OS features.  Exotasks are co-operatively tasked by the low-level kernel.
+
+### MPipe
+MPipe is a binary, packet-based protocol stack designed for 1:1 hardline connection between the device and a client.  It typically is implemented on UART or USB-CDC, but it's also possible on many platforms to do it over I2C, SPI, or other such communication interfaces.  Hypothetically it could be tunneled over TCP should you choose, although MPipe includes no explicit addressing so that feature would need to be extended or otherwise managed.
+
+MPipe is implemented as a driver-based Exotask.  The MPipe task is completely asynchronous, and the packet-based protocol is designed with it in mind to implement the driver over a DMA or other type of FIFO rather than a character-oriented manner as typical with UART.
+
+### Otat
+Otat implements something similar to the Unix "at" program.  Otat is co-operatively tasked by the low-level kernel and works with function stubs.
+
+### Spool
+Spool is the default and most simple threading scheduler available to OpenTag.  Spool itself runs as an exotask, allowing it to behave ticklessly on a wider-sense, but internally it runs on a fixed-tick until all tasks are dormant.  Scheduling is round-robin.
+
+## Threading & Concurrency Support
+OpenTag contains a threading and concurrency support can work with any of the kernels and/or Exotasks that provide threading features.  These features are designed to be compliant with CMSIS-RTOS.
+
+### OTthreads (Threading API)
+
+### Mutex API
+
+### Semaphore API
