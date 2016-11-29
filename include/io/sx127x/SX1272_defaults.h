@@ -91,20 +91,20 @@
 
 // Modem Config 1: LoRa forces a weak CRC poly on us, so fuck them, we don't use it
 // For Foreground packets, however, we are forced to use their explicit header
-#define DRF_LR_MODEMCONFIG1     (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_ON | )
+#define DRF_LR_MODEMCONFIG1     (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_ON | _RXPAYLOADCRC_OFF | _LOWDATARATEOPTIMIZE_OFF)
 #define DRF_LR_MODEMCONFIG1_BG  (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_ON | _RXPAYLOADCRC_OFF | _LOWDATARATEOPTIMIZE_OFF)
 #define DRF_LR_MODEMCONFIG1_FG  (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_OFF | _RXPAYLOADCRC_OFF | _LOWDATARATEOPTIMIZE_OFF)
 
 // Modem Config 2: 
 // - we use SF7 @ 500 kHz
 // - we set RX timeout to slightly more than the length of a BG packet, 
-// - a BG packet is roughly 28 symbols in length, total.
+// - a BG packet is roughly 28.25 symbols in length, total, including 11.25 symbol preamble.
 #define DRF_LR_MODEMCONFIG2     (_SF_7 | _TX_CONT_OFF | _AGC_ON | __SYMBTIMEOUT_MSB(0))
-#define DRF_LR_SYMBTIMEOUTLSB   (28)
+#define DRF_LR_SYMBTIMEOUTLSB   (29)
 
-// Preamble length is set to 7
+// Preamble length is set to 8
 #define DRF_LR_PREAMBLEMSB      0
-#define DRF_LR_PREAMBLELSB      7
+#define DRF_LR_PREAMBLELSB      8
 
 // Payload length set to 6, the length of BG frame.  FG frames use explicit header mode
 #define DRF_LR_PAYLOADLENGTH    6
@@ -143,8 +143,6 @@
 // - FTX: (_DIO0_01 | _DIO1_xx | _DIO3_xx | _DIO5_00)
 #define DRF_LR_DIOMAPPING1      _DIOMAPPING1_CAD
 #define DRF_LR_DIOMAPPING2      (_DIO5_00 | _DIO4_00 | _MAP_RSSI)  // chip default
-
-
 
 
 // There is insufficient application information to select non-default values

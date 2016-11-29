@@ -14,23 +14,23 @@
   *
   */
 /**
-  * @file       /include/io/spirit1/interface.h
+  * @file       /include/io/sx127x/interface.h
   * @author     JP Norair
   * @version    R102
   * @date       27 Aug 2014
-  * @brief      Functions for the SPIRIT1 transceiver interface
-  * @defgroup   SPIRIT1 (SPIRIT1 family support)
+  * @brief      Functions for the SX127x transceiver interface
+  * @defgroup   SX127x (SX127x family support)
   *
   ******************************************************************************
   */
 
-#ifndef __IO_SPIRIT1_INTERFACE_H
-#define __IO_SPIRIT1_INTERFACE_H
+#ifndef __IO_SX127X_INTERFACE_H
+#define __IO_SX127X_INTERFACE_H
 
 #include <otstd.h>
-#include <io/spirit1/config.h>
-#include <io/spirit1/SPIRIT1_registers.h>
-#include <io/spirit1/SPIRIT1_defaults.h>
+#include <io/SX127x/config.h>
+#include <io/SX127x/SX1272_registers.h>
+#include <io/SX127x/SX1272_defaults.h>
 
 
 #ifndef BOARD_FEATURE_RFXTALOUT
@@ -43,20 +43,17 @@
 #   define _ATTEN_DB    6
 #endif
 
-#ifndef DRF_SYNC_BYTES
-#   define DRF_SYNC_BYTES   4
-#endif
 
 
 
-/** @typedef spirit1_link
+/** @typedef sx127x_link
   * A data element for returning link quality parameters other than RSSI.  RSSI
   * can be retrieved by upper layers, universally for all different types of
   * RF transceivers, via radio.last_rssi. 
   */
 
-/** @typedef spirit1_struct
-  * <LI>imode   (SPIRIT1_IMode) Enumeration used for IRQ state management </LI>
+/** @typedef sx127x_struct
+  * <LI>imode   (SX127x_IMode) Enumeration used for IRQ state management </LI>
   * <LI>status  (ot_u8) Stores the 2-byte chip-status obtained on each SPI access </LI>
   * <LI>busrx   (ot_u8) scratch space for RX'ed SPI bus data </LI>
   *
@@ -74,19 +71,19 @@
 // Enumeration used for IRQ state management.  You can ignore it.
 typedef enum {
     MODE_Listen = 0,
-    MODE_RXData = 2,
-    MODE_CSMA   = 5,
-    MODE_TXData = 7
-} SPIRIT1_IMode;
+    MODE_RXData = 1,
+    MODE_CSMA   = 3,
+    MODE_TXData = 4
+} SX127x_IMode;
 
 typedef struct {
 #   if (BOARD_FEATURE_RFXTALOUT)
     ot_bool         clkreq;
 #   endif
-    SPIRIT1_IMode   imode;
-    ot_u16          status;
+    SX127x_IMode    imode;
+    ot_u16          status;         ///@todo check this out
     ot_u8           busrx[24];
-} spirit1_struct;
+} sx127x_struct;
 
 extern spirit1_struct spirit1;
 
@@ -95,9 +92,9 @@ extern spirit1_struct spirit1;
 /** SET_LINE and CLR_LINE macros for some profiling tasks.  They have been used
   * so far to save the line number of a call to spirit1_smart_standby().
   */
-//#define _SPIRIT1_PROFILE
+//#define _SX127X_PROFILE
   
-#if defined(_SPIRIT1_PROFILE)
+#if defined(_SX127X_PROFILE)
     extern ot_s16 set_line;
     extern ot_s16 line_hits[256];
     extern ot_u16 count_hits;

@@ -308,6 +308,20 @@
 #   define BOARD_RFGPIO_3PORT           GPIOB
 #   define BOARD_RFGPIO_3PINNUM         5
 #   define BOARD_RFGPIO_3PIN            (1<<BOARD_RFGPIO_3PINNUM)
+
+// DIO4 is not connected in the hardware, and not required
+// If you want to connect it, wire it to D6
+//#   define BOARD_RFGPIO_4PORTNUM        1        // "D6" : PB10
+//#   define BOARD_RFGPIO_4PORT           GPIOB
+//#   define BOARD_RFGPIO_4PINNUM         10
+//#   define BOARD_RFGPIO_4PIN            (1<<BOARD_RFGPIO_4PINNUM)
+
+// DIO5 is not connected in the hardware, but you need to wire it in to D7
+#   define BOARD_RFGPIO_5PORTNUM        0        // "D7" : PA8
+#   define BOARD_RFGPIO_5PORT           GPIOB
+#   define BOARD_RFGPIO_5PINNUM         8
+#   define BOARD_RFGPIO_5PIN            (1<<BOARD_RFGPIO_5PINNUM)
+
 #   define BOARD_RFCTL_RESETPINNUM      0       // "A0" : PA0
 #   define BOARD_RFCTL_RESETPIN         (1<<BOARD_RFCTL_RESETPINNUM)
 #   define BOARD_RFCTL_RESETPORT        GPIOA
@@ -686,7 +700,7 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - C13 is the user button, set to input HiZ
     // - C14:15 are 32kHz crystal driving, set to ALT
 #   ifdef __USE_RADIO
-    GPIOC->BSRR     = BOARD_RFCTL_SDNPIN;
+    GPIOC->BSRR     = BOARD_RFCTL_RESETPIN;
 #   endif
 
     GPIOC->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
@@ -1203,21 +1217,29 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #define RADIO_IRQ1_SRCPORT          BOARD_RFGPIO_1PORTNUM
 #define RADIO_IRQ2_SRCPORT          BOARD_RFGPIO_2PORTNUM
 #define RADIO_IRQ3_SRCPORT          BOARD_RFGPIO_3PORTNUM
+//#define RADIO_IRQ4_SRCPORT          BOARD_RFGPIO_4PORTNUM
+#define RADIO_IRQ5_SRCPORT          BOARD_RFGPIO_5PORTNUM
 #define RADIO_IRQ0_SRCLINE          BOARD_RFGPIO_0PINNUM
 #define RADIO_IRQ1_SRCLINE          BOARD_RFGPIO_1PINNUM
-#define RADIO_IRQ2_SRCLINE          BOARD_RFGPIO_2PINNUM
+#define RADIO_IRQ2_SRCLINE          -1
 #define RADIO_IRQ3_SRCLINE          -1
+//#define RADIO_IRQ4_SRCLINE          -1
+#define RADIO_IRQ5_SRCLINE          -1
 
-#define RADIO_SDN_PORT              BOARD_RFCTL_PORT
+#define RADIO_RESET_PORT            BOARD_RFCTL_PORT
 #define RADIO_IRQ0_PORT             BOARD_RFGPIO_0PORT
 #define RADIO_IRQ1_PORT             BOARD_RFGPIO_1PORT
 #define RADIO_IRQ2_PORT             BOARD_RFGPIO_2PORT
 #define RADIO_IRQ3_PORT             BOARD_RFGPIO_3PORT
-#define RADIO_SDN_PIN               BOARD_RFCTL_SDNPIN
+//#define RADIO_IRQ4_PORT             BOARD_RFGPIO_4PORT
+#define RADIO_IRQ5_PORT             BOARD_RFGPIO_5PORT
+#define RADIO_RESET_PIN             BOARD_RFCTL_RESETPIN
 #define RADIO_IRQ0_PIN              BOARD_RFGPIO_0PIN
 #define RADIO_IRQ1_PIN              BOARD_RFGPIO_1PIN
 #define RADIO_IRQ2_PIN              BOARD_RFGPIO_2PIN
 #define RADIO_IRQ3_PIN              BOARD_RFGPIO_3PIN
+//#define RADIO_IRQ4_PIN              BOARD_RFGPIO_4PIN
+#define RADIO_IRQ5_PIN              BOARD_RFGPIO_5PIN
 #endif
 
 

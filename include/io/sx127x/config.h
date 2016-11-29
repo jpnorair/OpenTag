@@ -14,19 +14,19 @@
   *
   */
 /**
-  * @file       /io/spirit1/config.h
+  * @file       /io/sx127x/config.h
   * @author     JP Norair
   * @version    R101
   * @date       27 Jan 2014
-  * @brief      Radio configuration file for SPIRIT1
+  * @brief      Radio configuration file for SX127x
   * @ingroup    Platform
   *
   ******************************************************************************
   */
   
 
-#ifndef __IO_SPIRIT1_CONFIG_H
-#define __IO_SPIRIT1_CONFIG_H
+#ifndef __IO_SX127X_CONFIG_H
+#define __IO_SX127X_CONFIG_H
 
 #include <otstd.h>
 
@@ -57,16 +57,23 @@
   */
 #define RF_FEATURE(VAL)                 RF_FEATURE_##VAL    // FEATURE                  AVAILABILITY
 #define RF_FEATURE_AUTOCAL              ENABLED             // Automatic Calibration    High
+
+// LoRa uses it's own proprietary modulation and datarates
 #define RF_FEATURE_MSK                  ENABLED             // MSK Modulation           Moderate
-#define RF_FEATURE_55K                  ENABLED             // 55kHz baudrate           High
-#define RF_FEATURE_200K                 ENABLED             // 200kHz baudrate          High
+#define RF_FEATURE_53K                  DISABLED            // 53kHz baudrate           High
+#define RF_FEATURE_106K                 DISABLED            // 106kHz baudrate           High
+#define RF_FEATURE_212K                 DISABLED            // 212kHz baudrate          High
+
+// LoRa is a unique PHY, so we set these as "ENABLED" to prevent SW interference
 #define RF_FEATURE_PN9                  ENABLED             // Integrated PN9 codec     Moderate (DASH7 has particular sequence)
 #define RF_FEATURE_FEC                  ENABLED             // Integrated FEC codec     Moderate (DASH7 has particular sequence)
+
+// Back to normal settings
 #define RF_FEATURE_FIFO                 ENABLED             // RF TX/RX FIFO            High   
-#define RF_FEATURE_TXFIFO_BYTES         96
-#define RF_FEATURE_RXFIFO_BYTES         96
+#define RF_FEATURE_TXFIFO_BYTES         256
+#define RF_FEATURE_RXFIFO_BYTES         256
 #define RF_FEATURE_PACKET               ENABLED             // Packet Handler           High
-#define RF_FEATURE_CRC                  DISABLED            // CCITT CRC16              High
+#define RF_FEATURE_CRC                  DISABLED            // CRC-16                   High
 #define RF_FEATURE_CCA                  ENABLED             // DASH7 CCA method         Moderate
 #define RF_FEATURE_CSMA                 DISABLED            // DASH7 CSMA method        Low
 #define RF_FEATURE_RXTIMER              DISABLED            // RX Timeout capability    Low
@@ -82,21 +89,27 @@
 #define RF_FEATURE_ADDRFILTER           DISABLED            // Address Filtering        DASH7-specific
 #define RF_FEATURE_PARSEFILTER          DISABLED            // Full Parse Filtering     DASH7-specific
 #define RF_FEATURE_MAC                  DISABLED            // Full Integrated MAC      DASH7-specific
-#define RF_FEATURE_AES128               ENABLED             // AES128 engine            Rare
+#define RF_FEATURE_AES128               DISABLED            // AES128 engine            Rare
 #define RF_FEATURE_ECC                  DISABLED            // ECC engine               Rare/None yet
 
+// For LoRa, the set of parameters is a bit different
 #define RF_PARAM(VAL)                   RF_PARAM_##VAL
 #define RF_PARAM_SSBIT_US               
-#define RF_PARAM_RAMP_BYTES             1                   // Ramp-up + Down
-#define RF_PARAM_PREAMBLE_BYTES         9                   // 8 seems to work best on SPIRIT1
-#define RF_PARAM_SYNC_BYTES             4                   // Always 4
-#define RF_PARAM_PKT_OVERHEAD           (RF_PARAM_RAMP_BYTES+RF_PARAM_PREAMBLE_BYTES+RF_PARAM_SYNC_BYTES)
+#define RF_PARAM_RAMP_BYTES             0                       // Ramp-up + Down
+#define RF_PARAM_PREAMBLE_SYMS          (8+5)                   // 8 are programmed, 4.25 are always added                   
+#define RF_PARAM_SYNC_BYTES             1                       // Always 1
+#define RF_PARAM_PKT_OVERHEAD           (RF_PARAM_PREAMBLE_SYMS)
+#define RF_PARAM_BGPKT_SYMS             (RF_PARAM_PREAMBLE_SYMS + 15)
 #define RF_PARAM_RCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
 #define RF_PARAM_VCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
 
+// Only works for SF=7, CR=3
+#define RF_CALC_FGPKT_SYMS(BYTES)       (RF_PARAM_PREAMBLE_SYMS + (8+7*((8*BYTES+27)/28)))
+
+
 
 /** Radio Buffer Allocation constants
-  * SPIRIT1 has internal buffer
+  * SX127x has internal buffer
   */
 #define BUFFER_ALLOC         0
 
@@ -118,11 +131,11 @@
   * Reminder: sti is "short tick"
   * 1 sti = 32 ti = 1/32768 sec = ~30.52 us
   */
-#define RADIO_COLDSTART_STI_MAX     11
-#define RADIO_COLDSTART_STI_TYP     4
-#define RADIO_WARMSTART_STI         1
-#define RADIO_CALIBRATE_STI         2
-#define RADIO_FASTHOP_STI           2
+#define RADIO_COLDSTART_STI_MAX     15
+#define RADIO_COLDSTART_STI_TYP     10
+#define RADIO_WARMSTART_STI         2
+#define RADIO_CALIBRATE_STI         0   // Calibrate always done on warmstart
+#define RADIO_FASTHOP_STI           1
 #define RADIO_KILLRX_STI            0
 #define RADIO_KILLTX_STI            0
 #define RADIO_TURNAROUND_STI        1

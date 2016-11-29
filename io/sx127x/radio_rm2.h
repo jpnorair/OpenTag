@@ -14,16 +14,15 @@
   *
   */
 /**
-  * @file       /io/spirit1/radio_SPIRIT1.h
+  * @file       /io/sx127x/radio_SPIRIT1.h
   * @author     JP Norair
   * @version    R100
-  * @date       27 Aug 2014
-  * @brief      Declarations of some stuff used by radio_SPIRIT1.c
+  * @date       27 Oct 2016
+  * @brief      Mode 2 interface
   * @ingroup    Radio
   *
-  * By putting these declarations here instead of in radio_SPIRIT1.c, it allows
-  * us to patch radio_SPIRIT1.c in special ways.
-  * 
+  * Mode 2 interface for SX127x
+  *
   ******************************************************************************
   */
 
@@ -31,9 +30,9 @@
 #define __RADIO_RM2_H
 
 #include <otstd.h>
-#include <io/spirit1/config.h>
-#include <io/spirit1/interface.h>
-#include <io/spirit1/clkout.h>
+#include <io/sx127x/config.h>
+#include <io/sx127x/interface.h>
+#include <io/sx127x/clkout.h>
 
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>
@@ -89,8 +88,8 @@ typedef struct {
     ot_u8   state;
     ot_u8   flags;
     ot_int  nextcal;
-    ot_int  txlimit;
-    ot_int  rxlimit;
+    //ot_int  txlimit;
+    //ot_int  rxlimit;
 } rfctl_struct;
 
 extern rfctl_struct rfctl;
@@ -98,7 +97,7 @@ extern rfctl_struct rfctl;
 
 typedef enum {
     MODE_bg = 0,
-    MODE_fg = (2 << (DRF_SYNC_BYTES > 2))
+    MODE_fg = 1
 } MODE_enum;
 
 
@@ -118,26 +117,19 @@ void spirit1drv_save_linkinfo();
 /** Some local constants, variables, macros
   */
 #define _MAXPKTLEN (M2_PARAM(MAXFRAME) * M2_PARAM(MFPP))
-#if (_MAXPKTLEN == 0)
+#if (_MAXPKTLEN != 256)
+#   warning "This implementation of LoRa must use 256 bytes packet length"
+#   undef _MAXPKTLEN
+#   define _MAXPKTLEN   256
+#elif (_MAXPKTLEN == 0)
 #   warning "Max packet length could not be derived from app/config.h, using 256 bytes"
 #   undef _MAXPKTLEN
 #   define _MAXPKTLEN   256
 #endif
 
-#if (0)
-#   define _DSSS
-#   define _SPREAD      5
-#   define _RXMAXTHR    80
-#   define _RXMINTHR    (_SPREAD * 2)
-#else
-#   define _SPREAD      1
-#   define _RXMAXTHR    64
-#   define _RXMINTHR    8
-#endif
-
 
 #if (RF_FEATURE(AUTOCAL) != ENABLED)
-#   define __CALIBRATE()    spirit1drv_offline_calibration()
+#   define __CALIBRATE()    sx127xdrv_offline_calibration()
 #else
 #   define __CALIBRATE();
 #endif
