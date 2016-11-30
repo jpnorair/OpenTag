@@ -62,9 +62,9 @@
   *       is quite safe with the current implementation, and it is unlikely to
   *       be too small for any implementation based on the current one.
   *
-  * @note The results of any SPI read will get stored in spirit1.busrx.  If you
+  * @note The results of any SPI read will get stored in sx127x.busrx.  If you
   *       use a function in this interface library that returns a value from
-  *       read data, it is returning data copied from spirit1.busrx.  Use this
+  *       read data, it is returning data copied from sx127x.busrx.  Use this
   *       knowledge to optimize your code, or do hacks & tricks.
   */
   
@@ -72,8 +72,8 @@
 typedef enum {
     MODE_Listen = 0,
     MODE_RXData = 1,
-    MODE_CSMA   = 3,
-    MODE_TXData = 4
+    MODE_CSMA   = 5,
+    MODE_TXData = 6
 } SX127x_IMode;
 
 typedef struct {
@@ -81,16 +81,16 @@ typedef struct {
     ot_bool         clkreq;
 #   endif
     SX127x_IMode    imode;
-    ot_u16          status;         ///@todo check this out
+    ot_u8           spi_null;
+    ot_u8           spi_addr;
     ot_u8           busrx[24];
 } sx127x_struct;
 
-extern spirit1_struct spirit1;
+extern sx127x_struct sx127x;
 
 
 
-/** SET_LINE and CLR_LINE macros for some profiling tasks.  They have been used
-  * so far to save the line number of a call to spirit1_smart_standby().
+/** SET_LINE and CLR_LINE macros for some profiling tasks.
   */
 //#define _SX127X_PROFILE
   
@@ -111,9 +111,9 @@ extern spirit1_struct spirit1;
 
 /** Functions typically implemented in the radio layer module <BR>
   * ==========================================================================
-  * i.e. io/spirit1/radio_rm2.c
+  * i.e. io/sx127x/radio_rm2.c
   */
-void spirit1_virtual_isr(ot_u8 code);
+void sx127x_virtual_isr(ot_u8 code);
 
 
 
@@ -121,56 +121,54 @@ void spirit1_virtual_isr(ot_u8 code);
 
 /** Functions implemented typically in the platform driver <BR>
   * ==========================================================================
-  * i.e. platform/stm32l1xx/io_spirit1.c
+  * i.e. platform/stm32l1xx/io_sx127x.c
   */
-void spirit1_int_clearall(void);
-ot_uint spirit1_resetpin_ishigh(void);
-ot_uint spirit1_abortpin_ishigh(void);
-ot_uint spirit1_readypin_ishigh(void);
-ot_uint spirit1_cspin_ishigh(void);
-ot_uint spirit1_sdnpin_setlow(void);
-ot_uint spirit1_sdnpin_sethigh(void);
+void    sx127x_int_clearall(void);
+ot_uint sx127x_resetpin_ishigh(void);
+ot_uint sx127x_resetpin_setlow(void);
+ot_uint sx127x_resetpin_sethigh(void);
+ot_uint sx127x_readypin_ishigh(void);
+ot_uint sx127x_cadpin_ishigh(void);
 
 
-void spirit1_int_config(ot_u32 ie_sel);
 
-/** @brief  Configures GPIO Interrupts for TX Done Mode
-  * @param  None
+/** @brief  Generic Interrupt Config Function
+  * @param  ie_sel     (ot_u32) interrupt enable select
   * @retval None
-  * @ingroup SPIRIT1
-  */ 
-void spirit1_int_txdone();
+  * @ingroup SX127x
+  */
+void sx127x_int_config(ot_u32 ie_sel);
 
 
 /** @brief  Forces an interrupt on masked, selected sources (sets flag high)
   * @param  ifg_sel     (ot_u16) interrupt flag select
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_int_force(ot_u16 ifg_sel);
+void sx127x_int_force(ot_u16 ifg_sel);
 
 
 /** @brief  Enables interrupt on masked, selected sources (set enable bit high)
   * @param  ie_sel     (ot_u16) interrupt enable select
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_int_turnon(ot_u16 ie_sel);
+void sx127x_int_turnon(ot_u16 ie_sel);
 
 
 /** @brief  Disables interrupt on masked, selected sources (set enable bit low)
   * @param  ie_sel     (ot_u16) interrupt enable select
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_int_turnoff(ot_u16 ie_sel);
+void sx127x_int_turnoff(ot_u16 ie_sel);
 
 
 
-/** @brief  Initialize the bus interface of the SPIRIT1
+/** @brief  Initialize the bus interface of the SX127x
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   * @sa radio_init()
   *
   * This function does not set the default registers.  That is done in the 
@@ -178,16 +176,16 @@ void spirit1_int_turnoff(ot_u16 ie_sel);
   * before radio_init(), since radio_init() requires the bus.  Best practice is
   * to actually call this function inside radio_init(), at the beginning.
   */
-void spirit1_init_bus();
+void sx127x_init_bus();
 
 
 
 /** @brief  Causes the System to wait until the SPI bus is fully de-asserted
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_spibus_wait();
+void sx127x_spibus_wait();
 
 
 
@@ -196,18 +194,18 @@ void spirit1_spibus_wait();
   * @param  resp_len        (ot_u8) length in bytes of the response (read data)
   * @param  cmd             (ot_u8*) the data buffer to TX
   * @retval none
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   * @sa radio_init()
   *
-  * spirit1_spibus_io() can be used for any sort of SPI-based IO to the SPIRIT1.
-  * The return data from the SPIRIT1 is stored in spirit1.busrx.  The allocation
-  * of spirit1.busrx (typically 24 bytes) stipulates the maximum amount of data
-  * that can be transfered (+2) in a single call to this function.  Therefore,
+  * sx127x_spibus_io() can be used for any sort of SPI-based IO to the SX127x.
+  * The return data from the SX127x is stored in sx127x.busrx.  The allocation
+  * of sx127x.busrx (typically 24 bytes) stipulates the maximum amount of data
+  * that can be transfered (+1) in a single call to this function.  Therefore,
   * with 24 bytes allocated to busrx, (cmd_len + resp_len) must be less than or 
-  * equal to 26 bytes.  In practice, this is more than enough for OpenTag in 
+  * equal to 25 bytes.  In practice, this is more than enough for OpenTag in 
   * its current implementation.
   */
-void spirit1_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd);
+void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd);
 
 
 
@@ -221,125 +219,96 @@ void spirit1_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd);
   * ============================================================================
   */
 
-/** @brief  Loads default register values into the SPIRIT1
+/** @brief  Loads default register values into the SX127x
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_load_defaults();
+void sx127x_load_defaults();
 
 
-/** @brief  Performs a "soft reset" on the SPIRIT1 core
+/** @brief  Performs a "soft reset" on the SX127x core
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_reset();
+void sx127x_reset();
 
 
 /** @brief  Holds processing until POR signal goes low, indicating safe RESET
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_waitforreset();
+void sx127x_waitforreset();
 
 
 
 /** @brief  Indicates if READY signal is high
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-ot_u16 spirit1_isready();
+ot_u16 sx127x_isready();
 
 
 
-/** @brief  Holds processing until READY signal goes high
+/** @brief Returns the value from the CAD-Detect Pin
+  * @param None
+  * @retval (ot_bool)   True/False on High/Low of CS pin
+  * @ingroup SX127x
+  *
+  * The implementation uses a pin for CAD.  It is nominally DIO1.
+  */
+ot_bool sx127x_check_cadpin(void);
+
+
+
+/** @brief  Holds processing until signal goes high
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_waitforready();
-void spirit1_waitforstandby();
-void spirit1_waitforabort();
+void sx127x_waitforstandby();
+void sx127x_waitforsleep();
 
 
 
-/** @brief  Manually refreshes chip status bits (16 bits)
+/** @brief  Manually refreshes chip status bits (8 bits)
   * @param  None
-  * @retval (ot_u16)    16 bit status field (copied from spirit1.status)
-  * @ingroup SPIRIT1
+  * @retval (ot_u8)    8 bit status field (register IRQFLAGS)
+  * @ingroup SX127x
+  */
+ot_u16 sx127x_getstatus();
+
+
+/** @brief  Returns the 3 bit mode value
+  * @param  None
+  * @retval ot_u16      OPMODE(2:0) (reg 0x01)
+  * @ingroup SX127x
+  */
+ot_u8 sx127x_mode();
+
+
+/** @brief  Returns RX BYTES in FIFO value from SX127x core
+  * @param  None
+  * @retval ot_u8      
+  * @ingroup SX127x
+  */
+ot_u8 sx127x_rxbytes();
+
+
+/** @brief  Returns RSSI value from SX127x core
+  * @param  None
+  * @retval ot_u8       RSSI register value
+  * @ingroup SX127x
   *
-  * The SPIRIT1 has a 16bit status field that is returned on every SPI bus 
-  * access.  If you do any access whatsoever, you can just refer to the status
-  * data in spirit1.status after the access is done.  If you have not done an
-  * SPI access recently, you can use this function to manually update the 
-  * status field.  It will also return the status field, for convenience.
   */
-ot_u16 spirit1_getstatus();
+ot_u8 sx127x_rssi();
+ot_u8 sx127x_pktrssi();
+ot_s8 sx127x_pktsnr();
 
 
-/** @brief  Returns the values of MC_STATE[1:0] registers
-  * @param  None
-  * @retval ot_u16      MC_STATE[1:0] (regs 0xC0, 0xC1)
-  * @ingroup SPIRIT1
-  */
-ot_u16 spirit1_mcstate();
-
-
-/** @brief  Returns the value of 8bit LDC timer
-  * @param  None
-  * @retval ot_u8       LDC timer value (8bits)
-  * @ingroup SPIRIT1
-  */
-ot_u8 spirit1_ldctime();
-
-
-/** @brief  Returns the value of 8bit LDC-Reload timer
-  * @param  None
-  * @retval ot_u8       LDCR timer value (8bits)
-  * @ingroup SPIRIT1
-  */
-ot_u8 spirit1_ldcrtime();
-
-
-/** @brief  Returns the value of 8bit RX timeout timer
-  * @param  None
-  * @retval ot_u8       RX timeout timer value (8bits)
-  * @ingroup SPIRIT1
-  */
-ot_u8 spirit1_rxtime();
-
-
-
-/** @brief  Returns RSSI value from SPIRIT1 core
-  * @param  None
-  * @retval ot_u8       RSSI_LEVEL register value
-  * @ingroup SPIRIT1
-  *
-  * @note The SPIRIT1 datasheet mentions that RSSI_LEVEL is only valid following
-  *       the reception of a packet.  There is some ambiguity regarding what
-  *       stipulates the end of a received packet, but nonetheless it is not
-  *       advised to use this function until after a packet RX is finished.
-  */
-ot_u8 spirit1_rssi();
-
-
-/** @brief  Returns RX BYTES in FIFO value from SPIRIT1 core
-  * @param  None
-  * @retval ot_u8       LINEAR_FIFO_STATUS0 register value
-  * @ingroup SPIRIT1
-  */
-ot_u8 spirit1_rxbytes();
-
-
-/** @brief  Returns TX BYTES in FIFO value from SPIRIT1 core
-  * @param  None
-  * @retval ot_u8       LINEAR_FIFO_STATUS1 register value
-  * @ingroup SPIRIT1
-  */
-ot_u8 spirit1_txbytes();
 
 
 
@@ -350,21 +319,23 @@ ot_u8 spirit1_txbytes();
   * ============================================================================
   */
 
-/** @brief  Sends a one-byte command strobe to the SPIRIT1 via SPI
+/** @brief  Sends a one-byte (really 3 bit) command strobe to the SX127x via SPI
   * @param  strobe      (ot_u8) Strobe Address
   * @retval none
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
+  *
+  * The only commands you get with SX127x are mode change operations.
   */
-void spirit1_strobe(ot_u8 strobe);
+void sx127x_strobe(ot_u8 strobe);
 
 
 
 /** @brief  Reads one byte of data from an unbanked, addressed register
   * @param  addr        (ot_u8) Register address
   * @retval ot_u8       read data
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-ot_u8 spirit1_read(ot_u8 addr);
+ot_u8 sx127x_read(ot_u8 addr);
 
 
 
@@ -373,12 +344,12 @@ ot_u8 spirit1_read(ot_u8 addr);
   * @param  length      (ot_u8) Burst data length in bytes
   * @param  data        (ot_u8*) Data buffer to read data into
   * @retval none
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   *
-  * This function is nearly identical to spirit1_read().  The differences
+  * This function is nearly identical to sx127x_read().  The differences
   * should be self-explanatory.
   */
-void spirit1_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data);
+void sx127x_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data);
 
 
 
@@ -386,9 +357,9 @@ void spirit1_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data);
   * @param  addr        (ot_u8) Register address
   * @param  data        (ot_u8) Data to write to register
   * @retval none
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_write(ot_u8 addr, ot_u8 data);
+void sx127x_write(ot_u8 addr, ot_u8 data);
 
 
 
@@ -397,12 +368,12 @@ void spirit1_write(ot_u8 addr, ot_u8 data);
   * @param  length      (ot_u8) Burst data length in bytes
   * @param  cmd_data    (ot_u8*) address + write data
   * @retval none
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   *
   * The cmd_data argument must have a 2 byte offset.  In other words, the data
   * should begin at position cmd_data[2].
   */
-void spirit1_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data);
+void sx127x_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data);
 
 
 
@@ -413,195 +384,173 @@ void spirit1_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data);
 /** Advanced Configuration <BR>
   * ========================================================================<BR>
   */
-/** @brief  Computes a signed-integer RSSI value from SPIRIT1 encoded value
-  * @param  encoded_value (ot_u8) SPIRIT1 encoded RSSI
+/** @brief  Computes a signed-integer RSSI value from SX127x encoded value
+  * @param  encoded_value (ot_u8) SX127x encoded RSSI
   * @retval ot_int         RSSI as signed integer
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-ot_int spirit1_calc_rssi(ot_u8 encoded_value);
-
-
-/** @brief  Converts a DASH7-spec CS or CCA threshold into SPIRIT1 RSSI Threshold
-  * @param  input       (ot_u8) CS/CCA Threshold from DASH7 encoding
-  * @retval ot_u8       Value that can be written to SPIRIT1 RSSI_THR field
-  * @ingroup SPIRIT1
-  */
-ot_u8 spirit1_calc_rssithr(ot_u8 input);
+ot_int sx127x_calc_rssi(ot_u8 encoded_value);
 
 
 
-ot_u8 spirit1_clip_txeirp(ot_u8 input_eirp);
+ot_u8 sx127x_clip_txeirp(ot_u8 input_eirp);
 
 
 /** @brief Sets the TX output power based on input DASH7 Power Code
   * @param pwr_code     (ot_u8*) pointer to PHYMAC struct tx_eirp value
   * @retval none
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   *
   * This function will set the target power in PA TABLE 0, and it will fill the
   * PA TABLE slots 8-1 with ramped-down powers so that the TX ramp-up/ramp-down
   * is nice and smooth.
   */
-void spirit1_set_txpwr(ot_u8* pwr_code);
-
-
-
-/** @brief Returns the value from the CS pin
-  * @param None
-  * @retval (ot_bool)   True/False on High/Low of CS pin
-  * @ingroup SPIRIT1
-  *
-  * The implementation uses a pin for CS.  It is nominally GPIO2.
-  */
-ot_bool spirit1_check_cspin(void);
+void sx127x_set_txpwr(ot_u8* pwr_code);
 
 
 
 
 
-/** Common GPIO setup & interrupt functions <BR>
+
+/** Common GPIO setup & interrupt functions  <BR>
   * ========================================================================<BR>
-  * Your radio ISR function should be of the type void radio_isr(ot_u8), as it 
+  * Your radio ISR function should be of the type void radio_isr(ot_u8), as it
   * will be a soft ISR.  The input parameter is an interrupt vector.  The vector
   * values are shown below:
   *
-  * -------------- RX MODES (set spirit1_iocfg_rx()) --------------
-  * IMode = 0       RX Timeout (Finished):      0 
-  * (Listen)        Sync word RX'ed:            1 
-  *                 RX FIFO thr [IRQ off]:      -
-  *                 
-  * IMode = 2       RX Finished:                2  
-  * (RX Data)       Sync word RX'ed [IRQ off]:  -
-  *                 RX FIFO threshold:          4
+  * -------------- RX MODES (set sx127x_iocfg_rx()) --------------
+  * IMode = 0       CAD Done:                   0
+  * (Listen)        CAD Detected:               -
+  *                 Hop (Unused)                -
+  *                 Valid Header:               -
   *
-  * -------------- TX MODES (set spirit1_iocfg_tx()) --------------
-  * IMode = 5       CCA Sense Timeout:          5   (pass)
-  * (CSMA)          CS Indicator:               6   (fail)
-  *                 TX FIFO thr [IRQ off]:      - 
+  * IMode = 1       RX Done:                    1
+  * (RX Data)       RX Timeout:                 2
+  *                 Hop (Unused)                -
+  *                 Valid Header:               4
   *
-  * IMode = 7       TX finished:                7
-  * (TX)            CS Indicator [IRQ off]:     -
-  *                 TX FIFO threshold:          9 
+  * -------------- TX MODES (set sx127x_iocfg_tx()) --------------
+  * IMode = 5       CAD Done:                   5   (CCA done)
+  * (CSMA)          CAD Detected:               -   (0/1 = pass/fail)
+  *                 Hop (Unused)                -
+  *                 Valid Header                -
+  *
+  * IMode = 6       TX Done:                    6
+  * (TX)            
   */
 
 #define RFINT(VAL)      RFI_##VAL
 
 #define RFI_SOURCE0     (1 << RADIO_IRQ0_SRCLINE)
 #define RFI_SOURCE1     (1 << RADIO_IRQ1_SRCLINE)
-#define RFI_SOURCE2     (1 << RADIO_IRQ2_SRCLINE)
-#define RFI_SOURCE3     0 //(1 << RADIO_IRQ3_SRCLINE)   //used for READY pin, no interrupt
+#define RFI_SOURCE2     0   // Not used with this driver
+#define RFI_SOURCE3     (1 << RADIO_IRQ3_SRCLINE)   // Not used with this driver
+#define RFI_SOURCE4     0   // Not used with this driver
+#define RFI_SOURCE5     0   // Not used with this driver
 
-#define RFI_ALL         (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 /*| RFI_SOURCE3*/)
+#define RFI_ALL         (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 | RFI_SOURCE3 | RFI_SOURCE4 | RFI_SOURCE5)
 
-#define RFI_RXTIMEOUT   RFI_SOURCE0
-#define RFI_RXSYNC      RFI_SOURCE1
-#define RFI_LISTEN      (RFI_RXTIMEOUT | RFI_RXSYNC)
+#define RFI_CADDONE     RFI_SOURCE0
+#define RFI_RXDONE      RFI_SOURCE0
+#define RFI_RXTIMEOUT   RFI_SOURCE1
+#define RFI_RXHEADER    RFI_SOURCE3
+#define RFI_TXDONE      RFI_SOURCE0
 
-#define RFI_RXEND       RFI_SOURCE0
-#define RFI_RXFIFO      RFI_SOURCE2
-#define RFI_RXDATA      (RFI_RXEND | /*RFI_RXSYNC |*/ RFI_RXFIFO)
+#define RFI_LISTEN      (RFI_CADDONE)
+#define RFI_RXDATA      (RFI_RXDONE | RFI_RXTIMEOUT | RFI_HEADER)
+#define RFI_CSMA        (RFI_CADDONE)
+#define RFI_TXDATA      (RFI_TXDONE)
 
-#define RFI_CCATIMEOUT  RFI_SOURCE0
-#define RFI_CCAFAIL     RFI_SOURCE1
-#define RFI_CSMA        (RFI_CCATIMEOUT | RFI_CCAFAIL)
-
-#define RFI_TXEND       RFI_SOURCE0
-#define RFI_TXFIFO      RFI_SOURCE2
-#define RFI_TXDATA      (RFI_TXEND | RFI_TXFIFO)
-
-#define RFIV_RXTERM     0
-#define RFIV_RXSYNC     1
-#define RFIV_RXEND      2
-#define RFIV_RXFIFO     4
-#define RFIV_CCAPASS    5
-#define RFIV_CCAFAIL    6
-#define RFIV_TXEND      7
-#define RFIV_TXFIFO     9
-
-
-
-void spirit1_start_counter();
-
-void spirit1_stop_counter();
-
-ot_u16 spirit1_get_counter();
+#define RFIV_LISTEN     0
+#define RFIV_RXDONE     1
+#define RFIV_RXTIMEOUT  2
+#define RFIV_RXHEADER   4
+#define RFIV_CCA        5
+#define RFIV_TXDONE     6
 
 
 
 
-/** @brief  Configures SPIRIT1 outputs for Listen or RX Data Modes
+void sx127x_start_counter();
+
+void sx127x_stop_counter();
+
+ot_u16 sx127x_get_counter();
+
+
+
+
+/** @brief  Configures SX127x outputs for RX Data Modes
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */ 
-void spirit1_iocfg_rx();
+void sx127x_iocfg_rx();
 
-/** @brief  Configures SPIRIT1 outputs for CSMA or TX Data Modes
+/** @brief  Configures SX127x outputs for TX Data Modes
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */ 
-void spirit1_iocfg_tx();
+void sx127x_iocfg_tx();
+
+/** @brief  Configures SX127x outputs for Listen or CSMA Modes
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */ 
+void sx127x_iocfg_cad();
 
 
 /** @brief  Configures GPIO Interrupts for Listen Mode
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */ 
-void spirit1_int_listen();
-
+void sx127x_int_listen();
 
 /** @brief  Configures GPIO Interrupts for RX Data Mode
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */ 
-void spirit1_int_rxdata();
-
+void sx127x_int_rxdata();
 
 /** @brief  Configures GPIO Interrupts for CSMA Mode
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */ 
-void spirit1_int_csma();
-
+void sx127x_int_csma();
 
 /** @brief  Configures GPIO Interrupts for TX Data Mode
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */ 
-void spirit1_int_txdata();
+void sx127x_int_txdata();
 
 
 
-/** @brief  Individual ISR function for SPIRIT1 GPIO0 (similar for 1,2,3)
+/** @brief  Individual ISR function for SX127x GPIO0 (similar for 1,2,3,4,5)
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_irq0_isr();
-void spirit1_irq1_isr();
-void spirit1_irq2_isr();
-void spirit1_irq3_isr();
+void sx127x_irq0_isr();
+void sx127x_irq1_isr();
+void sx127x_irq2_isr();
+void sx127x_irq3_isr();
+void sx127x_irq4_isr();
+void sx127x_irq5_isr();
 
 
 /** @brief  Wait for event.  i.e. do a blocking wait for something to finish.
   * @param  None
   * @retval None
-  * @ingroup SPIRIT1
+  * @ingroup SX127x
   */
-void spirit1_wfe();
-
-
-/** @brief  Prepare WFE (wait for event) for AES process completion
-  * @param  None
-  * @retval None
-  * @ingroup SPIRIT1
-  */
-void spirit1_wfe_aes();
+void sx127x_wfe(ot_u32 ifg_sel);
 
 
 #endif

@@ -93,18 +93,17 @@ OT_WEAK void sx127x_int_off() {
     sx127x_int_config(0);
 }
 
-OT_WEAK void spirit1_int_on() {
+OT_WEAK void sx127x_int_on() {
     ot_u32 ie_sel;
     switch (sx127x.imode) {
-        case MODE_Listen:   ie_sel = RFI_CAD;
+        case MODE_Listen:   ie_sel = RFI_LISTEN;
         case MODE_RXData:   ie_sel = RFI_RXDATA;
-        case MODE_CSMA:     ie_sel = RFI_CAD;
+        case MODE_CSMA:     ie_sel = RFI_CSMA;
         case MODE_TXData:   ie_sel = RFI_TXDATA;
         default:            ie_sel = 0;
     }
     sx127x_int_config(ie_sel);
 }
-
 
 
 inline void sx127x_iocfg_cad()  {
@@ -157,14 +156,15 @@ void sx127x_irq5_isr() {   sx127x_virtual_isr(spirit1.imode + 5); }
 
 /** High-Level Read, Write, and Load-Defaults Functions <BR>
   * ========================================================================<BR>
-  * These utilize the driver function: spirit1_spibus_io()
+  * These utilize the driver function: sx127x_spibus_io()
   * This function must be implemented specific to the platform.
   */
 
 void sx127x_strobe(ot_u8 strobe) {
+/// "strobe" must be one of the _OPMODE values from 0-7
     ot_u8 cmd[2];
-    cmd[0]  = 0x80;
-    cmd[1]  = strobe;
+    cmd[0]  = 0x80 | RFREG_LR_OPMODE;
+    cmd[1]  = _LORAMODE | strobe;
     sx127x_spibus_io(2, 0, cmd);
 }
 
@@ -268,20 +268,22 @@ void sx127x_coredump() {
 
 /** Control & Status Functions <BR>
   * ========================================================================<BR>
-  * These functions utilize the pin-wrapper driver functions (below), which
-  * must be implemented in the platform-specific driver.  Typically, they are
-  * just implemented as simple macros.
-  * <LI> spirit1_sdnpin_sethigh() </LI>
-  * <LI> spirit1_sdnpin_setlow() </LI>
-  * <LI> spirit1_resetpin_ishigh() </LI>
-  * <LI> spirit1_readypin_ishigh() </LI>
-  * <LI> spirit1_abortpin_ishigh() </LI>
-  * <LI> spirit1_cspin_ishigh() </LI>
+  * These functions utilize the pin-wrapper driver functions, which
+  * must be implemented in the platform-specific driver. 
   */
+void sub_waitforready(ot_uint watchdog) {
+    while ((sx127x_readypin_ishigh() == 0) && (--watchdog));
+    if (watchdog == 0){
+        //ready_fails++;
+        ///@todo failure code that logs hardware fault and resets OT
+        sx127x_shutdown(300);
+        dll_init();
+    }   
+}
 
 void sx127x_shutdown(ot_uint us) {
 /// Raise the Shutdown Line
-    sx127x_rstpin_set();
+    sx127x_resetpin_set();
     delay_us(us);
 }
 
@@ -310,112 +312,34 @@ ot_u16 sx127x_isready() {
     return sx127x_readypin_ishigh();
 }
 
-ot_bool sx127x_check_cspin(void) {
-    return (ot_bool)sx127x_cspin_ishigh();
+ot_bool sx127x_check_cadpin(void) {
+    return (ot_bool)sx127x_cadpin_ishigh();
 }
 
-/* ot_int sub_failsafe_standby(void) {
-/// This code is a failsafe way to bring SPIRIT1 into shutdown, mainly for
-/// testing purposes.  It has been observed to have the same result as
-/// the normal standby routine.
-    ot_u8   nextstrobe;
-    ot_u8   mcstate;
-    ot_u8   teststate;
-    ot_uint watchdog;
-
-    mcstate = spirit1_read(RFREG(MC_STATE0));
-
-    sub_failsafe_standby_TOP:
-    switch (mcstate>>1) {
-        // Already in STANDBY, which is an error
-        case 0x40:  return 1;
-
-        // SLEEP
-        case 0x36:  nextstrobe  = RFSTROBE_READY;
-                    teststate   = 0x07;
-                    break;
-
-        // RX or TX or LOCK
-        case 0x0F:
-        case 0x33:
-        case 0x5f:  nextstrobe  = RFSTROBE_SABORT;
-                    teststate   = 0x07;
-                    break;
-
-        // READY
-        case 0x03:  nextstrobe  = RFSTROBE_STANDBY;
-                    teststate   = (0x40<<1);
-                    break;
-
-        //Unknown State (error)
-        default:    return 3;
-    }
-
-    spirit1_strobe(nextstrobe);
-    watchdog = 100;
-
-    do {
-        mcstate = spirit1_read(RFREG(MC_STATE0));
-        watchdog--;
-    } while ((watchdog != 0) && (mcstate != teststate));
-
-
-    if (watchdog == 0)  return 2;
-    else                goto sub_failsafe_standby_TOP;
-} */
-
-void sx127x_waitforabort() {
-/// Wait for the RX/TX indicator pin to go off.
-/// @todo this may need to be state-based.  In other words, if ABORT is
-///       called during the CSMA mode, the pin may be different or it may
-///       not be included at all.
-
-    ///@todo implement this using WFE instead of while loop
-    ot_uint watchdog = 100;
-    while (sx127x_abortpin_ishigh() && (--watchdog));
-
-    if (watchdog == 0) {
-        //abort_fails++;
-        ///@todo failure code that logs hardware fault and resets OT
-        sx127x_shutdown(300);
-        dll_init();
-    }
-}
-
-void sx127x_waitforready() {
+void sx127x_waitforstandby() {
 /// Wait for the Ready Pin to go high (reset pin is remapped in init).
-/// STANDBY->READY should take about 75us, although the absolute worst
-/// case is: 220us, 230us, 240us, 440us, 460us, 480us with respective
-/// 52, 50, 48, 26, 25, 24 MHz crystals.  By inspection, the loop takes
-/// 8 cycles to complete one iteration, and we assume a clock speed of
-/// 16 MHz.
-
-    ///@todo implement this using WFE instead of while loop
-    ot_uint watchdog = 500;
-    while ((sx127x_readypin_ishigh() == 0) && (--watchdog));
-
-    if (watchdog == 0){
-        //ready_fails++;
-        ///@todo failure code that logs hardware fault and resets OT
-        sx127x_shutdown(300);
-        dll_init();
-    }
+/// SLEEP->STANDBY should take about 75us (500 watchdogs)
+    sub_waitforready(500);
 }
 
 void sx127x_waitforsleep() {
 /// Use Mode-ready setting on DIO5
-    sx127x_waitforready();
+    sx127x_waitforstandby();
 }
 
-ot_u16 sx127x_getstatus() {
+ot_u8 sx127x_getstatus() {
 /// Status is register IRQFLAGS
     return sx127x_read(RFREG_LR_IRQFLAGS);
 }
 
-ot_u8   sx127x_rxbytes()    { return sx127x_read(RFREG_LR_FIFORXBYTEADDR); }
-ot_u8   sx127x_rssi()       { return sx127x_read(RFREG_LR_RSSIVALUE); }
-ot_u8   sx127x_pktrssi()    { return sx127x_read(RFREG_LR_PKTRSSIVALUE) >> 2; }
-ot_s8   sx127x_pktsnr()     { return sx127x_read(RFREG_LR_PKTSNRVALUE); }
+ot_u8 sx127x_mode() {
+    return sx127x_read(RFREG_LR_OPMODE) & _OPMODE;
+}
+
+ot_u8 sx127x_rxbytes()    { return sx127x_read(RFREG_LR_FIFORXBYTEADDR); }
+ot_u8 sx127x_rssi()       { return sx127x_read(RFREG_LR_RSSIVALUE); }
+ot_u8 sx127x_pktrssi()    { return sx127x_read(RFREG_LR_PKTRSSIVALUE) >> 2; }
+ot_s8 sx127x_pktsnr()     { return sx127x_read(RFREG_LR_PKTSNRVALUE); }
 
 
 

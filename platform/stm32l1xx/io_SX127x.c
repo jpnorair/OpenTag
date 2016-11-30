@@ -278,15 +278,15 @@ void sx127x_init_bus() {
     sx127x.clkreq = False;
 #   endif
 
-    ///1. Assure that Shutdown Line is Low
-    sx127x_rstpin_set();
+    ///1. Assure that chip is in reset
+    sx127x_resetpin_set();
 
     ///2. Set-up DMA to work with SPI.  The DMA is bound to the SPI and it is
     ///   used for Duplex TX+RX.  The DMA RX Channel is used as an EVENT.  The
     ///   STM32L can do in-context naps using EVENTS.  To enable the EVENT, we
     ///   enable the DMA RX interrupt bit, but not the NVIC.
     BOARD_DMA_CLKON();
-    _DMARX->CMAR    = (ot_u32)&sx127x.status;
+    _DMARX->CMAR    = (ot_u32)&sx127x.spi_addr;
     _DMARX->CPAR    = (ot_u32)&RADIO_SPI->DR;
     _DMATX->CPAR    = (ot_u32)&RADIO_SPI->DR;
     BOARD_DMA_CLKOFF();
@@ -388,9 +388,7 @@ void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
     _DMATX->CMAR    = (ot_u32)cmd;
     __DMA_ENABLE();
 
-    /// Use Cortex-M WFE (Wait For Event) to hold until DMA is complete.  This
-    /// is the CM way of doing a busywait loop, but turning off the CPU core.
-    /// The while loop is for safety purposes, in case another event comes.
+    /// WFE only works on EXTI line interrupts, as far as I can test. 
     //do {
         //__WFE();
     //}
@@ -422,26 +420,23 @@ void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
   * -------------- RX MODES (set sx127x_iocfg_rx()) --------------
   * IMode = 0       CAD Done:                   0
   * (Listen)        CAD Detected:               -
+  *                 Hop (Unused)                -
+  *                 Valid Header:               -
   *
-  * IMode = 1       RX Finished:                1
+  * IMode = 1       RX Done:                    1
   * (RX Data)       RX Timeout:                 2
+  *                 Hop (Unused)                -
+  *                 Valid Header:               4
   *
-  * -------------- TX MODES (set spirit1_iocfg_tx()) --------------
-  * IMode = 5       CCA Sense Timeout:          5   (pass)
-  * (CSMA)          CS Indicator:               6   (fail)
-  *                 TX FIFO thr [IRQ off]:      -
+  * -------------- TX MODES (set sx127x_iocfg_tx()) --------------
+  * IMode = 5       CAD Done:                   5   (CCA done)
+  * (CSMA)          CAD Detected:               -   (0/1 = pass/fail)
+  *                 Hop (Unused)                -
+  *                 Valid Header                -
   *
-  * IMode = 7       TX finished:                7
-  * (TX)            CS Indicator [IRQ off]:     -
-  *                 TX FIFO threshold:          9
+  * IMode = 6       TX Done:                    6
+  * (TX)            
   */
-
-
-/// Simple configuration method:
-/// This I/O configuration does not use many of the SPIRIT1 advanced features.
-/// Those features will be experimented-with in the future.
-
-///@todo test packet-discarding method, see if nIRQ must be added for RX
 
 
 void sx127x_int_config(ot_u32 ie_sel) {
@@ -452,16 +447,6 @@ void sx127x_int_config(ot_u32 ie_sel) {
     scratch    |= ie_sel;
     EXTI->IMR   = scratch;
 }
-
-
-void sx127x_int_txdone() {
-    ot_u32 scratch;
-    scratch     = EXTI->IMR & ~RFI_TXFIFO;
-    scratch    |= RFI_TXEND;
-    EXTI->PR    = RFI_TXEND;
-    EXTI->IMR   = scratch;
-}
-
 
 inline void sx127x_int_clearall(void) {
     EXTI->PR = RFI_ALL;
@@ -483,31 +468,17 @@ inline void sx127x_int_turnoff(ot_u16 ie_sel)  {
 
 
 
-
-
-
-
-
-
-
-
-///@todo MAKE SURE THIS WORKS RIGHT WITH RFI_SOURCE2, etc.
-void sx127x_wfe() {
+void sx127x_wfe(ot_u16 ifg_sel) {
     do {
         __WFE();
     }
-    while((EXTI->PR & RFI_SOURCE2) == 0);
+    while((EXTI->PR & ifg_sel) == 0);
 
-    // clear pending register
-    EXTI->PR = RFI_SOURCE2;
+    // clear IRQ value in SX127x by setting IRQFLAGS to 0xFF
+    sx127x_write(RFREG(LR_IRQFLAGS), 0xFF);
 
-    // clear IRQ value in SX127x by setting IRQMASK to 0
-    {   ot_u8 cmd[8];
-        *(ot_u32*)&cmd[0]   = 0;
-        *(ot_u32*)&cmd[4]   = 0;
-        cmd[1]              = RFREG(IRQ_MASK3);
-        sx127x_burstwrite(6, 0, cmd);
-    }
+    // clear pending register(s)
+    EXTI->PR = ifg_sel;
 }
 
 
