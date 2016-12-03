@@ -78,6 +78,15 @@ void bgcrc8_put(ot_u8* block_addr) {
 }
 
 
+///@todo unit test
+/*
+int main(void) {
+    
+    
+    
+    return 0;   
+}
+*/
 
 #endif
 

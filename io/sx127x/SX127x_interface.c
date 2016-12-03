@@ -20,7 +20,7 @@
   * @date       28 Oct 2016
   * @brief      Generic, High-level interface routines for SX127x transceiver
   * @ingroup    SX127x
-  *
+  * 
   * The functions and data implemented in this file provide a mostly-generic
   * interface to SPIRIT1 control.  It is designed with Mode 2 wireless spec in
   * mind, but at this level Mode 2 is not appreciably different than most other

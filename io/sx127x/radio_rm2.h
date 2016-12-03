@@ -49,7 +49,7 @@
     ||  defined(EXTF_em2_decode_data)       \
     ||  defined(EXTF_em2_decode_newframe)   \
     ||  defined(EXTF_em2_decode_newpacket)  )
-#   error "For SPIRIT1, some encoder functions should be patched in the driver."
+#   error "For SX127x, some encoder functions should be patched in the driver."
 #endif
 
 #define EXTF_em2_encode_data
@@ -64,32 +64,25 @@
 #include <m2/encode.h>
 #include <m2/radio.h>
 #include <m2/session.h>
+#include <m2/bgcrc8.h>  // Unique for LoRa
 
 
 
-
-/** Special things implemented in radio module (radio_SPIRIT1.c)  <BR>
+/** Special things implemented in radio module  <BR>
   * ========================================================================<BR>
-  * MODE_fg = 2 or 4, depending on length of syncword.  
-  * As you might guess, this is an alignment hack.
   */
 
-/** SPIRIT1 RF Module local Data
+/** SX127x RF Module local Data
   * Data that is useful for the internal use of this module.  The list below is
   * comprehensive, and it may not be needed in entirety for all implementations.
   * For implementations that don't use the values, comment out.
   *
   * state       Radio State, partially implementation-dependent
   * flags       A local store for usage flags
-  * txlimit     An interrupt/event comes when tx buffer gets below this number of bytes
-  * rxlimit     An interrupt/event comes when rx buffer gets above this number of bytes
   */
 typedef struct {
     ot_u8   state;
     ot_u8   flags;
-    ot_int  nextcal;
-    //ot_int  txlimit;
-    //ot_int  rxlimit;
 } rfctl_struct;
 
 extern rfctl_struct rfctl;
@@ -97,18 +90,18 @@ extern rfctl_struct rfctl;
 
 typedef enum {
     MODE_bg = 0,
-    MODE_fg = 1
+    MODE_fg = 3
 } MODE_enum;
 
 
-void spirit1drv_force_ready();
-void spirit1drv_smart_ready(void);
-void spirit1drv_smart_standby(void);
+void sx127xdrv_force_ready();
+void sx127xdrv_smart_ready(void);
+void sx127xdrv_smart_sleep(void);
 void spirit1drv_unsync_isr();
-void spirit1drv_ccafail_isr();
-void spirit1drv_ccapass_isr();
-void spirit1drv_txend_isr();
-void spirit1drv_buffer_config(MODE_enum mode, ot_u16 param);
+//void spirit1drv_ccafail_isr();
+//void spirit1drv_ccapass_isr();
+//void spirit1drv_txend_isr();
+void sx127xdrv_buffer_config(MODE_enum mode, ot_u16 param);
 void spirit1drv_save_linkinfo();
 
 
@@ -127,13 +120,15 @@ void spirit1drv_save_linkinfo();
 #   define _MAXPKTLEN   256
 #endif
 
-
 #if (RF_FEATURE(AUTOCAL) != ENABLED)
-#   define __CALIBRATE()    sx127xdrv_offline_calibration()
-#else
-#   define __CALIBRATE();
+#   undef RF_FEATURE_AUTOCAL
+#   define RF_FEATURE_AUTOCAL   ENABLED
 #endif
 
+#if (RF_FEATURE(MFPP) == ENABLED)
+#   undef RF_FEATURE_MFPP
+#   define RF_FEATURE_MFPP      DISABLED
+#endif
 
 
 

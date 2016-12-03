@@ -1,4 +1,4 @@
-/* Copyright 2010-2014 JP Norair
+/* Copyright 2010-2016 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,29 +14,26 @@
   *
   */
 /**
-  * @file       /otradio/spirit1/radio_rm2.c
+  * @file       /otradio/sx127x/radio_rm2.c
   * @author     JP Norair
   * @version    R103
-  * @date       23 Jan 2013
-  * @brief      Mode 2 Radio Layer Implementation for SPIRIT1
+  * @date       23 Nov 2016
+  * @brief      Mode 2 Radio Layer Implementation for SX127x
   * @ingroup    Radio
   *
   * <PRE>
-  * "   Invisible airwaves crackle with life,
-  *     Bright antenna, bristle with the energy.
-  *     Emotional feedback, on timeless wavelength,
-  *     Bearing a gift beyond price, almost free.
+  * "   Since you came here uninvited
+  *     We all knew you'd be delighted
+  *     This is not the time or place to hedge
+  *     No one here would be so bold to
+  *     But since you asked and no one's told you
+  *     Let us take you to the cutting edge     "
   *
-  *     All this machinery making modern music
-  *     Can still be open-hearted.
-  *     Not so coldly charted, it's really just a question
-  *     Of your honesty.  Yeah, your honesty!   "
-  *
-  *     -- The SPIRIT1 of Radio (I couldn't resist)
+  *     -- "We are the Cutting Edge"  (at least in Semtech's mind)
   * </PRE>
   *
   * <LI> The main header file for this is: /include/m2/radio.h      </LI>
-  * <LI> Other headers for SPIRIT1 are in: /include/io/spirit1/     </LI>
+  * <LI> Other headers for SX127x are in: /include/io/sx127x/     </LI>
   * <LI> Local header "radio_rm2.h" allows patching of the functions within. </LI>
   *
   * For DASH7 Silicon certification, there are four basic tiers of HW features:
@@ -45,12 +42,10 @@
   * 3. MAC      The HW can automate some inner loops, like Adv Flood and CSMA
   * 4. MAC+     The HW has most features of the MAC integrated
   *
-  * The SPIRIT1 is a high-performing RF Core that ALSO has a lot of Mode 2
-  * features implemented in HW.  Some of them are a bit roundabout and are not
-  * implemented in this driver because software control has been found to work
-  * better for the GENERAL CASE, but if you're a plucky innovator, there is a
-  * great degree of optimization possible with the SPIRIT1 core for special
-  * case applications.
+  * The SX127x basically meets (1) and (2) criteria, although using the LoRa
+  * modulation.  We choose to do software CRC encoding in order to guarantee
+  * that we are using a strong polynomial, as it's not apparent that LoRa HW
+  * isn't using the horribly weak CCITT poly.
   ******************************************************************************
   */
 
@@ -58,8 +53,8 @@
 #if (OT_FEATURE(M2) == ENABLED)
 
 #include <otplatform.h>
-#include <io/spirit1/config.h>
-#include <io/spirit1/interface.h>
+#include <io/sx127x/config.h>
+#include <io/sx127x/interface.h>
 
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>
@@ -96,57 +91,36 @@ rfctl_struct rfctl;
 /** Local Subroutine Prototypes  <BR>
   * ========================================================================<BR>
   */
-//void    spirit1drv_kill(ot_int errcode);
-//ot_bool spirit1drv_lowrssi_reenter();
 
 
 
 /** SPIRIT1 Virtual ISR RF  <BR>
   * ========================================================================<BR>
   */
-void spirit1_virtual_isr(ot_u8 code) {
+  
+#define RFIV_LISTEN     0
+#define RFIV_RXDONE     1
+#define RFIV_RXTIMEOUT  2
+#define RFIV_RXHEADER   4
+#define RFIV_CCA        5
+#define RFIV_TXDONE     6
+
+void sx127x_virtual_isr(ot_u8 code) {
+    
     switch (code) {
-        case RFIV_RXTERM:   rm2_kill();             break;
-        case RFIV_RXSYNC:   rm2_rxsync_isr();       break;
-
-        case RFIV_RXEND:    rm2_rxend_isr();        break;
-        case 3:             //spirit1drv_unsync_isr();  break;  //Falling Edge
-        case RFIV_RXFIFO:   rm2_rxdata_isr();       break;
-
-        case RFIV_CCAPASS:  spirit1drv_ccapass_isr(); break;
-        case RFIV_CCAFAIL:  spirit1drv_ccafail_isr(); break;
-
-        case RFIV_TXEND:
-        case 8:             spirit1drv_txend_isr();   break;
-        case RFIV_TXFIFO:   rm2_txdata_isr();       break;
+        case RFIV_RXLISTEN:     rm2_kill();             break;
+        
+        case RFIV_RXDONE:       rm2_rxdata_isr();       break;
+        case RFIV_RXTIMEOUT:    rm2_rxtimeout_isr();    break;
+        case RFIV_RXHEADER:     rm2_rxsync_isr();       break;
+        
+        case RFIV_CCA:          rm2_txcsma_isr();       break;
+        
+        case RFIV_TXDONE:       rm2_txdata_isr();       break;
+        
+        default:                rm2_kill();             break;
     }
 }
-
-
-
-
-void spirit1_clockout_on(ot_u8 clk_param) {
-/// Set the SPIRIT1 to idle, then configure the driver so it never goes into sleep
-/// or standby, and finally configure the SPIRIT1 to output the clock.
-#if (BOARD_FEATURE_RFXTALOUT)
-    spirit1drv_smart_ready();
-    spirit1.clkreq = True;
-    spirit1_write(RFREG(MCU_CK_CONF), clk_param);
-    spirit1_write(RFREG(GPIO3_CONF), (_GPIO_SELECT(RFGPO_MCU_CLK) | _GPIO_MODE_HIDRIVE));
-#endif
-}
-
-void spirit1_clockout_off() {
-/// This is the reverse of spirit1_clockout_on(), described above.
-#if (BOARD_FEATURE_RFXTALOUT)
-    spirit1.clkreq = False;
-    spirit1_write(RFREG(GPIO3_CONF), RFGPO(GND));
-    spirit1_write(RFREG(MCU_CK_CONF), 0);
-    spirit1drv_smart_standby();
-#endif
-}
-
-
 
 
 
@@ -160,7 +134,7 @@ OT_WEAK void radio_init( ) {
 /// Transceiver implementation dependent
     //vlFILE* fp;
 
-    /// Set SPIRIT1-dependent initialization defaults
+    /// Set SX127x-dependent initialization defaults
     //rfctl.flags     = RADIO_FLAG_XOON;
     rfctl.flags     = 0;
     rfctl.nextcal   = 0;
@@ -169,23 +143,23 @@ OT_WEAK void radio_init( ) {
     //radio.state     = RADIO_Idle;
     //radio.evtdone   = &otutils_sig2_null;
 
-    /// Initialize the bus between SPIRIT1 and MCU, and load defaults.
-    /// SPIRIT1 starts-up in Idle (READY), so we set the state and flags
+    /// Initialize the bus between SX127x and MCU, and load defaults.
+    /// SX127x starts-up in STANDBY (READY), so we set the state and flags
     /// to match that.  Then, init the bus and send RADIO to sleep.
-    /// SPIRIT1 can do SPI in Sleep.
-    spirit1_init_bus();
-    spirit1_load_defaults();
+    /// SX127x can do SPI in Sleep.
+    sx127x_init_bus();
+    sx127x_load_defaults();
 
     /// Do this workaround (SPIRIT1 Errata DocID023165 R5, section 1.2) to fix
     /// the shutdown current issue for input voltages <= 2.6V.  For input
     /// voltages > 2.6V, it does not hurt anything.
-    spirit1_write(RFREG(PM_TEST), 0xCA);
-    spirit1_write(RFREG(TEST_SELECT), 0x04);
-    spirit1_write(RFREG(TEST_SELECT), 0x00);
+    sx127x_write(RFREG(PM_TEST), 0xCA);
+    sx127x_write(RFREG(TEST_SELECT), 0x04);
+    sx127x_write(RFREG(TEST_SELECT), 0x00);
 
-    /// Done with the radio init
-    //spirit1drv_smart_standby();
-    radio_sleep();
+    /// Done with the radio init: sx127x_load_defaults() requires that the 
+    /// radio is in SLEEP already, so explicit sleep call is commented here.
+    //radio_sleep();
 
     /// Initialize RM2 elements such as channels, link-params, etc.
     rm2_init();
@@ -246,7 +220,7 @@ OT_WEAK void radio_activate_queue(ot_queue* q) {
 #ifndef EXTF_radio_buffer
 OT_WEAK ot_u8 radio_buffer(ot_uint index) {
 /// Transceiver implementation dependent
-/// This function is not used on the SPIRIT1
+/// This function is not used on the SX127x
     return 0;
 }
 #endif
@@ -482,7 +456,7 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
         }
 
         /// 5.  Send Configuration data to SPIRIT1
-        spirit1drv_buffer_config(buffer_mode, pktlen);                // packet configuration
+        sx127xdrv_buffer_config(buffer_mode, pktlen);                // packet configuration
         spirit1_spibus_io(7, 0, maccfg);                            // MAC configuration
 
         /// 6.  Prepare Decoder to receive, then receive
@@ -862,7 +836,7 @@ OT_WEAK void rm2_txcsma_isr() {
             }
 
             // Configure encoder.  On SPIRIT1 TX, this needs to be done before
-            // calling spirit1drv_buffer_config().
+            // calling sx127xdrv_buffer_config().
             radio_activate_queue(&txq);
             em2_encode_newpacket();
             em2_encode_newframe();
@@ -896,7 +870,7 @@ OT_WEAK void rm2_txcsma_isr() {
                                 (DRF_PROTOCOL0 | _PERS_TX) : DRF_PROTOCOL0;
 #           endif
 
-            spirit1drv_buffer_config(type, (em2.bytes*_SPREAD) /*q_span(&txq)*/);
+            sx127xdrv_buffer_config(type, (em2.bytes*_SPREAD) /*q_span(&txq)*/);
             spirit1_int_off();
             spirit1_iocfg_tx();
 
@@ -1082,7 +1056,7 @@ void spirit1drv_ccapass_isr() {
   * - See integrated notes for areas sensitive to porting
   */
 
-void spirit1drv_null(ot_int arg1, ot_int arg2) { }
+void sx127xdrv_null(ot_int arg1, ot_int arg2) { }
 
 
 //void spirit1drv_kill(ot_int errcode) {
@@ -1099,184 +1073,45 @@ void spirit1drv_null(ot_int arg1, ot_int arg2) { }
 
 
 
-void spirit1drv_buffer_config(MODE_enum mode, ot_u16 param) {
-/// SPIRIT1 buffer config:
-/// Mode | MF | FR | FEC | DIR || PKTCTRL2 | PKTCTRL1 | PKTLEN1:0
-/// -----+----+----+-----+-----++----------+----------+-----------
-///  00  |  N | BG |  N  |  X  || 00ccc010 | ddd10000 |  0x0007
-///  00  |  N | BG |  Y  |  X  || 00ccc010 | ddd10001 |  0x0007
-///  01  |  N | FG |  N  |  X  || 00ccc011 | ddd10000 |  0x0100
-///  02  |  N | FG |  Y  |  T  || 00ccc010 | ddd10001 |   plen
-///  02  |  N | FG |  Y  |  R  || 00ccc010 | ddd10001 |  0x0100 (adjusted in transfer)
-///  02  |  Y | FG |  X  |  T  || 00ccc010 | ddd1000X |   plen
-///  02  |  Y | FG |  X  |  R  || 00ccc010 | ddd1000X |  MAXPKT (adjusted in transfer)
-///
-/// ccc: channel dependent: 011 for LowSpeed, 101 for HiSpeed
-/// ddd: based on defaults.  CRC isn't fully tested yet, so 000 for now
-/// plen: length of the packet
+void sx127xdrv_buffer_config(MODE_enum mode, ot_u16 param) {
+/// Background frames:
+/// Sync = D7, Header=Implicit, Length=6
+/// Foreground frames:
+/// Sync = 28, Header=Explicit, Length=255(var)
 
-    // 4 byte sync using ... 92DDC8F1 / A444B78F / EE415A3C / AD79C06C
-    static const ot_u8 sync_matrix[] = { 0xF1, 0xC8, 0xDD, 0x92,     //bg non-fec
-                                         0x8F, 0xB7, 0x44, 0xA4,     //fg non-fec
-                                         0x3C, 0x5A, 0x41, 0xEE,     //bg fec
-                                         0x6C, 0xC0, 0x79, 0xAD      //fg fec
-                                         };
-
-    ot_u8 buf_cfg[10] = {   0, RFREG(PCKTCTRL2),
-                            DRF_PCKTCTRL2_LSBG, 0, 0, 0, 0, 0, 0, 0 };
-    ot_u8 is_fec;
-
-    ///@todo monitor state locally, based on mode and param.  If same as last
-    ///      usage, don't bother rewriting all this stuff to the SPIRIT1
-
-    ///@todo If PCKTCTRL2 is universal, then can set it in defaults and do 9 byte write
-
-    //buf_cfg[2] += (phymac[0].channel & 0x20) >> 1;
-    //buf_cfg[2] |= ((ot_u8)mode & 1);
-
-    is_fec      = (phymac[0].channel & 0x80) >> 4;      // 0 when no fec, 8 when FEC
-    mode       += is_fec;
-    buf_cfg[3]  = _WHIT_EN | (is_fec >> 3);
-    buf_cfg[4]  = ((ot_u8*)&param)[UPPER];  // Packet Length (or limit)
-    buf_cfg[5]  = ((ot_u8*)&param)[LOWER];  // Packet Length (or limit)
-    buf_cfg[6]  = sync_matrix[mode];
-    buf_cfg[7]  = sync_matrix[mode+1];
-    buf_cfg[8]  = sync_matrix[mode+2];
-    buf_cfg[9]  = sync_matrix[mode+3];
-
-    spirit1_spibus_io(10, 0, buf_cfg);
+    static const ot_u8 regs[] = { 
+        (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_ON | _RXPAYLOADCRC_OFF | _LOWDATARATEOPTIMIZE_OFF),
+        6,
+        0xD7, 
+        (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_OFF | _RXPAYLOADCRC_OFF | _LOWDATARATEOPTIMIZE_OFF),
+        255,
+        0x28
+    };
+    
+    sx127x_write(RFREG_LR_MODEMCONFIG1, regs[mode+0]);
+    sx127x_write(RFREG_LR_PAYLOADLENGTH, regs[mode+1]);
+    sx127x_write(RFREG_LR_SYNCWORD, regs[mode+2]);
 }
 
 
 
-void spirit1drv_save_linkinfo() {
-#if OT_FEATURE(RF_LINKINFO)
-    static const ot_u8 cmd[2] = { 0x01, RFREG(LINK_QUALIF2) };
-
-    // Do Read command on LINK_QUALIF[2:0] and store results in link structure
-    spirit1_spibus_io(2, 3, (ot_u8*)cmd);
-
-    // Convert 3 byte SPIRIT1 output into 4 byte data structure
-    radio.link.pqi  = spirit1.busrx[0];
-    radio.link.sqi  = spirit1.busrx[1] & ~0x80;
-    radio.link.lqi  = spirit1.busrx[2] >> 4;
-    radio.link.agc  = spirit1.busrx[2] & 0x0f;  ///@note this is basically useless
-
-#elif OT_FEATURE(RF_ADAPTIVE)
-    static const ot_u8 cmd[2] = { 0x01, RFREG(LINK_QUALIF1) };
-    spirit1_spibus_io(2, 1, (ot_u8*)cmd);
-    radio.link.sqi  = spirit1.busrx[0] & ~0x80;
-#endif
+void sx127xdrv_save_linkinfo() {
+    // Link information: only SNR is available, which is saved as LQI
+    radio.link.pqi  = 1;
+    radio.link.sqi  = 1;
+    radio.link.lqi  = sx127x_read(RFREG_LR_PKTRSSIVALUE);
+    radio.link.agc  = 0;
 }
 
 
-void spirit1drv_force_ready() {
-/// Goes to READY without modifying states.  Use with caution.
-///@note alternate version uses Ready-line test instead of flag test.
-    if (spirit1_isready() == 0) {
-        rfctl.flags |= RADIO_FLAG_XOON;
-        spirit1_strobe(RFSTROBE_READY);
-        spirit1_waitforready();
-    }
+void sx127xdrv_force_standby() {
+/// Goes to Standby without modifying states: use only if you know what you're doing.
+    sx127x_waitfor_ready();
+    sx127x_strobe(_OPMODE_STANDBY);
+    sx127x_waitfor_ready();
 }
 
 
-void spirit1drv_smart_ready() {
-/// Put the device into READY, using only the means necessary to
-/// do so, based on the current state of the SPIRIT1.  There are two
-/// methods here: 1 is an optimized method and 2 is a general method.
-
-/// Method 1:
-    radio_state current_state;
-    current_state   = radio.state;
-    radio.state     = RADIO_Idle;
-    rfctl.flags    |= RADIO_FLAG_XOON;
-
-    if (current_state != RADIO_Idle) {
-        spirit1_strobe(RFSTROBE_SABORT);
-        spirit1_waitforabort();
-    }
-    else if (spirit1_isready() == 0) {
-        spirit1_strobe(RFSTROBE_READY);
-        spirit1_waitforready();
-    }
-
-/// Method 2: Unimplemented at this point
-}
-
-
-
-void spirit1drv_smart_standby(void) {
-/// Put the device into standby, using only the means necessary to
-/// do so, based on the current state of the SPIRIT1.  There are two
-/// methods here: 1 is an optimized method and 2 is a general method.
-
-#if BOARD_FEATURE_RFXTALOUT
-    if (spirit1.clkreq) {
-        spirit1drv_smart_ready();
-    }
-    else
-#endif
-    {
-
-/// Method 1: Using pin checks and local state
-    // spirit1_isready() should indicate if the chip is in READY state,
-    // but it actually indicates that the XO is on.  XO is on for all
-    // states that are not SLEEP, STANDBY, SHUTDOWN.
-    if (spirit1_isready()) {
-        // The local state will be RADIO_Idle if in READY or STANDBY.
-        // We need to abort the active state (typ RX, TX)
-        if (radio.state != RADIO_Idle) {
-            spirit1_strobe(RFSTROBE_SABORT);
-            spirit1_waitforabort();
-        }
-        // Now we need to go into STANDBY
-        spirit1_strobe(RFSTROBE_STANDBY);
-        spirit1_waitforstandby();
-    }
-
-    // Change the flags & states accordingly.
-    // STANDBY is a state only known to the SPIRIT1 layer.
-    radio.state     = RADIO_Idle;
-    rfctl.flags    &= ~RADIO_FLAG_PWRMASK;
-
-/*
-/// Method2:  Using checking of MCSTATE on SPIRIT1
-    ot_u8 mcstate;
-    mcstate = spirit1_read(RFREG(MC_STATE0));
-
-    switch (mcstate>>1) {
-        case 0x40:  break;
-
-        // SLEEP
-        case 0x36:  spirit1_strobe(RFSTROBE_READY);
-                    while (spirit1_read(RFREG(MC_STATE0)) != 0x07);
-                    goto _ENTER_STANDBY;
-
-        // RX or TX or LOCK
-        case 0x0F:
-        case 0x33:
-        case 0x5f:  spirit1_strobe(RFSTROBE_SABORT);
-                    while (spirit1_read(RFREG(MC_STATE0)) != 0x07);
-
-        case 0x03:
-        _ENTER_STANDBY:
-                    spirit1_strobe(RFSTROBE_STANDBY);
-                    do { mcstate = spirit1_read(RFREG(MC_STATE0)); }
-                    while (mcstate != (0x40<<1));
-                    break;
-
-        //error!
-        default:    BOARD_led1_on();
-                    while(1);
-    }
-
-    radio.state     = RADIO_Idle;
-    rfctl.flags    &= ~RADIO_FLAG_PWRMASK;
-*/
-
-    }
-}
 
 
 
@@ -1290,192 +1125,132 @@ void spirit1drv_smart_standby(void) {
 
 #ifndef EXTF_radio_off
 OT_WEAK void radio_off() {
-   spirit1_shutdown();
+   sx127x_shutdown();
 }
 #endif
 
 #ifndef EXTF_radio_gag
 OT_WEAK void radio_gag() {
-    spirit1_int_off();
+    sx127x_int_off();
 }
 #endif
 
 #ifndef EXTF_radio_ungag
 OT_WEAK void radio_ungag() {
     if (radio.state != RADIO_Idle) {
-        spirit1_int_on();
+        sx127x_int_on();
     }
 }
 #endif
 
 #ifndef EXTF_radio_sleep
 OT_WEAK void radio_sleep() {
-    spirit1drv_smart_standby();
+/// SX127x can go into SLEEP from any other state, so the only optimization 
+/// here is to check if it is already in SLEEP before dealing with GPIO & SPI.
+    ot_bool test;
+    test = (rfctl.flags & RADIO_FLAG_XOON);
+    if (!test) {
+        radio.state  = RADIO_Idle;
+        rfctl.flags &= ~RADIO_FLAG_PWRMASK;
+        sx127x_waitfor_ready();
+        sx127x_strobe(_OPMODE_SLEEP);
+        sx127x_waitfor_ready();
+    }
 }
 #endif
 
 #ifndef EXTF_radio_idle
 OT_WEAK void radio_idle() {
-    spirit1drv_smart_ready();
+/// SX127x can go into STANDBY from any other state, so the only optimization 
+/// here is to check if it is already in STANDBY before dealing with GPIO & SPI.
+    ot_bool test;
+    test = ((rfctl.flags & RADIO_FLAG_XOON) && (radio.state == RADIO_Idle));
+    if (!test) {
+        radio.state  = RADIO_Idle;
+        rfctl.flags |= RADIO_FLAG_XOON;
+        sx127xdrv_force_standby();
+    }
 }
 #endif
 
 #ifndef EXTF_radio_putbyte
 OT_WEAK void radio_putbyte(ot_u8 databyte) {
-/// Transceiver implementation dependent
-    spirit1_write(RFREG(FIFO), databyte);
+    sx127x_write(RFREG_LR_FIFO, databyte);
 }
 #endif
 
 #ifndef EXTF_radio_putfourbytes
 OT_WEAK void radio_putfourbytes(ot_u8* data) {
-/// Unused in SPIRIT1, which has HW FECTX.
+/// Unused in SX127x
 }
 #endif
 
 #ifndef EXTF_radio_getbyte
 OT_WEAK ot_u8 radio_getbyte() {
-/// Transceiver implementation dependent
-    return spirit1_read(RFREG(FIFO));
+    return sx127x_read(RFREG_LR_FIFO);
 }
 #endif
 
 #ifndef EXTF_radio_getfourbytes
-OT_WEAK void radio_getfourbytes(ot_u8* data) {
-/// Unused for SPIRIT1, which has HW FECRX
+OT_WEAK void sx127x_getfourbytes(ot_u8* data) {
+/// Unused in SX127x
 }
 #endif
 
-
-///@note this IRQ flushing is needed if you are using a driver interrupt based
-///      on the SPIRIT1 IRQ system.  Presently, all driver interrupts are using
-///      direct status conditions, not this IRQ.
-//static const ot_u8 read_irq[] = { 1, 0xFA };
 #ifndef EXTF_radio_flush_rx
 OT_WEAK void radio_flush_rx() {
-    //spirit1_spibus_io(2, 4, (ot_u8*)read_irq);
-    spirit1_strobe( RFSTROBE_FLUSHRXFIFO );
+    sx127x_write(RFREG_LR_FIFOADDRPTR, 0);
 }
 #endif
 
 #ifndef EXTF_radio_flush_tx
 OT_WEAK void radio_flush_tx() {
-    //spirit1_spibus_io(2, 4, (ot_u8*)read_irq);
-    spirit1_strobe( RFSTROBE_FLUSHTXFIFO );
+    sx127x_write(RFREG_LR_FIFOADDRPTR, 0);
 }
 #endif
 
 #ifndef EXTF_radio_rxopen
 OT_WEAK ot_bool radio_rxopen() {
-    return (ot_bool)spirit1_rxbytes();
+    return (ot_bool)sx127x_rxbytes();
 }
 #endif
 
 #ifndef EXTF_radio_rxopen_4
 OT_WEAK ot_bool radio_rxopen_4() {
-    return (ot_bool)(spirit1_rxbytes() >= 4);
+    return (ot_bool)(sx127x_rxbytes() >= 4);
 }
 #endif
 
 #ifndef EXTF_radio_txopen
 OT_WEAK ot_bool radio_txopen() {
-    return (ot_bool)(spirit1_txbytes() < rfctl.txlimit);
+    return (ot_bool)spirit1_txbytes();
 }
 #endif
 
 #ifndef EXTF_radio_txopen_4
 OT_WEAK ot_bool radio_txopen_4() {
-/// Never needed with SPIRIT1, which has HW FECTX
+/// Never really needed with SX127x
     return radio_txopen();
 }
 #endif
 
 #ifndef EXTF_radio_rssi
 OT_WEAK ot_int radio_rssi() {
-/// @note SPIRIT1 only guarantees RSSI reading after end of packet RX
     return radio.last_rssi;
-    //radio.last_rssi = spirit1_calc_rssi( spirit1_read(RFREG(RSSI_LEVEL)) );
+    //radio.last_rssi = sx127x_calc_rssi(sx127x_read(RFREG_LR_PKTRSSIVALUE), sx127x_read(RFREG_LR_PKTSNRVALUE));
 }
 #endif
 
 #ifndef EXTF_radio_check_cca
 OT_WEAK ot_bool radio_check_cca() {
 /// CCA Method: Look if CS pin is high.
-    return spirit1_check_cspin();
-}
-#endif
-
-
-
-#if (RF_FEATURE(AUTOCAL) != ENABLED)
-void spirit1drv_offline_calibration() {
-/// Make sure to only call this function when there is nothing going on.
-    static const ot_u8 fc_div[6] = { RFREG(SYNT3), 0,
-        DRF_SYNT3X, DRF_SYNT2X, DRF_SYNT1X, DRF_SYNT0X };
-    static const ot_u8 fc[6] = { RFREG(SYNT3), 0,
-        DRF_SYNT3, DRF_SYNT2, DRF_SYNT1, DRF_SYNT0 };
-
-    ot_u8   vco_cal[4] = { RFREG(RCO_VCO_CALIBR_IN1), 0, 0, 0 };
-
-    // Step 0: Check if calibration is needed
-    if (--rfctl.nextcal >= 0) {
-        return;
-    }
-    rfctl.nextcal = RF_PARAM(VCO_CAL_INTERVAL);
-
-    // Step 1 (from erratum workaround): Set SEL_TSPLIT to 3.47 ns.
-    // This is performed during startup initialization
-
-    spirit1drv_smart_ready();
-
-    // Step 2: for 48, 50, 52 MHz crystals impls, enable _REFDIV and
-    //         change the center frequency to match.
-#   if (BOARD_PARAM_RFHz > 26000000)
-    spirit1_write( RFREG(SYNTH_CONFIG1), (DRF_SYNTH_CONFIG1 | _REFDIV) );
-    spirit1_spibus_io(6, 0, (ot_u8*)fc_div);
-#   endif
-
-    // Step 3: Boost VCO current to 25 (from default)
-    spirit1_write( RFREG(VCO_CONFIG), __VCO_GEN_CURR(25) );
-
-    // Step 4: Enable Automatic Calibration (for now)
-    spirit1_write( RFREG(PROTOCOL2), (DRF_PROTOCOL2|_VCO_CALIBRATION) );
-
-    // Step 5: Calibrate TX & RX VCO values
-    spirit1_strobe( STROBE(LOCKTX) );
-    delay_us(200);
-    vco_cal[2] = spirit1_read( RFREG(RCO_VCO_CALIBR_OUT0) ) & 0x7f;
-    spirit1_strobe(RFSTROBE_READY);
-    spirit1_strobe( STROBE(LOCKRX));
-    delay_us(200);
-    vco_cal[3] = spirit1_read( RFREG(RCO_VCO_CALIBR_OUT0) ) & 0x7f;
-    spirit1_strobe(RFSTROBE_READY);
-
-    // Step 6: write vco calibration output into SPIRIT1 input
-    spirit1_spibus_io(4, 0, vco_cal);
-
-    // Step 7: Disable automatic calibration
-    spirit1_write( RFREG(PROTOCOL2), (DRF_PROTOCOL2) );
-
-    // Step 8: Reduce VCO current to standard level
-    spirit1_write( RFREG(VCO_CONFIG), __VCO_GEN_CURR(17) );
-
-    // Step 9: Revert step 2
-#   if (BOARD_PARAM_RFHz > 26000000)
-    spirit1_write( RFREG(SYNTH_CONFIG1), DRF_SYNTH_CONFIG1 );
-    spirit1_spibus_io(6, 0, (ot_u8*)fc);
-#   endif
+    return (sx127x_check_cadpin() == 0);
 }
 #endif
 
 #ifndef EXTF_radio_calibrate
 OT_WEAK void radio_calibrate() {
-/// SPIRIT1 has an errata with the automatic calibrator.  It is best practice to
-/// perform the calibrations manually and offline.
-#if (RF_FEATURE(AUTOCAL) != ENABLED)
-
-    rfctl.nextcal = 0;
-#endif
+/// SX127x does mandatory automatic calibration
 }
 #endif
 

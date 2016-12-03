@@ -1222,7 +1222,7 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #define RADIO_IRQ0_SRCLINE          BOARD_RFGPIO_0PINNUM
 #define RADIO_IRQ1_SRCLINE          BOARD_RFGPIO_1PINNUM
 #define RADIO_IRQ2_SRCLINE          -1
-#define RADIO_IRQ3_SRCLINE          -1
+#define RADIO_IRQ3_SRCLINE          BOARD_RFGPIO_3PINNUM
 //#define RADIO_IRQ4_SRCLINE          -1
 #define RADIO_IRQ5_SRCLINE          -1
 

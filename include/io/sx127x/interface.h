@@ -1,4 +1,4 @@
-/* Copyright 2009-2014 JP Norair
+/* Copyright 2009-2016 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /include/io/sx127x/interface.h
   * @author     JP Norair
   * @version    R102
-  * @date       27 Aug 2014
+  * @date       27 Aug 2016
   * @brief      Functions for the SX127x transceiver interface
   * @defgroup   SX127x (SX127x family support)
   *
@@ -29,6 +29,8 @@
 
 #include <otstd.h>
 #include <io/SX127x/config.h>
+
+///@todo if SX1272 ...
 #include <io/SX127x/SX1272_registers.h>
 #include <io/SX127x/SX1272_defaults.h>
 
@@ -264,13 +266,12 @@ ot_bool sx127x_check_cadpin(void);
 
 
 
-/** @brief  Holds processing until signal goes high
+/** @brief  Holds processing until ModeReady signal goes high (DIO5)
   * @param  None
   * @retval None
   * @ingroup SX127x
   */
-void sx127x_waitforstandby();
-void sx127x_waitforsleep();
+void sx127x_waitforready();
 
 
 
