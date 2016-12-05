@@ -83,6 +83,7 @@
 typedef struct {
     ot_u8   state;
     ot_u8   flags;
+    ot_u16  tries;  //used mainly for BG Scan
 } rfctl_struct;
 
 extern rfctl_struct rfctl;
@@ -97,12 +98,10 @@ typedef enum {
 void sx127xdrv_force_ready();
 void sx127xdrv_smart_ready(void);
 void sx127xdrv_smart_sleep(void);
-void spirit1drv_unsync_isr();
-//void spirit1drv_ccafail_isr();
-//void spirit1drv_ccapass_isr();
-//void spirit1drv_txend_isr();
+void sx127xdrv_unsync_isr();
+
 void sx127xdrv_buffer_config(MODE_enum mode, ot_u16 param);
-void spirit1drv_save_linkinfo();
+void sx127xdrv_save_linkinfo();
 
 
 
@@ -139,34 +138,35 @@ void spirit1drv_save_linkinfo();
   */
 #define RADIO_STATE_RXSHIFT     0
 #define RADIO_STATE_RXMASK      (3 << RADIO_STATE_RXSHIFT)
-#define RADIO_STATE_RXINIT      (4 << RADIO_STATE_RXSHIFT)
-#define RADIO_STATE_RXDONE      (5 << RADIO_STATE_RXSHIFT)
 #define RADIO_STATE_RXAUTO      (0 << RADIO_STATE_RXSHIFT)
-#define RADIO_STATE_RXPAGE      (1 << RADIO_STATE_RXSHIFT)
-#define RADIO_STATE_RXSLOT      (2 << RADIO_STATE_RXSHIFT)
-#define RADIO_STATE_RXMFP       (3 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXINIT      (1 << RADIO_STATE_RXSHIFT)
+#define RADIO_STATE_RXDONE      (2 << RADIO_STATE_RXSHIFT)
+
 
 #define RADIO_STATE_TXSHIFT     3
 #define RADIO_STATE_TXMASK      (7 << RADIO_STATE_TXSHIFT)
 #define RADIO_STATE_TXINIT      (1 << RADIO_STATE_TXSHIFT)
-#define RADIO_STATE_TXCCA1      (2 << RADIO_STATE_TXSHIFT)
-#define RADIO_STATE_TXCCA2      (3 << RADIO_STATE_TXSHIFT)
-#define RADIO_STATE_TXSTART     (4 << RADIO_STATE_TXSHIFT)
-#define RADIO_STATE_TXDATA      (5 << RADIO_STATE_TXSHIFT)
-#define RADIO_STATE_TXDONE      (6 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXCAD1      (2 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXCCA1      (3 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXCAD2      (4 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXCCA2      (5 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXSTART     (6 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXDATA      (7 << RADIO_STATE_TXSHIFT)
 
 /** Internal Radio Flags
 */
 #define RADIO_FLAG_BG           (1 << 0)
 #define RADIO_FLAG_CONT         (1 << 1)
 #define RADIO_FLAG_BGFLOOD      (3 << 0)
-#define RADIO_FLAG_CRC5         (1 << 2)
-#define RADIO_FLAG_RESIZE       (1 << 3)
-#define RADIO_FLAG_AUTOCAL		(1 << 4)
+
 #define RADIO_FLAG_SETPWR		(1 << 5)
 #define RADIO_FLAG_PWRMASK      (3 << 6)
 #define RADIO_FLAG_XOOFF        (0 << 6)
 #define RADIO_FLAG_XOON         (1 << 6)
+
+//#define RADIO_FLAG_CRC5         (1 << 2)  // not used with SX127x
+//#define RADIO_FLAG_RESIZE       (1 << 3)  // MFP not available with SX127x
+//#define RADIO_FLAG_AUTOCAL      (1 << 4)  // Autocal is forced
 
 
 

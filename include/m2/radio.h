@@ -119,7 +119,7 @@ extern radio_struct radio;
   *
   * phymac_struct description
   *
-  * flags           (ot_u8) usage flags, proprietary/custom, optional.
+  * flags           (ot_u8) information about channel plan
   *
   * tg              (ot_u8) channel guard time (in ti units) as determined by
   *                 the spec.  It is 2, 3, 5, or 10 ti depending on the channel.

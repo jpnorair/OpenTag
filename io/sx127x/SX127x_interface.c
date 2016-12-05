@@ -176,9 +176,7 @@ ot_u8 sx127x_read(ot_u8 addr) {
 }
 
 void sx127x_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data) {
-    ot_u8 cmd[2];
-    cmd[0]  = start_addr;
-    spirit1_spibus_io(1, length, (ot_u8*)cmd);
+    spirit1_spibus_io(1, length, &start_addr);
     memcpy(data, sx127x.busrx, length);
 }
 
@@ -190,8 +188,12 @@ void sx127x_write(ot_u8 addr, ot_u8 data) {
 }
 
 void sx127x_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data) {
-    cmd_data[0] = 0x80 | start_addr;
+    ot_u8 save;
+    cmd_data--;
+    save        = *cmd_data;
+    *cmd_data   = 0x80 | start_addr;
     spirit1_spibus_io(1+length, 0, cmd_data);
+    *cmd_data   = save;
 }
 
 
@@ -316,15 +318,10 @@ ot_bool sx127x_check_cadpin(void) {
     return (ot_bool)sx127x_cadpin_ishigh();
 }
 
-void sx127x_waitforstandby() {
+void sx127x_waitforready() {
 /// Wait for the Ready Pin to go high (reset pin is remapped in init).
 /// SLEEP->STANDBY should take about 75us (500 watchdogs)
     sub_waitforready(500);
-}
-
-void sx127x_waitforsleep() {
-/// Use Mode-ready setting on DIO5
-    sx127x_waitforstandby();
 }
 
 ot_u8 sx127x_getstatus() {
@@ -383,6 +380,27 @@ ot_int sx127x_calc_rssi(ot_u8 encoded_value, ot_s8 packet_snr) {
         rssi += packet_snr/4;
     }
     return rssi;
+}
+
+
+ot_u8 sx127x_calc_rssithr(ot_u8 input) {
+/// SX127x treats RSSI thresholding through the normal RSSI engine.  The specs
+/// are the same as those used in sx127x_calc_rssi() above, but the process is
+/// using different input and output.
+///
+/// Input is a whole-dBm value encoded linearly as: {0=-140dBm, 127=-13dBm}.
+/// Output is the value that should go into SPIRIT1 RSSI_TH field.
+    ot_int rssi_thr;
+
+    // SX127x uses -139 as baseline, DASH7 -140
+    // Clip baseline at 0
+    rssi_thr = (ot_int)input - 1;
+    if (rssi_thr < 0)
+        rssi_thr = 0;
+
+    // Multiply by 2 to yield half-dBm.
+    rssi_thr  <<= 1;
+    return rssi_thr;
 }
 
 

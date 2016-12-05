@@ -89,7 +89,7 @@
 // IRQ Flag Mask: All IRQs are enabled
 #define DRF_LR_IRQFLAGSMASK     (0)
 
-// Modem Config 1: LoRa forces a weak CRC poly on us, so fuck them, we don't use it
+// Modem Config 1: Semtech forces a weak CRC poly on us, so fuck them, we don't use it
 // For Foreground packets, however, we are forced to use their explicit header
 #define DRF_LR_MODEMCONFIG1     (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_ON | _RXPAYLOADCRC_OFF | _LOWDATARATEOPTIMIZE_OFF)
 #define DRF_LR_MODEMCONFIG1_BG  (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_ON | _RXPAYLOADCRC_OFF | _LOWDATARATEOPTIMIZE_OFF)
