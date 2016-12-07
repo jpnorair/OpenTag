@@ -29,6 +29,7 @@
 #include <m2api.h>
 
 #include <otlib/alp.h>
+#include <otlib/memcpy.h>
 #include <otlib/buffers.h>
 #include <otlib/queue.h>
 #include <otsys/syskern.h>

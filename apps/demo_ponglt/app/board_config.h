@@ -82,6 +82,10 @@
 #   include <app/isr_config_STM32L.h>
 #   include <board/stm32l1xx/board_HayTag_R1.h>
 
+#elif (defined(BOARD_Nucleo_LRWAN1))
+#   include <app/isr_config_STM32L0.h>
+#   include <board/stm32l0xx/Nucleo_LRWAN1.h>
+
 #else
 #   error "Selected BOARD is not supported by this app :("
 

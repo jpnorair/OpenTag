@@ -16,8 +16,8 @@
 		<NodeC Path="..\..\..\extensions\applets_std\network_sig_route.c" Header="network_sig_route.c" Marker="-1" OutputFile=".\build\network_sig_route.o" sate="0" />
 		<NodeC Path="..\..\..\extensions\applets_std\sys_sig_panic.c" Header="sys_sig_panic.c" Marker="-1" OutputFile=".\build\sys_sig_panic.o" sate="0" />
 	</Group>
-	<Group Header="io" Marker="-1" OutputFile="" sate="0" >
-		<Group Header="spirit1" Marker="-1" OutputFile="" sate="0" >
+	<Group Header="io" Marker="-1" OutputFile="" sate="96" >
+		<Group Header="spirit1" Marker="-1" OutputFile="" sate="96" >
 			<NodeC Path="..\..\..\io\spirit1\radio_rm2.c" Header="radio_rm2.c" Marker="-1" OutputFile=".\build\radio_rm2.o" sate="0" />
 			<NodeH Path="..\..\..\io\spirit1\radio_rm2.h" Header="radio_rm2.h" Marker="-1" OutputFile="" sate="0" />
 			<NodeC Path="..\..\..\io\spirit1\radio_rm2_patch.c" Header="radio_rm2_patch.c" Marker="-1" OutputFile=".\build\radio_rm2_patch.o" sate="0" />

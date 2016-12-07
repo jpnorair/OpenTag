@@ -173,11 +173,6 @@
   *    a "break" mode, in both I2C and UART interfaces, where a break character 
   *    is transmitted by the client ahead of the packet in order to wakeup the 
   *    system.  This reduces power requirements.
-  *
-  * 4. The Debug and Upload interface is SWD.  There is no serial bootloader
-  *    capability at the time of writing.  
-  *    (Editorial Note: A ST-Link-V2 has SWD and a low price of US$25.  
-  *    It can work with OpenOCD, so the toolchain is still very cheap.)
   * 
   */
 #define BOARD_FEATURE(VAL)              BOARD_FEATURE_##VAL
@@ -257,7 +252,7 @@
 // Main serial connections, used at least by MPIPE
 
 // I2C on DIO4 & 5
-#define BOARD_I2C_ID                    1
+#define BOARD_I2C_ID                    0
 #define BOARD_I2C_SCLPINNUM             4
 #define BOARD_I2C_SDAPINNUM             5
 #define BOARD_I2C_SCLPIN                (1<<BOARD_I2C_SCLPINNUM)
@@ -265,7 +260,7 @@
 #define BOARD_I2C_PINS                  (BOARD_I2C_SCLPIN | BOARD_I2C_SDAPIN)
 
 // UART on DIO2 & 3
-#define BOARD_UART_ID                   1
+#define BOARD_UART_ID                   0
 #define BOARD_UART_TXPINNUM             3
 #define BOARD_UART_RXPINNUM             2
 #define BOARD_UART_TXPIN                (1<<BOARD_UART_TXPINNUM)

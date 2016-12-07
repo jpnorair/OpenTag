@@ -26,7 +26,7 @@
 #ifndef __BOARD_SELECT_H
 #define __BOARD_SELECT_H
 
-#include <app/build_config.h>
+//#include <app/build_config.h>
 
 
 /** List of all known boards
@@ -44,6 +44,9 @@ BOARD_HayTag_LI9R1      | Supported | Haystack      | Available     | STM32L
 BOARD_HayTag_LI9T1      | Supported | Haystack      | Available     | STM32L
 BOARD_HayTag_LI30R1     | Supported | Haystack      | Available     | STM32L
 BOARD_HayTag_LI30T1     | Supported | Haystack      | Available     | STM32L
+BOARD_Nucleo_L053       | Supported | ST            | Available     | STM32L0
+BOARD_Nucleo_L073       | Supported | ST            | Available     | STM32L0
+BOARD_Nucleo_LRWAN1     | Supported | ST            | Available     | STM32L0
 BOARD_Launchpad_CC1310  | Pending   | TI            | Available     | CC1310
 BOARD_Launchpad_CC1350  | Pending   | TI            | Available     | CC1310
 BOARD_HayTag_R2         | Pending   | Haystack      | Prototyping   | STM32L
@@ -56,7 +59,12 @@ BOARD_HayTag2_R0        | Pending   | Haystack      | Prototyping   | CC13xx
     defined(BOARD_EM430RF))
 
 #define BOARD_HAS_MSP430F5()      \
-   (defined(RF430USB_5509)
+   (defined(RF430USB_5509))
+
+#define BOARD_HAS_STM32L0()     \
+   (defined(BOARD_Nucleo_L053) || \
+    defined(BOARD_Nucleo_L073) || \
+    defined(BOARD_Nucleo_LRWAN1))
 
 #define BOARD_HAS_STM32L1()     \
    (defined(BOARD_IKR001) || \
@@ -80,6 +88,7 @@ BOARD_HayTag2_R0        | Pending   | Haystack      | Prototyping   | CC13xx
    (BOARD_HAS_CC430() || \
     BOARD_HAS_MSP430F5() || \
     BOARD_HAS_STM32L1() || \
+    BOARD_HAS_STM32L0() || \
     BOARD_HAS_CC13XX() )
 
 
@@ -88,8 +97,6 @@ BOARD_HayTag2_R0        | Pending   | Haystack      | Prototyping   | CC13xx
     
 #define BOARD_SUPPORTS_HICCULP() \
     (BOARD_HAS_STM32L1() || BOARD_HAS_MSP430F5)
-
-
 
 
 

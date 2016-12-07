@@ -25,7 +25,7 @@
 		</Group>
 	</Group>
 	<Group Header="lib" Marker="-1" OutputFile="" sate="96" >
-		<Group Header="STM32_USB_FS" Marker="0" OutputFile="" sate="96" >
+		<Group Header="STM32_USB_FS" Marker="0" OutputFile="" sate="0" >
 			<NodeC Path="..\..\..\lib\STM32_USB_FS\src\usb_core.c" Header="usb_core.c" Marker="-1" OutputFile="..\proj_ride7/build\usb_core.o" sate="0" >
 				<Options>
 					<Config Header="Jupiter" >
@@ -182,7 +182,7 @@
 		<Config Header="Nucleo_STM32L053" />
 		<Config Header="Charon_R0" />
 	</Configs>
-	<Group Header="platform" Marker="-1" OutputFile="" sate="96" >
+	<Group Header="platform" Marker="-1" OutputFile="" sate="0" >
 		<Group Header="stm32l1xx" Marker="0" OutputFile="" sate="0" >
 			<Group Header="_startup" Marker="-1" OutputFile="" sate="0" >
 				<NodeASM Path="..\..\..\platform\stm32l1xx\_startup\gcc_ride7\startup_stm32l1xx_md.s" Header="startup_stm32l1xx_md.s" Marker="-1" OutputFile="..\proj_ride7/build\startup_stm32l1xx_md.o" sate="0" >

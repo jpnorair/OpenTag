@@ -158,6 +158,8 @@
 #include <cm3_endian.h>
 #include <cm3_byteswap.h>
 #include <cm3_bitrotate.h>
+#include <cm3_countleadingzeros.h>
+#include <cm3_saturation.h>
 
 // From CC13xxWare directory (it must be added do header search dirs)
 #include <inc/asmdefs.h>
@@ -457,11 +459,33 @@ ot_u16 platform_ext_lsihz();
   * implements some of them in its drivers (the ones it needs).  You can see 
   * how they are called from the low-level interrupts in the file:
   * platform/cc13xx_cc26xx/core_isr.c.
+  *
+  * Some Usage Notes on GPIO interrupts:
+  * <li>"platform_isr_gpio()" is a hardware-analogous ISR that will be called
+  *     when *any* GPIO that's configured on the MCU (GPIO can be configured to
+  *     send interrupt to MCU, AON, or both), has an event.</li>
+  * <li>"platform_isr_gpioX()" is a synthetic ISR that will be called when
+  *     an event happens on a specific GPIO pin that is tied to MCU</li>
+  * <li>"platform_isr_aon()" and "platform_isr_aonrtc()" are both hardware-
+  *     analogous interrupts that are used with the "AON event fabric."  
+  *     Either can be configured to select GPIO interrupts or actually a bunch
+  *     of other systems (see Technical Reference Manual)</li>
+  * <li>"platform_isr_aon_...()" ISR functions are synthetic, and they are
+  *     called when the AON event hits a configured peripheral</li>
+  *
+  * Some Usage Notes on DMA interrupts:
+  * CC13XX uses the ARM uDMA, which has channels that are for the most part
+  * reserved for peripherals.  There are 4 channels for general purpose SW
+  * utilization (one of which goes to memcpy).  The DMA interrupts are all
+  * synthetic interrupts apart from the global DMA interrupts, which are:
+  * "platform_isr_udma()" and "platform_isr_udmaerr()" 
+  *
   */
-void platform_isr_gpio(void);
+
+void platform_isr_gpio(void);           //hits if *any* GPIO pin in MCU domain has event
 void platform_isr_i2c(void);
 void platform_isr_rfccpe1(void);
-void platform_isr_aon(void);
+void platform_isr_aonspi(void);
 void platform_isr_aonrtc(void);
 void platform_isr_uart0(void);
 void platform_isr_auxswevent0(void);
@@ -482,7 +506,7 @@ void platform_isr_tim2b(void);
 void platform_isr_tim3a(void);
 void platform_isr_tim3b(void);
 void platform_isr_crypto(void);
-void platform_isr_udma(void);
+void platform_isr_udmasw(void);
 void platform_isr_udmaerr(void);
 void platform_isr_flash(void);
 void platform_isr_swevent0(void);
@@ -492,6 +516,74 @@ void platform_isr_dynprog(void);
 void platform_isr_auxcompa(void);
 void platform_isr_auxadc(void);
 void platform_isr_trng(void);
+
+
+/// Synthetic GPIO interrupts
+/// There are two options:
+/// 1. gpiox : interrupt occurs when the GPIO is configured in the MCU domain
+/// 2. aoniox : interrupt occurs when the GPIO is configured for the AON domain
+///
+/// If for some reason you have configured a pin for both MCU and AON domains, 
+/// both interrupts will occur.
+///
+void platform_isr_gpio0(void);
+void platform_isr_gpio1(void);
+void platform_isr_gpio2(void);
+void platform_isr_gpio3(void);
+void platform_isr_gpio4(void);
+void platform_isr_gpio5(void);
+void platform_isr_gpio6(void);
+void platform_isr_gpio7(void);
+void platform_isr_gpio8(void);
+void platform_isr_gpio9(void);
+#if (MCU_PARAM_GPIO > 10)
+void platform_isr_gpio10(void);
+void platform_isr_gpio11(void);
+void platform_isr_gpio12(void);
+void platform_isr_gpio13(void);
+void platform_isr_gpio14(void);
+#endif
+#if (MCU_PARAM_GPIO > 15)
+void platform_isr_gpio15(void);
+void platform_isr_gpio16(void);
+void platform_isr_gpio17(void);
+void platform_isr_gpio18(void);
+void platform_isr_gpio19(void);
+void platform_isr_gpio20(void);
+void platform_isr_gpio21(void);
+void platform_isr_gpio22(void);
+void platform_isr_gpio23(void);
+void platform_isr_gpio24(void);
+void platform_isr_gpio25(void);
+void platform_isr_gpio26(void);
+void platform_isr_gpio27(void);
+void platform_isr_gpio28(void);
+void platform_isr_gpio29(void);
+#endif
+
+/// Synthetic uDMA interrupts
+/// Listed in order of descending priority (top is highest)
+void platform_isr_udma_sw0(void);
+void platform_isr_udma_uart0rx(void);
+void platform_isr_udma_uart0tx(void);
+void platform_isr_udma_ssp0rx(void);
+void platform_isr_udma_ssp0tx(void);
+void platform_isr_udma_spisrx(void);
+void platform_isr_udma_spistx(void);
+void platform_isr_udma_auxadc(void);
+void platform_isr_udma_auxsw(void);
+void platform_isr_udma_gpt0a(void);
+void platform_isr_udma_gpt0b(void);
+void platform_isr_udma_gpt1a(void);
+void platform_isr_udma_gpt1b(void);
+void platform_isr_udma_aonprog2(void);
+void platform_isr_udma_dmaprog(void);
+void platform_isr_udma_aonrtc(void);
+void platform_isr_udma_ssp1rx(void);
+void platform_isr_udma_ssp1tx(void);
+void platform_isr_udma_sw1(void);
+void platform_isr_udma_sw2(void);
+void platform_isr_udma_sw3(void);
 
 
 

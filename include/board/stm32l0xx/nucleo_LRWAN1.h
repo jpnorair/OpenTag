@@ -261,19 +261,19 @@
 #define BOARD_SW1_POLARITY              0
 #define BOARD_SW1_PULLING               0
 
-// TEST0, TEST1 pins are on PC3, PC4.
+// TEST0, TEST1 pins are on PC4, PC5.
 // They are not necessary, but Haystack uses them for manufacturing tests.
 // They are usually outputs but they could be pull-up inputs also.
 #define BOARD_TEST0_PORTNUM             2                   // Port C
 #define BOARD_TEST0_PORT                GPIOC
 #define BOARD_TEST0_PINNUM              4
-#define BOARD_TEST0_PIN                 (1<<4)
+#define BOARD_TEST0_PIN                 (1<<BOARD_TEST0_PINNUM)
 #define BOARD_TEST0_POLARITY            0
 #define BOARD_TEST0_PULLING             1
 #define BOARD_TEST1_PORTNUM             2                   // Port C
 #define BOARD_TEST1_PORT                GPIOC
 #define BOARD_TEST1_PINNUM              5
-#define BOARD_TEST1_PIN                 (1<<5)
+#define BOARD_TEST1_PIN                 (1<<BOARD_TEST1_PINNUM)
 #define BOARD_TEST1_POLARITY            0
 #define BOARD_TEST1_PULLING             1
 
@@ -294,19 +294,19 @@
 #ifdef __USE_RADIO
 #   define BOARD_RFGPIO_0PORTNUM        0        // "D2" : PA10
 #   define BOARD_RFGPIO_0PORT           GPIOA
-#   define BOARD_RFGPIO_0PINNUM         3
+#   define BOARD_RFGPIO_0PINNUM         10
 #   define BOARD_RFGPIO_0PIN            (1<<BOARD_RFGPIO_0PINNUM)
 #   define BOARD_RFGPIO_1PORTNUM        1        // "D3" : PB3
 #   define BOARD_RFGPIO_1PORT           GPIOB
-#   define BOARD_RFGPIO_1PINNUM         8
+#   define BOARD_RFGPIO_1PINNUM         3
 #   define BOARD_RFGPIO_1PIN            (1<<BOARD_RFGPIO_1PINNUM)
 #   define BOARD_RFGPIO_2PORTNUM        1        // "D4" : PB5
 #   define BOARD_RFGPIO_2PORT           GPIOB
-#   define BOARD_RFGPIO_2PINNUM         10
+#   define BOARD_RFGPIO_2PINNUM         5
 #   define BOARD_RFGPIO_2PIN            (1<<BOARD_RFGPIO_2PINNUM)
 #   define BOARD_RFGPIO_3PORTNUM        1        // "D5" : PB4
 #   define BOARD_RFGPIO_3PORT           GPIOB
-#   define BOARD_RFGPIO_3PINNUM         5
+#   define BOARD_RFGPIO_3PINNUM         4
 #   define BOARD_RFGPIO_3PIN            (1<<BOARD_RFGPIO_3PINNUM)
 
 // DIO4 is not connected in the hardware, and not required
@@ -316,18 +316,20 @@
 //#   define BOARD_RFGPIO_4PINNUM         10
 //#   define BOARD_RFGPIO_4PIN            (1<<BOARD_RFGPIO_4PINNUM)
 
-// DIO5 is not connected in the hardware, but you need to wire it in to D7
-#   define BOARD_RFGPIO_5PORTNUM        0        // "D7" : PA8
-#   define BOARD_RFGPIO_5PORT           GPIOB
-#   define BOARD_RFGPIO_5PINNUM         8
-#   define BOARD_RFGPIO_5PIN            (1<<BOARD_RFGPIO_5PINNUM)
+// DIO5 is not connected in the hardware, but if you can wire it to D7, 
+// there's an improvement to efficiency & reliability
+//#   define BOARD_RFGPIO_5PORTNUM        0        // "D7" : PA8
+//#   define BOARD_RFGPIO_5PORT           GPIOA
+//#   define BOARD_RFGPIO_5PINNUM         8
+//#   define BOARD_RFGPIO_5PIN            (1<<BOARD_RFGPIO_5PINNUM)
 
-#   define BOARD_RFCTL_RESETPINNUM      0       // "A0" : PA0
-#   define BOARD_RFCTL_RESETPIN         (1<<BOARD_RFCTL_RESETPINNUM)
+#   define BOARD_RFSPI_RESETPORTNUM     0       // "A0" : PA0
 #   define BOARD_RFCTL_RESETPORT        GPIOA
+#   define BOARD_RFCTL_RESETPINNUM      0       
+#   define BOARD_RFCTL_RESETPIN         (1<<BOARD_RFCTL_RESETPINNUM)
 #   define BOARD_RFSPI_NSSPORTNUM       1       // "D10" : PB6
 #   define BOARD_RFSPI_NSSPORT          GPIOB
-#   define BOARD_RFSPI_NSSPINNUM        7       
+#   define BOARD_RFSPI_NSSPINNUM        6       
 #   define BOARD_RFSPI_NSSPIN           (1<<BOARD_RFSPI_NSSPINNUM)
 #   define BOARD_RFSPI_ID               1       //SPI1
 #   define BOARD_RFSPI_PORTNUM          0       //Port A
@@ -597,39 +599,49 @@ static inline void BOARD_PORT_STARTUP(void) {
     /// B. Random Number ADC pins: A Zener can be used to generate noise.
     
     /// Configure Port A IO.  
-    /// Port A is used for internal features and .
-    // - A0,1,4 are used for Analog Inputs
-    // - A2 is UART-TX, which is ALT push-pull output
-    // - A3 is UART-RX, which is ALT push-pull input
+    // - A0:  Radio Reset, which is push-pull output, starting high
+    // - A1:  Analog Input
+    // - A2:  UART-TX, which is ALT push-pull output
+    // - A3:  UART-RX, which is ALT push-pull input
+    // - A4:  Analog Input
     // - A5:7 are SPI bus, set to ALT.
-    // - A8:10 are inputs (often used with radio)
+    // - A8:  This is where Radio GPIO5 goes, if enabled.  Otherwise, Unused Analog-In
+    // - A9:  Unused Analog-In
+    // - A10: Radio GPIO0, Hi-Z input
     // - A11:12 are inputs which are not available on the Arduino pinout (USB)
     // - A13:14 are SWD, set to ALT
+    // - A15: Unused Analog-In
+    
 #   ifdef __USE_RADIO
-    GPIOA->BSRR     = BOARD_RFSPI_CSNPIN;
+    GPIOA->BSRR     = BOARD_RFCTL_RESETPIN;
 #   endif
-
-    GPIOA->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
+#   if defined(BOARD_RFGPIO_5PIN)
+#       define _GPIO_MODER_PA8  GPIO_MODER_IN
+#   else
+#       define _GPIO_MODER_PA8  GPIO_MODER_ANALOG
+#   endif
+    GPIOA->MODER    = (GPIO_MODER_OUT    << (0*2)) \
                     | (GPIO_MODER_ANALOG << (1*2)) \
-                    | (GPIO_MODER_ALT << (2*2)) \
-                    | (GPIO_MODER_ALT << (3*2)) \
+                    | (GPIO_MODER_ALT    << (2*2)) \
+                    | (GPIO_MODER_ALT    << (3*2)) \
                     | (GPIO_MODER_ANALOG << (4*2)) \
-                    | (GPIO_MODER_ALT << (5*2)) \
-                    | (GPIO_MODER_ALT << (6*2)) \
-                    | (GPIO_MODER_ALT << (7*2)) \
-                    | (GPIO_MODER_IN  << (8*2)) \
-                    | (GPIO_MODER_IN  << (9*2)) \
-                    | (GPIO_MODER_IN  << (10*2)) \
-                    | (GPIO_MODER_IN  << (11*2)) \
-                    | (GPIO_MODER_IN  << (12*2)) \
-                    | (GPIO_MODER_ALT << (13*2)) \
-                    | (GPIO_MODER_ALT << (14*2)) \
-                    | (GPIO_MODER_IN  << (15*2));
+                    | (GPIO_MODER_ALT    << (5*2)) \
+                    | (GPIO_MODER_ALT    << (6*2)) \
+                    | (GPIO_MODER_ALT    << (7*2)) \
+                    | (_GPIO_MODER_PA8   << (8*2)) \
+                    | (GPIO_MODER_ANALOG << (9*2)) \
+                    | (GPIO_MODER_IN     << (10*2)) \
+                    | (GPIO_MODER_IN     << (11*2)) \
+                    | (GPIO_MODER_IN     << (12*2)) \
+                    | (GPIO_MODER_ALT    << (13*2)) \
+                    | (GPIO_MODER_ALT    << (14*2)) \
+                    | (GPIO_MODER_ANALOG << (15*2));
 
     GPIOA->OTYPER   = 0;
     
     GPIOA->OSPEEDR  = (GPIO_OSPEEDR_2MHz << (2*2)) \
                     | (GPIO_OSPEEDR_2MHz << (3*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (5*2)) \
                     | (GPIO_OSPEEDR_10MHz << (6*2)) \
                     | (GPIO_OSPEEDR_10MHz << (7*2)) \
                     | (GPIO_OSPEEDR_40MHz << (13*2)) \
@@ -649,8 +661,6 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (5 << ((BOARD_RFSPI_MISOPINNUM)*4)) \
                     | (5 << ((BOARD_RFSPI_SCLKPINNUM)*4));
 #   endif
-
-    
     GPIOA->AFR[1]   = (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
                     | (10 << ((BOARD_USB_DPPINNUM-8)*4));
 
@@ -658,26 +668,38 @@ static inline void BOARD_PORT_STARTUP(void) {
 
     /// Configure Port B IO.
     /// Port B is used for external (module) IO.
-    // - B0 is an Analog Input
+    // - B0:  Analog Input
     // - B1:2 are unused and set to Analog mode
-    // - B3 is by default an input
-    // - B4 is a PWM output, set to Analog until configured
-    // - B5 is used as a radio input by default
-    // - B6 is used as SPI-CS, an output
-    // - B7 is unused and set to Analog mode
+    // - B3:  Radio GPIO input, else unused Analog
+    // - B4:  Radio GPIO input, else unused Analog
+    // - B5:  Radio GPIO input, else unused Analog
+    // - B6:  Radio SPI-NSS, an output
+    // - B7:  unused and set to Analog mode
     // - B8:9 are setup for I2C bus: They start as output with Open Drain
-    // - B10 is a PWM output, set to Analog until configured
+    // - B10: is a PWM output, set to Analog until configured
     // - B11:15 are unused and set to Analog mode
+#   if defined(__USE_RADIO)
+    GPIOB->BSRR     = BOARD_RFSPI_NSSPIN;
+#       define _GPIO_MODER_PB3  GPIO_MODER_IN
+#       define _GPIO_MODER_PB4  GPIO_MODER_IN
+#       define _GPIO_MODER_PB5  GPIO_MODER_IN
+#       define _GPIO_MODER_PB6  GPIO_MODER_OUT
+#   else
+#       define _GPIO_MODER_PB3  GPIO_MODER_ANALOG
+#       define _GPIO_MODER_PB4  GPIO_MODER_ANALOG
+#       define _GPIO_MODER_PB5  GPIO_MODER_ANALOG
+#       define _GPIO_MODER_PB6  GPIO_MODER_ANALOG
+#   endif
+    
     GPIOB->OTYPER   = (1 << (8)) | (1 << (9));
     GPIOB->BSRR     = (1 << (8)) | (1 << (9));
-
     GPIOB->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
                     | (GPIO_MODER_ANALOG << (1*2)) \
                     | (GPIO_MODER_ANALOG << (2*2)) \
-                    | (GPIO_MODER_IN     << (3*2)) \
-                    | (GPIO_MODER_ANALOG << (4*2)) \
-                    | (GPIO_MODER_IN     << (5*2)) \
-                    | (GPIO_MODER_OUT    << (6*2)) \
+                    | (_GPIO_MODER_PB3 << (3*2)) \
+                    | (_GPIO_MODER_PB3 << (4*2)) \
+                    | (_GPIO_MODER_PB3 << (5*2)) \
+                    | (_GPIO_MODER_PB3 << (6*2)) \
                     | (GPIO_MODER_ANALOG << (7*2)) \
                     | (GPIO_MODER_OUT    << (8*2)) \
                     | (GPIO_MODER_OUT    << (9*2)) \
@@ -693,24 +715,24 @@ static inline void BOARD_PORT_STARTUP(void) {
     
     /// Configure Port C IO.
     /// Port C is used only for USB sense and 32kHz crystal driving
-    // - C0:1 are analog inputs
-    // - C2:6 are unused and set to analog
-    // - C7 is the radio shutdown push-pull output
-    // - C8:12 are unused and set to analog
+    // - C0:1   are analog inputs
+    // - C2:3   LED0 and LED1 Output Triggers
+    // - C4:5   TEST0 and TEST1 outputs
+    // - C6:12  are unused and set to analog
     // - C13 is the user button, set to input HiZ
-    // - C14:15 are 32kHz crystal driving, set to ALT
+    // - C14:15 are 32kHz crystal driving, they are set in a particular way
 #   ifdef __USE_RADIO
     GPIOC->BSRR     = BOARD_RFCTL_RESETPIN;
 #   endif
 
     GPIOC->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
                     | (GPIO_MODER_ANALOG << (1*2)) \
-                    | (GPIO_MODER_ANALOG << (2*2)) \
-                    | (GPIO_MODER_ANALOG << (3*2)) \
-                    | (GPIO_MODER_ANALOG << (4*2)) \
-                    | (GPIO_MODER_ANALOG << (5*2)) \
+                    | (GPIO_MODER_OUT    << (2*2)) \
+                    | (GPIO_MODER_OUT    << (3*2)) \
+                    | (GPIO_MODER_OUT    << (4*2)) \
+                    | (GPIO_MODER_OUT    << (5*2)) \
                     | (GPIO_MODER_ANALOG << (6*2)) \
-                    | (GPIO_MODER_OUT    << (7*2)) \
+                    | (GPIO_MODER_ANALOG << (7*2)) \
                     | (GPIO_MODER_ANALOG << (8*2)) \
                     | (GPIO_MODER_ANALOG << (9*2)) \
                     | (GPIO_MODER_ANALOG << (10*2)) \
@@ -731,7 +753,7 @@ static inline void BOARD_PORT_STARTUP(void) {
     /// Configure Port H for Crystal Bypass
     /// By default it is set to HiZ input.  It is changed on-demand in FW
     
-    // Disable GPIOC and GPIOH, they are never altered after this.
+    // Disable GPIOH, it is never altered after this.
     RCC->IOPENR = _IOPENR_RUNTIME;
 }
 
@@ -783,10 +805,10 @@ static inline void BOARD_STOP(ot_int code) {
         (PWR_CR_LPSDSR | PWR_CR_CSBF), (PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP | PWR_CR_CSBF) };
         
     static const ot_u32 rcc_flags[2] = {
-        (RCC_IOPENR_GPIOAEN | RCC_IOPENR_GPIOBEN), 0 };
+        _GPIOCLK_N, 0 };
         
-    static const ot_u32 b_moder[2] = {
-        0xFFFFFC0, 0xFFFFFFFF };
+    //static const ot_u32 b_moder[2] = {
+    //    0xFFFFFC0, 0xFFFFFFFF };
     
     ot_u16 scratch;
     
@@ -1076,10 +1098,10 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 
 static inline void BOARD_led1_on(void)      { OT_TRIG1_ON(); }
 static inline void BOARD_led1_off(void)     { OT_TRIG1_OFF(); }
-static inline void BOARD_led1_toggle(void)  { OT_TRIG1_TOGGLE(); }
+static inline void BOARD_led1_toggle(void)  { OT_TRIG1_TOG(); }
 static inline void BOARD_led2_on(void)      { OT_TRIG2_ON(); }
 static inline void BOARD_led2_off(void)     { OT_TRIG2_OFF(); }
-static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
+static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 
 
 
@@ -1218,13 +1240,13 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #define RADIO_IRQ2_SRCPORT          BOARD_RFGPIO_2PORTNUM
 #define RADIO_IRQ3_SRCPORT          BOARD_RFGPIO_3PORTNUM
 //#define RADIO_IRQ4_SRCPORT          BOARD_RFGPIO_4PORTNUM
-#define RADIO_IRQ5_SRCPORT          BOARD_RFGPIO_5PORTNUM
+//#define RADIO_IRQ5_SRCPORT          BOARD_RFGPIO_5PORTNUM
 #define RADIO_IRQ0_SRCLINE          BOARD_RFGPIO_0PINNUM
 #define RADIO_IRQ1_SRCLINE          BOARD_RFGPIO_1PINNUM
 #define RADIO_IRQ2_SRCLINE          -1
 #define RADIO_IRQ3_SRCLINE          BOARD_RFGPIO_3PINNUM
 //#define RADIO_IRQ4_SRCLINE          -1
-#define RADIO_IRQ5_SRCLINE          -1
+//#define RADIO_IRQ5_SRCLINE          -1
 
 #define RADIO_RESET_PORT            BOARD_RFCTL_PORT
 #define RADIO_IRQ0_PORT             BOARD_RFGPIO_0PORT
@@ -1232,14 +1254,14 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOGGLE(); }
 #define RADIO_IRQ2_PORT             BOARD_RFGPIO_2PORT
 #define RADIO_IRQ3_PORT             BOARD_RFGPIO_3PORT
 //#define RADIO_IRQ4_PORT             BOARD_RFGPIO_4PORT
-#define RADIO_IRQ5_PORT             BOARD_RFGPIO_5PORT
+//#define RADIO_IRQ5_PORT             BOARD_RFGPIO_5PORT
 #define RADIO_RESET_PIN             BOARD_RFCTL_RESETPIN
 #define RADIO_IRQ0_PIN              BOARD_RFGPIO_0PIN
 #define RADIO_IRQ1_PIN              BOARD_RFGPIO_1PIN
 #define RADIO_IRQ2_PIN              BOARD_RFGPIO_2PIN
 #define RADIO_IRQ3_PIN              BOARD_RFGPIO_3PIN
 //#define RADIO_IRQ4_PIN              BOARD_RFGPIO_4PIN
-#define RADIO_IRQ5_PIN              BOARD_RFGPIO_5PIN
+//#define RADIO_IRQ5_PIN              BOARD_RFGPIO_5PIN
 #endif
 
 
