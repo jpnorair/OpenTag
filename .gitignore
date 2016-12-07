@@ -8,6 +8,7 @@
 ###################################
 *.gcccmd
 *.o
+*.o.*
 *.d
 *.so
 *.hex
@@ -17,6 +18,8 @@
 *.lst
 *.elf*
 *.hdo*
+*_clang_tmp.c
+BuildLog.html
 
 ######################
 # OS Generated Files #
