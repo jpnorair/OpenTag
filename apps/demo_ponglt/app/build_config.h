@@ -29,7 +29,7 @@
 #define __BUILD_CONFIG_H
 
 #include <otsys/support.h>
-#include <board_select.h>
+#include "../../_common/board_select.h"
 
 
 /** Endian Configuration  <BR>

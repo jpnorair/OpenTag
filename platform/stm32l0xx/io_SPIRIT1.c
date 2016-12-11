@@ -25,7 +25,7 @@
   */
 
 #include <otplatform.h>
-#if (OT_FEATURE(M2)) //defined(PLATFORM_STM32L1xx)
+#if (OT_FEATURE(M2))
 
 #include <otlib/utils.h>
 #include <otsys/types.h>

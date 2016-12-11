@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /io/sx127x/generic_interface.c
+  * @file       /io/sx127x/SX127x_interface.c
   * @author     JP Norair
   * @version    R101
   * @date       28 Oct 2016
@@ -22,7 +22,7 @@
   * @ingroup    SX127x
   * 
   * The functions and data implemented in this file provide a mostly-generic
-  * interface to SPIRIT1 control.  It is designed with Mode 2 wireless spec in
+  * interface to SX127x control.  It is designed with Mode 2 wireless spec in
   * mind, but at this level Mode 2 is not appreciably different than most other
   * specs that could run on the SPIRIT1.
   *
@@ -36,7 +36,7 @@
 
 #include <otstd.h>
 #include <board.h>
-#if defined(__SPIRIT1__)
+#if defined(__SX127x__)
 
 
 #include <io/sx127x/interface.h>
@@ -54,7 +54,7 @@
 #include <m2/dll.h>
 
 
-// These only for driver testing purposes (spirit1_coredump())
+// These only for driver testing purposes (sx127x_coredump())
 #include <otlib/utils.h>
 #include <otlib/logger.h>
 
@@ -97,9 +97,9 @@ OT_WEAK void sx127x_int_on() {
     ot_u32 ie_sel;
     switch (sx127x.imode) {
         case MODE_Listen:   ie_sel = RFI_LISTEN;
-        case MODE_RXData:   ie_sel = RFI_RXDATA;
+        case MODE_RXData:   ie_sel = RFI_RXDONE;
         case MODE_CSMA:     ie_sel = RFI_CSMA;
-        case MODE_TXData:   ie_sel = RFI_TXDATA;
+        case MODE_TXData:   ie_sel = RFI_TXDONE;
         default:            ie_sel = 0;
     }
     sx127x_int_config(ie_sel);
@@ -128,7 +128,7 @@ inline void sx127x_int_listen() {
 
 inline void sx127x_int_rxdata() {
     sx127x.imode = MODE_RXData;
-    sx127x_int_config(RFI_RXDATA);
+    sx127x_int_config(RFI_RXDONE);
 }
 
 inline void sx127x_int_csma() {
@@ -138,73 +138,37 @@ inline void sx127x_int_csma() {
 
 inline void sx127x_int_txdata() {
     sx127x.imode = MODE_TXData;
-    sx127x_int_config(RFI_TXFIFO);
+    sx127x_int_config(RFI_TXDONE);
 }
 
 
-void sx127x_irq0_isr() {   sx127x_virtual_isr(spirit1.imode);     }
-void sx127x_irq1_isr() {   sx127x_virtual_isr(spirit1.imode + 1); }
-void sx127x_irq2_isr() {   sx127x_virtual_isr(spirit1.imode + 2); }
-void sx127x_irq3_isr() {   sx127x_virtual_isr(spirit1.imode + 3); }
-void sx127x_irq4_isr() {   sx127x_virtual_isr(spirit1.imode + 4); }
-void sx127x_irq5_isr() {   sx127x_virtual_isr(spirit1.imode + 5); }
+void sx127x_irq0_isr() {   sx127x_virtual_isr(sx127x.imode);     }
+void sx127x_irq1_isr() {   sx127x_virtual_isr(sx127x.imode + 1); }
+void sx127x_irq2_isr() {   sx127x_virtual_isr(sx127x.imode + 2); }
+void sx127x_irq3_isr() {   sx127x_virtual_isr(sx127x.imode + 3); }
+void sx127x_irq4_isr() {   sx127x_virtual_isr(sx127x.imode + 4); }
+void sx127x_irq5_isr() {   sx127x_virtual_isr(sx127x.imode + 5); }
 
 
 
 
 
 
-/** High-Level Read, Write, and Load-Defaults Functions <BR>
-  * ========================================================================<BR>
-  * These utilize the driver function: sx127x_spibus_io()
-  * This function must be implemented specific to the platform.
+
+
+
+
+
+/** Basic Control <BR>
+  * ============================================================================
   */
-
-void sx127x_strobe(ot_u8 strobe) {
-/// "strobe" must be one of the _OPMODE values from 0-7
-    ot_u8 cmd[2];
-    cmd[0]  = 0x80 | RFREG_LR_OPMODE;
-    cmd[1]  = _LORAMODE | strobe;
-    sx127x_spibus_io(2, 0, cmd);
-}
-
-ot_u8 sx127x_read(ot_u8 addr) {
-    ot_u8 cmd[2];
-    cmd[0]  = addr;
-    sx127x_spibus_io(2, 0, cmd);
-    return sx127x.busrx[0];
-}
-
-void sx127x_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data) {
-    spirit1_spibus_io(1, length, &start_addr);
-    memcpy(data, sx127x.busrx, length);
-}
-
-void sx127x_write(ot_u8 addr, ot_u8 data) {
-    ot_u8 cmd[2];
-    cmd[0]  = 0x80 | addr;
-    cmd[1]  = data;
-    spirit1_spibus_io(2, 0, cmd);
-}
-
-void sx127x_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data) {
-    ot_u8 save;
-    cmd_data--;
-    save        = *cmd_data;
-    *cmd_data   = 0x80 | start_addr;
-    spirit1_spibus_io(1+length, 0, cmd_data);
-    *cmd_data   = save;
-}
-
-
-
+  
 void sx127x_load_defaults() {
 /// The data ordering is: WRITE LENGTH, WRITE HEADER (0), START ADDR, VALUES
 /// Ignore registers that are set later, are unused, or use the hardware default values.
 #   define __REGSET(NAME)  RFREG_##NAME, DRF_##NAME
     static const ot_u8 defaults[] = {
         __REGSET(LR_OPMODE),
-        __REGSET(LR_FRMSB), __REGSET(LR_FRMIB), __REGSET(LR_FRLSB),
         __REGSET(LR_PACONFIG),
         __REGSET(LR_PARAMP),
         __REGSET(LR_OCP),
@@ -235,7 +199,7 @@ void sx127x_load_defaults() {
     
     /// Put SX127x into sleep in order to change registers via LoRa mode 
     ///(required by documentation)
-    sx127x_sleep();
+    sx127x_strobe(_OPMODE_SLEEP);
     
     ///@todo do a burst write
     cursor = (ot_u8*)defaults;
@@ -265,78 +229,144 @@ void sx127x_coredump() {
 
 
 
-
-
-
 /** Control & Status Functions <BR>
   * ========================================================================<BR>
   * These functions utilize the pin-wrapper driver functions, which
   * must be implemented in the platform-specific driver. 
   */
-void sub_waitforready(ot_uint watchdog) {
-    while ((sx127x_readypin_ishigh() == 0) && (--watchdog));
-    if (watchdog == 0){
-        //ready_fails++;
-        ///@todo failure code that logs hardware fault and resets OT
-        sx127x_shutdown(300);
-        dll_init();
-    }   
-}
-
-void sx127x_shutdown(ot_uint us) {
-/// Raise the Shutdown Line
-    sx127x_resetpin_set();
-    delay_us(us);
-}
 
 void sx127x_reset() {
 /// Turn-off interrupts, send Reset strobe, and wait for reset to finish.
     sx127x_int_turnoff(RFI_ALL);
-    sx127x_shutdown(120);
-    sx127x_waitforreset();
+    sx127x_resetpin_sethigh();
+    delay_us(120);
+    sx127x_resetpin_setlow();
+    delay_ms(5);
 }
 
-void sx127x_waitforreset() {
-///@todo Save non-blocking implementation for a rainy day.
-/// Blocking implementation: Wait for POR signal to rise using a busy loop.
-/// There is a watchdog variable that should count at least 1ms.  The loop
-/// itself should take 8 cycles to execute (by inspection), and we assume
-/// a clock speed of 16MHz.
-    ot_uint watchdog = 2000;
-    delay_ms(5);
-    while ((sx127x_resetpin_ishigh() == 0) && (--watchdog));
-    if (watchdog == 0) {
-        ///@todo failure code that logs hardware fault and resets OT
+ot_bool sx127x_isready() {
+///@todo The only way to monitor state transition signaling is via the ModeReady
+///      signal on DIO5, but many schematics don't route DIO5!  So for now just
+///      assume true.
+    return True;
+}
+
+void sx127x_waitfor_ready() {
+/// SLEEP->STANDBY should take about 75us (500 watchdogs).
+/// @todo There is no way to check ready without DIO5, so this function isn't 
+///       used inside the normal driver.
+/// @todo Write failure code in OT that logs hardware fault and resets OT
+    ot_uint watchdog = 500;
+    while ((sx127x_readypin_ishigh() == 0) && (--watchdog));
+    if (watchdog == 0){
+        //ready_fails++;
+        sx127x_resetpin_sethigh();
+        delay_us(300);
+        dll_init();
+    }   
+}
+
+void sx127x_waitfor_standby() {
+/// Assume 500us (125 watchdogs) worst case sleep->standby
+/// Assume 25us (7 watchdogs) worst case nonsleep->standby
+/// @todo Write failure code in OT that logs hardware fault and resets OT
+    ot_u8   mode;
+    ot_uint wdog;
+    mode = sx127x_mode();
+    wdog = (mode == 0) ? 125 : 7;
+    
+    while (mode != 1) {
+        if (--wdog == 0) {
+            sx127x_resetpin_set();
+            delay_us(300);
+            dll_init();
+            return;
+        }
+        mode = sx127x_mode();
     }
 }
 
-ot_u16 sx127x_isready() {
-    return sx127x_readypin_ishigh();
+void sx127x_waitfor_sleep() {
+/// Assume 25us (7 watchdogs) worst case nonsleep->sleep
+/// @todo Write failure code in OT that logs hardware fault and resets OT
+    ot_uint wdog;
+    wdog = 7;
+    
+    while (sx127x_mode() != 0) {
+        if (--wdog == 0) {
+            sx127x_resetpin_set();
+            delay_us(300);
+            dll_init();
+            return;
+        }
+    }
 }
 
-ot_bool sx127x_check_cadpin(void) {
-    return (ot_bool)sx127x_cadpin_ishigh();
-}
-
-void sx127x_waitforready() {
-/// Wait for the Ready Pin to go high (reset pin is remapped in init).
-/// SLEEP->STANDBY should take about 75us (500 watchdogs)
-    sub_waitforready(500);
+ot_bool sx127x_check_cadpin() {
+    return (ot_bool)(sx127x_cadpin_ishigh() != 0);
 }
 
 ot_u8 sx127x_getstatus() {
 /// Status is register IRQFLAGS
-    return sx127x_read(RFREG_LR_IRQFLAGS);
+    sx127x.status = sx127x_read(RFREG_LR_IRQFLAGS);
+    return sx127x.status;
 }
 
 ot_u8 sx127x_mode() {
     return sx127x_read(RFREG_LR_OPMODE) & _OPMODE;
 }
 
-ot_u8 sx127x_rxbytes()    { return sx127x_read(RFREG_LR_FIFORXBYTEADDR); }
+ot_u8 sx127x_rxbytes()    { return sx127x_read(RFREG_LR_RXNBBYTES); }
 ot_u8 sx127x_rssi()       { return sx127x_read(RFREG_LR_RSSIVALUE); }
 ot_u8 sx127x_pktrssi()    { return sx127x_read(RFREG_LR_PKTRSSIVALUE) >> 2; }
 ot_s8 sx127x_pktsnr()     { return sx127x_read(RFREG_LR_PKTSNRVALUE); }
+
+
+
+
+
+/** High-Level Read, Write, and Load-Defaults Functions <BR>
+  * ========================================================================<BR>
+  * These utilize the driver function: sx127x_spibus_io()
+  * This function must be implemented specific to the platform.
+  */
+
+void sx127x_strobe(ot_u8 strobe) {
+/// "strobe" must be one of the _OPMODE values from 0-7
+    ot_u8 cmd[2];
+    cmd[0]  = 0x80 | RFREG_LR_OPMODE;
+    cmd[1]  = _LORAMODE | strobe;
+    sx127x_spibus_io(2, 0, cmd);
+}
+
+ot_u8 sx127x_read(ot_u8 addr) {
+    ot_u8 cmd[2];
+    cmd[0]  = addr;
+    sx127x_spibus_io(2, 0, cmd);
+    return sx127x.busrx[0];
+}
+
+void sx127x_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data) {
+    sx127x_spibus_io(1, length, &start_addr);
+    memcpy(data, sx127x.busrx, length);
+}
+
+void sx127x_write(ot_u8 addr, ot_u8 data) {
+    ot_u8 cmd[2];
+    cmd[0]  = 0x80 | addr;
+    cmd[1]  = data;
+    sx127x_spibus_io(2, 0, cmd);
+}
+
+void sx127x_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data) {
+    ot_u8 save;
+    cmd_data--;
+    save        = *cmd_data;
+    *cmd_data   = 0x80 | start_addr;
+    sx127x_spibus_io(1+length, 0, cmd_data);
+    *cmd_data   = save;
+}
+
 
 
 
@@ -347,7 +377,7 @@ ot_s8 sx127x_pktsnr()     { return sx127x_read(RFREG_LR_PKTSNRVALUE); }
   * internal timers of the SX127x, we instead use the more reliable interval
   * timer feature of OpenTag.
   */
-ot_u32 macstamp;
+static ot_u32 macstamp;
 
 void sx127x_start_counter() {
     macstamp = systim_chronstamp(NULL);
@@ -367,15 +397,13 @@ ot_u16 sx127x_get_counter() {
 
 
 
-/** Data Functions <BR>
+/** Advanced Configuration <BR>
   * ========================================================================<BR>
   */
 
 ot_int sx127x_calc_rssi(ot_u8 encoded_value, ot_s8 packet_snr) {
     ot_int rssi;
-    ot_int snr;
-    rssi    = -139 + (ot_int)encoded_value;
-    snr     = (ot_int)packet_snr;
+    rssi = -139 + (ot_int)encoded_value;
     if (packet_snr < 0) {
         rssi += packet_snr/4;
     }

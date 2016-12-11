@@ -36,6 +36,7 @@
 
 #include <otsys/mpipe.h>
 #include <otsys/syskern.h>
+#include <otsys/time.h>
 
 #include <m2/radio.h>
 //#include <m2/session.h>
@@ -513,8 +514,8 @@ void platform_ext_usbcrson(void) {
     }
     
     RCC->APB1ENR   |= (RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
-    CRS->CFGR       = CRS_CFGR_SYNCPOL_RISING \
-                    | CRS_CFGR_SYNCSRC_USB \
+    CRS->CFGR       = (0 << CRS_CFGR_SYNCPOL_Pos) \
+                    | (2 << CRS_CFGR_SYNCSRC_Pos) \
                     | (0x22 << 16) /* Default FELIM */ \
                     | (0xBB7F);    /* Default RELOAD (1ms USB SOF) */
 
@@ -970,7 +971,6 @@ void platform_init_OT() {
 void platform_init_busclk() {
 /// This function should be called during initialization and restart, right at
 /// the top of platform_poweron().
-    ot_u16 counter;
 
     ///1. RESET System Clocks
     ///@todo This may not be necessary.  These settings should be reset default settings.

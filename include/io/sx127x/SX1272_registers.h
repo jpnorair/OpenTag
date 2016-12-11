@@ -31,7 +31,7 @@
 /** Register call macros: mainly for nomenclature consistency with other TRX
   * drivers that have been implemented.
   */
-#define RFREG(VAL)      (RF_##VAL)
+#define RFREG(VAL)      (RFREG_##VAL)
 #define STROBE(VAL)     (RFSTROBE_##VAL)
 #define RFGPO(VAL)      ((RFGPO_##VAL << 3) | 2)
 
@@ -63,7 +63,7 @@
 // it is inadvisable to use frequencies in the following ranges:
 // - 863-865 MHz (ERC SRD)
 // - 927-928 (FCC ISM)
-#define RFREG_LR_FRMSB                              0x06 
+#define RFREG_LR_FRFMSB                             0x06 
 #define RFREG_LR_FRFMIB                             0x07
 #define RFREG_LR_FRFLSB                             0x08
 #define _FRFMSB_915_MHZ                             0xE4  // Default

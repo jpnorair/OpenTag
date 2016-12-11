@@ -30,6 +30,9 @@
   */
 
 
+///@note under development
+#if (0)
+
 #include <otsys/otat.h>
 #include <otsys/sysqueue.h>
 //#include <otlib/memcpy.h>
@@ -227,6 +230,6 @@ void otat_systask(ot_task task) {
     }
 }
 
-
+#endif
 
 

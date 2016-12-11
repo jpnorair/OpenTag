@@ -30,7 +30,7 @@
 
 #include <otsys/config.h>
 
-#if (OT_FEATURE(VEELITE) == ENABLED)
+#if ((OT_FEATURE(VEELITE) == ENABLED) && defined(__VEELITE32_EXP__))
 
 #include <otsys/types.h>
 #include <otlib/utils.h>

@@ -26,7 +26,7 @@
 
 #include <otstd.h>
 #include <otplatform.h>
-#include <otsys/time.h>
+#include <otsys.h>
 
 
 /** Macros of Ill Repute <BR>

@@ -76,7 +76,6 @@ ot_uint rm2_default_tgd(ot_u8 chan_id) {
 
 ot_uint rm2_pkt_duration(ot_queue* pkt_q) {
     ot_uint pkt_bytes;
-    ot_uint pkt_duration;
 
     pkt_bytes = q_length(pkt_q);
     if (pkt_q->front[1] & 0x40) {
@@ -181,7 +180,7 @@ void em2_encode_data(void) {
     while (em2.bytes > 0) {
         fill        = (em2.bytes > 24) ? 24 : em2.bytes;
         em2.bytes  -= fill;
-        sx127x_burstwrite(RFREG_LF_FIFO, fill, txq.getcursor);
+        sx127x_burstwrite(RFREG_LR_FIFO, fill, txq.getcursor);
     }
 }
 
@@ -194,14 +193,14 @@ void em2_decode_data(void) {
     scratch     = sx127x_read(RFREG_LR_RXNBBYTES);
     em2.bytes   = scratch;
 
-    while (total > 0) {
+    while (scratch > 0) {
         ot_u16 grab;
         ot_u8* data;
         grab            = (scratch > 24) ? 24 : scratch;
         scratch        -= grab;
         data            = rxq.putcursor;
         rxq.putcursor  += grab;
-        sx127x_burstread(RFREG_LF_FIFO, grab, data);
+        sx127x_burstread(RFREG_LR_FIFO, grab, data);
     }
 
     // Do CRC decoding and optional RS decoding

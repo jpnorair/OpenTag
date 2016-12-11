@@ -36,10 +36,14 @@
   ******************************************************************************
   */
 
+#ifndef __ENCODE_H
+#define __ENCODE_H
+
 
 #include <otsys/config.h>
-#if !defined(__ENCODE_H) && OT_FEATURE(M2)
-#define __ENCODE_H
+
+
+#if OT_FEATURE(M2)
 
 #include <otplatform.h>
 #include <otsys/types.h>
@@ -238,6 +242,6 @@ void em2_encode_data_FEC();
 void em2_decode_data_FEC();
     
 #endif
-
+#endif
 
 

@@ -49,6 +49,8 @@
 #   ifdef __NULL_RADIO__
 #       include <io/null_radio/config.h>
 #   else
+#		define __SX127x__
+#		define __SX1272__
 #       include <io/sx127x/config.h>
 #   endif
 #endif
@@ -97,9 +99,9 @@
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED                            // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             ENABLED                             // USB-CDC MPipe implementation
-#define MCU_CONFIG_MPIPEUART            (MCU_CONFIG_MPIPECDC != ENABLED)    // UART MPipe Implementation
-#define MCU_CONFIG_MPIPEI2C             DISABLED                            // I2C MPipe Implementation
+#define MCU_CONFIG_MPIPECDC             ENABLED                            // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPEI2C             (DISABLED && !MCU_CONFIG_MPIPECDC)
+#define MCU_CONFIG_MPIPEUART            (ENABLED && !MCU_CONFIG_MPIPECDC && !MCU_CONFIG_MPIPEI2C) 
 #define MCU_CONFIG_MEMCPYDMA            ENABLED                             // MEMCPY DMA should be lower priority than MPIPE DMA
 #define MCU_CONFIG_USB                  (MCU_CONFIG_MPIPECDC == ENABLED)
 #define MCU_CONFIG_VOLTLEVEL            2  // 3=1.2, 2=1.5V, 1=1.8V
@@ -121,7 +123,7 @@
   * of the Flash space because this seems to work best with the debugger HW.
   */
 
-// You can comment-out these if you want to use chip defaults
+// For building with non-default memory amounts
 #ifndef SRAM_SIZE
 #   define SRAM_SIZE            (20*1024)
 #endif
@@ -129,7 +131,7 @@
 #   define EEPROM_SIZE          (6*1024)
 #endif
 #ifndef FLASH_SIZE
-#   define FLASH_SIZE           (64*1024)
+#   define FLASH_SIZE           (192*1024)
 #endif
 #ifndef EEPROM_SAVE_SIZE
 #   define EEPROM_SAVE_SIZE     (0)
@@ -186,10 +188,10 @@
 
 #define BOARD_FEATURE_MPIPE             ENABLED
 #define BOARD_FEATURE_USBCONVERTER      BOARD_FEATURE_MPIPE         // Is UART connected via USB converter?
-#define BOARD_FEATURE_MPIPE_BREAK       DISABLED                    // Send/receive leading break for wakeup
+#define BOARD_FEATURE_MPIPE_BREAK       ENABLED                    // Send/receive leading break for wakeup
+#define BOARD_FEATURE_MPIPE_DIRECT      (BOARD_FEATURE_MPIPE_BREAK != ENABLED) 
 
-// MPIPE UART modes are deprecated.  Only Break-mode should be used.
-//#define BOARD_FEATURE_MPIPE_DIRECT      DISABLED                     // BOARD_FEATURE_MPIPE
+// MPIPE UART modes are deprecated.  Only Break-mode or Direct-Mode should be used.
 //#define BOARD_FEATURE_MPIPE_CS          DISABLED                    // Chip-Select / DTR wakeup control
 //#define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                    // RTS/CTS style flow control 
 
@@ -323,7 +325,7 @@
 //#   define BOARD_RFGPIO_5PINNUM         8
 //#   define BOARD_RFGPIO_5PIN            (1<<BOARD_RFGPIO_5PINNUM)
 
-#   define BOARD_RFSPI_RESETPORTNUM     0       // "A0" : PA0
+#   define BOARD_RFCTL_RESETPORTNUM     0       // "A0" : PA0
 #   define BOARD_RFCTL_RESETPORT        GPIOA
 #   define BOARD_RFCTL_RESETPINNUM      0       
 #   define BOARD_RFCTL_RESETPIN         (1<<BOARD_RFCTL_RESETPINNUM)
@@ -770,10 +772,11 @@ static inline void BOARD_RFSPI_CLKON(void) {
     BOARD_RFSPI_PORT->MODER |= (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2)) \
                             | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
                             | (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM*2));
-    
-  //BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+    /*    
+    BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                             | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                             | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+    */
 #endif
 }
 
@@ -786,10 +789,11 @@ static inline void BOARD_RFSPI_CLKOFF(void) {
     BOARD_RFSPI_PORT->MODER |= (GPIO_MODER_OUT << (BOARD_RFSPI_SCLKPINNUM*2)) \
                             | (GPIO_MODER_IN << (BOARD_RFSPI_MISOPINNUM*2)) \
                             | (GPIO_MODER_OUT << (BOARD_RFSPI_MOSIPINNUM*2));
-    
-  //BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+    /*  
+	BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                             | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                             | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
+	*/
 #endif
 }
 
@@ -803,10 +807,12 @@ static inline void BOARD_STOP(ot_int code) {
 
     static const ot_u16 stop_flags[2] = {  
         (PWR_CR_LPSDSR | PWR_CR_CSBF), (PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP | PWR_CR_CSBF) };
-        
+    
+#   if defined(__RELEASE__)
     static const ot_u32 rcc_flags[2] = {
         _GPIOCLK_N, 0 };
-        
+#	endif 
+    
     //static const ot_u32 b_moder[2] = {
     //    0xFFFFFC0, 0xFFFFFFFF };
     
@@ -919,15 +925,15 @@ static inline void BOARD_USBCLK_OFF(void) {
 static inline void BOARD_USB_PORTENABLE(void) {
     USB->BCDR |= (ot_u32)USB_BCDR_DPPU;
     
-    //BOARD_USB_PORT->MODER  |= (2 << (BOARD_USB_DMPINNUM*2)) \
-                            | (2 << (BOARD_USB_DPPINNUM*2));
+    /*BOARD_USB_PORT->MODER  |= (2 << (BOARD_USB_DMPINNUM*2)) \
+                              | (2 << (BOARD_USB_DPPINNUM*2)); */
 }
 
 static inline void BOARD_USB_PORTDISABLE(void) {
     USB->BCDR &= ~(ot_u32)USB_BCDR_DPPU;
     
-    //BOARD_USB_PORT->MODER  &= ~( (3 << (BOARD_USB_DMPINNUM*2)) \
-                               | (3 << (BOARD_USB_DPPINNUM*2)) );
+    /*BOARD_USB_PORT->MODER  &= ~( (3 << (BOARD_USB_DMPINNUM*2)) \
+                                 | (3 << (BOARD_USB_DPPINNUM*2)) ); */
 }
 
 
@@ -939,22 +945,22 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 ///      radio interface header documentation (it's really quite simple). 
 ///      These Macros will get called in the universal EXTI interrupt handler,
 ///      typically implemented in platform_isr_STM32L.c
-//#define BOARD_RADIO_EXTI0_ISR(); 
-//#define BOARD_RADIO_EXTI1_ISR();   
-//#define BOARD_RADIO_EXTI2_ISR();
-//#define BOARD_RADIO_EXTI3_ISR();
-//#define BOARD_RADIO_EXTI4_ISR();
-//#define BOARD_RADIO_EXTI5_ISR();
-//#define BOARD_RADIO_EXTI6_ISR();     
-//#define BOARD_RADIO_EXTI7_ISR();     
-//#define BOARD_RADIO_EXTI8_ISR()     spirit1_irq0_isr()
-//#define BOARD_RADIO_EXTI9_ISR()     spirit1_irq1_isr()
-//#define BOARD_RADIO_EXTI10_ISR()    spirit1_irq2_isr()
-//#define BOARD_RADIO_EXTI11_ISR();
-//#define BOARD_RADIO_EXTI12_ISR();
-//#define BOARD_RADIO_EXTI13_ISR();
-//#define BOARD_RADIO_EXTI14_ISR();
-//#define BOARD_RADIO_EXTI15_ISR();
+#define BOARD_RADIO_EXTI0_ISR(); 
+#define BOARD_RADIO_EXTI1_ISR();   
+#define BOARD_RADIO_EXTI2_ISR();
+#define BOARD_RADIO_EXTI3_ISR()     sx127x_irq1_isr()
+#define BOARD_RADIO_EXTI4_ISR()     sx127x_irq3_isr()
+#define BOARD_RADIO_EXTI5_ISR();
+#define BOARD_RADIO_EXTI6_ISR();     
+#define BOARD_RADIO_EXTI7_ISR();     
+#define BOARD_RADIO_EXTI8_ISR();
+#define BOARD_RADIO_EXTI9_ISR();
+#define BOARD_RADIO_EXTI10_ISR()    sx127x_irq0_isr()    
+#define BOARD_RADIO_EXTI11_ISR();
+#define BOARD_RADIO_EXTI12_ISR();
+#define BOARD_RADIO_EXTI13_ISR();
+#define BOARD_RADIO_EXTI14_ISR();
+#define BOARD_RADIO_EXTI15_ISR();
 
 
 ///@todo Create a more intelligent setup that knows how to use the UART, even
@@ -1229,11 +1235,11 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 #define RADIO_SPIMOSI_PORT          BOARD_RFSPI_PORT
 #define RADIO_SPIMISO_PORT          BOARD_RFSPI_PORT
 #define RADIO_SPICLK_PORT           BOARD_RFSPI_PORT
-#define RADIO_SPICS_PORT            BOARD_RFSPI_CSNPORT
+#define RADIO_SPICS_PORT            BOARD_RFSPI_NSSPORT
 #define RADIO_SPIMOSI_PIN           BOARD_RFSPI_MOSIPIN
 #define RADIO_SPIMISO_PIN           BOARD_RFSPI_MISOPIN
 #define RADIO_SPICLK_PIN            BOARD_RFSPI_SCLKPIN
-#define RADIO_SPICS_PIN             BOARD_RFSPI_CSNPIN
+#define RADIO_SPICS_PIN             BOARD_RFSPI_NSSPIN
 
 #define RADIO_IRQ0_SRCPORT          BOARD_RFGPIO_0PORTNUM
 #define RADIO_IRQ1_SRCPORT          BOARD_RFGPIO_1PORTNUM
@@ -1248,7 +1254,7 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 //#define RADIO_IRQ4_SRCLINE          -1
 //#define RADIO_IRQ5_SRCLINE          -1
 
-#define RADIO_RESET_PORT            BOARD_RFCTL_PORT
+#define RADIO_RESET_PORT            BOARD_RFCTL_RESETPORT
 #define RADIO_IRQ0_PORT             BOARD_RFGPIO_0PORT
 #define RADIO_IRQ1_PORT             BOARD_RFGPIO_1PORT
 #define RADIO_IRQ2_PORT             BOARD_RFGPIO_2PORT
@@ -1263,7 +1269,6 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 //#define RADIO_IRQ4_PIN              BOARD_RFGPIO_4PIN
 //#define RADIO_IRQ5_PIN              BOARD_RFGPIO_5PIN
 #endif
-
 
 
 
@@ -1398,5 +1403,13 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 
 
 
+
+/** Trailing Header Includes <BR>
+  * ========================================================================<BR>
+  * These must occur AFTER all the above has been defined
+  */
+#ifdef __USE_RADIO
+#	include <io/sx127x/interface.h>
+#endif
 
 #endif

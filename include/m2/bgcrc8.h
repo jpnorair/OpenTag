@@ -35,8 +35,8 @@
 
 
 #include <otsys/config.h>
-#if !defined(__ENCODE_H) && OT_FEATURE(M2)
-#define __ENCODE_H
+#if !defined(__BGCRC8_H) && OT_FEATURE(M2)
+#define __BGCRC8_H
 
 #include <otsys/types.h>
 

@@ -180,7 +180,7 @@ void ot_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
         MEMCPY_DMACHAN->CMAR    = (ot_u32)&value;
         MEMCPY_DMACHAN->CNDTR   = length;
         MEMCPY_DMACHAN->CCR     = DMA_CCR_DIR      | DMA_CCR_PINC     | \
-                                  DMA_CCR_PL_LOW   | DMA_CCR_MEM2MEM  | \
+                                  (0<<DMA_CCR_PL_Pos)   | DMA_CCR_MEM2MEM  | \
                                   DMA_CCR_EN;
         while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
 #   else

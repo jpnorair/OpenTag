@@ -248,11 +248,7 @@ ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
     //return (ot_u8)FLASH_DATAEEPROM_ProgramHalfWord( (uint32_t)addr, (uint16_t)value) );
     
     ///@todo don't allow task switching during this process
-
-    // Set FTDW bit... might not be necessary... check
-    FLASH->PECR        |= (uint32_t)FLASH_PECR_FTDW;   
     *(__IO ot_u16*)addr = value;
-    //retval              = (ot_u8)FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE);
     retval              = (ot_u8)FLASH_WaitForLastOperation((uint32_t)500);
     return retval;
     
@@ -416,7 +412,7 @@ OT_WEAK ot_u8  vprom_write(vaddr addr, ot_u16 value) {
     err     = FLASH_COMPLETE;
     paddr   = _vprom_base + addr;
     
-    // STM32L uses 256 byte flash pages.  Erase page if on page-start address
+    // STM32L0 uses 128 byte flash pages.  Erase page if on page-start address
     if ((paddr & (FLASH_PAGE_SIZE-1)) == 0) {
         err = FLASH_Erase_Page(paddr);
     }

@@ -142,12 +142,12 @@ ot_u32 sq_activate_cnt32(ot_sq* sq);
 /** sq_clock...() functions <BR>
   * ======================================================================= <BR>
   * "Clock" functions subtract an amount of ticks from each node counter.
-  * Lowest value is 0.  They return the counter value of the top node.
+  * Lowest value is 0. 
   */
 
-ot_uint sq_clock(ot_sq* sq, ot_u16 ticks);
+void sq_clock(ot_sq* sq, ot_u16 ticks);
 
-ot_u32 sq_clock_cnt32(ot_sq* sq, ot_u32 ticks);
+void sq_clock_cnt32(ot_sq* sq, ot_u32 ticks);
 
 
 
@@ -192,7 +192,7 @@ ot_sqnode* sq_extend_fromargs(ot_sq* sq, ot_sqcond condfn, void* handle, ot_u16 
   * ======================================================================= <BR>
   */
 
-void sq_pop(ot_sq* sq);
+ot_sqnode* sq_pop(ot_sq* sq);
 
 void sq_flush(ot_sq* sq, ot_sqcond condfn);
 

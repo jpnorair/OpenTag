@@ -289,6 +289,9 @@
 #   define __UART_CLOSE()   (MPIPE_UART->CR1 = 0)
 #   define __UART_CLEAR()   (MPIPE_UART->ICR = 0xffff)
 #   define __CLR_MPIPE()    (mpipe.state = MPIPE_Null)
+
+#else
+#	error "MPIPE UART not set with MPIPE_DIRECT or MPIPE_BREAK operational parameter."
 #endif
 
 
@@ -298,7 +301,7 @@
             _DMATX->CMAR    = (uint32_t)SRC;    \
             _DMATX->CNDTR   = (ot_u16)SIZE;     \
             DMA1->IFCR      = (_DMARX_IFG | _DMATX_IFG);       \
-            _DMATX->CCR     = (DMA_CCR_DIR | DMA_CCR_MINC | DMA_CCR_PL_HI | DMA_CCR_TCIE | DMA_CCR_EN); \
+            _DMATX->CCR     = (DMA_CCR_DIR | DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
         } while (0)
 
 #define __DMA_RXOPEN(DEST, SIZE) do { \
@@ -306,7 +309,7 @@
             _DMARX->CMAR    = (ot_u32)DEST;     \
             _DMARX->CNDTR   = (ot_u16)SIZE;     \
             DMA1->IFCR      = (_DMARX_IFG | _DMATX_IFG);       \
-            _DMARX->CCR     = (DMA_CCR_MINC | DMA_CCR_PL_HI | DMA_CCR_TCIE | DMA_CCR_EN); \
+            _DMARX->CCR     = (DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
         } while (0)
 
 #define __DMA_RX_CLOSE()    (_DMATX->CCR = 0)

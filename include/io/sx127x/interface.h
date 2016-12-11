@@ -28,11 +28,11 @@
 #define __IO_SX127X_INTERFACE_H
 
 #include <otstd.h>
-#include <io/SX127x/config.h>
+#include <io/sx127x/config.h>
 
 ///@todo if SX1272 ...
-#include <io/SX127x/SX1272_registers.h>
-#include <io/SX127x/SX1272_defaults.h>
+#include <io/sx127x/SX1272_registers.h>
+#include <io/sx127x/SX1272_defaults.h>
 
 
 #ifndef BOARD_FEATURE_RFXTALOUT
@@ -83,7 +83,7 @@ typedef struct {
     ot_bool         clkreq;
 #   endif
     SX127x_IMode    imode;
-    ot_u8           spi_null;
+    ot_u8           status;
     ot_u8           spi_addr;
     ot_u8           busrx[24];
 } sx127x_struct;
@@ -123,7 +123,7 @@ void sx127x_virtual_isr(ot_u8 code);
 
 /** Functions implemented typically in the platform driver <BR>
   * ==========================================================================
-  * i.e. platform/stm32l1xx/io_sx127x.c
+  * i.e. /platform/stm32l1xx/io_sx127x.c
   */
 void    sx127x_int_clearall(void);
 ot_uint sx127x_resetpin_ishigh(void);
@@ -133,6 +133,8 @@ ot_uint sx127x_readypin_ishigh(void);
 ot_uint sx127x_cadpin_ishigh(void);
 
 
+void sx127x_int_off();
+void sx127x_int_on();
 
 /** @brief  Generic Interrupt Config Function
   * @param  ie_sel     (ot_u32) interrupt enable select
@@ -215,204 +217,6 @@ void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd);
 
 
 
-
-
-/** Basic Control <BR>
-  * ============================================================================
-  */
-
-/** @brief  Loads default register values into the SX127x
-  * @param  None
-  * @retval None
-  * @ingroup SX127x
-  */
-void sx127x_load_defaults();
-
-
-/** @brief  Performs a "soft reset" on the SX127x core
-  * @param  None
-  * @retval None
-  * @ingroup SX127x
-  */
-void sx127x_reset();
-
-
-/** @brief  Holds processing until POR signal goes low, indicating safe RESET
-  * @param  None
-  * @retval None
-  * @ingroup SX127x
-  */
-void sx127x_waitforreset();
-
-
-
-/** @brief  Indicates if READY signal is high
-  * @param  None
-  * @retval None
-  * @ingroup SX127x
-  */
-ot_u16 sx127x_isready();
-
-
-
-/** @brief Returns the value from the CAD-Detect Pin
-  * @param None
-  * @retval (ot_bool)   True/False on High/Low of CS pin
-  * @ingroup SX127x
-  *
-  * The implementation uses a pin for CAD.  It is nominally DIO1.
-  */
-ot_bool sx127x_check_cadpin(void);
-
-
-
-/** @brief  Holds processing until ModeReady signal goes high (DIO5)
-  * @param  None
-  * @retval None
-  * @ingroup SX127x
-  */
-void sx127x_waitforready();
-
-
-
-/** @brief  Manually refreshes chip status bits (8 bits)
-  * @param  None
-  * @retval (ot_u8)    8 bit status field (register IRQFLAGS)
-  * @ingroup SX127x
-  */
-ot_u16 sx127x_getstatus();
-
-
-/** @brief  Returns the 3 bit mode value
-  * @param  None
-  * @retval ot_u16      OPMODE(2:0) (reg 0x01)
-  * @ingroup SX127x
-  */
-ot_u8 sx127x_mode();
-
-
-/** @brief  Returns RX BYTES in FIFO value from SX127x core
-  * @param  None
-  * @retval ot_u8      
-  * @ingroup SX127x
-  */
-ot_u8 sx127x_rxbytes();
-
-
-/** @brief  Returns RSSI value from SX127x core
-  * @param  None
-  * @retval ot_u8       RSSI register value
-  * @ingroup SX127x
-  *
-  */
-ot_u8 sx127x_rssi();
-ot_u8 sx127x_pktrssi();
-ot_s8 sx127x_pktsnr();
-
-
-
-
-
-
-
-
-/** Bus interface (SPI + 4x GPIO) <BR>
-  * ============================================================================
-  */
-
-/** @brief  Sends a one-byte (really 3 bit) command strobe to the SX127x via SPI
-  * @param  strobe      (ot_u8) Strobe Address
-  * @retval none
-  * @ingroup SX127x
-  *
-  * The only commands you get with SX127x are mode change operations.
-  */
-void sx127x_strobe(ot_u8 strobe);
-
-
-
-/** @brief  Reads one byte of data from an unbanked, addressed register
-  * @param  addr        (ot_u8) Register address
-  * @retval ot_u8       read data
-  * @ingroup SX127x
-  */
-ot_u8 sx127x_read(ot_u8 addr);
-
-
-
-/** @brief  Burst read (multiple bytes) from addressed register
-  * @param  start_addr  (ot_u8) Start Register address (must be shifted)
-  * @param  length      (ot_u8) Burst data length in bytes
-  * @param  data        (ot_u8*) Data buffer to read data into
-  * @retval none
-  * @ingroup SX127x
-  *
-  * This function is nearly identical to sx127x_read().  The differences
-  * should be self-explanatory.
-  */
-void sx127x_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data);
-
-
-
-/** @brief  Writes one byte of data to an addressed register
-  * @param  addr        (ot_u8) Register address
-  * @param  data        (ot_u8) Data to write to register
-  * @retval none
-  * @ingroup SX127x
-  */
-void sx127x_write(ot_u8 addr, ot_u8 data);
-
-
-
-/** @brief  Burst write (multiple bytes) to registers
-  * @param  start_addr  (ot_u8) Start address for write
-  * @param  length      (ot_u8) Burst data length in bytes
-  * @param  cmd_data    (ot_u8*) address + write data
-  * @retval none
-  * @ingroup SX127x
-  *
-  * The cmd_data argument must have a 2 byte offset.  In other words, the data
-  * should begin at position cmd_data[2].
-  */
-void sx127x_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data);
-
-
-
-
-
-
-
-/** Advanced Configuration <BR>
-  * ========================================================================<BR>
-  */
-/** @brief  Computes a signed-integer RSSI value from SX127x encoded value
-  * @param  encoded_value (ot_u8) SX127x encoded RSSI
-  * @retval ot_int         RSSI as signed integer
-  * @ingroup SX127x
-  */
-ot_int sx127x_calc_rssi(ot_u8 encoded_value);
-
-
-
-ot_u8 sx127x_clip_txeirp(ot_u8 input_eirp);
-
-
-/** @brief Sets the TX output power based on input DASH7 Power Code
-  * @param pwr_code     (ot_u8*) pointer to PHYMAC struct tx_eirp value
-  * @retval none
-  * @ingroup SX127x
-  *
-  * This function will set the target power in PA TABLE 0, and it will fill the
-  * PA TABLE slots 8-1 with ramped-down powers so that the TX ramp-up/ramp-down
-  * is nice and smooth.
-  */
-void sx127x_set_txpwr(ot_u8* pwr_code);
-
-
-
-
-
-
 /** Common GPIO setup & interrupt functions  <BR>
   * ========================================================================<BR>
   * Your radio ISR function should be of the type void radio_isr(ot_u8), as it
@@ -458,7 +262,7 @@ void sx127x_set_txpwr(ot_u8* pwr_code);
 #define RFI_TXDONE      RFI_SOURCE0
 
 #define RFI_LISTEN      (RFI_CADDONE)
-#define RFI_RXDATA      (RFI_RXDONE | RFI_RXTIMEOUT | RFI_HEADER)
+#define RFI_RXDATA      (RFI_RXDONE | RFI_RXTIMEOUT | RFI_RXHEADER)
 #define RFI_CSMA        (RFI_CADDONE)
 #define RFI_TXDATA      (RFI_TXDONE)
 
@@ -472,11 +276,6 @@ void sx127x_set_txpwr(ot_u8* pwr_code);
 
 
 
-void sx127x_start_counter();
-
-void sx127x_stop_counter();
-
-ot_u16 sx127x_get_counter();
 
 
 
@@ -551,7 +350,222 @@ void sx127x_irq5_isr();
   * @retval None
   * @ingroup SX127x
   */
-void sx127x_wfe(ot_u32 ifg_sel);
+void sx127x_wfe(ot_u16 ifg_sel);
+
+
+
+
+
+/** Basic Control <BR>
+  * ============================================================================
+  */
+
+/** @brief  Loads default register values into the SX127x
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */
+void sx127x_load_defaults();
+
+
+/** @brief  Performs a "soft reset" on the SX127x core
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */
+void sx127x_reset();
+
+
+/** @brief  Indicates if READY signal is high
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */
+ot_bool sx127x_isready();
+
+
+/** @brief  Holds MCU in blocking wait until SX127x is ready
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */
+void sx127x_waitfor_ready();
+
+
+/** @brief  Holds MCU in blocking wait until SX127x enters standby
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */
+void sx127x_waitfor_standby();
+
+
+/** @brief  Holds MCU in blocking wait until SX127x enters sleep
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */
+void sx127x_waitfor_sleep();
+
+
+/** @brief Returns the value from the CAD-Detect Pin
+  * @param None
+  * @retval (ot_bool)   True/False on High/Low of CS pin
+  * @ingroup SX127x
+  *
+  * The implementation uses a pin for CAD.  It is nominally DIO1.
+  */
+ot_bool sx127x_check_cadpin();
+
+
+/** @brief  Manually refreshes chip status bits (8 bits)
+  * @param  None
+  * @retval (ot_u8)    8 bit status field (register IRQFLAGS)
+  * @ingroup SX127x
+  */
+ot_u8 sx127x_getstatus();
+
+
+/** @brief  Returns the 3 bit mode value
+  * @param  None
+  * @retval ot_u16      OPMODE(2:0) (reg 0x01)
+  * @ingroup SX127x
+  */
+ot_u8 sx127x_mode();
+
+
+/** @brief  Returns RX BYTES in FIFO value from SX127x core
+  * @param  None
+  * @retval ot_u8      
+  * @ingroup SX127x
+  */
+ot_u8 sx127x_rxbytes();
+
+
+/** @brief  Returns RSSI value from SX127x core
+  * @param  None
+  * @retval ot_u8       RSSI register value
+  * @ingroup SX127x
+  *
+  */
+ot_u8 sx127x_rssi();
+ot_u8 sx127x_pktrssi();
+ot_s8 sx127x_pktsnr();
+
+
+
+
+
+
+
+
+/** High-Level Read, Write, and Load-Defaults Functions <BR>
+  * ============================================================================
+  */
+
+/** @brief  Sends a one-byte (really 3 bit) command strobe to the SX127x via SPI
+  * @param  strobe      (ot_u8) Strobe Address
+  * @retval none
+  * @ingroup SX127x
+  *
+  * The only commands you get with SX127x are mode change operations.
+  */
+void sx127x_strobe(ot_u8 strobe);
+
+
+
+/** @brief  Reads one byte of data from an unbanked, addressed register
+  * @param  addr        (ot_u8) Register address
+  * @retval ot_u8       read data
+  * @ingroup SX127x
+  */
+ot_u8 sx127x_read(ot_u8 addr);
+
+
+
+/** @brief  Burst read (multiple bytes) from addressed register
+  * @param  start_addr  (ot_u8) Start Register address (must be shifted)
+  * @param  length      (ot_u8) Burst data length in bytes
+  * @param  data        (ot_u8*) Data buffer to read data into
+  * @retval none
+  * @ingroup SX127x
+  *
+  * This function is nearly identical to sx127x_read().  The differences
+  * should be self-explanatory.
+  */
+void sx127x_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data);
+
+
+
+/** @brief  Writes one byte of data to an addressed register
+  * @param  addr        (ot_u8) Register address
+  * @param  data        (ot_u8) Data to write to register
+  * @retval none
+  * @ingroup SX127x
+  */
+void sx127x_write(ot_u8 addr, ot_u8 data);
+
+
+
+/** @brief  Burst write (multiple bytes) to registers
+  * @param  start_addr  (ot_u8) Start address for write
+  * @param  length      (ot_u8) Burst data length in bytes
+  * @param  cmd_data    (ot_u8*) address + write data
+  * @retval none
+  * @ingroup SX127x
+  *
+  * The cmd_data argument must have a 2 byte offset.  In other words, the data
+  * should begin at position cmd_data[2].
+  */
+void sx127x_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data);
+
+
+
+
+/** Counter Management Functions <BR>
+  * ========================================================================<BR>
+  * Certain MAC processes require a running timer.  Instead of using any
+  * internal timers of the SX127x, we instead use the more reliable interval
+  * timer feature of OpenTag.
+  */
+  
+void sx127x_start_counter();
+
+void sx127x_stop_counter();
+
+ot_u16 sx127x_get_counter();
+
+
+
+
+
+/** Advanced Configuration <BR>
+  * ========================================================================<BR>
+  */
+/** @brief  Computes a signed-integer RSSI value from SX127x encoded value
+  * @param  encoded_value 	(ot_u8) SX127x encoded RSSI
+  * @param	packet_snr		(ot_s8) SX127x packet SNR figure
+  * @retval ot_int         	RSSI as signed integer
+  * @ingroup SX127x
+  */
+ot_int sx127x_calc_rssi(ot_u8 encoded_value, ot_s8 packet_snr);
+
+ot_u8 sx127x_calc_rssithr(ot_u8 input);
+
+ot_u8 sx127x_clip_txeirp(ot_u8 input_eirp);
+
+
+/** @brief Sets the TX output power based on input DASH7 Power Code
+  * @param pwr_code     (ot_u8) tx_eirp value (typically from PHYMAC struct)
+  * @retval none
+  * @ingroup SX127x
+  *
+  * This function will set the target power in PA TABLE 0, and it will fill the
+  * PA TABLE slots 8-1 with ramped-down powers so that the TX ramp-up/ramp-down
+  * is nice and smooth.
+  */
+void sx127x_set_txpwr(ot_u8 pwr_code);
+
 
 
 #endif

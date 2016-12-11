@@ -37,6 +37,10 @@
 #include <otplatform.h>
 #include <otsys/syskern.h>
 
+#if (OT_FEATURE(M2))
+#	include <m2/radio.h>
+#endif
+
 systim_struct systim;
 
 
@@ -53,7 +57,9 @@ systim_struct systim;
 
 /// Used for SYSTIM-main
 void platform_isr_lptim1() {
+#if OT_FEATURE(TIME)
     ot_u8 lptim_flags = LPTIM1->ISR;
+#endif
 
     // Clear all the interrupt flags in the register
     // Also make sure only the CMP interrupt is in usage
@@ -82,7 +88,7 @@ void platform_isr_lptim1() {
 ///   changed in the future to a dynamic callback.
 void platform_isr_rtcwakeup() { 
 #   if (OT_FEATURE(M2))
-#       if (RF_FEATURE(CSMATIMER) != ENABLED))
+#       if (RF_FEATURE(CSMATIMER) != ENABLED)
         if (systim.opt & SYSTIM_INSERTION_ON) {
             systim.opt ^= SYSTIM_INSERTION_ON;
             RTC->CR &= ~RTC_CR_WUTE;

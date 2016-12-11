@@ -63,7 +63,7 @@
            
 
 // Frequency Select bytes
-#define DRF_LR_FRMSB            ((_FRF_866MHz>>16) & 0xFF)
+#define DRF_LR_FRFMSB           ((_FRF_866MHz>>16) & 0xFF)
 #define DRF_LR_FRFMIB           ((_FRF_866MHz>>8) & 0xFF)
 #define DRF_LR_FRFLSB           ((_FRF_866MHz>>0) & 0xFF)
 
@@ -119,7 +119,7 @@
 #define DRF_LR_DETECTOPTIMIZE   (_DETECT_SF7_TO_SF12)       // chip default
 
 // there is a phantom 0x27 required in this register
-#define DR_LR_INVERTIQ          (_INVERTIQ_RX_OFF | 0x27)   // chip default
+#define DRF_LR_INVERTIQ         (_INVERTIQ_RX_OFF | 0x27)   // chip default
 
 // Not using SF6
 #define DRF_LR_DETECTIONTHRESHOLD (_THRESH_SF7_TO_SF12)     // chip default
@@ -129,7 +129,7 @@
 #define DRF_LR_SYNCWORD         (0xD7)
 
 // Undocumented Register.  Leave alone!
-#define DRFREG_LR_INVERTIQ2     (_INVERTIQ2_OFF)    // let this stay at chip default
+#define DRF_LR_INVERTIQ2        (_INVERTIQ2_OFF)    // let this stay at chip default
 
 
 // DIO settings are provided for all modes of operation.  We don't really care 

@@ -56,6 +56,9 @@
 #include <io/sx127x/config.h>
 #include <io/sx127x/interface.h>
 
+#include <m2/bgcrc8.h>
+#include <m2/encode.h>
+
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>
 #include <otlib/utils.h>
@@ -107,8 +110,8 @@ rfctl_struct rfctl;
 
 void sx127x_virtual_isr(ot_u8 code) {
     
-    switch (code) {
-        case RFIV_RXLISTEN:     rm2_();             break;
+    switch (code) {	///@todo implement listen feature
+        case RFIV_LISTEN:       rm2_kill();                 break;
         
         case RFIV_RXDONE:       rm2_rxend_isr();        break;
         case RFIV_RXTIMEOUT:    rm2_rxtimeout_isr();    break;  // Only comes from SX127x in BG Listen
@@ -137,7 +140,6 @@ OT_WEAK void radio_init( ) {
     /// Set SX127x-dependent initialization defaults
     //rfctl.flags     = RADIO_FLAG_XOON;
     rfctl.flags     = 0;
-    rfctl.nextcal   = 0;
 
     /// Set universal Radio module initialization defaults
     //radio.state     = RADIO_Idle;
@@ -149,13 +151,6 @@ OT_WEAK void radio_init( ) {
     /// SX127x can do SPI in Sleep.
     sx127x_init_bus();
     sx127x_load_defaults();
-
-    /// Do this workaround (SPIRIT1 Errata DocID023165 R5, section 1.2) to fix
-    /// the shutdown current issue for input voltages <= 2.6V.  For input
-    /// voltages > 2.6V, it does not hurt anything.
-    sx127x_write(RFREG(PM_TEST), 0xCA);
-    sx127x_write(RFREG(TEST_SELECT), 0x04);
-    sx127x_write(RFREG(TEST_SELECT), 0x00);
 
     /// Done with the radio init: sx127x_load_defaults() requires that the 
     /// radio is in SLEEP already, so explicit sleep call is commented here.
@@ -269,7 +264,7 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
 #   define SPACE_116kHz         0x76C
 #   define SPACE_250kHz         0x1000
 #   define SPACE_1500kHz        0x6000
-#   define __FREQ24(FC)         (0x80 | RFREG_LR_FRMSB), (((FC)>>16)&0xFF), (((FC)>>8)&0xff), (((FC)>>0)&0xff)
+#   define __FREQ24(FC)         (0x80 | RFREG_LR_FRFMSB), (((FC)>>16)&0xFF), (((FC)>>8)&0xff), (((FC)>>0)&0xff)
 
     static const ot_u8 bandplan[] = {
         //433: 0-59
@@ -320,7 +315,7 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
         __FREQ24(BASE_901M250Hz+(13*SPACE_1500kHz)),
         __FREQ24(BASE_901M250Hz+(14*SPACE_1500kHz)),
         __FREQ24(BASE_901M250Hz+(15*SPACE_1500kHz))     
-    }
+    };
     
     ot_u8 fc_i;
 
@@ -340,7 +335,7 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
         offset  = (phymac[0].flags > 2) ? 2 : phymac[0].flags;
         offset *= (15*4);
         offset += (fc_i-1);
-        sx127x_spibus_io(4, 0, &bandplan[offset]);
+        sx127x_spibus_io(4, 0, (ot_u8*)&bandplan[offset]);
     }
 }
 #endif
@@ -358,7 +353,10 @@ OT_WEAK void rm2_mac_configure() {
 
 #ifndef EXTF_rm2_calc_link
 OT_WEAK void rm2_calc_link() {
-    radio.last_rssi     = sx127x_calc_rssi( sx127x_read(RFREG_LR_PKTRSSIVALUE) );
+	ot_u8 prssi_code	= sx127x_read(RFREG_LR_PKTRSSIVALUE);
+	ot_s8 psnr_code		= sx127x_read(RFREG_LR_PKTSNRVALUE);
+	
+    radio.last_rssi     = sx127x_calc_rssi(prssi_code, psnr_code);
     radio.last_linkloss = (ot_int)(rxq.front[2] & 0x7F) - 80 - RF_HDB_RXATTEN;
     radio.last_linkloss-= radio.last_rssi;
 
@@ -466,7 +464,7 @@ static const ot_u8 fginit[4] = {
 
 #ifndef EXTF_rm2_rxinit
 OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
-    ot_u8   netstate;
+    //ot_u8   netstate;
     ot_u8*  initvals;
     ot_sub  sub_init;
 
@@ -482,12 +480,12 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     if (psettings & (M2_NETFLAG_BG)) {
         rfctl.flags    |= RADIO_FLAG_BG;
         rfctl.tries     = 3;        
-        netstate        = (M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX);
+      //netstate        = (M2_NETSTATE_UNASSOC | M2_NETFLAG_FIRSTRX);
         initvals        = (ot_u8*)bginit;
         sub_init        = &sub_initcad;
     }
     else {
-        netstate        = psettings;
+      //netstate        = psettings;
         initvals        = (ot_u8*)fginit;
         sub_init        = &sub_initrx;
     }
@@ -525,7 +523,7 @@ void sub_rxtest_callback(ot_int a, ot_int b) {
 OT_WEAK void rm2_rxtest(ot_u8 channel, ot_u8 tsettings, ot_u16 timeout) {
     // Set basic operational flags
     rfctl.flags    &= ~(RADIO_FLAG_CONT | RADIO_FLAG_BG);
-    netstate        = tsettings;                    // token test settings
+    //netstate        = tsettings;                    ///@todo bury this into session top?
     radio.evtdone   = &sub_rxtest_callback;
     
     // We don't care if the channel is supported, because no data is going to
@@ -671,7 +669,7 @@ OT_WEAK void rm2_txtest(ot_u8 channel, ot_u8 eirp_code, ot_u8 tsettings, ot_u16 
     // Set TX PATABLE values if different than pre-existing values
     if (rfctl.flags & RADIO_FLAG_SETPWR) {
         rfctl.flags &= ~RADIO_FLAG_SETPWR;
-        sx127x_set_txpwr( &phymac[0].tx_eirp );
+        sx127x_set_txpwr( phymac[0].tx_eirp );
     }
 
     // This bit enables TX-Cont mode.
@@ -712,7 +710,7 @@ OT_WEAK void rm2_txstop_flood() {
 /// as soon as the current packet is finished transmitting.
     rfctl.state = RADIO_STATE_TXDONE;
     sx127x_stop_counter();
-    sx127x_int_txdone();
+    sx127x_int_txdata();
 }
 #endif
 
@@ -749,7 +747,6 @@ OT_WEAK void rm2_txcsma_isr() {
         /// <LI> Fall-through to CCA1 if CSMA is enabled </LI>
         case (RADIO_STATE_TXINIT >> RADIO_STATE_TXSHIFT): {
             MODE_enum   type;
-            ot_u16      pktlen;
 
             // Find a usable channel from the TX channel list.  If none, error.
             if (rm2_test_chanlist() == False) {
@@ -767,7 +764,7 @@ OT_WEAK void rm2_txcsma_isr() {
             // Set TX power value if different than pre-existing value
             if (rfctl.flags & RADIO_FLAG_SETPWR) {
                 rfctl.flags &= ~RADIO_FLAG_SETPWR;
-                sx127x_set_txpwr( &phymac[0].tx_eirp );
+                sx127x_set_txpwr( phymac[0].tx_eirp );
             }
 
             // Set other TX Buffering & Packet parameters, and also save the
@@ -827,7 +824,7 @@ OT_WEAK void rm2_txcsma_isr() {
             
             // Preload into TX FIFO all packet data
             // There are slightly different processes for BG and FG frames
-            txq.front[2] = (phymac[0].tx_eirp & 0x7f);  // TX EIRP value overwrite
+            txq.front[2] = rm2_clip_txeirp(phymac[0].tx_eirp);  // TX EIRP value overwrite
             if (rfctl.flags & RADIO_FLAG_BG) {
                 radio_idle();
                 if (rfctl.flags & RADIO_FLAG_CONT) {
@@ -938,9 +935,8 @@ void sx127xdrv_save_linkinfo() {
 
 void sx127xdrv_force_standby() {
 /// Goes to Standby without modifying states: use only if you know what you're doing.
-    sx127x_waitfor_ready();
     sx127x_strobe(_OPMODE_STANDBY);
-    sx127x_waitfor_ready();
+    sx127x_waitfor_standby();
 }
 
 
@@ -957,7 +953,8 @@ void sx127xdrv_force_standby() {
 
 #ifndef EXTF_radio_off
 OT_WEAK void radio_off() {
-   sx127x_shutdown();
+   sx127x_reset();
+   radio_sleep();
 }
 #endif
 
@@ -985,9 +982,8 @@ OT_WEAK void radio_sleep() {
     if (!test) {
         radio.state  = RADIO_Idle;
         rfctl.flags &= ~RADIO_FLAG_PWRMASK;
-        sx127x_waitfor_ready();
         sx127x_strobe(_OPMODE_SLEEP);
-        sx127x_waitfor_ready();
+        sx127x_waitfor_sleep();
     }
 }
 #endif
@@ -1056,7 +1052,7 @@ OT_WEAK ot_bool radio_rxopen_4() {
 
 #ifndef EXTF_radio_txopen
 OT_WEAK ot_bool radio_txopen() {
-    return (ot_bool)sx127x_txbytes();
+    return (ot_bool)(radio.state == RADIO_DataTX);
 }
 #endif
 

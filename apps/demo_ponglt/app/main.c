@@ -59,6 +59,7 @@
 #include <otstd.h>
 #include <otplatform.h>
 #include <board.h>
+#include <otlib/delay.h>
 #include <otlib/rand.h>
 #include <otlib/logger.h>
 
@@ -105,11 +106,11 @@ void app_invoke(ot_u8 call_type);
 
 /// Communication Task Applets
 void applet_send_query(m2session* active);
-void applet_send_beacon(m2session* active);
+//void applet_send_beacon(m2session* active);
 
 /// Direct Control Applets
-void opmode_goto_gateway();
-void opmode_goto_endpoint();
+//void opmode_goto_gateway();
+//void opmode_goto_endpoint();
 
 // Applets that run due to OpenTag callbacks
 //void    app_packet_routing(ot_int code, ot_int type);

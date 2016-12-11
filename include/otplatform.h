@@ -89,13 +89,13 @@
 
 /// Errors for missing critical parameters
 #ifndef MCU_TYPE_PTRINT
-#   error "No value for MCU_TYPE_PTRINT (should be in otplatform/xxx/platform_xxx.h)"
+#   error "No value for MCU_TYPE_PTRINT (should be in include/platform/hw/xxx.h)"
 #endif
 #ifndef MCU_TYPE_PTRUINT
-#   error "No value for MCU_TYPE_PTRUINT (should be in otplatform/xxx/platform_xxx.h)"
+#   error "No value for MCU_TYPE_PTRUINT (should be in include/platform/hw/xxx.h)"
 #endif
 #ifndef MCU_PARAM_ERRPTR
-#   error "No value for MCU_TYPE_ERRPTR (should be in otplatform/xxx/platform_xxx.h)"
+#   error "No value for MCU_TYPE_ERRPTR (should be in include/platform/hw/xxx.h)"
 #endif
 
 

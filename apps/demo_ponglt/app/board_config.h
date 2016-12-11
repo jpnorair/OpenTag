@@ -29,7 +29,7 @@
 #define __BOARD_CONFIG_H
 
 #include <app/build_config.h>
-#include <board_select.h>
+#include "../../_common/board_select.h"
 
 
 

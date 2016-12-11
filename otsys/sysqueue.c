@@ -129,7 +129,7 @@ OT_WEAK ot_u32 sq_activate_cnt32(ot_sq* sq) {
 /** sq_clock...() functions <BR>
   * ======================================================================= <BR>
   * "Clock" functions subtract an amount of ticks from each node counter.
-  * Lowest value is 0.  They return the counter value of the top node.
+  * Lowest value is 0.  
   */
 
 #ifndef EXTF_sq_clock

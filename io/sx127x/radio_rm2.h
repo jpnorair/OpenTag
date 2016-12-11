@@ -32,7 +32,6 @@
 #include <otstd.h>
 #include <io/sx127x/config.h>
 #include <io/sx127x/interface.h>
-#include <io/sx127x/clkout.h>
 
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>
@@ -109,7 +108,7 @@ void sx127xdrv_save_linkinfo();
 /** Some local constants, variables, macros
   */
 #define _MAXPKTLEN (M2_PARAM(MAXFRAME) * M2_PARAM(MFPP))
-#if (_MAXPKTLEN != 256)
+#if (_MAXPKTLEN > 256)
 #   warning "This implementation of LoRa must use 256 bytes packet length"
 #   undef _MAXPKTLEN
 #   define _MAXPKTLEN   256
@@ -145,6 +144,7 @@ void sx127xdrv_save_linkinfo();
 
 #define RADIO_STATE_TXSHIFT     3
 #define RADIO_STATE_TXMASK      (7 << RADIO_STATE_TXSHIFT)
+#define RADIO_STATE_TXDONE		(0 << RADIO_STATE_TXSHIFT)
 #define RADIO_STATE_TXINIT      (1 << RADIO_STATE_TXSHIFT)
 #define RADIO_STATE_TXCAD1      (2 << RADIO_STATE_TXSHIFT)
 #define RADIO_STATE_TXCCA1      (3 << RADIO_STATE_TXSHIFT)

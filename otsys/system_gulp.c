@@ -33,7 +33,7 @@
 #include <otplatform.h>
 
 #include <otsys/syskern.h>
-#include "system_gulp.h"
+//#include "system_gulp.h"
 #include <otsys/mpipe.h>
 #include <otsys/sysext.h>
 

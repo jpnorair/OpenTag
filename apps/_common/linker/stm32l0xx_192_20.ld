@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2016 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -13,13 +13,13 @@
   * limitations under the License.
   *
 
-NOTE: This works with latest version of RIDE and arm-gcc, as of 09/2014.
+NOTE: This works with latest version of RIDE and arm-gcc, as of 11/2016.
 
 If you are building with RIDE, you can make sure the project looks for this
 linker script at the following location:
-$(ApplicationDir)/../../_common/linker/stm32l0xx_64_8.ld
+$(ApplicationDir)/../../_common/linker/stm32l0xx_192_20.ld
 
-Default linker script for STM32L0xx with 64KB Flash + 8KB SRAM + 2KB EEPROM
+Default linker script for STM32L0xx with 192KB Flash + 20KB SRAM + 6KB EEPROM
 
 DETAILS
 - Declares 192B stack, although this is only used for Kernel Tasks.  ISRs and
@@ -72,9 +72,13 @@ PROVIDE (   DMA1_Channel2_3_IRQHandler = 0 ) ;
 PROVIDE (   DMA1_Channel4_5_6_7_IRQHandler = 0 ) ;
 PROVIDE (   ADC1_COMP_IRQHandler = 0 ) ;
 PROVIDE (   LPTIM1_IRQHandler = 0 ) ;
+PROVIDE (   USART4_5_IRQHandler = 0 ) ;
 PROVIDE (   TIM2_IRQHandler = 0 ) ;
+PROVIDE (   TIM3_IRQHandler = 0 ) ;
 PROVIDE (   TIM6_DAC_IRQHandler = 0 ) ;
+PROVIDE (   TIM7_IRQHandler = 0 ) ;
 PROVIDE (   TIM21_IRQHandler = 0 ) ;
+PROVIDE (   I2C3_IRQHandler = 0 ) ;
 PROVIDE (   TIM22_IRQHandler = 0 ) ;
 PROVIDE (   I2C1_IRQHandler = 0 ) ;
 PROVIDE (   I2C2_IRQHandler = 0 ) ;
@@ -82,7 +86,7 @@ PROVIDE (   SPI1_IRQHandler = 0 ) ;
 PROVIDE (   SPI2_IRQHandler = 0 ) ;
 PROVIDE (   USART1_IRQHandler = 0 ) ;
 PROVIDE (   USART2_IRQHandler = 0 ) ;
-PROVIDE (   AES_RNG_LPUART1_IRQHandler = 0 ) ;
+PROVIDE (   RNG_LPUART1_IRQHandler = 0 ) ;
 PROVIDE (   LCD_IRQHandler = 0 ) ;
 PROVIDE (   USB_IRQHandler = 0 ) ;
 
@@ -112,6 +116,13 @@ PROVIDE ( OB_BASE               = 0x1FF80000);
 APBPERIPH_BASE       = PERIPH_BASE  ;
 AHBPERIPH_BASE       = (PERIPH_BASE + 0x20000) ;
 IOPPERIPH_BASE       = (PERIPH_BASE + 0x10000000) ;
+
+
+PROVIDE ( TIM3            = (APBPERIPH_BASE + 0x0400) ) ;
+PROVIDE ( TIM7            = (APBPERIPH_BASE + 0x1400) ) ;
+PROVIDE ( USART4          = (APBPERIPH_BASE + 0x4C00) ) ;
+PROVIDE ( USART5          = (APBPERIPH_BASE + 0x5000) ) ;
+PROVIDE ( I2C3            = (APBPERIPH_BASE + 0x7800) ) ;
 
 PROVIDE ( TIM2            = (APBPERIPH_BASE + 0x0000) ) ;
 PROVIDE ( TIM6            = (APBPERIPH_BASE + 0x1000) ) ;
@@ -158,7 +169,7 @@ PROVIDE ( OB              = (0x1FF80000) ) ;
 PROVIDE ( CRC             = (AHBPERIPH_BASE + 0x3000) ) ;
 PROVIDE ( TSC             = (AHBPERIPH_BASE + 0x4000) ) ;
 PROVIDE ( RNG             = (AHBPERIPH_BASE + 0x5000) ) ;
-PROVIDE ( AES             = (AHBPERIPH_BASE + 0x6000) ) ;
+/* PROVIDE ( AES             = (AHBPERIPH_BASE + 0x6000) ) ; */
 
 PROVIDE ( GPIOA           = (IOPPERIPH_BASE + 0x0000) ) ;
 PROVIDE ( GPIOB			  = (IOPPERIPH_BASE + 0x0400) ) ;
@@ -185,15 +196,15 @@ PROVIDE ( SCB             = (SCS_BASE + 0x0D00) ) ;
 
 
 /* MEMORY MAPPING 
- * Uses 2KB EEPROM for data
+ * Uses 6KB EEPROM for data
  */
 
 MEMORY
 {
-    RAM (xrw)       : ORIGIN = 0x20000000,  LENGTH = 0x2000
+    RAM (xrw)       : ORIGIN = 0x20000000,  LENGTH = 0x5000
   
 /* This section for Program Flash */
-    FLASH (rx)      : ORIGIN = 0x08000000,  LENGTH = 0x10000
+    FLASH (rx)      : ORIGIN = 0x08000000,  LENGTH = 0x30000
     STARTFLASH (rx) : ORIGIN = 0x0,         LENGTH = 0x0
     CRPPATCH (r)    : ORIGIN = 0x0,         LENGTH = 0
     FLASHPATCH (r)  : ORIGIN = 0x00000000,  LENGTH = 0
@@ -203,8 +214,8 @@ MEMORY
 /* This section for Veelite FS stored in EEPROM */
     FLASHOV (r)     : ORIGIN = 0x08080000,  LENGTH = 0x360
     FLASHISFS (r)   : ORIGIN = 0x08080360,  LENGTH = 0xA0
-/*  FLASHGFB (r)    : ORIGIN = 0x08080400,  LENGTH = 0x400*/
-    FLASHISF (r)    : ORIGIN = 0x08080400,  LENGTH = 0x400
+    FLASHGFB (r)    : ORIGIN = 0x08080400,  LENGTH = 0x400
+    FLASHISF (r)    : ORIGIN = 0x08080800,  LENGTH = 0x800
 /*  FLASHWL (r)     : ORIGIN = 0x08080400,  LENGTH = 0x400*/
 /* End of Veelite / EEPROM */
   
@@ -401,13 +412,13 @@ SECTIONS
 		. = ALIGN(4);
 	} > FLASHISFS
 	
-/*
+
 	.vl_gfb : {
 	    . = ALIGN(4);
 		KEEP(*(.vl_gfb))
 		. = ALIGN(4);
 	} > FLASHGFB
-*/
+
 	
 	.vl_isf : {
 	    . = ALIGN(4);

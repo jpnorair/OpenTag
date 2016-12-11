@@ -24,7 +24,7 @@
 			</provider>
 		</extension>
 	</configuration>
-	<configuration id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304.1321962735" name="Debug_Nucleo_LRWAN1">
+	<configuration id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304.943481352" name="Debug_NucleoLRWAN1">
 		<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
 			<provider copy-of="extension" id="org.eclipse.cdt.ui.UserLanguageSettingsProvider"/>
 			<provider-reference id="org.eclipse.cdt.core.ReferencedProjectsLanguageSettingsProvider" ref="shared-provider"/>

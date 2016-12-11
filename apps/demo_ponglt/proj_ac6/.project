@@ -26,9 +26,9 @@
 	</natures>
 	<linkedResources>
 		<link>
-			<name>app</name>
+			<name>include</name>
 			<type>2</type>
-			<locationURI>PARENT-1-PROJECT_LOC/app</locationURI>
+			<locationURI>PARENT-3-PROJECT_LOC/include</locationURI>
 		</link>
 		<link>
 			<name>io</name>
@@ -49,6 +49,36 @@
 			<name>otsys</name>
 			<type>2</type>
 			<locationURI>PARENT-3-PROJECT_LOC/otsys</locationURI>
+		</link>
+		<link>
+			<name>app/app_config.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/app/app_config.h</locationURI>
+		</link>
+		<link>
+			<name>app/board_config.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/app/board_config.h</locationURI>
+		</link>
+		<link>
+			<name>app/build_config.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/app/build_config.h</locationURI>
+		</link>
+		<link>
+			<name>app/extf_config.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/app/extf_config.h</locationURI>
+		</link>
+		<link>
+			<name>app/isr_config_STM32L0.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/app/isr_config_STM32L0.h</locationURI>
+		</link>
+		<link>
+			<name>app/main.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/app/main.c</locationURI>
 		</link>
 		<link>
 			<name>extensions/dll_sig_rfinit.c</name>
@@ -146,6 +176,11 @@
 			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/io_SPIRIT1.c</locationURI>
 		</link>
 		<link>
+			<name>platform/stm32l0xx/io_SX127x.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/io_SX127x.c</locationURI>
+		</link>
+		<link>
 			<name>platform/stm32l0xx/otlib_crc16.c</name>
 			<type>1</type>
 			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/otlib_crc16.c</locationURI>
@@ -219,6 +254,21 @@
 			<name>platform/stm32l0xx/stm32l0xx_hal_flash_ex.h</name>
 			<type>1</type>
 			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/stm32l0xx_hal_flash_ex.h</locationURI>
+		</link>
+		<link>
+			<name>platform/stm32l0xx/stm32l0xx_hal_gpio.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/stm32l0xx_hal_gpio.c</locationURI>
+		</link>
+		<link>
+			<name>platform/stm32l0xx/stm32l0xx_hal_gpio.h</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/stm32l0xx_hal_gpio.h</locationURI>
+		</link>
+		<link>
+			<name>platform/stm32l0xx/stm32l0xx_hal_gpio_ex.h</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/stm32l0xx_hal_gpio_ex.h</locationURI>
 		</link>
 		<link>
 			<name>platform/stm32l0xx/stm32l0xx_hal_pcd.c</name>
@@ -316,4 +366,10 @@
 			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/_startup/gcc/startup_stm32l073xx.s</locationURI>
 		</link>
 	</linkedResources>
+	<variableList>
+		<variable>
+			<name>OT_ROOT</name>
+			<value>$%7BPARENT-3-PROJECT_LOC%7D</value>
+		</variable>
+	</variableList>
 </projectDescription>

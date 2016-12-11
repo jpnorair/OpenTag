@@ -271,15 +271,18 @@ inline ot_uint sx127x_cadpin_ishigh(void)     { return (_CAD_DETECT_PORT->IDR & 
 void sx127x_init_bus() {
 /// @note platform_init_periphclk() should have alread enabled RADIO_SPI clock
 /// and GPIO clocks
-    ot_u16 scratch;
 
     ///0. Preliminary Stuff
 #   if (BOARD_FEATURE_RFXTALOUT)
     sx127x.clkreq = False;
 #   endif
 
-    ///1. Assure that chip is in reset
-    sx127x_resetpin_set();
+    ///1. POR sequence: 
+    /// - Reset pin must start as high output from initialization
+    /// - Clear reset pin and wait 10 ms
+    sx127x_resetpin_clear();
+    delay_ms(10);
+    
 
     ///2. Set-up DMA to work with SPI.  The DMA is bound to the SPI and it is
     ///   used for Duplex TX+RX.  The DMA RX Channel is used as an EVENT.  The
@@ -341,15 +344,11 @@ void sx127x_init_bus() {
 #   endif
 #   endif
 
-    ///4. The best way to wait for the SX127x to start is to wait for the reset
-    ///   line to come high.  Once it is high, the chip is in ready.
-    sx127x_waitforreset();
-
-    ///5. Take GPIOs out of pull-down and into floating mode.  This is to save
+    ///4. Take GPIOs out of pull-down and into floating mode.  This is to save
     ///   energy, which could otherwise just be draining over the pull-downs.
     ///@todo this
 
-    ///6. Put the SX127x into a default IO configuration, and then to sleep.
+    ///5. Put the SX127x into a default IO configuration, and then to sleep.
     ///   It is important to expose the READY signal on GPIO0, because the
     ///   driver needs this signal to confirm state changes.
 }
