@@ -277,7 +277,7 @@ void sx127x_waitfor_standby() {
     
     while (mode != 1) {
         if (--wdog == 0) {
-            sx127x_resetpin_set();
+            sx127x_resetpin_sethigh();
             delay_us(300);
             dll_init();
             return;
@@ -294,7 +294,7 @@ void sx127x_waitfor_sleep() {
     
     while (sx127x_mode() != 0) {
         if (--wdog == 0) {
-            sx127x_resetpin_set();
+            sx127x_resetpin_sethigh();
             delay_us(300);
             dll_init();
             return;

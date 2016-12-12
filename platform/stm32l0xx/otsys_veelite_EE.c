@@ -96,6 +96,52 @@
 
 
 
+/** Fixit functions for bloated STM32 Cube FW
+ * =================================================
+ */
+HAL_StatusTypeDef sub_WaitForLastOperation(ot_long Timeout) {
+// Wait for the FLASH operation to complete by polling on BUSY flag to be reset.
+// Even if the FLASH operation fails, the BUSY flag will be reset and an error
+// flag will be set
+    uint16_t tickstart = systim_get_clocker();
+    uint32_t flash_sr_errors;
+    
+    while (__HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY) != RESET) { 
+        Timeout -= (systim_get_clocker() - tickstart);
+        if (Timeout <= 0) {
+            return HAL_TIMEOUT;
+        }
+    }
+
+    // Check FLASH End of Operation flag, clear if set
+    if (__HAL_FLASH_GET_FLAG(FLASH_FLAG_EOP)) {
+        __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP);
+    }
+    
+    // Look for errors, and if necessary save the error code to ProcFlash
+    // WARNING : On the first cut of STM32L031xx and STM32L041xx devices,
+    //           (RefID = 0x1000) the FLASH_FLAG_OPTVERR bit was not behaving
+    //           as expected. If the user run an application using the first
+    //           cut of the STM32L031xx device or the first cut of the STM32L041xx
+    //           device, this error should be ignored. The revId of the device
+    //           can be retrieved via the HAL_GetREVID() function.
+    flash_sr_errors = FLASH->SR & \
+                     (FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_SIZERR \
+                    | FLASH_FLAG_OPTVERR | FLASH_FLAG_RDERR | FLASH_FLAG_FWWERR \
+                    | FLASH_FLAG_NOTZEROERR);
+    if (flash_sr_errors) {
+        ProcFlash.ErrorCode = flash_sr_errors;
+        __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_SIZERR |
+                                 FLASH_FLAG_OPTVERR | FLASH_FLAG_RDERR | FLASH_FLAG_FWWERR | 
+                                 FLASH_FLAG_NOTZEROERR);
+        return HAL_ERROR;
+    }
+
+    // There is no error flag set 
+    return HAL_OK;  
+}
+    
+    
 
 /** Data Types for Veelite <BR>
   * ========================================================================<BR>
@@ -249,7 +295,7 @@ ot_u8 vworm_mark_physical(ot_u16* addr, ot_u16 value) {
     
     ///@todo don't allow task switching during this process
     *(__IO ot_u16*)addr = value;
-    retval              = (ot_u8)FLASH_WaitForLastOperation((uint32_t)500);
+    retval              = (ot_u8)sub_WaitForLastOperation((uint32_t)500);
     return retval;
     
 #else

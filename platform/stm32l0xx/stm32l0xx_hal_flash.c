@@ -622,28 +622,23 @@ uint32_t HAL_FLASH_GetError(void)
   * @param  Timeout: maximum flash operationtimeout
   * @retval HAL status
   */
-HAL_StatusTypeDef FLASH_WaitForLastOperation(uint32_t Timeout)
-{
+HAL_StatusTypeDef FLASH_WaitForLastOperation(uint32_t Timeout) {
   /* Wait for the FLASH operation to complete by polling on BUSY flag to be reset.
      Even if the FLASH operation fails, the BUSY flag will be reset and an error
      flag will be set */
     
   uint32_t tickstart = HAL_GetTick();   
      
-  while(__HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY) != RESET) 
-  { 
-    if(Timeout != HAL_MAX_DELAY)
-    {
-      if((Timeout == 0U)||((HAL_GetTick() - tickstart ) > Timeout))
-      {
+  while(__HAL_FLASH_GET_FLAG(FLASH_FLAG_BSY) != RESET) { 
+    if(Timeout != HAL_MAX_DELAY) {
+      if((Timeout == 0U)||((HAL_GetTick() - tickstart ) > Timeout)) {
         return HAL_TIMEOUT;
       }
     } 
   }
 
   /* Check FLASH End of Operation flag  */
-  if (__HAL_FLASH_GET_FLAG(FLASH_FLAG_EOP))
-  {
+  if (__HAL_FLASH_GET_FLAG(FLASH_FLAG_EOP)) {
     /* Clear FLASH End of Operation pending bit */
     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP);
   }

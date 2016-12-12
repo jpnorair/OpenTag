@@ -1,44 +1,36 @@
 About demo_ponglt
 =================
-PongLT is a simple, OpenTag demo application for peer-to-peer pinging for link
-testing purposes (hence LT).  It is not a low-power demo, as the devices are
-always pinging, ponging, or listening.
+PongLT is a simple, OpenTag demo application for peer-to-peer pinging for link testing purposes (hence LT).  It is not a low-power demo, as the devices are always pinging, ponging, or listening.
 
 
 Functional purpose of this demo
 ===============================
  - Show a simple way how anycast queries can be used
  - Show how a command session can be initiated by a button press
- - Provide a simple way to do link testing between a demonstration system of 
-     two or more devices
+ - Provide a simple way to do link testing between a demonstration system of two or more devices
 
 
 Application Description
 =======================
-Pong for Link Testing is a masterless application that allows one device to
-send a query and all the others to respond.  It does not use any sort of power
-conservation measures -- all the devices are listening all the time.  This is
-what makes it good for link testing.  It is also an incredibly simple starting 
-point for OpenTag users.
+Pong for Link Testing is a masterless application that allows one device to send a query and all the others to respond.  It does not use any sort of power conservation measures -- all the devices are listening all the time.  This is what makes it good for link testing.  It is also an incredibly simple starting point for OpenTag users.
 
-The Ping is a UDP-with-inventory packet on port 255, which uses the "User ID" 
-ISF to store a small cookie that qualifies devices that have the string 
-"APP=PongLT" somewhere in that file.  Only these devices will fully process the
-Ping request and produce a Pong response.
+The Ping is a UDP-with-inventory packet on port 255, which uses the "User ID" ISF to store a small cookie that qualifies devices that have the string "APP=PongLT" somewhere in that file.  Only these devices will fully process the Ping request and produce a Pong response.
 
 
 Stock Applets Used
 ==================
 Many of the stock applets from /otlibext/stdapplets/ are used as signal 
-callbacks from the protocol layers.  You can look at extf_config.h to see which 
-ones are enabled (or, to specify new ones).
+callbacks from the protocol layers.  You can look at extf_config.h to see which ones are enabled (or, to specify new ones).
 
 
 This Application Recommends
 ===========================
 (Note, MSP430 not supported yet)
-CC430/MSP430F5: ~24KB Flash, ~1.5KB SRAM
-Cortex M3:      ~32KB Flash, ~2KB SRAM
+
+* MCU Requirements
+ - CC430/MSP430F5: ~24KB Flash, ~1.5KB SRAM
+ - Cortex M3: ~32KB Flash, ~2KB SRAM
+* Feature/Build Requirements
  - MPipe connection to show pong responses
  - Two LEDs to show RX/TX activity
  - One input source to send pings (a button), or sending by ALP over MPipe.
@@ -52,10 +44,7 @@ NOTE: Different boards may support different methods of input and output.
 
 Supported Project IDEs
 ======================
-Currently, TI CCS v5 is supported for MSP430 builds (proj_ccsv5).  Raisonance 
-RIDE7 is supported for Cortex M3 builds.  By the time you read this, there may
-also be support for the SAT (Summon ARM Toolchain), which is a toolchain using
-OpenOCD and Linaro-GCC.
+Currently, TI CCS v5 is supported for MSP430 builds (proj_ccsv5).  Raisonance RIDE7 is supported for Cortex M builds.  The AC6 System Workbench Toolchain is also under development for STM32L and Nucleo Boards.
 
 
 Wiki Link & More Information

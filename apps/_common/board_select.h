@@ -106,10 +106,10 @@ BOARD_HayTag2_R0        | Pending   | Haystack      | Prototyping   | CC13xx
     defined(BOARD_HayTag2_R0))
 
 #define BOARD_SUPPORTS_GULP() \
-    (BOARD_HAS_CC430() || BOARD_HAS_MSP430F5)
+    (BOARD_HAS_CC430() || BOARD_HAS_MSP430F5())
     
 #define BOARD_SUPPORTS_HICCULP() \
-    (BOARD_HAS_STM32L1() || BOARD_HAS_MSP430F5)
+    (BOARD_HAS_STM32L1() || BOARD_HAS_STM32L0())
 
 
 

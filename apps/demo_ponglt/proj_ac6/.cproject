@@ -119,6 +119,7 @@
 									<listOptionValue builtIn="false" value="__GCC__"/>
 									<listOptionValue builtIn="false" value="__DEBUG__"/>
 								</option>
+								<option id="gnu.c.compiler.option.dialect.std.1011424399" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.default" valueType="enumerated"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.776210977" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s.318287488" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s"/>
 							</tool>
@@ -212,6 +213,7 @@
 								<option id="gnu.c.link.option.nostdlibs.1620976618" name="No startup or default libs (-nostdlib)" superClass="gnu.c.link.option.nostdlibs" value="false" valueType="boolean"/>
 								<option id="gnu.c.link.option.nodeflibs.1615221403" name="Do not use default libraries (-nodefaultlibs)" superClass="gnu.c.link.option.nodeflibs" value="false" valueType="boolean"/>
 								<option id="gnu.c.link.option.nostart.748852228" name="Do not use standard start files (-nostartfiles)" superClass="gnu.c.link.option.nostart" value="false" valueType="boolean"/>
+								<option id="gnu.c.link.option.ldflags.155618973" name="Linker flags" superClass="gnu.c.link.option.ldflags" value="-specs=nosys.specs -specs=nano.specs" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.788106521" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -220,15 +222,7 @@
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.1635464416" name="MCU G++ Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker"/>
 							<tool id="fr.ac6.managedbuild.tool.gnu.archiver.1398895147" name="MCU GCC Archiver" superClass="fr.ac6.managedbuild.tool.gnu.archiver"/>
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.assembler.82145999" name="MCU GCC Assembler" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler">
-								<option id="gnu.both.asm.option.include.paths.1520936052" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/Users/jpnbook/Sync/Repository/OpenTag/apps/demo_ponglt/app"/>
-									<listOptionValue builtIn="false" value="/Users/jpnbook/Sync/Repository/OpenTag/include"/>
-									<listOptionValue builtIn="false" value="/Users/jpnbook/Sync/Repository/OpenTag/lib/CMSIS/Include"/>
-									<listOptionValue builtIn="false" value="/Users/jpnbook/Sync/Repository/OpenTag/lib/CMSIS/Device"/>
-									<listOptionValue builtIn="false" value="/Users/jpnbook/Sync/Repository/OpenTag/lib/STM32_USB_FS/inc"/>
-									<listOptionValue builtIn="false" value="/Users/jpnbook/Sync/Repository/OTEAX"/>
-									<listOptionValue builtIn="false" value="/Users/jpnbook/Sync/Repository/OpenTag/extensions/crc32"/>
-								</option>
+								<option id="gnu.both.asm.option.include.paths.1520936052" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.628700115" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.assembler.input.973525364" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler.input"/>
 							</tool>

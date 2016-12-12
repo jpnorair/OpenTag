@@ -29,6 +29,9 @@ DETAILS
 */
 
 
+/* Entry Point */
+ENTRY(Reset_Handler)
+
 
 /* DEFAULT STACK SIZES: 
    used by the startup in order to allocate stacks for the different modes.
@@ -561,7 +564,7 @@ SECTIONS
     /DISCARD/ :
     {
         libc.a ( * )
-        libc_s.a ( * )
+        /* libc_s.a ( * ) */
         libm.a ( * )
         libgcc.a ( * )
     }

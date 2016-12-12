@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file      startup_stm32l073xx.s
   * @author    MCD Application Team
-  * @version   V1.2.0
-  * @date      06-February-2015
+  * @version   V1.7.0
+  * @date      31-May-2016
   * @brief     STM32L073xx Devices vector table for Atollic TrueSTUDIO toolchain.
   *            This module performs:
   *                - Set the initial SP
@@ -98,9 +98,9 @@ LoopFillZerobss:
   bcc  FillZerobss
 
 /* Call the clock system intitialization function.
-  bl  SystemInit */
+  bl  SystemInit*/
 /* Call static constructors 
-    bl __libc_init_array */
+    bl __libc_init_array*/
 /* Call the application's entry point.*/
   bl  main
 
@@ -148,7 +148,7 @@ g_pfnVectors:
   .word  0
   .word  0
   .word  SVC_Handler
-  .word  DebugMon_Handler
+  .word  0
   .word  0
   .word  PendSV_Handler
   .word  SysTick_Handler
@@ -170,7 +170,7 @@ g_pfnVectors:
   .word     TIM2_IRQHandler                   /* TIM2                         */
   .word     TIM3_IRQHandler                   /* TIM3                         */
   .word     TIM6_DAC_IRQHandler               /* TIM6 and DAC                 */
-  .word     TIM7_IRQHandler 				  /* TIM7                         */
+  .word     TIM7_IRQHandler 				          /* TIM7                         */
   .word     0              					          /* Reserved                     */
   .word     TIM21_IRQHandler                  /* TIM21                        */
   .word     I2C3_IRQHandler                   /* I2C3                         */
@@ -181,7 +181,7 @@ g_pfnVectors:
   .word     SPI2_IRQHandler                   /* SPI2                         */
   .word     USART1_IRQHandler                 /* USART1                       */
   .word     USART2_IRQHandler                 /* USART2                       */
-  .word     AES_RNG_LPUART1_IRQHandler            /* RNG and LPUART1         */
+  .word     RNG_LPUART1_IRQHandler            /* RNG and LPUART1              */
   .word     LCD_IRQHandler                    /* LCD                          */
   .word     USB_IRQHandler                    /* USB                          */
 
@@ -201,9 +201,6 @@ g_pfnVectors:
 
    .weak      SVC_Handler
    .thumb_set SVC_Handler,Default_Handler
-
-   .weak      DebugMon_Handler
-   .thumb_set DebugMon_Handler,Default_Handler
 
    .weak      PendSV_Handler
    .thumb_set PendSV_Handler,Default_Handler
@@ -253,14 +250,26 @@ g_pfnVectors:
    .weak      LPTIM1_IRQHandler
    .thumb_set LPTIM1_IRQHandler,Default_Handler
 
+   .weak      USART4_5_IRQHandler
+   .thumb_set USART4_5_IRQHandler,Default_Handler
+
    .weak      TIM2_IRQHandler
    .thumb_set TIM2_IRQHandler,Default_Handler
+
+   .weak      TIM3_IRQHandler
+   .thumb_set TIM3_IRQHandler,Default_Handler
 
    .weak      TIM6_DAC_IRQHandler
    .thumb_set TIM6_DAC_IRQHandler,Default_Handler
 
+   .weak      TIM7_IRQHandler
+   .thumb_set TIM7_IRQHandler,Default_Handler
+
    .weak      TIM21_IRQHandler
    .thumb_set TIM21_IRQHandler,Default_Handler
+
+   .weak      I2C3_IRQHandler
+   .thumb_set I2C3_IRQHandler,Default_Handler
 
    .weak      TIM22_IRQHandler
    .thumb_set TIM22_IRQHandler,Default_Handler
@@ -283,8 +292,8 @@ g_pfnVectors:
    .weak      USART2_IRQHandler
    .thumb_set USART2_IRQHandler,Default_Handler
 
-   .weak      AES_RNG_LPUART1_IRQHandler
-   .thumb_set AES_RNG_LPUART1_IRQHandler,Default_Handler
+   .weak      RNG_LPUART1_IRQHandler
+   .thumb_set RNG_LPUART1_IRQHandler,Default_Handler
 
    .weak      LCD_IRQHandler
    .thumb_set LCD_IRQHandler,Default_Handler
