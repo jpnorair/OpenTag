@@ -71,7 +71,7 @@ void platform_isr_lptim1() {
 #endif
 #if OT_FEATURE(TIME)
     if (lptim_flags & LPTIM_ISR_ARRM) {
-        // add to time
+        time_add_ti(65536);
     }
     if (lptim_flags & LPTIM_ISR_CMPM)
 #endif
@@ -87,15 +87,13 @@ void platform_isr_lptim1() {
 /// - The Insertor manually vectors to radio_mac_isr(), although this should be
 ///   changed in the future to a dynamic callback.
 void platform_isr_rtcwakeup() { 
-#   if (OT_FEATURE(M2))
-#       if (RF_FEATURE(CSMATIMER) != ENABLED)
-        if (systim.opt & SYSTIM_INSERTION_ON) {
-            systim.opt ^= SYSTIM_INSERTION_ON;
-            RTC->CR &= ~RTC_CR_WUTE;
-            radio_mac_isr();
-        }
-#       endif
-#   endif
+#if (OT_FEATURE(M2)) &&  (RF_FEATURE(CSMATIMER) != ENABLED)
+    if (systim.opt & SYSTIM_INSERTION_ON) {
+        systim.opt ^= SYSTIM_INSERTION_ON;
+        RTC->CR &= ~RTC_CR_WUTE;
+        radio_mac_isr();
+    }
+#endif
 }
 
 
@@ -121,7 +119,7 @@ void systim_init(void* tim_init) {
     ///         (set to 0).  For LSI, this is...
     RTC->WPR    = 0xCA;
     RTC->WPR    = 0x53;
-    RTC->CR     =  0;   //(1<<5);
+    RTC->CR     = 0;    //(1<<5);
     RTC->ISR    = 0xFFFFFFFF;
     while((RTC->ISR & RTC_ISR_INITF) == 0);
     RTC->TR     = 0;
@@ -149,7 +147,7 @@ void systim_init(void* tim_init) {
     LPTIM1->CMP     = 65535;
     LPTIM1->ARR     = 65535;
 #   if OT_FEATURE(TIME)
-    LPTIM->IER      = LPTIM_IER_ARRMIE | LPTIM_IER_CMPMIE;
+    LPTIM1->IER      = LPTIM_IER_ARRMIE | LPTIM_IER_CMPMIE;
 #   else
     LPTIM1->IER     = LPTIM_IER_CMPMIE;
 #   endif
