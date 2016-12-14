@@ -159,6 +159,8 @@
 #   define _DMA_IRQ         DMA1_Channel2_3_IRQn
 #   define _DMARX_IFG       (0x2 << (4*(2-1)))
 #   define _DMATX_IFG       (0x2 << (4*(3-1)))
+#   define _DMA_CSEL_MASK   ((0xF << (4*(2-1))) | (0xF << (4*(3-1))))
+#   define _DMA_CSEL        ((0x1 << (4*(2-1))) | (0x1 << (4*(3-1))))
 #   define __DMA_CLEAR_IFG() (DMA1->IFCR = (0xF << (4*(2-1))) | (0xF << (4*(3-1))))
 #   define __SPI_CLKON()    (RCC->APB2ENR |= RCC_APB2ENR_SPI1EN)
 #   define __SPI_CLKOFF()   (RCC->APB2ENR &= ~RCC_APB2ENR_SPI1EN)
@@ -172,6 +174,8 @@
 #   define _DMA_IRQ         DMA1_Channel4_5_6_7_IRQn
 #   define _DMARX_IFG       (0x2 << (4*(4-1)))
 #   define _DMATX_IFG       (0x2 << (4*(5-1)))
+#   define _DMA_CSEL_MASK   ((0xF << (4*(4-1))) | (0xF << (4*(5-1))))
+#   define _DMA_CSEL        ((0x2 << (4*(4-1))) | (0x2 << (4*(5-1))))
 #   define __DMA_CLEAR_IFG() (DMA1->IFCR = (0xF << (4*(4-1))) | (0xF << (4*(5-1))))
 #   define __SPI_CLKON()    (RCC->APB1ENR |= RCC_APB1ENR_SPI2EN)
 #   define __SPI_CLKOFF()   (RCC->APB1ENR &= ~RCC_APB1ENR_SPI2EN)
@@ -186,20 +190,22 @@
 /// 10MHz.  SPI clock = bus clock/2, so only systems that have HSCLOCK
 /// above 20MHz need to divide.
 #   if (_SPICLK > 20000000)
-#       define _SPI_DIV (1<<3)
+#       define _SPI_DIV (1<<3) //(1<<3)
 #   else
-#       define _SPI_DIV (0<<3)
+#       define _SPI_DIV (0<<3) //(0<<3)
 #   endif
 
 
 #define __DMA_CLEAR_IRQ()  (NVIC_ClearPendingIRQ(_DMA_IRQ))
 #define __DMA_ENABLE()     do { \
-                                _DMARX->CCR = (DMA_CCR_MINC | (3<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
-                                _DMATX->CCR |= (DMA_CCR_DIR | DMA_CCR_MINC | (3<<DMA_CCR_PL_Pos) | DMA_CCR_EN); \
+                                DMA1_CSELR->CSELR   = (DMA1_CSELR->CSELR & ~_DMA_CSEL_MASK) | _DMA_CSEL; \
+                                _DMARX->CCR         = (DMA_CCR_MINC | (3<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
+                                _DMATX->CCR        |= (DMA_CCR_DIR | DMA_CCR_MINC | (3<<DMA_CCR_PL_Pos) | DMA_CCR_EN); \
                             } while(0)
 #define __DMA_DISABLE()    do { \
-                                _DMARX->CCR = 0; \
-                                _DMATX->CCR = 0; \
+                                DMA1_CSELR->CSELR  &= ~_DMA_CSEL_MASK; \
+                                _DMARX->CCR         = 0; \
+                                _DMATX->CCR         = 0; \
                             } while(0)
 
 #define __SPI_CS_HIGH()     RADIO_SPICS_PORT->BSRR = (ot_u32)RADIO_SPICS_PIN
@@ -254,29 +260,45 @@ inline ot_uint sx127x_cadpin_ishigh(void)     { return (_CAD_DETECT_PORT->IDR & 
 /** Bus interface (SPI + 2x GPIO) <BR>
   * ========================================================================
   */
+void sx127x_reset() {
+/// Reset Sequence:
+/// - this sequence is taken from Semtech's implementation
+/// - it doesn't agree 100% with documentation, namely how output/input shift occurs
+
+    // Set Reset pin to Output, and set high
+    {   ot_u32 moder;
+        moder   = BOARD_RFCTL_RESETPORT->MODER;  
+        moder  &= ~(3 << (BOARD_RFCTL_RESETPINNUM*2));
+        moder  |= (GPIO_MODER_OUT << (BOARD_RFCTL_RESETPINNUM*2));
+        
+        BOARD_RFCTL_RESETPORT->MODER    = moder;
+        BOARD_RFCTL_RESETPORT->BSRR     = BOARD_RFCTL_RESETPIN;
+    }
+    delay_us(1200);   //wait ~120 us
+    
+    // Set Reset pin to Input, floating
+    BOARD_RFCTL_RESETPORT->MODER &= ~(3 << (BOARD_RFCTL_RESETPINNUM*2));
+
+    // wait ~6ms
+    delay_ti(6);    // wait ~6ms 
+}
+
 
 void sx127x_init_bus() {
 /// @note platform_init_periphclk() should have alread enabled RADIO_SPI clock
 /// and GPIO clocks
 
-    ///0. Preliminary Stuff
-#   if (BOARD_FEATURE_RFXTALOUT)
-    sx127x.clkreq = False;
-#   endif
-
-    ///1. POR sequence: 
-    /// - Reset pin must start as high output from initialization
-    /// - Clear reset pin and wait 10 ms
-    sx127x_resetpin_setlow();
-    delay_ti(10);
+    ///1. Do a Reset.  
+    ///@todo precede this with POR
+    sx127x_reset();
     
-
+    
     ///2. Set-up DMA to work with SPI.  The DMA is bound to the SPI and it is
     ///   used for Duplex TX+RX.  The DMA RX Channel is used as an EVENT.  The
     ///   STM32L can do in-context naps using EVENTS.  To enable the EVENT, we
     ///   enable the DMA RX interrupt bit, but not the NVIC.
     BOARD_DMA_CLKON();
-    _DMARX->CMAR    = (ot_u32)&sx127x.spi_addr;
+    _DMARX->CMAR    = (ot_u32)&sx127x.busrx[-1];
     _DMARX->CPAR    = (ot_u32)&RADIO_SPI->DR;
     _DMATX->CPAR    = (ot_u32)&RADIO_SPI->DR;
     BOARD_DMA_CLKOFF();
@@ -316,6 +338,11 @@ void sx127x_init_bus() {
         NVIC_EnableIRQ(EXTI4_15_IRQn);
 #       endif
 #   endif
+    
+    /// 4. Put SX127x to sleep
+    //delay_ti(6);    // wait ~6ms 
+    sx127x_strobe(_OPMODE_SLEEP);
+    sx127x_waitfor_sleep();
 }
 
 
