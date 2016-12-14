@@ -109,9 +109,7 @@
 #define MPIPE_FOOTERBYTES    0
 
 #define MPIPE_OVERHEADBYTES (MPIPE_HEADERBYTES + MPIPE_FOOTERBYTES)
-//#define MPIPE_UARTMODES     ( (BOARD_FEATURE_MPIPE_DIRECT == ENABLED) \
-                            + (BOARD_FEATURE_MPIPE_CS == ENABLED)     \
-                            + (BOARD_FEATURE_MPIPE_FLOWCTL == ENABLED))
+//#define MPIPE_UARTMODES   ((BOARD_FEATURE_MPIPE_DIRECT==ENABLED) + (BOARD_FEATURE_MPIPE_CS==ENABLED) + (BOARD_FEATURE_MPIPE_FLOWCTL==ENABLED))
 #define MPIPE_UARTMODES     1
 #define MPIPE_MODES         (MPIPE_UARTMODES)
 
@@ -218,6 +216,10 @@
 #   define _DMATX_IRQ       DMA1_Channel4_5_6_7_IRQn
 #   define _DMARX_IFG       (0xF << (4*(5-1)))
 #   define _DMATX_IFG       (0xF << (4*(4-1)))
+#   define _DMA_CSEL_MASK   ((0xF << (4*(5-1))) | (0xF << (4*(4-1))))
+#   define _DMA_CSEL        ((0x3 << (4*(5-1))) | (0x3 << (4*(4-1))))
+#   define _DMARX_CSEL      (0x3 << (4*(5-1)))
+#   define _DMATX_CSEL      (0x3 << (4*(4-1)))
 #   define __UART_ISR       platform_isr_usart1
 #   define __DMARX_ISR      platform_isr_dma1ch5
 #   define __DMATX_ISR      platform_isr_dma1ch4
@@ -233,6 +235,10 @@
 #   define _DMATX_IRQ       DMA1_Channel4_5_6_7_IRQn
 #   define _DMARX_IFG       (0xF << (4*(5-1)))
 #   define _DMATX_IFG       (0xF << (4*(4-1)))
+#   define _DMA_CSEL_MASK   ((0xF << (4*(5-1))) | (0xF << (4*(4-1))))
+#   define _DMA_CSEL        ((0x4 << (4*(5-1))) | (0x4 << (4*(4-1))))
+#   define _DMARX_CSEL      (0x4 << (4*(5-1)))
+#   define _DMATX_CSEL      (0x4 << (4*(4-1)))
 #   define __UART_ISR       platform_isr_usart2
 #   define __DMARX_ISR      platform_isr_dma1ch5
 #   define __DMATX_ISR      platform_isr_dma1ch4
@@ -297,24 +303,26 @@
 
 // DMA basic control
 #define __DMA_TXOPEN(SRC, SIZE) do { \
-            _DMATX->CCR     = 0;                \
-            _DMATX->CMAR    = (uint32_t)SRC;    \
-            _DMATX->CNDTR   = (ot_u16)SIZE;     \
-            DMA1->IFCR      = (_DMARX_IFG | _DMATX_IFG);       \
-            _DMATX->CCR     = (DMA_CCR_DIR | DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
+            _DMATX->CCR         = 0;                \
+            _DMATX->CMAR        = (uint32_t)SRC;    \
+            _DMATX->CNDTR       = (ot_u16)SIZE;     \
+            DMA1->IFCR          = (_DMARX_IFG | _DMATX_IFG);       \
+            DMA1_CSELR->CSELR   = (DMA1_CSELR->CSELR & ~_DMA_CSEL_MASK) | _DMATX_CSEL; \
+            _DMATX->CCR         = (DMA_CCR_DIR | DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
         } while (0)
 
 #define __DMA_RXOPEN(DEST, SIZE) do { \
-            _DMARX->CCR     = 0;                \
-            _DMARX->CMAR    = (ot_u32)DEST;     \
-            _DMARX->CNDTR   = (ot_u16)SIZE;     \
-            DMA1->IFCR      = (_DMARX_IFG | _DMATX_IFG);       \
-            _DMARX->CCR     = (DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
+            _DMARX->CCR         = 0;                \
+            _DMARX->CMAR        = (ot_u32)DEST;     \
+            _DMARX->CNDTR       = (ot_u16)SIZE;     \
+            DMA1->IFCR          = (_DMARX_IFG | _DMATX_IFG);       \
+            DMA1_CSELR->CSELR   = (DMA1_CSELR->CSELR & ~_DMA_CSEL_MASK) | _DMARX_CSEL; \
+            _DMARX->CCR         = (DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
         } while (0)
 
-#define __DMA_RX_CLOSE()    (_DMATX->CCR = 0)
-#define __DMA_TX_CLOSE()    (_DMATX->CCR = 0)
-#define __DMA_ALL_CLOSE()   (_DMATX->CCR = 0)
+#define __DMA_RX_CLOSE()    do { DMA1_CSELR->CSELR &= ~_DMA_CSEL_MASK; _DMARX->CCR = 0; } while(0)
+#define __DMA_TX_CLOSE()    do { DMA1_CSELR->CSELR &= ~_DMA_CSEL_MASK; _DMATX->CCR = 0; } while(0)
+#define __DMA_ALL_CLOSE()   do { DMA1_CSELR->CSELR &= ~_DMA_CSEL_MASK; _DMATX->CCR = 0; _DMARX->CCR = 0; } while(0)
 #define __DMA_RX_CLEAR()    (DMA1->IFCR = _DMARX_IFG)
 #define __DMA_TX_CLEAR()    (DMA1->IFCR = _DMATX_IFG)
 #define __DMA_ALL_CLEAR()   (DMA1->IFCR = (_DMARX_IFG | _DMATX_IFG))
