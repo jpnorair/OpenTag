@@ -138,12 +138,11 @@ OT_WEAK void radio_init( ) {
     //vlFILE* fp;
 
     /// Set SX127x-dependent initialization defaults
-    //rfctl.flags     = RADIO_FLAG_XOON;
     rfctl.flags     = 0;
 
     /// Set universal Radio module initialization defaults
-    //radio.state     = RADIO_Idle;
-    //radio.evtdone   = &otutils_sig2_null;
+    radio.state     = RADIO_Idle;
+    radio.evtdone   = &otutils_sig2_null;
 
     /// Initialize the bus between SX127x and MCU, and load defaults.
     /// SX127x starts-up in STANDBY (READY), so we set the state and flags
