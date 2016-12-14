@@ -24,7 +24,9 @@
   *
   ******************************************************************************
   */
-
+//OpenTag Conditional Compile
+#include <board.h>
+#if (MCU_CONFIG_USB)
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_lib.h"
@@ -73,3 +75,4 @@ void USB_Init(void) {
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+#endif

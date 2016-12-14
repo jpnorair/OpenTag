@@ -25,6 +25,10 @@
   ******************************************************************************
   */
 
+//OpenTag Conditional Compile
+#include <board.h>
+#if (MCU_CONFIG_USB)
+
 /* Includes ------------------------------------------------------------------*/
 #include "usb_lib.h"
 
@@ -756,3 +760,4 @@ uint16_t ByteSwap(uint16_t wSwW) {
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+#endif

@@ -26,6 +26,10 @@
   ******************************************************************************
   */
 
+//OpenTag Conditional Compile
+#include <board.h>
+#if (MCU_CONFIG_USB)
+
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_lib.h"
@@ -101,3 +105,4 @@ uint32_t USB_SIL_Read(uint8_t bEpAddr, uint8_t* pBufferPointer)
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+#endif
