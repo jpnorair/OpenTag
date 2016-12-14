@@ -758,7 +758,7 @@ void USART2_IRQHandler(void) {
 #define _RNG    defined(__ISR_RNG) && !defined(__N_ISR_RNG)
 #define _LPUART defined(__ISR_LPUART) && !defined(__N_ISR_LPUART)
 #if (_AES || _RNG || LPUART)
-void AES_RNG_LPUART1_IRQHandler(void) {
+void RNG_LPUART1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
 #   if (_LPUART)
     {   ot_u32 exti_pr;
