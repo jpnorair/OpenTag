@@ -94,13 +94,13 @@
   * ========================================================================<BR>
   * Implemented capabilities of the STM32L variants on this board/build
   *
-  * On this board, the Jupiter DK, you can use USB or UART for MPipe
+  * On this board you can use USB or UART for MPipe, I2C is reserved for later
   */
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED                            // Allows usage of MF-HF clock boosting
 #define MCU_CONFIG_MAPEEPROM            DISABLED
-#define MCU_CONFIG_MPIPECDC             ENABLED                            // USB-CDC MPipe implementation
-#define MCU_CONFIG_MPIPEI2C             (DISABLED && !MCU_CONFIG_MPIPECDC)
+#define MCU_CONFIG_MPIPECDC             DISABLED                            // USB-CDC MPipe implementation
+#define MCU_CONFIG_MPIPEI2C             (NOT_AVAILABLE && !MCU_CONFIG_MPIPECDC)
 #define MCU_CONFIG_MPIPEUART            (ENABLED && !MCU_CONFIG_MPIPECDC && !MCU_CONFIG_MPIPEI2C) 
 #define MCU_CONFIG_MEMCPYDMA            ENABLED                             // MEMCPY DMA should be lower priority than MPIPE DMA
 #define MCU_CONFIG_USB                  (MCU_CONFIG_MPIPECDC == ENABLED)
@@ -358,7 +358,7 @@
 // UART on PA2/PA3 or "D1/D0"
 #define BOARD_UART_PORTNUM              0
 #define BOARD_UART_PORT                 GPIOA
-#define BOARD_UART_ID                   1
+#define BOARD_UART_ID                   2
 #define BOARD_UART_TXPINNUM             2
 #define BOARD_UART_RXPINNUM             3
 #define BOARD_UART_TXPIN                (1<<BOARD_UART_TXPINNUM)
@@ -542,6 +542,7 @@ static inline void BOARD_PERIPH_INIT(void) {
     // enable/disable their clocks as needed.  The exceptions are LPTIM1 and 
     // PWR, which are fundamental to OpenTag.
     RCC->APB1ENR   = (RCC_APB1ENR_LPTIM1EN | RCC_APB1ENR_PWREN); 
+    //RCC->APB1SMENR = (RCC_APB1ENR_LPTIM1EN | RCC_APB1ENR_PWREN);  // Enabled by default
 }
 
 
@@ -563,8 +564,9 @@ static inline void BOARD_DMA_CLKOFF(void) {
 
 ///@note BOARD Macro for EXTI initialization.  See also EXTI macros at the
 ///      bottom of the page.
-///      - Radio EXTIs: {GPIO-0, -1, -2, -3} : {PA10, PB3, PB5, PB4}
+///      - Radio EXTIs: {GPIO-0, -1, -3} : {PA10, PB3, PB4}
 static inline void BOARD_EXTI_STARTUP(void) {
+
     
     // EXTI0-3: A0, A1, B2, RFGPIO-1 (B3)
     SYSCFG->EXTICR[0]   = (0 << 0) \
@@ -575,7 +577,7 @@ static inline void BOARD_EXTI_STARTUP(void) {
     // EXTI4-7: RFGPIO-3 (B4), RFGPIO-2 (B5), B6, C7
     SYSCFG->EXTICR[1]   = (BOARD_RFGPIO_3PORTNUM << 0) \
                         | (BOARD_RFGPIO_2PORTNUM << 4) \
-                        | (1 << 5) \
+                        | (1 << 8) \
                         | (2 << 12);
                         
     // EXTI8-11: A8, A9, RFGPIO-0 (A10), A11
@@ -601,7 +603,7 @@ static inline void BOARD_PORT_STARTUP(void) {
     /// B. Random Number ADC pins: A Zener can be used to generate noise.
     
     /// Configure Port A IO.  
-    // - A0:  Radio Reset, which is push-pull output, starting high
+    // - A0:  Radio Reset, which starts as a floating input and the driver later sorts-out
     // - A1:  Analog Input
     // - A2:  UART-TX, which is ALT push-pull output
     // - A3:  UART-RX, which is ALT push-pull input
@@ -614,15 +616,15 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - A13:14 are SWD, set to ALT
     // - A15: Unused Analog-In
     
-#   ifdef __USE_RADIO
-    GPIOA->BSRR     = BOARD_RFCTL_RESETPIN;
-#   endif
+//#   ifdef __USE_RADIO
+//    GPIOA->BSRR     = BOARD_RFCTL_RESETPIN;
+//#   endif
 #   if defined(BOARD_RFGPIO_5PIN)
 #       define _GPIO_MODER_PA8  GPIO_MODER_IN
 #   else
 #       define _GPIO_MODER_PA8  GPIO_MODER_ANALOG
 #   endif
-    GPIOA->MODER    = (GPIO_MODER_OUT    << (0*2)) \
+    GPIOA->MODER    = (GPIO_MODER_IN    << (0*2)) \
                     | (GPIO_MODER_ANALOG << (1*2)) \
                     | (GPIO_MODER_ALT    << (2*2)) \
                     | (GPIO_MODER_ALT    << (3*2)) \
@@ -654,17 +656,17 @@ static inline void BOARD_PORT_STARTUP(void) {
     
 
 #   ifndef __USE_RADIO
-    GPIOA->AFR[0]   = (7 << (BOARD_UART_TXPINNUM*4)) \
-                    | (7 << (BOARD_UART_RXPINNUM*4));
+    GPIOA->AFR[0]   = (4 << (BOARD_UART_TXPINNUM*4)) \
+                    | (4 << (BOARD_UART_RXPINNUM*4));
 #   else
-    GPIOA->AFR[0]   = (7 << (BOARD_UART_TXPINNUM*4)) \
-                    | (7 << (BOARD_UART_RXPINNUM*4)) \
-                    | (5 << ((BOARD_RFSPI_MOSIPINNUM)*4)) \
-                    | (5 << ((BOARD_RFSPI_MISOPINNUM)*4)) \
-                    | (5 << ((BOARD_RFSPI_SCLKPINNUM)*4));
+    GPIOA->AFR[0]   = (4 << (BOARD_UART_TXPINNUM*4)) \
+                    | (4 << (BOARD_UART_RXPINNUM*4)) \
+                    | (0 << ((BOARD_RFSPI_MOSIPINNUM)*4)) \
+                    | (0 << ((BOARD_RFSPI_MISOPINNUM)*4)) \
+                    | (0 << ((BOARD_RFSPI_SCLKPINNUM)*4));
 #   endif
-    GPIOA->AFR[1]   = (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
-                    | (10 << ((BOARD_USB_DPPINNUM-8)*4));
+    //GPIOA->AFR[1]   = (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
+    //                | (10 << ((BOARD_USB_DPPINNUM-8)*4));
 
     /* */
 
@@ -699,9 +701,9 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_MODER_ANALOG << (1*2)) \
                     | (GPIO_MODER_ANALOG << (2*2)) \
                     | (_GPIO_MODER_PB3 << (3*2)) \
-                    | (_GPIO_MODER_PB3 << (4*2)) \
-                    | (_GPIO_MODER_PB3 << (5*2)) \
-                    | (_GPIO_MODER_PB3 << (6*2)) \
+                    | (_GPIO_MODER_PB4 << (4*2)) \
+                    | (_GPIO_MODER_PB5 << (5*2)) \
+                    | (_GPIO_MODER_PB6 << (6*2)) \
                     | (GPIO_MODER_ANALOG << (7*2)) \
                     | (GPIO_MODER_OUT    << (8*2)) \
                     | (GPIO_MODER_OUT    << (9*2)) \
@@ -765,35 +767,31 @@ static inline void BOARD_PORT_STARTUP(void) {
 
 static inline void BOARD_RFSPI_CLKON(void) {
 #ifdef __USE_RADIO
-    BOARD_RFSPI_PORT->MODER &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
+    ot_u32 spi_moder;
+    spi_moder   = BOARD_RFSPI_PORT->MODER;
+    spi_moder  &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                  | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                  | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
+    spi_moder  |= (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
+                | (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM*2));
     
-    BOARD_RFSPI_PORT->MODER |= (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM*2));
-    /*    
-    BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                             | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                             | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
-    */
+    BOARD_RFSPI_PORT->MODER = spi_moder;
 #endif
 }
 
 static inline void BOARD_RFSPI_CLKOFF(void) {
 #ifdef __USE_RADIO
-    BOARD_RFSPI_PORT->MODER &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
+    ot_u32 spi_moder;
+    spi_moder   = BOARD_RFSPI_PORT->MODER;
+    spi_moder  &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                  | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
+                  | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
+    spi_moder  |= (GPIO_MODER_OUT << (BOARD_RFSPI_SCLKPINNUM*2)) \
+                | (GPIO_MODER_IN << (BOARD_RFSPI_MISOPINNUM*2)) \
+                | (GPIO_MODER_OUT << (BOARD_RFSPI_MOSIPINNUM*2));
     
-    BOARD_RFSPI_PORT->MODER |= (GPIO_MODER_OUT << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                            | (GPIO_MODER_IN << (BOARD_RFSPI_MISOPINNUM*2)) \
-                            | (GPIO_MODER_OUT << (BOARD_RFSPI_MOSIPINNUM*2));
-    /*  
-	BOARD_RFSPI_PORT->MODER ^= (3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                             | (2 << (BOARD_RFSPI_MISOPINNUM*2)) \
-                             | (3 << (BOARD_RFSPI_MOSIPINNUM*2));
-	*/
+    BOARD_RFSPI_PORT->MODER = spi_moder;
 #endif
 }
 
@@ -1170,10 +1168,10 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 #   define MPIPE_RTS_PIN        BOARD_UART_RTSPIN
 #   define MPIPE_CTS_PIN        BOARD_UART_CTSPIN
 #   define MPIPE_UART_PINS      (MPIPE_UART_RXPIN | MPIPE_UART_TXPIN)
-#   if (MPIPE_UART_ID != 1)
-#       error "MPIPE UART must be on USART1 for this board."
+#   if (MPIPE_UART_ID != 2)
+#       error "MPIPE UART must be on USART2 for this board."
 #   endif
-#   define MPIPE_UART       USART1
+#   define MPIPE_UART           USART2
 #   define MPIPE_DMA_RXCHAN_ID  5
 #   define MPIPE_DMA_TXCHAN_ID  4
 #   define __USE_DMA1_CHAN5
