@@ -72,9 +72,9 @@ void time_add_ti(ot_u32 ticks) {
 ot_u32 time_get_utc(void) {
     ot_time now;
     sub_load_now(&now);
-    now->upper  <<= 22;
-    now->ticks  >>= 10;
-    return (now->upper | now->ticks);
+    now.upper  <<= 22;
+    now.ticks  >>= 10;
+    return (now.upper | now.ticks);
 }
 
 
@@ -82,19 +82,19 @@ ot_u32 time_uptime(void) {
     ot_time now;
     sub_load_now(&now);
     
-    now->upper<<= 22;
-    now->upper += (now->ticks >> 10);
-    now->ticks  = (starttime.upper << 22);
-    now->ticks += (starttime.ticks >> 10);
+    now.upper<<= 22;
+    now.upper += (now.ticks >> 10);
+    now.ticks  = (starttime.upper << 22);
+    now.ticks += (starttime.ticks >> 10);
 
-    return (now->upper - now->ticks);
+    return (now.upper - now.ticks);
 }
 
 
 ot_u32 time_uptime_ti(void) {
     ot_time now;
     sub_load_now(&now);
-    return (now->ticks - starttime.ticks);
+    return (now.ticks - starttime.ticks);
 }
 
 
