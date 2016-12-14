@@ -24,11 +24,11 @@
   * The functions and data implemented in this file provide a mostly-generic
   * interface to SX127x control.  It is designed with Mode 2 wireless spec in
   * mind, but at this level Mode 2 is not appreciably different than most other
-  * specs that could run on the SPIRIT1.
+  * specs that could run on the SX127x.
   *
   * You will need to implement a low-level driver module that implements a
   * handful of functions which require knowledge of the platform itself.  See
-  * SPIRIT1_interface.h for more information on which functions these are.
+  * SX127x_interface.h for more information on which functions these are.
   *
   ******************************************************************************
   */
@@ -197,9 +197,8 @@ void sx127x_load_defaults() {
 
     ot_u8* cursor;
     
-    /// Put SX127x into sleep in order to change registers via LoRa mode 
-    ///(required by documentation)
-    sx127x_strobe(_OPMODE_SLEEP);
+    // SX127x should be asleep when running this function
+    //sx127x_strobe(_OPMODE_SLEEP);
     
     ///@todo do a burst write
     cursor = (ot_u8*)defaults;
@@ -222,7 +221,7 @@ void sx127x_coredump() {
         otutils_bin2hex(&label[4], &i, 1);
         logger_msg(MSG_raw, 6, 1, label, &regval);
         //mpipedrv_wait();
-        delay_ms(5);
+        delay_ti(5);
     }
     while (++i < 0x71);
 }
@@ -234,15 +233,6 @@ void sx127x_coredump() {
   * These functions utilize the pin-wrapper driver functions, which
   * must be implemented in the platform-specific driver. 
   */
-
-void sx127x_reset() {
-/// Turn-off interrupts, send Reset strobe, and wait for reset to finish.
-    sx127x_int_turnoff(RFI_ALL);
-    sx127x_resetpin_sethigh();
-    delay_us(120);
-    sx127x_resetpin_setlow();
-    delay_ms(5);
-}
 
 ot_bool sx127x_isready() {
 ///@todo The only way to monitor state transition signaling is via the ModeReady
@@ -260,7 +250,7 @@ void sx127x_waitfor_ready() {
     while ((sx127x_readypin_ishigh() == 0) && (--watchdog));
     if (watchdog == 0){
         //ready_fails++;
-        sx127x_resetpin_sethigh();
+        sx127x_reset();
         delay_us(300);
         dll_init();
     }   
@@ -277,7 +267,7 @@ void sx127x_waitfor_standby() {
     
     while (mode != 1) {
         if (--wdog == 0) {
-            sx127x_resetpin_sethigh();
+            sx127x_reset();
             delay_us(300);
             dll_init();
             return;
@@ -294,7 +284,7 @@ void sx127x_waitfor_sleep() {
     
     while (sx127x_mode() != 0) {
         if (--wdog == 0) {
-            sx127x_resetpin_sethigh();
+            sx127x_reset();
             delay_us(300);
             dll_init();
             return;
@@ -340,9 +330,7 @@ void sx127x_strobe(ot_u8 strobe) {
 }
 
 ot_u8 sx127x_read(ot_u8 addr) {
-    ot_u8 cmd[2];
-    cmd[0]  = addr;
-    sx127x_spibus_io(2, 0, cmd);
+    sx127x_spibus_io(1, 1, &addr);
     return sx127x.busrx[0];
 }
 
