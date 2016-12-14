@@ -186,7 +186,7 @@
 #   define OT_FEATURE_CRC_RXSTREAM      ENABLED                             // Streams CRC computation inline with encoding
 #endif
 #ifndef OT_FEATURE_TIME
-#   define OT_FEATURE_TIME               DISABLED                            // Do you have a precise 32768 Hz clock?
+#   define OT_FEATURE_TIME              ENABLED                             // Do you have a precise 32768 Hz clock?
 #endif
 #ifndef OT_FEATURE_RF_LINKINFO
 #   define OT_FEATURE_RF_LINKINFO       ENABLED
