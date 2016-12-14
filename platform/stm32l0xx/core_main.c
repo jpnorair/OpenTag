@@ -1157,7 +1157,7 @@ void platform_init_interruptor() {
 //  SCB->SHP[_SHP_IDX(DebugMonitor_IRQn)]     = (b00 << 4);
 
     // Systick needs SCB and NVIC to be enabled in order to run.
-#   if defined(YOU_ARE_AN_IDIOT)
+#   if defined(SYSTICK_IS_HIGHLY_DISCOURAGED)
     NVIC_SetPriority(IRQn_Type IRQn, _LOPRI_BASE);
     NVIC_EnableIRQ(SysTick_IRQn);
 #   endif
@@ -1222,8 +1222,7 @@ void platform_init_interruptor() {
 
 
     /// 6. Setup ADC interrupt.  This is needed only for ADC-enabled builds,
-    ///    but ADC is used for true-random-number generation as well as actual
-    ///    analog voltage sensing.
+    ///    but ADC is frequently used, so it is enabled by default
 //#   if defined(__USE_ADC1)
     NVIC_SetPriority(ADC1_COMP_IRQn, _HIPRI_BASE);
     NVIC_EnableIRQ(ADC1_COMP_IRQn);
