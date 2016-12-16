@@ -41,13 +41,28 @@
 #include <otstd.h>
 #include <platform/config.h>
 
-#if defined(__STM32L0xx__)
-    // any L0-specific things
-#elif defined(__STM32L1xx__)
-    // any L1-specific things
+#if defined(__STM32L0xx__)      // L0 can be debugged through STOP mode
+#   ifdef __DEBUG__
+#       define _USE_STOP    0
+#   else
+#       define _USE_STOP    1
+#   endif
+
+#elif defined(__STM32L1xx__)    // any L1-specific things
+#   ifdef __DEBUG__
+#       define _USE_STOP    0
+#   else
+#       define _USE_STOP    1
+#   endif
+
 #else 
 #   warning "unsupported type of STM32 defined, it should work OK, but no guarantee."
 #endif
+
+#ifndef _USE_STOP
+#   define _USE_STOP    0
+#endif
+
 
 //#ifdef EXTF_sys_sig_powerdown
 void sys_sig_powerdown(ot_int code) {
