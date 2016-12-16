@@ -72,14 +72,28 @@
 
 
 
-#ifndef OT_GPTIM_SHIFT
-#   define OT_GPTIM_SHIFT 0
-#endif
 
-#if (OT_GPTIM_SHIFT != 0)
+/** GPTIM Adjustments
+  * ============================================================================
+  * These should be defined in board support or mcu config header.  If not, they
+  * are defined here to defaults.
+  */
+#ifndef OT_GPTIM_LIMIT
+#   warning "OT_GPTIM_LIMIT is not defined.  Using 15000 ticks"
+#   define OT_GPTIM_LIMIT       15000
+#endif
+#if defined(OT_GPTIM_OVERSAMPLE) && !defined(OT_GPTIM_SHIFT)
+#	define OT_GPTIM_SHIFT	OT_GPTIM_OVERSAMPLE
+#elif !defined(OT_GPTIM_SHIFT)
+#   warning "OT_GPTIM_SHIFT is not defined.  Using 0."
+#   define OT_GPTIM_SHIFT	0
+#endif
+#define _TI_SHIFT	OT_GPTIM_SHIFT
+
+#if (_TI_SHIFT != 0)
 #   define CLK_UNIT         ot_long
-#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> OT_GPTIM_SHIFT)
-#   define TI2CLK(TICKS)    ((ot_long)TICKS << OT_GPTIM_SHIFT)
+#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> _TI_SHIFT)
+#   define TI2CLK(TICKS)    ((ot_long)TICKS << _TI_SHIFT)
 #else
 #   define CLK_UNIT         ot_u16
 #   define CLK2TI(CLOCKS)   (CLOCKS)
