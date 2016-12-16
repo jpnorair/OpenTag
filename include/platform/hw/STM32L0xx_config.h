@@ -317,6 +317,32 @@
 
 
 
+
+/** GPTIM Manipulations      <BR>
+  * ========================================================================<BR>
+  * Tasking waits longer than this (in ticks) will loop through the scheduler.
+  * It is pretty rare with OpenTag for waits to be longer than 2 seconds
+  * (2048 ticks), so this boundary rarely occurs.
+  *
+  * The LPTIM used for STM32L0 is oversampled in order to provide better
+  * timing accuracy (it is laggy otherwise).  It is double sampled, so the
+  * most it can go is 32768 ticks.  We set the limit to 30000.
+  */
+#ifndef OT_GPTIM_OVERSAMPLE
+#   define OT_GPTIM_OVERSAMPLE  1
+#endif
+#ifndef OT_GPTIM_SHIFT
+#   define OT_GPTIM_SHIFT       0
+#endif
+#define MCU_PRESCALER_SHIFT     (OT_GPTIM_OVERSAMPLE+OT_GPTIM_SHIFT)
+#ifndef OT_GPTIM_LIMIT
+#   define OT_GPTIM_LIMIT       (60000 >> MCU_PRESCALER_SHIFT)
+#endif
+
+
+
+
+
 /** Cryptographic Library Setup      <BR>
   * ========================================================================<BR>
   * Needed to build AES128 or other types of Crypto
@@ -347,13 +373,6 @@ ot_u16 platform_ext_lsihz();
 
 
 
-
-#undef OT_GPTIM_LIMIT
-#ifdef __DEBUG__
-#   define OT_GPTIM_LIMIT   15000
-#else
-#   define OT_GPTIM_LIMIT   60000
-#endif
 
 
 
