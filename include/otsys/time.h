@@ -34,20 +34,22 @@
 
 typedef struct {
     ot_u32 upper;
-    ot_u32 ticks;
+    ot_u32 clocks;
 } ot_time;
 
 void time_init_utc(ot_u32 utc);
 
 void time_set_utc(ot_u32 utc);
 
-void time_add_ti(ot_u32 ticks);
+void time_add(ot_u32 clocks);
+
+//void time_add_ti(ot_u32 ticks);
 
 ot_u32 time_get_utc(void);
 
-ot_u32 time_uptime(void);
+ot_u32 time_uptime_secs(void);
 
-ot_u32 time_uptime_ti(void);
+ot_u32 time_uptime(void);
 
 
 #endif
