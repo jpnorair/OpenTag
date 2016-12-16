@@ -46,6 +46,20 @@
 #define __UID   _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS
 
 
+/// Rough Board Frequency setup
+#ifndef RF_PARAM_BAND
+#   define RF_PARAM_BAND    433
+#endif
+#if (RF_PARAM_BAND == 433)
+#   define _BAND_ID 0
+#elif (RF_PARAM_BAND >= 860) && (RF_PARAM_BAND < 870)
+#   define _BAND_ID 1
+#elif (RF_PARAM_BAND >= 900) && (RF_PARAM_BAND < 925)
+#   define _BAND_ID 2
+#else
+#   warning "RF_PARAM_BAND not defined to a known band, defaulting to 433 MHz"
+#   define _BAND_ID 0
+#endif
 
 
 /** Default File data allocations
@@ -418,7 +432,7 @@ const ot_u8 isf_stock_files[] = {
     BT0,BC0,BC1,BC2,BC3,BC4,BC5,BC6,BC7, 0,             /* Firmware & Version as C-string */
 
     /* channel configuration: id=0x02, len=24, alloc=48 */
-    0x00, 0x00,                                         /* Header: 2 bytes RFU */
+    _BAND_ID, 0x00,                                     /* Header: 2 bytes RFU */
     0x00,                                               /* Header: Regulatory Code */
     0x00,                                               /* Header: TX Duty Cycle */
     0x00,                                               /* Header: TX Power Autoscaling Control */
@@ -458,7 +472,7 @@ const ot_u8 isf_stock_files[] = {
 
     /* hold scan periods: id=0x04, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x18, 0x31, 0x00, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */ //FIX
+    0x18, 0x31, 0x00, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
     0x2B, 0x31, 0x00, 0x00,
     _ERS, _ERS, _ERS, _ERS,
     _ERS, _ERS, _ERS, _ERS,
