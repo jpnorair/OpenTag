@@ -135,63 +135,20 @@ void sub_button_init();
   * The button-press is unique to this application, and it is treated here.
   */
 
-#if (defined(__MSP430F5__) && defined(OT_SWITCH1_PORT))
-#   if (OT_SWITCH1_PORTNUM == 1)
-#       define PLATFORM_ISR_SW  platform_isr_p1
-#   else
-#       define PLATFORM_ISR_SW  platform_isr_p2
-#   endif
-
-void sub_button_init() {
-#   if (OT_SWITCH1_PULLING)
-    OT_SWITCH1_PORT->REN   |= OT_SWITCH1_PIN;       //Enable Internal Pull up/down
-#   endif
-#   if (OT_SWITCH1_POLARITY == 0)
-    OT_SWITCH1_PORT->DOUT  |= OT_SWITCH1_PIN;       //Set Pull-up (pull-down is default)
-    //OT_SWITCH1_PORT->IES   &= ~OT_SWITCH1_PIN;    //falling edge is default
-#   else
-    //OT_SWITCH1_PORT->DOUT  &= ~OT_SWITCH1_PIN;    //Pull-down is default
-    OT_SWITCH1_PORT->IES   |= OT_SWITCH1_PIN;       //Set Rising Edge
-#   endif
-
-    //Clear and enable interrupt
-    OT_SWITCH1_PORT->IFG    = 0;
-    OT_SWITCH1_PORT->IE    |= OT_SWITCH1_PIN;
-}
-
-
-void PLATFORM_ISR_SW() {
-/// If you implement more interrupts on this port, you can make this function
-/// into a switch statement using OT_SWITCH1_PIV.
-    OT_SWITCH1_PORT->IFG = 0;
-
+void OT_SWITCH1_ISR(void) {
     // Ignore the button press if the task is in progress already
     if (APP_TASK->event == 0) {
         app_invoke(0x18);              // Initialize Ping Task on channel 18
     }
 }
 
-#elif (defined(__STM32__) && defined(OT_SWITCH1_PINNUM) && (OT_SWITCH1_PINNUM >= 0))
-    void OT_SWITCH1_ISR(void) {
-        // Ignore the button press if the task is in progress already
-        if (APP_TASK->event == 0) {
-            app_invoke(0x18);              // Initialize Ping Task on channel 18
-        }
-    }
+void sub_button_init() {
+/// ARM Cortex M boards must prepare all EXTI line interrupts in their board
+/// configuration files, but the actual line interrupt must be enabled here.
+    EXTI->RTSR |= OT_SWITCH1_PIN;
+    EXTI->IMR  |= OT_SWITCH1_PIN;
+}
 
-    void sub_button_init() {
-    /// ARM Cortex M boards must prepare all EXTI line interrupts in their board
-    /// configuration files, but the actual line interrupt must be enabled here.
-        EXTI->RTSR |= OT_SWITCH1_PIN;
-        EXTI->IMR  |= OT_SWITCH1_PIN;
-    }
-
-
-#else
-#   warn "You are not using a known, compatible MCU.  Demo might not work."
-    void sub_button_init() {}
-
-#endif
 
 
 
