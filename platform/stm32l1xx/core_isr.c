@@ -71,11 +71,11 @@
 /// When coming out of STOP, clock is always MSI.  If Multispeed clocking is
 /// disabled and a non-MSI clock is the clock source, it must be turned-on.
 #if (BOARD_FEATURE_STDSPEED)
-#   define __ISR_KTIM_WAKEUP_HOOK()     platform_standard_speed();
+#   define __ISR_KTIM_WAKEUP_HOOK()     platform_standard_speed()
 #elif (BOARD_FEATURE_FULLSPEED)
-#   define __ISR_KTIM_WAKEUP_HOOK()     platform_full_speed();
+#   define __ISR_KTIM_WAKEUP_HOOK()     platform_full_speed()
 #elif (BOARD_FEATURE_FLANKSPEED)
-#   define __ISR_KTIM_WAKEUP_HOOK()     platform_flank_speed();
+#   define __ISR_KTIM_WAKEUP_HOOK()     platform_flank_speed()
 #endif
 
 #if defined(__DEBUG__)

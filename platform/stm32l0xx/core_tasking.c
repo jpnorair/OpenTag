@@ -259,7 +259,7 @@ OT_INLINE void platform_ot_run() {
     ///    immediately before issuing WFI instruction.
     while (systim.flags & GPTIM_FLAG_SLEEP) {
         platform_disable_interrupts();
-        systim_enable();
+        //systim_enable();                // LPTIM must be always running
         sys_powerdown();
         
         // At this point, system has just woke-up from sleep.  

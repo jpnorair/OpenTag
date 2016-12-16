@@ -853,9 +853,7 @@ void platform_poweron() {
 
     /// 5. Debugging setup: apply to all peripherals
 #   if defined(__DEBUG__)
-    DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP \
-                      | DBGMCU_CR_DBG_STOP \
-                      | DBGMCU_CR_DBG_STANDBY);
+    DBGMCU->CR     |= 0; //( DBGMCU_CR_DBG_SLEEP | DBGMCU_CR_DBG_STOP | DBGMCU_CR_DBG_STANDBY);
 
     DBGMCU->APB1FZ |= ( DBGMCU_APB1_FZ_DBG_TIM2_STOP \
                       | DBGMCU_APB1_FZ_DBG_TIM6_STOP \

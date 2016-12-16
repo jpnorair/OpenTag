@@ -76,9 +76,13 @@
 /// ISRs that can bring the system out of STOP mode have __ISR_WAKEUP_HOOK().
 /// When coming out of STOP, clock either MSI or HSI, and it needs to go back 
 /// to the selected value.
-#define __ISR_KTIM_WAKEUP_HOOK()    platform_ext_wakefromstop()
-#define __ISR_WAKEUP_HOOK()         platform_ext_wakefromstop()
-
+#ifdef __DEBUG__
+#   define __ISR_KTIM_WAKEUP_HOOK();
+#   define __ISR_WAKEUP_HOOK();
+#else
+#   define __ISR_KTIM_WAKEUP_HOOK()    platform_ext_wakefromstop()
+#   define __ISR_WAKEUP_HOOK()         platform_ext_wakefromstop()
+#endif
 
 
 
@@ -608,7 +612,10 @@ void ADC1_COMP_IRQHandler(void) {
 #if defined(__ISR_LPTIM1) && !defined(__N_ISR_LPTIM1)
 void LPTIM1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<29);
+    
+    ///@todo Not certain this PR clear is necessary or good
+    EXTI->PR = (1<<29);         
+    
     __ISR_KTIM_WAKEUP_HOOK();
     platform_isr_lptim1();
     __ISR_EXIT_HOOK();
