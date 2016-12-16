@@ -33,6 +33,7 @@
 #include <otsys/syskern.h>
 #include <otsys/mpipe.h>
 #include <otsys/sysext.h>
+#include <otsys/time.h>
 
 #include <otlib/memcpy.h>
 #include <otlib/utils.h>
@@ -57,7 +58,11 @@
 
 
 
+
+
+
 /** Persistent Data Structures
+  * ============================================================================
   */
 sys_struct  sys;
 
@@ -66,6 +71,11 @@ typedef void (*fnvv)(void);
 
 
 
+/** Task Handles
+  * ============================================================================
+  * The Task handles are either static (from a table in ROM) or dynamic 
+  * (callbacks from a table in RAM).  They are referenced via MACRO.
+  */
 #if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
 #   define TASK_HANDLE(INDEX)           &sys.task[INDEX]
 #   define TASK_INDEX(HANDLE)           ((HANDLE - &sys.task[0]) / sizeof(task_marker) )
@@ -138,10 +148,8 @@ static const systask_fn systask_call[]   = {
 OT_WEAK void sys_init() {
 
     /// Set system kernel callbacks to null (if kernel callbacks enabled)
-#   if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED)
-#   if !defined(EXTF_sys_sig_panic)
+#   if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED) && !defined(EXTF_sys_sig_panic)
         sys.panic = &otutils_sig_null;
-#   endif
 #   endif
 
     /// Set default values in system tasks.  At a minimum, this is doing a
@@ -150,8 +158,7 @@ OT_WEAK void sys_init() {
     memset((ot_u8*)sys.task, 0, sizeof(task_marker)*SYS_TASKS);
 
 #   if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
-    {
-        task_marker* sys_task;
+    {   task_marker* sys_task;
         systask_fn*  default_call;
         sys_task        = &sys.task[TASK_terminus];
         default_call    = systask_call[TASK_terminus];
@@ -270,15 +277,16 @@ OT_WEAK void sys_halt(Halt_Request halt_request) {
 
 #ifndef EXTF_sys_resume
 OT_WEAK void sys_resume() {
-#   if (1)
+#if (1)
+    ///@todo have a routine to build other refresh functions into the kernel
     dll_refresh();
-#   endif
+#endif
 
-#   if defined(EXTF_sys_sig_resume)
+#if defined(EXTF_sys_sig_resume)
     sys_sig_resume();
-#   elif (OT_FEATURE(SYSKERN_CALLBACKS))
+#elif (OT_FEATURE(SYSKERN_CALLBACKS))
     sys.resume();
-#   endif
+#endif
 
     platform_ot_preempt();
 }
@@ -299,26 +307,25 @@ OT_WEAK void sys_kill(Task_Index i) {
     TASK_INDEXED_CALL(i);
 
     /// Check if the task was actually running.  Don't go any further if the
-    /// task had already exited.
+    /// task had already exited.  Drop the context back to a stable point in 
+    /// the main context.  Next time the main context is enabled (typically 
+    /// after all interrupts are done being serviced), the scheduler will 
+    /// start fresh.
     if (task_event != 0) {
-#   if (OT_PARAM_SYSTHREADS != 0)
-        /// For threaded tasks, reset the stack pointer to empty.
-        ot_int offset;
-        offset = (ot_int)i - TASK_Thread0;
-        if (offset >= 0) {
-            offset             *= OT_PARAM_SSTACK_ALLOC;
-            sys.task[i].stack   = (void*)((ot_u8*)platform_ext.tstack + offset);
-        }
-
-        ///@todo think about changing the thread event number to negative and
-        ///      nextevent to 0, which will cause it to get restarted.  Maybe
-        ///      do this in its own function?
-#   endif
-
-        /// Drop the context back to a stable point in the main context.  Next
-        /// time the main context is enabled (typically after all interrupts
-        /// are done being serviced), the scheduler will start fresh.
         platform_drop_context(i);
+        
+    ///@note Threading implementation is underway.  It is done in a layer above
+    ///      Hicculp in a cool way that also allows guest OSes to run above
+    ///      OpenTag as a BIOS.  This old code is for temporary reference only.
+//#   if (OT_PARAM_SYSTHREADS != 0)
+//        /// For threaded tasks, reset the stack pointer to empty.
+//        ot_int offset;
+//        offset = (ot_int)i - TASK_Thread0;
+//        if (offset >= 0) {
+//            offset             *= OT_PARAM_SSTACK_ALLOC;
+//            sys.task[i].stack   = (void*)((ot_u8*)platform_ext.tstack + offset);
+//        }
+//#   endif
     }
 }
 
@@ -432,7 +439,6 @@ OT_WEAK void sys_task_disable(ot_u8 task_id) {
   * better with static.
   */
 #ifndef EXTF_sys_event_manager
-
 OT_WEAK ot_uint sys_event_manager() {
 /// This is the task-scheduling part of the kernel.
     ot_uint      elapsed;
@@ -448,13 +454,13 @@ OT_WEAK ot_uint sys_event_manager() {
     /// 1. Get the elapsed time since the scheduler last run.  We also update
     ///    the time, which does nothing unless time is enabled.
     elapsed = systim_get();
-    time_add_ti(elapsed);
+    time_add(elapsed); 
     systim_flush();
 
 
     /// 2. Clock all the tasks, to find out which one to do next.
     /// <LI> Run DLL clocker.  DLL module manages some irregular tasks. </LI>
-    /// <LI> 60000 clocks is used as the upper limit, in order to account
+    /// <LI> OT_GPTIM_LIMIT ticks is used as the upper limit, in order to account
     ///      for task runtime and slop.  Tasks should NEVER run longer than
     ///      255 ticks.  Longer tasks or persistent tasks must implement
     ///      pre-emption points.  (see FFT or Crypto demos for examples)</LI>
@@ -522,32 +528,30 @@ OT_WEAK ot_uint sys_event_manager() {
     /// 4. The event manager is done here.  systim_schedule() will
     ///    make sure that the task hasn't been pended during the scheduler
     ///    runtime.
-#   if (OT_PARAM_SYSTHREADS == 0)
-    return systim_schedule( nextevent, systim_get() );
+    return systim_schedule(nextevent, systim_get());
 
-#   else
-    ///@todo this isn't ready yet... experimental code
-    {   ot_bool test;
-        ot_u16 interval;
-        ot_u16 retval;
-
-        interval    = systim_get();
-        nextevent  -= interval;
-        nextnext   -= interval;
-        if (nextevent > 0) {
-            interval    = (ot_u16)nextevent;
-            retval      = interval;
-        }
-        else {
-            interval = ((ot_u16)nextnext >= (ot_16)TASK(select)->reserve) ? \
-                        (ot_u16)nextnext : (ot_16)TASK(select)->reserve;
-            retval = 0;
-
-        }
-        platform_set_ktim(interval);
-        return retval;
-    }
-#   endif
+    ///@note This is a Threads feature that will never exist, because threads are
+    ///      being implemented in a different way.  Stay tuned.
+//    {   ot_bool test;
+//        ot_u16 interval;
+//        ot_u16 retval;
+//
+//        interval    = systim_get();
+//        nextevent  -= interval;
+//        nextnext   -= interval;
+//        if (nextevent > 0) {
+//            interval    = (ot_u16)nextevent;
+//            retval      = interval;
+//        }
+//        else {
+//            interval = ((ot_u16)nextnext >= (ot_16)TASK(select)->reserve) ? \
+//                        (ot_u16)nextnext : (ot_16)TASK(select)->reserve;
+//            retval = 0;
+//
+//        }
+//        platform_set_ktim(interval);
+//        return retval;
+//    }
 }
 #endif
 
@@ -560,14 +564,14 @@ OT_WEAK void sys_task_manager() {
 /// Perform a context switch onto the active task (sys.active).  In purely
 /// co-operative systems, all tasks run in the same context, so do nothing.
 
-    // Threaded mode
-#   if (OT_PARAM_SYSTHREADS != 0)
-    if (sys.active >= TASK_HANDLE[TASK_thread0]) {
-        //do some stuff
-        // - switch contexts if thread is already running
-        // - if thread not running, sys_run_task will initialize it.
-    }
-#   endif
+    ///@todo Threaded mode is coming soon and has a different impl
+//#   if (OT_PARAM_SYSTHREADS != 0)
+//    if (sys.active >= TASK_HANDLE[TASK_thread0]) {
+//        //do some stuff
+//        // - switch contexts if thread is already running
+//        // - if thread not running, sys_run_task will initialize it.
+//    }
+//#   endif
 
 }
 #endif
@@ -585,10 +589,11 @@ OT_INLINE void sys_run_task() {
     }
 #   endif
 
-    // Co-operative mode: disable timer because ktasks should always run to
-    // completion without interference from the scheduler.
+    ///@todo integrate any necessary systim suppression into the
+    ///      task clocker feature
     systim_disable();
-
+    systim_start_clocker();
+    
     sys_run_task_CALL:
     TASK_CALL(sys.active);
 }

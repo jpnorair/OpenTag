@@ -394,11 +394,11 @@ OT_WEAK void dll_response_applet(m2session* active) {
         ot_u8 substate = active->netstate & M2_NETSTATE_TMASK;
 
         if (substate == M2_NETSTATE_RESPTX) {
-            dll.comm.tc -= TI2CLK(rm2_pkt_duration(&txq));
+            dll.comm.tc -= rm2_pkt_duration(&txq);  //TI2CLK(rm2_pkt_duration(&txq));
         }
         else if (substate == M2_NETSTATE_REQRX) {
             sys.task_HSS.cursor     = 0;
-            sys.task_HSS.nextevent  = dll.comm.rx_timeout;
+            sys.task_HSS.nextevent  = TI2CLK(dll.comm.rx_timeout);
             dll.comm.rx_timeout     = rm2_default_tgd(active->channel);
         }
     }
@@ -456,7 +456,7 @@ OT_WEAK void dll_beacon_applet(m2session* active) {
     /// <LI> Set number of redundant TX's we would like to transmit </LI>
     /// <LI> Set rx_timeout for Default-Tg or 0, if beacon has no response </LI>
     dll_set_defaults(active);
-    dll.comm.tc             = TI2CLK(M2_PARAM_BEACON_TCA);
+    dll.comm.tc             = M2_PARAM_BEACON_TCA;  //TI2CLK(M2_PARAM_BEACON_TCA);
     dll.comm.rx_timeout     = (b_params & 0x02) ? \
                                 0 : rm2_default_tgd(active->channel);
     dll.comm.csmaca_params |= (b_params & 0x04) | M2_CSMACA_NA2P | M2_CSMACA_MACCA;
@@ -515,16 +515,15 @@ OT_WEAK void dll_unblock(void) {
 
 #ifndef EXTF_dll_clock
 OT_WEAK void dll_clock(ot_uint clocks) {
-  //dll.comm.tca   -= clocks;
-  //dll.comm.tc    -= clocks;
-    clocks          = CLK2TI(clocks);
+    ot_uint ticks;
+    ticks = CLK2TI(clocks);
 
     if (sys.task_RFA.event != 0) {
-        dll.comm.rx_timeout -= clocks;
+        dll.comm.rx_timeout -= ticks;
     }
     else if (session_notempty()) {
         sys.task_RFA.event      = 2;
-        sys.task_RFA.nextevent  = clocks + session_getnext();
+        sys.task_RFA.nextevent  = clocks + TI2CLK(session_getnext());
 
         // Synchronization test
         //volatile ot_u16 next_session;
@@ -762,7 +761,7 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
     //b_session->flags   |= (b_session->extra & 0x30);
 
     // Last 2 bytes: Next Scan ticks
-    sys_task_setnext(task, TI2CLK( PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]) ));
+    sys_task_setnext(task, PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]) );
 
     ///@note this might not be necessary or wise!
     //return;
@@ -923,7 +922,7 @@ OT_WEAK void dll_scan_timeout(void) {
 
 #else
     // Add a little bit of time in case the radio timer is a bit slow.
-    sys_task_setnext(&sys.task[TASK_radio]->nextevent, 10);
+    sys_task_setnext(&sys.task[TASK_radio], 10);
     sys.task[TASK_radio].event = 0;
 #endif
 }
@@ -1121,9 +1120,12 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
         ot_uint nextcsma;
         __DEBUG_ERRCODE_EVAL(=122);
 
-        nextcsma                    = (ot_uint)sub_fcloop();
-        if (nextcsma < TI2CLK(2))   radio_idle();
-        else                        radio_sleep();
+        nextcsma = (ot_uint)sub_fcloop();
+        //if (nextcsma < TI2CLK(2))   radio_idle();
+        if (nextcsma < 2) 
+            radio_idle();
+        else
+            radio_sleep();
 
         radio_set_mactimer( nextcsma );
         return;
@@ -1207,7 +1209,7 @@ OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
             follower                = session_follower();
             follower->counter       = dll.counter;
             sys.task_RFA.event      = 0;
-            dll.comm.tc             = TI2CLK(2);
+            dll.comm.tc             = 2;    //TI2CLK(2);
             dll.comm.csmaca_params  = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
             session_pop();
         } break;
@@ -1429,8 +1431,10 @@ CLK_UNIT sub_fcinit(void) {
 
     if (dll.comm.csmaca_params & M2_CSMACA_RAIND) {
         CLK_UNIT random;
-        random  = TI2CLK(rand_prn16());
-        random %= (dll.comm.tc - TI2CLK(rm2_pkt_duration(&txq)) );
+        //random  = TI2CLK(rand_prn16());
+        //random %= (dll.comm.tc - TI2CLK(rm2_pkt_duration(&txq)) );
+        random  = rand_prn16();
+        random %= dll.comm.tc - rm2_pkt_duration(&txq);
         return random;
     }
 
@@ -1454,20 +1458,18 @@ CLK_UNIT sub_fcloop(void) {
     /// {0,1,2,3} = {RIGD, RAIND, AIND, Default MAC CA}
     /// Default MAC CA just waits Tg before trying again
     if (dll.comm.csmaca_params & 0x20) {    //NO CA
-        return TI2CLK(phymac[0].tg);
+        return phymac[0].tg; //TI2CLK(phymac[0].tg);
     }
 
     // AIND & RAIND Loop
     if (dll.comm.csmaca_params & 0x18) {    //RAIND, AIND
-        return TI2CLK(rm2_pkt_duration(&txq));
+        return rm2_pkt_duration(&txq); //TI2CLK(rm2_pkt_duration(&txq));
     }
 
     // RIGD loop
-    {
-        ot_long wait;
+    {   ot_long wait;
         wait    = (dll.comm.tc - dll.comm.tca);
         wait   += sub_rigd_newslot();
-
         return (wait < 0) ? 0 : (CLK_UNIT)wait;
     }
 }
@@ -1477,9 +1479,11 @@ CLK_UNIT sub_fcloop(void) {
 CLK_UNIT sub_rigd_newslot(void) {
 /// halve tc from previous value and offset a random within that duration
     dll.comm.tc >>= 1;
-    if (dll.comm.tc == 0)   return 0;
-
-    return (TI2CLK(rand_prn16()) % (CLK_UNIT)dll.comm.tc);
+    if (dll.comm.tc == 0)
+        return 0;
+    
+    //return (TI2CLK(rand_prn16()) % (CLK_UNIT)dll.comm.tc);
+    return (rand_prn16() % (CLK_UNIT)dll.comm.tc);
 }
 
 
