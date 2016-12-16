@@ -45,7 +45,7 @@ ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) 
 /// users.  Fortunately, CRC HW is extremely fast, about 1 byte/cycle.  For 
 /// doing long computations, though, it is still recommended to use the CRC16
 /// streaming object rather than this function directly.
-    ot_int units;
+    //ot_int units;
     ot_u16 output;
 
     platform_disable_interrupts();
@@ -53,21 +53,25 @@ ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) 
     CRC->POL    = 0x8005;
     CRC->CR     = (b01 << 3) | 1; 
     
-    units       = block_size >> 2;
-    block_size &= 3;
+    ///@todo unroll this loop using alignment optimizations
+    while (block_size--) {
+        CRC->DR = *block_addr++;
+    }
     
-    while (units--) {
-        CRC->DR     = *(ot_u32*)block_addr;
-        block_addr += 4;
-    }
-    if (block_size & 2) {
-        CRC->DR = *(ot_u16*)block_addr;
-        block_addr += 2;
-    }
-    if (block_size & 1) {
-        CRC->DR = *(ot_u8*)block_addr;
-        block_addr++;
-    }
+//    units       = block_size >> 2;
+//    block_size &= 3;
+//    while (units--) {
+//        CRC->DR     = *(ot_u32*)block_addr;
+//        block_addr += 4;
+//    }
+//    if (block_size & 2) {
+//        CRC->DR = *(ot_u16*)block_addr;
+//        block_addr += 2;
+//    }
+//    if (block_size & 1) {
+//        CRC->DR = *(ot_u8*)block_addr;
+//        block_addr++;
+//    }
     
     output  = (__IO ot_u16)CRC->DR;
     platform_enable_interrupts();
