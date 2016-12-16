@@ -82,10 +82,11 @@
   * has a 50% efficiency (-3dB) with 1dB insertion loss
   */
 #ifdef __USE_RADIO
-#   define RF_PARAM_BAND   866              //Can be 866 or 915
-#   define RF_HDB_ATTEN    8                //Half dB attenuation (units = 0.5dB), used to scale TX power
-#   define RF_HDB_RXATTEN  6
-#   define RF_RSSI_OFFSET  RF_HDB_RXATTEN   //Offset applied to RSSI calculation
+#   define RF_PARAM_BAND    866              //Can be 866 or 915
+//#   define RF_PARAM_BAND    915
+#   define RF_HDB_ATTEN     8                //Half dB attenuation (units = 0.5dB), used to scale TX power
+#   define RF_HDB_RXATTEN   6
+#   define RF_RSSI_OFFSET   RF_HDB_RXATTEN   //Offset applied to RSSI calculation
 #endif
 
 
@@ -94,7 +95,11 @@
   * ========================================================================<BR>
   * Implemented capabilities of the STM32L variants on this board/build
   *
-  * On this board you can use USB or UART for MPipe, I2C is reserved for later
+  * On this board you can use USB or UART for MPipe, I2C is not implemented
+  * yet.  To select USB, make sure "MCU_CONFIG_MPIPECDC" is set to "ENABLED".
+  * To use UART, set "MCU_CONFIG_MPIPECDC" to "DISABLED" and the script 
+  * below will use UART instead.
+  *
   */
 #define MCU_CONFIG(VAL)                 MCU_CONFIG_##VAL   // FEATURE 
 #define MCU_CONFIG_MULTISPEED           DISABLED                            // Allows usage of MF-HF clock boosting
@@ -104,8 +109,7 @@
 #define MCU_CONFIG_MPIPEUART            (ENABLED && !MCU_CONFIG_MPIPECDC && !MCU_CONFIG_MPIPEI2C) 
 #define MCU_CONFIG_MEMCPYDMA            ENABLED                             // MEMCPY DMA should be lower priority than MPIPE DMA
 #define MCU_CONFIG_USB                  (MCU_CONFIG_MPIPECDC == ENABLED)
-#define MCU_CONFIG_VOLTLEVEL            2  // 3=1.2, 2=1.5V, 1=1.8V
-
+#define MCU_CONFIG_VOLTLEVEL            2   //(2-(MCU_CONFIG_MPIPEI2C==ENABLED))
 
 
 
@@ -665,10 +669,13 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (0 << ((BOARD_RFSPI_MISOPINNUM)*4)) \
                     | (0 << ((BOARD_RFSPI_SCLKPINNUM)*4));
 #   endif
-    //GPIOA->AFR[1]   = (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
-    //                | (10 << ((BOARD_USB_DPPINNUM-8)*4));
 
-    /* */
+    /// If USB is used, set ALT.
+    ///@todo validate this ALT implementation.
+#   if (MCU_CONFIG(USB))
+    GPIOA->AFR[1]   = (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
+                    | (10 << ((BOARD_USB_DPPINNUM-8)*4));
+#   endif
 
     /// Configure Port B IO.
     /// Port B is used for external (module) IO.
@@ -1050,8 +1057,9 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define OT_GPTIM_ID         'L'
 #define OT_GPTIM            LPTIM1
 #define OT_GPTIM_CLOCK      32768
-#define OT_GPTIM_RES        1024
 #define OT_GPTIM_SHIFT      0
+#define OT_GPTIM_OVERSAMPLE 1
+#define OT_GPTIM_RES        (1024 << OT_GPTIM_SHIFT)    //1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
 #define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
 
