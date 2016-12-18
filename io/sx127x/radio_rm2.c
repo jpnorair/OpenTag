@@ -807,7 +807,7 @@ OT_WEAK void rm2_txcsma_isr() {
 
         case (RADIO_STATE_TXCCA2 >> RADIO_STATE_TXSHIFT): 
             if (sub_cca_isfail()) 
-                break;   
+                break;
 
         /// 6. TX startup:
         case (RADIO_STATE_TXSTART >> RADIO_STATE_TXSHIFT): {

@@ -126,7 +126,6 @@ void logger_hexmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* data)
 
         payload_length              = otutils_bin2hex(data, mpipe.alp.outq->putcursor, data_len);
         mpipe.alp.outq->putcursor  += payload_length;
-     //#mpipe.alp.outq->length     += payload_length;
         mpipe_send();
     }
 }
