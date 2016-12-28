@@ -108,12 +108,14 @@ void platform_isr_lptim1() {
 /// - The Insertor manually vectors to radio_mac_isr(), although this should be
 ///   changed in the future to a dynamic callback.
 void platform_isr_rtcwakeup() { 
-#if (OT_FEATURE(M2)) &&  (RF_FEATURE(CSMATIMER) != ENABLED)
+#if (OT_FEATURE(M2))
+#if (RF_FEATURE(CSMATIMER) != ENABLED)
     if (systim.opt & SYSTIM_INSERTION_ON) {
         systim.opt ^= SYSTIM_INSERTION_ON;
         RTC->CR &= ~RTC_CR_WUTE;
         radio_mac_isr();
     }
+#endif
 #endif
 }
 

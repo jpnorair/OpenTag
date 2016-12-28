@@ -81,7 +81,7 @@
 #define MPIPEDRV_ENABLED        (BOARD_FEATURE(MPIPE))
 #define THIS_MPIPEDRV_SUPPORTED ((BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_UART))
 
-#if (defined(__STM32L0__) && MPIPEDRV_ENABLED && THIS_MPIPEDRV_SUPPORTED)
+#if (defined(__STM32L0__) && OT_FEATURE(MPIPE) && MPIPEDRV_ENABLED && THIS_MPIPEDRV_SUPPORTED)
 
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>
