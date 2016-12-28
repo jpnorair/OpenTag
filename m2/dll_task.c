@@ -40,6 +40,8 @@
 
 
 #include <otstd.h>
+#include <platform/config.h>
+
 #if (OT_FEATURE(M2) == ENABLED)
 
 #include <m2/dll.h>
