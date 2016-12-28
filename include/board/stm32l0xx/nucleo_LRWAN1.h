@@ -37,25 +37,14 @@
 /// MCU definition for the board must be the first thing
 #define __STM32L073RZ__
 
-/// This is a major difference between the LRWAN1 system and the unladen Nucleo
-#define __USE_RADIO
-
 #include <app/app_config.h>
 #include <platform/hw/STM32L0xx_config.h>
 #include <platform/interrupts.h>
 
-
-#ifdef __USE_RADIO
-#   ifdef __NULL_RADIO__
-#       include <io/null_radio/config.h>
-#   else
-#		define __SX127x__
-#		define __SX1272__
-#       include <io/sx127x/config.h>
-#   endif
+/// This is a major difference between the LRWAN1 system and the unladen Nucleo
+#if OT_FEATURE(M2)
+#   define __USE_RADIO
 #endif
-
-
 
 /// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
 #ifdef ENABLED
@@ -72,6 +61,21 @@
 #   undef NOT_AVAILABLE
 #endif
 #define NOT_AVAILABLE   DISABLED
+
+
+/// Configuration of system with or without Radio
+#if defined(__USE_RADIO)
+#   ifdef __NULL_RADIO__
+//#       include <io/radio_null/config.h>
+#   else
+#		define __SX127x__
+#		define __SX1272__
+#       include <io/sx127x/config.h>
+#   endif
+#endif
+
+
+
 
 
 
@@ -289,12 +293,12 @@
 #define BOARD_LEDG_PORT                 GPIOC
 #define BOARD_LEDG_PINNUM               2
 #define BOARD_LEDG_PIN                  (1<<BOARD_LEDO_PINNUM)
-#define BOARD_LEDG_POLARITY             1
+#define BOARD_LEDG_POLARITY             0
 #define BOARD_LEDO_PORTNUM              2                   // Port C
 #define BOARD_LEDO_PORT                 GPIOC
 #define BOARD_LEDO_PINNUM               3
 #define BOARD_LEDO_PIN                  (1<<BOARD_LEDO_PINNUM)
-#define BOARD_LEDO_POLARITY             1
+#define BOARD_LEDO_POLARITY             0
 
 // LoRa Module SX127x Bus
 #ifdef __USE_RADIO
@@ -569,25 +573,34 @@ static inline void BOARD_DMA_CLKOFF(void) {
 ///@note BOARD Macro for EXTI initialization.  See also EXTI macros at the
 ///      bottom of the page.
 ///      - Radio EXTIs: {GPIO-0, -1, -3} : {PA10, PB3, PB4}
+#ifdef __USE_RADIO
+#   define _EXTICR3_PORTNUM     BOARD_RFGPIO_1PORTNUM
+#   define _EXTICR4_PORTNUM     BOARD_RFGPIO_3PORTNUM
+#   define _EXTICR5_PORTNUM     BOARD_RFGPIO_2PORTNUM
+#   define _EXTICR10_PORTNUM    BOARD_RFGPIO_0PORTNUM
+#else
+#   define _EXTICR3_PORTNUM     0
+#   define _EXTICR4_PORTNUM     0
+#   define _EXTICR5_PORTNUM     0
+#   define _EXTICR10_PORTNUM    0
+#endif
 static inline void BOARD_EXTI_STARTUP(void) {
-
-    
     // EXTI0-3: A0, A1, B2, RFGPIO-1 (B3)
     SYSCFG->EXTICR[0]   = (0 << 0) \
                         | (0 << 4) \
                         | (1 << 8) \
-                        | (BOARD_RFGPIO_1PORTNUM << 12);
+                        | (_EXTICR3_PORTNUM << 12);
     
     // EXTI4-7: RFGPIO-3 (B4), RFGPIO-2 (B5), B6, C7
-    SYSCFG->EXTICR[1]   = (BOARD_RFGPIO_3PORTNUM << 0) \
-                        | (BOARD_RFGPIO_2PORTNUM << 4) \
+    SYSCFG->EXTICR[1]   = (_EXTICR4_PORTNUM << 0) \
+                        | (_EXTICR5_PORTNUM << 4) \
                         | (1 << 8) \
                         | (2 << 12);
                         
     // EXTI8-11: A8, A9, RFGPIO-0 (A10), A11
     SYSCFG->EXTICR[2]   = (0 << 0) \
                         | (0 << 4) \
-                        | (BOARD_RFGPIO_0PORTNUM << 8) \
+                        | (_EXTICR10_PORTNUM << 8) \
                         | (0 << 12);
 
     // EXTI12-15: A12, SW1 (C13), B14, A15
@@ -620,9 +633,6 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - A13:14 are SWD, set to ALT
     // - A15: Unused Analog-In
     
-//#   ifdef __USE_RADIO
-//    GPIOA->BSRR     = BOARD_RFCTL_RESETPIN;
-//#   endif
 #   if defined(BOARD_RFGPIO_5PIN)
 #       define _GPIO_MODER_PA8  GPIO_MODER_IN
 #   else
@@ -727,14 +737,33 @@ static inline void BOARD_PORT_STARTUP(void) {
     /// Configure Port C IO.
     /// Port C is used only for USB sense and 32kHz crystal driving
     // - C0:1   are analog inputs
-    // - C2:3   LED0 and LED1 Output Triggers
+    // - C2:3   LED0 and LED1 Output Triggers: Push-Pull output or Open Drain depending on Polarity
     // - C4:5   TEST0 and TEST1 outputs
     // - C6:12  are unused and set to analog
     // - C13 is the user button, set to input HiZ
     // - C14:15 are 32kHz crystal driving, they are set in a particular way
-#   ifdef __USE_RADIO
-    GPIOC->BSRR     = BOARD_RFCTL_RESETPIN;
+#   if (BOARD_LEDO_POLARITY == 0)
+#       define _GPIO_OTYPER_PC2     1
+#       define _GPIO_ODR_PC2        1
+#   else
+#       define _GPIO_OTYPER_PC2     0
+#       define _GPIO_ODR_PC2        1
 #   endif
+#   if (BOARD_LEDO_POLARITY == 0)
+#       define _GPIO_OTYPER_PC3     1
+#       define _GPIO_ODR_PC3        0
+#   else
+#       define _GPIO_OTYPER_PC3     0
+#       define _GPIO_ODR_PC3        0
+#   endif
+#   ifdef __USE_RADIO
+#       define _GPIO_ODR_RFRESET    BOARD_RFCTL_RESETPIN
+#   else
+#       define _GPIO_ODR_RFRESET    0
+#   endif
+
+    GPIOC->BSRR     = (_GPIO_ODR_PC2 | _GPIO_ODR_PC3 | _GPIO_ODR_RFRESET);
+    GPIOA->OTYPER   = (_GPIO_OTYPER_PC2 | _GPIO_OTYPER_PC3);
 
     GPIOC->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
                     | (GPIO_MODER_ANALOG << (1*2)) \
@@ -1090,20 +1119,20 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 
 #if (OT_TRIG1_POLARITY != 0)
 #   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRR  = OT_TRIG1_PIN;
-#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BSRR  = (OT_TRIG1_PIN << 16);
+#   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BRR   = OT_TRIG1_PIN;
 #   define OT_TRIG1_TOG()   OT_TRIG1_PORT->ODR  ^= OT_TRIG1_PIN;
 #else 
-#   define OT_TRIG1_ON()    OT_TRIG1_PORT->BSRR  = (OT_TRIG1_PIN <<16);
+#   define OT_TRIG1_ON()    OT_TRIG1_PORT->BRR   = OT_TRIG1_PIN;
 #   define OT_TRIG1_OFF()   OT_TRIG1_PORT->BSRR  = OT_TRIG1_PIN;
 #   define OT_TRIG1_TOG()   OT_TRIG1_PORT->ODR  ^= OT_TRIG1_PIN;
 #endif
 
 #if (OT_TRIG2_POLARITY != 0)
 #   define OT_TRIG2_ON()    OT_TRIG2_PORT->BSRR  = OT_TRIG2_PIN;
-#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRR  = (OT_TRIG2_PIN << 16);
+#   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BRR   = OT_TRIG2_PIN;
 #   define OT_TRIG2_TOG()   OT_TRIG2_PORT->ODR  ^= OT_TRIG2_PIN;
 #else 
-#   define OT_TRIG2_ON()    OT_TRIG2_PORT->BSRR  = (OT_TRIG2_PIN << 16);
+#   define OT_TRIG2_ON()    OT_TRIG2_PORT->BRR   = OT_TRIG2_PIN;
 #   define OT_TRIG2_OFF()   OT_TRIG2_PORT->BSRR  = OT_TRIG2_PIN;
 #   define OT_TRIG2_TOG()   OT_TRIG2_PORT->ODR  ^= OT_TRIG2_PIN;
 #endif
@@ -1143,6 +1172,7 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
   * re-implement them without DMA, but this will impact the performance in a
   * very negative way and is not recommended.
   */
+#if (OT_FEATURE(MPIPE) && BOARD_FEATURE(MPIPE))
 #if (MCU_CONFIG_USB == ENABLED)
 // USB is mostly independent from OT, but the startup code does need to know 
 // how to boost the crystal
@@ -1206,7 +1236,7 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 #       define __USE_DMA1_CHAN4
 #   endif
 #endif
-
+#endif
 
 
 
