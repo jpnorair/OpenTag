@@ -228,6 +228,9 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304.943481352.635158140" name="core_errors.c" rcbsApplicability="disable" resourcePath="platform/stm32l0xx/core_errors.c" toolsToInvoke="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1177647912.904923066">
+						<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1177647912.904923066" name="MCU GCC Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1177647912"/>
+					</fileInfo>
 					<sourceEntries>
 						<entry excluding="platform/stm32l0xx/io_SPIRIT1.c|io/spirit1|io/radio_null|io/radio_cc13xx|io/cc120x|platform/stm32l0xx/_startup/startup_stm32l063xx.s|platform/stm32l0xx/_startup/startup_stm32l062xx.s|platform/stm32l0xx/_startup/startup_stm32l061xx.s|platform/stm32l0xx/_startup/startup_stm32l053xx.s|platform/stm32l0xx/_startup/startup_stm32l052xx.s|platform/stm32l0xx/_startup/startup_stm32l051xx.s|platform/stm32l0xx/_usb_acm|platform/stm32l0xx/_startup/arm|platform/stm32l0xx/_startup/iar|startup|app/_backport_todo|m2/_graveyard|otsys/system_hicculp2.c|platform/stm32f0xx|platform/stdc|platform/posix_c|platform/cc13xx_cc26xx" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>

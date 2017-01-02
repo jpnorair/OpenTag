@@ -221,6 +221,11 @@
 			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/otsys_veelite_EE.c</locationURI>
 		</link>
 		<link>
+			<name>platform/stm32l0xx/otsys_veelite_X2.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/otsys_veelite_X2.c</locationURI>
+		</link>
+		<link>
 			<name>platform/stm32l0xx/stm32l0xx_hal.h</name>
 			<type>1</type>
 			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/stm32l0xx_hal.h</locationURI>

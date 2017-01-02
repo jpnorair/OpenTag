@@ -199,6 +199,7 @@
 									<listOptionValue builtIn="false" value="BOARD_Nucleo_LRWAN1"/>
 									<listOptionValue builtIn="false" value="__GCC__"/>
 									<listOptionValue builtIn="false" value="__DEBUG__"/>
+									<listOptionValue builtIn="false" value="__NOEEPROM__"/>
 								</option>
 								<option id="gnu.c.compiler.option.dialect.std.71524909" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.default" valueType="enumerated"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.57976497" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c"/>
@@ -209,7 +210,7 @@
 								<option id="gnu.cpp.compiler.option.debugging.level.1990100594" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 							</tool>
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.53831445" name="MCU GCC Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker">
-								<option id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script.1619424037" name="Linker Script (-T)" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script" value="/Users/jpnbook/Sync/Repository/OpenTag/apps/_common/linker/stm32l0xx_192_20.ld" valueType="string"/>
+								<option id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script.1619424037" name="Linker Script (-T)" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script" value="/Users/jpnbook/Sync/Repository/OpenTag/apps/_common/linker/stm32l0xx_192_20_noeeprom.ld" valueType="string"/>
 								<option id="gnu.c.link.option.nostdlibs.1620976618" name="No startup or default libs (-nostdlib)" superClass="gnu.c.link.option.nostdlibs" value="false" valueType="boolean"/>
 								<option id="gnu.c.link.option.nodeflibs.1615221403" name="Do not use default libraries (-nodefaultlibs)" superClass="gnu.c.link.option.nodeflibs" value="false" valueType="boolean"/>
 								<option id="gnu.c.link.option.nostart.748852228" name="Do not use standard start files (-nostartfiles)" superClass="gnu.c.link.option.nostart" value="false" valueType="boolean"/>
@@ -222,7 +223,7 @@
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.1635464416" name="MCU G++ Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker"/>
 							<tool id="fr.ac6.managedbuild.tool.gnu.archiver.1398895147" name="MCU GCC Archiver" superClass="fr.ac6.managedbuild.tool.gnu.archiver"/>
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.assembler.82145999" name="MCU GCC Assembler" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler">
-								<option id="gnu.both.asm.option.include.paths.1520936052" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
+								<option id="gnu.both.asm.option.include.paths.1520936052" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.628700115" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.assembler.input.973525364" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler.input"/>
 							</tool>
@@ -252,13 +253,16 @@
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304.943481352;fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304.943481352.;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1177647912;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.57976497">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304.1321962735;fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304.1321962735.;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1038656586;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.491775101">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304;fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304.;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1961708081;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.2023081430">
+		<scannerConfigBuildInfo instanceId="fr.ac6.managedbuild.config.gnu.cross.exe.release.468480566;fr.ac6.managedbuild.config.gnu.cross.exe.release.468480566.;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.748184626;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.776210977">
 			<autodiscovery enabled="false" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="fr.ac6.managedbuild.config.gnu.cross.exe.release.468480566;fr.ac6.managedbuild.config.gnu.cross.exe.release.468480566.;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.748184626;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.776210977">
+		<scannerConfigBuildInfo instanceId="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304;fr.ac6.managedbuild.config.gnu.cross.exe.debug.1416765304.;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1961708081;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.2023081430">
 			<autodiscovery enabled="false" problemReportingEnabled="true" selectedProfileId=""/>
 		</scannerConfigBuildInfo>
 	</storageModule>
