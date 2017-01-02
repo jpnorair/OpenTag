@@ -735,7 +735,7 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
             return; //goto dll_systask_beacon_STOP;
         }
 
-        // a little hack
+        // move fp start onto the cursor in order to use vl_load() later on
         scratch     = fp->start;
         fp->start  += task->cursor;
 

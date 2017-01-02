@@ -151,13 +151,26 @@
 #define EEPROM_LOCAL_U16        (ot_u16*)EEPROM_LOCAL_ADDR
 #define EEPROM_LOCAL_U32        (ot_u32*)EEPROM_LOCAL_ADDR
 
-// Using EEPROM: Pages figure is irrelevant
-#define FLASH_NUM_PAGES         (FLASH_SIZE/FLASH_PAGE_SIZE)
-#define FLASH_FS_ADDR           (EEPROM_START_ADDR)
-#define FLASH_FS_PAGES          0
-#define FLASH_FS_FALLOWS        0 
-#define FLASH_FS_ALLOC          (EEPROM_SIZE - EEPROM_SAVE_SIZE) 
 
+// If not using EEPROM (using Flash) you need to coordinate some of these Flash Addresses
+// with those entered into the Linker Script.  The default STM32L073 linker script that
+// stores FS in Flash uses the upper 64KB for the filesystem, thus starts at Flash 
+// Address 0x08020000
+#if (defined(__NOEEPROM__) || defined(__NO_EEPROM__))
+#	define FLASH_NUM_PAGES      (FLASH_SIZE/FLASH_PAGE_SIZE)
+#	define FLASH_FS_ADDR        (0x08010000)						// FS Start Addr
+#	define FLASH_FS_ALLOC       (0x8000) 							// 32KB total FS Flash
+#	define FLASH_FS_PAGES       (FLASH_FS_ALLOC / FLASH_PAGE_SIZE)
+#	define FLASH_FS_FALLOWS     (0x800 / FLASH_PAGE_SIZE)			// 2KB of Fallows
+
+// Using EEPROM: Pages figure is irrelevant
+#else
+#	define FLASH_NUM_PAGES      (FLASH_SIZE/FLASH_PAGE_SIZE)
+#	define FLASH_FS_ADDR        (EEPROM_START_ADDR)
+#	define FLASH_FS_PAGES       0
+#	define FLASH_FS_FALLOWS     0 
+#	define FLASH_FS_ALLOC       (EEPROM_SIZE - EEPROM_SAVE_SIZE) 
+#endif
 
 
 
@@ -798,7 +811,55 @@ static inline void BOARD_PORT_STARTUP(void) {
 }
 
 
-
+/*
+static inline void BOARD_OPEN_FLASH(void* start, void* end) {
+/// STM32L0 reserves flash on 4KB boundaries
+#   define _F_LAST ((FLASH_SIZE-1) >> 12)
+    ot_u32 a, b;
+    ot_u32 bmask1, bmask2;
+    
+    // 4KB Boundaries: a to b
+    a = ((ot_u32)start - 0x08000000) >> 12;
+    b = ((ot_u32)last - 0x08000000) >> 12;
+    
+    // Make sure a, b are <= _F_LAST. Alter accordingly
+    if (a > _F_LAST) a = _F_LAST;
+    if (b > _F_LAST) b = _F_LAST;
+    
+    // Create bitmask from a and b bit positions
+    switch ( ((a>=32)<<1) | (b>=32) ) {
+        // a < 32, b < 32
+        case 0: bmask1  = 1 << a;
+                bmask1 |= (bmask1-1);
+                bmask1 ^= (1<<b) - 1;
+                bmask2  = 0;
+                break;
+                
+        // a < 32, b >= 32
+        case 1: bmask1  = 1 << a;
+                bmask1 |= (bmask1-1);
+                bmask2  = 1 << b;
+                bmask2 |= ~(bmask2-1);
+                break;
+        
+        // a >= 32, b < 32 -- implausible
+        case 2: return;
+        
+        // a >= 32, b >= 32
+        case 3: bmask1  = 0;
+                bmask2  = 1 << a;
+                bmask2 |= (bmask2-1);
+                bmask2 ^= (1<<b) - 1;
+                break;
+        
+    }
+    
+    // Apply bitmasks to WRPROT registers
+    
+    //FLASH->WRPROT1  = __REV(bmask1);
+    //FLASH->WRPROT2  = __REV(bmask2);
+}
+*/
 
 
 static inline void BOARD_RFSPI_CLKON(void) {

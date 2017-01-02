@@ -41,6 +41,43 @@
 
 
 
+/** Radio Driver Patching
+  * ========================================================================<BR>
+  * SX1272 needs to use proprietary data encoding methods as well as packet
+  * timing methods, as the PHY doesn't operate on shift-keyed symbols.
+  */
+#undef EXTF_rm2_rxtimeout_floor
+#define EXTF_rm2_rxtimeout_floor
+
+#undef EXTF_rm2_default_tgd
+#define EXTF_rm2_default_tgd
+
+#undef EXTF_rm2_pkt_duration
+#define EXTF_rm2_pkt_duration
+
+#undef EXTF_rm2_bgpkt_duration
+#define EXTF_rm2_bgpkt_duration
+
+#undef EXTF_rm2_scale_codec
+#define EXTF_rm2_scale_codec
+
+#undef EXTF_em2_encode_newpacket
+#define EXTF_em2_encode_newpacket
+
+#undef EXTF_em2_decode_newpacket
+#define EXTF_em2_decode_newpacket
+
+#undef EXTF_em2_encode_newframe
+#define EXTF_em2_encode_newframe
+
+#undef EXTF_em2_decode_newframe
+#define EXTF_em2_decode_newframe
+
+#undef EXTF_em2_encode_data
+#define EXTF_em2_encode_data
+
+#undef EXTF_em2_decode_data
+#define EXTF_em2_decode_data
 
 
 

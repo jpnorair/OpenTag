@@ -42,21 +42,21 @@
 /** Patch functions implemented in the driver     <BR>
   * ========================================================================<BR>
   */
-#if (   defined(EXTF_em2_encode_data)       \
-    ||  defined(EXTF_em2_encode_newframe)   \
-    ||  defined(EXTF_em2_encode_newpacket)  \
-    ||  defined(EXTF_em2_decode_data)       \
-    ||  defined(EXTF_em2_decode_newframe)   \
-    ||  defined(EXTF_em2_decode_newpacket)  )
-#   error "For SX127x, some encoder functions should be patched in the driver."
+#if (   !defined(EXTF_em2_encode_data)       \
+    ||  !defined(EXTF_em2_encode_newframe)   \
+    ||  !defined(EXTF_em2_encode_newpacket)  \
+    ||  !defined(EXTF_em2_decode_data)       \
+    ||  !defined(EXTF_em2_decode_newframe)   \
+    ||  !defined(EXTF_em2_decode_newpacket)  )
+#   error "For SX127x, some encoder functions must be patched in the driver.  See include/io/sx127x/config.h."
 #endif
 
-#define EXTF_em2_encode_data
-#define EXTF_em2_encode_newframe
-#define EXTF_em2_encode_newpacket
-#define EXTF_em2_decode_data
-#define EXTF_em2_decode_newframe
-#define EXTF_em2_decode_newpacket
+
+// Custom functions not declared in m2/encode.h
+void em2_encode_data(void);
+void em2_decode_data(void);
+
+
 
 
 #include <m2/dll.h>
