@@ -34,7 +34,7 @@
 
 
 #include <otplatform.h>
-#if defined(__STM32L0xx__)
+#if defined(__STM32L0xx__) && (!defined(__VLSRAM__) || defined(__VLEE__))
 
 #include "stm32l0xx_hal.h"
 

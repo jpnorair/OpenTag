@@ -219,12 +219,12 @@ MEMORY
 /* End of Program Flash */
 
 /* This section for Veelite FS backed in FLASH and cached in SRAM */
-/* We use the upper 32KB of FLASH Bank0 for this purpose */
-    FLASHOV (r)     : ORIGIN = 0x08010000,  LENGTH = 0x360
-    FLASHISFS (r)   : ORIGIN = 0x08010360,  LENGTH = 0xA0
-    FLASHGFB (r)    : ORIGIN = 0x08010400,  LENGTH = 0x400
-    FLASHISF (r)    : ORIGIN = 0x08010800,  LENGTH = 0x800
-    FLASHWL (r)     : ORIGIN = 0x08010400,  LENGTH = 0x400 
+/* We use the upper 4KB of FLASH Bank0 for this purpose */
+    FLASHOV (r)     : ORIGIN = 0x08017000,  LENGTH = 0x360
+    FLASHISFS (r)   : ORIGIN = 0x08017360,  LENGTH = 0xA0
+    FLASHGFB (r)    : ORIGIN = 0x08017400,  LENGTH = 0x400
+    FLASHISF (r)    : ORIGIN = 0x08017800,  LENGTH = 0x800
+  /*FLASHWL (r)     : ORIGIN = 0x08018000,  LENGTH = 0x400 */
 /* End of Veelite */
   
 /* This section for Parameter ROM */
@@ -435,13 +435,13 @@ SECTIONS
 	} > FLASHISF
  
 	/* Fallow blocks: Allocated space for flash wear leveling */
-    .vl_fallow :
+    /* .vl_fallow :
     {
 	    . = ALIGN(4);
 		KEEP(*(.vl_fallow))
 	    . = ALIGN(4);
 		
-    } >FLASHWL 
+    } >FLASHWL */
     
     
     

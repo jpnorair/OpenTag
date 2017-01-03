@@ -25,7 +25,7 @@
   */
 
 #include <otplatform.h>
-#if (OT_FEATURE(M2))
+#if (OT_FEATURE(M2) && defined(__SPIRIT1__))
 
 #include <otlib/utils.h>
 #include <otsys/types.h>

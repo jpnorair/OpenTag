@@ -153,15 +153,15 @@
 
 
 // If not using EEPROM (using Flash) you need to coordinate some of these Flash Addresses
-// with those entered into the Linker Script.  The default STM32L073 linker script that
-// stores FS in Flash uses the upper 64KB for the filesystem, thus starts at Flash 
-// Address 0x08020000
+// with those entered into the Linker Script.  Use the vlsram linker script.
 #if (defined(__NOEEPROM__) || defined(__NO_EEPROM__))
+#   define __VLSRAM__
+#   define FLASH_FS_END         (0x08018000)
 #	define FLASH_NUM_PAGES      (FLASH_SIZE/FLASH_PAGE_SIZE)
-#	define FLASH_FS_ADDR        (0x08010000)						// FS Start Addr
-#	define FLASH_FS_ALLOC       (0x8000) 							// 32KB total FS Flash
+#	define FLASH_FS_ALLOC       (4*1024) 							// 4KB FS memory
+#	define FLASH_FS_ADDR        (FLASH_FS_END-FLASH_FS_ALLOC)	    // FS Flash Start Addr
 #	define FLASH_FS_PAGES       (FLASH_FS_ALLOC / FLASH_PAGE_SIZE)
-#	define FLASH_FS_FALLOWS     (0x800 / FLASH_PAGE_SIZE)			// 2KB of Fallows
+#	define FLASH_FS_FALLOWS     (0)			                        // No fallows
 
 // Using EEPROM: Pages figure is irrelevant
 #else

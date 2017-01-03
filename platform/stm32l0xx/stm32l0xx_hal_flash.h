@@ -377,8 +377,9 @@ uint32_t HAL_FLASH_GetError(void);
 /** 
   * @brief  Function used internally by HAL FLASH driver. 
   */  
-HAL_StatusTypeDef FLASH_WaitForLastOperation(uint32_t Timeout);
-void              FLASH_ErasePage(uint32_t Page_Address);
+HAL_StatusTypeDef   FLASH_WaitForLastOperation(uint32_t Timeout);
+void                FLASH_ErasePage(uint32_t Page_Address);
+//static void         FLASH_Program_Word(uint32_t Address, uint32_t Data);
 /**
   * @}
   */ 
