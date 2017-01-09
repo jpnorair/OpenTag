@@ -1126,9 +1126,10 @@ void platform_init_interruptor() {
 /// Kernel interrupts go in the next highest group.  Everything else is above.
 /// Apps/Builds can get quite specific about how to set up the groups.
 
-#   define _KERNEL_GROUP    b00
-#   define _HIPRI_BASE      b00
-#   define _LOPRI_BASE      b11
+#   define _SVC_GROUP       b00
+#   define _KERNEL_GROUP    b01
+#   define _HIPRI_GROUP     b10
+#   define _LOPRI_GROUP     b11
 #   define _SUB_LIMIT       b11
 
     /// 1. Set the EXTI channels using the board function.  Different boards
@@ -1150,13 +1151,16 @@ void platform_init_interruptor() {
 //  SCB->SHP[_SHP_IDX(MemoryManagement_IRQn)  = (b00 << 4);
 //  SCB->SHP[_SHP_IDX(BusFault_IRQn)]         = (b00 << 4);
 //  SCB->SHP[_SHP_IDX(UsageFault_IRQn)]       = (b00 << 4);
-    SCB->SHP[_SHP_IDX(SVC_IRQn)]            = (b00 << 4);
-    SCB->SHP[_SHP_IDX(PendSV_IRQn)]         = (b11 << 4);
+//  SCB->SHP[_SHP_IDX(SVC_IRQn)]            = (b00 << 4);
+//  SCB->SHP[_SHP_IDX(PendSV_IRQn)]         = (b11 << 4);
 //  SCB->SHP[_SHP_IDX(DebugMonitor_IRQn)]     = (b00 << 4);
-
+    
+    NVIC_SetPriority(SVC_IRQn, _SVC_GROUP);
+    NVIC_SetPriority(PendSV_IRQn, _LOPRI_GROUP);
+    
     // Systick needs SCB and NVIC to be enabled in order to run.
 #   if defined(SYSTICK_IS_HIGHLY_DISCOURAGED)
-    NVIC_SetPriority(IRQn_Type IRQn, _LOPRI_BASE);
+    NVIC_SetPriority(IRQn_Type IRQn, _LOPRI_GROUP);
     NVIC_EnableIRQ(SysTick_IRQn);
 #   endif
 
@@ -1164,8 +1168,8 @@ void platform_init_interruptor() {
     /// each other, but there are subpriorities.  I/O interrupts should be set
     /// in their individual I/O driver initializers.
     ///    <LI> NMI will interrupt anything.  It is used for panics.    </LI>
-    ///    <LI> SVC is priority 0-0.  It runs the scheduler. </LI>
-    ///    <LI> LPTIM is priority 0-2.  It runs the tasker.  </LI>
+    ///    <LI> SVC is priority 0.  It runs the scheduler. </LI>
+    ///    <LI> LPTIM is priority 1.  It runs the tasker.  </LI>
     ///    <LI> If Mode 2 is enabled, RTC-Wakeup is the MAC-insertion timer and
     ///         is priority 0-1.  If not, RTC-Wakeup is low-priority and it is
     ///         only used for the interval timer (watchdog/systick) </LI>
@@ -1189,32 +1193,32 @@ void platform_init_interruptor() {
     EXTI->RTSR |= (1<<20) | (1<<29);
 
 #   if OT_FEATURE(M2)
-        NVIC_SetPriority(RTC_IRQn, (_KERNEL_GROUP+1));
+        NVIC_SetPriority(RTC_IRQn, _KERNEL_GROUP);
         NVIC_EnableIRQ(RTC_IRQn);
 #   else
-        NVIC_SetPriority(RTC_IRQn, (_LOPRI_BASE+1));
+        NVIC_SetPriority(RTC_IRQn, _LOPRI_GROUP);
         NVIC_EnableIRQ(RTC_IRQn);
 #   endif
 
-    NVIC_SetPriority(LPTIM1_IRQn, (_KERNEL_GROUP+2));
+    NVIC_SetPriority(LPTIM1_IRQn, _KERNEL_GROUP);
     NVIC_EnableIRQ(LPTIM1_IRQn);
 
 
     /// 5. Setup other external interrupts
     /// @note Make sure board files use the __USE_EXTI(N) definitions
 #   if defined(__USE_EXTI0) || defined(__USE_EXTI1)
-    NVIC_SetPriority(EXTI0_1_IRQn, _HIPRI_BASE);
+    NVIC_SetPriority(EXTI0_1_IRQn, _KERNEL_GROUP);
     NVIC_EnableIRQ(EXTI0_1_IRQn);
 #   endif
 #   if defined(__USE_EXTI2) || defined(__USE_EXTI3)
-    NVIC_SetPriority(EXTI2_3_IRQn, _HIPRI_BASE);
+    NVIC_SetPriority(EXTI2_3_IRQn, _KERNEL_GROUP);
     NVIC_EnableIRQ(EXTI2_3_IRQn);
 #   endif
 #   if( defined(__USE_EXTI4)  || defined(__USE_EXTI5)  || defined(__USE_EXTI6) \
     ||  defined(__USE_EXTI7)  || defined(__USE_EXTI8)  || defined(__USE_EXTI9) \
     ||  defined(__USE_EXTI10) || defined(__USE_EXTI11) || defined(__USE_EXTI12) \
     ||  defined(__USE_EXTI13) || defined(__USE_EXTI14) )
-    NVIC_SetPriority(EXTI4_15_IRQn, _HIPRI_BASE);
+    NVIC_SetPriority(EXTI4_15_IRQn, _KERNEL_GROUP);
     NVIC_EnableIRQ(EXTI4_15_IRQn);
 #   endif
 
@@ -1222,7 +1226,7 @@ void platform_init_interruptor() {
     /// 6. Setup ADC interrupt.  This is needed only for ADC-enabled builds,
     ///    but ADC is frequently used, so it is enabled by default
 //#   if defined(__USE_ADC1)
-    NVIC_SetPriority(ADC1_COMP_IRQn, _HIPRI_BASE);
+    NVIC_SetPriority(ADC1_COMP_IRQn, _HIPRI_GROUP);
     NVIC_EnableIRQ(ADC1_COMP_IRQn);
 //#   endif
 

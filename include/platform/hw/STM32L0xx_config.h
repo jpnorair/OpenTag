@@ -541,7 +541,7 @@ ot_u16 platform_ext_lsihz();
 #   endif
 #   define PLATFORM_NVIC_KERNEL_GROUP   b00
 #   define PLATFORM_NVIC_RF_GROUP       b01
-#   define PLATFORM_NVIC_IO_GROUP       b10
+#   define PLATFORM_NVIC_IO_GROUP       b01
 #   define PLATFORM_NVIC_INT_GROUP      b10
 #   define PLATFORM_NVIC_TASK_GROUP     b11
 
