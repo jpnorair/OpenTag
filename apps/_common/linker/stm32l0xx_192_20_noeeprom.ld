@@ -222,8 +222,8 @@ MEMORY
 /* We use the upper 4KB of FLASH Bank0 for this purpose */
     FLASHOV (r)     : ORIGIN = 0x08017000,  LENGTH = 0x360
     FLASHISFS (r)   : ORIGIN = 0x08017360,  LENGTH = 0xA0
-    FLASHGFB (r)    : ORIGIN = 0x08017400,  LENGTH = 0x400
-    FLASHISF (r)    : ORIGIN = 0x08017800,  LENGTH = 0x800
+  /*FLASHGFB (r)    : ORIGIN = 0x08017400,  LENGTH = 0x400*/
+    FLASHISF (r)    : ORIGIN = 0x08017400,  LENGTH = 0xC00
   /*FLASHWL (r)     : ORIGIN = 0x08018000,  LENGTH = 0x400 */
 /* End of Veelite */
   
@@ -421,12 +421,12 @@ SECTIONS
 	} > FLASHISFS
 	
 
-	.vl_gfb : {
+/*	.vl_gfb : {
 	    . = ALIGN(4);
 		KEEP(*(.vl_gfb))
 		. = ALIGN(4);
 	} > FLASHGFB
-
+*/
 	
 	.vl_isf : {
 	    . = ALIGN(4);
