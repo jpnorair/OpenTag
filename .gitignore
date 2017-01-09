@@ -19,7 +19,7 @@
 *.elf*
 *.hdo*
 *_clang_tmp.c
-BuildLog.html
+
 
 ######################
 # OS Generated Files #
@@ -35,6 +35,8 @@ Thumbs.db
 *.ctx
 *.dbi
 *.xdb
+*BuildLog.html
+*.elf.ld
 
 #########################
 # CCS Generated Files #
