@@ -165,7 +165,7 @@ void PendSV_Handler(void) {
     // There is an erratum that PendSV bit is not adequately cleared in HW
     __CLR_PENDSV();
 
-    // Disable interrupts during scheduler runtime
+    // SVC(0) runs the scheduler runtime in protected context
     __SEND_SVC(0);
 }
 
@@ -263,7 +263,8 @@ OT_INLINE void platform_ot_run() {
         sys_powerdown();
         
         // At this point, system has just woke-up from sleep.  
-        // The wakeup ISR must clear GPTIM_FLAG_SLEEP
+        // The wakeup ISR must clear GPTIM_FLAG_SLEEP if task scheduling is to continue
+        __NOP();
     }
 
     /// 3. Stop the backup timer, which is used as a kernel watchdog.
