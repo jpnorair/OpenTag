@@ -110,7 +110,7 @@ rfctl_struct rfctl;
 
 void sx127x_virtual_isr(ot_u8 code) {
     
-    switch (code) {	///@todo implement listen feature
+    switch (code) {
         case RFIV_LISTEN:       rm2_kill();                 break;
         
         case RFIV_RXDONE:       rm2_rxend_isr();        break;
@@ -191,10 +191,13 @@ OT_WEAK void radio_mac_isr() {
     /// Used as CA insertion timer
     systim_disable_insertion();
     
-    switch (radio.state) {
-        case RADIO_Csma:    rm2_txcsma_isr();
-        default:            rm2_kill();
-    }
+    // Switch statement of only two choices is a bit dumb, but it's an example for future extensions
+    //switch (radio.state) {
+    //    case RADIO_Csma:    rm2_txcsma_isr();   break;
+    //    default:            rm2_kill();         break;
+    //}
+    if (radio.state == RADIO_Csma)  rm2_txcsma_isr();
+    else                            rm2_kill();         // Just in case this ISR gets triggered strangely
 }
 #endif
 
@@ -719,7 +722,7 @@ void sub_cad_csma(void) {
     sx127x_write(RFREG_LR_IRQFLAGS, 0xFF);  
     sx127x_iocfg_cad();
     sx127x_int_csma();
-    sx127x_strobe(_OPMODE_CAD);   
+    sx127x_strobe(_OPMODE_CAD);
 }
 
 ot_bool sub_cca_isfail(void) {
@@ -798,7 +801,7 @@ OT_WEAK void rm2_txcsma_isr() {
             }
             break;
         
-        // 4-5. First CCA: If it is valid, fall through to TX START
+        // 4-5. 2nd CCA: If it is valid, fall through to TX START
         // If invalid, return to CAD1 via sub_caa_isfail().
         case (RADIO_STATE_TXCAD2 >> RADIO_STATE_TXSHIFT):
             rfctl.state = RADIO_STATE_TXCCA2;
@@ -806,8 +809,9 @@ OT_WEAK void rm2_txcsma_isr() {
             break;
 
         case (RADIO_STATE_TXCCA2 >> RADIO_STATE_TXSHIFT): 
-            if (sub_cca_isfail()) 
+            if (sub_cca_isfail()) {
                 break;
+            }
 
         /// 6. TX startup:
         case (RADIO_STATE_TXSTART >> RADIO_STATE_TXSHIFT): {
