@@ -105,7 +105,7 @@ extern sx127x_struct sx127x;
 #   define __CLR_LINE(NUMBER)   (set_line = -1)
 #else
 #   define __SET_LINE(NUMBER);
-#   define __CLR_LINE(NUMBER);  
+#   define __CLR_LINE(NUMBER);
 #endif
 
 
@@ -246,10 +246,10 @@ void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd);
 
 #define RFINT(VAL)      RFI_##VAL
 
-#define RFI_SOURCE0     (1 << RADIO_IRQ0_SRCLINE)
-#define RFI_SOURCE1     (1 << RADIO_IRQ1_SRCLINE)
+#define RFI_SOURCE0     RADIO_IRQ0_PIN
+#define RFI_SOURCE1     RADIO_IRQ1_PIN
 #define RFI_SOURCE2     0   // Not used with this driver
-#define RFI_SOURCE3     (1 << RADIO_IRQ3_SRCLINE)   // Not used with this driver
+#define RFI_SOURCE3     RADIO_IRQ3_PIN   // Not used with this driver
 #define RFI_SOURCE4     0   // Not used with this driver
 #define RFI_SOURCE5     0   // Not used with this driver
 
