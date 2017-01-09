@@ -356,11 +356,6 @@ void RCC_CRS_IRQHandler(void) {
 #else
 #   define APPLICATION_EXTI13_ISR(); 
 #endif
-#if defined(__ISR_EXTI0)
-#   define APPLICATION_EXTI13_ISR()  platform_isr_exti13()
-#else
-#   define APPLICATION_EXTI13_ISR(); 
-#endif
 #if defined(__ISR_EXTI14)
 #   define APPLICATION_EXTI14_ISR()  platform_isr_exti14()
 #else
