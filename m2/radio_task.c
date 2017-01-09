@@ -464,7 +464,7 @@ OT_WEAK ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
 ///       before changing to the new channel, and recalibrate if so.
     ot_u8       spectrum_id;
     ot_int      i;
-    ot_uni16    scratch;
+    volatile ot_uni16    scratch;
 
     // Strip the FEC & Spread bits
     spectrum_id = chan_id & 0x3F;
@@ -472,7 +472,7 @@ OT_WEAK ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
     /// Populate the phymac flags: these are not frequently used
     /// @todo I might want to do this in radio_init() instead
     scratch.ushort  = vl_read(fp, 2);
-    phymac[0].flags = scratch.ubyte[UPPER];
+    phymac[0].flags = scratch.ubyte[0];
 
     /// Look through the channel list to find the one with matching spectrum id.
     /// The channel list is not necessarily sorted.
