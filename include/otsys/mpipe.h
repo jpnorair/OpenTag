@@ -58,12 +58,13 @@
 ///@todo when more hardware is supported by mpipe, variations of this will be
 ///      specified.  In certain implementations, this is superfluous
 typedef enum {
-    MPIPE_9600bps    = 0,
-    MPIPE_28800bps   = 1,
-    MPIPE_57600bps   = 2,
-    MPIPE_115200bps  = 3,
-    MPIPE_250000bps  = 4,
-    MPIPE_500000bps  = 5
+    MPIPE_default   = -1,
+    MPIPE_9600bps   = 0,
+    MPIPE_28800bps  = 1,
+    MPIPE_57600bps  = 2,
+    MPIPE_115200bps = 3,
+    MPIPE_250000bps = 4,
+    MPIPE_500000bps = 5
 } mpipe_speed;
 
 
