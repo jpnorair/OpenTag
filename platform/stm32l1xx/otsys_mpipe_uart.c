@@ -688,12 +688,12 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     }
     
     //getcursor to end of packet, to allow another packet to be added
-    uart.lq.front               = mpipe.alp.outq->getcursor;
-    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
-    uart.lq.back                = mpipe.alp.outq->putcursor;
-    pktlen                      = q_length(&uart.lq);
+    pktlen                      = q_length(mpipe.alp.outq);
     holdtime                    = __MPIPE_TIMEOUT(pktlen);
-
+    uart.lq.front               = mpipe.alp.outq->getcursor;
+    uart.lq.back                = mpipe.alp.outq->putcursor;
+    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
+    
     if (mpipe.state == MPIPE_Idle) {
         uart.lq.getcursor   = uart.lq.front;
         uart.lq.putcursor   = uart.lq.front + pktlen;

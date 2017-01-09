@@ -89,6 +89,31 @@
 #include <otsys/sysclock.h>
 
 
+
+/** MPipe Default speed configuration <BR>
+  * ========================================================================<BR>
+  * Default baud is 115200, or whatever is put into the Board params.
+  */
+#ifndef BOARD_PARAM_MPIPEBAUD
+#   define BOARD_PARAM_MPIPEBAUD 115200
+#endif
+#if (BOARD_PARAM_MPIPEBAUD <= 9600)
+#   define _DEF_MPIPEBAUD   MPIPE_9600bps
+#elif (BOARD_PARAM_MPIPEBAUD <= 28800)
+#   define _DEF_MPIPEBAUD   MPIPE_28800bps
+#elif (BOARD_PARAM_MPIPEBAUD <= 57600)
+#   define _DEF_MPIPEBAUD   MPIPE_57600bps
+#elif (BOARD_PARAM_MPIPEBAUD <= 115200)
+#   define _DEF_MPIPEBAUD   MPIPE_115200bps
+#elif (BOARD_PARAM_MPIPEBAUD <= 250000)
+#   define _DEF_MPIPEBAUD   MPIPE_250000bps
+#elif (BOARD_PARAM_MPIPEBAUD <= 500000)
+#   define _DEF_MPIPEBAUD   MPIPE_500000bps
+#else
+#   define _DEF_MPIPEBAUD   MPIPE_500000bps
+#endif
+
+
 /** MPipe Feature Configuration for UART, considering other modes <BR>
   * ========================================================================<BR>
   * There are multiple MPIPE modes.  Some platforms/boards support multiplexing
@@ -139,8 +164,17 @@
   * usage, this will never happen, but it is something to think about if you
   * are doing cool new hacks.
   */
-#define MPIPE_BUFFER_SIZE    64
+#define MPIPE_BUFFER_SIZE   64
 
+
+
+/** CRC Override  <BR>
+  * ========================================================================<BR>
+  * MPipe has a CRC16 feature, although it's superfluous in a system where
+  * USB is moving data off-board (USB has its own CRCs).  You can disable it
+  * by setting MPIPE_CTL_NOCRC to 1.  Transmissions coming from the device
+  * will always have CRC, though, just in receptions it will be ignored.
+  */
 #define MPIPE_CTL_NOCRC     1
 
 
@@ -154,8 +188,8 @@
 #   define BUILD_NVIC_SUBGROUP_MPIPE 0
 #endif
 
-#define _SUBGROUP   (0)
-#define _IRQGROUP   (PLATFORM_NVIC_IO_GROUP + _SUBGROUP)
+//#define _SUBGROUP   (0)
+#define _IRQGROUP   (PLATFORM_NVIC_IO_GROUP)
 
 #if ((BOARD_FEATURE_MPIPE_CS == ENABLED) || (BOARD_FEATURE_MPIPE_FLOWCTL == ENABLED))
 #   define _CTS_IRQ
@@ -387,12 +421,11 @@ typedef struct {
 #endif
     mpipe_speed     baudrate;
     ot_int          packets;
-    ot_u8*          pkt;
+    //ot_u8*          pkt;
     crcstream_t     crc;
     ot_queue        lq;
     ot_u8           rxbuffer[MPIPE_BUFFER_SIZE];
     mpipe_header    header;
-
 } uart_struct;
 
 uart_struct uart;
@@ -400,40 +433,6 @@ uart_struct uart;
 
 
 
-
-
-
-
-/** Mpipe ISRs  <BR>
-  * ========================================================================<BR>
-  * There are two kinds of ISRs in this MPIPE driver: DMA ISRs and Pin ISRs.
-  * The DMA ISRs occur when the data is finished being transmitted or received.
-  * The Pin ISRs occur when there is a wake-up or handshaking signal detected.
-  *
-  * CTS/RTS ISR: In RTS/CTS mode, the MPipe connection is disabled whenever the
-  * session is over, thereby setting mpipe.state to Null.  The kernel can make
-  * power optimizations if it knows MPipe is disconnected.  Of course, it also
-  * provides traditional Null-modem RTS/CTS flow control.
-  *
-  * DTR ISR: In CS mode, the DTR line is used to wakeup this device before the
-  * host sends some data.  It allows this device to stay in deep low-power modes,
-  * and/or it allows multi-drop UART, which can be nice for sharing UART of
-  * devices like Arduino.  The DTR trigger must occur *at least 20us* before the
-  * start bit in order to guarantee the STM32L wakes-up properly and can receive
-  * the data.
-  *
-  * BREAK ISR: In break mode, there is a "break" character placed before the data.
-  * It is used in the same way as DTR, except there is no additional line, just the
-  * normal RX line that is attached to an edge interrupt.  it uses the normal RX
-  * line instead of an additional CS/DTR line.  You can also safely use a 0x00
-  * character instead of a break.
-  *
-///
-
-  * These are DMA ISRs.  They are macros which are defined in this file, above.
-  * In STM32, each DMA channel has its own IRQ, and each peripheral has mapping
-  * to different channels.
-  */
 
 void sub_mpipe_close();
 void sub_txopen();
@@ -452,7 +451,7 @@ void sub_mpipe_open() {
     scratch                &= ~((3 << (BOARD_UART_TXPINNUM*2)) | (3 << (BOARD_UART_RXPINNUM*2)));
     scratch                |= (2 << (BOARD_UART_TXPINNUM*2)) | (2 << (BOARD_UART_RXPINNUM*2));
     BOARD_UART_PORT->MODER  = scratch;
-    mpipe.state             = MPIPE_Idle;
+    //mpipe.state             = MPIPE_Idle;
 }
 
 void sub_mpipe_close() {
@@ -473,16 +472,38 @@ void sub_mpipe_close() {
 }
 
 
+
+
+
+/** Mpipe ISRs  <BR>
+  * ========================================================================<BR>
+  * There are two kinds of ISRs in this MPIPE driver: DMA ISRs and Pin ISRs.
+  * The DMA ISRs occur when the data is finished being transmitted or received.
+  * The Pin ISRs occur when there is a wake-up or handshaking signal detected.
+  *
+  * BREAK ISR: In break mode, there is a "break" character placed before the data.
+  * It is used in the same way as DTR, except there is no additional line, just the
+  * normal RX line that is attached to an edge interrupt.  it uses the normal RX
+  * line instead of an additional CS/DTR line.  You can also safely use a 0x00
+  * character instead of a break.
+  *
+  * These are DMA ISRs.  They are macros which are defined in this file, above.
+  * In STM32, each DMA channel has its own IRQ, and each peripheral has mapping
+  * to different channels.
+  */
+
 void mpipe_rxsync_isr(void) {
 /// Falling edge ISR on RX line, which can wakeup from stop
     EXTI->IMR  &= ~MPIPE_UART_RXPIN;
     sub_mpipe_open();
+    mpipe.state = MPIPE_Idle;
     __UART_RXOPEN();
 }
 
 
 void __UART_ISR(void) {
-//    if (MPIPE_UART->SR & USART_SR_RXNE) {
+#   if (BOARD_FEATURE(MPIPE_BREAK))
+    if (MPIPE_UART->SR & USART_SR_RXNE) {
         uart.rxbuffer[0] = MPIPE_UART->RDR;
         mpipe.state     += (uart.rxbuffer[0] == 0x55);
 
@@ -491,14 +512,28 @@ void __UART_ISR(void) {
             MPIPE_UART->CR1   = (USART_CR1_UE | USART_CR1_RE);
             __DMA_RXOPEN((ot_u8*)&uart.header.plen, MPIPE_HEADERBYTES-2);
         }
-//    }
-//    else if (MPIPE_UART->ISR & USART_ISR_TXE) {
-//        if (--uart.trailer == 0) {
-//            mpipedrv_isr_TXSIG:
-//            mpipedrv_kill();
-//            mpipeevt_txdone(0);
-//        }
-//    }
+    }
+#   endif
+    
+    // TX interrupt doesn't function reliably with DMA driving
+    /*
+    else if (MPIPE_UART->ISR & USART_ISR_TXE) 
+        
+    // RXBuffer is used in the final part of TX (a hack) to meter-out the last
+    // two byte that get abandoned by the DMA interrupt
+    {   if (--uart.rxbuffer[0] == 0) {
+            if (uart.lq.putcursor < uart.lq.back) {
+                uart.lq.getcursor = uart.lq.putcursor;
+                uart.lq.putcursor = uart.lq.back;
+                sub_txopen();
+            }
+            else {
+                mpipedrv_rx(False, 0);
+                mpipeevt_txdone(0);
+            }
+        }
+    }
+    */
 }
 
 
@@ -544,9 +579,9 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 /// 3. Set default speed, which in this case is 115200 bps
     ot_u8 baud_id;
 
-    /// Basic setup for MPIPE-UART, with 57600bps and sync detection
+    /// Basic setup for MPIPE-UART, with preset bps and sync detection
     mpipe.state     = MPIPE_Null;
-    uart.baudrate   = baud_rate;
+    uart.baudrate   = (baud_rate == MPIPE_default) ? _DEF_MPIPEBAUD : baud_rate;
 
     /// UART Setup (RX & TX setup takes place at time of startup)
     __UART_CLKON();
@@ -572,14 +607,15 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 #   if (BOARD_FEATURE(MPIPE_BREAK))
         NVIC_SetPriority(_UART_IRQ, _IRQGROUP);
         NVIC_EnableIRQ(_UART_IRQ);
-        EXTI->PR                            = MPIPE_UART_RXPIN;
-        EXTI->RTSR                         |= MPIPE_UART_RXPIN;
+        EXTI->PR    = MPIPE_UART_RXPIN;
+        EXTI->RTSR |= MPIPE_UART_RXPIN;
 #   endif
 
-
-    ///@todo this will need to be adjusted in the final version
+    /// Configure MPipe Queues
+    /// @todo this will need to be adjusted in the final version
     alp_init(&mpipe.alp, &otmpin, &otmpout);
-
+    //q_copy(&uart.lq, &mpipe.alp); //don't need to do this
+    
     return 255;
 }
 #endif
@@ -613,7 +649,9 @@ void mpipedrv_block() {
 
 #ifndef EXTF_mpipedrv_unblock
 void mpipedrv_unblock() {
-    mpipe.state = MPIPE_Idle;
+    if (mpipe.state == MPIPE_Null) {
+        mpipe.state = MPIPE_Idle;
+    }
 }
 #endif
 
@@ -641,11 +679,10 @@ void mpipedrv_wait() {
 
 #ifndef EXTF_mpipedrv_tx
 void sub_txopen() {
-    // set state to TX wait, which will come after header is TX'ed
-    mpipe.state         = MPIPE_Tx_Wait;
+    ot_u16 plen         = q_span(&uart.lq);
     uart.header.syncFF  = 0xff;
     uart.header.sync55  = 0x55;
-    uart.header.plen    = PLATFORM_ENDIAN16( q_span(&uart.lq) );
+    uart.header.plen    = PLATFORM_ENDIAN16(plen);      //note that .plen is just data on TX, careful of endian bugs
     uart.header.ctl     = 0;
     uart.header.seq    += 1;
     
@@ -653,20 +690,31 @@ void sub_txopen() {
     //if ((uart.header.ctl & MPIPE_CTL_NOCRC) == 0) {
         uart.header.crc16 = crc16drv_block_manual((ot_u8*)&uart.header.plen, 4, 0xFFFF);
         uart.header.crc16 = crc16drv_block_manual(  uart.lq.getcursor,
-                                                    uart.header.plen,
+                                                    plen,
                                                     uart.header.crc16   );
         uart.header.crc16 = PLATFORM_ENDIAN16(uart.header.crc16);
     //}
 
     sub_mpipe_close();
     sub_mpipe_open();
+    mpipe.state = MPIPE_Tx_Wait;
     __UART_TXOPEN();
     __DMA_TXOPEN(&uart.header.syncFF, 8);
 }
 
-OT_INLINE_H void sub_txcont() {
-    __DMA_TXOPEN(uart.lq.getcursor, q_span(&uart.lq));
+//OT_INLINE_H void sub_txcont() {
+//    __DMA_TXOPEN(uart.lq.getcursor, q_span(&uart.lq));
+//}
+void sub_txcont() {
+    // Need to pad two bytes during DMA TX
+    _DMATX->CCR         = 0;            
+    _DMATX->CMAR        = (uint32_t)uart.lq.getcursor;   
+    _DMATX->CNDTR       = (ot_u16)q_span(&uart.lq) + 2;     // With DMA, only way is to pad two bytes 
+    DMA1->IFCR          = (_DMARX_IFG | _DMATX_IFG);     
+    DMA1_CSELR->CSELR   = (DMA1_CSELR->CSELR & ~_DMA_CSEL_MASK) | _DMATX_CSEL;
+    _DMATX->CCR         = (DMA_CCR_DIR | DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN);
 }
+
 
 ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
 /// Data TX will only occur if this function is called when the MPipe state is
@@ -692,22 +740,23 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     }
     
     //getcursor to end of packet, to allow another packet to be added
-    uart.lq.front               = mpipe.alp.outq->getcursor;
-    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
-    uart.lq.back                = mpipe.alp.outq->putcursor;
-    pktlen                      = q_length(&uart.lq);
+    pktlen                      = q_length(mpipe.alp.outq);
     holdtime                    = __MPIPE_TIMEOUT(pktlen);
-
+    uart.lq.front               = mpipe.alp.outq->getcursor;
+    uart.lq.back                = mpipe.alp.outq->putcursor;
+    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
+    
+    // Don't start the TX if there's already activity, or if blocked
     if (mpipe.state == MPIPE_Idle) {
         uart.lq.getcursor   = uart.lq.front;
         uart.lq.putcursor   = uart.lq.front + pktlen;
-        mpipedrv_tx_GO:
+        uart.lq.putcursor[0]= 0xff;                     //Drop an extra sync
         __SYS_CLKON();
         sub_txopen();
         q_blockwrite(mpipe.alp.outq, blocking ? holdtime : 0);
     }
 
-    return __MPIPE_TIMEOUT( holdtime );
+    return holdtime;
 }
 #endif
 
@@ -718,6 +767,7 @@ ot_u16 mpipedrv_txsync() {
 /// Send a single FF byte and return the timeout (We have it at 6).
 /// We don't care about interrupts, because it is just one byte.
     sub_mpipe_open();
+    mpipe.state = MPIPE_Idle;
     __UART_TXOPEN();
     MPIPE_UART->TDR = 0xFF;
     return 6;
@@ -803,7 +853,7 @@ void mpipedrv_isr() {
 /// <LI> If MPipe does not have HW acks, then software can be used to manage
 ///      Acks.  In this case, a complete TX process also requires RX'ing an
 ///      Ack, and a complete RX process requires TX'ing an Ack. </LI>
-    ot_bool tx_process = False;
+    //ot_bool tx_process = False;
     ot_int  error_code;
 
     __DMA_ALL_CLOSE();
@@ -925,9 +975,9 @@ void mpipedrv_isr() {
             mpipe.state = MPIPE_Tx_Done;
             sub_txcont();
             return;
-
+            
 #       if (MPIPE_USE_ACKS)
-//        case MPIPE_Tx_Done:
+        case MPIPE_Tx_Done:
 //            if (uart.priority != MPIPE_Broadcast) {
 //                mpipedrv_rx(False, MPIPE_Ack);
 //                mpipe.state = MPIPE_RxAck;
@@ -944,11 +994,14 @@ void mpipedrv_isr() {
 //            }
 //            goto mpipedrv_isr_TXSIG;
 #       endif
-
-       //default: goto mpipedrv_isr_TXSIG;  //normal behavior is to fall through
+       
+       // Normal behavior is to fall through.  The default case could be removed,
+       // but it gets compiled-out and we leave to suppress warnings.
+       default: break; //goto mpipedrv_isr_TXSIG;  
     }
 
     // The TX process is complete, including any ACKing.
+    // - Wait for final byte to leave the 
     // - Check the TX queue to see if there is anything queued.
     // - If yes, then piggyback the transmission
     // - If no, then close Mpipe and call txdone event handler in the MPipe Task
