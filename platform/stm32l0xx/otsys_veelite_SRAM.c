@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /platform/stm32l0xx/otsys_veelite_SROM.c
+  * @file       /platform/stm32l0xx/otsys_veelite_SRAM.c
   * @author     JP Norair
   * @version    R100
   * @date       30 Dec 2016
