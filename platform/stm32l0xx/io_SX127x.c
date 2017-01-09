@@ -190,9 +190,9 @@
 /// 10MHz.  SPI clock = bus clock/2, so only systems that have HSCLOCK
 /// above 20MHz need to divide.
 #   if (_SPICLK > 20000000)
-#       define _SPI_DIV (1<<3) //(1<<3)
+#       define _SPI_DIV (1<<3)
 #   else
-#       define _SPI_DIV (0<<3) //(0<<3)
+#       define _SPI_DIV (0<<3)
 #   endif
 
 
