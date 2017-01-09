@@ -69,7 +69,14 @@ void HardFault_Handler(void) {
 /// You need to allocate a bigger stack for SSTACK or your thread, or fix some
 /// other serious problem (possibly interrupt storm)
 #ifdef __DEBUG__
-    while (1);
+    while (1) {
+        BOARD_led1_on();
+        BOARD_led2_off();
+        delay_ti(30);
+        BOARD_led1_off();
+        BOARD_led2_on();
+        delay_ti(30);
+    }
 
 #else
     /// Log HardFault by saving an error code to Backup RAM, then resetting.
