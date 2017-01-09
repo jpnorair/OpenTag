@@ -408,7 +408,7 @@ const ot_u8 isf_stock_files[] __attribute__((section(".vl_isf"))) = {
 #pragma DATA_SECTION(isf_stock_files, ".vl_isf")
 const ot_u8 isf_stock_files[] = {
 #endif
-    /* network settings: id=0x00, len=8, alloc=8 */
+    /* network settings: id=0x00, len=10, alloc=10 */
     __VID,                                              /* VID */
     0x11,                                               /* Device Subnet */
     0x11,                                               /* Beacon Subnet */
@@ -437,8 +437,8 @@ const ot_u8 isf_stock_files[] = {
     BT0,BC0,BC1,BC2,BC3,BC4,BC5,BC6,BC7, 0,             /* Firmware & Version as C-string */
 
     /* channel configuration: id=0x02, len=24, alloc=48 */
-    _BAND_ID, 0x00,                                     /* Header: 2 bytes RFU */
-    0x00,                                               /* Header: Regulatory Code */
+    0x00, 0x00,                                         /* Header: 2 bytes RFU */
+    _BAND_ID,                                           /* Header: Regulatory Code */
     0x00,                                               /* Header: TX Duty Cycle */
     0x00,                                               /* Header: TX Power Autoscaling Control */
     0x00,                                               /* Header: RFU */
