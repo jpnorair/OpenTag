@@ -86,8 +86,8 @@
   * has a 50% efficiency (-3dB) with 1dB insertion loss
   */
 #ifdef __USE_RADIO
-#   define RF_PARAM_BAND    866              //Can be 866 or 915
-//#   define RF_PARAM_BAND    915
+//#   define RF_PARAM_BAND    866              //Can be 866 or 915
+#   define RF_PARAM_BAND    915
 #   define RF_HDB_ATTEN     8                //Half dB attenuation (units = 0.5dB), used to scale TX power
 #   define RF_HDB_RXATTEN   6
 #   define RF_RSSI_OFFSET   RF_HDB_RXATTEN   //Offset applied to RSSI calculation
@@ -154,8 +154,10 @@
 
 // If not using EEPROM (using Flash) you need to coordinate some of these Flash Addresses
 // with those entered into the Linker Script.  Use the vlsram linker script.
-#if (defined(__NOEEPROM__) || defined(__NO_EEPROM__))
-#   define __VLSRAM__
+#if (defined(__NOEEPROM__) || defined(__VLSRAM__))
+#   ifndef __VLSRAM__
+#       define __VLSRAM__
+#   endif
 #   define FLASH_FS_END         (0x08018000)
 #	define FLASH_NUM_PAGES      (FLASH_SIZE/FLASH_PAGE_SIZE)
 #	define FLASH_FS_ALLOC       (4*1024) 							// 4KB FS memory
@@ -209,7 +211,7 @@
 
 #define BOARD_FEATURE_MPIPE             ENABLED
 #define BOARD_FEATURE_USBCONVERTER      BOARD_FEATURE_MPIPE         // Is UART connected via USB converter?
-#define BOARD_FEATURE_MPIPE_BREAK       ENABLED                    // Send/receive leading break for wakeup
+#define BOARD_FEATURE_MPIPE_BREAK       DISABLED                    // Send/receive leading break for wakeup
 #define BOARD_FEATURE_MPIPE_DIRECT      (BOARD_FEATURE_MPIPE_BREAK != ENABLED) 
 
 // MPIPE UART modes are deprecated.  Only Break-mode or Direct-Mode should be used.
@@ -239,7 +241,14 @@
 #   define BOARD_FEATURE_USBPLL         DISABLED
 #endif
 
+// Number of Triggers/LEDs
 #define BOARD_PARAM_TRIGS               2
+
+// MPIPE speed: ignored with USB MPipe.  
+// Actual speed will be closest supported bps.
+#define BOARD_PARAM_MPIPEBAUD           115200
+
+// Clock descriptions
 #define BOARD_PARAM_LFHz                32768
 #define BOARD_PARAM_LFtol               0.00002
 #define BOARD_PARAM_MFHz                4200000
@@ -258,7 +267,7 @@
 #define BOARD_PARAM_PLLdiv              3
 #define BOARD_PARAM_PLLHz               (BOARD_PARAM_PLLout/BOARD_PARAM_PLLdiv)
 
-// These are defined at FULL SPEED
+// Clock divider specs: These are defined at FULL SPEED
 #define BOARD_PARAM_AHBCLKDIV           1                       // AHB Clk = Main CLK / AHBCLKDIV
 #define BOARD_PARAM_APB2CLKDIV          1                       // APB2 Clk = Main CLK / AHBCLKDIV
 #define BOARD_PARAM_APB1CLKDIV          1                       // APB1 Clk = Main CLK / AHBCLKDIV
@@ -305,7 +314,7 @@
 #define BOARD_LEDG_PORTNUM              2                   // Port C
 #define BOARD_LEDG_PORT                 GPIOC
 #define BOARD_LEDG_PINNUM               2
-#define BOARD_LEDG_PIN                  (1<<BOARD_LEDO_PINNUM)
+#define BOARD_LEDG_PIN                  (1<<BOARD_LEDG_PINNUM)
 #define BOARD_LEDG_POLARITY             0
 #define BOARD_LEDO_PORTNUM              2                   // Port C
 #define BOARD_LEDO_PORT                 GPIOC
@@ -618,7 +627,7 @@ static inline void BOARD_EXTI_STARTUP(void) {
 
     // EXTI12-15: A12, SW1 (C13), B14, A15
     SYSCFG->EXTICR[3]   = (0 << 0) \
-                        | (2 << 4) \
+                        | (BOARD_SW1_PORTNUM << 4) \
                         | (1 << 8) \
                         | (0 << 12);
 }
@@ -1067,7 +1076,6 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #   define _UART_RXSYNC_ISR()       mpipe_rxsync_isr()
 #else
 #   define _UART_RXSYNC_ISR()       ;
-///@todo implement non-mpipe uart with break feature 
 #endif
 
 #define BOARD_COM_EXTI0_ISR();
@@ -1207,12 +1215,16 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 
 
 
-
+#ifndef __ISR_EXTI13
+#   define __ISR_EXTI13
+#endif
+#define OT_SWITCH1_ISR      platform_isr_exti13
 #define OT_SWITCH1_PORTNUM  BOARD_SW1_PORTNUM
 #define OT_SWITCH1_PORT     BOARD_SW1_PORT
 #define OT_SWITCH1_PINNUM   BOARD_SW1_PINNUM
 #define OT_SWITCH1_PIN      BOARD_SW1_PIN
 #define OT_SWITCH1_POLARITY BOARD_SW1_POLARITY
+ 
 
 #define OT_SWITCH2_PORTNUM  -1
 #define OT_SWITCH2_PORT     -1
@@ -1270,6 +1282,9 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 #   if (MPIPE_UART_ID != 2)
 #       error "MPIPE UART must be on USART2 for this board."
 #   endif
+//#   ifndef __ISR_USART2
+//#       define __ISR_USART2
+//#   endif
 #   define MPIPE_UART           USART2
 #   define MPIPE_DMA_RXCHAN_ID  5
 #   define MPIPE_DMA_TXCHAN_ID  4
@@ -1424,7 +1439,8 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 
 /** EXTI Line Utilization declaration <BR>
   * ========================================================================<BR>
-  * On this module, all EXTIs are available to the user app or system.
+  * On this module, all EXTIs not being used by integrated peripherals are 
+  * available to the user app or system.
   */
 #ifndef __USE_EXTI0
 #   define __USE_EXTI0
