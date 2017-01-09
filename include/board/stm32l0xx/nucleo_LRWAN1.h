@@ -289,7 +289,7 @@
 #define BOARD_SW1_PORTNUM               2                   // Port C
 #define BOARD_SW1_PORT                  GPIOC
 #define BOARD_SW1_PINNUM                13
-#define BOARD_SW1_PIN                   (BOARD_SW1_PINNUM<<3)
+#define BOARD_SW1_PIN                   (1<<BOARD_SW1_PINNUM)
 #define BOARD_SW1_POLARITY              0
 #define BOARD_SW1_PULLING               0
 
