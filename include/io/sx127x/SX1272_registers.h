@@ -341,12 +341,12 @@
 #   define _DIO3_01                                 0x01
 #   define _DIO3_10                                 0x02
 #   define _DIO3_11                                 0x03
-#   define _DIOMAPPING1_CAD                         (_DIO0_10 | _DIO1_10 | _DIO3_00)
+#   define _DIOMAPPING1_CAD                         (_DIO0_10 | _DIO1_10 | _DIO3_01)    //Cad-Done + Cad-Detect + Valid Header
 #   define _DIOMAPPING1_BRX                         (_DIO0_00 | _DIO1_00 | _DIO3_10)
 #   define _DIOMAPPING1_FRX                         (_DIO0_00 | _DIO1_00)
 #   define _DIOMAPPING1_BTX                         (_DIO0_01)
 #   define _DIOMAPPING1_FTX                         (_DIO0_01)
-#   define _DIOMAPPING1_RX                          (_DIO0_00 | _DIO1_00 | _DIO3_10)
+#   define _DIOMAPPING1_RX                          (_DIO0_00 | _DIO1_00 | _DIO3_01)    //RX-Done + RX-Timeout + Valid Header
 #   define _DIOMAPPING1_TX                          (_DIO0_01)
 
 #define RFREG_LR_DIOMAPPING2                        0x41

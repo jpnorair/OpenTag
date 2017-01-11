@@ -111,14 +111,22 @@ rfctl_struct rfctl;
 void sx127x_virtual_isr(ot_u8 code) {
     
     switch (code) {
-        case RFIV_LISTEN:       rm2_kill();                 break;
+        // BG Listening CAD-Done interrupt.  If CAD detected, go to RX
+        case RFIV_LISTEN:       if (sx127x_check_cadpin()) 
+                                    rm2_reenter_rx(radio.evtdone);
+                                else 
+                                    rm2_kill();  
+                                break;
         
+        // RX BG/FG Listening and data download
         case RFIV_RXDONE:       rm2_rxend_isr();        break;
         case RFIV_RXTIMEOUT:    rm2_rxtimeout_isr();    break;  // Only comes from SX127x in BG Listen
         case RFIV_RXHEADER:     rm2_rxsync_isr();       break;
         
+        // TX CSMA CAD variant
         case RFIV_CCA:          rm2_txcsma_isr();       break;
         
+        // TX BG/FG Data Upload
         case RFIV_TXDONE:       rm2_txdata_isr();       break;
         
         default:                rm2_kill();             break;
@@ -447,7 +455,7 @@ void sub_initrx(void) {
 void sub_initcad(void) {
     sx127x_write(RFREG_LR_IRQFLAGS, 0xFF);  
     sx127x_iocfg_cad();
-    sx127x_int_listen();
+    sx127x_int_listen();        
     sx127x_strobe(_OPMODE_CAD);
 }
 
@@ -574,7 +582,8 @@ OT_WEAK void rm2_rxsync_isr() {
 /// Prepare driver for data reception, update high-level module state, and have
 /// supervisor task (DLL) go into high-priority mode.
 
-    __DEBUG_ERRCODE_EVAL(=210);
+    __DEBUG_ERRCODE_EVAL(=210); 
+    BOARD_led3_on();
 
     // In LoRa, the DASH7 Header is sent neither in BG or FG modes.
     // - Multiframe packets are not possible in LoRa, so FRAME-CONT bit goes to 0
@@ -604,6 +613,12 @@ OT_WEAK void rm2_rxend_isr() {
 
     __DEBUG_ERRCODE_EVAL(=230);
     
+    // Debugging: check ISR register right here
+    //{   volatile ot_u8 isr_reg;
+    //    isr_reg = sx127x_read(RFREG_LR_IRQFLAGS);
+    //    isr_reg = 0;
+    //}
+    
     radio_gag();                                // No more interrupts!
     rfctl.state = RADIO_STATE_RXDONE;           // Make sure in DONE State, for decoding
     
@@ -621,6 +636,9 @@ OT_WEAK void rm2_rxend_isr() {
     }
     
     rm2_calc_link();                            // Calculate relative link info
+    
+    BOARD_led3_off();
+    
     radio_finish(0, integrity);
 }
 #endif

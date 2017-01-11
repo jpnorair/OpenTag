@@ -128,7 +128,7 @@ inline void sx127x_int_listen() {
 
 inline void sx127x_int_rxdata() {
     sx127x.imode = MODE_RXData;
-    sx127x_int_config(RFI_RXDONE);
+    sx127x_int_config(RFI_RXDATA);
 }
 
 inline void sx127x_int_csma() {
