@@ -311,6 +311,7 @@
 
 // LED interface is implemented on PC2 and PC3, which means you
 // need to connect your own LEDS to these pins.
+// Additionally, there is an optional Red-LED spec'ed on PC10
 #define BOARD_LEDG_PORTNUM              2                   // Port C
 #define BOARD_LEDG_PORT                 GPIOC
 #define BOARD_LEDG_PINNUM               2
@@ -321,6 +322,11 @@
 #define BOARD_LEDO_PINNUM               3
 #define BOARD_LEDO_PIN                  (1<<BOARD_LEDO_PINNUM)
 #define BOARD_LEDO_POLARITY             0
+#define BOARD_LEDR_PORTNUM              2                   // Port C
+#define BOARD_LEDR_PORT                 GPIOC
+#define BOARD_LEDR_PINNUM               10
+#define BOARD_LEDR_PIN                  (1<<BOARD_LEDR_PINNUM)
+#define BOARD_LEDR_POLARITY             0
 
 // LoRa Module SX127x Bus
 #ifdef __USE_RADIO
@@ -427,12 +433,12 @@
 #define BOARD_ADC_3PIN                  (1<<BOARD_ADC_3PINNUM)
 #define BOARD_ADC_4PORTNUM              2
 #define BOARD_ADC_4PORT                 GPIOC
-#define BOARD_ADC_4CHAN                 11
+#define BOARD_ADC_4CHAN                 1
 #define BOARD_ADC_4PINNUM               1
 #define BOARD_ADC_4PIN                  (1<<BOARD_ADC_4PINNUM)
 #define BOARD_ADC_5PORTNUM              2
 #define BOARD_ADC_5PORT                 GPIOC
-#define BOARD_ADC_5CHAN                 10
+#define BOARD_ADC_5CHAN                 0
 #define BOARD_ADC_5PINNUM               0
 #define BOARD_ADC_5PIN                  (1<<BOARD_ADC_5PINNUM)
 
@@ -761,22 +767,31 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - C0:1   are analog inputs
     // - C2:3   LED0 and LED1 Output Triggers: Push-Pull output or Open Drain depending on Polarity
     // - C4:5   TEST0 and TEST1 outputs
-    // - C6:12  are unused and set to analog
+    // - C6:9   are unused and set to analog
+    // - C10    LED2 (optional red): Push-Pull output or Open Drain depending on Polarity
+    // - C11:12 are unused and set to analog
     // - C13 is the user button, set to input HiZ
     // - C14:15 are 32kHz crystal driving, they are set in a particular way
-#   if (BOARD_LEDO_POLARITY == 0)
-#       define _GPIO_OTYPER_PC2     1
-#       define _GPIO_ODR_PC2        1
+#   if (BOARD_LEDG_POLARITY == 0)
+#       define _GPIO_OTYPER_PC2     (1<<2)
+#       define _GPIO_ODR_PC2        (1<<2)
 #   else
 #       define _GPIO_OTYPER_PC2     0
-#       define _GPIO_ODR_PC2        1
+#       define _GPIO_ODR_PC2        0
 #   endif
 #   if (BOARD_LEDO_POLARITY == 0)
-#       define _GPIO_OTYPER_PC3     1
-#       define _GPIO_ODR_PC3        0
+#       define _GPIO_OTYPER_PC3     (1<<3)
+#       define _GPIO_ODR_PC3        (1<<3)
 #   else
 #       define _GPIO_OTYPER_PC3     0
 #       define _GPIO_ODR_PC3        0
+#   endif
+#   if (BOARD_LEDR_POLARITY == 0)
+#       define _GPIO_OTYPER_PC10    (1<<10)
+#       define _GPIO_ODR_PC10       (1<<10)
+#   else
+#       define _GPIO_OTYPER_PC10    0
+#       define _GPIO_ODR_PC10       0
 #   endif
 #   ifdef __USE_RADIO
 #       define _GPIO_ODR_RFRESET    BOARD_RFCTL_RESETPIN
@@ -784,8 +799,9 @@ static inline void BOARD_PORT_STARTUP(void) {
 #       define _GPIO_ODR_RFRESET    0
 #   endif
 
-    GPIOC->BSRR     = (_GPIO_ODR_PC2 | _GPIO_ODR_PC3 | _GPIO_ODR_RFRESET);
-    GPIOA->OTYPER   = (_GPIO_OTYPER_PC2 | _GPIO_OTYPER_PC3);
+    GPIOA->OTYPER   = (_GPIO_OTYPER_PC2 | _GPIO_OTYPER_PC3 | _GPIO_OTYPER_PC10);
+    GPIOC->BSRR     = (_GPIO_ODR_PC2 | _GPIO_ODR_PC3 | _GPIO_ODR_PC10 | _GPIO_ODR_RFRESET);
+    
 
     GPIOC->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
                     | (GPIO_MODER_ANALOG << (1*2)) \
@@ -797,7 +813,7 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_MODER_ANALOG << (7*2)) \
                     | (GPIO_MODER_ANALOG << (8*2)) \
                     | (GPIO_MODER_ANALOG << (9*2)) \
-                    | (GPIO_MODER_ANALOG << (10*2)) \
+                    | (GPIO_MODER_OUT    << (10*2)) \
                     | (GPIO_MODER_ANALOG << (11*2)) \
                     | (GPIO_MODER_ANALOG << (12*2)) \
                     | (GPIO_MODER_IN     << (13*2)) \
@@ -1183,6 +1199,10 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define OT_TRIG2_PINNUM     BOARD_LEDO_PINNUM
 #define OT_TRIG2_PIN        BOARD_LEDO_PIN
 #define OT_TRIG2_POLARITY   BOARD_LEDO_POLARITY
+#define OT_TRIG3_PORT       BOARD_LEDR_PORT
+#define OT_TRIG3_PINNUM     BOARD_LEDR_PINNUM
+#define OT_TRIG3_PIN        BOARD_LEDR_PIN
+#define OT_TRIG3_POLARITY   BOARD_LEDR_POLARITY
 
 #define OT_TRIG(NUM, SET)   OT_TRIG##NUM##_##SET##()
 
@@ -1206,13 +1226,25 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #   define OT_TRIG2_TOG()   OT_TRIG2_PORT->ODR  ^= OT_TRIG2_PIN;
 #endif
 
+#if (OT_TRIG3_POLARITY != 0)
+#   define OT_TRIG3_ON()    OT_TRIG3_PORT->BSRR  = OT_TRIG3_PIN;
+#   define OT_TRIG3_OFF()   OT_TRIG3_PORT->BRR   = OT_TRIG3_PIN;
+#   define OT_TRIG3_TOG()   OT_TRIG3_PORT->ODR  ^= OT_TRIG3_PIN;
+#else 
+#   define OT_TRIG3_ON()    OT_TRIG3_PORT->BRR   = OT_TRIG3_PIN;
+#   define OT_TRIG3_OFF()   OT_TRIG3_PORT->BSRR  = OT_TRIG3_PIN;
+#   define OT_TRIG3_TOG()   OT_TRIG3_PORT->ODR  ^= OT_TRIG3_PIN;
+#endif
+
 static inline void BOARD_led1_on(void)      { OT_TRIG1_ON(); }
 static inline void BOARD_led1_off(void)     { OT_TRIG1_OFF(); }
 static inline void BOARD_led1_toggle(void)  { OT_TRIG1_TOG(); }
 static inline void BOARD_led2_on(void)      { OT_TRIG2_ON(); }
 static inline void BOARD_led2_off(void)     { OT_TRIG2_OFF(); }
 static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
-
+static inline void BOARD_led3_on(void)      { OT_TRIG3_ON(); }
+static inline void BOARD_led3_off(void)     { OT_TRIG3_OFF(); }
+static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 
 
 #ifndef __ISR_EXTI13
