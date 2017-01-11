@@ -1006,7 +1006,10 @@ void mpipedrv_isr() {
     // - If yes, then piggyback the transmission
     // - If no, then close Mpipe and call txdone event handler in the MPipe Task
     mpipedrv_isr_TXSIG:
-    while ((BOARD_UART_PORT->IDR & BOARD_UART_TXPIN) == 0);
+    
+    ///@todo add watchdog into loop
+    //while ((BOARD_UART_PORT->IDR & BOARD_UART_TXPIN) == 0);
+    
     if (uart.lq.putcursor < uart.lq.back) {
         uart.lq.getcursor = uart.lq.putcursor;
         uart.lq.putcursor = uart.lq.back;

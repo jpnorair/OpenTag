@@ -414,6 +414,7 @@ void app_blink() {
 }
   
 void app_init() {
+    APP_TASK->event = 0;
     sub_button_init();
 }
 
