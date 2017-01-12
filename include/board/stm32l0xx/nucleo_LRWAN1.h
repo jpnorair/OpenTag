@@ -685,8 +685,8 @@ static inline void BOARD_PORT_STARTUP(void) {
 
     GPIOA->OTYPER   = 0;
     
-    GPIOA->OSPEEDR  = (GPIO_OSPEEDR_2MHz << (2*2)) \
-                    | (GPIO_OSPEEDR_2MHz << (3*2)) \
+    GPIOA->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (2*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (3*2)) \
                     | (GPIO_OSPEEDR_10MHz << (5*2)) \
                     | (GPIO_OSPEEDR_10MHz << (6*2)) \
                     | (GPIO_OSPEEDR_10MHz << (7*2)) \
@@ -799,7 +799,7 @@ static inline void BOARD_PORT_STARTUP(void) {
 #       define _GPIO_ODR_RFRESET    0
 #   endif
 
-    GPIOA->OTYPER   = (_GPIO_OTYPER_PC2 | _GPIO_OTYPER_PC3 | _GPIO_OTYPER_PC10);
+    GPIOC->OTYPER   = (_GPIO_OTYPER_PC2 | _GPIO_OTYPER_PC3 | _GPIO_OTYPER_PC10);
     GPIOC->BSRR     = (_GPIO_ODR_PC2 | _GPIO_ODR_PC3 | _GPIO_ODR_PC10 | _GPIO_ODR_RFRESET);
     
 
@@ -1314,9 +1314,9 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 #   if (MPIPE_UART_ID != 2)
 #       error "MPIPE UART must be on USART2 for this board."
 #   endif
-//#   ifndef __ISR_USART2
-//#       define __ISR_USART2
-//#   endif
+#   ifndef __ISR_USART2
+#       define __ISR_USART2
+#   endif
 #   define MPIPE_UART           USART2
 #   define MPIPE_DMA_RXCHAN_ID  5
 #   define MPIPE_DMA_TXCHAN_ID  4
