@@ -222,6 +222,16 @@ void q_unlock(ot_queue* q);
   */
 void q_empty(ot_queue* q);
 
+/** @brief Rewinds active data to the front of the queue.  Overwrites old data.
+  * @param q        (ot_queue*) Pointer to the ot_queue ADT
+  * @retval none
+  * @ingroup Queue
+  *
+  * q_rewind() sets getcursor to front, and moves all data between getcursor
+  * and putcursor to front of queue.  Putcursor is also rewound.
+  */
+void q_rewind(ot_queue* q);
+
 
 /** @brief Starts a queue by loading in config data
   * @param q        (ot_queue*) Pointer to the ot_queue ADT

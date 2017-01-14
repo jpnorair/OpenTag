@@ -46,6 +46,10 @@
 
 
 
+/** @todo Add blocking conditions to all queue operations that move cursors. 
+  *       Also make succeed/fail return values for all these operations.
+  */
+
 
 
 /** Queue "Object" functions
@@ -77,6 +81,7 @@ void q_copy(ot_queue* q1, ot_queue* q2) {
     memcpy((ot_u8*)q1, (ot_u8*)q2, sizeof(ot_queue));
 }
 #endif
+
 
 
 
@@ -155,6 +160,22 @@ void q_empty(ot_queue* q) {
     q->back             = q->front + q->alloc;
     q->putcursor        = q->front;
     q->getcursor        = q->front;
+}
+#endif
+
+
+#ifndef EXTF_q_rewind
+void q_rewind(ot_queue* q) {
+    ot_int dist = q->getcursor - q->front;
+    
+    if (dist > 0) {
+        ot_u8* put      = q->putcursor;
+        ot_u8* get      = q->getcursor;
+        q->putcursor   -= dist;
+        q->getcursor    = q->front;
+        
+        memcpy(q->front, get, put-get);
+    }
 }
 #endif
 
