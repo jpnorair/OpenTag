@@ -105,8 +105,13 @@ void mpipe_rxschedule(ot_int wait) {
 void mpipeevt_txdone(ot_int code) {
     // If driver returns 0, it closes connection itself.  Reopen in RX.
     // If driver returns >0, the task must delay the connection termination.
-    ot_u8 nextevent;
-    nextevent = 3 + (code==0);
+    ot_u8 nextevent = 3;
+    
+    if (code == 0) {
+        nextevent++;
+        q_rewind(mpipe.alp.outq);
+    }
+    
     sub_mpipe_actuate(nextevent, 1, code);
     //sub_mpipe_actuate(4, 1, code);
 }
