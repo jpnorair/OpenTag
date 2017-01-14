@@ -147,33 +147,40 @@ void sub_memset_dma(ot_u8* dest, ot_u8* src, ot_uint length) {
 
 
 void ot_memcpy(ot_u8* dst, ot_u8* src, ot_uint length) {
-#   if MCU_CONFIG(MEMCPYDMA)
+    if (length != 0) {
+#       if MCU_CONFIG(MEMCPYDMA)
         sub_memcpy_dma(dst, src, length);
-#   else
+#       else
         DUFF_DEVICE_8(*dst++, *src++, length);
-#   endif
+#       endif
+    }
 }
 
 void ot_memcpy2(ot_u16* dst, ot_u16* src, ot_uint length) {
-#   if MCU_CONFIG(MEMCPYDMA)
+    if (length != 0) {
+#       if MCU_CONFIG(MEMCPYDMA)
         sub_memcpy2_dma( dst, src, length);
-#   else
+#       else
         ot_memcpy((ot_u8*)dst, (ot_u8*)src, length<<1);
-#   endif
+#       endif
+    }
 }
 
 void ot_memcpy4(ot_u32* dst, ot_u32* src, ot_uint length) {
-#   if MCU_CONFIG(MEMCPYDMA)
+    if (length != 0) {
+#       if MCU_CONFIG(MEMCPYDMA)
         sub_memcpy4_dma( dst, src, length);
-#   else
+#       else
         ot_memcpy((ot_u8*)dst, (ot_u8*)src, length<<2);
-#   endif
+#       endif
+    }
 }
 
 
 void ot_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
-    platform_disable_interrupts();
-#   if MCU_CONFIG(MEMCPYDMA)
+    if (length != 0) {
+        platform_disable_interrupts();
+#       if MCU_CONFIG(MEMCPYDMA)
         MEMCPY_DMACHAN->CCR     = 0;
         MEMCPY_DMA->IFCR        = MEMCPY_DMA_INT;       ///@todo see if this can be globalized
         MEMCPY_DMACHAN->CPAR    = (ot_u32)dst;
@@ -183,10 +190,11 @@ void ot_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
                                   (0<<DMA_CCR_PL_Pos)   | DMA_CCR_MEM2MEM  | \
                                   DMA_CCR_EN;
         while((MEMCPY_DMA->ISR & MEMCPY_DMA_INT) == 0);
-#   else
+#       else
         DUFF_DEVICE_8(*dst++, value, length);
-#   endif
-    platform_enable_interrupts();
+#       endif
+        platform_enable_interrupts();
+    }
 }
 
 
