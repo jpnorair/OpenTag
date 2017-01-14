@@ -751,7 +751,7 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     }
     
     //getcursor to end of packet, to allow another packet to be added
-    pktlen                      = q_length(mpipe.alp.outq);
+    pktlen                      = q_span(mpipe.alp.outq);
     holdtime                    = __MPIPE_TIMEOUT(pktlen);
     uart.lq.front               = mpipe.alp.outq->getcursor;
     uart.lq.back                = mpipe.alp.outq->putcursor;
@@ -761,8 +761,6 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     if (mpipe.state == MPIPE_Idle) {
         uart.lq.getcursor       = uart.lq.front;
         uart.lq.putcursor       = uart.lq.front + pktlen;
-        
-        uart.lq.putcursor[0]    = 0xff; ///@note DMA Fix Testing
         
         __SYS_CLKON();
         sub_txopen();
@@ -933,7 +931,7 @@ void mpipedrv_isr() {
             return;
 
         case MPIPE_TxAck_Done:  // TX'ed an ACK
-            if (mpipe.alp.outq->front[3] != 0) { // TX'ed a NACK
+            if (uart.lq.front[3] != 0) { // TX'ed a NACK
                 mpipedrv_rx(False, uart.priority);
                 mpipe.state = MPIPE_RxHeader;
                 return;
