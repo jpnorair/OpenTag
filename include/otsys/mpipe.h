@@ -198,10 +198,30 @@ void mpipe_open();
 void mpipe_close();
 
 
+/** @brief  Schedules reception in "wait" ticks
+  * @param  wait    (ot_int) number of ticks to wait.
+  * @retval None
+  * @ingroup Mpipe
+  * 
+  * Not generally used, since MPipe defaults to passive RF as Idle mode.
+  * Available as a hook for special hacks.
+  */
+void mpipe_rxschedule(ot_int wait);
+
+
+/** @brief  Schedules a transmission in "wait" ticks
+  * @param  wait    (ot_int) number of ticks to wait.
+  * @retval None
+  * @ingroup Mpipe
+  */
+void mpipe_txschedule(ot_int wait);
+
+
 /** @brief  Sends the contents of the mpipe output queue over the MPipe
   * @param  None
   * @retval None
   * @ingroup Mpipe
+  * @note Deprecated.  Implemented as mpipe_txschedule(0)
   */
 void mpipe_send();
 
