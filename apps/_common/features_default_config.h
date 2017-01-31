@@ -90,7 +90,16 @@
 
 // User/App task lists: comment-out if none.  
 // Use comma separated with TASK_xxx nomenclature (e.g. TASK_0, TASK_1, TASK_2)
-//#define OT_PARAM_USER_EXOTASKS
+#ifndef OT_PARAM_EXOTASKS
+#   define OT_PARAM_EXOTASKS            0
+#   define OT_PARAM_EXOTASK_IDS         
+#   define OT_PARAM_EXOTASK_HANDLES     
+#endif
+#ifndef OT_PARAM_KERNELTASKS
+#   define OT_PARAM_KERNELTASKS         0
+#   define OT_PARAM_KERNELTASK_IDS      
+#   define OT_PARAM_KERNELTASK_HANDLES 
+#endif
 #ifndef OT_PARAM_USER_KERNELTASKS
 #   define OT_PARAM_USER_KERNELTASKS    TASK_external
 #endif
