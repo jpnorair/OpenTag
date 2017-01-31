@@ -112,7 +112,8 @@ void platform_isr_rtcwakeup() {
 #if (RF_FEATURE(CSMATIMER) != ENABLED)
     if (systim.opt & SYSTIM_INSERTION_ON) {
         systim.opt ^= SYSTIM_INSERTION_ON;
-        RTC->CR &= ~RTC_CR_WUTE;
+        RTC->ISR    = ~RTC_ISR_WUTF;
+        RTC->CR    &= ~RTC_CR_WUTE;
         radio_mac_isr();
     }
 #endif
@@ -122,9 +123,6 @@ void platform_isr_rtcwakeup() {
 
 /// Would be used for Clocker, if clocker actually cared interrupts
 // void platform_isr_tim6() { }
-
-
-
 
 
 
@@ -157,11 +155,8 @@ void systim_init(void* tim_init) {
     }
 #   endif
 
-    // Re-enable RTC.  Wakeup timer is set to LSClock/16.
-    // Wakeup interrupt is always on, but wakeup timer is not always on.
-    RTC->WUTR   = 1023;                 // token initialization amount
-    RTC->CR     = RTC_CR_WUTIE | b000;  // LSClock/16
-    RTC->ISR    = 0;
+    // Clear any ISRs
+    RTC->ISR = 0;
 
     /// 2. Set LPTIM1 to use LSE/32 (or LSI/32)
     
@@ -187,11 +182,12 @@ void systim_init(void* tim_init) {
     
     /// 4. Clocker initialization.  OpenTag doesn't really care about Clocker
     ///    so we also need a way to configure if it should be enabled or not.
-    TIM6->CR1   = 0;
-    TIM6->CR2   = (b001 << 4);
-    TIM6->DIER  = 0;
-    TIM6->ARR   = 65535;
-    TIM6->PSC   = ((PLATFORM_HSCLOCK_HZ / BOARD_PARAM_APB1CLKDIV) / 4);
+    RCC->APB1ENR   |= (RCC_APB1ENR_TIM6EN); 
+    TIM6->CR1       = 0;
+    TIM6->CR2       = (b001 << 4);
+    TIM6->DIER      = 0;
+    TIM6->ARR       = 65535;
+    TIM6->PSC       = ((PLATFORM_HSCLOCK_HZ / BOARD_PARAM_APB1CLKDIV) / 32768);
     //TIM6->EGR   = TIM_EGR_UG;
 }
 #endif
@@ -341,32 +337,44 @@ void sub_disable_wkuptim() {
 
 void sub_set_wkuptim(ot_uint period) {
     ot_u32 rtc_cr;
+    ot_uint wdog;
 
     // Ensure Wakeup Timer is off
     rtc_cr  = RTC->CR;
     RTC->CR = rtc_cr & ~RTC_CR_WUTE;
 
+    // Poll WUTWF until it is set, afterwhich WUTR can be set
+    // SW watchdog assumes 10 clocks per loop, to yield ~80us at 32MHz
+    wdog = 256; // ~70 us at 32 MHz 
+    while ((RTC->ISR & RTC_ISR_WUTWF) == 0) {
+        if (--wdog == 0) {
+            ///@todo error, do reset 
+            break;
+        }
+    }
+    
     // Ticks interval to run wakeup.
     RTC->WUTR = (period << _TICKER_SHIFT);
 
     // Enable Wakeup with interrupt
     // This will do nothing more than wake-up the chip from STOP at the set
     // interval.  The default ISR in platform_isr_STM32L.c is sufficient.
-    RTC->CR = rtc_cr | (RTC_CR_WUTIE | RTC_CR_WUTE);
+    RTC->CR = rtc_cr | RTC_CR_WUTIE | RTC_CR_WUTE | b000;
 }
 
 
 
 #ifndef EXTF_systim_set_ticker
 void systim_set_ticker(ot_uint period) {
-    sub_enable_wkuptim();
-    sub_set_wkuptim(period);
+/// Ticker is not used on STM32L0 implementation
+    //sub_set_wkuptim(period);
 }
 #endif
 
 #ifndef EXTF_systim_stop_ticker
 void systim_stop_ticker() {
-    sub_disable_wkuptim();
+/// Ticker is not used on STM32L0 implementation
+    //sub_disable_wkuptim();
 }
 #endif
 
@@ -387,14 +395,18 @@ void systim_stop_ticker() {
   */
 void systim_set_insertion(ot_u16 value) {
     if (systim.opt & SYSTIM_INSERTION_ON) {
-        if (value == 0) EXTI->SWIER = (1<<20);
-        else            sub_set_wkuptim(value);
+        if (value == 0) {
+            EXTI->SWIER = (1<<20);
+        }
+        else {
+            sub_set_wkuptim(value);
+        }
     }
 }
 
 OT_INLINE void systim_enable_insertion() {
     systim.opt |= SYSTIM_INSERTION_ON;
-    sub_enable_wkuptim();
+    //sub_enable_wkuptim();
 }
 
 OT_INLINE void systim_disable_insertion() {
@@ -430,8 +442,8 @@ OT_INLINE void systim_disable_insertion() {
 /// we also need a way to configure if it should be enabled or not.
 
 void systim_start_clocker() {
-    TIM6->EGR = TIM_EGR_UG;
     TIM6->CR1 = TIM_CR1_CEN;
+    TIM6->EGR = TIM_EGR_UG;
 }
 
 void systim_restart_clocker() {
