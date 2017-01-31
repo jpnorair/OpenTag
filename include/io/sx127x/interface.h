@@ -214,6 +214,9 @@ void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd);
 
 
 
+ot_u8 sx127x_getbasepwr();
+
+
 
 
 
@@ -392,6 +395,30 @@ ot_bool sx127x_isready();
 void sx127x_waitfor_ready();
 
 
+/** @brief  Holds MCU in blocking wait until SX127x enters FSRX
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */
+void sx127x_waitfor_fsrx();
+
+
+/** @brief  Holds MCU in blocking wait until SX127x enters FSTX
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */
+void sx127x_waitfor_fstx();
+
+
+/** @brief  Holds MCU in blocking wait until SX127x enters CAD
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */
+void sx127x_waitfor_cad();
+
+
 /** @brief  Holds MCU in blocking wait until SX127x enters standby
   * @param  None
   * @retval None
@@ -464,13 +491,14 @@ ot_s8 sx127x_pktsnr();
   */
 
 /** @brief  Sends a one-byte (really 3 bit) command strobe to the SX127x via SPI
-  * @param  strobe      (ot_u8) Strobe Address
+  * @param  new_mode    (ot_u8) Strobe Opmode (0-7)
+  * @param  blocking    (ot_bool) True: function will not return until mode change is verified
   * @retval none
   * @ingroup SX127x
   *
-  * The only commands you get with SX127x are mode change operations.
+  * The only commands you get with SX127x are mode-change operations.
   */
-void sx127x_strobe(ot_u8 strobe);
+void sx127x_strobe(ot_u8 new_mode, ot_bool blocking);
 
 
 

@@ -100,7 +100,11 @@
 // - we set RX timeout to slightly more than the length of a BG packet, 
 // - a BG packet is roughly 28.25 symbols in length, total, including 11.25 symbol preamble.
 #define DRF_LR_MODEMCONFIG2     (_SF_7 | _TX_CONT_OFF | _AGC_ON | __SYMBTIMEOUT_MSB(0))
+#define DRF_LR_MODEMCONFIG2_BG  (_SF_7 | _TX_CONT_OFF | _AGC_ON | b00)
+#define DRF_LR_MODEMCONFIG2_FG  (_SF_7 | _TX_CONT_OFF | _AGC_ON | b11)
 #define DRF_LR_SYMBTIMEOUTLSB   (29)
+#define DRF_LR_SYMBTIMEOUTLSB_BG (29)
+#define DRF_LR_SYMBTIMEOUTLSB_FG (255)
 
 // Preamble length is set to 8
 #define DRF_LR_PREAMBLEMSB      0

@@ -256,16 +256,14 @@ void sx127x_waitfor_ready() {
     }   
 }
 
-void sx127x_waitfor_standby() {
-/// Assume 500us (125 watchdogs) worst case sleep->standby
-/// Assume 25us (7 watchdogs) worst case nonsleep->standby
+/*
+void sub_waitfor_opmode(ot_u8 target, ot_u8 mode, ot_uint fromsleep, ot_uint fromactive) {
 /// @todo Write failure code in OT that logs hardware fault and resets OT
-    ot_u8   mode;
     ot_uint wdog;
+    wdog = (mode == 0) ? fromsleep : fromactive;
     mode = sx127x_mode();
-    wdog = (mode == 0) ? 125 : 7;
-    
-    while (mode != 1) {
+     
+    while (mode != target) {
         if (--wdog == 0) {
             sx127x_reset();
             delay_us(300);
@@ -276,22 +274,47 @@ void sx127x_waitfor_standby() {
     }
 }
 
-void sx127x_waitfor_sleep() {
-/// Assume 25us (7 watchdogs) worst case nonsleep->sleep
-/// @todo Write failure code in OT that logs hardware fault and resets OT
-    ot_uint wdog;
-    wdog = 7;
+void sx127x_waitfor_fsrx()    { sub_waitfor_opmode(_OPMODE_FSRX, 250, 125); }
+void sx127x_waitfor_fstx()    { sub_waitfor_opmode(_OPMODE_FSTX, 250, 125); }
+void sx127x_waitfor_cad()     { sub_waitfor_opmode(_OPMODE_CAD, 250, 125); }
+
+void sx127x_waitfor_standby() {
+/// Assume 500us (125 watchdogs) worst case sleep->standby
+/// Assume 25us (7 watchdogs) worst case nonsleep->standby
+    sub_waitfor_opmode(_OPMODE_STANDBY, 125, 7);
     
-    while (sx127x_mode() != 0) {
-        if (--wdog == 0) {
-            sx127x_reset();
-            delay_us(300);
-            dll_init();
-            return;
-        }
-    }
+//    ot_u8   mode;
+//    ot_uint wdog;
+//    mode = sx127x_mode();
+//    wdog = (mode == 0) ? 125 : 7;
+//    
+//    while (mode != 1) {
+//        if (--wdog == 0) {
+//            sx127x_reset();
+//            delay_us(300);
+//            dll_init();
+//            return;
+//        }
+//        mode = sx127x_mode();
+//    }
 }
 
+void sx127x_waitfor_sleep() {
+/// Assume 25us (7 watchdogs) worst case nonsleep->sleep
+    sub_waitfor_opmode(_OPMODE_SLEEP, 0, 7);
+    
+//    ot_uint wdog;
+//    wdog = 7;
+//    while (sx127x_mode() != 0) {
+//        if (--wdog == 0) {
+//            sx127x_reset();
+//            delay_us(300);
+//            dll_init();
+//            return;
+//        }
+//    }
+}
+*/
 ot_bool sx127x_check_cadpin() {
     return (ot_bool)(sx127x_cadpin_ishigh() != 0);
 }
@@ -321,12 +344,50 @@ ot_s8 sx127x_pktsnr()     { return sx127x_read(RFREG_LR_PKTSNRVALUE); }
   * This function must be implemented specific to the platform.
   */
 
-void sx127x_strobe(ot_u8 strobe) {
+void sx127x_strobe(ot_u8 new_mode, ot_bool blocking) {
 /// "strobe" must be one of the _OPMODE values from 0-7
-    ot_u8 cmd[2];
-    cmd[0]  = 0x80 | RFREG_LR_OPMODE;
-    cmd[1]  = _LORAMODE | strobe;
-    sx127x_spibus_io(2, 0, cmd);
+/// Assume 500us (125 watchdogs) worst case sleep->standby
+/// Assume 600us (150 watchdogs) worst case sleep->FS-ON
+/// Assume 640us (160 watchdogs) worst case sleep->RX/TX/CAD
+/// Assume 100us (25 watchdogs)  worst case standby->FS-ON
+/// Assume 140us (35 watchdogs)  worst case standby->RX/TX/CAD
+/// Assume 40us  (10 watchdogs)  worst case active->sleep
+/// 000  SLEEP
+/// 001  STDBY
+/// 010  Frequency synthesis TX (FSTX) 
+/// 011  Transmit (TX)
+/// 100  Frequency synthesis RX (FSRX) 
+/// 101  Receive continuous (RXCONTINUOUS) 
+/// 110  receive single (RXSINGLE) 
+/// 111  Channel activity detection (CAD)
+    static const ot_u8 wdog_amount[16] = {  
+         1,10,  125,1,  150,25,  160,35,  150,25,  160,35,  160,35,  160,35
+    };
+    
+    if (!blocking) {
+        sx127x_write(RFREG_LR_OPMODE, _LORAMODE|new_mode);
+    }
+    else {
+        ot_u8 old_mode = sx127x_mode();
+        
+        if (old_mode != new_mode) {
+            ot_uint wdog;
+            
+            sx127x_write(RFREG_LR_OPMODE, _LORAMODE|new_mode);
+            wdog = wdog_amount[(new_mode<<1) + (old_mode!=0)];
+            
+            do {
+                if (--wdog == 0) {
+                    sx127x_reset();
+                    delay_us(300);
+                    dll_init();
+                    return;
+                }
+                old_mode = sx127x_mode();
+                
+            } while (old_mode != new_mode);
+        }
+    }
 }
 
 ot_u8 sx127x_read(ot_u8 addr) {
