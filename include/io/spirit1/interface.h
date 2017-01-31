@@ -214,6 +214,8 @@ void spirit1_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd);
 
 
 
+ot_u8 sprit1_getbasepwr();
+
 
 
 
