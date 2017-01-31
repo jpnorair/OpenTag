@@ -545,10 +545,12 @@
 
 // This board enabled all GPIO on ports A, B, C, and D.
 // On startup (_SU), port H is also enabled
-#define _GPIOCLK_N       (RCC_IOPENR_GPIOAEN | RCC_IOPENR_GPIOBEN | RCC_IOPENR_GPIOCEN | RCC_IOPENR_GPIODEN)
-#define _GPIOCLK_SU      (_GPIOCLK_N | RCC_IOPENR_GPIOHEN)
-#define _GPIOCLK_LP      (_GPIOCLK_N)
-
+// On Stop (LP) Port A should be open for UART or USB
+// On Stop-with-RF (LPRF), Ports A and B should be open
+#define _GPIOCLK_N      (RCC_IOPENR_GPIOAEN | RCC_IOPENR_GPIOBEN | RCC_IOPENR_GPIOCEN | RCC_IOPENR_GPIODEN)
+#define _GPIOCLK_SU     (_GPIOCLK_N | RCC_IOPENR_GPIOHEN)
+#define _GPIOCLK_LP     (RCC_IOPENR_GPIOAEN)
+#define _GPIOCLK_LPRF   (_GPIOCLK_LP | RCC_IOPENR_GPIOBEN)
 
 #define _IOPENR_STARTUP  (_DMACLK_N | _MIFCLK_N | _CRCCLK_N | _GPIOCLK_SU)
 #define _IOPENR_RUNTIME  (_CRYPCLK_N | _MIFCLK_N | _CRCCLK_N | _GPIOCLK_N)
@@ -921,60 +923,55 @@ static inline void BOARD_RFSPI_CLKOFF(void) {
 
 #include <platform/timers.h>    // for systim_stop_clocker()
 static inline void BOARD_STOP(ot_int code) {
-/// code comes from sys_sig_powerdown, but it is usually 0-3.
-/// For all STM32L devices, 3 is full-idle and 2 is radio-active-idle.  
+/// "code" comes from sys_sig_powerdown, but it is usually 0-3.
+/// - code = 0 or 1: Don't go to STOP mode at all, this function shouldn't be called.
+/// - code = 2: Keep ports alive that have peripherals that can be active in STOP
+/// - code = 3: Shut down all ports, only
 /// Those are the only modes that should call this inline function.
 
+#   define _RF_ACTIVE_STOPFLAGS (PWR_CR_LPSDSR | PWR_CR_CSBF)
+#   define _RF_OFF_STOPFLAGS    (PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP | PWR_CR_CSBF)
+
     static const ot_u16 stop_flags[2] = {  
-        (PWR_CR_LPSDSR | PWR_CR_CSBF), (PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP | PWR_CR_CSBF) };
+        _RF_ACTIVE_STOPFLAGS, _RF_OFF_STOPFLAGS };
     
-#   if defined(__RELEASE__)
     static const ot_u32 rcc_flags[2] = {
-        _GPIOCLK_N, 0 };
-#	endif 
-    
-    //static const ot_u32 b_moder[2] = {
-    //    0xFFFFFC0, 0xFFFFFFFF };
+        _GPIOCLK_LPRF, _GPIOCLK_LP };
+        //_GPIOCLK_N, 0 };
     
     ot_u16 scratch;
-    
     code &= 1;
     
-#   if defined(__RELEASE__)
-      //GPIOA->MODER    = 0xFFFFFFFF;
-      //GPIOB->MODER    = b_moder[code];
-      //GPIOA->PUPDR    = 0;
-      //GPIOB->PUPDR    = 0;      //can be ignored, always 0
-      RCC->IOPENR    &= rcc_flags[code];
-#   endif
-
-    SysTick->CTRL = 0;
-    SCB->SCR   |= SCB_SCR_SLEEPDEEP_Msk;
-    scratch     = PWR->CR;
-    scratch    &= ~(PWR_CR_DBP | PWR_CR_PDDS | PWR_CR_LPSDSR);
-    scratch    |= stop_flags[code];
-    PWR->CR     = scratch;
+    // Shut down unnecessary ports & kill SysTick.  Systick is the devil.
+    RCC->IOPENR     = rcc_flags[code];
+    SysTick->CTRL   = 0;
     
-    EXTI->PR    = 0;
-    systim_stop_clocker();
+    // Prepare SCB->SCR register for DeepSleep instead of regular Sleep.
+    SCB->SCR       |= SCB_SCR_SLEEPDEEP_Msk;
+    
+    // Prepare PWR->CR register for Stop Mode
+    scratch         = PWR->CR;
+    scratch        &= ~(PWR_CR_DBP | PWR_CR_PDDS | PWR_CR_LPSDSR);
+    scratch        |= stop_flags[code];
+    PWR->CR         = scratch;
+    
+    // Clear any EXTIs -- too late for them now
+    EXTI->PR        = 0;
+    
+    // Enable Interrupts and send "Wait For Interrupt" Cortex-M instruction
     platform_enable_interrupts();
-    
     __WFI();
     
-    // On Wakeup (from STOP) clear flags & re-enable backup register area
-    PWR->CR |= (PWR_CR_DBP | PWR_CR_CWUF | PWR_CR_CSBF);
+    // ---- Device is in STOP mode here ---- //
     
-    // On wakeup, immediately reset SLEEPDEEP bit
-    SCB->SCR &= ~((ot_u32)SCB_SCR_SLEEPDEEP_Msk);
-    
-    // Re-enable ports
-#   if defined(__RELEASE__)
-      RCC->IOPENR    |= _IOPENR_RUNTIME;
-      //GPIOA->PUPDR    = GPIOA_PUPDR_DEFAULT;
-      //GPIOB->PUPDR    = GPIOB_PUPDR_DEFAULT;    //can be ignored, always 0
-      //GPIOA->MODER    = GPIOA_MODER_DEFAULT;
-      //GPIOB->MODER    = GPIOB_MODER_DEFAULT;
-#   endif
+    // On Wakeup (from STOP) clear flags, re-enable backup register area, 
+    // immediately reset SLEEPDEEP bit, and Re-enable Ports
+    PWR->CR        |= (PWR_CR_DBP | PWR_CR_CWUF | PWR_CR_CSBF);
+    SCB->SCR       &= ~((ot_u32)SCB_SCR_SLEEPDEEP_Msk);
+    RCC->IOPENR     = _IOPENR_RUNTIME;
+
+#   undef _RF_ACTIVE_STOPFLAGS 
+#   undef _RF_OFF_STOPFLAGS 
 }
 
 
