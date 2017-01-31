@@ -80,11 +80,14 @@
 #endif
 
 
+// For doing some quick and dirty metrics on CAD noise
+//volatile ot_uint cad_attempts = 0;
+//volatile ot_uint cad_misses = 0;
 
 
 
 /** Local Data declaration
-  * Described in radio_SPIRIT1.h
+  * Described in radio_SX127x.h
   */
 rfctl_struct rfctl;
 
@@ -94,7 +97,9 @@ rfctl_struct rfctl;
 /** Local Subroutine Prototypes  <BR>
   * ========================================================================<BR>
   */
-
+void sub_hwtimeout_isr();
+void sub_initrx(void);
+void sub_initcad(void);
 
 
 /** SPIRIT1 Virtual ISR RF  <BR>
@@ -111,16 +116,17 @@ rfctl_struct rfctl;
 void sx127x_virtual_isr(ot_u8 code) {
     
     switch (code) {
-        // BG Listening CAD-Done interrupt.  If CAD detected, go to RX
-        case RFIV_LISTEN:       if (sx127x_check_cadpin()) 
-                                    rm2_reenter_rx(radio.evtdone);
-                                else 
-                                    rm2_kill();  
-                                break;
+        // CAD-Done interrupt.  
+        // -> BG-RX: check cadpin and go to RX entry or Kill
+        case RFIV_LISTEN: {
+            ot_uint test = sx127x_check_cadpin();
+            if (test)   sub_initrx();
+            else        rm2_kill();  
+        } break;
         
         // RX BG/FG Listening and data download
         case RFIV_RXDONE:       rm2_rxend_isr();        break;
-        case RFIV_RXTIMEOUT:    rm2_rxtimeout_isr();    break;  // Only comes from SX127x in BG Listen
+        case RFIV_RXTIMEOUT:    sub_hwtimeout_isr();    break; 
         case RFIV_RXHEADER:     rm2_rxsync_isr();       break;
         
         // TX CSMA CAD variant
@@ -174,10 +180,11 @@ OT_WEAK void radio_init( ) {
 OT_WEAK void radio_finish(ot_int main_err, ot_int frame_err) {
 /// Reset radio & callback to null state, then run saved callback
     ot_sig2 callback;
-    radio_gag();                            // redundant, but here until more debugging done
-    //radio.state     = RADIO_Idle;         // redundant, and do
+    radio_gag();                            // redundant, but here for robustness
+    dll_unblock();                          // also redundant and here for robustness
+    
     rfctl.state     = 0;
-    rfctl.flags    &= (RADIO_FLAG_XOON | RADIO_FLAG_SETPWR);    //clear all other flags
+    rfctl.flags    &= (RADIO_FLAG_XOON);    //clear all other flags
     callback        = radio.evtdone;
     radio.evtdone   = &otutils_sig2_null;
     callback(main_err, frame_err);
@@ -189,6 +196,7 @@ OT_WEAK void radio_finish(ot_int main_err, ot_int frame_err) {
 #ifndef EXTF_radio_set_mactimer
 OT_WEAK void radio_set_mactimer(ot_u16 clocks) {
 /// Used for high-accuracy TX/CSMA slot insertion, and flooding.
+    systim_enable_insertion();
     systim_set_insertion(clocks);
 }
 #endif
@@ -196,16 +204,17 @@ OT_WEAK void radio_set_mactimer(ot_u16 clocks) {
 
 #ifndef EXTF_radio_mac_isr
 OT_WEAK void radio_mac_isr() {
-    /// Used as CA insertion timer
+/// Used as CA insertion timer.
     systim_disable_insertion();
     
-    // Switch statement of only two choices is a bit dumb, but it's an example for future extensions
-    //switch (radio.state) {
-    //    case RADIO_Csma:    rm2_txcsma_isr();   break;
-    //    default:            rm2_kill();         break;
-    //}
-    if (radio.state == RADIO_Csma)  rm2_txcsma_isr();
-    else                            rm2_kill();         // Just in case this ISR gets triggered strangely
+    if (radio.state == RADIO_Csma) {
+        rm2_txcsma_isr();
+    }
+    
+    // Just in case this ISR gets triggered strangely
+    else { 
+        rm2_kill();
+    }
 }
 #endif
 
@@ -329,9 +338,10 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
     
     ot_u8 fc_i;
 
-    /// Flag PA table reprogram (done before TX): only flag if power is different
+    /// PA reprogram
     if (old_tx_eirp != phymac[0].tx_eirp) {
-        rfctl.flags |= RADIO_FLAG_SETPWR;
+        //rfctl.flags |= RADIO_FLAG_SETPWR; // no longer necessary
+        sx127x_set_txpwr( phymac[0].tx_eirp );
     }
 
     /// Configure data rate: only change registers if required
@@ -393,9 +403,8 @@ OT_WEAK ot_int rm2_get_floodcounter() {
 
 #ifndef EXTF_rm2_kill
 OT_WEAK void rm2_kill() {
-
     __DEBUG_ERRCODE_EVAL(=290);
-
+    //cad_misses++;
     radio_gag();
     radio_idle();
     radio_finish(RM2_ERR_KILL, 0);
@@ -403,38 +412,35 @@ OT_WEAK void rm2_kill() {
 #endif
 
 
+void sub_hwtimeout_isr() {
+    /// In BG Listen, system is using RX-Single reception, and we try a few 
+    /// times to receive a packet after having CAD validation.
+    /// Also, on RX timeout, save the link information.  This is used as a baseline.
+    if (rfctl.flags & RADIO_FLAG_BG) {
+        if (--rfctl.tries == 0) {
+            sx127xdrv_save_linkinfo();
+            radio_finish(RM2_ERR_TIMEOUT, radio.link.sqi);
+            return;
+        }
+    }
+    
+    /// Loop RX-Single listening mode in BG-retry or FG-RX.
+    /// In FG-RX, DLL will timeout the RX process manually.
+    //rm2_reenter_rx(radio.evtdone);
+    sx127x_write(RFREG_LR_IRQFLAGS, 0xFF);
+    sx127x_strobe(_OPMODE_RXSINGLE, False);
+}
+
 #ifndef EXTF_rm2_rxtimeout_isr
 OT_WEAK void rm2_rxtimeout_isr() {
-
     __DEBUG_ERRCODE_EVAL(=280);
 
     /// Can't have an interrupt during termination/re-configuration
     radio_gag();
-    __SET_LINE(__LINE__);
 
-    /// In BG Listen, system is using RX-Single reception, and we try a few 
-    /// times to receive a packet after having CAD validation
-    /// In Foreground listening (RX-Cont), need manual termination of RX process
-    if (rfctl.flags & RADIO_FLAG_BG) {
-        if (--rfctl.tries) {
-            rm2_reenter_rx(radio.evtdone);
-        }
-    }
-    else {
-        radio_idle();
-    }
-
-    __CLR_LINE(__LINE__);
-    __DEBUG_ERRCODE_EVAL(=281);
-
-#   if OT_FEATURE(RF_ADAPTIVE)
+    /// Send timeout error back to DLL
     sx127xdrv_save_linkinfo();
     radio_finish(RM2_ERR_TIMEOUT, radio.link.sqi);
-#   else
-    radio_finish(RM2_ERR_TIMEOUT, 0);
-#   endif
-
-    __DEBUG_ERRCODE_EVAL(=282);
 }
 #endif
 
@@ -456,20 +462,22 @@ void sub_initcad(void) {
     sx127x_write(RFREG_LR_IRQFLAGS, 0xFF);  
     sx127x_iocfg_cad();
     sx127x_int_listen();        
-    sx127x_strobe(_OPMODE_CAD);
+    sx127x_strobe(_OPMODE_CAD, False);  //non-blocking call
 }
 
-static const ot_u8 bginit[4] = {
+static const ot_u8 bginit[5] = {
     (ot_u8)MODE_bg,                 //buffer mode
     6,                              //pktlen
-    DRF_LR_MODEMCONFIG1_BG,         //ModemCfg1 value
-    (_LORAMODE | _OPMODE_CAD)       //opmode value
+    (0x80 | RFREG_LR_MODEMCONFIG2),
+    DRF_LR_MODEMCONFIG2_BG,         //ModemCfg2 value
+    DRF_LR_SYMBTIMEOUTLSB_BG        //SymbTimeoutLsb value
 };
-static const ot_u8 fginit[4] = {
+static const ot_u8 fginit[5] = {
     (ot_u8)MODE_fg,                 //buffer mode
     255,                            //pktlen
-    DRF_LR_MODEMCONFIG1_FG,         //ModemCfg1 value
-    (_LORAMODE | _OPMODE_RXCONT)    //opmode value
+    (0x80 | RFREG_LR_MODEMCONFIG2),
+    DRF_LR_MODEMCONFIG2_FG,         //ModemCfg2 value
+    DRF_LR_SYMBTIMEOUTLSB_FG        //SymbTimeoutLsb value
 };
 
 #ifndef EXTF_rm2_rxinit
@@ -513,7 +521,13 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     /// 2b. Setup RX for Foreground detection (ELSE):
     ///     <LI> Set Foreground paging and tentative packet-len to max </LI>
     sx127xdrv_buffer_config(initvals[0], initvals[1]);
-    sx127x_write(RFREG_LR_MODEMCONFIG1, initvals[2]);
+    
+    sx127x_write(RFREG_LR_MODEMCONFIG2, initvals[3]);
+    sx127x_write(RFREG_LR_SYMBTIMEOUTLSB, initvals[4]);
+    //sx127x_spibus_io(3, 0, &initvals[2]);                 //optimized version of above
+    
+    // Done in buffer_config
+    //sx127x_write(RFREG_LR_MODEMCONFIG1, initvals[2]);
 
     /// 3.  Use CAD or RX intialization subroutine
     sub_init();
@@ -545,7 +559,6 @@ OT_WEAK void rm2_rxtest(ot_u8 channel, ot_u8 tsettings, ot_u16 timeout) {
     sx127x_write(RFREG_LR_MODEMCONFIG1, fginit[2]);
     
     // Set MAC timer as termination timer
-    systim_enable_insertion();
     radio_set_mactimer(timeout);
 }
 #endif
@@ -556,15 +569,17 @@ OT_WEAK void rm2_rxtest(ot_u8 channel, ot_u8 tsettings, ot_u16 timeout) {
 #ifndef EXTF_rm2_reenter_rx
 OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
 /// Restart RX using the same settings that are presently in the radio core.
-    ot_u8 opmode;
+    //ot_u8 opmode;
     radio.evtdone   = callback;
     rfctl.state     = RADIO_STATE_RXAUTO;
-    opmode          = (rfctl.flags & RADIO_FLAG_BG) ? _OPMODE_RXSINGLE : _OPMODE_RXCONT;
+    //opmode          = (rfctl.flags & RADIO_FLAG_BG) ? _OPMODE_RXSINGLE : _OPMODE_RXCONT;
     
-    radio_gag();                            // This shouldn't be necessary, but is precautionary
-    //radio_idle();
+    // Reset interrupts and FIFO for fresh RX'ing
+    radio_gag();                            
     radio_flush_rx();
-    sx127x_strobe(opmode);
+    
+    //radio_idle();
+    sx127x_strobe(_OPMODE_RXSINGLE, False);  //sx127x_strobe(opmode, False);   //non-blocking call
     
     // Undo packet sync on re-entry.
     // Main work here is to change Radio IRQ state and task priority.
@@ -613,12 +628,6 @@ OT_WEAK void rm2_rxend_isr() {
 
     __DEBUG_ERRCODE_EVAL(=230);
     
-    // Debugging: check ISR register right here
-    //{   volatile ot_u8 isr_reg;
-    //    isr_reg = sx127x_read(RFREG_LR_IRQFLAGS);
-    //    isr_reg = 0;
-    //}
-    
     radio_gag();                                // No more interrupts!
     rfctl.state = RADIO_STATE_RXDONE;           // Make sure in DONE State, for decoding
     
@@ -666,7 +675,6 @@ OT_WEAK void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
 
     /// CSMA-CA interrupt based and fully pre-emptive.  This is
     /// possible using CC1 on the GPTIM to clock the intervals.
-    systim_enable_insertion();
     radio_set_mactimer( (ot_uint)dll.comm.tca );
 }
 #endif
@@ -687,10 +695,11 @@ OT_WEAK void rm2_txtest(ot_u8 channel, ot_u8 eirp_code, ot_u8 tsettings, ot_u16 
     rm2_enter_channel(old_channel, old_eirp);
 
     // Set TX PATABLE values if different than pre-existing values
-    if (rfctl.flags & RADIO_FLAG_SETPWR) {
-        rfctl.flags &= ~RADIO_FLAG_SETPWR;
-        sx127x_set_txpwr( phymac[0].tx_eirp );
-    }
+    // (Now done directly within rm2_enter_channel
+    //if (rfctl.flags & RADIO_FLAG_SETPWR) {
+    //    rfctl.flags &= ~RADIO_FLAG_SETPWR;
+    //    sx127x_set_txpwr( phymac[0].tx_eirp );
+    //}
 
     // This bit enables TX-Cont mode.
     ///@todo possible to have callback here that disables TX_CONT_ON
@@ -701,11 +710,10 @@ OT_WEAK void rm2_txtest(ot_u8 channel, ot_u8 eirp_code, ot_u8 tsettings, ot_u16 
 
     sx127x_int_off();
     sx127x_iocfg_tx();
-    //sx127x_force_standby();
     radio_flush_tx();
 
     radio.state = RADIO_DataTX;
-    sx127x_strobe( _OPMODE_TX );
+    sx127x_strobe( _OPMODE_TX , False); //non-blocking call
 }
 #endif
 
@@ -717,7 +725,6 @@ OT_WEAK void rm2_resend(ot_sig2 callback) {
     radio.state                 = RADIO_Csma;
     rfctl.state                 = RADIO_STATE_TXINIT;
     txq.options.ubyte[UPPER]    = 255;
-    systim_enable_insertion();
     radio_set_mactimer(0);
 }
 #endif
@@ -737,10 +744,12 @@ OT_WEAK void rm2_txstop_flood() {
 
 #ifndef EXTF_rm2_txcsma_isr
 void sub_cad_csma(void) {
-    sx127x_write(RFREG_LR_IRQFLAGS, 0xFF);  
+    radio_gag(); 
     sx127x_iocfg_cad();
     sx127x_int_csma();
-    sx127x_strobe(_OPMODE_CAD);
+    radio_idle();
+    sx127x_strobe(_OPMODE_CAD, False);  //non-blocking call
+    radio.state = RADIO_Csma;
 }
 
 ot_bool sub_cca_isfail(void) {
@@ -781,12 +790,6 @@ OT_WEAK void rm2_txcsma_isr() {
             em2_encode_newpacket();
             em2_encode_newframe();
 
-            // Set TX power value if different than pre-existing value
-            if (rfctl.flags & RADIO_FLAG_SETPWR) {
-                rfctl.flags &= ~RADIO_FLAG_SETPWR;
-                sx127x_set_txpwr( phymac[0].tx_eirp );
-            }
-
             // Set other TX Buffering & Packet parameters, and also save the
             // Peristent-TX attribute for floods, which is written later
             type = (rfctl.flags & RADIO_FLAG_BG) ? MODE_bg : MODE_fg;
@@ -800,7 +803,7 @@ OT_WEAK void rm2_txcsma_isr() {
             
             // Enter CSMA via fallthrough.  
             // There are two incremental tests: CCA1 and CCA2.
-            radio.state = RADIO_Csma;
+            //cad_attempts++;
         } 
 
         // 2-3. First CCA: If it is valid, set MAC timer to invoke CAD2.
@@ -814,7 +817,6 @@ OT_WEAK void rm2_txcsma_isr() {
             if (sub_cca_isfail() == False) {
                 radio_sleep();
                 rfctl.state = RADIO_STATE_TXCAD2;
-                systim_enable_insertion();
                 radio_set_mactimer(phymac[0].tg);
             }
             break;
@@ -863,7 +865,8 @@ OT_WEAK void rm2_txcsma_isr() {
             // For floods, we must activate the flood counter right before TX
             radio.state = RADIO_DataTX;
             rfctl.state = RADIO_STATE_TXDATA;
-            sx127x_strobe(_OPMODE_TX);
+            sx127x_iocfg_tx();
+            sx127x_strobe(_OPMODE_TX, False);   //non-blocking call
             sx127x_int_txdata();
             break;
         }
@@ -891,7 +894,7 @@ OT_WEAK void rm2_txdata_isr() {
             bgcrc8_put(&txq.front[2]);
             sx127x_write(RFREG_LR_IRQFLAGS, 0xFF);
             sx127x_burstwrite(RFREG_LR_FIFO, 6, &txq.front[2]);
-            sx127x_strobe(_OPMODE_TX);
+            sx127x_strobe(_OPMODE_TX, False);   //non-blocking call
             return;
         }
     }
@@ -931,16 +934,14 @@ void sx127xdrv_buffer_config(MODE_enum mode, ot_u16 param) {
 
     static const ot_u8 regs[] = { 
         (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_ON | _RXPAYLOADCRC_OFF | _LOWDATARATEOPTIMIZE_OFF),
-        6,
         0xD7, 
         (_BW_500_KHZ | _CODINGRATE_4_7 | _IMPLICITHEADER_OFF | _RXPAYLOADCRC_OFF | _LOWDATARATEOPTIMIZE_OFF),
-        255,
-        0x28
+        0x28, 
     };
     
     sx127x_write(RFREG_LR_MODEMCONFIG1, regs[mode+0]);
-    sx127x_write(RFREG_LR_PAYLOADLENGTH, regs[mode+1]);
-    sx127x_write(RFREG_LR_SYNCWORD, regs[mode+2]);
+    sx127x_write(RFREG_LR_SYNCWORD, regs[mode+1]);
+    sx127x_write(RFREG_LR_PAYLOADLENGTH, param);
 }
 
 
@@ -952,14 +953,6 @@ void sx127xdrv_save_linkinfo() {
     radio.link.lqi  = sx127x_read(RFREG_LR_PKTRSSIVALUE);
     radio.link.agc  = 0;
 }
-
-
-void sx127xdrv_force_standby() {
-/// Goes to Standby without modifying states: use only if you know what you're doing.
-    sx127x_strobe(_OPMODE_STANDBY);
-    sx127x_waitfor_standby();
-}
-
 
 
 
@@ -996,30 +989,34 @@ OT_WEAK void radio_ungag() {
 
 #ifndef EXTF_radio_sleep
 OT_WEAK void radio_sleep() {
+    sx127x_strobe(_OPMODE_SLEEP, True);
+
 /// SX127x can go into SLEEP from any other state, so the only optimization 
 /// here is to check if it is already in SLEEP before dealing with GPIO & SPI.
-    ot_bool test;
-    test = (rfctl.flags & RADIO_FLAG_XOON);
-    if (!test) {
-        radio.state  = RADIO_Idle;
-        rfctl.flags &= ~RADIO_FLAG_PWRMASK;
-        sx127x_strobe(_OPMODE_SLEEP);
-        sx127x_waitfor_sleep();
-    }
+//    ot_bool test;
+//    test = (rfctl.flags & RADIO_FLAG_XOON);
+//    if (test) {
+//        radio.state  = RADIO_Idle;
+//        rfctl.flags &= ~RADIO_FLAG_PWRMASK;
+//        sx127x_strobe(_OPMODE_SLEEP);
+//        sx127x_waitfor_sleep();
+//    }
 }
 #endif
 
 #ifndef EXTF_radio_idle
 OT_WEAK void radio_idle() {
+    sx127x_strobe(_OPMODE_STANDBY, True);
+    
 /// SX127x can go into STANDBY from any other state, so the only optimization 
 /// here is to check if it is already in STANDBY before dealing with GPIO & SPI.
-    ot_bool test;
-    test = ((rfctl.flags & RADIO_FLAG_XOON) && (radio.state == RADIO_Idle));
-    if (!test) {
-        radio.state  = RADIO_Idle;
-        rfctl.flags |= RADIO_FLAG_XOON;
-        sx127xdrv_force_standby();
-    }
+//    ot_bool test;
+//    test = ((rfctl.flags & RADIO_FLAG_XOON) && (radio.state == RADIO_Idle));
+//    if (!test) {
+//        radio.state  = RADIO_Idle;
+//        rfctl.flags |= RADIO_FLAG_XOON;
+//        sx127xdrv_force_standby();
+//    }
 }
 #endif
 
@@ -1105,7 +1102,10 @@ OT_WEAK void radio_calibrate() {
 #endif
 
 
-
+ot_u8 radio_getpwrcode() {
+/// Power code: 0-3.  sx127x_getbasepwr() typically returns 3 on most platforms
+    return sx127x_getbasepwr() - (radio.state > RADIO_Idle);
+}
 
 
 #endif

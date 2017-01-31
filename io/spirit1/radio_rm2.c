@@ -1481,6 +1481,11 @@ OT_WEAK void radio_calibrate() {
 
 
 
+ot_u8 radio_getpwrcode() {
+/// Power code: 0-3.  spirit1_getbasepwr() typically returns 3 on most platforms
+    return sprit1_getbasepwr() - (radio.state > RADIO_Idle);
+}
+
 
 
 

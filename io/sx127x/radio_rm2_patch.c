@@ -29,7 +29,7 @@
 
 // Local header for supporting this patch, or other patches
 #include "radio_rm2.h"
-
+#include <m2/encode.h>
 
 
 
@@ -74,6 +74,8 @@ ot_uint rm2_default_tgd(ot_u8 chan_id) {
     return 7;
 }
 
+//ot_uint rm2_pkt_duration(ot_queue* pkt_q) { return 1024; }
+
 ot_uint rm2_pkt_duration(ot_queue* pkt_q) {
     ot_uint pkt_bytes;
 
@@ -85,7 +87,8 @@ ot_uint rm2_pkt_duration(ot_queue* pkt_q) {
     }
 
     // Convert bytes to symbols (use same variable though)
-    pkt_bytes   = (((8*pkt_bytes)-(4*_SF)+28)+(4*_SF-1)) / (4*_SF);
+    ///@todo adapt for variable SF and CR
+    pkt_bytes   = ((((8*pkt_bytes)-(4*_SF)+28)+(4*_SF-1)) / (4*_SF)) * (4+3);   // +3 in (4+3) is coding rate
     pkt_bytes   = ((ot_int)pkt_bytes < 0) ? 8 : pkt_bytes+8;
     pkt_bytes  += RF_PARAM_PKT_OVERHEAD;
     
@@ -133,24 +136,29 @@ void em2_encode_newframe() {
 /// length byte at rxq.front[0].  txq.getcursor should start at txq.front[2]
     
     if (txq.options.ubyte[UPPER] != 0) {
+        // Initialize CRC16 engine
         txq.getcursor   = &txq.front[2];
-        crc_block(&em2.crc, True, q_span(&txq), txq.getcursor);
+        crc_init_stream(&em2.crc, True, q_span(&txq), txq.getcursor);
         
+        // Add two bytes to account for CRC
         txq.putcursor  += 2;
         txq.front[0]   += 2;
-        txq.front[1]   |= 0x20;     // always set valid header bit
         
+        // Initialize RS Code engine, if applicable
 #       if (M2_FEATURE(RSCODE))
-            em2.lctl = txq.front[1];
+            txq.front[1]   |= 0x20;                 // On LoRa, header-ok bit always set
+            em2.lctl        = txq.front[1];
             if (em2.lctl & 0x40) {
                 ot_int parity_bytes;
                 parity_bytes    = em2_rs_init_encode(&txq);
                 txq.front[0]   += parity_bytes;
                 txq.putcursor  += parity_bytes;
             }
+            
+        // No RS, so lctl always set to 0x20
 #       else
-            em2.lctl        = txq.front[1] & ~0x60;
-            txq.front[1]    = em2.lctl;
+            em2.lctl        = 0x20;
+            txq.front[1]    = 0x20;
 #       endif
     }
     
@@ -159,6 +167,11 @@ void em2_encode_newframe() {
 
 
 void em2_decode_newframe() {
+    
+    ///@todo conditionally also set RS bit (0x40) on rxq.front[1]
+    rxq.front[1]    = 0x20;     // always set valid header bit
+    em2.lctl        = 0x20;
+    
     rxq.putcursor   = &rxq.front[2];
     rxq.getcursor   = &rxq.front[2];
     em2.state       = 0;
@@ -166,29 +179,33 @@ void em2_decode_newframe() {
 
 
 
+
 void em2_encode_data(void) {
-/// Fill FIFO using 24 byte SPI buffer
-/// With LoRa, the CRC bytes are computed ahead of the encode stage
-    ot_int fill;
+/// LoRa encodes the entire frame/packet at once, because it does not handle streaming.
+
+    ///1. CRC16 Calculation: roll back -2 for CRC placeholder
+    crc_calc_nstream(&em2.crc, em2.crc.count);
     
+    ///2. RS Code Calculation if applicable
 #   if (M2_FEATURE(RSCODE))
     if ((txq.options.ubyte[UPPER] != 0) && (em2.lctl & 0x40)) {
         em2_rs_encode(em2.bytes);
     }
 #   endif
     
+    ///@todo fix spibus_io function to have an internal buffer and such a loop as below.
     while (em2.bytes > 0) {
-        fill        = (em2.bytes > 24) ? 24 : em2.bytes;
+        ot_int fill = (em2.bytes > 24) ? 24 : em2.bytes;
         em2.bytes  -= fill;
-        sx127x_burstwrite(RFREG_LR_FIFO, fill, txq.getcursor);
+        sx127x_burstwrite(RFREG_LR_FIFO, fill, q_markbyte(&txq, fill));
     }
 }
 
 
 void em2_decode_data(void) {
-/// With LoRa, decoding is all done at once, after packet is fully received
+/// With LoRa, decoding is all done at once, after packet is fully received.
     ot_uint scratch;
-
+    
     // Determine number of bytes that have been received, then retrieve them all
     scratch     = sx127x_read(RFREG_LR_RXNBBYTES);
     em2.bytes   = scratch;
@@ -202,7 +219,7 @@ void em2_decode_data(void) {
         rxq.putcursor  += grab;
         sx127x_burstread(RFREG_LR_FIFO, grab, data);
     }
-
+    
     // Do CRC decoding and optional RS decoding
     scratch = crc_block(&em2.crc, False, em2.bytes, rxq.getcursor);
     
@@ -213,6 +230,53 @@ void em2_decode_data(void) {
     }
 #   endif
 }
+
+ot_u16 em2_decode_endframe() {
+/// Perform block-code error correction if available, strip blockcoding if its
+/// there (after processing), and strip CRC
+    ot_u16 framebytes;
+    ot_u16 crc_invalid;
+    ot_int corrections;
+
+    ///1. Get the CRC16 information, which is already computed inline.  There
+    ///   may be no reason to do RS decoding, even if it is available
+    crc_invalid = crc_get(&em2.crc);
+    
+    // Length Byte + lctl Byte = 2, although it's canceled by 2 byte CRC below
+    framebytes  = em2.bytes; //+ 2;        
+
+    ///2. Remove the RS parity bytes from "framebytes" if RS parity bytes are
+    ///     present.  If RS decoding is supported, also do postprocess error
+    ///     correction, and re-do the CRC afterwards if it reports no remaining
+    ///     errors, to verify that indeed all errors were corrected.
+    corrections = 0;
+    if (em2.lctl & 0x40) {
+        framebytes -= em2_rs_paritylength( framebytes );
+#       if (M2_FEATURE(RSCODE))
+        if (crc_invalid) {
+            corrections = em2_rs_postprocess();
+            if (corrections >= 0) {
+                crc_invalid = crc16drv_block(rxq.getcursor, framebytes);
+                corrections = crc_invalid ? -1 : corrections;
+            }
+        }
+#       endif
+    }
+#   if (OT_FEATURE(RF_LINKINFO))
+        radio.link.corrections = corrections;
+#   endif
+
+    ///3. Strip the CRC16 bytes from "framebytes" (cancelled-out from above)
+    //framebytes -= 2;
+
+    ///4. Now the Frame Length byte is completely stripped of block data
+    ///   (RS and CRC are actually both types of block codes)
+    rxq.front[0] = (ot_u8)framebytes;
+
+    ///5. If CRC is still invalid, report the packet is uncorrectably broken
+    return crc_invalid;
+}
+
 
 
 

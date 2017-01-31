@@ -90,7 +90,7 @@ extern rfctl_struct rfctl;
 
 typedef enum {
     MODE_bg = 0,
-    MODE_fg = 3
+    MODE_fg = 2
 } MODE_enum;
 
 

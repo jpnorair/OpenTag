@@ -214,18 +214,16 @@ ot_bool em2_complete();
 
 
 
-#if (M2_FEATURE(RSCODE))
 
 ot_int em2_rs_init_decode(ot_queue* q);
 void em2_rs_decode(ot_int n_bytes);
 
 ot_int em2_rs_check(void);
 ot_int em2_rs_postprocess(void);
+ot_int em2_rs_paritylength(ot_int msg_length);
 ot_int em2_rs_init_encode(ot_queue* q);
 void em2_rs_encode(ot_int n_bytes);
 void em2_rs_interleave(ot_u8* start, ot_int numbytes);
-
-#endif
 
 
 

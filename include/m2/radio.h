@@ -421,6 +421,18 @@ void radio_init();
 
 
 
+/** @brief Gets a code (typically 0-3) about module's power requirements
+  * @param None
+  * @retval ot_u8       0-3 code specifying acceptable powerdown states
+  * @ingroup Radio
+  *
+  * Typically this function is run through the kernel itself or via a
+  * task on event-number 255.
+  */
+ot_u8 radio_getpwrcode();
+
+
+
 /** @brief  Used by the radio driver when finished with active RX or TX
   * @param main_err     (ot_int) Main process error, or 0
   * @param frame_err    (ot_int) Frame data error, or 0
