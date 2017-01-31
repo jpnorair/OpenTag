@@ -14,13 +14,16 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/delay_driver.c
+  * @file       /platform/stm32l0xx/otlib_crc16.c
   * @author     JP Norair
   * @version    R100
   * @date       26 Aug 2014
-  * @brief      Delay OTlib Functions for STM32L
-  * @ingroup    Delay
+  * @brief      CRC16 Hardware driver STM32L0
+  * @ingroup    CRC16
   *
+  * It's not apparent this hardware actually works in an advantageous way.
+  * Still testing that.
+  * 
   ******************************************************************************
   */
 
@@ -28,7 +31,7 @@
 #include <otplatform.h>
 #include <otlib/crc16.h>
 
-
+/*
 OT_INLINE ot_u16 crc16drv_init() {
     //CRC->INIT   = 0xFFFF;
     //CRC->POL    = 0x8005;
@@ -58,21 +61,6 @@ ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) 
         CRC->DR = *block_addr++;
     }
     
-//    units       = block_size >> 2;
-//    block_size &= 3;
-//    while (units--) {
-//        CRC->DR     = *(ot_u32*)block_addr;
-//        block_addr += 4;
-//    }
-//    if (block_size & 2) {
-//        CRC->DR = *(ot_u16*)block_addr;
-//        block_addr += 2;
-//    }
-//    if (block_size & 1) {
-//        CRC->DR = *(ot_u8*)block_addr;
-//        block_addr++;
-//    }
-    
     output  = (__IO ot_u16)CRC->DR;
     platform_enable_interrupts();
     
@@ -85,7 +73,7 @@ ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) 
 OT_INLINE ot_u16 crc16drv_block(ot_u8* block_addr, ot_int block_size) {
     return crc16drv_block_manual(block_addr, block_size, 0xFFFF);
 }
-
+*/
 
 
 // Obsolete

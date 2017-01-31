@@ -406,7 +406,7 @@ ot_u16 platform_ext_lsihz();
   */
 #define MCU_FEATURE(VAL)        MCU_FEATURE_##VAL   // FEATURE                  NOTE
 #define MCU_FEATURE_SVMONITOR   ENABLED             // Auto Low V powerdown     On many MCUs
-#define MCU_FEATURE_CRC16       ENABLED             // CRC16                    On some MCUs
+#define MCU_FEATURE_CRC16       DISABLED            // CRC16                    Exists on STM32L0, but HW needs to be tested
 #define MCU_FEATURE_CRC         MCU_FEATURE_CRC16   // Legacy definition
 #define MCU_FEATURE_ECC         DISABLED            // ECC engine 
 

@@ -101,7 +101,7 @@ ot_u16 crc_get(crcstream_t* stream) {
   * Platforms without HW CRC16 generators can use this.  If your platform does
   * have special HW for CRC, or possibly you just have some optimized assembly,
   * then make sure the platform configuration files set:
-  * #define PLATFORM_FEATURE_CRC16_HW   ENABLED
+  * #define MCU_FEATURE_CRC16   ENABLED
   *
   * And you can put the optimized crc16drv_... functions in the platform
   * directory of your chip.
@@ -159,7 +159,7 @@ OT_INLINE ot_u16 crc16drv_init() {
 
 
 #ifndef EXTF_crc16drv_block_manual
-ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) {
+OT_WEAK ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) {
 /// One nice thing about the software-only CRC16 method is that it doesn't
 /// require any sort of interrupt blocking.  In practice, interrupt blocking
 /// by CRC isn't much of an issue, but if you are getting weird CRC errors
