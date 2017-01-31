@@ -251,6 +251,7 @@ OT_INLINE void platform_ot_run() {
     /// threaded task, in which case the P-stack will get changed to that
     /// thread, and the code after this call will not run until all threads are
     /// dormant.
+    platform_enable_interrupts();
     __SEND_SVC(0);
 
     /// 2. When the PC is here, it means that a kernel task has been scheduled
@@ -268,6 +269,7 @@ OT_INLINE void platform_ot_run() {
     }
 
     /// 3. Stop the backup timer, which is used as a kernel watchdog.
+    platform_disable_interrupts();
     systim_stop_ticker();
     
     /// 4. Save the current P-stack pointer (PSP), and push the return address
@@ -283,15 +285,16 @@ OT_INLINE void platform_ot_run() {
 
     /// 5. Run the Tasking Engine.  It will call the ktask or switch to the
     /// thread, as needed based on what is scheduled.
+    platform_enable_interrupts();
     sys_run_task();
 
     /// 6. In any condition, retract the stack to a known, stable condition.
     /// If the task/thread exited cleanly, this changes nothing.  If killed,
     /// this will flush the stack.
     RETURN_FROM_TASK:
+    platform_disable_interrupts();
     __set_PSP( (ot_u32)platform_ext.task_exit );
     platform_ext.task_exit = NULL;
-
 }
 #endif
 
