@@ -257,6 +257,15 @@ inline ot_uint sx127x_cadpin_ishigh(void)     { return (_CAD_DETECT_PORT->IDR & 
 
 
 
+
+
+ot_u8 sx127x_getbasepwr() {
+/// Base Power code: 0-3.  For this SX127x impl it's always 3.
+    return 3;
+}
+
+
+
 /** Bus interface (SPI + 2x GPIO) <BR>
   * ========================================================================
   */
@@ -341,8 +350,7 @@ void sx127x_init_bus() {
     
     /// 4. Put SX127x to sleep
     //delay_ti(6);    // wait ~6ms 
-    sx127x_strobe(_OPMODE_SLEEP);
-    sx127x_waitfor_sleep();
+    sx127x_strobe(_OPMODE_SLEEP, True);
 }
 
 

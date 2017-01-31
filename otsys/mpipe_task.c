@@ -43,7 +43,7 @@ mpipe_struct mpipe;
 
 void mpipe_connect(void* port_id) {
 ///@todo no hard-coded input for second arg
-    sys.task_MPA.latency = mpipedrv_init(port_id, MPIPE_default);
+    sys.task_MPA.latency    = mpipedrv_init(port_id, MPIPE_default);
 }
 
 void mpipe_disconnect(void* port_id) {
@@ -79,15 +79,6 @@ void sub_mpipe_actuate(ot_u8 new_event, ot_u8 new_reserve, ot_uint new_nextevent
 }
 
 
-void mpipe_send() {
-///@todo A session stack could be implemented for MPipe Task.  For now, Sending (TX)
-/// will just fall-through if mpipe is occupied
-    //mpipedrv_unblock();
-	//sub_mpipe_actuate(3, 1, (ot_uint)mpipedrv_tx(False, MPIPE_High));
-    mpipe_txschedule(0);
-}
-
-
 void mpipe_txschedule(ot_int wait) {
     if (sys.task_MPA.event == 0) {
         sub_mpipe_actuate(2, 1, wait);
@@ -99,6 +90,15 @@ void mpipe_rxschedule(ot_int wait) {
     if (sys.task_MPA.event == 0) {
         sub_mpipe_actuate(4, 1, wait);
     }
+}
+
+
+void mpipe_send() {
+///@todo A session stack could be implemented for MPipe Task.  For now, Sending (TX)
+/// will just fall-through if mpipe is occupied
+    //mpipedrv_unblock();
+    //sub_mpipe_actuate(3, 1, (ot_uint)mpipedrv_tx(False, MPIPE_High));
+    mpipe_txschedule(0);
 }
 
 
@@ -148,7 +148,7 @@ void mpipeevt_rxdone(ot_int code) {
 void mpipe_systask(ot_task task) {
     switch (sys.task_MPA.event) {
         //Task destructor & initializer: close mpipe
-        ///@todo fix mpipe_connect(NULL)
+        ///@todo fix mpipe_connect(NULL), it needs to have dynamic input from config
         case 0: sys_taskinit_macro(task, mpipedrv_kill(), mpipe_connect(NULL)); 
                 break;
 
@@ -185,6 +185,10 @@ void mpipe_systask(ot_task task) {
         systask_mpipe_RX:
         		mpipe_open();
         		break;
+        		
+        // Return the power-code state of the driver, 0-3
+        default: task->cursor = mpipedrv_getpwrcode();
+                break;
     }
 }
 

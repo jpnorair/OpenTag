@@ -491,8 +491,9 @@ void mpipe_rxsync_isr(void) {
 #   endif
 
     // Open UART for character-RX
-    sub_mpipe_open();
     mpipe.state = MPIPE_Idle;
+    // mpipeevt_rxinit();       ///@todo see if there's a point here
+    sub_mpipe_open();
     __UART_RXOPEN();
 }
 
@@ -636,6 +637,14 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 #endif
 
 
+#ifndef EXTF_mpipedrv_getpwrcode
+ot_u8 mpipedrv_getpwrcode() {
+/// Power code: 0-3.  For this MPipe impl it's always 1 or 2
+    return 1 + (mpipe.state < 0);
+}
+#endif
+
+
 #ifndef EXTF_mpipedrv_standby
 void mpipedrv_standby() {
 }
@@ -683,9 +692,9 @@ void mpipedrv_kill() {
 #endif
 
 
-
 #ifndef EXTF_mpipedrv_wait
 void mpipedrv_wait() {
+    ///@todo add some type of watchdog?
     while (mpipe.state != MPIPE_Idle);
 }
 #endif

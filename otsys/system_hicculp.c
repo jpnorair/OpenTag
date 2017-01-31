@@ -101,6 +101,9 @@ typedef void (*fnvv)(void);
 #endif
 
 
+#define _NUM_EXOTASKS   ((OT_FEATURE(M2)==ENABLED) + (OT_FEATURE(MPIPE)==ENABLED) + OT_PARAM(EXOTASKS))
+
+
 
 
 /** Administrative Subroutines
@@ -221,24 +224,29 @@ OT_WEAK void sys_panic(ot_u8 err_code) {
 #ifndef EXTF_sys_powerdown
 OT_WEAK void sys_powerdown() {
 /// code = 3: No active I/O Task (goto most aggressive LP regime)
-/// code = 2: RF I/O Task active
-/// code = 1: MPipe or other local peripheral I/O task active
+/// code = 2: External I/O Task active
+/// code = 1: Local peripheral I/O task active
 /// code = 0: Use fastest-exit powerdown mode
 
-///@todo universalize EXOTASK driver states via CURSOR field
+    ot_uint code = 3;
+    ot_int i;
 
-    ot_int code;
-    code    = 3; //(systim_next() <= 3) ? 0 : 3;
-#   if (OT_FEATURE(M2))
-    //code   -= (sys.task_RFA.event != 0);
-    code   -= (radio.state != RADIO_Idle);
-#   endif
-#   if (OT_FEATURE(MPIPE))
-    code    = (mpipe_status() >= 0) ? 1 : code;
-#   endif
+    ///@todo This call-model is kludgey, but for now it is OK in practice.
+    ///      Better to have a second status call for exotasks.
+    for (i=0; i<_NUM_EXOTASKS; i++) {
+        ot_u8 task_event    = sys.task[i].event;
+        sys.task[i].event   = 255;
+        TASK_INDEXED_CALL(i);
+        sys.task[i].event   = task_event;
+        
+        // Pick the lowest code in the exotask list
+        if (sys.task[i].cursor < code) {
+            code = sys.task[i].cursor;
+        }
+    }
 
-#   if defined(OT_PARAM_USER_EXOTASKS)
-#   endif
+    // Shut down the clocker: a task isn't running during powerdown
+    systim_stop_clocker();
 
 #   if defined(EXTF_sys_sig_powerdown)
         sys_sig_powerdown(code);

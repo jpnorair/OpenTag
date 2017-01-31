@@ -557,13 +557,17 @@ OT_WEAK void dll_systask_rf(ot_task task) {
             case 2: dll_activate();         break;
 
             // RX Scan Timeout Watchdog
-            case 3: dll_scan_timeout();     break;
+            case 3: dll_scan_timeout();    break;
 
             // CSMA Manager (needed for archaic radios only)
             //case 4: dll_txcsma();         break;
 
             // TX & CSMA Timeout Watchdog
-           default: rm2_kill();             break;
+            case 5: rm2_kill();             break;
+            
+            // Power Code setting on cursor
+           default: task->cursor = radio_getpwrcode();
+                break;
         }
     //} while ((task->event != 0) && (task->nextevent <= 0));
 
@@ -841,7 +845,8 @@ OT_WEAK void dll_init_rx(m2session* active) {
 OT_WEAK void dll_init_tx(ot_u8 is_btx) {
 /// Initialize background or foreground packet TX.  Often this includes CSMA
 /// initialization as well.
-    sys_task_setnext_clocks(&sys.task[TASK_radio], dll.comm.tc);
+    //sys_task_setnext_clocks(&sys.task[TASK_radio], dll.comm.tc);
+    sys_task_setnext(&sys.task[TASK_radio], dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
     sys.task_RFA.latency    = 1;
     sys.task_RFA.event      = 4;

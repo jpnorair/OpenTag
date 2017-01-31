@@ -214,6 +214,13 @@ inline ot_uint spirit1_sdnpin_sethigh(void)    { return (RADIO_SDN_PORT->BSRRL =
 
 
 
+ot_u8 sprit1_getbasepwr() {
+/// Base Power code: 0-3.  For this impl it's always 3.
+    return 3;
+}
+
+
+
 /** Bus interface (SPI + 2x GPIO) <BR>
   * ========================================================================
   */
