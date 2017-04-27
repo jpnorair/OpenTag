@@ -514,6 +514,156 @@ void sx127x_set_txpwr(ot_u8 pwr_code) {
 }
 
 
+/** Set power for LoRaWAN */
+#ifndef _PABOOST_OFFSET
+#   define _PABOOST_OFFSET  0
+#else
+#   undef _PABOOST_OFFSET
+#   define _PABOOST_OFFSET  3
+#endif
+
+#define __SX127x_DBM_TO_TXPWR(DBM)  ((DBM+1-_PABOOST_OFFSET) & 0xF)
+
+const ot_u8 lorawan_915_powercodes[11] = {
+    __SX127x_DBM_TO_TXPWR(30),
+    __SX127x_DBM_TO_TXPWR(28),
+    __SX127x_DBM_TO_TXPWR(26),
+    __SX127x_DBM_TO_TXPWR(24),
+    __SX127x_DBM_TO_TXPWR(22),
+    __SX127x_DBM_TO_TXPWR(20),
+    __SX127x_DBM_TO_TXPWR(18),
+    __SX127x_DBM_TO_TXPWR(16),
+    __SX127x_DBM_TO_TXPWR(14),
+    __SX127x_DBM_TO_TXPWR(12),
+    __SX127x_DBM_TO_TXPWR(10)
+};
+
+const ot_u8 lorawan_868_powercodes[6] = {
+    __SX127x_DBM_TO_TXPWR(20),
+    __SX127x_DBM_TO_TXPWR(14),
+    __SX127x_DBM_TO_TXPWR(11),
+    __SX127x_DBM_TO_TXPWR(8),
+    __SX127x_DBM_TO_TXPWR(5),
+    __SX127x_DBM_TO_TXPWR(2)
+};
+
+const ot_u8 lorawan_433_powercodes[6] = {
+    __SX127x_DBM_TO_TXPWR(10),
+    __SX127x_DBM_TO_TXPWR(7),
+    __SX127x_DBM_TO_TXPWR(4),
+    __SX127x_DBM_TO_TXPWR(1),
+    __SX127x_DBM_TO_TXPWR(-2),
+    __SX127x_DBM_TO_TXPWR(-5)
+};
+
+#define lorawan_780_powercodes  lorwan_433_powercodes
+
+
+/** Set Data Rate for LoRaWAN */
+
+const ot_u8 lorawan_915_drcodes[16][2] = {
+    {_BW_125_KHZ, _SF10},
+    {_BW_125_KHZ, _SF9},
+    {_BW_125_KHZ, _SF8},
+    {_BW_125_KHZ, _SF7},
+    {_BW_500_KHZ, _SF8},
+    {_BW_500_KHZ, _SF7},    // RFU in spec: defaulted 
+    {_BW_500_KHZ, _SF7},    // RFU in spec: defaulted
+    {_BW_500_KHZ, _SF7},    // RFU in spec: defaulted
+    {_BW_500_KHZ, _SF12},
+    {_BW_500_KHZ, _SF11}, 
+    {_BW_500_KHZ, _SF10}, 
+    {_BW_500_KHZ, _SF9}, 
+    {_BW_500_KHZ, _SF8}, 
+    {_BW_500_KHZ, _SF7},
+    {_BW_500_KHZ, _SF7},    // RFU in spec: defaulted
+    {_BW_500_KHZ, _SF7}     // RFU in spec: defaulted
+};
+
+const ot_u8 lorawan_868_drcodes[8][2] = {
+    {_BW_125_KHZ, _SF12},
+    {_BW_125_KHZ, _SF11},
+    {_BW_125_KHZ, _SF10},
+    {_BW_125_KHZ, _SF9},
+    {_BW_125_KHZ, _SF8},
+    {_BW_125_KHZ, _SF7},  
+    {_BW_250_KHZ, _SF7},    
+    {0, 0}                  // FSK placeholder
+};
+
+#define lorawan_780_drcodes lorawan_868_drcodes
+#define lorawan_433_drcodes lorawan_868_drcodes
+
+
+/** LoRaWAN RX Window channel */
+// Channel Hertz: (replace with reg vals)
+// DR code: index in lorawan_xxx_drcodes
+
+const ot_u32 lorawan_915_rxwnd2[2] = { 923300000, 8};
+const ot_u32 lorawan_868_rxwnd2[2] = { 869525000, 0};
+const ot_u32 lorawan_780_rxwnd2[2] = { 786000000, 0};
+const ot_u32 lorawan_433_rxwnd2[2] = { 434665000, 0};
+
+
+/** LoRaWAN Bands */
+
+const ot_uint lorawan_915_bandspec[1][4] = {
+    { 1, 5, 0, 0 }  // 5=20dBm, 1=100% duty
+};  
+
+const ot_uint lorawan_868_bandspec[5][4] = { 
+    { 100,  1, 0, 0 },  // 1=14dBm, 100=1% duty
+    { 100,  1, 0, 0 },  // 1=14dBm, 100=1% duty
+    { 1000, 1, 0, 0 },  // 1=14dBm, 1000=0.1% duty
+    { 10,   1, 0, 0 },  // 1=14dBm, 10=10% duty
+    { 100,  1, 0, 0 }   // 1=14dBm, 100=1% duty
+};
+
+const ot_uint lorawan_780_bandspec[1][4] = {
+    { 100, 0, 0, 0 }  // 0=10dBm, 100=1% duty
+}; 
+
+#define lorawan_433_bandspec lorawan_780_bandspec 
+
+
+/** LoRaWAN Default Channels */
+
+//Todo: rubric for 915 channels
+// LORA_MAX_NB_CHANNELS must be 8 or more
+// 125 kHz channels go from 0 to (LORA_MAX_NB_CHANNELS-8)
+// 500 kHz channels go from (LORA_MAX_NB_CHANNELS-8) to LORA_MAX_NB_CHANNELS
+// Just set a pointer to some line in the drcodes matrix
+
+const ot_u8 lorawan_868_defchan[3][3] = {
+    { 868100000, (DR_5<<4) | DR_0, 0 },
+    { 868300000, (DR_5<<4) | DR_0, 0 },
+    { 868500000, (DR_5<<4) | DR_0, 0 }
+};
+
+const ot_u8 lorawan_780_defchan[3][3] = {
+    { 779500000, (DR_5<<4) | DR_0, 0 },
+    { 779700000, (DR_5<<4) | DR_0, 0 },
+    { 779900000, (DR_5<<4) | DR_0, 0 }
+};
+
+const ot_u8 lorawan_433_defchan[3][3] = {
+    { 433175000, (DR_5<<4) | DR_0, 0 },
+    { 433375000, (DR_5<<4) | DR_0, 0 },
+    { 433575000, (DR_5<<4) | DR_0, 0 }
+};
+
+
+
+
+/** LoRaWAN Duty Cycle Back-off Procedure */
+
+
+
+
+/** LoRaWAN mega value table */
+
+
+
 #endif
 
 

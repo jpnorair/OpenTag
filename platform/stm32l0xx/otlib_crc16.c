@@ -31,7 +31,8 @@
 #include <otplatform.h>
 #include <otlib/crc16.h>
 
-/*
+#if (MCU_FEATURE(CRC16) == ENABLED)
+
 OT_INLINE ot_u16 crc16drv_init() {
     //CRC->INIT   = 0xFFFF;
     //CRC->POL    = 0x8005;
@@ -73,7 +74,7 @@ ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) 
 OT_INLINE ot_u16 crc16drv_block(ot_u8* block_addr, ot_int block_size) {
     return crc16drv_block_manual(block_addr, block_size, 0xFFFF);
 }
-*/
+
 
 
 // Obsolete
@@ -88,6 +89,6 @@ OT_INLINE ot_u16 crc16drv_block(ot_u8* block_addr, ot_int block_size) {
 
 
 
-
+#endif
 
 

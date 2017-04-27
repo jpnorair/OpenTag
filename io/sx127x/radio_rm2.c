@@ -598,7 +598,9 @@ OT_WEAK void rm2_rxsync_isr() {
 /// supervisor task (DLL) go into high-priority mode.
 
     __DEBUG_ERRCODE_EVAL(=210); 
-    BOARD_led3_on();
+    
+    //Visual Debugging on Nucleo
+    //BOARD_led3_on();
 
     // In LoRa, the DASH7 Header is sent neither in BG or FG modes.
     // - Multiframe packets are not possible in LoRa, so FRAME-CONT bit goes to 0
@@ -646,7 +648,8 @@ OT_WEAK void rm2_rxend_isr() {
     
     rm2_calc_link();                            // Calculate relative link info
     
-    BOARD_led3_off();
+    //Visual Debugging on Nucleo
+    //BOARD_led3_off();
     
     radio_finish(0, integrity);
 }

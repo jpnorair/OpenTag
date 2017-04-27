@@ -403,6 +403,8 @@ ot_u16 platform_ext_lsihz();
   * ========================================================================<BR>
   * STM32L has a peculiar FLASH design where the erased value is 0 instead of
   * 1.  This requires some unusual setup for the Memory configuration.
+  * 
+  * @todo get Hardware CRC16 working.  Currently doesn't give correct calcs.
   */
 #define MCU_FEATURE(VAL)        MCU_FEATURE_##VAL   // FEATURE                  NOTE
 #define MCU_FEATURE_SVMONITOR   ENABLED             // Auto Low V powerdown     On many MCUs
