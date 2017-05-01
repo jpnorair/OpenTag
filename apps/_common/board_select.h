@@ -61,7 +61,8 @@ BOARD_HayTag2_R0        | Pending   | Haystack      | Prototyping   | CC13xx
    (defined(RF430USB_5509))
 
 #define BOARD_HAS_STM32L0()     \
-   (defined(BOARD_Nucleo_L053) || \
+   (defined(BOARD_Discovery_LoRa) || \
+    defined(BOARD_Nucleo_L053) || \
     defined(BOARD_Nucleo_L073) || \
     defined(BOARD_Nucleo_LRWAN1))
 
