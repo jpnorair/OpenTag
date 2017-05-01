@@ -36,7 +36,6 @@
 #include <app/app_config.h>
 #include <app/extf_config.h>
 
-
 /// Intra-Word Addressing: 
 /// Using these addressing constants in the extended type unions ensures that
 /// the code is portable across little and big endian architectures.
