@@ -55,7 +55,9 @@
 #elif OT_FEATURE(IAP)
 #   include <hbsys/iap.h>
 #endif
-
+#if OT_FEATURE(UBX_GNSS)
+#   include <io/ubx_gnss.h>
+#endif
 
 
 
