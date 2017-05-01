@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2017 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /apps/_common/fs_default_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    R100
-  * @date       31 Aug 2014
+  * @version    R101
+  * @date       30 Apr 2017
   * @brief      Configuration for typical demo filesystem
   *
   * To use this typical FS configuration, include into your app/config.h header
@@ -253,6 +253,8 @@
 #define ISF_ID_table_query_size                 0x14
 #define ISF_ID_table_query_results              0x15
 #define ISF_ID_hardware_fault_status            0x16
+#define ISF_ID_gnss_output                      0x17
+#define ISF_ID_agps_input                       0x18
 #define ISF_ID_application_extension            0xFF
 
 /// ISF Mirror Enabling: <BR>
@@ -283,6 +285,8 @@
 #define ISF_ENMIRROR_table_query_size           __SET_MIRROR(0)
 #define ISF_ENMIRROR_table_query_results        __SET_MIRROR(0)
 #define ISF_ENMIRROR_hardware_fault_status      __SET_MIRROR(0)
+#define ISF_ENMIRROR_gnss_output                __SET_MIRROR(1)
+#define ISF_ENMIRROR_agps_input                 __SET_MIRROR(1)
 #define ISF_ENMIRROR_application_extension      __SET_MIRROR(1)
 
 
@@ -318,6 +322,8 @@
 #define ISF_MOD_table_query_size                b00100100
 #define ISF_MOD_table_query_results             b00100100
 #define ISF_MOD_hardware_fault_status           b00100100
+#define ISF_MOD_gnss_output                     b00100000
+#define ISF_MOD_agps_input                      b00110000
 #define ISF_MOD_application_extension           b00100100
 
 /// ISF file default length: 
@@ -346,6 +352,8 @@
 #define ISF_LEN_table_query_size                1
 #define ISF_LEN_table_query_results             7
 #define ISF_LEN_hardware_fault_status           3
+#define ISF_LEN_gnss_output                     0
+#define ISF_LEN_agps_input                      0
 #define ISF_LEN_application_extension           0
 
 /// Stock ISF file max data lengths (not aligned, just max)
@@ -374,6 +382,8 @@
 #define ISF_MAX_table_query_size                1
 #define ISF_MAX_table_query_results             7
 #define ISF_MAX_hardware_fault_status           3
+#define ISF_MAX_gnss_output                     96  // Designed to support UBX-8 NAV-PVT
+#define ISF_MAX_agps_input                      200 // Designed for GPS MGA messages on UBX-8
 #define ISF_MAX_application_extension           64
 
 
@@ -411,7 +421,9 @@
 #   define ISF_BASE_table_query_size            (ISF_BASE_memory_size+ISF_ALLOC(memory_size))
 #   define ISF_BASE_table_query_results         (ISF_BASE_table_query_size+ISF_ALLOC(table_query_size))
 #   define ISF_BASE_hardware_fault_status       (ISF_BASE_table_query_results+ISF_ALLOC(table_query_results))
-#   define ISF_BASE_application_extension       (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
+#   define ISF_BASE_gnss_output                 (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
+#   define ISF_BASE_agps_input                  (ISF_BASE_gnss_output+ISF_ALLOC(gnss_output))
+#   define ISF_BASE_application_extension       (ISF_BASE_agps_input+ISF_ALLOC(agps_input))
 #   define ISF_BASE_NEXT                        (ISF_BASE_application_extension+ISF_ALLOC(application_extension ))
 
 #else
@@ -438,6 +450,8 @@
 #   define ISF_BASE_table_query_size            (ISF_BASE_memory_size+ISF_ALLOC(memory_size))
 #   define ISF_BASE_table_query_results         (ISF_BASE_table_query_size+ISF_ALLOC(table_query_size))
 #   define ISF_BASE_hardware_fault_status       (ISF_BASE_table_query_results+ISF_ALLOC(table_query_results))
+#   define ISF_BASE_gnss_output                 (0xFFFF)
+#   define ISF_BASE_agps_input                  (0xFFFF)
 #   define ISF_BASE_application_extension       (0xFFFF)
 #   define ISF_BASE_NEXT                        (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
 #endif
@@ -468,7 +482,9 @@
 #define ISF_MIRROR_table_query_size             (ISF_MIRROR_memory_size+ISF_MIRALLOC(memory_size))
 #define ISF_MIRROR_table_query_results          (ISF_MIRROR_table_query_size+ISF_MIRALLOC(table_query_size))
 #define ISF_MIRROR_hardware_fault_status        (ISF_MIRROR_table_query_results+ISF_MIRALLOC(table_query_results))
-#define ISF_MIRROR_application_extension        (ISF_MIRROR_hardware_fault_status+ISF_MIRALLOC(hardware_fault_status))
+#define ISF_MIRROR_gnss_output                  (ISF_MIRROR_hardware_fault_status+ISF_MIRALLOC(hardware_fault_status))
+#define ISF_MIRROR_agps_input                   (ISF_MIRROR_gnss_output+ISF_MIRALLOC(gnss_output))
+#define ISF_MIRROR_application_extension        (ISF_MIRROR_agps_input+ISF_MIRALLOC(agps_input))
 #define ISF_MIRROR_NEXT                         (ISF_MIRROR_application_extension+ISF_MIRALLOC(application_extension))
 
 
@@ -496,6 +512,8 @@
                                 ISF_ALLOC(table_query_size) + \
                                 ISF_ALLOC(table_query_results) + \
                                 ISF_ALLOC(hardware_fault_status) + \
+                                ISF_ALLOC(gnss_output) + \
+                                ISF_ALLOC(agps_input) + \
                                 ISF_ALLOC(application_extension))
 
 #define ISF_VWORM_HEAP_BYTES    ISF_VWORM_STOCK_BYTES
