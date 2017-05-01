@@ -514,6 +514,9 @@ void sx127x_set_txpwr(ot_u8 pwr_code) {
 }
 
 
+// LoRaWAN Shit
+#if (0)
+
 /** Set power for LoRaWAN */
 #ifndef _PABOOST_OFFSET
 #   define _PABOOST_OFFSET  0
@@ -661,6 +664,9 @@ const ot_u8 lorawan_433_defchan[3][3] = {
 
 
 /** LoRaWAN mega value table */
+
+#endif // End of LoRaWAN shit
+
 
 
 
