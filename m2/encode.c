@@ -279,8 +279,8 @@ OT_WEAK void em2_rs_interleave(ot_u8* start, ot_int numbytes) {
                     ext_bytes   = 2;                                // CRC bytes
 
                     if (em2.lctl & 0x40) {
-                        ext_bytes -= rs_init_decode(&rxq);
-                        rs_decode(2);
+                        ext_bytes -= em2_rs_init_decode(&rxq);
+                        em2_rs_decode(2);
                     }
                     crc_init_stream(&em2.crc, False, em2.bytes + ext_bytes, rxq.front);    // Total bytes
                     crc_calc_nstream(&em2.crc, 2);
