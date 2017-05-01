@@ -28,6 +28,7 @@
 #if (OT_FEATURE(CAPI) && OT_FEATURE(M2))
 #include <m2api.h>
 
+#include <otlib/auth.h>
 #include <otlib/alp.h>
 #include <otlib/memcpy.h>
 #include <otlib/buffers.h>
@@ -322,6 +323,8 @@ ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall) {
 #ifndef EXTF_otapi_put_udp_tmpl
 ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
     ot_u16 space;
+    vlFILE* fp = NULL;
+    
     space = q_space(&txq);
     
 #   if (M2_FEATURE(MULTIFRAME))
@@ -331,6 +334,13 @@ ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
     ///      frame.  It will probably require a network-layer function to 
     ///      determine the overhead when supplied payload length.
 #   else
+        
+        if (udp->data == NULL) {
+        	///@todo add a user to UDP type for access control
+        	fp              = ISF_open(udp->src_port, VL_ACCESS_R, AUTH_GUEST );
+        	udp->data_length= (fp != NULL) ? fp->length : 0;
+        }
+        
         space -= 4;
         if (space < udp->data_length) {
             *status = 0;
@@ -342,10 +352,15 @@ ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
             q_writebyte(&txq, udp->dst_port);
             q_writebyte(&txq, udp->src_port);
             
-            if (udp->data != NULL) {
-                q_writestring(&txq, udp->data, udp->data_length);
+            if (udp->data == NULL) {
+                txq.putcursor += vl_load(fp, udp->data_length, txq.putcursor);
+            }
+            else {
+            	q_writestring(&txq, udp->data, udp->data_length);
             }
         }
+        
+        vl_close(fp);
 #   endif
 
     return q_length(&txq);
