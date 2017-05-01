@@ -60,14 +60,36 @@ void sub_load_now(ot_time* now) {
 
 
 void time_init_utc(ot_u32 utc) {
-    time_set_utc(utc);
-    starttime = systime;
+    systime.upper   = (utc >> _UPPER_SHIFT);
+    systime.clocks  = (utc << _LOWER_SHIFT);
+    starttime 		= systime;
+}
+
+
+
+void time_set_precise(ot_u32 utc, ot_u32 subseconds) {
+	ot_time delta;
+    sub_load_now(&delta);
+    
+    /// 1. Set systime to new value.
+    ///@todo scale subseconds
+    systime.upper   = (utc >> _UPPER_SHIFT);
+    systime.clocks  = (utc << _LOWER_SHIFT);
+    systime.clocks |= subseconds;
+    
+    /// 2. determine delta between previous time and new time
+    delta.upper	    = (systime.upper - delta.upper) + (systime.clocks < delta.clocks);
+    delta.clocks    = (systime.clocks - delta.clocks);
+	
+	/// 3. Apply Delta to starttime
+	///    This is necessary to maintain relative uptime figure
+	starttime.clocks   += delta.clocks;
+	starttime.upper    += delta.upper + (starttime.clocks < delta.clocks);
 }
 
 
 void time_set_utc(ot_u32 utc) {
-    systime.upper   = (utc >> _UPPER_SHIFT);
-    systime.clocks  = (utc << _LOWER_SHIFT);
+    time_set_precise(utc, 0);
 }
 
 
@@ -96,7 +118,7 @@ ot_u32 time_get_utc(void) {
 }
 
 
-ot_u32 time_uptime_sec(void) {
+ot_u32 time_uptime_secs(void) {
     ot_time now;
     ot_u32  startsecs, nowsecs;
     sub_load_now(&now);
@@ -122,8 +144,8 @@ void time_set_utc(ot_u32 utc)           { }
 void time_add(ot_u32 clocks)            { }
 void time_add_ti(ot_u32 ticks)          { }
 ot_u32 time_get_utc(void)               { return 0; }
-ot_u32 time_uptime_sec(void)                { return 0; }
-ot_u32 time_uptime(void)             { return 0; }
+ot_u32 time_uptime_secs(void)           { return 0; }
+ot_u32 time_uptime(void)             	{ return 0; }
 
 #endif
 
