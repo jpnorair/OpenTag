@@ -184,6 +184,9 @@ void sx127x_load_defaults() {
         __REGSET(LR_PAYLOADLENGTH),
         __REGSET(LR_PAYLOADMAXLENGTH),
         __REGSET(LR_HOPPERIOD),
+#       if defined(__SX1276__) || defined(__SX1277__) || defined(__SX1278__) || defined(__SX1279__)
+        __REGSET(LR_MODEMCONFIG3),
+#       endif
         __REGSET(LR_DETECTOPTIMIZE),
         __REGSET(LR_DETECTOPTIMIZE),
         __REGSET(LR_INVERTIQ),
@@ -451,12 +454,21 @@ ot_u16 sx127x_get_counter() {
   */
 
 ot_int sx127x_calc_rssi(ot_u8 encoded_value, ot_s8 packet_snr) {
+#   if defined(__SX1272__) || defined(__SX1273__)
     ot_int rssi;
     rssi = -139 + (ot_int)encoded_value;
     if (packet_snr < 0) {
         rssi += packet_snr/4;
     }
     return rssi;
+    
+#   elif defined(__SX1276__) || defined(__SX1277__) || defined(__SX1278__) || defined(__SX1279__)
+#   if (RF_PARAM_BAND < 750)
+    return -164 + (ot_int)encoded_value;
+#   else
+    return -157 + (ot_int)encoded_value;
+#   endif
+#   endif
 }
 
 
@@ -466,11 +478,11 @@ ot_u8 sx127x_calc_rssithr(ot_u8 input) {
 /// using different input and output.
 ///
 /// Input is a whole-dBm value encoded linearly as: {0=-140dBm, 127=-13dBm}.
-/// Output is the value that should go into SPIRIT1 RSSI_TH field.
-    ot_int rssi_thr;
-
-    // SX127x uses -139 as baseline, DASH7 -140
+/// Output is the value that should go into RSSI_TH field.
+#if defined(__SX1272__) || defined(__SX1273__)
+    // SX1272/3 uses -139 as baseline, DASH7 -140
     // Clip baseline at 0
+    ot_int rssi_thr;
     rssi_thr = (ot_int)input - 1;
     if (rssi_thr < 0)
         rssi_thr = 0;
@@ -478,14 +490,25 @@ ot_u8 sx127x_calc_rssithr(ot_u8 input) {
     // Multiply by 2 to yield half-dBm.
     rssi_thr  <<= 1;
     return rssi_thr;
+
+#elif defined(__SX1276__) || defined(__SX1277__) || defined(__SX1278__) || defined(__SX1279__)
+#   if (RF_PARAM_BAND < 750)
+    return (164 - 140) + input;
+#   else
+    return (157 - 140) + input;
+#   endif
+
+#endif
 }
 
 
 ot_u8 sx127x_clip_txeirp(ot_u8 input_eirp) {
 /// This considers Normal-Mode.  In TX Boost mode, 13dBm --> 20dBm
-
+#if defined(__SX1272__) || defined(__SX1273__)
 #   define _MAX_DBM_EIRP (((13*2) - RF_HDB_ATTEN) + 80)
-    
+#elif defined(__SX1276__) || defined(__SX1277__) || defined(__SX1278__) || defined(__SX1279__)
+#   define _MAX_DBM_EIRP (((14*2) - RF_HDB_ATTEN) + 80)
+#endif
     if (input_eirp > _MAX_DBM_EIRP) {
         input_eirp = _MAX_DBM_EIRP;
     }
@@ -499,15 +522,22 @@ void sx127x_set_txpwr(ot_u8 pwr_code) {
 /// Sets the tx output power (non boost)
 /// "pwr_code" is a value, 0-127, that is: eirp_code/2 - 40 = TX dBm
 /// i.e. eirp_code=0 => -40 dBm, eirp_code=80 => 0 dBm, etc
-    
     ot_int dBm;
     
     // get dBm
     dBm = (-80 + (ot_int)pwr_code) / 2;
-    
-    // Convert to SX127x units (PA Boost off)
+
+#if defined(__SX1272__) || defined(__SX1273__)
+    // Convert to SX1272/3 units (PA Boost off)
     dBm = dBm + 1;
     pwr_code = (ot_u8)dBm & 0x0F;
+
+#elif defined(__SX1276__) || defined(__SX1277__) || defined(__SX1278__) || defined(__SX1279__)
+    // Convert to SX1276/7/8/9 units (PA Boost off)
+    dBm = dBm + 1;
+    pwr_code = (5<<4) | ((ot_u8)dBm & 0x0F);
+
+#endif
 
     // Write new PA Table to device
     sx127x_write(RFREG_LR_PACONFIG, pwr_code);

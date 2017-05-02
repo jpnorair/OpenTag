@@ -28,12 +28,22 @@
 #define __IO_SX127X_INTERFACE_H
 
 #include <otstd.h>
+#include <board.h>
 #include <io/sx127x/config.h>
 
-///@todo if SX1272 ...
-#include <io/sx127x/SX1272_registers.h>
-#include <io/sx127x/SX1272_defaults.h>
 
+
+#if defined(__SX1272__) || defined(__SX1273__)
+#   include <io/sx127x/SX1272_registers.h>
+#   include <io/sx127x/SX1272_defaults.h>
+
+#elif defined(__SX1276__) || defined(__SX1277__) || defined(__SX1278__) || defined(__SX1279__)
+#   include <io/sx127x/SX1276_registers.h>
+#   include <io/sx127x/SX1276_defaults.h>
+
+#else
+#   error "SX1272, 1273, 1276, 1277, 1278, 1279 not defined."
+#endif
 
 #ifndef BOARD_FEATURE_RFXTALOUT
 #   define BOARD_FEATURE_RFXTALOUT 0
