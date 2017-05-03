@@ -374,6 +374,16 @@ void mpipedrv_standby();
 void mpipedrv_detach(void* port_id);
 
 
+/** @brief  Gets code about current power requirements of driver
+  * @param  None
+  * @retval ot_u8		An OpenTag "Power Code", generally 0-3.
+  * @ingroup Mpipe
+  *
+  * This function is used in mpipe_systask() only.  The kernel calls it when it needs to
+  * determine the appropriate sleep state to enter.
+  */
+ot_u8 mpipedrv_getpwrcode();
+
 
 /** @brief  Kills the Mpipe connection
   * @param  None

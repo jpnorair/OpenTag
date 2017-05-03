@@ -368,7 +368,6 @@ m2session* session_continue(ot_app applet, ot_u8 next_state, ot_uint wait);
 ot_bool session_occupied(ot_u8 chan_id);
 
 
-
 void session_notify(SESSION_status status);
 
 
@@ -386,6 +385,11 @@ void session_pop();
   * @ingroup Session
   */
 void session_flush();
+
+
+
+void session_scrap(void);
+
 
 
 /** @brief  Returns the session at the top of the stack.
