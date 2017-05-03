@@ -258,10 +258,10 @@ ot_int sub_fileheaders( alp_tmpl* alp, id_tmpl* user_id, ot_u8 respond, ot_u8 cm
 
 
 ot_int sub_filedata( alp_tmpl* alp, id_tmpl* user_id, ot_u8 respond, ot_u8 cmd_in, ot_int data_in ) {
-    vlFILE* fp;
     ot_u16  offset;
     ot_u16  span;
     ot_int  data_out    = 0;
+    vlFILE* fp          = NULL;
     ot_bool inc_header  = (ot_bool)((cmd_in & 0x0F) == 0x0C);
     vlBLOCK file_block  = (vlBLOCK)((cmd_in >> 4) & 0x07);
     ot_u8   file_mod    = ((cmd_in & 0x02) ? VL_ACCESS_W : VL_ACCESS_R);
