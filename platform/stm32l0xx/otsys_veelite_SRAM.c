@@ -43,7 +43,7 @@
 
 #include <otsys/veelite_core.h>
 #include <otlib/logger.h>
-
+#include <otlib/memcpy.h>
 
 
 
@@ -203,6 +203,7 @@ ot_u8 vworm_write(vaddr addr, ot_u16 data) {
     addr   &= ~1;
     aptr    = (ot_u16*)((ot_u8*)fsram + addr);
     *aptr   = data;
+    return 0;
 }
 #endif
     

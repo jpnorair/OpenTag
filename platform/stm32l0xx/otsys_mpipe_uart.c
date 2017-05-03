@@ -859,7 +859,7 @@ void mpipedrv_isr() {
 ///      Acks.  In this case, a complete TX process also requires RX'ing an
 ///      Ack, and a complete RX process requires TX'ing an Ack. </LI>
     //ot_bool tx_process = False;
-    ot_int  error_code;
+    ot_int  error_code = -1;
 
     __DMA_ALL_CLOSE();
     __DMA_ALL_CLEAR();
