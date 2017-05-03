@@ -39,6 +39,7 @@
 
 #include <otstd.h>
 #include <platform/config.h>
+#include <otlib/delay.h>
 #include <otlib/queue.h>
 #include <otlib/memcpy.h>
 

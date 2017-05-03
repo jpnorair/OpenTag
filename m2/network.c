@@ -323,6 +323,7 @@ ot_int network_route_ff(m2session* active) {
     else {
         ///@todo m2dp_parse_frame()
         //route_val = m2dp_parse_frame(active);
+        route_val = -1;     // placeholder until multiframe implemented
     }
     
     /// Attach footer to response, if necessary

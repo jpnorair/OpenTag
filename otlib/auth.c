@@ -295,6 +295,8 @@ ot_int auth_encrypt(ot_u8* nonce, ot_u8* data, ot_uint datalen, ot_u8 key_index,
 /// "options" not presently used.
 #if (_SEC_DLL)
     return __eaxcrypt(nonce, data, datalen, key_index, options, &EAXdrv_encrypt);
+#else
+    return -1;
 #endif
 }
 #endif
@@ -305,6 +307,8 @@ ot_int auth_decrypt(ot_u8* nonce, ot_u8* data, ot_uint datalen, ot_u8 key_index,
 /// "options" not presently used.
 #if (_SEC_DLL)
     return __eaxcrypt(nonce, data, datalen, key_index, options, &EAXdrv_decrypt);
+#else
+    return -1;
 #endif
 }
 #endif

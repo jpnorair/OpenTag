@@ -166,7 +166,7 @@ void mpipe_systask(ot_task task) {
 
                 //transmit next record/message (case fall-through)
                 //case MSG_Chunking_Out:
-                //case MSG_End:           //goto systask_mpipe_TX;
+                //case MSG_End:           break;
             }
         }
 

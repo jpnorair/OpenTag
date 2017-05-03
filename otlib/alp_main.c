@@ -207,17 +207,18 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
 
 
     /// Lock the ot_queues while ALP is parsing/processing
-
     alp->inq->options.ubyte[0]  = 1;
-
     alp->outq->options.ubyte[0] = 1;
+    ///@todo migrate to this usage in the future
+    //q_lock(alp->inq);
+    //q_lock(alp->outq);
 
     /// Loop through records in the input message.  Each input message can
     /// generate 0 or 1 output messages.
 
     alp_parse_message_LOOP:
     do {
-        ot_u8*  input_position;
+        ot_u8*  input_position = alp->inq->getcursor;   // default initialization
         ot_u8*  hdr_position;
         ot_bool atomic;
         ot_u8   hdr_len;
@@ -305,6 +306,9 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
     /// Unlock the ot_queues after ALP is parsing/processing
     alp->inq->options.ubyte[0]  = 0;
     alp->outq->options.ubyte[0] = 0;
+    ///@todo migrate to this usage in the future
+    //q_unlock(alp->inq);
+    //q_unlock(alp->outq);
 
     return exit_code;
 #endif

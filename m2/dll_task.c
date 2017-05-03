@@ -235,7 +235,7 @@ OT_WEAK void dll_init(void) {
 
 #ifndef EXTF_dll_refresh
 OT_WEAK void dll_refresh(void) {
-    ot_uni16 scratch;
+    //ot_uni16 scratch;
     vlFILE* fp;
 
     /// Open Network Features ISF and load the values from that file into the

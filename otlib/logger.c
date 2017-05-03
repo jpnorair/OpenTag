@@ -48,6 +48,7 @@
 #include <otlib/logger.h>
 #include <otlib/alp.h>
 #include <otlib/queue.h>
+#include <otlib/utils.h>
 #include <otsys/mpipe.h>
 
 

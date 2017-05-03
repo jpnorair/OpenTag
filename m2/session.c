@@ -209,7 +209,7 @@ OT_WEAK ot_bool session_occupied(ot_u8 chan_id) {
 
 
 #ifndef EXTF_session_scrap
-OT_WEAK void session_scrap() {
+OT_WEAK void session_scrap(void) {
     if (session.top != &session.heap[_END]) {
         m2session* old_top;
         old_top = session.top++;
