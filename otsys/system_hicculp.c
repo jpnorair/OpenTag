@@ -143,6 +143,19 @@ static const systask_fn systask_call[]   = {
 
 
 
+ot_u8 sub_init_task(Task_Index i, ot_u8 is_restart) {
+    ot_u8 task_event;
+    task_event          = sys.task[i].event;
+    sys.task[i].event   = 0;
+    sys.task[i].cursor  = is_restart;
+    TASK_INDEXED_CALL(i);
+    sys.task[i].cursor  = 0;
+    return task_event;
+}
+
+
+
+
 
 
 /** System Core Functions
@@ -151,7 +164,8 @@ static const systask_fn systask_call[]   = {
 
 #ifndef EXTF_sys_init
 OT_WEAK void sys_init() {
-
+    ot_int i;
+    
     /// Set system kernel callbacks to null (if kernel callbacks enabled)
 #   if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED) && !defined(EXTF_sys_sig_panic)
         sys.panic = &otutils_sig_null;
@@ -180,23 +194,33 @@ OT_WEAK void sys_init() {
 
     ///@todo change these manual calls into normal task calls using event=0,
     ///      which is the initialization/kill state.
-#   if (OT_FEATURE(CRON) == ENABLED)
-        otcron_init();
-#   endif
-#   if (OT_FEATURE(EXT_TASK) == ENABLED)
-        ext_init();
-#   endif
+    
+    
+//#   if (OT_FEATURE(CRON) == ENABLED)
+//        otcron_init();
+//#   endif
+//#   if (OT_FEATURE(EXT_TASK) == ENABLED)
+//        ext_init();
+//#   endif
 
     /// Initialize DLL, which also initializes the rest of the protocol stack.
     /// In some HW, the radio must be initialized before MPipe.
 #   if (OT_FEATURE(M2))
         dll_init();
 #   endif
-
+    
+    
     /// Initialize MPipe if enabled
-#   if (OT_FEATURE(MPIPE) == ENABLED)
-        mpipe_connect(NULL);
-#   endif
+//#   if (OT_FEATURE(MPIPE) == ENABLED)
+//        mpipe_connect(NULL);
+//#   endif
+        
+    ///@todo change these manual calls into normal task calls using event=0,
+    ///      which is the initialization/kill state.
+    i = TASK_terminus;
+    while (i > 1) {
+        sub_init_task(--i, 1);
+    }
 }
 #endif
 
@@ -312,9 +336,7 @@ OT_WEAK void sys_kill(Task_Index i) {
     /// task has spawned run-away interrupts or possibly other tasks, this
     /// should stop them.  Setting event to 0 and calling will invoke the task
     /// exit hook (destructor).  This is a requirement of task implementation.
-    task_event          = sys.task[i].event;
-    sys.task[i].event   = 0;
-    TASK_INDEXED_CALL(i);
+    task_event = sub_init_task(i, 0);
 
     /// Check if the task was actually running.  Don't go any further if the
     /// task had already exited.  Drop the context back to a stable point in 

@@ -318,7 +318,7 @@ OT_WEAK void sys_kill(Task_Index i) {
     /// task has spawned run-away interrupts or possibly other tasks, this
     /// should stop them.  Setting event to 0 and calling will invoke the task
     /// init hook.  This is a requirement of task implementation.
-    task_event = sub_init_task(i);
+    task_event = sub_init_task(i, 0);
 
     /// Check if the task was actually running.  Don't go any further if the
     /// task had already exited.

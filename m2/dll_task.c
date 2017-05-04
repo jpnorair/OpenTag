@@ -566,8 +566,9 @@ OT_WEAK void dll_systask_rf(ot_task task) {
             case 5: rm2_kill();             break;
             
             // Power Code setting on cursor
-           default: task->cursor = radio_getpwrcode();
-                break;
+            case 255: task->cursor = radio_getpwrcode(); break;
+            
+            default: break;
         }
     //} while ((task->event != 0) && (task->nextevent <= 0));
 
@@ -646,6 +647,10 @@ OT_WEAK void dll_systask_holdscan(ot_task task) {
 /// the hold_cycle parameter, and if this is over the limit it will return into
 /// sleep mode.
 
+    // This is a stateless task that should probably be removed from task status
+    // and replaced with a cron task or something similar.
+    if (task->event == 0) return;
+    
     // Do holdscan (top) or go back into sleep mode (bottom)
     if (dll.counter != 0) {
         dll.counter -= (sys.task_HSS.cursor == 0);
