@@ -189,7 +189,7 @@
   */
 #define ISF_TOTAL_BYTES                         1536
 #define ISF_NUM_M1_FILES                        7
-#define ISF_NUM_M2_FILES                        16
+#define ISF_NUM_M2_FILES                        18
 #define ISF_NUM_EXT_FILES                       1   // Usually at least 1 (app ext)
 #define ISF_NUM_USER_FILES                      0  //max allowed user files
 

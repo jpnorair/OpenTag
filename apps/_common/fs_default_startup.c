@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2017 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /apps/_common/fs_default_startup.c
   * @author     JP Norair
-  * @version    R101
-  * @date       14 Feb 2013
+  * @version    R102
+  * @date       9 May 2017
   * @brief      Startup Data for default filesystem
   *
   * Usually this file is included into app/main.c rather than compiled.  If you 
@@ -343,6 +343,20 @@ const ot_u8 overhead_files[] = {
     SPLIT_SHORT_LE(ISF_BASE(hardware_fault_status)),
     SPLIT_SHORT_LE(ISF_MIRROR(hardware_fault_status)),
 
+	ISF_LEN(gnss_output), 0x00,
+    SPLIT_SHORT_LE(ISF_ALLOC(gnss_output)),
+    ISF_ID(gnss_output),
+    ISF_MOD(gnss_output),
+    SPLIT_SHORT_LE(ISF_BASE(gnss_output)),
+    SPLIT_SHORT_LE(ISF_MIRROR(gnss_output)),
+    
+    ISF_LEN(agps_input), 0x00,
+    SPLIT_SHORT_LE(ISF_ALLOC(agps_input)),
+    ISF_ID(agps_input),
+    ISF_MOD(agps_input),
+    SPLIT_SHORT_LE(ISF_BASE(agps_input)),
+    SPLIT_SHORT_LE(ISF_MIRROR(agps_input)),
+
     ISF_LEN(application_extension), 0x00,
     SPLIT_SHORT_LE(ISF_ALLOC(application_extension)),
     ISF_ID(application_extension),
@@ -571,6 +585,12 @@ const ot_u8 isf_stock_files[] = {
 
     /* HW Fault Status: id=0x16, len=3, alloc=4 */
     0x00, 0x00, 0x00, 0xFF,
+
+	/* GNSS Output id=0x17, len=0, alloc=? */
+	/* Stored Exclusively in mirror */
+
+	/* AGPS Input id=0x18, len=0, alloc=? */
+	/* Stored Exclusively in mirror */
 
     /* Application Extension: id=0xFF, len=0, alloc=64 */
     /* Stored Exclusively in mirror */
