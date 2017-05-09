@@ -161,7 +161,7 @@ void ext_systask(ot_task task) {
             break;
     }
     
-    sys_task_setnext(task, next_ticks);
+    sys_task_setnext(task, (ot_u32)next_ticks);
 }
 
 

@@ -494,7 +494,7 @@ void sys_task_setevent(ot_task task, ot_u8 event);
 void sys_task_setcursor(ot_task task, ot_u8 cursor);
 void sys_task_setreserve(ot_task task, ot_u8 reserve);
 void sys_task_setlatency(ot_task task, ot_u8 latency);
-void sys_task_setnext(ot_task task, ot_u16 nextevent_ti);
+void sys_task_setnext(ot_task task, ot_u32 nextevent_ti);
 void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks);
 
 

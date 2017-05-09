@@ -404,8 +404,8 @@ void sys_task_setlatency(ot_task task, ot_u8 latency) {
     task->latency = latency;
 }
 
-void sys_task_setnext(ot_task task, ot_u16 nextevent_ti) {
-    sys_task_setnext_clocks(task, TI2CLK(nextevent_ti));
+void sys_task_setnext(ot_task task, ot_u32 nextevent_ti) {
+    sys_task_setnext_clocks(task, (ot_long)TI2CLK(nextevent_ti));
 }
 
 void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
@@ -421,7 +421,7 @@ OT_WEAK void sys_task_enable(ot_u8 task_id, ot_u8 task_ctrl, ot_u16 sleep) {
     ot_task task;
     task        = &sys.task[TASK_external+task_id];
     task->event = task_ctrl;
-    sys_task_setnext(task, sleep);
+    sys_task_setnext(task, (ot_u32)sleep);
 	platform_ot_preempt();
 #endif
 }
@@ -639,7 +639,7 @@ OT_WEAK void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 /// by manually setting the timer interrupt flag.  If a task is running while
 /// this function is called (typical usage), first the task will finish and then
 /// the scheduler will run anyway.
-    sys_task_setnext(task, nextevent_ti);
+    sys_task_setnext(task, (ot_u32)nextevent_ti);
     platform_ot_preempt();
 }
 

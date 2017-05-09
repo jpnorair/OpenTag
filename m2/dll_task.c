@@ -699,7 +699,7 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     /// Set the next idle event from the two-byte Next Scan field.
     /// The DASH7 registry is big-endian.
     scratch.ushort  = PLATFORM_ENDIAN16( vl_read(fp, (task->cursor)+=2 ) );
-    sys_task_setnext(task, scratch.ushort);
+    sys_task_setnext(task, (ot_u32)scratch.ushort);
 
     /// Advance cursor to next datum, go back to 0 if end of sequence
     /// (still works in special case where cursor = 254)
@@ -772,7 +772,7 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
     //b_session->flags   |= (b_session->extra & 0x30);
 
     // Last 2 bytes: Next Scan ticks
-    sys_task_setnext(task, PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]) );
+    sys_task_setnext(task, (ot_u32)PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]) );
 
     ///@note this might not be necessary or wise!
     //return;
@@ -827,7 +827,7 @@ OT_WEAK void dll_init_rx(m2session* active) {
         dll.comm.rx_timeout = min_timeout;
     }
 
-	sys_task_setnext(&sys.task[TASK_radio], (ot_u16)dll.comm.rx_timeout);
+	sys_task_setnext(&sys.task[TASK_radio], (ot_u32)dll.comm.rx_timeout);
 
     // E.g. lights a LED
     DLL_SIG_RFINIT(sys.task_RFA.event);
@@ -850,8 +850,8 @@ OT_WEAK void dll_init_rx(m2session* active) {
 OT_WEAK void dll_init_tx(ot_u8 is_btx) {
 /// Initialize background or foreground packet TX.  Often this includes CSMA
 /// initialization as well.
-    //sys_task_setnext_clocks(&sys.task[TASK_radio], dll.comm.tc);
-    sys_task_setnext(&sys.task[TASK_radio], dll.comm.tc);
+    //sys_task_setnext_clocks(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
+    sys_task_setnext(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
     sys.task_RFA.latency    = 1;
     sys.task_RFA.event      = 4;
