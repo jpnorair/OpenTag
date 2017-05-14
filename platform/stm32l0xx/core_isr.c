@@ -471,7 +471,11 @@ void EXTI4_15_IRQHandler(void) {
     __EXTI_MACRO(9);
 #   endif    
 #   if ((defined(__ISR_EXTI10) || defined(__USE_EXTI10)) && !defined(__N_ISR_EXTI10))
-    __EXTI_MACRO(10);
+    //__EXTI_MACRO(10);
+    if (EXTI->PR & (1<<10)) { \
+            EXTI->PR = (1<<10);  
+            ubxdrv_rxsync_isr();
+        } 
 #   endif
 #   if ((defined(__ISR_EXTI11) || defined(__USE_EXTI11)) && !defined(__N_ISR_EXTI11))
     __EXTI_MACRO(11);
