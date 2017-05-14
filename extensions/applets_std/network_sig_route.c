@@ -1,4 +1,4 @@
-/*  Copyright 2010-2012, JP Norair
+/*  Copyright 2017, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 /**
   * @file       /otlibext/applets_std/network_sig_route.c
   * @author     JP Norair
-  * @version    V1.0
-  * @date       31 July 2012
+  * @version    R102
+  * @date       9 May 2017
   * @brief      Standard Network Routing Callback Routine
   *
   * Network layer uses a callback when a packet has been successfully received
@@ -27,26 +27,25 @@
 #include <otstd.h>
 #include <m2api.h>
 #include <otlib/logger.h>
-
+#include <otlib/buffers.h>
 
 #ifdef EXTF_network_sig_route
 void network_sig_route(void* route, void* session) {
-	static const ot_u8 label_dialog[]	= { 9, 'M','2','_','D','i','a','l','o','g' };
-	static const ot_u8 label_nack[]		= { 7, 'M','2','_','N','a','c','k' };
-	static const ot_u8 label_stream[]	= { 9, 'M','2','_','S','t','r','e','a','m' };
-	static const ot_u8 label_snack[]	= { 7, 'M','2','_','S','N','a','c','k' };
-
-	static const ot_u8* labels[] 		= { label_dialog,
-											label_nack,
-											label_stream,
-											label_snack };
+    static const char* label_dialog = "M2_Dialog";
+    static const char* label_nack   = "M2_Nack";
+    static const char* label_stream = "M2_Stream";
+    static const char* label_snack  = "M2_SNack";
+    static const ot_u8 label_len[]  = { 10, 8, 10, 9 };
+    
+    const char* label[] = { label_dialog, label_nack, label_stream, label_snack };
+    
 	ot_u8 protocol;
 
 	protocol = ((m2session*)session)->extra & 3;
 	logger_msg(	MSG_raw,
-					labels[protocol][0],
+					label_len[protocol],
 					q_length(&rxq),
-					(ot_u8*)&(labels[protocol][1]),
+					(ot_u8*)label[protocol],
 					rxq.front	);
 }
 #endif
