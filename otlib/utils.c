@@ -145,6 +145,36 @@ ot_int otutils_int2dec(ot_u8* dst, ot_int data) {
 #endif
 
 
+#ifndef EXTF_otutils_long2dec
+ot_int otutils_long2dec(ot_u8* dst, ot_long data) {
+    ot_u8*  dst_start;
+    ot_bool force;
+    ot_long  divider;
+    ot_u8  digit;
+
+    dst_start = dst;
+
+    *dst++  = ' ';  //delimiter
+
+    if (data < 0) {
+        data    = 0 - data;
+        *dst++  = '-';
+    }
+
+    for (divider=1000000000, force=False; divider!=0; divider/=10) {
+        digit = (data/divider);
+        if (digit | force) {
+            force   = True;
+            *dst++  = digit + '0';
+            data   -= digit*divider;
+        }
+    }
+
+    return (ot_int)(dst - dst_start);
+}
+#endif
+
+
 ot_int slistf(ot_u8* dst, const char* label, char format, ot_u8 number, ot_u8* src) {
 /// @note: this function is designed to use a big-endian input string.
     ot_u8* scratch;
