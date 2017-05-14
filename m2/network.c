@@ -247,7 +247,15 @@ ot_int network_route_ff(m2session* active) {
         return -1;
 #   endif
     }
-    
+
+    /// This is a callback/signal that network has accepted a frame.
+	///@todo change the name of "network_sig_route" to "network_sig_frame" or something.
+#   if defined(EXTF_network_sig_route)
+        network_sig_route((void*)&route_val, (void*)active);
+#   elif (OT_FEATURE(M2NP_CALLBACKS) == ENABLED)
+        m2np.signal.route((void*)&route_val, (void*)active);
+#   endif
+
     /// Handle rest of M2NP header fields
     if (use_m2np) {
         /// Grab Source Address from this packet (dialog address), which is 
@@ -305,11 +313,6 @@ ot_int network_route_ff(m2session* active) {
                     m2np.rt.dest.value  = NULL;
                 }
                 route_val = -1;  // (or something)
-#               if defined(EXTF_network_sig_route)
-                    network_sig_route((void*)&route_val, (void*)active);
-#               elif (OT_FEATURE(M2NP_CALLBACKS) == ENABLED)
-                    m2np.signal.route((void*)&route_val, (void*)active);
-#               endif
 #           else
                 return -1;
 #           endif
