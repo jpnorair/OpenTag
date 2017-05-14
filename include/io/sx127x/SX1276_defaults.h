@@ -36,6 +36,10 @@
 #include <io/sx127x/SX1276_registers.h>
 
 
+// PARamp
+#undef  DRF_LR_PARAMP
+#define DRF_LR_PARAMP           (_PA_RAMP_40us)
+
 // LNA Gain: Use max gain setting, and boost it
 #undef  DRF_LR_LNA
 #define DRF_LR_LNA              (_LNA_GAIN_G1 | _LNA_BOOST_LF_ON | _LNA_BOOST_HF_ON)

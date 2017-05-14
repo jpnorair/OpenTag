@@ -292,6 +292,11 @@ ot_u8 sx127x_getbasepwr();
 
 
 
+void sx127x_antsw_off(void);
+void sx127x_antsw_on(void);
+void sx127x_antsw_tx(ot_bool use_paboost);
+void sx127x_antsw_rx(void);
+
 
 /** @brief  Configures SX127x outputs for RX Data Modes
   * @param  None

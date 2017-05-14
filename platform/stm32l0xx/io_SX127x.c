@@ -438,6 +438,34 @@ void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
   * (TX)            
   */
 
+void sx127x_antsw_off(void) {
+#   if (defined(__SX127x_PABOOST__) || defined(__SX127x_TXSW__) || defined(__SX127x_RXSW__))
+    BOARD_RFANT_OFF();
+#   endif
+}
+
+void sx127x_antsw_on(void) {
+#   if (defined(__SX127x_PABOOST__) || defined(__SX127x_TXSW__) || defined(__SX127x_RXSW__))
+    BOARD_RFANT_ON();
+#   endif
+}
+
+void sx127x_antsw_tx(ot_bool use_paboost) {
+#   if (defined(__SX127x_PABOOST__) || defined(__SX127x_TXSW__))
+    sx127x_antsw_on();
+    BOARD_RFANT_TX(use_paboost);
+#   endif
+}
+
+void sx127x_antsw_rx(void) {
+#   if defined(__SX127x_RXSW__)
+    sx127x_antsw_on();
+    BOARD_RFANT_RX();
+#   endif
+}
+
+
+
 
 void sx127x_int_config(ot_u32 ie_sel) {
     ot_u32 scratch;
