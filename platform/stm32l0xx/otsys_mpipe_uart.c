@@ -736,14 +736,18 @@ void sub_txopen() {
     uart.header.sync55  = 0x55;
     
     // Always include CRC on TX
+    uart.header.plen    = PLATFORM_ENDIAN16(plen);
+    uart.header.ctl     = 0;
+    uart.header.seq    += 1;
+    
     uart.header.crc16   = crc16drv_block_manual((ot_u8*)&uart.header.plen, 4, 0xFFFF);
     uart.header.crc16   = crc16drv_block_manual(uart.lq.getcursor, plen, uart.header.crc16);
     uart.header.crc16   = PLATFORM_ENDIAN16(uart.header.crc16);
     
     //note that .plen is just data on TX, careful of endian bugs
-    uart.header.plen    = PLATFORM_ENDIAN16(plen);
-    uart.header.ctl     = 0;
-    uart.header.seq    += 1;
+    //uart.header.plen    = PLATFORM_ENDIAN16(plen);
+    //uart.header.ctl     = 0;
+    //uart.header.seq    += 1;
 
     sub_mpipe_close();
     sub_mpipe_open();
