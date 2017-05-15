@@ -561,6 +561,7 @@ OT_WEAK void dll_systask_rf(ot_task task) {
 
             // CSMA Manager (needed for archaic radios only)
             //case 4: dll_txcsma();         break;
+            case 4:
 
             // TX & CSMA Timeout Watchdog
             case 5: rm2_kill();             break;
