@@ -44,6 +44,7 @@ mpipe_struct mpipe;
 void mpipe_connect(void* port_id) {
 ///@todo no hard-coded input for second arg
     sys.task_MPA.latency    = mpipedrv_init(port_id, MPIPE_default);
+    mpipe_open();
 }
 
 void mpipe_disconnect(void* port_id) {
@@ -109,7 +110,10 @@ void mpipeevt_txdone(ot_int code) {
     
     if (code == 0) {
         nextevent++;
-        q_rewind(mpipe.alp.outq);
+        
+        ///@todo TX has problems.  Reset TXQ right now.  Fix the driver later.
+    //    q_rewind(mpipe.alp.outq);
+        q_empty(mpipe.alp.outq);
     }
     
     sub_mpipe_actuate(nextevent, 1, code);
