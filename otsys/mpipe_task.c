@@ -110,10 +110,7 @@ void mpipeevt_txdone(ot_int code) {
     
     if (code == 0) {
         nextevent++;
-        
-        ///@todo TX has problems.  Reset TXQ right now.  Fix the driver later.
-    //    q_rewind(mpipe.alp.outq);
-        q_empty(mpipe.alp.outq);
+        q_rewind(mpipe.alp.outq);
     }
     
     sub_mpipe_actuate(nextevent, 1, code);

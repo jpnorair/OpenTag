@@ -471,7 +471,6 @@ void sub_mpipe_open() {
     scratch                &= ~((3 << (BOARD_UART_TXPINNUM*2)) | (3 << (BOARD_UART_RXPINNUM*2)));
     scratch                |= (2 << (BOARD_UART_TXPINNUM*2)) | (2 << (BOARD_UART_RXPINNUM*2));
     BOARD_UART_PORT->MODER  = scratch;
-    //mpipe.state             = MPIPE_Idle;
 }
 
 void sub_mpipe_close() {
@@ -700,6 +699,7 @@ void mpipedrv_block() {
 
 
 #ifndef EXTF_mpipedrv_unblock
+///@todo Check if this function gets used, and how.
 void mpipedrv_unblock() {
     if (mpipe.state == MPIPE_Null) {
         mpipe.state = MPIPE_Idle;
@@ -729,9 +729,20 @@ void mpipedrv_wait() {
 
 
 
-#ifndef EXTF_mpipedrv_tx
+
 void sub_txopen() {
-    ot_u16 plen         = q_span(&uart.lq);
+    ot_u16 plen;
+    
+    plen                = q_span(mpipe.alp.outq);
+    uart.lq.front       = mpipe.alp.outq->getcursor;
+    uart.lq.back        = mpipe.alp.outq->putcursor;
+    uart.lq.getcursor   = uart.lq.front;
+    uart.lq.putcursor   = uart.lq.front + pktlen;
+    
+    //getcursor to end of packet, to allow another packet to be added
+    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
+
+    /// Build Header
     uart.header.syncFF  = 0xff;
     uart.header.sync55  = 0x55;
     
@@ -743,11 +754,6 @@ void sub_txopen() {
     uart.header.crc16   = crc16drv_block_manual((ot_u8*)&uart.header.plen, 4, 0xFFFF);
     uart.header.crc16   = crc16drv_block_manual(uart.lq.getcursor, plen, uart.header.crc16);
     uart.header.crc16   = PLATFORM_ENDIAN16(uart.header.crc16);
-    
-    //note that .plen is just data on TX, careful of endian bugs
-    //uart.header.plen    = PLATFORM_ENDIAN16(plen);
-    //uart.header.ctl     = 0;
-    //uart.header.seq    += 1;
 
     sub_mpipe_close();
     sub_mpipe_open();
@@ -768,6 +774,8 @@ void sub_txcont() {
 }
 
 
+
+#ifndef EXTF_mpipedrv_tx
 ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
 /// Data TX will only occur if this function is called when the MPipe state is
 /// idle.  The exception is when the function is called with ACK priority, in
@@ -775,7 +783,6 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
 /// blocking parameter, the function will not return until the packet is
 /// completely transmitted.
     ot_u16 holdtime;
-    ot_u16 pktlen;
     
 #   if (MPIPE_USE_ACKS)
     if (data_priority == MPIPE_Ack)) {
@@ -791,23 +798,20 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
         return -holdtime;
     }
     
-    //getcursor to end of packet, to allow another packet to be added
-    pktlen                      = q_span(mpipe.alp.outq);
-    holdtime                    = __MPIPE_TIMEOUT(pktlen);
-    uart.lq.front               = mpipe.alp.outq->getcursor;
-    uart.lq.back                = mpipe.alp.outq->putcursor;
-    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
+    holdtime        = __MPIPE_TIMEOUT(q_length(mpipe.alp.outq));
+    uart.lq.back    = 
     
-    // Don't start the TX if there's already activity, or if blocked
+    // Don't start the TX if there's already activity, or if blocked.
+    // If there is already activity, the packet will get queued.
     if (mpipe.state == MPIPE_Idle) {
-        uart.lq.getcursor       = uart.lq.front;
-        uart.lq.putcursor       = uart.lq.front + pktlen;
-        
         __SYS_CLKON();
         sub_txopen();
-        q_blockwrite(mpipe.alp.outq, blocking ? holdtime : 0);
     }
-
+    
+    /// Purpose here is to continue blocking the queue until the
+    /// most recently added packet (last packet) is sent.
+    q_blockwrite(mpipe.alp.outq, blocking ? holdtime : 0);
+    
     return holdtime;
 }
 #endif
