@@ -71,6 +71,11 @@ void mpipe_close() {
 }
 
 
+void sub_mpipe_setidle(ot_task task) {
+    task->event     = 0;
+    task->reserve   = 1;
+}
+
 void sub_mpipe_actuate(ot_u8 new_event, ot_u8 new_reserve, ot_uint new_nextevent) {
 /// Kernel should be pre-empted in order to cancel the currently scheduled
 /// task for MPipe and replace it with this one (if any task is scheduled).
@@ -145,8 +150,7 @@ void mpipe_systask(ot_task task) {
         /// ALP must manage the protocol/packet data and call TX when/if it has
         /// a response ready.  Driver is always in passive-RX if not TX'ing.
         case 1: alp_parse_message(&mpipe.alp, NULL);
-                task->reserve   = 1;
-                task->event     = 0;
+                sub_mpipe_setidle(task);
                 break;
 
         // Initialize TX: mpipe_send is used.
@@ -166,7 +170,7 @@ void mpipe_systask(ot_task task) {
         /// Scrub the queue to remove packets that have been sent.
         /// Driver will already be transitioned to passive-RX.
         case 4: q_rewind(mpipe.alp.outq);
-                task->event = 0;
+                sub_mpipe_setidle(task);
                 break;    
                  
         // Return to idle (passive RX)

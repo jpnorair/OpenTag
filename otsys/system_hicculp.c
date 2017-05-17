@@ -261,14 +261,18 @@ OT_WEAK void sys_powerdown() {
     ///      Better to have a second status call for exotasks.
     for (i=0; i<_NUM_EXOTASKS; i++) {
         ot_u8 task_event    = sys.task[i].event;
+        ot_u8 task_cursor   = sys.task[i].cursor;
         sys.task[i].event   = 255;
         TASK_INDEXED_CALL(i);
-        sys.task[i].event   = task_event;
         
         // Pick the lowest code in the exotask list
         if (sys.task[i].cursor < code) {
             code = sys.task[i].cursor;
         }
+        
+        // Reset event and cursor to previous values
+        sys.task[i].event   = task_event;
+        sys.task[i].cursor  = task_cursor;
     }
 
     // Shut down the clocker: a task isn't running during powerdown
