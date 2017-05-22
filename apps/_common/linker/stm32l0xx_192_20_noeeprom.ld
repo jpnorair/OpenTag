@@ -26,7 +26,7 @@ support writes to EEPROM, so you can use this script with those.  Be careful
 to use a compliant filesystem configuration, though!
 
 DETAILS
-- Declares 192B stack, although this is only used for Kernel Tasks.  ISRs and
+- Declares 1024B stack, although this is only used for Kernel Tasks.  ISRs and
     threads have their own stacks, allocated in OpenTag configuration.  Assume
     another 256B for the ISR stack and at least 160B per thread.
 
@@ -40,7 +40,7 @@ ENTRY(Reset_Handler)
 /* DEFAULT STACK SIZES: 
    used by the startup in order to allocate stacks for the different modes.
 */
-__Stack_Size = 192 ;
+__Stack_Size = 1024 ;
 PROVIDE ( _Stack_Size = __Stack_Size ) ;
 __Stack_Init = _estack  - __Stack_Size ;
 
