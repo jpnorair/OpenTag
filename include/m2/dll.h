@@ -382,7 +382,7 @@ void dll_init(void);
   * @ingroup DLL
   * @sa otapi_sysinit(), sys_init()
   *
-  * sys_refresh() does two things.  First, it grabs the registry data from the
+  * dll_refresh() does two things.  First, it grabs the registry data from the
   * Network Settings ISF (ISF 0) and applies it to the system object.  Then it
   * puts OpenTag in a default idle state with no pending or ongoing sessions.
   */
