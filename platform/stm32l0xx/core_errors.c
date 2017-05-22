@@ -72,10 +72,10 @@ void HardFault_Handler(void) {
     while (1) {
         BOARD_led1_on();
         BOARD_led2_off();
-        delay_ti(30);
+        delay_ti(100);
         BOARD_led1_off();
         BOARD_led2_on();
-        delay_ti(30);
+        delay_ti(100);
     }
 
 #else
