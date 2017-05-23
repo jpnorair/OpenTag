@@ -393,8 +393,8 @@
   */
 
 /// @todo lookup actual data rate in use: this is hardcoded for 115200
-#define __MPIPE_TIMEOUT(BYTES)  (1 + ((_miti_per_byte[uart.baudrate] * BYTES) >> 10))
-
+//#define __MPIPE_TIMEOUT(BYTES)  (1 + ((_miti_per_byte[uart.baudrate] * BYTES) >> 10))
+#define __MPIPE_TIMEOUT(BYTES)  ( 1 + ((BYTES+8) >> 3) )
 
 
 
