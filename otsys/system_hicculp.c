@@ -512,7 +512,7 @@ OT_WEAK ot_uint sys_event_manager() {
 
     nextevent   = OT_GPTIM_LIMIT;
     task_i      = &sys.task[TASK_terminus];
-    select      = TASK_MAX;
+    select      = TASK_MAX; //TASK_terminus;
 #   if (OT_FEATURE(SYSTASK_CALLBACKS) != ENABLED)
     i           = TASK_terminus;
 #   endif
@@ -631,7 +631,9 @@ OT_INLINE void sys_run_task() {
     systim_start_clocker();
     
     sys_run_task_CALL:
-    TASK_CALL(sys.active);
+    //if (sys.active < TASK_terminus) {
+        TASK_CALL(sys.active);
+    //}
 }
 #endif
 
