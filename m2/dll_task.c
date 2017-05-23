@@ -89,7 +89,7 @@ static void sub_dll_flush(void);
   * @retval ot_bool     True/False on received frame subnet passes/fails filter
   * @ingroup System
   */
-//static ot_bool sub_mac_filter(void);
+//moved to rm2_mac_filter()
 
 
 /** @brief Scrambles the response-channel-list in order to improve collision
@@ -1389,11 +1389,6 @@ OT_WEAK void dll_set_defaults(m2session* s_active) {
 //}
 
 
-
-
-//ot_bool sub_mac_filter(void) {
-//    return rm2_mac_filter();
-//}
 
 
 
