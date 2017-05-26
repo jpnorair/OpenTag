@@ -631,9 +631,9 @@ OT_INLINE void sys_run_task() {
     systim_start_clocker();
     
     sys_run_task_CALL:
-    //if (sys.active < TASK_terminus) {
+    if (TASK(sys.active)->event != 0) {
         TASK_CALL(sys.active);
-    //}
+    }
 }
 #endif
 
