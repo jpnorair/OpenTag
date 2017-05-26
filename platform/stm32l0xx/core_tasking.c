@@ -258,6 +258,7 @@ OT_INLINE void platform_ot_run() {
     ///    or that no task is scheduled.  If no task is scheduled, then it is
     ///    time to go to sleep.  sys_powerdown() MUST re-enable interrupts
     ///    immediately before issuing WFI instruction.
+    BOARD_led3_off();
     while (systim.flags & GPTIM_FLAG_SLEEP) {
         platform_disable_interrupts();
         //systim_enable();                // LPTIM must be always running
@@ -267,7 +268,8 @@ OT_INLINE void platform_ot_run() {
         // The wakeup ISR must clear GPTIM_FLAG_SLEEP if task scheduling is to continue
         __NOP();
     }
-
+    BOARD_led3_on();
+    
     /// 3. Stop the backup timer, which is used as a kernel watchdog.
     platform_disable_interrupts();
     systim_stop_ticker();
