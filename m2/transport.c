@@ -228,8 +228,10 @@ ot_bool m2qp_sig_null(id_tmpl* responder_id, ot_int payload_length, ot_u8* paylo
 
 
 
-///@note New patchwork code to accomodate universal ALP model.
-///      Soon it will need buffers as well
+///@todo We'll need to build an alternate buffer for M2ALP
+///      This is patchwork code, just to deliver basic functionality
+///      with existing buffer structure.
+///      See other "todo m2alp" notes in this file.
 alp_tmpl m2alp;
 
 
@@ -240,20 +242,12 @@ OT_WEAK void m2qp_init() {
 #   if !defined(EXTF_m2qp_sig_isf)
         m2qp.sig.isf    = &m2qp_sig_null;
 #   endif
-
 #   if !defined(EXTF_m2qp_sig_ctl) && M2QP_HANDLES_ERROR
-
         m2qp.sig.ctl = &m2qp_sig_null;
-
 #   endif
-
 #   if !defined(EXTF_m2qp_sig_a2p) && M2QP_HANDLES_A2P
-
         m2qp.sig.a2p    = &m2qp_sig_null;
-
 #   endif
-
-
 
 // These callbacks no longer available
 //#   if !defined(EXTF_m2qp_sig_udp)
@@ -271,8 +265,9 @@ OT_WEAK void m2qp_init() {
     //Initialize to an undefined code value
     m2qp.cmd.code = 0x1F;
 
-    ///@note New patchwork code to accomodate universal ALP model.
-    ///      Soon it will need buffers as well.
+    ///@todo m2alp: Revise this code to use independent buffer 
+    ///      for M2ALP instead of having it point directly to 
+    ///      rxq & txq.
     alp_init(&m2alp, &rxq, &txq);
 }
 #endif
@@ -423,10 +418,9 @@ ot_int sub_parse_request(m2session* active) {
         }
     }
 
-    /// 3. Handle Global Queries: (Anycast
+    /// 3. Handle Global Queries:
     /// Multicast and anycast addressed requests include queries
-    //if (m2np.header.fr_info & M2QUERY_GLOBAL) {
-    if (m2qp.cmd.code & M2TT_REQ_QUERY) {     ///@todo future update code
+    if ((m2qp.cmd.code & 0x70) > M2TT_REQ_UB) {
         score = sub_process_query(active);
     }
 
@@ -469,36 +463,47 @@ void sub_opgroup_globalisf(void) {
 
 
 void sub_opgroup_udp(void) {
-    /*
-    ot_u8 src, dst;
 
-    // Grab Source & Destination Ports.  DASH7 uses 8 bit ports.  The specific
-    // mapping between IETF 16 bit ports and DASH7 ports is not defined yet,
-    // but you can safely assume that ports 224-255 are user-defined.
-    dst = rxq.getcursor[1];
-    src = rxq.getcursor[2];
+///@note this is old code from before the ALP era.  It conveys the basic
+///      idea of what is going-on pretty well, so it is left here as a
+///      comment.
+//    ot_u8 src, dst;
+//
+//    // Grab Source & Destination Ports.  DASH7 uses 8 bit ports.  The specific
+//    // mapping between IETF 16 bit ports and DASH7 ports is not defined yet,
+//    // but you can safely assume that ports 224-255 are user-defined.
+//    dst = rxq.getcursor[1];
+//    src = rxq.getcursor[2];
+//
+//    // For Response, automatically swap source & destination ports in Request
+//    if ((m2qp.cmd.code & M2TT_MASK) != M2TT_RESPONSE) {
+//        q_writebyte(&txq, dst);
+//        q_writebyte(&txq, src);
+//    }
+//
+//    // Response always happens after Request, unless the global M2QP "No Resp"
+//    // bit is set.  The transport layer manages this independently of the
+//    // application layer.
+//    M2QP_CB_UDP(src, dst);
 
-    // For Response, automatically swap source & destination ports in Request
-    if ((m2qp.cmd.code & M2TT_MASK) != M2TT_RESPONSE) {
-        q_writebyte(&txq, dst);
-        q_writebyte(&txq, src);
-    }
-
-    // Response always happens after Request, unless the global M2QP "No Resp"
-    // bit is set.  The transport layer manages this independently of the
-    // application layer.
-    M2QP_CB_UDP(src, dst);
-    */
-
-    ot_int      udp_record_size;
-    ot_u8*      udp_record;
+    
+    ///@todo m2alp: This model does not use a separate M2ALP buffer, as it
+    ///      should.  It will be overhauled in the next minor version.
+    ///      The commented-out parts will be uncommented when buffer revision
+    ///      is done (and likely other small changes)
+    
+//    ot_int      udp_record_size;
+//    ot_u8*      udp_record;
     ALP_status  status;
 
-    udp_record_size = rxq.back - rxq.getcursor;
-    udp_record      = rxq.getcursor;
-    rxq.getcursor   = rxq.back;
-    q_writestring(m2alp.inq, udp_record, udp_record_size);      // or is there alp add new?
-
+//    udp_record_size = rxq.back - rxq.getcursor;
+//    udp_record      = rxq.getcursor;
+//    rxq.getcursor   = rxq.back;
+//    q_writestring(m2alp.inq, udp_record, udp_record_size);
+    
+    // hack to allow span usage
+    rxq.putcursor = rxq.back;
+    
     status  = alp_parse_message(&m2alp, &m2np.rt.dlog);
     if (status == MSG_Null) {
         ///@todo some exception management, although it might not be necessary
@@ -599,7 +604,6 @@ ot_int sub_process_query(m2session* active) {
     /// ACK check: Non-initial A2P only
     /// Look through the ack list for this host's device ID.  If it is
     /// there, then the query can exit.
-    //if (cmd_type > 0x40) {
     if (cmd_type > M2TT_REQ_M_INIT) {     ///@todo future update code
         ot_bool id_test;
         ot_int  number_of_acks  = (ot_int)q_readbyte(&rxq);
