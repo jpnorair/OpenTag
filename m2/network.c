@@ -167,15 +167,14 @@ OT_WEAK void network_mark_ff() {
 
 #ifndef EXTF_network_route_ff
 ot_int network_route_ff(m2session* active) {
+///@note The encoder / decoder stage must set rxq.back to the end of the frame.
+///      The "end-of-frame" is right before CRC (or technically, rxq.back should
+///      be on the first CRC byte)
     ot_int  route_val;
     ot_int  use_m2np;
 #   if (OT_FEATURE(DLL_SECURITY))
     ot_u8   dlls_key_index;
 #   endif
-
-    // Strip CRC bytes from the end of the message.  RS bytes are stripped by
-    // the decoder, if RS is enabled/used.
-    //rxq.front[0]       -= 2;  //done in encoder now
     
     /// Acquire RSCODE flag from LC byte (0x40) and transpose to its position
     /// for session flags (0x08)
@@ -229,20 +228,25 @@ ot_int network_route_ff(m2session* active) {
     
     /// Data Link Layer Security: Decryption
     /// @note Still Experimental
+    /// @todo make sure auth_decrypt() strips the Authentication bytes (4) and 
+    ///       includes in return value.
+    ///
     /// Do the decryption using the key selected above, and return error if the
     /// result is not authenticated properly or has any other sort of framing
     /// problem.  Decryption returns a value used to reframe the plain-data.
     if (m2np.header.fr_info & M2FI_DLLS) {
 #   if (OT_FEATURE(DLL_SECURITY))
-        ot_u8* nonce;
-        ot_int lendiff;
+        ot_u8*  nonce;
+        ot_int  lendiff;
+        ot_uint datalen;
         nonce           = rxq.getcursor - 1;
         rxq.getcursor  += 6;
-        lendiff         = auth_decrypt(nonce, rxq.getcursor, q_span(&rxq), dlls_key_index, 0); 
+        datalen         = rxq.back - rxq.getcursor;
+        lendiff         = auth_decrypt(nonce, rxq.getcursor, datalen, dlls_key_index, 0); 
         if (lendiff < 0) {
             return -1;
         }
-        rxq.putcursor -= lendiff;
+        rxq.back -= lendiff;
 #   else
         return -1;
 #   endif
@@ -347,7 +351,6 @@ ot_int network_route_ff(m2session* active) {
   * ============================================================================
   * - M2NP = Mode 2 Network Protocol.
   * - Routable, primary data-networking protocol for DASH7 Mode 2.
-  * @todo Make sure rxq.back is set to end of the M2QP payload
   */
 
 #ifndef EXTF_m2np_header
