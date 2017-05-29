@@ -31,7 +31,7 @@
 
 #ifdef EXTF_network_sig_route
 void network_sig_route(void* route, void* session) {
-#   if (0 && OT_FEATURE(MPIPE))
+#   if (OT_FEATURE(MPIPE))
     static const char* label_dialog = "M2_Dialog";
     static const char* label_nack   = "M2_Nack";
     static const char* label_stream = "M2_Stream";
@@ -44,10 +44,9 @@ void network_sig_route(void* route, void* session) {
 
 	protocol = ((m2session*)session)->extra & 3;
 	logger_msg(	MSG_raw,
-					label_len[protocol],
-					q_length(&rxq),
-					(ot_u8*)label[protocol],
-					rxq.front	);
-#endif
+					label_len[protocol], q_length(&rxq),
+					label[protocol], rxq.front
+					);
+#   endif
 }
 #endif
