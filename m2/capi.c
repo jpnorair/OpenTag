@@ -209,7 +209,7 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
     else {
         // Place dialog with timeout
         dll.comm.rx_timeout = otutils_calc_timeout(dialog->timeout);
-        dialog->timeout    |= (dialog->channels == 0) << 7;     // 0 or 0x80
+        dialog->timeout    |= (dialog->channels != 0) << 7;     // 0 or 0x80
         q_writebyte(&txq, dialog->timeout);
     
         // Write response list
@@ -229,8 +229,8 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
 #ifndef EXTF_otapi_put_query_tmpl
 ot_u16 otapi_put_query_tmpl(ot_u8* status, query_tmpl* query) {
     /// Test for Anycast and Multicast addressing (query needs one of these)    
-    //if (m2np.header.fr_info & M2QUERY_GLOBAL) {
-    if ((m2qp.cmd.code & M2TT_MASK) < M2TT_REQ_UB) {     ///@note using modernized approach
+
+    if ((m2qp.cmd.code & M2TT_MASK) > M2TT_REQ_UB) {
         q_writebyte(&txq, query->length);
         q_writebyte(&txq, query->code);
     
