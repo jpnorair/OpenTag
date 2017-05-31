@@ -428,7 +428,7 @@ const ot_u8 isf_stock_files[] = {
     0x11,                                               /* Beacon Subnet */
     SPLIT_SHORT(OT_ACTIVE_SETTINGS),                    /* Active Setting */
     0x00,                                               /* Default Device Flags */
-    1,                                                  /* Beacon Attempts */
+    0,                                                  /* Beacon Attempts */
     SPLIT_SHORT(2),                                     /* Hold Scan Sequence Cycles */
 
     /* device features: id=0x01, len=48, alloc=48 */
