@@ -611,7 +611,7 @@ ot_ulong platform_get_clockhz(ot_uint clock_index) {
         return 0;   //result for dumb APIs
     }
 #   endif
-    return platform_ext.clock_hz[clock_index];
+    return (clock_index > 2) ? 0 : platform_ext.clock_hz[clock_index];
 }
 
 
@@ -947,11 +947,20 @@ void platform_init_OT() {
     ///      the default file location by the manufacturer firmware upload.
 #   if (defined(__DEBUG__) || defined(__PROTO__))
     {   vlFILE* fpid;
+        union {
+            ot_u32 word[3];
+            ot_u16 halfw[6];
+        } generated_id;
         ot_u16* hwid;
         ot_int  i;
 
+        generated_id.word[0]    = *((ot_u32*)(0x1FF80050));
+        generated_id.halfw[1]  ^= *((ot_u16*)(0x1FF80064));
+        generated_id.halfw[2]   = *((ot_u16*)(0x1FF80066));
+        generated_id.word[0]   ^= *((ot_u32*)(0x1FF80054));
+        
         fpid    = ISF_open_su(ISF_ID(device_features));
-        hwid    = (ot_u16*)(0x1FF80050);
+        hwid    = &generated_id.halfw[0];
         for (i=6; i!=0; i-=2) {
             vl_write(fpid, i, *hwid++);
         }
@@ -982,8 +991,8 @@ void platform_init_busclk() {
 
     // Reset HSION, HSEON, HSEBYP, CSSON and PLLON bits
     // Disable all clocker interrupts (default)
-    RCC->CR    &= (uint32_t)0xEEFAFFFE;
-    //RCC->CIR    = 0x00000000;
+    RCC->CR    &= 0xFEF0FFF6;   // 0xEEFAFFFE;
+    //RCC->CIER  &= 0xFFFFFF00;
 
 
     ///2. Prepare external Memory bus (not currently supported)
