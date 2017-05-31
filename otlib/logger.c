@@ -88,7 +88,7 @@ void logger(ot_u8 subcode, ot_int length, ot_u8* data) {
 
 void sub_logmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* data) {
 	q_writestring(mpipe.alp.outq, label, label_len);
-    q_writebyte(mpipe.alp.outq, ' ');
+    q_writebyte(mpipe.alp.outq, 0);
     q_writestring(mpipe.alp.outq, data, data_len);
 }
 
