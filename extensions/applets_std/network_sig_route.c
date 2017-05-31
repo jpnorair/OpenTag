@@ -36,7 +36,7 @@ void network_sig_route(void* route, void* session) {
     static const char* label_nack   = "M2_Nack";
     static const char* label_stream = "M2_Stream";
     static const char* label_snack  = "M2_SNack";
-    static const ot_u8 label_len[]  = { 10, 8, 10, 9 };
+    static const ot_u8 label_len[]  = { 9, 7, 9, 8 };
     
     const char* label[] = { label_dialog, label_nack, label_stream, label_snack };
     
