@@ -68,7 +68,7 @@ void HardFault_Handler(void) {
 /// If you have traced the code here, most likely the problem is stack overrun.
 /// You need to allocate a bigger stack for SSTACK or your thread, or fix some
 /// other serious problem (possibly interrupt storm)
-#ifdef __DEBUG__
+#if defined(__DEBUG__) || defined(__PROTO__)
     while (1) {
         BOARD_led1_on();
         BOARD_led2_off();
