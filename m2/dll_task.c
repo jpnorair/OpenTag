@@ -81,15 +81,15 @@ static void sub_dll_flush(void);
   * ============================================================================
   */
 
-//ot_u8 sub_default_idle(void);
-#define sub_default_idle()  M2_DLLIDLE_SLEEP
+ot_u8 sub_default_idle(void);
+
 
 
 /** @brief Performs subnet filtering (per Mode 2 spec) and returns status
   * @retval ot_bool     True/False on received frame subnet passes/fails filter
   * @ingroup System
   */
-//static ot_bool sub_mac_filter(void);
+//moved to rm2_mac_filter()
 
 
 /** @brief Scrambles the response-channel-list in order to improve collision
@@ -333,6 +333,21 @@ OT_WEAK void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings) {
 #endif
 
 
+#ifndef EXTF_dll_silence
+OT_WEAK void dll_silence(ot_bool onoff) {
+    if (onoff == false) {
+        dll.netconf.active &= ~(1<<12);
+        //if (radio.state == RADIO_Idle) {
+        //    dll.idle_state      = sub_default_idle(); 
+        //    dll_idle();
+        //}
+        dll_refresh();
+    } 
+    else {
+        dll.netconf.active |= (1<<12);
+    }
+}
+#endif
 
 #ifndef EXTF_dll_goto_off
 OT_WEAK void dll_goto_off(void) {
@@ -517,6 +532,8 @@ OT_WEAK void dll_unblock(void) {
 
 #ifndef EXTF_dll_clock
 OT_WEAK void dll_clock(ot_uint clocks) {
+/// @todo experiment giving exotasks two handles.
+///       one for clocking and administrative uses, one for tasking.
     ot_uint ticks;
     ticks = CLK2TI(clocks);
 
@@ -723,12 +740,16 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
 OT_WEAK void dll_systask_beacon(ot_task task) {
 /// The beacon rountine runs as an idependent systask.
     m2session*  b_session;
+    ot_u16      nextbeacon;
 
     if ((task->event == 0) || (dll.netconf.b_attempts == 0)) {
         dll_idle();
         return;
     }
 
+    /// This is a retry time, in case of failure condition
+    nextbeacon = 10;
+    
     /// Load file-based beacon:
     /// Open BTS ISF Element and read the beacon sequence.  Make sure there is
     /// a beacon file of non-zero length and that beacons are presently enabled.
@@ -738,11 +759,12 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
 
         fp = ISF_open_su( ISF_ID(beacon_transmit_sequence) );
         if (fp == NULL) {
-            return; //goto dll_systask_beacon_STOP;
+            nextbeacon = 10;               // try again after this delay
+            goto dll_systask_beacon_END;
         }
         if (fp->length == 0)    {
             vl_close(fp);
-            return; //goto dll_systask_beacon_STOP;
+            goto dll_systask_beacon_END;
         }
 
         // move fp start onto the cursor in order to use vl_load() later on
@@ -772,8 +794,12 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
     b_session->flags    = dll.netconf.btemp[1] & 0x78;
     //b_session->flags   |= (b_session->extra & 0x30);
 
+    nextbeacon = (ot_u32)PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]);
+    
+    dll_systask_beacon_END:
+    
     // Last 2 bytes: Next Scan ticks
-    sys_task_setnext(task, (ot_u32)PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]) );
+    sys_task_setnext(task, (ot_u32)nextbeacon);
 
     ///@note this might not be necessary or wise!
     //return;
@@ -1372,10 +1398,14 @@ OT_WEAK void dll_set_defaults(m2session* s_active) {
 
 
 
-
-//ot_u8 sub_default_idle(void) {
-    //return M2_DLLIDLE_SLEEP;
-
+ot_u8 sub_default_idle(void) {
+    //return (dll.netconf.active & (1<<12)) ? M2_DLLIDLE_OFF : M2_DLLIDLE_SLEEP;
+    //return ((dll.netconf.active & (1<<12)) == 0);   // compressed form of above
+    
+    return M2_DLLIDLE_SLEEP;
+    
+//            
+//            
 //#if (M2_FEATURE(ENDPOINT) == ENABLED)
 //    ot_u16 setting;
 //    setting = (dll.netconf.active & M2_SET_CLASSMASK) >> _SETTING_SHIFT;
@@ -1386,14 +1416,9 @@ OT_WEAK void dll_set_defaults(m2session* s_active) {
 //#else
 //    return (dll.netconf.active & M2_SET_CLASSMASK) ? M2_DLLIDLE_HOLD : M2_DLLIDLE_OFF;
 //#endif
-//}
+}
 
 
-
-
-//ot_bool sub_mac_filter(void) {
-//    return rm2_mac_filter();
-//}
 
 
 

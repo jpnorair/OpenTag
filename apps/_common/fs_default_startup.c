@@ -458,16 +458,16 @@ const ot_u8 isf_stock_files[] = {
     0x00,                                               /* Header: RFU */
 
     (0x00), 0x00,                                       /* Channel Spectrum ID & RFU */
-    (ot_u8)(( (3) + 40 )*2),                            /* Channel TX Power Limit */
+    (ot_u8)(( (14) + 40 )*2),                            /* Channel TX Power Limit */
     (ot_u8)( 130 ),                                     /* Channel Link Quality Filter Level */
     (ot_u8)( (-120) + 140 ),                            /* CS RSSI Threshold */
     (ot_u8)( (-100) + 140 ),                            /* CCA RSSI Threshold*/
 
     (0x10), 0x00,                                       /* Channel Spectrum ID & RFU */
-    (ot_u8)(( (0) + 40 )*2),                            /* Channel TX Power Limit (dBm) */
+    (ot_u8)(( (14) + 40 )*2),                            /* Channel TX Power Limit (dBm) */
     (ot_u8)( 140 ),                                     /* Channel Link Quality Filter Level */
-    (ot_u8)( (-110) + 140 ),                            /* CS RSSI Threshold */
-    (ot_u8)( (-100) + 140 ),                            /* CCA RSSI Threshold*/
+    (ot_u8)( (-120) + 140 ),                            /* CS RSSI Threshold */
+    (ot_u8)( (-116) + 140 ),                            /* CCA RSSI Threshold*/
 
     (0x20), 0x00,                                       /* Channel Spectrum ID & RFU */
     (ot_u8)(( (-20) + 40 )*2),                          /* Channel TX Power Limit (dBm) */

@@ -16,8 +16,8 @@
 /**
   * @file       /board/stm32l0xx/nucleo_LRWAN1.h
   * @author     JP Norair
-  * @version    R100
-  * @date       29 Oct 2016
+  * @version    R101
+  * @date       29 May 2017
   * @brief      Board Configuration for Nucleo STM32L073 with LoRa module
   * @ingroup    Platform
   *
@@ -45,6 +45,11 @@
 #if OT_FEATURE(M2)
 #   define __USE_RADIO
 #endif
+
+
+/// It's possible to add a GNSS shield to this device, although support is coming later
+//#define __USE_GNSS
+
 
 /// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
 #ifdef ENABLED
@@ -74,6 +79,15 @@
 #   endif
 #endif
 
+#if defined(__USE_GNSS)
+#   ifdef __NULL_GNSS__
+#       include <io/gnss_null/config.h>
+#   else
+#       define __UBX_MAXM8x__
+#       define __UBX_MAXM8C__
+//#       include <io/ubx_gnss.h>
+#   endif
+#endif
 
 
 
@@ -213,6 +227,9 @@
 #define BOARD_FEATURE_USBCONVERTER      BOARD_FEATURE_MPIPE         // Is UART connected via USB converter?
 #define BOARD_FEATURE_MPIPE_BREAK       DISABLED                    // Send/receive leading break for wakeup
 #define BOARD_FEATURE_MPIPE_DIRECT      (BOARD_FEATURE_MPIPE_BREAK != ENABLED) 
+
+// If you have installed GNSS extension board from Haystack
+#define BOARD_FEATURE_UBX_GNSS          DISABLED
 
 // MPIPE UART modes are deprecated.  Only Break-mode or Direct-Mode should be used.
 //#define BOARD_FEATURE_MPIPE_CS          DISABLED                    // Chip-Select / DTR wakeup control

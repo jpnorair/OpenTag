@@ -267,7 +267,7 @@ OT_INLINE void platform_ot_run() {
         // The wakeup ISR must clear GPTIM_FLAG_SLEEP if task scheduling is to continue
         __NOP();
     }
-
+    
     /// 3. Stop the backup timer, which is used as a kernel watchdog.
     platform_disable_interrupts();
     systim_stop_ticker();

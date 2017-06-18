@@ -471,11 +471,17 @@ void EXTI4_15_IRQHandler(void) {
     __EXTI_MACRO(9);
 #   endif    
 #   if ((defined(__ISR_EXTI10) || defined(__USE_EXTI10)) && !defined(__N_ISR_EXTI10))
-    //__EXTI_MACRO(10);
+    
+    ///@todo temporary hack: something is goofy with EXTI forwarding Macro
+#   if defined(BOARD_Discovery_LoRa)
     if (EXTI->PR & (1<<10)) { \
             EXTI->PR = (1<<10);  
             ubxdrv_rxsync_isr();
         } 
+#   else
+    __EXTI_MACRO(10);
+#   endif
+    
 #   endif
 #   if ((defined(__ISR_EXTI11) || defined(__USE_EXTI11)) && !defined(__N_ISR_EXTI11))
     __EXTI_MACRO(11);

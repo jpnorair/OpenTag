@@ -324,16 +324,32 @@ ot_u32 q_readlong(ot_queue* q)  {
 
 #ifndef EXTF_q_writestring
 void q_writestring(ot_queue* q, ot_u8* string, ot_int length) {
-    memcpy(q->putcursor, string, length);
-    q->putcursor   += length;
+    ot_int limit;
+    
+    limit = (q->back - q->putcursor);
+    if (length > limit) {
+        length = limit;
+    } 
+    if (length > 0) {
+        memcpy(q->putcursor, string, length);
+        q->putcursor   += length;
+    }
 }
 #endif
 
 
 #ifndef EXTF_q_readstring
 void q_readstring(ot_queue* q, ot_u8* string, ot_int length) {
-    memcpy(string, q->getcursor, length);
-    q->getcursor += length;
+    ot_int limit;
+    
+    limit = (q->back - q->getcursor);
+    if (length > limit) {
+        length = limit;
+    }
+    if (length > 0) {
+        memcpy(string, q->getcursor, length);
+        q->getcursor += length;
+    }
 }
 #endif
 

@@ -71,6 +71,11 @@ void mpipe_close() {
 }
 
 
+void sub_mpipe_setidle(ot_task task) {
+    task->event     = 0;
+    task->reserve   = 1;
+}
+
 void sub_mpipe_actuate(ot_u8 new_event, ot_u8 new_reserve, ot_uint new_nextevent) {
 /// Kernel should be pre-empted in order to cancel the currently scheduled
 /// task for MPipe and replace it with this one (if any task is scheduled).
@@ -89,59 +94,47 @@ void mpipe_txschedule(ot_int wait) {
 
 void mpipe_rxschedule(ot_int wait) {
     if (sys.task_MPA.event == 0) {
-        sub_mpipe_actuate(4, 1, wait);
+        sub_mpipe_actuate(5, 1, wait);
     }
 }
 
 
 void mpipe_send() {
-///@todo A session stack could be implemented for MPipe Task.  For now, Sending (TX)
+///@note A session stack could be implemented for MPipe Task.  For now, Sending (TX)
 /// will just fall-through if mpipe is occupied
-    //mpipedrv_unblock();
-    //sub_mpipe_actuate(3, 1, (ot_uint)mpipedrv_tx(False, MPIPE_High));
     mpipe_txschedule(0);
 }
 
 
 void mpipeevt_txdone(ot_int code) {
-    // If driver returns 0, it closes connection itself.  Reopen in RX.
-    // If driver returns >0, the task must delay the connection termination.
-    ot_u8 nextevent = 3;
-    
-    if (code == 0) {
-        nextevent++;
-        q_rewind(mpipe.alp.outq);
-    }
-    
-    sub_mpipe_actuate(nextevent, 1, code);
-    //sub_mpipe_actuate(4, 1, code);
+/// Driver calls this function asynchronously after it finishes transmitting.
+/// It will only call it after it is done will all queued TX jobs, not after
+/// each packet.
+/// If code == 0, everything went well in the driver.  If code != 0, TX went
+/// wrong, and must be killed.
+///
+    sub_mpipe_actuate(3+(code==0), 1, 0);
 }
 
 
 void mpipeevt_rxinit(ot_int code) {
-    sub_mpipe_actuate(4, 1, code);
+    sub_mpipe_actuate(5, 1, code);
 }
 
 
 void mpipeevt_rxdetect(ot_int code) {
-    sub_mpipe_actuate(3, 1, (ot_uint)code);
+    sub_mpipe_actuate(3, 1, (ot_uint)code); ///@note come back to this
 }
 
 
 void mpipeevt_rxdone(ot_int code) {
-/// "32" in the array is given as the maximum time for protocol parsing.  It might need
-/// to be more dynamic, depending on protocol and length of packet.  In the future, there
-/// might be a "guess runtime" function in ALP that inspects these things.
-#if (defined(MPIPE_USB) || (BOARD_FEATURE_USBCONVERTER == ENABLED))
-	sub_mpipe_actuate(1, 32, 0);
-#else
-    static const ot_u8 params[] = { 1, 32, 4, 1 };
-    ot_u8* task_params;
-
-    task_params  = params;
-    task_params += (code != 0) << 1;
-    sub_mpipe_actuate(task_params[0], task_params[1], 0);
-#endif
+/// @note "32" in the array is given as the maximum time for protocol parsing.  
+/// It might need to be more dynamic, depending on protocol and length of packet.
+/// In the future, there might be a "guess runtime" function in ALP that 
+/// inspects these things.
+    if (code == 0) {
+        sub_mpipe_actuate(1, 32, 0);
+    }
 }
 
 
@@ -153,23 +146,12 @@ void mpipe_systask(ot_task task) {
         case 0: sys_taskinit_macro(task, mpipedrv_kill(), mpipe_connect(NULL)); 
                 break;
 
-        // RX successful: process the new frames -- note case fall through
-        case 1: {
-            ALP_status status;
-            status      = alp_parse_message(&mpipe.alp, NULL);
-            mpipedrv_clear();
-            switch (status) {
-                //wipe queue and go back to idle listening
-                case MSG_Null:          //goto systask_mpipe_IDLE;
-
-                //listen for next record/message
-                case MSG_Chunking_In:   goto systask_mpipe_RX;
-
-                //transmit next record/message (case fall-through)
-                //case MSG_Chunking_Out:
-                //case MSG_End:           break;
-            }
-        }
+        /// RX packet successful
+        /// ALP must manage the protocol/packet data and call TX when/if it has
+        /// a response ready.  Driver is always in passive-RX if not TX'ing.
+        case 1: alp_parse_message(&mpipe.alp, NULL);
+                sub_mpipe_setidle(task);
+                break;
 
         // Initialize TX: mpipe_send is used.
         case 2: //mpipe_send();
@@ -177,16 +159,24 @@ void mpipe_systask(ot_task task) {
                 sub_mpipe_actuate(3, 1, (ot_uint)mpipedrv_tx(False, MPIPE_High));
                 break;
 
-        // TX/RX timeout -- note case fall-through
+        /// TX timeout: this is a true error, since TX shouldn't timeout.
+        /// Scrub the queue, because we don't know what went wrong, or where.
         case 3: mpipedrv_kill();
-                //mpipedrv_clear();
-
+                q_rewind(mpipe.alp.outq);
+                mpipe_open();
+                break;
+                
+        /// TX successful.
+        /// Scrub the queue to remove packets that have been sent.
+        /// Driver will already be transitioned to passive-RX.
+        case 4: q_rewind(mpipe.alp.outq);
+                sub_mpipe_setidle(task);
+                break;    
+                 
         // Return to idle (passive RX)
-        case 4:
-        systask_mpipe_RX:
-        		mpipe_open();
+        case 5: mpipe_open();
         		break;
-        		
+        				
         // Return the power-code state of the driver, 0-3
         default: task->cursor = mpipedrv_getpwrcode();
                 break;

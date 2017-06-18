@@ -87,7 +87,7 @@
 #include <otlib/crc16.h>
 #include <otsys/mpipe.h>
 #include <otsys/sysclock.h>
-
+#include <otlib/memcpy.h>
 
 
 /** MPipe Default speed configuration <BR>
@@ -393,8 +393,8 @@
   */
 
 /// @todo lookup actual data rate in use: this is hardcoded for 115200
-#define __MPIPE_TIMEOUT(BYTES)  (1 + ((_miti_per_byte[uart.baudrate] * BYTES) >> 10))
-
+//#define __MPIPE_TIMEOUT(BYTES)  (1 + ((_miti_per_byte[uart.baudrate] * BYTES) >> 10))
+#define __MPIPE_TIMEOUT(BYTES)  ( 1 + ((BYTES+8) >> 3) )
 
 
 
@@ -430,6 +430,20 @@ typedef struct {
 
 
 typedef struct {
+    ot_u8*  front;
+    ot_u16  length;
+} uart_element_t;
+
+#define UART_RB_MAX 8
+typedef struct {
+    uart_element_t  rb[UART_RB_MAX];
+    ot_u8           reserved;
+    ot_u8           size;
+    ot_u8           i;
+    ot_u8           j;
+} uart_rb_t;
+
+typedef struct {
 #if (MPIPE_USE_ACKS)
     mpipe_priority  priority;
 #endif
@@ -437,12 +451,12 @@ typedef struct {
     ot_int          clkhandle;
 #endif
     mpipe_speed     baudrate;
-    ot_int          packets;
-    //ot_u8*          pkt;
     crcstream_t     crc;
-    ot_queue        lq;
-    ot_u8           rxbuffer[MPIPE_BUFFER_SIZE];
     mpipe_header    header;
+    ot_u8           rxbuffer[MPIPE_BUFFER_SIZE];
+    ot_u16          rxframelen;
+    ot_u16          rxplen;
+    uart_rb_t       tlist;
 } uart_struct;
 
 uart_struct uart;
@@ -566,9 +580,8 @@ void __UART_ISR(void) {
         }
         else
 #       endif
-        if (uart.lq.putcursor < uart.lq.back) {
-            uart.lq.getcursor = uart.lq.putcursor;
-            uart.lq.putcursor = uart.lq.back;
+        if (--uart.tlist.size != 0) {
+            uart.tlist.i = (uart.tlist.i + 1) & (UART_RB_MAX-1);
             sub_txopen();
         }
         else {
@@ -619,7 +632,6 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 /// 1. "port_id" is unused in this impl, and it may be NULL
 /// 2. Prepare the HW, which in this case is a UART
 /// 3. Set default speed, which in this case is 115200 bps
-    ot_u8 baud_id;
 
     /// Basic setup for MPIPE-UART, with preset bps and sync detection
     mpipe.state     = MPIPE_Null;
@@ -657,7 +669,9 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
     /// Configure MPipe Queues
     /// @todo this will need to be adjusted in the final version
     alp_init(&mpipe.alp, &otmpin, &otmpout);
-    //q_copy(&uart.lq, &mpipe.alp); //don't need to do this
+    
+    /// Initial values for Ring Buffer
+    memset(&uart.tlist, 0, sizeof(uart_rb_t));
     
     return 255;
 }
@@ -731,28 +745,21 @@ void mpipedrv_wait() {
 
 
 void sub_txopen() {
-    ot_u16 plen;
+    uart_element_t*  txpayload;
     
-    plen                = q_span(mpipe.alp.outq);
-    uart.lq.front       = mpipe.alp.outq->getcursor;
-    uart.lq.back        = mpipe.alp.outq->putcursor;
-    uart.lq.getcursor   = uart.lq.front;
-    uart.lq.putcursor   = uart.lq.front + pktlen;
-    
-    //getcursor to end of packet, to allow another packet to be added
-    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
+    txpayload           = &uart.tlist.rb[uart.tlist.i];
 
     /// Build Header
     uart.header.syncFF  = 0xff;
     uart.header.sync55  = 0x55;
     
     // Always include CRC on TX
-    uart.header.plen    = PLATFORM_ENDIAN16(plen);
+    uart.header.plen    = PLATFORM_ENDIAN16(txpayload->length);
     uart.header.ctl     = 0;
     uart.header.seq    += 1;
     
     uart.header.crc16   = crc16drv_block_manual((ot_u8*)&uart.header.plen, 4, 0xFFFF);
-    uart.header.crc16   = crc16drv_block_manual(uart.lq.getcursor, plen, uart.header.crc16);
+    uart.header.crc16   = crc16drv_block_manual(txpayload->front, txpayload->length, uart.header.crc16);
     uart.header.crc16   = PLATFORM_ENDIAN16(uart.header.crc16);
 
     sub_mpipe_close();
@@ -764,10 +771,12 @@ void sub_txopen() {
 
 
 void sub_txcont() {
+    uart_element_t* txpayload;
+    txpayload           = &uart.tlist.rb[uart.tlist.i];
     _DMATX->CCR         = 0;
-    _DMATX->CMAR        = (uint32_t)uart.lq.getcursor;   
-    _DMATX->CNDTR       = (ot_u16)q_span(&uart.lq) + MPIPE_DMAFLUFF;
-    DMA1->IFCR          = (_DMARX_IFG | _DMATX_IFG);     
+    _DMATX->CMAR        = (uint32_t)txpayload->front;   
+    _DMATX->CNDTR       = txpayload->length + MPIPE_DMAFLUFF;
+    DMA1->IFCR          = (_DMARX_IFG | _DMATX_IFG);
     DMA1_CSELR->CSELR   = (DMA1_CSELR->CSELR & ~_DMA_CSEL_MASK) | _DMATX_CSEL;
     __UART_CLEAR();
     _DMATX->CCR         = (DMA_CCR_DIR | DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN);
@@ -782,7 +791,8 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
 /// which case the state doesn't need to be Idle.  Lastly, if you specify the
 /// blocking parameter, the function will not return until the packet is
 /// completely transmitted.
-    ot_u16 holdtime;
+    ot_u16      holdtime;
+    uart_element_t*  txpayload;
     
 #   if (MPIPE_USE_ACKS)
     if (data_priority == MPIPE_Ack)) {
@@ -798,13 +808,22 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
         return -holdtime;
     }
     
-    holdtime        = __MPIPE_TIMEOUT(q_length(mpipe.alp.outq));
-    uart.lq.back    = 
+    /// Load Queue payload into tlist ring buffer
+    /// Tlist RB doesn't store a copy, just references.
+    holdtime                    = __MPIPE_TIMEOUT(q_length(mpipe.alp.outq));
+    uart.tlist.size            += 1;
+    uart.tlist.j                = (uart.tlist.j + 1) & (UART_RB_MAX-1);
+    txpayload                   = &uart.tlist.rb[uart.tlist.j];
+    txpayload->front            = mpipe.alp.outq->getcursor;
+    txpayload->length           = q_span(mpipe.alp.outq);
+    mpipe.alp.outq->getcursor   = mpipe.alp.outq->putcursor;
     
-    // Don't start the TX if there's already activity, or if blocked.
-    // If there is already activity, the packet will get queued.
+    /// Don't start the TX if there's already activity, or if blocked.
+    /// If there is already activity, the packet is queued in the RB
+    /// and it will get sent in order of the RB.
     if (mpipe.state == MPIPE_Idle) {
         __SYS_CLKON();
+        uart.tlist.i = (uart.tlist.i + 1) & (UART_RB_MAX-1);
         sub_txopen();
     }
     
@@ -876,53 +895,47 @@ void mpipedrv_isr() {
         case MPIPE_Idle: //note, case doesn't break!
 
         case MPIPE_RxHeader: {
-            // Use local queue, in order to protect the pending data from
-            // getting accessed by other users of the main queue.
-            q_copy(&uart.lq, mpipe.alp.inq);
-        
+            ot_u16 blockticks;
+            
             // If there is no payload or if the input queue is being used by 
             // someone else, this packet is registered as an error.
-            uart.header.plen = PLATFORM_ENDIAN16(uart.header.plen);
-            if (uart.header.plen == 0)                          error_code = -1;
-            else if (q_blocktime(mpipe.alp.inq))                error_code = -11;
-            else if (q_space(mpipe.alp.inq) < uart.header.plen) error_code = -7;
+            uart.rxplen = PLATFORM_ENDIAN16(uart.header.plen);
+            if (uart.rxplen == 0)                           error_code = -1;
+            else if (q_blocktime(mpipe.alp.inq))            error_code = -11;
+            else if (q_space(mpipe.alp.inq) < uart.rxplen)  error_code = -7;
             
             // No error, start receiving packet formally
             // Most important first thing is to reset DMA to grab first frame.
             else {
-                ot_u16 blockticks;
-                ot_u16 framesize;
-                
-                blockticks = __MPIPE_TIMEOUT(uart.header.plen);
+                blockticks = __MPIPE_TIMEOUT(uart.rxplen);
                 q_blockwrite(mpipe.alp.inq, blockticks);
                 
-                framesize = (uart.header.plen <= MPIPE_BUFFER_SIZE) ? uart.header.plen : MPIPE_BUFFER_SIZE;
-                __DMA_RXOPEN(&uart.rxbuffer, framesize);
+                uart.rxframelen = (uart.rxplen <= MPIPE_BUFFER_SIZE) ? uart.rxplen : MPIPE_BUFFER_SIZE;
+                __DMA_RXOPEN(uart.rxbuffer, uart.rxframelen);
                 mpipeevt_rxdetect(blockticks);
                 mpipe.state = MPIPE_RxPayload;
                 
                 // Start-up the CRC streamer manually.
                 // uart.crc.count is also used to track the bytes left to receive
-                uart.crc.count  = uart.header.plen;
+                uart.crc.count  = uart.rxplen;
                 uart.crc.val    = 0;
                 if ((uart.header.ctl & MPIPE_CTL_NOCRC) == 0) {
                     uart.crc.writeout   = False;
                     uart.crc.cursor     = (ot_u8*)&uart.header.crc16;
                     uart.crc.count     += 6;
                     crc_calc_nstream(&uart.crc, 6);
-                    uart.crc.cursor     = uart.lq.putcursor;
+                    uart.crc.cursor     = mpipe.alp.inq->putcursor;
                 }
                 return;             // Wait for next DMA RX interrupt
             }
         } goto mpipedrv_isr_RXSIG;  // handle error
 
         case MPIPE_RxPayload: {
-            ot_u16  lastframe   = _DMARX->CNDTR;    // Last transferred amount of bytes
             ot_u16  nextframe;
             
             // If there are more frames after this one, refresh DMA buffering
             if (uart.crc.count > MPIPE_BUFFER_SIZE) {
-                nextframe = uart.crc.count - MPIPE_BUFFER_SIZE;
+                nextframe = uart.crc.count - uart.rxframelen;
                 if (nextframe > MPIPE_BUFFER_SIZE) {
                     nextframe = MPIPE_BUFFER_SIZE;
                 }
@@ -930,43 +943,50 @@ void mpipedrv_isr() {
             }
             
             // Write the last frame data received to the app/alp queue.
-            q_writestring(&uart.lq, uart.rxbuffer, lastframe);
+            q_writestring(mpipe.alp.inq, uart.rxbuffer, uart.rxframelen);
             
             // Do CRC if required, else manually adjust crc.count
             if ((uart.header.ctl & MPIPE_CTL_NOCRC) == 0) {
-                crc_calc_nstream(&uart.crc, lastframe);
+                crc_calc_nstream(&uart.crc, uart.rxframelen);
             }
             else {
-                uart.crc.count -= lastframe;
+                uart.crc.count -= uart.rxframelen;
             }
+            
+            // Framelen now becomes length of the frame underway
+            uart.rxframelen = nextframe;
             
             // Update the hold time on the main queue.  This is not required,
             // and it is a bit of a hack, but it is nice to do
             q_blockwrite(mpipe.alp.inq, __MPIPE_TIMEOUT(uart.crc.count));
-
-            // Packet is done being received: check CRC and, if valid, refresh
-            // the main alp queue.
-            if (uart.crc.count <= 0) {
-                if (uart.crc.val == uart.header.crc16) {
-                    q_copy(mpipe.alp.inq, &uart.lq);
-                    error_code = 0;   
-                }
-                else {
-                    error_code = -2;
-                }         
-#               if (MPIPE_USE_ACKS)
-                // ACKs must be used when Broadcast mode is off
-                // 1. On ACKs, tx() requires caller to choose state
-                // 2. Copy RX'ed seq number into local seq number
-                // 3. Copy NACK/ACK status to 6th byte in NDEF header
-                if (uart.priority != MPIPE_Broadcast) {
-                    mpipe.state = MPIPE_TxAck_Done; //MPIPE_TxAck_Wait;
-                    sub_txack_header(error_code);
-                    mpipedrv_tx(False, MPIPE_Ack);
-                    return;
-                }
-#               endif    
+            
+            // Payload is not done being received.
+            // Exit the ISR and wait for next DMA interrupt
+            if (uart.crc.count > 0) {
+                return;
             }
+            
+            // Packet is done being received: check CRC and, if invalid,
+            // retract the rx queue putcursor
+            if (uart.crc.val == uart.header.crc16) {
+                error_code = 0;   
+            }
+            else {
+                mpipe.alp.inq->putcursor -= uart.rxplen;
+                error_code = -2;
+            }         
+#           if (MPIPE_USE_ACKS)
+            // ACKs must be used when Broadcast mode is off
+            // 1. On ACKs, tx() requires caller to choose state
+            // 2. Copy RX'ed seq number into local seq number
+            // 3. Copy NACK/ACK status to 6th byte in NDEF header
+            if (uart.priority != MPIPE_Broadcast) {
+                mpipe.state = MPIPE_TxAck_Done; //MPIPE_TxAck_Wait;
+                sub_txack_header(error_code);
+                mpipedrv_tx(False, MPIPE_Ack);
+                return;
+            }
+#           endif    
         } goto mpipedrv_isr_RXSIG;
 
 #       if (MPIPE_USE_ACKS)
@@ -975,14 +995,15 @@ void mpipedrv_isr() {
             MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_TE | USART_CR1_TCIE);
             return;
 
-        case MPIPE_TxAck_Done:  // TX'ed an ACK
-            if (uart.lq.front[3] != 0) { // TX'ed a NACK
+        case MPIPE_TxAck_Done: {  // TX'ed an ACK
+            ///@todo Put Ack-Tx in the rxbuffer
+            if (uart.rxbuffer[3] != 0) { // TX'ed a NACK
                 mpipedrv_rx(False, uart.priority);
                 mpipe.state = MPIPE_RxHeader;
                 return;
             }
             uart.priority = MPIPE_Low;
-            goto mpipedrv_isr_RXSIG;
+        } goto mpipedrv_isr_RXSIG;
 #       endif
 
         case MPIPE_Tx_Wait:
@@ -997,18 +1018,16 @@ void mpipedrv_isr() {
             
 #       if (MPIPE_USE_ACKS)
         case MPIPE_RxAck:
-            if (crc16drv_block(uart.rxbuffer, 8) != 0) { //RX'ed NACK
-                mpipedrv_tx(False, uart.priority);
+            
+            //RX'ed NACK
+            if (crc16drv_block(uart.rxbuffer, 8) != 0) {
+                ///@todo retransmit
+                //mpipedrv_tx(False, uart.priority);
                 return;
             }
             
-            ///@todo bundle this into a function
-            if (uart.lq.putcursor < uart.lq.back) {
-                uart.lq.getcursor = uart.lq.putcursor;
-                uart.lq.putcursor = uart.lq.back;
-                sub_txopen();
-                return;
-            }
+            //RX'ed an ACK.  Remove Packet from ringbuffer
+            uart.tlist.size--;
             mpipedrv_rx(False, 0);
             mpipeevt_txdone(0);
             return;

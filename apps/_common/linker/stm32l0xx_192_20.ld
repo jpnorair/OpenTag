@@ -22,9 +22,9 @@ $(ApplicationDir)/../../_common/linker/stm32l0xx_192_20.ld
 Default linker script for STM32L0xx with 192KB Flash + 20KB SRAM + 6KB EEPROM
 
 DETAILS
-- Declares 192B stack, although this is only used for Kernel Tasks.  ISRs and
+- Declares 1024B stack, although this is only used for Kernel Tasks.  ISRs and
     threads have their own stacks, allocated in OpenTag configuration.  Assume
-    another 256B for the ISR stack and at least 160B per thread.
+    another 512B for the ISR stack and at least 160B per thread.
 
 */
 
@@ -36,7 +36,7 @@ ENTRY(Reset_Handler)
 /* DEFAULT STACK SIZES: 
    used by the startup in order to allocate stacks for the different modes.
 */
-__Stack_Size = 192 ;
+__Stack_Size = 1024 ;
 PROVIDE ( _Stack_Size = __Stack_Size ) ;
 __Stack_Init = _estack  - __Stack_Size ;
 

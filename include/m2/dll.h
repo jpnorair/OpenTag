@@ -382,7 +382,7 @@ void dll_init(void);
   * @ingroup DLL
   * @sa otapi_sysinit(), sys_init()
   *
-  * sys_refresh() does two things.  First, it grabs the registry data from the
+  * dll_refresh() does two things.  First, it grabs the registry data from the
   * Network Settings ISF (ISF 0) and applies it to the system object.  Then it
   * puts OpenTag in a default idle state with no pending or ongoing sessions.
   */
@@ -419,6 +419,13 @@ void dll_refresh_rts(void);
 void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings);
 
 
+/** @brief Disables/enables all idle radio operations (i.e. sleep/hold/beacon)
+  * @param onoff        (ot_bool) true silences, false unsilences.
+  * @retval (none)  
+  * @ingroup DLL
+  */
+void dll_silence(ot_bool onoff);
+
 
 /** @brief An idle-state transformation to Off
   * @param none
@@ -426,6 +433,8 @@ void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings);
   * @ingroup DLL
   *
   * Generally, this doesn't need to be called from the outside.
+  * 
+  * Deprecated: use dll_silence() instead
   */
 void dll_goto_off(void);
 

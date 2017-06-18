@@ -611,7 +611,7 @@ ot_ulong platform_get_clockhz(ot_uint clock_index) {
         return 0;   //result for dumb APIs
     }
 #   endif
-    return platform_ext.clock_hz[clock_index];
+    return (clock_index > 2) ? 0 : platform_ext.clock_hz[clock_index];
 }
 
 
@@ -853,7 +853,7 @@ void platform_poweron() {
 
     /// 5. Debugging setup: apply to all peripherals
 #   if defined(__DEBUG__)
-    DBGMCU->CR     |= 0; //( DBGMCU_CR_DBG_SLEEP | DBGMCU_CR_DBG_STOP | DBGMCU_CR_DBG_STANDBY);
+    DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP | DBGMCU_CR_DBG_STOP | DBGMCU_CR_DBG_STANDBY);
 
     DBGMCU->APB1FZ |= ( DBGMCU_APB1_FZ_DBG_TIM2_STOP \
                       | DBGMCU_APB1_FZ_DBG_TIM6_STOP \
@@ -932,12 +932,7 @@ void platform_init_OT() {
         vl_close(fp);
     }
 
-    /// 4. Initialize the System (Kernel & more).  The System initializer must
-    ///    initialize all modules that are built onto the kernel.  These include
-    ///    the DLL and MPipe.
-    sys_init();
-
-    /// 5. If debugging, copy the UNIQUE ID that ST writes into the ROM into
+    /// 4. If debugging, copy the UNIQUE ID that ST writes into the ROM into
     ///    the lower 48 bits of the Mode 2 UID (Device Settings ISF)
     ///
     /// @note the ID is inserted via Veelite, so it is abstracted from the
@@ -947,11 +942,20 @@ void platform_init_OT() {
     ///      the default file location by the manufacturer firmware upload.
 #   if (defined(__DEBUG__) || defined(__PROTO__))
     {   vlFILE* fpid;
+        union {
+            ot_u32 word[3];
+            ot_u16 halfw[6];
+        } generated_id;
         ot_u16* hwid;
         ot_int  i;
 
+        generated_id.word[0]    = *((ot_u32*)(0x1FF80050));
+        generated_id.halfw[1]  ^= *((ot_u16*)(0x1FF80064));
+        generated_id.halfw[2]   = *((ot_u16*)(0x1FF80066));
+        generated_id.word[0]   ^= *((ot_u32*)(0x1FF80054));
+        
         fpid    = ISF_open_su(ISF_ID(device_features));
-        hwid    = (ot_u16*)(0x1FF80050);
+        hwid    = &generated_id.halfw[0];
         for (i=6; i!=0; i-=2) {
             vl_write(fpid, i, *hwid++);
         }
@@ -960,6 +964,11 @@ void platform_init_OT() {
 #   else
 
 #   endif
+    
+    /// 5. Initialize the System (Kernel & more).  The System initializer must
+    ///    initialize all modules that are built onto the kernel.  These include
+    ///    the DLL and MPipe.
+    sys_init();
 }
 #endif
 
@@ -982,8 +991,8 @@ void platform_init_busclk() {
 
     // Reset HSION, HSEON, HSEBYP, CSSON and PLLON bits
     // Disable all clocker interrupts (default)
-    RCC->CR    &= (uint32_t)0xEEFAFFFE;
-    //RCC->CIR    = 0x00000000;
+    RCC->CR    &= 0xFEF0FFF6;   // 0xEEFAFFFE;
+    //RCC->CIER  &= 0xFFFFFF00;
 
 
     ///2. Prepare external Memory bus (not currently supported)
@@ -1018,7 +1027,7 @@ void platform_init_busclk() {
     ///           Board using HSI may only declare 2, 4, 8, or 16 MHz</LI>
 #   elif BOARD_FEATURE(FULLSPEED)
 #       if ((_FULLSPEED_VOLTAGE != POWER_1V5) && (_FULL_UPVOLT() == 0))
-            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
+            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);   ///@note This isn't running
 #       endif
         // Basic Flash setup, then run normal routine
         FLASH->ACR = FLASH_ACR_PRFTEN;
