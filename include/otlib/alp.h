@@ -118,7 +118,7 @@ typedef struct {
 
 
 
-#if ( OT_FEATURE(SERVER) && OT_FEATURE(ALP) )
+#if ( OT_FEATURE(ALP) )
 
 #if (OT_FEATURE(ALPEXT) == ENABLED)
 /** ALP Extension function          <BR>
@@ -704,6 +704,6 @@ void alp_stream_isfcall_tmpl(ot_queue* out_q, void* data_type);
 
 
 
-#endif  // if (OT_FEATURE(SERVER) == ENABLED) && (OT_FEATURE(ALP) == ENABLED)
+#endif  // (OT_FEATURE(ALP) == ENABLED)
 #endif  // ifdef __ALP_H
 

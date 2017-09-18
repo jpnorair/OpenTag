@@ -473,7 +473,7 @@ void EXTI4_15_IRQHandler(void) {
 #   if ((defined(__ISR_EXTI10) || defined(__USE_EXTI10)) && !defined(__N_ISR_EXTI10))
     
     ///@todo temporary hack: something is goofy with EXTI forwarding Macro
-#   if defined(BOARD_Discovery_LoRa)
+#   if defined(BOARD_Discovery_LoRa_GPS)
     if (EXTI->PR & (1<<10)) { \
             EXTI->PR = (1<<10);  
             ubxdrv_rxsync_isr();

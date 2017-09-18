@@ -48,8 +48,9 @@ BOARD_Nucleo_L073       | Supported | ST            | Available     | STM32L0
 BOARD_Nucleo_LRWAN1     | Supported | ST            | Available     | STM32L0
 BOARD_Launchpad_CC1310  | Pending   | TI            | Available     | CC1310
 BOARD_Launchpad_CC1350  | Pending   | TI            | Available     | CC1310
-BOARD_HayTag_R2         | Pending   | Haystack      | Prototyping   | STM32L
-BOARD_HayTag2_R0        | Pending   | Haystack      | Prototyping   | CC13xx
+BOARD_HayTag_LoRa1      | Pending   | Haystack/UDEA | Prototyping   | STM32L
+BOARD_HayTag_LoRa2      | Pending   | Haystack      | Prototyping   | STM32L
+BOARD_HayTag2_R0        | Pending   | Haystack      | In Dev.       | CC13xx
 */ 
 
 
@@ -62,9 +63,11 @@ BOARD_HayTag2_R0        | Pending   | Haystack      | Prototyping   | CC13xx
 
 #define BOARD_HAS_STM32L0()     \
    (defined(BOARD_Discovery_LoRa) || \
+    defined(BOARD_Discovery_LoRa_GPS) || \
     defined(BOARD_Nucleo_L053) || \
     defined(BOARD_Nucleo_L073) || \
-    defined(BOARD_Nucleo_LRWAN1))
+    defined(BOARD_Nucleo_LRWAN1) || \
+    defined(BOARD_HayTag_LoRa2))
 
 #define BOARD_HAS_STM32L1()     \
    (defined(BOARD_IKR001) || \
@@ -75,7 +78,7 @@ BOARD_HayTag2_R0        | Pending   | Haystack      | Prototyping   | CC13xx
     defined(BOARD_HayTag_LI9T1) || \
     defined(BOARD_HayTag_LI30R1) || \
     defined(BOARD_HayTag_LI30T1) || \
-    defined(BOARD_HayTag_R2))
+    defined(BOARD_HayTag_LoRa1))
 
 #define BOARD_HAS_CC13XX()     \
    (defined(BOARD_Launchpad_CC1310) || \
