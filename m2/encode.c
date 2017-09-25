@@ -139,6 +139,8 @@ ot_u8 em2_check_crc5() {
 
 #ifndef EXTF_em2_rs_init_decode
 OT_WEAK ot_int em2_rs_init_decode(ot_queue* q) {
+    ///@todo see if this should return the number of parity bytes rather than -1
+    // npar = 4 + (( (q->front[0]+1) + 13) / 18) * 2;
     return -1;
 }
 #endif
