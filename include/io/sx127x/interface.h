@@ -262,7 +262,7 @@ ot_u8 sx127x_getbasepwr();
 #define RFI_SOURCE0     RADIO_IRQ0_PIN
 #define RFI_SOURCE1     RADIO_IRQ1_PIN
 #define RFI_SOURCE2     0   // Not used with this driver
-#define RFI_SOURCE3     RADIO_IRQ3_PIN   // Not used with this driver
+#define RFI_SOURCE3     RADIO_IRQ3_PIN
 #define RFI_SOURCE4     0   // Not used with this driver
 #define RFI_SOURCE5     0   // Not used with this driver
 
@@ -275,7 +275,8 @@ ot_u8 sx127x_getbasepwr();
 #define RFI_TXDONE      RFI_SOURCE0
 
 #define RFI_LISTEN      (RFI_CADDONE)
-#define RFI_RXDATA      (RFI_RXDONE | RFI_RXTIMEOUT | RFI_RXHEADER)
+#define RFI_RXDATA      (RFI_RXTIMEOUT | RFI_RXHEADER)
+#define RFI_RXEND       (RFI_RXDONE | RFI_RXTIMEOUT)
 #define RFI_CSMA        (RFI_CADDONE)
 #define RFI_TXDATA      (RFI_TXDONE)
 
@@ -333,6 +334,15 @@ void sx127x_int_listen();
   * @ingroup SX127x
   */ 
 void sx127x_int_rxdata();
+
+
+/** @brief  Configures GPIO Interrupts for RX Frame end mode
+  * @param  None
+  * @retval None
+  * @ingroup SX127x
+  */ 
+void sx127x_int_rxend();
+
 
 /** @brief  Configures GPIO Interrupts for CSMA Mode
   * @param  None
