@@ -419,7 +419,7 @@ static const ot_u32 _brtable[ (MPIPE_500000bps + 1) ] = { \
     MCU_PARAM(UART_500000BPS)
 };
 
-typedef struct {
+typedef struct __attribute__((packed)) {
     ot_u8   syncFF;
     ot_u8   sync55;
     ot_u16  crc16;
@@ -463,9 +463,8 @@ uart_struct uart;
 
 
 
-#define _HEADER_RXPTR   ((ot_u8*)&uart.header.syncFF + 2)
-
-
+#define _HEADER_RXPTR   	((ot_u8*)&uart.header.sync55)
+#define _HEADER_RXOFFSET	1
 
 
 void sub_mpipe_close();
@@ -555,7 +554,7 @@ void __UART_ISR(void) {
         mpipe.state         = MPIPE_RxHeader;
         uart.rxbuffer[0]    = MPIPE_UART->RDR;      // Clear RXNE flag
         MPIPE_UART->CR1     = (USART_CR1_UE | USART_CR1_RE);
-        __DMA_RXOPEN(_HEADER_RXPTR, MPIPE_HEADERBYTES-2);
+        __DMA_RXOPEN(_HEADER_RXPTR, MPIPE_HEADERBYTES-_HEADER_RXOFFSET);
     }
 #   else
     // Proven char-by-char detect
@@ -565,7 +564,7 @@ void __UART_ISR(void) {
         if (mpipe.state > MPIPE_Idle) {
             //mpipeevt_rxsync(0);
             MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_RE);
-            __DMA_RXOPEN(_HEADER_RXPTR, MPIPE_HEADERBYTES-2);
+            __DMA_RXOPEN(_HEADER_RXPTR, MPIPE_HEADERBYTES-_HEADER_RXOFFSET);
         }
     }
     //else
@@ -918,12 +917,12 @@ void mpipedrv_isr() {
                 // Start-up the CRC streamer manually.
                 // uart.crc.count is also used to track the bytes left to receive
                 uart.crc.count  = uart.rxplen;
-                uart.crc.val    = 0;
+                uart.crc.val    = crc16drv_init();
                 if ((uart.header.ctl & MPIPE_CTL_NOCRC) == 0) {
                     uart.crc.writeout   = False;
-                    uart.crc.cursor     = (ot_u8*)&uart.header.crc16;
-                    uart.crc.count     += 6;
-                    crc_calc_nstream(&uart.crc, 6);
+                    uart.crc.cursor     = (ot_u8*)&uart.header.plen;
+                    uart.crc.count     += 4;
+                    crc_calc_nstream(&uart.crc, 4);
                     uart.crc.cursor     = mpipe.alp.inq->putcursor;
                 }
                 return;             // Wait for next DMA RX interrupt
@@ -968,13 +967,13 @@ void mpipedrv_isr() {
             
             // Packet is done being received: check CRC and, if invalid,
             // retract the rx queue putcursor
-            if (uart.crc.val == uart.header.crc16) {
+            if (PLATFORM_ENDIAN16(uart.crc.val) == uart.header.crc16) {
                 error_code = 0;   
             }
             else {
                 mpipe.alp.inq->putcursor -= uart.rxplen;
                 error_code = -2;
-            }         
+            }
 #           if (MPIPE_USE_ACKS)
             // ACKs must be used when Broadcast mode is off
             // 1. On ACKs, tx() requires caller to choose state
