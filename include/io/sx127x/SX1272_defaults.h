@@ -106,9 +106,9 @@
 #define DRF_LR_SYMBTIMEOUTLSB_BG (29)
 #define DRF_LR_SYMBTIMEOUTLSB_FG (255)
 
-// Preamble length is set to 8
+// Preamble length is set to 12
 #define DRF_LR_PREAMBLEMSB      0
-#define DRF_LR_PREAMBLELSB      8
+#define DRF_LR_PREAMBLELSB      12
 
 // Payload length set to 6, the length of BG frame.  FG frames use explicit header mode
 #define DRF_LR_PAYLOADLENGTH    6
