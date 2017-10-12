@@ -318,6 +318,14 @@ ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id) {
 
 
 
+void sub_rebase_on_purged(alp_tmpl* alp, ot_queue* appq) {
+    if ((alp->purge_id == 0) || (alp->purge_id != appq->options.ushort)) {
+        appq->options.ushort = alp->purge_id;
+        q_rebase(appq, alp->inq->front);
+    }
+}
+
+
 #ifndef EXTF_alp_new_appq
 void alp_new_appq(alp_tmpl* alp, ot_queue* appq) {
     //DEBUG_ASSERT
@@ -345,10 +353,14 @@ void alp_append_appq(alp_tmpl* alp, ot_queue* appq) {
     ot_u8* next_alp;
     //DEBUG_ASSERT
 
+    ///@todo this is added for the hack presently used with alp_purge()
+    sub_rebase_on_purged(alp, appq);
+    
     ///@note old offset until alp_parse_header is fully refactored
     //next_alp = alp->inq->getcursor + alp->inq->getcursor[-3];
     next_alp = alp->inq->getcursor + alp->inq->getcursor[1] + 4;
 
+    ///@todo I'm not sure if putcursor matters for appq
     if (next_alp <= alp->inq->putcursor) {
         appq->putcursor = next_alp;
     }
@@ -364,10 +376,7 @@ ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target) {
     /// 1. If the alp queue has been purged in between operations of this app,
     ///    the app queue must be rebased.  If the alp purge id has done one lap
     ///    we also need to do this just to maintain synchronicity.
-    if ((alp->purge_id == 0) || (alp->purge_id != appq->options.ushort)) {
-        appq->options.ushort = alp->purge_id;
-        q_rebase(appq, alp->inq->front);
-    }
+    sub_rebase_on_purged(alp, appq);
 
     /// 2. Find the next record with matching ID in the alp queue, and set the
     ///    app queue getcursor accordingly.
@@ -406,7 +415,7 @@ ot_u8* alp_retrieve_record(alp_record* apprec, ot_queue* appq, ot_u8 target) {
 #endif
 
 
-#ifndef EXTF_alp_retrieve_record
+#ifndef EXTF_alp_release_record
 void alp_release_record(ot_queue* appq) {
     appq->front[0] = 0;         // Mark as finished so alp_purge() will clear it
 }
@@ -425,9 +434,9 @@ void alp_purge(alp_tmpl* alp) {
 #       warning "NDEF not yet supported for non-atomic alps"
 #   endif
 
-    /// 0. Hack for now.
+    ///@todo this is a temporary hack
     q_empty(alp->inq);
-
+    
     /*
     /// 1. An ALP processor that has non-atomic handling ability must mark all
     ///    record flags to 0, after that record is processed.  In the special
