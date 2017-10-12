@@ -120,16 +120,17 @@ ot_u16 otapi_start_dialog(ot_u16 timeout) {
     }
     
     ///@todo update null radio driver to modern interface
-#   ifndef __KERNEL_NONE__
-    if (radio.state != RADIO_Idle) {
-    	rm2_kill();
-    }
-#   endif
-
-#   ifndef __KERNEL_NONE__
-    sys.task_RFA.event = 0;
-    sys_preempt(&sys.task_RFA, 0);
-#   endif
+//#   ifndef __KERNEL_NONE__
+//    if (radio.state != RADIO_Idle) {
+//    	rm2_kill();
+//    }
+//#   endif
+//
+//#   ifndef __KERNEL_NONE__
+//    sys.task_RFA.event = 0;
+//    sys_preempt(&sys.task_RFA, 0);
+//#   endif
+    
     return 1;
 }
 
