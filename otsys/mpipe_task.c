@@ -150,9 +150,19 @@ void mpipe_systask(ot_task task) {
         /// ALP must manage the protocol/packet data and call TX when/if it has
         /// a response ready.  Driver is always in passive-RX if not TX'ing.
         case 1: alp_parse_message(&mpipe.alp, NULL);
-                sub_mpipe_setidle(task);
-                break;
-
+        
+                ///@todo this is a hack.  ALP must be migrated to app queues, 
+                ///      it's too much of a headache the old way.
+                q_empty(mpipe.alp.inq);
+                
+                /// If there's data to send, we need to send it.
+                /// Do that by falling through if output queue has greater than zero span.
+                if (q_span(mpipe.alp.outq) <= 0) {
+                    sub_mpipe_setidle(task);
+                    break;
+                }
+                mpipe_send();
+                
         // Initialize TX: mpipe_send is used.
         case 2: //mpipe_send();
                 mpipedrv_unblock();
