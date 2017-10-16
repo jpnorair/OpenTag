@@ -506,7 +506,8 @@ void sub_opgroup_udp(void) {
     
     status  = alp_parse_message(&m2alp, &m2np.rt.dlog);
     if (status == MSG_Null) {
-        ///@todo some exception management, although it might not be necessary
+        /// No data, but log the address.
+        M2QP_CB_ISF();
     }
 }
 

@@ -1110,9 +1110,13 @@ OT_WEAK void dll_rfevt_frx(ot_int pcode, ot_int fcode) {
                 dll.idle_state  = M2_DLLIDLE_HOLD;
             }
 
-            re_init         = (frx_code || rx_isresp);
-            if (re_init)    rm2_reenter_rx(&dll_rfevt_frx);
-            else            radio_sleep();
+            re_init = (frx_code || rx_isresp);
+            if (re_init) {
+                rm2_reenter_rx(&dll_rfevt_frx);
+            }
+            else {
+                radio_sleep();
+            }
         }
     }
 
