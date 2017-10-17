@@ -619,7 +619,7 @@ void LPTIM1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     
     ///@todo Not certain this PR clear is necessary or good
-    EXTI->PR = (1<<29);         
+    //EXTI->PR = (1<<29);         
     
     __ISR_KTIM_WAKEUP_HOOK();
     platform_isr_lptim1();

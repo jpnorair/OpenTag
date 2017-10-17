@@ -115,20 +115,21 @@ ot_u16 otapi_start_dialog(ot_u16 timeout) {
 /// Stop any ongoing processes and seed the event for the event manager.  The
 /// radio killer will work in all cases, but it is bad form to kill sessions
 /// that are moving data.
+    
+    ///@todo update null radio driver to modern interface
+//#   ifndef __KERNEL_NONE__
+    if (radio.state != RADIO_Idle) {
+    	rm2_kill();
+    }
+//#   endif
+
     if (timeout != 0) {
         dll.comm.tc = TI2CLK(timeout);
     }
     
-    ///@todo update null radio driver to modern interface
 //#   ifndef __KERNEL_NONE__
-//    if (radio.state != RADIO_Idle) {
-//    	rm2_kill();
-//    }
-//#   endif
-//
-//#   ifndef __KERNEL_NONE__
-//    sys.task_RFA.event = 0;
-//    sys_preempt(&sys.task_RFA, 0);
+    sys.task_RFA.event = 0;
+    sys_preempt(&sys.task_RFA, 0);
 //#   endif
     
     return 1;

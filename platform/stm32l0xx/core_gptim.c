@@ -74,6 +74,21 @@ ot_u16 __read_lptim_cnt() {
     return b;
 }
 
+void __write_lptim_cmp(ot_u16 new_cmp) {
+// Clear the CMPOK bit ahead of setting CMP
+// Set the CMP to the new value
+// Assure that CMP was successfully written 
+    LPTIM1->ICR = LPTIM_ICR_CMPOKCF;
+    LPTIM1->CMP = new_cmp;
+    while ((LPTIM1->ISR & LPTIM_ISR_CMPOK) == 0);
+}
+
+
+void __write_lptim_arr(ot_u16 new_arr) {
+    LPTIM1->ICR = LPTIM_ICR_ARROKCF;
+    LPTIM1->ARR = new_arr;
+    while ((LPTIM1->ISR & LPTIM_ISR_ARROK) == 0);
+}
 
 
 
@@ -167,9 +182,9 @@ void systim_init(void* tim_init) {
     
     // ARR and CMP must be set with LPTIM enabled
     LPTIM1->CR      = LPTIM_CR_ENABLE;
-    LPTIM1->ARR     = 65535;
-    LPTIM1->CMP     = 65535;
-    //LPTIM1->ICR     = 0x7F;         // clear all interrupt flags
+    __write_lptim_arr(65535);
+    __write_lptim_cmp(65535);
+    LPTIM1->ICR     = 0x7F;         // clear all interrupt flags
     
     // Start Timer
     LPTIM1->CR      = LPTIM_CR_CNTSTRT | LPTIM_CR_ENABLE;
@@ -222,8 +237,8 @@ void systim_disable() {
 
 void systim_pend() {
     //EXTI->SWIER     = (1<<29);
-    systim.stamp1   = __read_lptim_cnt();
-    LPTIM1->CMP     = systim.stamp1;
+    systim.stamp1 = __read_lptim_cnt();
+    __write_lptim_cmp(systim.stamp1);
 }
 
 void systim_flush() {
@@ -250,10 +265,8 @@ ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
     systim.flags    = GPTIM_FLAG_SLEEP;
     LPTIM1->ICR     = 0x7f;     //LPTIM_ICR_CMPMCF;                 // Clear compare match
     systim.stamp1   = __read_lptim_cnt();
-    LPTIM1->CMP     = systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE);
-    
-    // wait for CMPOK: not needed in APB bus synced mode
-    //while ((LPTIM1->ISR & LPTIM_ISR_CMPOK) == 0);
+    //LPTIM1->CMP     = systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE);
+    __write_lptim_cmp( systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE) );
 
     return (ot_u16)nextevent;
 }
