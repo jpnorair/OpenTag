@@ -277,7 +277,7 @@ void session_init();
   *       session_notempty() in order to be safe.
   *
   * Don't use this function unless you are building a Link Layer integrated as
-  * an exotask, and in that case just copy how it is used in m2_dll_task.c.
+  * an exotask, and in that case just copy how it is used in m2/dll_task.c.
   */
 ot_uint session_getnext();
 
@@ -351,10 +351,6 @@ m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netst
   * AND the DLL is not busy doing any active RX/TX work (i.e. idle).
   */
 m2session* session_continue(ot_app applet, ot_u8 next_state, ot_uint wait);
-
-///@note For legacy code: not guaranteed to be here forever
-#define network_cont_session    session_continue
-
 
 
 
