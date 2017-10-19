@@ -69,6 +69,20 @@
 #endif
 
 
+/** Test and Variant Configuration
+ * _DLL_BLOCK_IDLE_ON_QUEUEING:
+ * - Will block Sleep/Hold/Beacon while waiting for a delayed session.
+ * - Temporary.  Will be replaced by session queuing heuristic.
+ * - Implementation will change also when "IdleTasks" grouped into one task.
+ *
+ */
+
+#define _DLL_BLOCK_IDLE_ON_QUEUEING
+
+
+
+
+
 m2dll_struct    dll;
 
 static void sub_dll_flush(void);
@@ -534,15 +548,21 @@ OT_WEAK void dll_unblock(void) {
 OT_WEAK void dll_clock(ot_uint clocks) {
 /// @todo experiment giving exotasks two handles.
 ///       one for clocking and administrative uses, one for tasking.
-    ot_uint ticks;
-    ticks = CLK2TI(clocks);
+    //ot_uint ticks;
+    //ticks = CLK2TI(clocks);
 
     if (sys.task_RFA.event != 0) {
-        dll.comm.rx_timeout -= ticks;
+        //dll.comm.rx_timeout -= ticks;
+    	dll.comm.rx_timeout -= CLK2TI(clocks);
     }
     else if (session_notempty()) {
         sys.task_RFA.event      = 2;
         sys.task_RFA.nextevent  = clocks + TI2CLK(session_getnext());
+
+        ///@note added 18 Oct 17 for testing behavior of scheduled sessions
+#		ifdef _DLL_BLOCK_IDLE_ON_QUEUEING
+        dll_block_idletasks();
+#		endif
 
         // Synchronization test
         //volatile ot_u16 next_session;
@@ -636,7 +656,7 @@ void dll_processing(void) {
         /// <LI> The current session is popped after response, or on next kernel
         ///      loop (immediately) if no response </LI>
         if (active->flags & M2_FLAG_LISTEN) {
-            network_cont_session(active->applet, M2_NETSTATE_REQRX, 0);
+            session_continue(active->applet, M2_NETSTATE_REQRX, 0);
         }
     }
 
@@ -705,6 +725,8 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
         return;
     }
 
+    ///@todo check against session availability.
+
     fp = ISF_open_su( task->event );
     ///@note fp doesn't really need to be asserted unless you are mucking
     ///      with things in test builds.
@@ -746,6 +768,8 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
         dll_idle();
         return;
     }
+
+    ///@todo check against session availability.
 
     /// This is a retry time, in case of failure condition
     nextbeacon = 10;
@@ -912,9 +936,11 @@ OT_WEAK void dll_activate(void) {
     m2session*  s_active;
     ot_app      s_applet;
 
+#	ifndef _DLL_BLOCK_IDLE_ON_QUEUEING
     dll_block_idletasks();
+#	endif
 
-  //dll.idle_state      = sub_default_idle();
+    //dll.idle_state      = sub_default_idle();
     s_active            = session_top();
     s_applet            = (s_active->applet == NULL) ? \
                             &dll_response_applet : s_active->applet;
