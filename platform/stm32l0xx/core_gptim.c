@@ -44,6 +44,11 @@
 systim_struct systim;
 
 
+/// Temporary Hack.  LPTIM has big overhead, and it will be phased-out for usage
+/// as the gptim in the next version.
+#define _LPTIM_OVERHEAD_HACK    4
+
+
 /// Local Options Flags (systim.opt)
 #define SYSTIM_INSERTION_ON     1
 
@@ -74,13 +79,16 @@ ot_u16 __read_lptim_cnt() {
     return b;
 }
 
+
 void __write_lptim_cmp(ot_u16 new_cmp) {
 // Clear the CMPOK bit ahead of setting CMP
 // Set the CMP to the new value
 // Assure that CMP was successfully written 
     LPTIM1->ICR = LPTIM_ICR_CMPOKCF;
     LPTIM1->CMP = new_cmp;
-    while ((LPTIM1->ISR & LPTIM_ISR_CMPOK) == 0);
+    while ((LPTIM1->ISR & LPTIM_ISR_CMPOK) == 0) {
+        //test_cmp++;
+    }
 }
 
 
@@ -235,10 +243,11 @@ void systim_disable() {
     //LPTIM1->IER = 0;
 }
 
+///@todo the SWIER line guarantees the pend occurs
 void systim_pend() {
-    //EXTI->SWIER     = (1<<29);
     systim.stamp1 = __read_lptim_cnt();
     __write_lptim_cmp(systim.stamp1);
+    EXTI->SWIER = (1<<29);
 }
 
 void systim_flush() {
@@ -249,14 +258,23 @@ void systim_flush() {
 ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
 /// This should only be called from the scheduler.
 
-    /// If the task to be scheduled is already due (considering the runtime of
-    /// the scheduler itself) return 0.  This will cause the sleep process to
-    /// be ignored and the task to start immediately.
+    /// Subtracting the overhead of the scheduler runtime yields the true time
+    /// to schedule the nextevent.
     nextevent = (ot_long)nextevent - (ot_long)overhead;
+    
+    /// If the task to be scheduled is already due return 0.
+    /// This will ignore the sleep process and go straight to the task.
     if ((ot_long)nextevent <= 0) {
         systim.flags = 0;
         return 0;
     }
+    
+    /// If the nextevent is less that the minimum time overhead of the LPTIM
+    /// CMP setting process (which is consequential), then don't use LPTIM, 
+    /// use the clocker Timer.
+//    if ((ot_long)nextevent <= _LPTIM_SETCMP_OVERHEAD) {
+//        ///@todo implement this and have a way to go into deepest sleep without stop.
+//    }
     
     /// Program the scheduled time into the timer, in ticks.
     /// Oversampling is done at the driver level, versus shifting which is done
@@ -265,8 +283,9 @@ ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
     systim.flags    = GPTIM_FLAG_SLEEP;
     LPTIM1->ICR     = 0x7f;     //LPTIM_ICR_CMPMCF;                 // Clear compare match
     systim.stamp1   = __read_lptim_cnt();
-    //LPTIM1->CMP     = systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE);
-    __write_lptim_cmp( systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE) );
+    
+    LPTIM1->CMP     = _LPTIM_OVERHEAD_HACK + systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE);
+    //__write_lptim_cmp(_LPTIM_OVERHEAD_HACK + systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE) );
 
     return (ot_u16)nextevent;
 }
