@@ -32,6 +32,19 @@
 #define __SYS_TIME_H
 
 
+///@note possible 48 bit time implementation.  Just a random thought.
+//typedef struct OT_PACKED {
+//    ot_u32  secs;
+//    ot_u16  sti;
+//} ot_time;
+//
+//typedef union {
+//    ot_time ot;
+//    ot_u16  ushort[3];
+//    ot_u8   ubyte[6];
+//} ot_time_union;
+
+
 typedef struct {
     ot_u32 upper;
     ot_u32 clocks;

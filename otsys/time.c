@@ -53,7 +53,7 @@ void sub_load_now(ot_time* now) {
     *now        = systime;
     clocks      = systim_get();
     scratch     = clocks + now->clocks;
-    now->upper  = (scratch < clocks);
+    now->upper += (scratch < clocks);       ///@note changed this
     now->clocks = scratch;
 }
 
