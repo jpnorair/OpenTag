@@ -46,7 +46,7 @@ systim_struct systim;
 
 /// Temporary Hack.  LPTIM has big overhead, and it will be phased-out for usage
 /// as the gptim in the next version.
-#define _LPTIM_OVERHEAD_HACK    4
+#define _LPTIM_OVERHEAD_HACK    0 //4
 
 
 /// Local Options Flags (systim.opt)
