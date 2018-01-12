@@ -121,7 +121,6 @@ ot_u32 sub_get_nextalarm(ot_u16 next);
 /** Platform ISRs implemented here <BR>
   * ========================================================================<BR>
   * <LI> platform_isr_rtcalarm() </LI>
-  * <LI> platform_isr_tim10() </LI>
   */
 
 void platform_isr_rtcalarm() {
@@ -167,8 +166,9 @@ void platform_isr_rtcalarm() {
 
 
 
-void platform_isr_tim6() {
-/// TIM6 is used as the chronometer.  It actually doesn't use this interrupt.
+void platform_isr_lptim() {
+/// LPTIM is used as the chronometer/clocker.
+/// It does not call an ISR as part of GPTIM.
 }
 
 
@@ -493,10 +493,13 @@ void systim_disable_insertion() {
 
 /** RTC Banging <BR>
   * ========================================================================<BR>
-  * Unfortunately the STM32L does not have a suitable low-power timer.  Also
-  * unfortunately, it has an inflexible RTC.  Fortunately, however, it has an
-  * ALU that can annihilate anything short of a PowerPC 6xx, so this seemingly
-  * elaborate conversion actually happens in under 3us at 16 MHz.
+  * LPTIM on STM32L0 is attractive as a timer, but it has major deficiencies.
+  * Most importantly, it requires ~4 ticks of overhead to set CMP.  It is not
+  * able to be used with event spacing shorter than 4 ticks because of this.
+  * 
+  * The RTC is much more responsive.  We can use it to operate as the kernel
+  * timer, but we need to do some conversions to get it from a BCD timer (this
+  * is how the hardware is implemented) to a binary timer.
   */
 
 #define _BCD(T,O)   ((T<<4) | O)
@@ -561,9 +564,9 @@ ot_u32 sub_rtc2ticks() {
 }
 
 ot_u32 sub_ticks2alarm(ot_u32 ticks) {
-///@note This implementation actually works fast, because divide-by-constant is
-///      optimized heavily by the compiler, and because the STM32L includes a
-///      Multiply-Accumulate instruction that runs fast.
+///@note Cortex M0+ does not contain a Hardware Divider (M3 does).  This code
+///      should be benchmarked, but the compiler is able to heavily optimize
+///      divide-by-constant (e.g. /60, /3600).  It should run quite fast. 
     ot_u32 time;
     ot_u32 tmins;
     time    = (ticks/3600);             // get hours
