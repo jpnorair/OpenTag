@@ -397,28 +397,6 @@
 
 
 
-/** GPTIM Manipulations      <BR>
-  * ========================================================================<BR>
-  * Tasking waits longer than this (in ticks) will loop through the scheduler.
-  * It is pretty rare with OpenTag for waits to be longer than 2 seconds
-  * (2048 ticks), so this boundary rarely occurs.
-  *
-  * The LPTIM used for STM32L0 is oversampled in order to provide better
-  * timing accuracy (it is laggy otherwise).  It is double sampled, so the
-  * most it can go is 32768 ticks.  We set the limit to 30000.
-  */
-#ifndef OT_GPTIM_OVERSAMPLE
-#   define OT_GPTIM_OVERSAMPLE  1
-#endif
-#ifndef OT_GPTIM_SHIFT
-#   define OT_GPTIM_SHIFT       0
-#endif
-#define MCU_PRESCALER_SHIFT     (OT_GPTIM_OVERSAMPLE+OT_GPTIM_SHIFT)
-#ifndef OT_GPTIM_LIMIT
-#   define OT_GPTIM_LIMIT       ((65536 >> MCU_PRESCALER_SHIFT) - 260)
-#endif
-
-
 
 
 
@@ -516,6 +494,20 @@ ot_u16 platform_ext_lsihz();
 #define MCU_PARAM_UART_250000BPS        250000
 #define MCU_PARAM_UART_500000BPS        500000
 
+
+/** LPTIM Manipulations      <BR>
+  * ========================================================================<BR>
+  * Tasking waits longer than this (in ticks) will loop through the scheduler.
+  * It is pretty rare with OpenTag for waits to be longer than 2 seconds
+  * (2048 ticks), so this boundary rarely occurs.
+  *
+  * The LPTIM used for STM32L0 is oversampled beyond 1024 Hz (8192 Hz) in
+  * order to workaround the 4-clock update lag of the LPTIM Compare Register.
+  */
+#define MCU_PARAM_GPTIM_OVERSAMPLE		3
+#define MCU_PARAM_GPTIM_SHIFT			0
+#define MCU_PRESCALER_SHIFT     (MCU_PARAM_GPTIM_OVERSAMPLE+MCU_PARAM_GPTIM_SHIFT)
+#define OT_GPTIM_LIMIT          ((65536 >> MCU_PRESCALER_SHIFT) - 260)
 
 
 
