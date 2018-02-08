@@ -469,6 +469,17 @@ void mpipedrv_rx(ot_bool blocking, mpipe_priority data_priority);
 
 
 
+/** @brief  ISR called during detection of RX activity
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  *
+  * Certain configurations of Mpipe allow for asynchronous detection of RX
+  * activity.  This can be done via a number of means.  This is the synthetic
+  * ISR function that the raw ISR function should call to invoke MPipe.
+  */
+void mpipe_rxsync_isr(void);
+
 
 /** @brief  ISR Mpipe subroutine for Mpipe inclusion into global ISR function
   * @param  None
