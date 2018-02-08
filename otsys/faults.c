@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2018 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,27 +14,40 @@
   *
   */
 /**
-  * @file       /include/otsys.h
-  * @author     JP Norair (jpnorair@indigresso.com)
+  * @file       /otsys/faults.c
+  * @author     JP Norair
   * @version    R100
-  * @date       27 August 2014
-  * @brief      Include file that groups all otsys headers
+  * @date       31 Jan 2018
+  * @brief      System Fault Handling Implementation
+  * @ingroup    Faults
+  *
+  * Faults are saved in a veelite file that must be known during compile-time.
+  * The standardized file for tracking faults is ...
   *
   ******************************************************************************
   */
 
-#ifndef __OTSYS_H
-#define __OTSYS_H
-
-#include <otsys/config.h>
-#include <otsys/faults.h>
-#include <otsys/mpipe.h>
-#include <otsys/support.h>
-#include <otsys/sysext.h>
-#include <otsys/syskern.h>
+#include <otstd.h>
 #include <otsys/time.h>
-#include <otsys/types.h>
 #include <otsys/veelite.h>
-#include <otsys/version.h>
 
+/*
+typedef struct {
+    ot_u16 file_id;
+    ot_u16 line;
+} ot_faultctx;
+
+static ot_faultctx faultctx;
+
+
+
+
+ot_int faults_init(vlACTION* onfault, ) {
+#if OT_FEATURE(FAULTS)
+    
+
+#else
+    return 0;
 #endif
+}
+*/
