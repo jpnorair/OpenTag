@@ -104,7 +104,7 @@
 #   endif
 #   if (RADIO_IRQ1_SRCLINE < 0)
 #       undef _RFIRQ1
-#   elif (RADIO_IRQ2_SRCLINE < 2) 
+#   elif (RADIO_IRQ1_SRCLINE < 2)
 #       define _RFIRQ1  (EXTI0_1_IRQn)
 #       undef _EXTI0_1_USED
 #       define _EXTI0_1_USED
