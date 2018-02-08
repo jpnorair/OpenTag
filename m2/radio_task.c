@@ -162,6 +162,7 @@ OT_WEAK void rm2_init(void) {
     
     /// Set universal Radio module initialization defaults
     radio.state     = RADIO_Idle;
+    radio.flags     = RADIO_FLAG_REFRESH;
     radio.evtdone   = &otutils_sig2_null;
 
     /// These Radio Link features are available on the SPIRIT1
@@ -401,10 +402,17 @@ OT_WEAK ot_bool rm2_mac_filter() {
 #endif
 
 
+#ifndef EXTF_rm2_channel_refresh
+OT_WEAK void rm2_channel_refresh(void) {
+    radio.flags |= RADIO_FLAG_REFRESH;
+}
+#endif
+
+
 #ifndef EXTF_rm2_test_channel
 OT_WEAK ot_bool rm2_test_channel(ot_u8 channel) {
     ot_bool test;
-
+    
     test = rm2_channel_fastcheck(channel);
     if (test == False) {
         vlFILE* fp;
@@ -448,9 +456,15 @@ OT_WEAK ot_bool rm2_test_chanlist() {
 #ifndef EXTF_rm2_channel_fastcheck
 OT_WEAK ot_bool rm2_channel_fastcheck(ot_u8 chan_id) {
     ot_u8 old_chan_id;
+    
+    if (radio.flags & RADIO_FLAG_REFRESH) {
+        radio.flags ^= RADIO_FLAG_REFRESH;
+        return False;
+    }
+    
     old_chan_id = phymac[0].channel & 0x7F;
     chan_id    &= 0x7F;
-
+    
     return (ot_bool)((chan_id == 0) || (chan_id == old_chan_id));
 }
 #endif
