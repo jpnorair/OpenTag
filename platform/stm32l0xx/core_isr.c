@@ -472,14 +472,22 @@ void EXTI4_15_IRQHandler(void) {
 #   endif    
 #   if ((defined(__ISR_EXTI10) || defined(__USE_EXTI10)) && !defined(__N_ISR_EXTI10))
     
-    ///@todo temporary hack: something is goofy with EXTI forwarding Macro
-#   if defined(BOARD_Discovery_LoRa_GPS)
-    if (EXTI->PR & (1<<10)) { \
-            EXTI->PR = (1<<10);  
-            ubxdrv_rxsync_isr();
-        } 
+    ///@todo temporary hack: something is goofy with EXTI forwarding Macro for this particular pin
+#   if defined(BOARD_HayTag_LoRa)
+    if (EXTI->PR & (1<<10)) {
+        EXTI->PR = (1<<10);
+        _UART_RXSYNC_ISR();
+    }
+
+#	elif defined(BOARD_Discovery_LoRa)
+    if (EXTI->PR & (1<<10)) {
+        EXTI->PR = (1<<10);
+        _GNSS_RXSYNC_ISR();
+    }
+
 #   else
     __EXTI_MACRO(10);
+
 #   endif
     
 #   endif
