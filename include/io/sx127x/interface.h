@@ -396,6 +396,11 @@ void sx127x_wfe(ot_u16 ifg_sel);
 void sx127x_load_defaults();
 
 
+/// Functions for debugging only
+void sx127x_corelog();
+void sx127x_coredump(ot_u8* dst, ot_uint limit);
+
+
 /** @brief  Performs a "soft reset" on the SX127x core
   * @param  None
   * @retval None
