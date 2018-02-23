@@ -30,8 +30,9 @@
 #define __PLATFORM_INTERRUPTS_H
 
 #include <otsys/types.h>
-#include <otsys/config.h>
-#include <app/build_config.h>
+
+//#include <otsys/config.h>
+//#include <app/build_config.h>
 
 
 
