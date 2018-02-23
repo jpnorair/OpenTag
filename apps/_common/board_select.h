@@ -35,21 +35,23 @@ BOARD_OMG_CC430         | EOL       | JP Norair     | EOL           | CC430
 BOARD_EM430RF           | EOL       | TI            | EOL           | CC430
 BOARD_eZ430Chronos      | EOL       | TI            | Available     | CC430
 BOARD_RF430USB_5509     | EOL       | TI            | Unknown       | MSP430
-BOARD_IKR001            | Supported | ST            | EOL           | STM32L
-BOARD_Jupiter_R1        | Supported | Haystack      | EOL           | STM32L
-BOARD_Jupiter_R2        | Supported | Haystack      | EOL           | STM32L
-BOARD_HayTag_R1         | Supported | Haystack      | Available     | STM32L
-BOARD_HayTag_LI9R1      | Supported | Haystack      | Available     | STM32L
-BOARD_HayTag_LI9T1      | Supported | Haystack      | Available     | STM32L
-BOARD_HayTag_LI30R1     | Supported | Haystack      | Available     | STM32L
-BOARD_HayTag_LI30T1     | Supported | Haystack      | Available     | STM32L
+BOARD_IKR001            | Supported | ST            | EOL           | STM32L1
+BOARD_Jupiter_R1        | Supported | Haystack      | EOL           | STM32L1
+BOARD_Jupiter_R2        | Supported | Haystack      | EOL           | STM32L1
+BOARD_HayTag_R1         | Supported | Haystack      | Available     | STM32L1
+BOARD_HayTag_LI9R1      | Supported | Haystack      | Available     | STM32L1
+BOARD_HayTag_LI9T1      | Supported | Haystack      | Available     | STM32L1
+BOARD_HayTag_LI30R1     | Supported | Haystack      | Available     | STM32L1
+BOARD_HayTag_LI30T1     | Supported | Haystack      | Available     | STM32L1
 BOARD_Nucleo_L053       | Supported | ST            | Available     | STM32L0
 BOARD_Nucleo_L073       | Supported | ST            | Available     | STM32L0
 BOARD_Nucleo_LRWAN1     | Supported | ST            | Available     | STM32L0
+BOARD_Discovery_LoRa    | Supported | ST            | Available     | STM32L0
+BOARD_Discovery_LoRa_GPS| Supported | ST + Haystack | Available     | STM32L0
 BOARD_Launchpad_CC1310  | Pending   | TI            | Available     | CC1310
 BOARD_Launchpad_CC1350  | Pending   | TI            | Available     | CC1310
-BOARD_HayTag_LoRa1      | Pending   | Haystack/UDEA | Prototyping   | STM32L
-BOARD_HayTag_LoRa2      | Pending   | Haystack      | Prototyping   | STM32L
+BOARD_HayTag_LoRa1      | Pending   | Haystack/UDEA | EOL           | STM32L1
+BOARD_HayTag_LoRa       | Pending   | Haystack/UDEA | Prototyping   | STM32L0
 BOARD_HayTag2_R0        | Pending   | Haystack      | In Dev.       | CC13xx
 */ 
 
@@ -67,7 +69,7 @@ BOARD_HayTag2_R0        | Pending   | Haystack      | In Dev.       | CC13xx
     defined(BOARD_Nucleo_L053) || \
     defined(BOARD_Nucleo_L073) || \
     defined(BOARD_Nucleo_LRWAN1) || \
-    defined(BOARD_HayTag_LoRa2))
+    defined(BOARD_HayTag_LoRa))
 
 #define BOARD_HAS_STM32L1()     \
    (defined(BOARD_IKR001) || \
