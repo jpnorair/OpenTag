@@ -190,11 +190,11 @@ void ot_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
 }
 
 
-void ot_memset_2(ot_u16* dst, ot_u16 value, ot_uint length) {
+void ot_memset2(ot_u16* dst, ot_u16 value, ot_uint length) {
     ot_memset( (ot_u8*)dst, (ot_u8)value, length<<1 );
 }
 
-void ot_memset_4(ot_u32* dst, ot_u32 value, ot_uint length) {
+void ot_memset4(ot_u32* dst, ot_u32 value, ot_uint length) {
     ot_memset( (ot_u8*)dst, (ot_u8)value, length<<2 );
 }
 
