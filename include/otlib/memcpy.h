@@ -47,8 +47,8 @@
 #   define memcpy2      ot_memcpy2
 #   define memcpy4      ot_memcpy4
 #   define memset       ot_memset
-#   define memset2      ot_memset_2
-#   define memset4      ot_memset_4
+#   define memset2      ot_memset2
+#   define memset4      ot_memset4
 #endif
 
 
