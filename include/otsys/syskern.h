@@ -31,6 +31,7 @@
 #ifndef __OTSYS_SYSKERN_H
 #define __OTSYS_SYSKERN_H
 
+#include <board.h>
 #include <otplatform.h>
 #include <otsys/types.h>
 #include <otsys/config.h>
