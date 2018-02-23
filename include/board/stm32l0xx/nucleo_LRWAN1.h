@@ -48,7 +48,7 @@
 
 
 /// It's possible to add a GNSS shield to this device, although support is coming later
-//#define __USE_GNSS
+//#define __HAS_GNSS
 
 
 /// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
@@ -79,7 +79,7 @@
 #   endif
 #endif
 
-#if defined(__USE_GNSS)
+#if defined(__HAS_GNSS)
 #   ifdef __NULL_GNSS__
 #       include <io/gnss_null/config.h>
 #   else
