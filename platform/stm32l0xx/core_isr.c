@@ -97,6 +97,8 @@
 /// Enable MPIPE Interrupts:
 /// DMA interrupts for UART DMA
 #if (OT_FEATURE(MPIPE) && BOARD_FEATURE(MPIPE))
+#include <otsys/mpipe.h>
+
 #   if (MCU_CONFIG(MPIPECDC))
         ///@todo USB MPipe Interrupt settings
    
@@ -373,9 +375,9 @@ void RCC_CRS_IRQHandler(void) {
 #else
 #   define __RADIO_EXTI(NUM); 
 #endif
-#if (BOARD_FEATURE(MPIPE) && defined(BOARD_COM_EXTI0))
+#if (BOARD_FEATURE(MPIPE) && defined(BOARD_COM_EXTI0_ISR))
 #   define __MPIPE_EXTI(NUM)    BOARD_COM_EXTI##NUM##_ISR()
-#elif (BOARD_FEATURE(MPIPE) && defined(BOARD_MPIPE_EXTI0))
+#elif (BOARD_FEATURE(MPIPE) && defined(BOARD_MPIPE_EXTI0_ISR))
 #   define __MPIPE_EXTI(NUM)    BOARD_MPIPE_EXTI##NUM##_ISR()
 #else
 #   define __MPIPE_EXTI(NUM); 
@@ -471,25 +473,7 @@ void EXTI4_15_IRQHandler(void) {
     __EXTI_MACRO(9);
 #   endif    
 #   if ((defined(__ISR_EXTI10) || defined(__USE_EXTI10)) && !defined(__N_ISR_EXTI10))
-    
-    ///@todo temporary hack: something is goofy with EXTI forwarding Macro for this particular pin
-#   if defined(BOARD_HayTag_LoRa)
-    if (EXTI->PR & (1<<10)) {
-        EXTI->PR = (1<<10);
-        _UART_RXSYNC_ISR();
-    }
-
-#	elif defined(BOARD_Discovery_LoRa)
-    if (EXTI->PR & (1<<10)) {
-        EXTI->PR = (1<<10);
-        _GNSS_RXSYNC_ISR();
-    }
-
-#   else
     __EXTI_MACRO(10);
-
-#   endif
-    
 #   endif
 #   if ((defined(__ISR_EXTI11) || defined(__USE_EXTI11)) && !defined(__N_ISR_EXTI11))
     __EXTI_MACRO(11);
