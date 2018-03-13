@@ -40,9 +40,20 @@
 #undef  DRF_LR_PARAMP
 #define DRF_LR_PARAMP           (_PA_RAMP_40us)
 
-// LNA Gain: Use max gain setting, and boost it
+// LNA Gain: Use max gain setting
+// LNA Boost can be enabled or disabled following experimentation
 #undef  DRF_LR_LNA
-#define DRF_LR_LNA              (_LNA_GAIN_G1 | _LNA_BOOST_LF_ON | _LNA_BOOST_HF_ON)
+#if ((RF_PARAM_BAND > 779) && (RF_PARAM_BAND < 960))
+#   define DRF_LR_LNA           (_LNA_GAIN_G1 | _LNA_BOOST_HF_ON)
+//#   define DRF_LR_LNA           (_LNA_GAIN_G1 | _LNA_BOOST_HF_OFF)
+#elif ((RF_PARAM_BAND > 150) && (RF_PARAM_BAND < 525))
+#   define DRF_LR_LNA           (_LNA_GAIN_G1 | _LNA_BOOST_LF_ON)
+//#   define DRF_LR_LNA           (_LNA_GAIN_G1 | _LNA_BOOST_LF_OFF)
+#else
+#   error "RF_PARAM_BAND is not in a usable range (150-525 MHz or 779-960 MHz)"
+#endif
+
+
 
 // Modem Config 1: Semtech forces a weak CRC poly on us, so fuck them, we don't use it
 // For Foreground packets, however, we are forced to use their explicit header
@@ -64,8 +75,10 @@
 #define DRF_LR_MODEMCONFIG2_FG  (_SF_7 | _TX_CONT_OFF | _RXPAYLOADCRC_OFF | b11)
 
 
-#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_OFF | _AGC_ON)
-
+/// Chip default is to have AGC Automatic control as off.
+/// Experiment with this value to get best results.
+//#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_OFF | _AGC_AUTO_ON)
+#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_OFF | _AGC_AUTO_OFF)
 
 
 

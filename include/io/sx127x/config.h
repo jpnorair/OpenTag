@@ -102,8 +102,8 @@
 #define RF_FEATURE_212K                 DISABLED            // 212kHz baudrate          High
 
 // LoRa is a unique PHY, so we set these as "ENABLED" to prevent SW interference
-#define RF_FEATURE_PN9                  ENABLED             // Integrated PN9 codec     Moderate (DASH7 has particular sequence)
-#define RF_FEATURE_FEC                  ENABLED             // Integrated FEC codec     Moderate (DASH7 has particular sequence)
+#define RF_FEATURE_PN9                  ENABLED
+#define RF_FEATURE_FEC                  ENABLED
 
 // Back to normal settings
 #define RF_FEATURE_FIFO                 ENABLED             // RF TX/RX FIFO            High   
@@ -133,7 +133,9 @@
 #define RF_PARAM(VAL)                   RF_PARAM_##VAL
 #define RF_PARAM_SSBIT_US               
 #define RF_PARAM_RAMP_BYTES             0                       // Ramp-up + Down
-#define RF_PARAM_PREAMBLE_SYMS          (12+5)                   // 8 are programmed, 4.25 are always added                   
+#define RF_PARAM_PREAMBLE_BASESYMS      12
+#define RF_PARAM_PREAMBLE_SYMS          (RF_PARAM_PREAMBLE_BASESYMS+5)                   
+                 
 #define RF_PARAM_SYNC_BYTES             1                       // Always 1
 #define RF_PARAM_PKT_OVERHEAD           (RF_PARAM_PREAMBLE_SYMS)
 #define RF_PARAM_BGPKT_SYMS             (RF_PARAM_PREAMBLE_SYMS + 15)

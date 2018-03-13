@@ -265,8 +265,8 @@
 #   define _SF_12                                   0xC0 
 #   define _TX_CONT_ON                              (1<<3)
 #   define _TX_CONT_OFF                             (0<<3)
-#   define _AGC_ON                                  (1<<2)
-#   define _AGC_OFF                                 (0<<2)
+#   define _AGC_AUTO_ON                             (1<<2)
+#   define _AGC_AUTO_OFF                            (0<<2)
 #   define _SYMBTIMEOUT_MSB                         (3<<0)
 #   define __SYMBTIMEOUT_MSB(VAL)                   ((3&(VAL))<<0)
 

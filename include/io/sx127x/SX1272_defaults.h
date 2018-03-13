@@ -78,8 +78,10 @@
 // Overcurrent protection: using chip defaults.
 #define DRF_LR_OCP              (_OCP_ON | _OCP_TRIM_100mA)
 
-// LNA Gain: Use max gain setting, and boost it
+// LNA Gain: Use max gain setting
+// Boost on vs. Boost off can be fiddled-with following experimentation
 #define DRF_LR_LNA              (_LNA_GAIN_G1 | _LNA_BOOST_ON)
+//#define DRF_LR_LNA              (_LNA_GAIN_G1 | _LNA_BOOST_OFF)
 
 // LoRa FIFO Registers: Single FIFO mode.
 #define DRF_LR_FIFOADDRPTR      0x00
@@ -98,17 +100,20 @@
 // Modem Config 2: 
 // - we use SF7 @ 500 kHz
 // - we set RX timeout to slightly more than the length of a BG packet, 
-// - a BG packet is roughly 28.25 symbols in length, total, including 11.25 symbol preamble.
-#define DRF_LR_MODEMCONFIG2     (_SF_7 | _TX_CONT_OFF | _AGC_ON | __SYMBTIMEOUT_MSB(0))
-#define DRF_LR_MODEMCONFIG2_BG  (_SF_7 | _TX_CONT_OFF | _AGC_ON | b00)
-#define DRF_LR_MODEMCONFIG2_FG  (_SF_7 | _TX_CONT_OFF | _AGC_ON | b11)
-#define DRF_LR_SYMBTIMEOUTLSB   (29)
-#define DRF_LR_SYMBTIMEOUTLSB_BG (29)
+// - a BG packet is roughly 17 symbols in length, plus the preamble length.
+//   preamble length is defined in sx127x/config.h.
+#define DRF_LR_MODEMCONFIG2     (_SF_7 | _TX_CONT_OFF | _AGC_AUTO_ON | __SYMBTIMEOUT_MSB(0))
+#define DRF_LR_MODEMCONFIG2_BG  (_SF_7 | _TX_CONT_OFF | _AGC_AUTO_ON | b00)
+#define DRF_LR_MODEMCONFIG2_FG  (_SF_7 | _TX_CONT_OFF | _AGC_AUTO_ON | b11)
+
+
+#define DRF_LR_SYMBTIMEOUTLSB   (17 + RF_PARAM_PREAMBLE_SYMS)
+#define DRF_LR_SYMBTIMEOUTLSB_BG (17 + RF_PARAM_PREAMBLE_SYMS)
 #define DRF_LR_SYMBTIMEOUTLSB_FG (255)
 
-// Preamble length is set to 12
+// Preamble length is set from config settings
 #define DRF_LR_PREAMBLEMSB      0
-#define DRF_LR_PREAMBLELSB      12
+#define DRF_LR_PREAMBLELSB      (RF_PARAM_PREAMBLE_BASESYMS)
 
 // Payload length set to 6, the length of BG frame.  FG frames use explicit header mode
 #define DRF_LR_PAYLOADLENGTH    6

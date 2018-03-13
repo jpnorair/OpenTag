@@ -94,8 +94,8 @@
 #   define _LOWDATARATEOPTIMIZE_MASK                (~(1<<3))
 #   define _LOWDATARATEOPTIMIZE_ON                  (1<<3) 
 #   define _LOWDATARATEOPTIMIZE_OFF                 (0<<3) // Default
-#   define _AGC_ON                                  (1<<2)
-#   define _AGC_OFF                                 (0<<2)
+#   define _AGC_AUTO_ON                             (1<<2)
+#   define _AGC_AUTO_OFF                            (0<<2) // Default
 
 
 #define RFREG_LR_PPMCORRECTION                      0x27 
