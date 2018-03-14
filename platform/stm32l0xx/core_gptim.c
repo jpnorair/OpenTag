@@ -37,135 +37,28 @@
 #include <otplatform.h>
 #include <otsys/syskern.h>
 
+#if (OT_FEATURE(M2))
+#	include <m2/radio.h>
+#endif
+
 systim_struct systim;
+
+
+/// Temporary Hack.  LPTIM has big overhead, and it will be phased-out for usage
+/// as the gptim in the next version.
+#define _LPTIM_OVERHEAD_HACK    0 //4
 
 
 /// Local Options Flags (systim.opt)
 #define SYSTIM_INSERTION_ON     1
 
-
-
-
-/** ISRs used by System Time Module 
-  * ========================================================================<BR>
-  * LPTIM1, RTC-Wakeup, TIM6
-  */
-
-/// Used for SYSTIM-main
-void platform_isr_lptim1() {
-    ot_u8 lptim_flags = LPTIM1->ISR;
-
-    // Clear all the interrupt flags in the register
-    // Also make sure only the CMP interrupt is in usage
-    LPTIM1->ICR = 0x7F;
-#if OT_FEATURE(TIME)
-    LPTIM1->IER = LPTIM_IER_CMPMIE | LPTIM_IER_ARRMIE;
-#else
-    LPTIM1->IER = LPTIM_IER_CMPMIE;
+// Debugging
+#ifndef OT_FEATURE_TIME
+#   define OT_FEATURE_TIME  DISABLED
 #endif
-#if OT_FEATURE(TIME)
-    if (lptim_flags & LPTIM_ISR_ARRM) {
-        // add to time
-    }
-    if (lptim_flags & LPTIM_ISR_CMPM)
-#endif
-    // Kernel Timer Compare Interrupt: clear the sleep flag that prevents the
-    // scheduler from running
-    {   systim.flags = 0;
-    }
-}
+#define _USE_HW_TIME    (DISABLED && (OT_FEATURE_TIME))
 
 
-/// Used for Insertor & Ticker:
-/// - The ticker doesn't do a damn thing except wakeup from sleep 
-/// - The Insertor manually vectors to radio_mac_isr(), although this should be
-///   changed in the future to a dynamic callback.
-void platform_isr_rtcwakeup() { 
-#   if (OT_FEATURE(M2))
-#       if (RF_FEATURE(CSMATIMER) != ENABLED))
-        if (systim.opt & SYSTIM_INSERTION_ON) {
-            systim.opt ^= SYSTIM_INSERTION_ON;
-            RTC->CR &= ~RTC_CR_WUTE;
-            radio_mac_isr();
-        }
-#       endif
-#   endif
-}
-
-
-/// Would be used for Clocker, if clocker actually cared interrupts
-// void platform_isr_tim6() { }
-
-
-
-
-
-
-
-#ifndef EXTF_systim_init
-void systim_init(void* tim_init) {
-/// This is the DEBUG implementation that uses TIM9 at 1024 Hz rather than
-/// the RTC hybrid method.
-
-    /// 1. The iTimer uses the RTC Wakeup Timer, as does the Mode-2
-    ///    MAC Timer.  We must:
-    ///    <LI> Unlock RTC as a whole </LI>
-    ///    <LI> put into INIT mode </LI>
-    ///    <LI> Use a prescaler to match the clock used.  For LSE, this is 1.
-    ///         (set to 0).  For LSI, this is...
-    RTC->WPR    = 0xCA;
-    RTC->WPR    = 0x53;
-    RTC->CR     =  0;   //(1<<5);
-    RTC->ISR    = 0xFFFFFFFF;
-    while((RTC->ISR & RTC_ISR_INITF) == 0);
-    RTC->TR     = 0;
-
-#   if BOARD_FEATURE(LFXTAL)
-        //RTC->PRER               = (127 << 16) | 255;      // this is reset default value
-#   else
-    {   ot_u32 lsi_hz           = platform_ext_lsihz();
-        platform_ext.lsi_remhz  = (lsi_hz & 1023);        // = remainder for clocks/tick
-        platform_ext.lsi_khz    = (lsi_hz >> 10);
-        RTC->PRER               = (127 << 16) | lsi_hz >> 7;
-    }
-#   endif
-
-    // Re-enable RTC.  Wakeup timer is set to LSClock/16.
-    // Wakeup interrupt is always on, but wakeup timer is not always on.
-    RTC->WUTR   = 1023;                 // token initialization amount
-    RTC->CR     = RTC_CR_WUTIE | b000;  // LSClock/16
-    RTC->ISR    = 0;
-
-    /// 2. Set LPTIM1 to use LSE/32 (or LSI/32)
-    LPTIM1->CR      = 0;            // disable timer
-    LPTIM1->ICR     = 0x3F;         // clear all interrupt flags
-    LPTIM1->CFGR    = (b101<<9);    // div32
-    LPTIM1->CMP     = 65535;
-    LPTIM1->ARR     = 65535;
-#   if OT_FEATURE(TIME)
-    LPTIM->IER      = LPTIM_IER_ARRMIE | LPTIM_IER_CMPMIE;
-#   else
-    LPTIM1->IER     = LPTIM_IER_CMPMIE;
-#   endif
-    LPTIM1->CR      = LPTIM_CR_ENABLE;
-    LPTIM1->CR      = LPTIM_CR_CNTSTRT | LPTIM_CR_ENABLE;
-
-
-    /// 3. Clear flags and stamps
-    systim.flags    = 0;
-    systim.stamp1   = 0;
-    
-    
-    /// 4. Clocker initialization.  OpenTag doesn't really care about Clocker
-    ///    so we also need a way to configure if it should be enabled or not.
-    TIM6->CR1   = 0;
-    TIM6->CR2   = (b001 << 4);
-    TIM6->DIER  = 0;
-    TIM6->ARR   = 65535;
-    TIM6->PSC   = ((PLATFORM_HSCLOCK_HZ / BOARD_PARAM_APB1CLKDIV) / 4);
-    //TIM6->EGR   = TIM_EGR_UG;
-}
-#endif
 
 
 
@@ -187,65 +80,212 @@ ot_u16 __read_lptim_cnt() {
 }
 
 
+void __write_lptim_cmp(ot_u16 new_cmp) {
+// Clear the CMPOK bit ahead of setting CMP
+// Set the CMP to the new value
+// Assure that CMP was successfully written 
+    LPTIM1->ICR = LPTIM_ICR_CMPOKCF;
+    LPTIM1->CMP = new_cmp;
+    while ((LPTIM1->ISR & LPTIM_ISR_CMPOK) == 0) {
+        //test_cmp++;
+    }
+}
+
+
+void __write_lptim_arr(ot_u16 new_arr) {
+    LPTIM1->ICR = LPTIM_ICR_ARROKCF;
+    LPTIM1->ARR = new_arr;
+    while ((LPTIM1->ISR & LPTIM_ISR_ARROK) == 0);
+}
+
+
+
+/** ISRs used by System Time Module 
+  * ========================================================================<BR>
+  * LPTIM1, RTC-Wakeup, TIM6
+  */
+
+/// Used for SYSTIM-main
+void platform_isr_lptim1() {
+    ot_u8 lptim_flags;
+    
+    //volatile ot_u16 test;
+    //test = __read_lptim_cnt();
+    
+    // Clear interrupt flags
+    lptim_flags = LPTIM1->ISR;
+    LPTIM1->ICR = lptim_flags;
+
+    // Kernel Timer Compare Interrupt: clear the sleep flag that prevents the
+    // scheduler from running
+    if (lptim_flags & LPTIM_ISR_CMPM) {
+        systim.flags = 0;
+    }
+    
+    //test = 0;
+}
+
+
+/// Used for Insertor & Ticker:
+/// - The ticker doesn't do a damn thing except wakeup from sleep 
+/// - The Insertor manually vectors to radio_mac_isr(), although this should be
+///   changed in the future to a dynamic callback.
+void platform_isr_rtcwakeup() { 
+#if (OT_FEATURE(M2))
+#if (RF_FEATURE(CSMATIMER) != ENABLED)
+    if (systim.opt & SYSTIM_INSERTION_ON) {
+        systim.opt ^= SYSTIM_INSERTION_ON;
+        RTC->ISR    = ~RTC_ISR_WUTF;
+        RTC->CR    &= ~RTC_CR_WUTE;
+        radio_mac_isr();
+    }
+#endif
+#endif
+}
+
+
+/// Would be used for Clocker, if clocker actually cared interrupts
+// void platform_isr_tim6() { }
+
+
+
+
+#ifndef EXTF_systim_init
+void systim_init(void* tim_init) {
+/// This is the DEBUG implementation that uses TIM9 at 1024 Hz rather than
+/// the RTC hybrid method.
+
+    /// 1. The iTimer uses the RTC Wakeup Timer, as does the Mode-2
+    ///    MAC Timer.  We must:
+    ///    <LI> Unlock RTC as a whole </LI>
+    ///    <LI> put into INIT mode </LI>
+    ///    <LI> Use a prescaler to match the clock used.  For LSE, this is 1.
+    ///         (set to 0).  For LSI, this is...
+    RTC->WPR    = 0xCA;
+    RTC->WPR    = 0x53;
+    RTC->CR     = 0;    //(1<<5);
+    RTC->ISR    = 0xFFFFFFFF;
+    while ((RTC->ISR & RTC_ISR_INITF) == 0);
+    RTC->TR     = 0;
+
+#   if BOARD_FEATURE(LFXTAL)
+        //RTC->PRER               = (127 << 16) | 255;      // this is reset default value
+#   else
+    {   ot_u32 lsi_hz           = platform_ext_lsihz();
+        platform_ext.lsi_remhz  = (lsi_hz & 1023);        // = remainder for clocks/tick
+        platform_ext.lsi_khz    = (lsi_hz >> 10);
+        RTC->PRER               = (127 << 16) | lsi_hz >> 7;
+    }
+#   endif
+
+    // Clear any ISRs
+    RTC->ISR = 0;
+
+    /// 2. Set LPTIM1 to use LSE/32 (or LSI/32)
+    
+    // IER and CFGR must be set with LPTIM disabled
+    LPTIM1->CR      = 0;            // disable timer
+    LPTIM1->IER     = LPTIM_IER_CMPMIE;
+    LPTIM1->CFGR    = ((5-MCU_PRESCALER_SHIFT) << 9);    // generally div32, 16, 8
+    
+    // ARR and CMP must be set with LPTIM enabled
+    LPTIM1->CR      = LPTIM_CR_ENABLE;
+    __write_lptim_arr(65535);
+    __write_lptim_cmp(65535);
+    LPTIM1->ICR     = 0x7F;         // clear all interrupt flags
+    
+    // Start Timer
+    LPTIM1->CR      = LPTIM_CR_CNTSTRT | LPTIM_CR_ENABLE;
+    
+
+    /// 3. Clear flags and stamps
+    systim.flags    = 0;
+    systim.stamp1   = 0;
+    
+    
+    /// 4. Clocker initialization.  OpenTag doesn't really care about Clocker
+    ///    so we also need a way to configure if it should be enabled or not.
+    RCC->APB1ENR   |= (RCC_APB1ENR_TIM6EN); 
+    TIM6->CR1       = 0;
+    TIM6->CR2       = (b001 << 4);
+    TIM6->DIER      = 0;
+    TIM6->ARR       = 65535;
+    TIM6->PSC       = ((PLATFORM_HSCLOCK_HZ / BOARD_PARAM_APB1CLKDIV) / 32768);
+    //TIM6->EGR   = TIM_EGR_UG;
+}
+#endif
+
+
+
 
 
 ot_u32 systim_get() {
     ot_u16 timer_cnt;
     timer_cnt   = __read_lptim_cnt();
     timer_cnt  -= (ot_u16)systim.stamp1;
-    return (ot_u32)timer_cnt;
+    return (ot_u32)(timer_cnt >> OT_GPTIM_OVERSAMPLE);
 }
 
 ot_u16 systim_next() {
-    return systim.stamp1 - __read_lptim_cnt();
+    ot_u16 clocks;
+    clocks = (systim.stamp1 - __read_lptim_cnt());
+    return (clocks >> OT_GPTIM_OVERSAMPLE);
 }
 
 
 void systim_enable() {
-#   if OT_FEATURE(TIME)
-    LPTIM1->IER = LPTIM_IER_ARRMIE | LPTIM_IER_CMPMIE;
-#   else
-    LPTIM1->IER = LPTIM_IER_CMPMIE;
-#   endif
+/// systim_enable and systim_disable are empty on STM32L0
+    //LPTIM1->IER = LPTIM_IER_CMPMIE;
 }
 
 void systim_disable() {
-#   if OT_FEATURE(TIME)
-    LPTIM1->IER = LPTIM_IER_ARRMIE;
-#   else
-    LPTIM1->IER = 0;
-#   endif
+/// systim_enable and systim_disable are empty on STM32L0
+    //LPTIM1->IER = 0;
 }
 
+///@todo the SWIER line guarantees the pend occurs
 void systim_pend() {
-    LPTIM1->IER    |= LPTIM_IER_CMPOKIE;
-    systim.stamp1   = __read_lptim_cnt();
-    LPTIM1->CMP     = systim.stamp1;
+    systim.stamp1 = __read_lptim_cnt();
+    __write_lptim_cmp(systim.stamp1);
+    EXTI->SWIER = (1<<29);
 }
 
 void systim_flush() {
-    systim_disable();
+    //systim_disable();
     systim.stamp1 = __read_lptim_cnt();
 }
 
 ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
 /// This should only be called from the scheduler.
 
-    /// If the task to be scheduled is already due (considering the runtime of
-    /// the scheduler itself) return 0.  This will cause the sleep process to
-    /// be ignored and the task to start immediately.
-    if ( (ot_long)(nextevent-overhead) <= 0 ) {
+    /// Subtracting the overhead of the scheduler runtime yields the true time
+    /// to schedule the nextevent.
+    nextevent = (ot_long)nextevent - (ot_long)overhead;
+    
+    /// If the task to be scheduled is already due return 0.
+    /// This will ignore the sleep process and go straight to the task.
+    if ((ot_long)nextevent <= 0) {
         systim.flags = 0;
         return 0;
     }
-
+    
+    /// If the nextevent is less that the minimum time overhead of the LPTIM
+    /// CMP setting process (which is consequential), then don't use LPTIM, 
+    /// use the clocker Timer.
+//    if ((ot_long)nextevent <= _LPTIM_SETCMP_OVERHEAD) {
+//        ///@todo implement this and have a way to go into deepest sleep without stop.
+//    }
+    
     /// Program the scheduled time into the timer, in ticks.
-    systim_disable();
+    /// Oversampling is done at the driver level, versus shifting which is done
+    /// at the kernel level.  Oversampling can help timers without synchronized 
+    /// updates whereas shifting can improve scheduling precision.
     systim.flags    = GPTIM_FLAG_SLEEP;
-    LPTIM1->ICR     = LPTIM_ICR_CMPMCF;                 // Clear compare match
+    LPTIM1->ICR     = 0x7f;     //LPTIM_ICR_CMPMCF;                 // Clear compare match
     systim.stamp1   = __read_lptim_cnt();
-    LPTIM1->CMP     = systim.stamp1 + (ot_u16)nextevent;
-    systim_enable();
+    
+    LPTIM1->CMP     = _LPTIM_OVERHEAD_HACK + systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE);
+    //__write_lptim_cmp(_LPTIM_OVERHEAD_HACK + systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE) );
 
     return (ot_u16)nextevent;
 }
@@ -329,32 +369,44 @@ void sub_disable_wkuptim() {
 
 void sub_set_wkuptim(ot_uint period) {
     ot_u32 rtc_cr;
+    ot_uint wdog;
 
     // Ensure Wakeup Timer is off
     rtc_cr  = RTC->CR;
     RTC->CR = rtc_cr & ~RTC_CR_WUTE;
 
+    // Poll WUTWF until it is set, afterwhich WUTR can be set
+    // SW watchdog assumes 10 clocks per loop, to yield ~80us at 32MHz
+    wdog = 256; // ~70 us at 32 MHz 
+    while ((RTC->ISR & RTC_ISR_WUTWF) == 0) {
+        if (--wdog == 0) {
+            ///@todo error, do reset 
+            break;
+        }
+    }
+    
     // Ticks interval to run wakeup.
     RTC->WUTR = (period << _TICKER_SHIFT);
 
     // Enable Wakeup with interrupt
     // This will do nothing more than wake-up the chip from STOP at the set
     // interval.  The default ISR in platform_isr_STM32L.c is sufficient.
-    RTC->CR = rtc_cr | (RTC_CR_WUTIE | RTC_CR_WUTE);
+    RTC->CR = rtc_cr | RTC_CR_WUTIE | RTC_CR_WUTE | b000;
 }
 
 
 
 #ifndef EXTF_systim_set_ticker
 void systim_set_ticker(ot_uint period) {
-    sub_enable_wkuptim();
-    sub_set_wkuptim(period);
+/// Ticker is not used on STM32L0 implementation
+    //sub_set_wkuptim(period);
 }
 #endif
 
 #ifndef EXTF_systim_stop_ticker
 void systim_stop_ticker() {
-    sub_disable_wkuptim();
+/// Ticker is not used on STM32L0 implementation
+    //sub_disable_wkuptim();
 }
 #endif
 
@@ -375,13 +427,18 @@ void systim_stop_ticker() {
   */
 void systim_set_insertion(ot_u16 value) {
     if (systim.opt & SYSTIM_INSERTION_ON) {
-        sub_set_wkuptim(value);
+        if (value == 0) {
+            EXTI->SWIER = (1<<20);
+        }
+        else {
+            sub_set_wkuptim(value);
+        }
     }
 }
 
 OT_INLINE void systim_enable_insertion() {
     systim.opt |= SYSTIM_INSERTION_ON;
-    sub_enable_wkuptim();
+    //sub_enable_wkuptim();
 }
 
 OT_INLINE void systim_disable_insertion() {
@@ -399,7 +456,8 @@ OT_INLINE void systim_disable_insertion() {
   * switch (i.e. loads a task).  OpenTag enforces a 256-tick (250ms) maximum
   * contiguous runtime for a task, so the loop-period of the clocker timer MUST
   * be at least this long.  For 16 bit timers, the minimum clock-period is thus
-  * about 4 microseconds (~4us).
+  * about 4 microseconds (~4us).  32768Hz is a popular frequency, but it's not
+  * so important.
   *
   * @note Generally speaking, don't use the clocker directly.  The Scheduler
   * usually needs it, and it will manage it in a specific way.  Clocker uses
@@ -416,8 +474,8 @@ OT_INLINE void systim_disable_insertion() {
 /// we also need a way to configure if it should be enabled or not.
 
 void systim_start_clocker() {
-    TIM6->EGR = TIM_EGR_UG;
     TIM6->CR1 = TIM_CR1_CEN;
+    TIM6->EGR = TIM_EGR_UG;
 }
 
 void systim_restart_clocker() {
@@ -463,7 +521,7 @@ ot_u32 systim_chronstamp(ot_u32* timestamp) {
   * ========================================================================<BR>
   */
 
-#if 0 //(OT_FEATURE(TIME) == ENABLED)
+#if 0 //_USE_HW_TIME
 void sub_juggle_rtc_alarm() {
     ot_u8  i;
     ot_u32 comp;

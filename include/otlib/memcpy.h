@@ -47,8 +47,8 @@
 #   define memcpy2      ot_memcpy2
 #   define memcpy4      ot_memcpy4
 #   define memset       ot_memset
-#   define memset2      ot_memset_2
-#   define memset4      ot_memset_4
+#   define memset2      ot_memset2
+#   define memset4      ot_memset4
 #endif
 
 
@@ -68,9 +68,9 @@
   * ot_memcpy2() and ot_memcpy4() are two and four byte aligned
   * variants of ot_memcpy()
   */
-void ot_memcpy(void* dst, void* src, ot_uint length);
-void ot_memcpy2(void* dst, void* src, ot_uint length);
-void ot_memcpy4(void* dst, void* src, ot_uint length);
+void ot_memcpy(ot_u8* dst, ot_u8* src, ot_uint length);
+void ot_memcpy2(ot_u16* dst, ot_u16* src, ot_uint length);
+void ot_memcpy4(ot_u32* dst, ot_u32* src, ot_uint length);
 
 
 
@@ -82,9 +82,9 @@ void ot_memcpy4(void* dst, void* src, ot_uint length);
   * @ingroup Memcpy
   * @sa memcpy()
   */
-void ot_memset(void* dst, ot_u8 value, ot_uint length);
-void ot_memset2(void* dst, ot_u16 value, ot_uint length);
-void ot_memset4(void* dst, ot_u32 value, ot_uint length);
+void ot_memset(ot_u8* dst, ot_u8 value, ot_uint length);
+void ot_memset2(ot_u16* dst, ot_u16 value, ot_uint length);
+void ot_memset4(ot_u32* dst, ot_u32 value, ot_uint length);
 
 
 

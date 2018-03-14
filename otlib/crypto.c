@@ -13,14 +13,22 @@
   * limitations under the License.
   */
 /**
-  * @file       /otlib/crypto_aes128.c
+  * @file       /otlib/crypto.c
   * @author     JP Norair
   * @version    R102
   * @date       21 Aug 2014
   * @brief      EAX Wrapper
   * @ingroup    AES128
+  * 
+  * crypto.c includes a general data wrapper for all EAX cryptography jobs, 
+  * in addition to default software-based implementations of the driver
+  * functions.  These directly utilize the OTEAX routines.  
   *
-  *
+  * Some platforms have AES hardware.  These platforms can get much better 
+  * performance through the usage of customized versions of this code that 
+  * utilize the HW.  You can find these HW-based implementations together with 
+  * the platform code, called "otlib_eax.c"
+  * 
   ******************************************************************************
   */
 
@@ -28,7 +36,7 @@
 // types and functions
 
 #include <otstd.h>
-#if (OT_FEATURE(DLL_SECURITY) || OT_FEATURE(NL_SECURITY))
+#if (OT_FEATURE(DLL_SECURITY) || OT_FEATURE(NL_SECURITY) || OT_FEATURE(VL_SECURITY))
 
 #include <otlib/crypto.h>
 #include <otlib/memcpy.h>
@@ -66,6 +74,32 @@ OT_INLINE ot_int EAX_encrypt(ot_u8* dst, ot_u8* src, ot_uint srclen, ot_u8* nonc
 OT_INLINE ot_int EAX_decrypt(ot_u8* dst, ot_u8* src, ot_uint srclen, ot_u8* nonce, ot_u8* key) {
     return __EAX_crypt(dst, src, srclen, nonce, key, &EAXdrv_decrypt);
 }
+
+
+
+
+
+/** EAX default software driver (direct calls to OTEAX)<BR>
+  * ========================================================================<BR>
+  */
+#include <oteax.h>
+
+OT_WEAK ot_int EAXdrv_init(ot_u8* key, EAXdrv_t* context) {
+    return (ot_int)eax_init_and_key((const unsigned char*)key, context);
+}
+
+OT_WEAK ot_int EAXdrv_clear(EAXdrv_t* context) {
+    return (ot_int)eax_end(context);
+}
+
+OT_WEAK ot_int EAXdrv_encrypt(ot_u8* nonce, ot_u8* data, ot_uint datalen, EAXdrv_t* context) {
+    return (ot_int)eax_encrypt_message(nonce, data, datalen, context);
+}
+
+OT_WEAK ot_int EAXdrv_decrypt(ot_u8* nonce, ot_u8* data, ot_uint datalen, EAXdrv_t* context) {
+    return (ot_int)eax_decrypt_message(nonce, data, datalen, context);
+}
+
 
 
 

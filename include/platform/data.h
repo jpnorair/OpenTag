@@ -39,7 +39,8 @@
   */
 
 typedef struct {
-    ot_int error_code;
+	ot_u16	error_module;	
+    ot_int	error_code;
 } platform_struct;
 
 extern platform_struct platform;

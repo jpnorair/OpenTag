@@ -27,10 +27,10 @@
   * MPipe driver (/otplatform/xxx/mipe_xxx~.c) have all the information they
   * need to do the logging.
   *
-  * Considering the above, the function mpipe_send() is used to trigger the
-  * MPipe control task, and it does not need any arguments because all of the
-  * necessary information is written onto the NDEF header in the mpipe.alp.out
-  * queue.
+  * Considering the above, the function mpipe_txschedule(0) is used to trigger 
+  * the MPipe control task.  It does not need any extensive arguments because 
+  * all of the necessary information is written onto the NDEF header in the
+  * mpipe.alp.out queue.
   *
   * Check the wiki for high-level (and low level) description of the logger.
   * http://www.indigresso.com/wiki/doku.php?id=opentag:otlib:logger
@@ -48,6 +48,7 @@
 #include <otlib/logger.h>
 #include <otlib/alp.h>
 #include <otlib/queue.h>
+#include <otlib/utils.h>
 #include <otsys/mpipe.h>
 
 
@@ -78,7 +79,7 @@ void logger(ot_u8 subcode, ot_int length, ot_u8* data) {
 
     if (logger_header(subcode, length)) {
         q_writestring(mpipe.alp.outq, data, length);
-        mpipe_send();
+        mpipe_txschedule(0); //mpipe_send();
     }
 }
 #endif
@@ -87,7 +88,7 @@ void logger(ot_u8 subcode, ot_int length, ot_u8* data) {
 
 void sub_logmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* data) {
 	q_writestring(mpipe.alp.outq, label, label_len);
-    q_writebyte(mpipe.alp.outq, ' ');
+    q_writebyte(mpipe.alp.outq, 0);
     q_writestring(mpipe.alp.outq, data, data_len);
 }
 
@@ -105,7 +106,7 @@ void logger_msg(logmsg_type logcmd, ot_int label_len, ot_int data_len, ot_u8* la
 
     if (logger_header(logcmd, payload_length)) {
     	sub_logmsg(label_len, data_len, label, data);
-        mpipe_send();
+    	mpipe_txschedule(0); //mpipe_send();
     }
 }
 #endif
@@ -126,8 +127,7 @@ void logger_hexmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* data)
 
         payload_length              = otutils_bin2hex(data, mpipe.alp.outq->putcursor, data_len);
         mpipe.alp.outq->putcursor  += payload_length;
-     //#mpipe.alp.outq->length     += payload_length;
-        mpipe_send();
+        mpipe_txschedule(0); //mpipe_send();
     }
 }
 #endif
@@ -138,8 +138,8 @@ void logger_hexmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* data)
 void logger_direct() {
 /// Use this if you have already created a valid MPipe ALP/NDEF frame in the
 /// MPipe output queue and all you want to do is log it.
-    mpipe.alp.outq->getcursor[2] = (mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor - 6);
-    mpipe_send();
+    mpipe.alp.outq->getcursor[1] = (mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor - 6);
+    mpipe_txschedule(0); //mpipe_send();
 }
 #endif
 

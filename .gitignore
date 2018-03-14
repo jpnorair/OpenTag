@@ -8,6 +8,7 @@
 ###################################
 *.gcccmd
 *.o
+*.o.*
 *.d
 *.so
 *.hex
@@ -17,6 +18,8 @@
 *.lst
 *.elf*
 *.hdo*
+*_clang_tmp.c
+
 
 ######################
 # OS Generated Files #
@@ -32,6 +35,8 @@ Thumbs.db
 *.ctx
 *.dbi
 *.xdb
+*BuildLog.html
+*.elf.ld
 
 #########################
 # CCS Generated Files #

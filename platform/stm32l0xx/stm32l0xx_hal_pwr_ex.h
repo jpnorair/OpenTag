@@ -2,13 +2,13 @@
   ******************************************************************************
   * @file    stm32l0xx_hal_pwr_ex.h
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    18-June-2014
+  * @version V1.7.0
+  * @date    31-May-2016
   * @brief   Header file of PWR HAL Extension module.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2014 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -50,39 +50,53 @@
   * @{
   */
 
-/** @addtogroup PWREx
+/** @defgroup PWREx PWREx
   * @{
   */
 
-
-/* Exported types ------------------------------------------------------------*/
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-/** @defgroup PWREx_Exported macro
+/** @defgroup PWREx_Exported_Macros PWREx Exported Macros
  * @{
  */
 
-/** @brief  Macros to enable or disable the Deep-sleep mode with Flash memory kept off.
+/** @brief  Macros to enable the Deep-sleep mode with Flash memory kept off.
   * @note   When entering low power mode (stop or standby only), if DS_EE_KOFF and RUN_PD of
   *         FLASH_ACR register are both set , the Flash memory will not be woken up 
   *         when exiting from deep-sleep mode.
   */
-#define __HAL_PWR_FLASHWAKEUP_ENABLE() CLEAR_BIT(PWR->CR, PWR_CR_DSEEKOFF)
-#define __HAL_PWR_FLASHWAKEUP_DISABLE() SET_BIT(PWR->CR, PWR_CR_DSEEKOFF)
+#define __HAL_PWR_FLASHWAKEUP_ENABLE()      CLEAR_BIT(PWR->CR, PWR_CR_DSEEKOFF)
+
+/** @brief  Macros to disable the Deep-sleep mode with Flash memory kept off.
+  * @note   When entering low power mode (stop or standby only), if DS_EE_KOFF and RUN_PD of
+  *         FLASH_ACR register are both set , the Flash memory will not be woken up 
+  *         when exiting from deep-sleep mode.
+  */
+#define __HAL_PWR_FLASHWAKEUP_DISABLE()     SET_BIT(PWR->CR, PWR_CR_DSEEKOFF)
 /**
   * @}
   */
 
-/* Exported functions --------------------------------------------------------*/
-
-/* Peripheral Control methods  ************************************************/
+/** @defgroup PWREx_Exported_Functions PWREx Exported Functions
+ * @{
+ */
 void HAL_PWREx_EnableFastWakeUp(void);
 void HAL_PWREx_DisableFastWakeUp(void);
 void HAL_PWREx_EnableUltraLowPower(void);
 void HAL_PWREx_DisableUltraLowPower(void);
 void HAL_PWREx_EnableLowPowerRunMode(void);
-void HAL_PWREx_DisableLowPowerRunMode(void);
+HAL_StatusTypeDef HAL_PWREx_DisableLowPowerRunMode(void);
+/**
+  * @}
+  */
 
+/* Define the private group ***********************************/
+/**************************************************************/
+/** @defgroup PWREx_Private PWREx Private
+  * @{
+  */
+/**
+  * @}
+  */
+/**************************************************************/
 
 /**
   * @}
@@ -96,7 +110,7 @@ void HAL_PWREx_DisableLowPowerRunMode(void);
 }
 #endif
 
-
 #endif /* __STM32L0xx_HAL_PWR_EX_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+

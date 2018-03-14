@@ -28,7 +28,9 @@
 #if (OT_FEATURE(CAPI) && OT_FEATURE(M2))
 #include <m2api.h>
 
+#include <otlib/auth.h>
 #include <otlib/alp.h>
+#include <otlib/memcpy.h>
 #include <otlib/buffers.h>
 #include <otlib/queue.h>
 #include <otsys/syskern.h>
@@ -113,21 +115,23 @@ ot_u16 otapi_start_dialog(ot_u16 timeout) {
 /// Stop any ongoing processes and seed the event for the event manager.  The
 /// radio killer will work in all cases, but it is bad form to kill sessions
 /// that are moving data.
+    
+    ///@todo update null radio driver to modern interface
+//#   ifndef __KERNEL_NONE__
+//    if (radio.state != RADIO_Idle) {
+//    	rm2_kill();
+//    }
+//#   endif
+
     if (timeout != 0) {
         dll.comm.tc = TI2CLK(timeout);
     }
     
-    ///@todo update null radio driver to modern interface
-#   ifndef __KERNEL_NONE__
-    if (radio.state != RADIO_Idle) {
-    	rm2_kill();
-    }
-#   endif
-
-#   ifndef __KERNEL_NONE__
-    sys.task_RFA.event = 0;
-    sys_preempt(&sys.task_RFA, 0);
-#   endif
+//#   ifndef __KERNEL_NONE__
+//    sys.task_RFA.event = 0;
+//    sys_preempt(&sys.task_RFA, 0);
+//#   endif
+    
     return 1;
 }
 
@@ -207,7 +211,7 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
     else {
         // Place dialog with timeout
         dll.comm.rx_timeout = otutils_calc_timeout(dialog->timeout);
-        dialog->timeout    |= (dialog->channels == 0) << 7;     // 0 or 0x80
+        dialog->timeout    |= (dialog->channels != 0) << 7;     // 0 or 0x80
         q_writebyte(&txq, dialog->timeout);
     
         // Write response list
@@ -227,8 +231,8 @@ ot_u16 otapi_put_dialog_tmpl(ot_u8* status, dialog_tmpl* dialog) {
 #ifndef EXTF_otapi_put_query_tmpl
 ot_u16 otapi_put_query_tmpl(ot_u8* status, query_tmpl* query) {
     /// Test for Anycast and Multicast addressing (query needs one of these)    
-    //if (m2np.header.fr_info & M2QUERY_GLOBAL) {
-    if ((m2qp.cmd.code & M2TT_MASK) < M2TT_REQ_UB) {     ///@note using modernized approach
+
+    if ((m2qp.cmd.code & M2TT_MASK) > M2TT_REQ_UB) {
         q_writebyte(&txq, query->length);
         q_writebyte(&txq, query->code);
     
@@ -321,6 +325,8 @@ ot_u16 otapi_put_isf_return(ot_u8* status, isfcall_tmpl* isfcall) {
 #ifndef EXTF_otapi_put_udp_tmpl
 ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
     ot_u16 space;
+    vlFILE* fp = NULL;
+    
     space = q_space(&txq);
     
 #   if (M2_FEATURE(MULTIFRAME))
@@ -330,6 +336,13 @@ ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
     ///      frame.  It will probably require a network-layer function to 
     ///      determine the overhead when supplied payload length.
 #   else
+        
+        if (udp->data == NULL) {
+        	///@todo add a user to UDP type for access control
+        	fp              = ISF_open(udp->src_port, VL_ACCESS_R, AUTH_GUEST );
+        	udp->data_length= (fp != NULL) ? fp->length : 0;
+        }
+        
         space -= 4;
         if (space < udp->data_length) {
             *status = 0;
@@ -341,10 +354,15 @@ ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
             q_writebyte(&txq, udp->dst_port);
             q_writebyte(&txq, udp->src_port);
             
-            if (udp->data != NULL) {
-                q_writestring(&txq, udp->data, udp->data_length);
+            if (udp->data == NULL) {
+                txq.putcursor += vl_load(fp, udp->data_length, txq.putcursor);
+            }
+            else {
+            	q_writestring(&txq, udp->data, udp->data_length);
             }
         }
+        
+        vl_close(fp);
 #   endif
 
     return q_length(&txq);

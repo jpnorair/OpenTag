@@ -241,6 +241,8 @@
 #include <cm3_endian.h>
 #include <cm3_byteswap.h>
 #include <cm3_bitrotate.h>
+#include <cm3_countleadingzeros.h>
+#include <cm3_saturation.h>
 
 
 

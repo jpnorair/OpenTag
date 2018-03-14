@@ -59,13 +59,19 @@ typedef enum {
 
 
 /** Additional link information
-  *
   */
 #define RADIO_LINK_CORRECTIONS  (1<<6)
 #define RADIO_LINK_PQI          (1<<3)
 #define RADIO_LINK_SQI          (1<<2)
 #define RADIO_LINK_LQI          (1<<1)
 #define RADIO_LINK_AGC          (1<<0)
+
+
+/** Radio Flags
+  */
+#define RADIO_FLAG_REFRESH      (1<<0)
+
+
 
 typedef struct {
 #if (OT_FEATURE(RF_LINKINFO) || OT_FEATURE(RF_ADAPTIVE))
@@ -89,6 +95,7 @@ typedef struct {
   */
 typedef struct {
     radio_state         state;
+    ot_u8               flags;
     ot_int              last_rssi;
     ot_int              last_linkloss;
     ot_sig2             evtdone;
@@ -119,7 +126,7 @@ extern radio_struct radio;
   *
   * phymac_struct description
   *
-  * flags           (ot_u8) usage flags, proprietary/custom, optional.
+  * flags           (ot_u8) information about channel plan
   *
   * tg              (ot_u8) channel guard time (in ti units) as determined by
   *                 the spec.  It is 2, 3, 5, or 10 ti depending on the channel.
@@ -326,6 +333,14 @@ ot_uint rm2_scale_codec(ot_uint buf_bytes);
 ot_bool rm2_mac_filter();
 
 
+/** @brief  Tell Channel search process that it needs to refresh itself
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  * @sa rm2_test_chanlist
+  */
+void rm2_channel_refresh(void);
+
 
 /** @brief  Explicit channel test function, returns True when channel is entered
   * @param  channel     (ot_u8) Channel ID to test and enter
@@ -418,6 +433,21 @@ ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE *fp);
   *  C. the peripherals on the MCU need to be reconfigured for UHF usage
   */
 void radio_init();
+
+
+
+
+
+
+/** @brief Gets a code (typically 0-3) about module's power requirements
+  * @param None
+  * @retval ot_u8       0-3 code specifying acceptable powerdown states
+  * @ingroup Radio
+  *
+  * Typically this function is run through the kernel itself or via a
+  * task on event-number 255.
+  */
+ot_u8 radio_getpwrcode();
 
 
 

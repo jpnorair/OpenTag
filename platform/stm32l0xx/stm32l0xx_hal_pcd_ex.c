@@ -1,25 +1,18 @@
 /**
   ******************************************************************************
-  * @note   This file and others in the HAL_PCD have been modified by JP Norair
-  *         in September 2014, for usage with OpenTag.  They have also been
-  *         optimized for size and speed.  Some improvements have been made to
-  *         data structuring, integer manipulation, and other such things that
-  *         may prevent this distro from being interchangeable with files or 
-  *         functions from the original STM32Cube distro.
-  * 
   * @file    stm32l0xx_hal_pcd_ex.c
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    18-June-2014
+  * @version V1.7.0
+  * @date    31-May-2016
   * @brief   Extended PCD HAL module driver.
   *          This file provides firmware functions to manage the following 
   *          functionalities of the USB Peripheral Controller:
   *           + Configururation of the PMA for EP
-  * 
+  *         
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2014 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -46,19 +39,20 @@
   ******************************************************************************
   */ 
 
+#if !defined(STM32L011xx) && !defined(STM32L021xx) && !defined (STM32L031xx) && !defined (STM32L041xx) && !defined (STM32L051xx) && !defined (STM32L061xx) && !defined (STM32L071xx) && !defined (STM32L081xx)
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l0xx_hal.h"
-
+#ifdef HAL_PCD_MODULE_ENABLED
 /** @addtogroup STM32L0xx_HAL_Driver
   * @{
   */
 
-/** @defgroup PCDEx 
+/** @addtogroup PCDEx
   * @brief PCDEx HAL module driver
   * @{
   */
 
-#ifdef HAL_PCD_MODULE_ENABLED
+
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -68,11 +62,11 @@
 /* Private functions ---------------------------------------------------------*/
 
 
-/** @defgroup PCDEx_Private_Functions
+/** @addtogroup PCDEx_Exported_Functions PCDEx Exported Functions
   * @{
   */
 
-/** @defgroup PCDEx_Group1 Initialization and de-initialization functions 
+/** @addtogroup PCDEx__Exported_Functions_Group1
  *  @brief    Initialization and Configuration functions 
  *
 @verbatim    
@@ -85,9 +79,9 @@
 
 /**
   * @brief Configure PMA for EP
-  * @param  pdev : Device instance
+  * @param  hpcd : Device instance
   * @param  ep_addr: endpoint address
-  * @param  ep_Kind: endpoint Kind
+  * @param  ep_kind: endpoint Kind
   *                  USB_SNG_BUF: Single Buffer used
   *                  USB_DBL_BUF: Double Buffer used
   * @param  pmaadress: EP address in The PMA: In case of single buffer endpoint
@@ -100,32 +94,43 @@
   * @retval : status
   */
 
-HAL_StatusTypeDef  HAL_PCDEx_PMAConfig( PCD_HandleTypeDef *hpcd, 
-                                        uint16_t ep_addr,
-                                        uint16_t ep_kind,
-                                        uint32_t pmaadress) {
-    PCD_EPTypeDef *ep;
-    uint8_t num;
-    
-    /* initialize ep structure*/
-    num = ep_addr & 0x7F;
-    ep  = (0x80 & ep_addr) ? hpcd->IN_ep : hpcd->OUT_ep;
-    ep  = &ep[num];
+
+HAL_StatusTypeDef  HAL_PCDEx_PMAConfig(PCD_HandleTypeDef *hpcd, 
+                        uint16_t ep_addr,
+                        uint16_t ep_kind,
+                        uint32_t pmaadress)
+
+{
+  PCD_EPTypeDef *ep;
   
-    /* Here we check if the endpoint is single or double Buffer*/
-    ///@todo [JPN] This is horribly ugly and must be streamlined
-    ep->doublebuffer    = (ep_kind != PCD_SNG_BUF);
-    ep->pmaadress       = (uint16_t)pmaadress;              // Used with single-bufferring
-    
-    //ep->pmaaddr0        = (uint16_t)pmaadress;              // Used with double-bufferring
-    //ep->pmaaddr1        = (uint16_t)(pmaadress >> 16);      // Used with double-bufferring
-    
-    //ep->pmaaddr0        = ((uint16_t*)&pmaadress)[0];      // Used with double-bufferring
-    //ep->pmaaddr1        = ((uint16_t*)&pmaadress)[1];      // Used with double-bufferring
-    
-    *((uint32t*)&ep->pmaaddr0) = pmaadress;                 // Used with double-bufferring
-    
-    return HAL_OK; 
+  /* initialize ep structure*/
+  if ((0x80U & ep_addr) == 0x80U)
+  {
+    ep = &hpcd->IN_ep[ep_addr & 0x7FU];
+  }
+  else
+  {
+    ep = &hpcd->OUT_ep[ep_addr];
+  }
+  
+  /* Here we check if the endpoint is single or double Buffer*/
+  if (ep_kind == PCD_SNG_BUF)
+  {
+    /*Single Buffer*/
+    ep->doublebuffer = 0U;
+    /*Configure te PMA*/
+    ep->pmaadress = (uint16_t)pmaadress;
+  }
+  else /*USB_DBL_BUF*/
+  {
+    /*Double Buffer Endpoint*/
+    ep->doublebuffer = 1U;
+    /*Configure the PMA*/
+    ep->pmaaddr0 =  pmaadress & 0xFFFFU;
+    ep->pmaaddr1 =  (pmaadress & 0xFFFF0000U) >> 16U;
+  }
+  
+  return HAL_OK; 
 }
 /**
   * @}
@@ -136,13 +141,13 @@ HAL_StatusTypeDef  HAL_PCDEx_PMAConfig( PCD_HandleTypeDef *hpcd,
   * @}
   */
 
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
 #endif /* HAL_PCD_MODULE_ENABLED */
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
+#endif /* #if !defined(STM32L011xx) && !defined(STM32L021xx) && !defined (STM32L031xx) && !defined (STM32L041xx) && !defined (STM32L051xx) && !defined (STM32L061xx) && !defined (STM32L071xx) && !defined (STM32L081xx) */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

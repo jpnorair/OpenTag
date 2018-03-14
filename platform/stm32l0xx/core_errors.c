@@ -28,8 +28,8 @@
 
 #include <otstd.h>
 #include <otplatform.h>
-
-
+#include <otsys.h>
+#include <otlib/delay.h>
 
 
 /** Error Interrupts <BR>
@@ -39,12 +39,12 @@
 void sub_save_error(ot_u16 vector_code) {
 /// Save the high-level code and low-level code in backup RAM, and then reset
     ot_u32 error_code;
-    error_code  = ((ot_u32)platform.error_code << 16) | (ot_u32)vector_code;
+    error_code = ((ot_u32)platform.error_code << 16) | (ot_u32)vector_code;
     RTC->BKP2R = error_code;
     RTC->BKP1R = __get_PSP();
     RTC->BKP0R = __get_MSP();
     
-    NVIC_SystemReset();     //see core_cm3.h in CMSIS
+    NVIC_SystemReset();     //see core_cm0.h in CMSIS
 }
 
 
@@ -68,8 +68,15 @@ void HardFault_Handler(void) {
 /// If you have traced the code here, most likely the problem is stack overrun.
 /// You need to allocate a bigger stack for SSTACK or your thread, or fix some
 /// other serious problem (possibly interrupt storm)
-#ifdef __DEBUG__
-    while (1);
+#if defined(__DEBUG__) || defined(__PROTO__)
+    while (1) {
+        BOARD_led1_on();
+        BOARD_led2_off();
+        delay_ti(100);
+        BOARD_led1_off();
+        BOARD_led2_on();
+        delay_ti(100);
+    }
 
 #else
     /// Log HardFault by saving an error code to Backup RAM, then resetting.

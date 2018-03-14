@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /io/spirit1/radio_rm2.c
+  * @file       /otradio/spirit1/radio_rm2.c
   * @author     JP Norair
   * @version    R103
   * @date       23 Jan 2013
@@ -221,7 +221,7 @@ OT_WEAK void radio_set_mactimer(ot_u16 clocks) {
 #ifndef EXTF_radio_mac_isr
 OT_WEAK void radio_mac_isr() {
     /// Used as CA insertion timer
-    //if (radio.state == RADIO_Csma) { //this "if" is redundant
+    //if (radio.state == RADIO_Csma) {
         systim_disable_insertion();
         rm2_txcsma_isr();
     //}
@@ -905,8 +905,8 @@ OT_WEAK void rm2_txcsma_isr() {
 
             // No CSMA enabled, so jump to transmit
             ///@todo properly build CSMA
-            //if (1) {
-            if (dll.comm.csmaca_params & M2_CSMACA_NOCSMA) {
+            if (1) {
+            //if (dll.comm.csmaca_params & M2_CSMACA_NOCSMA) {
                 spirit1_spibus_io(3, 0, timcfg);
                 goto rm2_txcsma_START;
             }
@@ -1137,8 +1137,8 @@ void spirit1drv_buffer_config(MODE_enum mode, ot_u16 param) {
     is_fec      = (phymac[0].channel & 0x80) >> 4;      // 0 when no fec, 8 when FEC
     mode       += is_fec;
     buf_cfg[3]  = _WHIT_EN | (is_fec >> 3);
-    buf_cfg[4]  = ((ot_u8*)&param)[UPPER];
-    buf_cfg[5]  = ((ot_u8*)&param)[LOWER];
+    buf_cfg[4]  = ((ot_u8*)&param)[UPPER];  // Packet Length (or limit)
+    buf_cfg[5]  = ((ot_u8*)&param)[LOWER];  // Packet Length (or limit)
     buf_cfg[6]  = sync_matrix[mode];
     buf_cfg[7]  = sync_matrix[mode+1];
     buf_cfg[8]  = sync_matrix[mode+2];
@@ -1480,6 +1480,11 @@ OT_WEAK void radio_calibrate() {
 #endif
 
 
+
+ot_u8 radio_getpwrcode() {
+/// Power code: 0-3.  spirit1_getbasepwr() typically returns 3 on most platforms
+    return sprit1_getbasepwr() - (radio.state > RADIO_Idle);
+}
 
 
 

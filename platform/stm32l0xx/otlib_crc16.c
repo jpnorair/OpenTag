@@ -14,13 +14,16 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/delay_driver.c
+  * @file       /platform/stm32l0xx/otlib_crc16.c
   * @author     JP Norair
   * @version    R100
   * @date       26 Aug 2014
-  * @brief      Delay OTlib Functions for STM32L
-  * @ingroup    Delay
+  * @brief      CRC16 Hardware driver STM32L0
+  * @ingroup    CRC16
   *
+  * It's not apparent this hardware actually works in an advantageous way.
+  * Still testing that.
+  * 
   ******************************************************************************
   */
 
@@ -28,6 +31,7 @@
 #include <otplatform.h>
 #include <otlib/crc16.h>
 
+#if (MCU_FEATURE(CRC16) == ENABLED)
 
 OT_INLINE ot_u16 crc16drv_init() {
     //CRC->INIT   = 0xFFFF;
@@ -45,7 +49,7 @@ ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) 
 /// users.  Fortunately, CRC HW is extremely fast, about 1 byte/cycle.  For 
 /// doing long computations, though, it is still recommended to use the CRC16
 /// streaming object rather than this function directly.
-    ot_int units;
+    //ot_int units;
     ot_u16 output;
 
     platform_disable_interrupts();
@@ -53,20 +57,9 @@ ot_u16 crc16drv_block_manual(ot_u8* block_addr, ot_int block_size, ot_u16 init) 
     CRC->POL    = 0x8005;
     CRC->CR     = (b01 << 3) | 1; 
     
-    units       = block_size >> 2;
-    block_size &= 3;
-    
-    while (units--) {
-        CRC->DR     = *(ot_u32*)block_addr;
-        block_addr += 4;
-    }
-    if (block_size & 2) {
-        CRC->DR = *(ot_u16*)block_addr;
-        block_addr += 2;
-    }
-    if (block_size & 1) {
-        CRC->DR = *(ot_u8*)block_addr;
-        block_addr++;
+    ///@todo unroll this loop using alignment optimizations
+    while (block_size--) {
+        CRC->DR = *block_addr++;
     }
     
     output  = (__IO ot_u16)CRC->DR;
@@ -96,6 +89,6 @@ OT_INLINE ot_u16 crc16drv_block(ot_u8* block_addr, ot_int block_size) {
 
 
 
-
+#endif
 
 

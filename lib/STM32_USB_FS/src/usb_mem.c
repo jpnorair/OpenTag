@@ -24,6 +24,10 @@
   *
   ******************************************************************************
   */
+//OpenTag Conditional Compile
+#include <board.h>
+#if (MCU_CONFIG_USB)
+
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_lib.h"
@@ -103,3 +107,4 @@ void PMAToUserBufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNByt
 
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+#endif

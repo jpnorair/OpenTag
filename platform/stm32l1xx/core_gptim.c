@@ -68,10 +68,9 @@ void systim_set_ticker(ot_uint period) {
 /// interval is done in the systim initialization (above).
     ot_u32 rtc_cr;
 
-    // Ensure Wakeup Timer is off and writeable
+    // Ensure Wakeup Timer is off
     rtc_cr  = RTC->CR;
-    RTC->CR = rtc_cr & ~(RTC_CR_WUTIE | RTC_CR_WUTE);
-    while ((RTC->ISR & RTC_ISR_WUTWF) == 0);
+    RTC->CR = rtc_cr & ~RTC_CR_WUTE;
 
     // Ticks interval to run wakeup.
     RTC->WUTR = period;
@@ -199,7 +198,7 @@ void systim_init(void* tim_init) {
 
 ot_u32 systim_chronstamp(ot_u32* timestamp) {
     ot_u16 timer_cnt;
-    timer_cnt = (TIM9->CNT >> 2);
+    timer_cnt = TIM9->CNT >> 2;
 
     if (timestamp == NULL) {
         return (ot_u32)timer_cnt;
@@ -248,16 +247,10 @@ ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
         systim.flags = 0;
         return 0;
     }
-    
-    /// If the task to be scheduled is too far away for the hardware, crop it.
-    if ( (ot_long)nextevent > 8191 ) {
-        nextevent = 8191;
-    }
 
     /// Start the interval timer, using some additional ticks more than the
-    /// scheduled arrival time of the kernel timer.  In debug mode, this can
-    /// be a problem because this timer doesn't stop with the debugger.
-    //systim_set_ticker(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
+    /// scheduled arrival time of the kernel timer.
+    systim_set_ticker(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
 
     /// Program the scheduled time into the timer, in ticks.
     systim.flags     = GPTIM_FLAG_SLEEP;
@@ -637,7 +630,9 @@ ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
 
     /// Start the interval timer, using some additional ticks more than the
     /// scheduled arrival time of the kernel timer.
-    systim_set_ticker(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
+    ///@todo this is broken right now, at least with strobes
+
+    //systim_set_ticker(nextevent + _KTIM_WATCHDOG_EXTRATICKS);
 
     // Wait for the Alarm flag to go high.  There is no easy way to do this
     // with an interrupt or event.  This loop will only get used if you are

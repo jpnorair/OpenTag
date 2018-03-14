@@ -31,6 +31,7 @@
 #ifndef __OTSYS_SYSKERN_H
 #define __OTSYS_SYSKERN_H
 
+#include <board.h>
 #include <otplatform.h>
 #include <otsys/types.h>
 #include <otsys/config.h>
@@ -72,14 +73,28 @@
 
 
 
-#ifndef OT_GPTIM_SHIFT
-#   define OT_GPTIM_SHIFT 0
-#endif
 
-#if (OT_GPTIM_SHIFT != 0)
+/** GPTIM Adjustments
+  * ============================================================================
+  * These should be defined in board support or mcu config header.  If not, they
+  * are defined here to defaults.
+  */
+#ifndef OT_GPTIM_LIMIT
+#   warning "OT_GPTIM_LIMIT is not defined.  Using 15000 ticks"
+#   define OT_GPTIM_LIMIT       15000
+#endif
+#if defined(OT_GPTIM_OVERSAMPLE) && !defined(OT_GPTIM_SHIFT)
+#	define OT_GPTIM_SHIFT	OT_GPTIM_OVERSAMPLE
+#elif !defined(OT_GPTIM_SHIFT)
+#   warning "OT_GPTIM_SHIFT is not defined.  Using 0."
+#   define OT_GPTIM_SHIFT	0
+#endif
+#define _TI_SHIFT	OT_GPTIM_SHIFT
+
+#if (_TI_SHIFT != 0)
 #   define CLK_UNIT         ot_long
-#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> OT_GPTIM_SHIFT)
-#   define TI2CLK(TICKS)    ((ot_long)TICKS << OT_GPTIM_SHIFT)
+#   define CLK2TI(CLOCKS)   (ot_u16)(CLOCKS >> _TI_SHIFT)
+#   define TI2CLK(TICKS)    ((ot_long)TICKS << _TI_SHIFT)
 #else
 #   define CLK_UNIT         ot_u16
 #   define CLK2TI(CLOCKS)   (CLOCKS)
@@ -245,6 +260,36 @@ extern sys_struct sys;
   *
   */
 void sys_init();
+
+
+
+
+/** @brief System Task Initialization MACRO
+  * @param SELF         (ot_task) This is the handle to the task 
+  * @param DESTRUCTOR   (macro) This will be evaluated to kill the task
+  * @param INITIALIZER  (macro) This will be evaluated to initialize the task
+  * @param SELF
+  * @retval none
+  * @ingroup System
+  *
+  * As this is a MACRO, the DESTRUCTOR and INITIALIZER parameters get evaluated
+  * as supplied, allowing the freedom to pass parameters from the task context.
+  *
+  * Per the way OpenTag Kernel Tasks work, if task->cursor = 0, the task will
+  * be killed and not restarted.  If task->cursor != 0, the task will be killed
+  * and restarted.
+  * 
+  * This MACRO should be executed from the task.  It is the normal procedure
+  * for task->event = 0.  You could alternatively write your own routine for
+  * event=0, but 99% of the time this is what you should do.  System functions
+  * sys_init(), sys_kill_active(), and other kill/restart functions will call
+  * the task(s) using event=0 to activate this MACRO (or whatever is implemented
+  * for the 0-event, in the task).
+  *
+  */
+#define sys_taskinit_macro(SELF, DESTRUCTOR, INITIALIZER)  do { \
+    DESTRUCTOR; if(SELF->cursor) { INITIALIZER; SELF->cursor=0; }} while(0)
+
 
 
 
@@ -450,7 +495,7 @@ void sys_task_setevent(ot_task task, ot_u8 event);
 void sys_task_setcursor(ot_task task, ot_u8 cursor);
 void sys_task_setreserve(ot_task task, ot_u8 reserve);
 void sys_task_setlatency(ot_task task, ot_u8 latency);
-void sys_task_setnext(ot_task task, ot_u16 nextevent_ti);
+void sys_task_setnext(ot_task task, ot_u32 nextevent_ti);
 void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks);
 
 

@@ -40,6 +40,8 @@
 
 
 #include <otstd.h>
+#include <platform/config.h>
+
 #if (OT_FEATURE(M2) == ENABLED)
 
 #include <m2/dll.h>
@@ -67,6 +69,20 @@
 #endif
 
 
+/** Test and Variant Configuration
+ * _DLL_BLOCK_IDLE_ON_QUEUEING:
+ * - Will block Sleep/Hold/Beacon while waiting for a delayed session.
+ * - Temporary.  Will be replaced by session queuing heuristic.
+ * - Implementation will change also when "IdleTasks" grouped into one task.
+ *
+ */
+
+#define _DLL_BLOCK_IDLE_ON_QUEUEING
+
+
+
+
+
 m2dll_struct    dll;
 
 static void sub_dll_flush(void);
@@ -79,15 +95,15 @@ static void sub_dll_flush(void);
   * ============================================================================
   */
 
-//ot_u8 sub_default_idle(void);
-#define sub_default_idle()  M2_DLLIDLE_SLEEP
+ot_u8 sub_default_idle(void);
+
 
 
 /** @brief Performs subnet filtering (per Mode 2 spec) and returns status
   * @retval ot_bool     True/False on received frame subnet passes/fails filter
   * @ingroup System
   */
-//static ot_bool sub_mac_filter(void);
+//moved to rm2_mac_filter()
 
 
 /** @brief Scrambles the response-channel-list in order to improve collision
@@ -233,7 +249,7 @@ OT_WEAK void dll_init(void) {
 
 #ifndef EXTF_dll_refresh
 OT_WEAK void dll_refresh(void) {
-    ot_uni16 scratch;
+    //ot_uni16 scratch;
     vlFILE* fp;
 
     /// Open Network Features ISF and load the values from that file into the
@@ -331,6 +347,21 @@ OT_WEAK void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings) {
 #endif
 
 
+#ifndef EXTF_dll_silence
+OT_WEAK void dll_silence(ot_bool onoff) {
+    if (onoff == false) {
+        dll.netconf.active &= ~(1<<12);
+        //if (radio.state == RADIO_Idle) {
+        //    dll.idle_state      = sub_default_idle(); 
+        //    dll_idle();
+        //}
+        dll_refresh();
+    } 
+    else {
+        dll.netconf.active |= (1<<12);
+    }
+}
+#endif
 
 #ifndef EXTF_dll_goto_off
 OT_WEAK void dll_goto_off(void) {
@@ -394,11 +425,11 @@ OT_WEAK void dll_response_applet(m2session* active) {
         ot_u8 substate = active->netstate & M2_NETSTATE_TMASK;
 
         if (substate == M2_NETSTATE_RESPTX) {
-            dll.comm.tc -= TI2CLK(rm2_pkt_duration(&txq));
+            dll.comm.tc -= rm2_pkt_duration(&txq);  //TI2CLK(rm2_pkt_duration(&txq));
         }
         else if (substate == M2_NETSTATE_REQRX) {
             sys.task_HSS.cursor     = 0;
-            sys.task_HSS.nextevent  = dll.comm.rx_timeout;
+            sys.task_HSS.nextevent  = TI2CLK(dll.comm.rx_timeout);
             dll.comm.rx_timeout     = rm2_default_tgd(active->channel);
         }
     }
@@ -456,7 +487,7 @@ OT_WEAK void dll_beacon_applet(m2session* active) {
     /// <LI> Set number of redundant TX's we would like to transmit </LI>
     /// <LI> Set rx_timeout for Default-Tg or 0, if beacon has no response </LI>
     dll_set_defaults(active);
-    dll.comm.tc             = TI2CLK(M2_PARAM_BEACON_TCA);
+    dll.comm.tc             = M2_PARAM_BEACON_TCA;  //TI2CLK(M2_PARAM_BEACON_TCA);
     dll.comm.rx_timeout     = (b_params & 0x02) ? \
                                 0 : rm2_default_tgd(active->channel);
     dll.comm.csmaca_params |= (b_params & 0x04) | M2_CSMACA_NA2P | M2_CSMACA_MACCA;
@@ -515,16 +546,23 @@ OT_WEAK void dll_unblock(void) {
 
 #ifndef EXTF_dll_clock
 OT_WEAK void dll_clock(ot_uint clocks) {
-  //dll.comm.tca   -= clocks;
-  //dll.comm.tc    -= clocks;
-    clocks          = CLK2TI(clocks);
+/// @todo experiment giving exotasks two handles.
+///       one for clocking and administrative uses, one for tasking.
+    //ot_uint ticks;
+    //ticks = CLK2TI(clocks);
 
     if (sys.task_RFA.event != 0) {
-        dll.comm.rx_timeout -= clocks;
+        //dll.comm.rx_timeout -= ticks;
+    	dll.comm.rx_timeout -= CLK2TI(clocks);
     }
     else if (session_notempty()) {
         sys.task_RFA.event      = 2;
-        sys.task_RFA.nextevent  = clocks + session_getnext();
+        sys.task_RFA.nextevent  = clocks + TI2CLK(session_getnext());
+
+        ///@note added 18 Oct 17 for testing behavior of scheduled sessions
+#		ifdef _DLL_BLOCK_IDLE_ON_QUEUEING
+        dll_block_idletasks();
+#		endif
 
         // Synchronization test
         //volatile ot_u16 next_session;
@@ -556,13 +594,19 @@ OT_WEAK void dll_systask_rf(ot_task task) {
             case 2: dll_activate();         break;
 
             // RX Scan Timeout Watchdog
-            case 3: dll_scan_timeout();     break;
+            case 3: dll_scan_timeout();    break;
 
             // CSMA Manager (needed for archaic radios only)
             //case 4: dll_txcsma();         break;
+            case 4:
 
             // TX & CSMA Timeout Watchdog
-           default: rm2_kill();             break;
+            case 5: rm2_kill();             break;
+            
+            // Power Code setting on cursor
+            case 255: task->cursor = radio_getpwrcode(); break;
+            
+            default: break;
         }
     //} while ((task->event != 0) && (task->nextevent <= 0));
 
@@ -612,7 +656,7 @@ void dll_processing(void) {
         /// <LI> The current session is popped after response, or on next kernel
         ///      loop (immediately) if no response </LI>
         if (active->flags & M2_FLAG_LISTEN) {
-            network_cont_session(active->applet, M2_NETSTATE_REQRX, 0);
+            session_continue(active->applet, M2_NETSTATE_REQRX, 0);
         }
     }
 
@@ -641,6 +685,10 @@ OT_WEAK void dll_systask_holdscan(ot_task task) {
 /// the hold_cycle parameter, and if this is over the limit it will return into
 /// sleep mode.
 
+    // This is a stateless task that should probably be removed from task status
+    // and replaced with a cron task or something similar.
+    if (task->event == 0) return;
+    
     // Do holdscan (top) or go back into sleep mode (bottom)
     if (dll.counter != 0) {
         dll.counter -= (sys.task_HSS.cursor == 0);
@@ -677,6 +725,8 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
         return;
     }
 
+    ///@todo check against session availability.
+
     fp = ISF_open_su( task->event );
     ///@note fp doesn't really need to be asserted unless you are mucking
     ///      with things in test builds.
@@ -689,7 +739,7 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     /// Set the next idle event from the two-byte Next Scan field.
     /// The DASH7 registry is big-endian.
     scratch.ushort  = PLATFORM_ENDIAN16( vl_read(fp, (task->cursor)+=2 ) );
-    sys_task_setnext(task, scratch.ushort);
+    sys_task_setnext(task, (ot_u32)scratch.ushort);
 
     /// Advance cursor to next datum, go back to 0 if end of sequence
     /// (still works in special case where cursor = 254)
@@ -712,12 +762,18 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
 OT_WEAK void dll_systask_beacon(ot_task task) {
 /// The beacon rountine runs as an idependent systask.
     m2session*  b_session;
+    ot_u16      nextbeacon;
 
     if ((task->event == 0) || (dll.netconf.b_attempts == 0)) {
         dll_idle();
         return;
     }
 
+    ///@todo check against session availability.
+
+    /// This is a retry time, in case of failure condition
+    nextbeacon = 10;
+    
     /// Load file-based beacon:
     /// Open BTS ISF Element and read the beacon sequence.  Make sure there is
     /// a beacon file of non-zero length and that beacons are presently enabled.
@@ -727,14 +783,15 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
 
         fp = ISF_open_su( ISF_ID(beacon_transmit_sequence) );
         if (fp == NULL) {
-            return; //goto dll_systask_beacon_STOP;
+            nextbeacon = 10;               // try again after this delay
+            goto dll_systask_beacon_END;
         }
         if (fp->length == 0)    {
             vl_close(fp);
-            return; //goto dll_systask_beacon_STOP;
+            goto dll_systask_beacon_END;
         }
 
-        // a little hack
+        // move fp start onto the cursor in order to use vl_load() later on
         scratch     = fp->start;
         fp->start  += task->cursor;
 
@@ -761,8 +818,12 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
     b_session->flags    = dll.netconf.btemp[1] & 0x78;
     //b_session->flags   |= (b_session->extra & 0x30);
 
+    nextbeacon = (ot_u32)PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]);
+    
+    dll_systask_beacon_END:
+    
     // Last 2 bytes: Next Scan ticks
-    sys_task_setnext(task, TI2CLK( PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]) ));
+    sys_task_setnext(task, (ot_u32)nextbeacon);
 
     ///@note this might not be necessary or wise!
     //return;
@@ -817,7 +878,7 @@ OT_WEAK void dll_init_rx(m2session* active) {
         dll.comm.rx_timeout = min_timeout;
     }
 
-	sys_task_setnext(&sys.task[TASK_radio], (ot_u16)dll.comm.rx_timeout);
+	sys_task_setnext(&sys.task[TASK_radio], (ot_u32)dll.comm.rx_timeout);
 
     // E.g. lights a LED
     DLL_SIG_RFINIT(sys.task_RFA.event);
@@ -840,7 +901,8 @@ OT_WEAK void dll_init_rx(m2session* active) {
 OT_WEAK void dll_init_tx(ot_u8 is_btx) {
 /// Initialize background or foreground packet TX.  Often this includes CSMA
 /// initialization as well.
-    sys_task_setnext_clocks(&sys.task[TASK_radio], dll.comm.tc);
+    //sys_task_setnext_clocks(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
+    sys_task_setnext(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
     sys.task_RFA.latency    = 1;
     sys.task_RFA.event      = 4;
@@ -874,9 +936,11 @@ OT_WEAK void dll_activate(void) {
     m2session*  s_active;
     ot_app      s_applet;
 
+#	ifndef _DLL_BLOCK_IDLE_ON_QUEUEING
     dll_block_idletasks();
+#	endif
 
-  //dll.idle_state      = sub_default_idle();
+    //dll.idle_state      = sub_default_idle();
     s_active            = session_top();
     s_applet            = (s_active->applet == NULL) ? \
                             &dll_response_applet : s_active->applet;
@@ -923,7 +987,7 @@ OT_WEAK void dll_scan_timeout(void) {
 
 #else
     // Add a little bit of time in case the radio timer is a bit slow.
-    sys_task_setnext(&sys.task[TASK_radio]->nextevent, 10);
+    sys_task_setnext(&sys.task[TASK_radio], 10);
     sys.task[TASK_radio].event = 0;
 #endif
 }
@@ -1072,9 +1136,13 @@ OT_WEAK void dll_rfevt_frx(ot_int pcode, ot_int fcode) {
                 dll.idle_state  = M2_DLLIDLE_HOLD;
             }
 
-            re_init         = (frx_code || rx_isresp);
-            if (re_init)    rm2_reenter_rx(&dll_rfevt_frx);
-            else            radio_sleep();
+            re_init = (frx_code || rx_isresp);
+            if (re_init) {
+                rm2_reenter_rx(&dll_rfevt_frx);
+            }
+            else {
+                radio_sleep();
+            }
         }
     }
 
@@ -1111,11 +1179,6 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
         /// set during multiframe mode
         radio.evtdone   = (tcode & 1) ? &dll_rfevt_btx : &dll_rfevt_ftx;
         event_ticks     = (tcode & 2) ? dll.counter+20 : (ot_uint)(rm2_pkt_duration(&txq) + 4);
-        //radio.evtdone = (tcode & RADIO_FLAG_BG) ? &dll_rfevt_btx : &dll_rfevt_ftx;
-        //event_ticks   = (tcode & RADIO_FLAG_CONT) ? dll.counter+20 : (ot_uint)(rm2_pkt_duration(&txq) + 4);
-    
-        ///@todo make a radio_rxtx_idle() function, because on some radios this
-        /// works differently than on others.
         radio_idle();
     }
 
@@ -1126,9 +1189,12 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
         ot_uint nextcsma;
         __DEBUG_ERRCODE_EVAL(=122);
 
-        nextcsma                    = (ot_uint)sub_fcloop();
-        if (nextcsma < TI2CLK(2))   radio_idle();
-        else                        radio_sleep();
+        nextcsma = (ot_uint)sub_fcloop();
+        //if (nextcsma < TI2CLK(2))   radio_idle();
+        if (nextcsma < 2) 
+            radio_idle();
+        else
+            radio_sleep();
 
         radio_set_mactimer( nextcsma );
         return;
@@ -1212,7 +1278,7 @@ OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
             follower                = session_follower();
             follower->counter       = dll.counter;
             sys.task_RFA.event      = 0;
-            dll.comm.tc             = TI2CLK(2);
+            dll.comm.tc             = 2;    //TI2CLK(2);
             dll.comm.csmaca_params  = (M2_CSMACA_NOCSMA | M2_CSMACA_MACCA);
             session_pop();
         } break;
@@ -1362,10 +1428,14 @@ OT_WEAK void dll_set_defaults(m2session* s_active) {
 
 
 
-
-//ot_u8 sub_default_idle(void) {
-    //return M2_DLLIDLE_SLEEP;
-
+ot_u8 sub_default_idle(void) {
+    //return (dll.netconf.active & (1<<12)) ? M2_DLLIDLE_OFF : M2_DLLIDLE_SLEEP;
+    //return ((dll.netconf.active & (1<<12)) == 0);   // compressed form of above
+    
+    return M2_DLLIDLE_SLEEP;
+    
+//            
+//            
 //#if (M2_FEATURE(ENDPOINT) == ENABLED)
 //    ot_u16 setting;
 //    setting = (dll.netconf.active & M2_SET_CLASSMASK) >> _SETTING_SHIFT;
@@ -1376,14 +1446,9 @@ OT_WEAK void dll_set_defaults(m2session* s_active) {
 //#else
 //    return (dll.netconf.active & M2_SET_CLASSMASK) ? M2_DLLIDLE_HOLD : M2_DLLIDLE_OFF;
 //#endif
-//}
+}
 
 
-
-
-//ot_bool sub_mac_filter(void) {
-//    return rm2_mac_filter();
-//}
 
 
 
@@ -1434,8 +1499,10 @@ CLK_UNIT sub_fcinit(void) {
 
     if (dll.comm.csmaca_params & M2_CSMACA_RAIND) {
         CLK_UNIT random;
-        random  = TI2CLK(rand_prn16());
-        random %= (dll.comm.tc - TI2CLK(rm2_pkt_duration(&txq)) );
+        //random  = TI2CLK(rand_prn16());
+        //random %= (dll.comm.tc - TI2CLK(rm2_pkt_duration(&txq)) );
+        random  = rand_prn16();
+        random %= dll.comm.tc - rm2_pkt_duration(&txq);
         return random;
     }
 
@@ -1459,20 +1526,18 @@ CLK_UNIT sub_fcloop(void) {
     /// {0,1,2,3} = {RIGD, RAIND, AIND, Default MAC CA}
     /// Default MAC CA just waits Tg before trying again
     if (dll.comm.csmaca_params & 0x20) {    //NO CA
-        return TI2CLK(phymac[0].tg);
+        return phymac[0].tg; //TI2CLK(phymac[0].tg);
     }
 
     // AIND & RAIND Loop
     if (dll.comm.csmaca_params & 0x18) {    //RAIND, AIND
-        return TI2CLK(rm2_pkt_duration(&txq));
+        return rm2_pkt_duration(&txq); //TI2CLK(rm2_pkt_duration(&txq));
     }
 
     // RIGD loop
-    {
-        ot_long wait;
+    {   ot_long wait;
         wait    = (dll.comm.tc - dll.comm.tca);
         wait   += sub_rigd_newslot();
-
         return (wait < 0) ? 0 : (CLK_UNIT)wait;
     }
 }
@@ -1482,9 +1547,11 @@ CLK_UNIT sub_fcloop(void) {
 CLK_UNIT sub_rigd_newslot(void) {
 /// halve tc from previous value and offset a random within that duration
     dll.comm.tc >>= 1;
-    if (dll.comm.tc == 0)   return 0;
-
-    return (TI2CLK(rand_prn16()) % (CLK_UNIT)dll.comm.tc);
+    if (dll.comm.tc == 0)
+        return 0;
+    
+    //return (TI2CLK(rand_prn16()) % (CLK_UNIT)dll.comm.tc);
+    return (rand_prn16() % (CLK_UNIT)dll.comm.tc);
 }
 
 

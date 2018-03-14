@@ -1006,8 +1006,9 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define OT_GPTIM_ID         'L'
 #define OT_GPTIM            LPTIM1
 #define OT_GPTIM_CLOCK      32768
-#define OT_GPTIM_RES        1024
 #define OT_GPTIM_SHIFT      0
+#define OT_GPTIM_OVERSAMPLE 1
+#define OT_GPTIM_RES        1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
 #define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
 

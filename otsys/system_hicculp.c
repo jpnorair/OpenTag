@@ -33,6 +33,7 @@
 #include <otsys/syskern.h>
 #include <otsys/mpipe.h>
 #include <otsys/sysext.h>
+#include <otsys/time.h>
 
 #include <otlib/memcpy.h>
 #include <otlib/utils.h>
@@ -54,10 +55,16 @@
 #elif OT_FEATURE(IAP)
 #   include <hbsys/iap.h>
 #endif
+#if OT_FEATURE(UBX_GNSS)
+#   include <io/ubx_gnss.h>
+#endif
+
+
 
 
 
 /** Persistent Data Structures
+  * ============================================================================
   */
 sys_struct  sys;
 
@@ -66,6 +73,11 @@ typedef void (*fnvv)(void);
 
 
 
+/** Task Handles
+  * ============================================================================
+  * The Task handles are either static (from a table in ROM) or dynamic 
+  * (callbacks from a table in RAM).  They are referenced via MACRO.
+  */
 #if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
 #   define TASK_HANDLE(INDEX)           &sys.task[INDEX]
 #   define TASK_INDEX(HANDLE)           ((HANDLE - &sys.task[0]) / sizeof(task_marker) )
@@ -89,6 +101,9 @@ typedef void (*fnvv)(void);
 #   define TASK_MAX                     0
 #   define TASK_IS_IDLE(SELECT)         (SELECT < 0)
 #endif
+
+
+#define _NUM_EXOTASKS   ((OT_FEATURE(M2)==ENABLED) + (OT_FEATURE(MPIPE)==ENABLED) + OT_PARAM(EXOTASKS))
 
 
 
@@ -128,6 +143,19 @@ static const systask_fn systask_call[]   = {
 
 
 
+ot_u8 sub_init_task(Task_Index i, ot_u8 is_restart) {
+    ot_u8 task_event;
+    task_event          = sys.task[i].event;
+    sys.task[i].event   = 0;
+    sys.task[i].cursor  = is_restart;
+    TASK_INDEXED_CALL(i);
+    sys.task[i].cursor  = 0;
+    return task_event;
+}
+
+
+
+
 
 
 /** System Core Functions
@@ -136,12 +164,11 @@ static const systask_fn systask_call[]   = {
 
 #ifndef EXTF_sys_init
 OT_WEAK void sys_init() {
-
+    ot_int i;
+    
     /// Set system kernel callbacks to null (if kernel callbacks enabled)
-#   if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED)
-#   if !defined(EXTF_sys_sig_panic)
+#   if (OT_FEATURE(SYSKERN_CALLBACKS) == ENABLED) && !defined(EXTF_sys_sig_panic)
         sys.panic = &otutils_sig_null;
-#   endif
 #   endif
 
     /// Set default values in system tasks.  At a minimum, this is doing a
@@ -150,8 +177,7 @@ OT_WEAK void sys_init() {
     memset((ot_u8*)sys.task, 0, sizeof(task_marker)*SYS_TASKS);
 
 #   if (OT_FEATURE(SYSTASK_CALLBACKS) == ENABLED)
-    {
-        task_marker* sys_task;
+    {   task_marker* sys_task;
         systask_fn*  default_call;
         sys_task        = &sys.task[TASK_terminus];
         default_call    = systask_call[TASK_terminus];
@@ -168,23 +194,33 @@ OT_WEAK void sys_init() {
 
     ///@todo change these manual calls into normal task calls using event=0,
     ///      which is the initialization/kill state.
-#   if (OT_FEATURE(CRON) == ENABLED)
-        otcron_init();
-#   endif
-#   if (OT_FEATURE(EXT_TASK) == ENABLED)
-        ext_init();
-#   endif
+    
+    
+//#   if (OT_FEATURE(CRON) == ENABLED)
+//        otcron_init();
+//#   endif
+//#   if (OT_FEATURE(EXT_TASK) == ENABLED)
+//        ext_init();
+//#   endif
 
     /// Initialize DLL, which also initializes the rest of the protocol stack.
     /// In some HW, the radio must be initialized before MPipe.
 #   if (OT_FEATURE(M2))
         dll_init();
 #   endif
-
+    
+    
     /// Initialize MPipe if enabled
-#   if (OT_FEATURE(MPIPE) == ENABLED)
-        mpipe_connect(NULL);
-#   endif
+//#   if (OT_FEATURE(MPIPE) == ENABLED)
+//        mpipe_connect(NULL);
+//#   endif
+        
+    ///@todo change these manual calls into normal task calls using event=0,
+    ///      which is the initialization/kill state.
+    i = TASK_terminus;
+    while (i > 1) {
+        sub_init_task(--i, 1);
+    }
 }
 #endif
 
@@ -214,24 +250,33 @@ OT_WEAK void sys_panic(ot_u8 err_code) {
 #ifndef EXTF_sys_powerdown
 OT_WEAK void sys_powerdown() {
 /// code = 3: No active I/O Task (goto most aggressive LP regime)
-/// code = 2: RF I/O Task active
-/// code = 1: MPipe or other local peripheral I/O task active
+/// code = 2: External I/O Task active
+/// code = 1: Local peripheral I/O task active
 /// code = 0: Use fastest-exit powerdown mode
 
-///@todo universalize EXOTASK driver states via CURSOR field
+    ot_uint code = 3;
+    ot_int i;
 
-    ot_int code;
-    code    = 3; //(systim_next() <= 3) ? 0 : 3;
-#   if (OT_FEATURE(M2))
-    //code   -= (sys.task_RFA.event != 0);
-    code   -= (radio.state != RADIO_Idle);
-#   endif
-#   if (OT_FEATURE(MPIPE))
-    code    = (mpipe_status() >= 0) ? 1 : code;
-#   endif
+    ///@todo This call-model is kludgey, but for now it is OK in practice.
+    ///      Better to have a second status call for exotasks.
+    for (i=0; i<_NUM_EXOTASKS; i++) {
+        ot_u8 task_event    = sys.task[i].event;
+        ot_u8 task_cursor   = sys.task[i].cursor;
+        sys.task[i].event   = 255;
+        TASK_INDEXED_CALL(i);
+        
+        // Pick the lowest code in the exotask list
+        if (sys.task[i].cursor < code) {
+            code = sys.task[i].cursor;
+        }
+        
+        // Reset event and cursor to previous values
+        sys.task[i].event   = task_event;
+        sys.task[i].cursor  = task_cursor;
+    }
 
-#   if defined(OT_PARAM_USER_EXOTASKS)
-#   endif
+    // Shut down the clocker: a task isn't running during powerdown
+    systim_stop_clocker();
 
 #   if defined(EXTF_sys_sig_powerdown)
         sys_sig_powerdown(code);
@@ -270,15 +315,16 @@ OT_WEAK void sys_halt(Halt_Request halt_request) {
 
 #ifndef EXTF_sys_resume
 OT_WEAK void sys_resume() {
-#   if (1)
+#if (1)
+    ///@todo have a routine to build other refresh functions into the kernel
     dll_refresh();
-#   endif
+#endif
 
-#   if defined(EXTF_sys_sig_resume)
+#if defined(EXTF_sys_sig_resume)
     sys_sig_resume();
-#   elif (OT_FEATURE(SYSKERN_CALLBACKS))
+#elif (OT_FEATURE(SYSKERN_CALLBACKS))
     sys.resume();
-#   endif
+#endif
 
     platform_ot_preempt();
 }
@@ -294,31 +340,28 @@ OT_WEAK void sys_kill(Task_Index i) {
     /// task has spawned run-away interrupts or possibly other tasks, this
     /// should stop them.  Setting event to 0 and calling will invoke the task
     /// exit hook (destructor).  This is a requirement of task implementation.
-    task_event          = sys.task[i].event;
-    sys.task[i].event   = 0;
-    TASK_INDEXED_CALL(i);
+    task_event = sub_init_task(i, 0);
 
     /// Check if the task was actually running.  Don't go any further if the
-    /// task had already exited.
+    /// task had already exited.  Drop the context back to a stable point in 
+    /// the main context.  Next time the main context is enabled (typically 
+    /// after all interrupts are done being serviced), the scheduler will 
+    /// start fresh.
     if (task_event != 0) {
-#   if (OT_PARAM_SYSTHREADS != 0)
-        /// For threaded tasks, reset the stack pointer to empty.
-        ot_int offset;
-        offset = (ot_int)i - TASK_Thread0;
-        if (offset >= 0) {
-            offset             *= OT_PARAM_SSTACK_ALLOC;
-            sys.task[i].stack   = (void*)((ot_u8*)platform_ext.tstack + offset);
-        }
-
-        ///@todo think about changing the thread event number to negative and
-        ///      nextevent to 0, which will cause it to get restarted.  Maybe
-        ///      do this in its own function?
-#   endif
-
-        /// Drop the context back to a stable point in the main context.  Next
-        /// time the main context is enabled (typically after all interrupts
-        /// are done being serviced), the scheduler will start fresh.
         platform_drop_context(i);
+        
+    ///@note Threading implementation is underway.  It is done in a layer above
+    ///      Hicculp in a cool way that also allows guest OSes to run above
+    ///      OpenTag as a BIOS.  This old code is for temporary reference only.
+//#   if (OT_PARAM_SYSTHREADS != 0)
+//        /// For threaded tasks, reset the stack pointer to empty.
+//        ot_int offset;
+//        offset = (ot_int)i - TASK_Thread0;
+//        if (offset >= 0) {
+//            offset             *= OT_PARAM_SSTACK_ALLOC;
+//            sys.task[i].stack   = (void*)((ot_u8*)platform_ext.tstack + offset);
+//        }
+//#   endif
     }
 }
 
@@ -382,8 +425,8 @@ void sys_task_setlatency(ot_task task, ot_u8 latency) {
     task->latency = latency;
 }
 
-void sys_task_setnext(ot_task task, ot_u16 nextevent_ti) {
-    sys_task_setnext_clocks(task, TI2CLK(nextevent_ti));
+void sys_task_setnext(ot_task task, ot_u32 nextevent_ti) {
+    sys_task_setnext_clocks(task, (ot_long)TI2CLK(nextevent_ti));
 }
 
 void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
@@ -399,7 +442,7 @@ OT_WEAK void sys_task_enable(ot_u8 task_id, ot_u8 task_ctrl, ot_u16 sleep) {
     ot_task task;
     task        = &sys.task[TASK_external+task_id];
     task->event = task_ctrl;
-    sys_task_setnext(task, sleep);
+    sys_task_setnext(task, (ot_u32)sleep);
 	platform_ot_preempt();
 #endif
 }
@@ -432,7 +475,6 @@ OT_WEAK void sys_task_disable(ot_u8 task_id) {
   * better with static.
   */
 #ifndef EXTF_sys_event_manager
-
 OT_WEAK ot_uint sys_event_manager() {
 /// This is the task-scheduling part of the kernel.
     ot_uint      elapsed;
@@ -448,13 +490,13 @@ OT_WEAK ot_uint sys_event_manager() {
     /// 1. Get the elapsed time since the scheduler last run.  We also update
     ///    the time, which does nothing unless time is enabled.
     elapsed = systim_get();
-    time_add_ti(elapsed);
+    time_add(elapsed); 
     systim_flush();
 
 
     /// 2. Clock all the tasks, to find out which one to do next.
     /// <LI> Run DLL clocker.  DLL module manages some irregular tasks. </LI>
-    /// <LI> 60000 clocks is used as the upper limit, in order to account
+    /// <LI> OT_GPTIM_LIMIT ticks is used as the upper limit, in order to account
     ///      for task runtime and slop.  Tasks should NEVER run longer than
     ///      255 ticks.  Longer tasks or persistent tasks must implement
     ///      pre-emption points.  (see FFT or Crypto demos for examples)</LI>
@@ -470,7 +512,7 @@ OT_WEAK ot_uint sys_event_manager() {
 
     nextevent   = OT_GPTIM_LIMIT;
     task_i      = &sys.task[TASK_terminus];
-    select      = TASK_MAX;
+    select      = TASK_MAX; //TASK_terminus;
 #   if (OT_FEATURE(SYSTASK_CALLBACKS) != ENABLED)
     i           = TASK_terminus;
 #   endif
@@ -522,32 +564,30 @@ OT_WEAK ot_uint sys_event_manager() {
     /// 4. The event manager is done here.  systim_schedule() will
     ///    make sure that the task hasn't been pended during the scheduler
     ///    runtime.
-#   if (OT_PARAM_SYSTHREADS == 0)
-    return systim_schedule( nextevent, systim_get() );
+    return systim_schedule(nextevent, systim_get());
 
-#   else
-    ///@todo this isn't ready yet... experimental code
-    {   ot_bool test;
-        ot_u16 interval;
-        ot_u16 retval;
-
-        interval    = systim_get();
-        nextevent  -= interval;
-        nextnext   -= interval;
-        if (nextevent > 0) {
-            interval    = (ot_u16)nextevent;
-            retval      = interval;
-        }
-        else {
-            interval = ((ot_u16)nextnext >= (ot_16)TASK(select)->reserve) ? \
-                        (ot_u16)nextnext : (ot_16)TASK(select)->reserve;
-            retval = 0;
-
-        }
-        platform_set_ktim(interval);
-        return retval;
-    }
-#   endif
+    ///@note This is a Threads feature that will never exist, because threads are
+    ///      being implemented in a different way.  Stay tuned.
+//    {   ot_bool test;
+//        ot_u16 interval;
+//        ot_u16 retval;
+//
+//        interval    = systim_get();
+//        nextevent  -= interval;
+//        nextnext   -= interval;
+//        if (nextevent > 0) {
+//            interval    = (ot_u16)nextevent;
+//            retval      = interval;
+//        }
+//        else {
+//            interval = ((ot_u16)nextnext >= (ot_16)TASK(select)->reserve) ? \
+//                        (ot_u16)nextnext : (ot_16)TASK(select)->reserve;
+//            retval = 0;
+//
+//        }
+//        platform_set_ktim(interval);
+//        return retval;
+//    }
 }
 #endif
 
@@ -560,14 +600,14 @@ OT_WEAK void sys_task_manager() {
 /// Perform a context switch onto the active task (sys.active).  In purely
 /// co-operative systems, all tasks run in the same context, so do nothing.
 
-    // Threaded mode
-#   if (OT_PARAM_SYSTHREADS != 0)
-    if (sys.active >= TASK_HANDLE[TASK_thread0]) {
-        //do some stuff
-        // - switch contexts if thread is already running
-        // - if thread not running, sys_run_task will initialize it.
-    }
-#   endif
+    ///@todo Threaded mode is coming soon and has a different impl
+//#   if (OT_PARAM_SYSTHREADS != 0)
+//    if (sys.active >= TASK_HANDLE[TASK_thread0]) {
+//        //do some stuff
+//        // - switch contexts if thread is already running
+//        // - if thread not running, sys_run_task will initialize it.
+//    }
+//#   endif
 
 }
 #endif
@@ -585,12 +625,15 @@ OT_INLINE void sys_run_task() {
     }
 #   endif
 
-    // Co-operative mode: disable timer because ktasks should always run to
-    // completion without interference from the scheduler.
+    ///@todo integrate any necessary systim suppression into the
+    ///      task clocker feature
     systim_disable();
-
+    systim_start_clocker();
+    
     sys_run_task_CALL:
-    TASK_CALL(sys.active);
+    if (TASK(sys.active)->event != 0) {
+        TASK_CALL(sys.active);
+    }
 }
 #endif
 
@@ -605,7 +648,7 @@ OT_WEAK void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 /// by manually setting the timer interrupt flag.  If a task is running while
 /// this function is called (typical usage), first the task will finish and then
 /// the scheduler will run anyway.
-    sys_task_setnext(task, nextevent_ti);
+    sys_task_setnext(task, (ot_u32)nextevent_ti);
     platform_ot_preempt();
 }
 

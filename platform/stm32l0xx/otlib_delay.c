@@ -54,7 +54,9 @@ void delay_sti(ot_u16 sti) {
 
 #ifndef EXTF_delay_ti
 void delay_ti(ot_u16 n) {
-    sub_timed_wfe(n, 31);
+///@todo get WFE working on STM32L
+    delay_ms(n);
+    //sub_timed_wfe(n, 31);
 }
 #endif
 

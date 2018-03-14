@@ -45,9 +45,20 @@
   */
 
 #if (defined(__DEBUG__) || defined(__PROTO__))
-#   define __DEBUG_ERRCODE_EVAL(EVAL)   (platform.error_code EVAL)
+#   define __DEBUG_ERRCODE_EVAL(EVAL) do { \
+		platform.error_module = 0;	\
+		platform.error_code EVAL;	\
+	} while(0)
+		
+#	define __DEBUG_ERRCODE_SET(FCODE, PCODE) do { \
+		platform.error_module 	= (ot_u16)(FCODE & 0xFFFF); \
+		platform.error_code		= (ot_int)(PCODE & 0xFFFF); \
+	} while(0)
+
 #else
 #   define __DEBUG_ERRCODE_EVAL(EVAL);
+#   define __DEBUG_ERRCODE_SET(FCODE, PCODE);
+
 #endif
 
 
@@ -78,13 +89,13 @@
 
 /// Errors for missing critical parameters
 #ifndef MCU_TYPE_PTRINT
-#   error "No value for MCU_TYPE_PTRINT (should be in otplatform/xxx/platform_xxx.h)"
+#   error "No value for MCU_TYPE_PTRINT (should be in include/platform/hw/xxx.h)"
 #endif
 #ifndef MCU_TYPE_PTRUINT
-#   error "No value for MCU_TYPE_PTRUINT (should be in otplatform/xxx/platform_xxx.h)"
+#   error "No value for MCU_TYPE_PTRUINT (should be in include/platform/hw/xxx.h)"
 #endif
 #ifndef MCU_PARAM_ERRPTR
-#   error "No value for MCU_TYPE_ERRPTR (should be in otplatform/xxx/platform_xxx.h)"
+#   error "No value for MCU_TYPE_ERRPTR (should be in include/platform/hw/xxx.h)"
 #endif
 
 

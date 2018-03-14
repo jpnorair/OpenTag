@@ -39,12 +39,17 @@
 
 #include <otstd.h>
 #include <platform/config.h>
+#include <otlib/delay.h>
 #include <otlib/queue.h>
 #include <otlib/memcpy.h>
 
 #include <otsys/veelite.h>
 
 
+
+/** @todo Add blocking conditions to all queue operations that move cursors. 
+  *       Also make succeed/fail return values for all these operations.
+  */
 
 
 
@@ -77,6 +82,7 @@ void q_copy(ot_queue* q1, ot_queue* q2) {
     memcpy((ot_u8*)q1, (ot_u8*)q2, sizeof(ot_queue));
 }
 #endif
+
 
 
 
@@ -155,6 +161,22 @@ void q_empty(ot_queue* q) {
     q->back             = q->front + q->alloc;
     q->putcursor        = q->front;
     q->getcursor        = q->front;
+}
+#endif
+
+
+#ifndef EXTF_q_rewind
+void q_rewind(ot_queue* q) {
+    ot_int dist = q->getcursor - q->front;
+    
+    if (dist > 0) {
+        ot_u8* put      = q->putcursor;
+        ot_u8* get      = q->getcursor;
+        q->putcursor   -= dist;
+        q->getcursor    = q->front;
+        
+        memcpy(q->front, get, put-get);
+    }
 }
 #endif
 
@@ -302,16 +324,32 @@ ot_u32 q_readlong(ot_queue* q)  {
 
 #ifndef EXTF_q_writestring
 void q_writestring(ot_queue* q, ot_u8* string, ot_int length) {
-    memcpy(q->putcursor, string, length);
-    q->putcursor   += length;
+    ot_int limit;
+    
+    limit = (q->back - q->putcursor);
+    if (length > limit) {
+        length = limit;
+    } 
+    if (length > 0) {
+        memcpy(q->putcursor, string, length);
+        q->putcursor   += length;
+    }
 }
 #endif
 
 
 #ifndef EXTF_q_readstring
 void q_readstring(ot_queue* q, ot_u8* string, ot_int length) {
-    memcpy(string, q->getcursor, length);
-    q->getcursor += length;
+    ot_int limit;
+    
+    limit = (q->back - q->getcursor);
+    if (length > limit) {
+        length = limit;
+    }
+    if (length > 0) {
+        memcpy(string, q->getcursor, length);
+        q->getcursor += length;
+    }
 }
 #endif
 

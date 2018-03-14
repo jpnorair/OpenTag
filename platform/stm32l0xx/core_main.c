@@ -36,6 +36,7 @@
 
 #include <otsys/mpipe.h>
 #include <otsys/syskern.h>
+#include <otsys/time.h>
 
 #include <m2/radio.h>
 //#include <m2/session.h>
@@ -513,8 +514,8 @@ void platform_ext_usbcrson(void) {
     }
     
     RCC->APB1ENR   |= (RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
-    CRS->CFGR       = CRS_CFGR_SYNCPOL_RISING \
-                    | CRS_CFGR_SYNCSRC_USB \
+    CRS->CFGR       = (0 << CRS_CFGR_SYNCPOL_Pos) \
+                    | (2 << CRS_CFGR_SYNCSRC_Pos) \
                     | (0x22 << 16) /* Default FELIM */ \
                     | (0xBB7F);    /* Default RELOAD (1ms USB SOF) */
 
@@ -610,7 +611,7 @@ ot_ulong platform_get_clockhz(ot_uint clock_index) {
         return 0;   //result for dumb APIs
     }
 #   endif
-    return platform_ext.clock_hz[clock_index];
+    return (clock_index > 2) ? 0 : platform_ext.clock_hz[clock_index];
 }
 
 
@@ -852,9 +853,7 @@ void platform_poweron() {
 
     /// 5. Debugging setup: apply to all peripherals
 #   if defined(__DEBUG__)
-    DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP \
-                      | DBGMCU_CR_DBG_STOP \
-                      | DBGMCU_CR_DBG_STANDBY);
+    DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP | DBGMCU_CR_DBG_STOP | DBGMCU_CR_DBG_STANDBY);
 
     DBGMCU->APB1FZ |= ( DBGMCU_APB1_FZ_DBG_TIM2_STOP \
                       | DBGMCU_APB1_FZ_DBG_TIM6_STOP \
@@ -933,12 +932,7 @@ void platform_init_OT() {
         vl_close(fp);
     }
 
-    /// 4. Initialize the System (Kernel & more).  The System initializer must
-    ///    initialize all modules that are built onto the kernel.  These include
-    ///    the DLL and MPipe.
-    sys_init();
-
-    /// 5. If debugging, copy the UNIQUE ID that ST writes into the ROM into
+    /// 4. If debugging, copy the UNIQUE ID that ST writes into the ROM into
     ///    the lower 48 bits of the Mode 2 UID (Device Settings ISF)
     ///
     /// @note the ID is inserted via Veelite, so it is abstracted from the
@@ -948,11 +942,20 @@ void platform_init_OT() {
     ///      the default file location by the manufacturer firmware upload.
 #   if (defined(__DEBUG__) || defined(__PROTO__))
     {   vlFILE* fpid;
+        union {
+            ot_u32 word[3];
+            ot_u16 halfw[6];
+        } generated_id;
         ot_u16* hwid;
         ot_int  i;
 
+        generated_id.word[0]    = *((ot_u32*)(0x1FF80050));
+        generated_id.halfw[1]  ^= *((ot_u16*)(0x1FF80064));
+        generated_id.halfw[2]   = *((ot_u16*)(0x1FF80066));
+        generated_id.word[0]   ^= *((ot_u32*)(0x1FF80054));
+        
         fpid    = ISF_open_su(ISF_ID(device_features));
-        hwid    = (ot_u16*)(0x1FF80050);
+        hwid    = &generated_id.halfw[0];
         for (i=6; i!=0; i-=2) {
             vl_write(fpid, i, *hwid++);
         }
@@ -961,6 +964,11 @@ void platform_init_OT() {
 #   else
 
 #   endif
+    
+    /// 5. Initialize the System (Kernel & more).  The System initializer must
+    ///    initialize all modules that are built onto the kernel.  These include
+    ///    the DLL and MPipe.
+    sys_init();
 }
 #endif
 
@@ -970,7 +978,6 @@ void platform_init_OT() {
 void platform_init_busclk() {
 /// This function should be called during initialization and restart, right at
 /// the top of platform_poweron().
-    ot_u16 counter;
 
     ///1. RESET System Clocks
     ///@todo This may not be necessary.  These settings should be reset default settings.
@@ -984,8 +991,8 @@ void platform_init_busclk() {
 
     // Reset HSION, HSEON, HSEBYP, CSSON and PLLON bits
     // Disable all clocker interrupts (default)
-    RCC->CR    &= (uint32_t)0xEEFAFFFE;
-    //RCC->CIR    = 0x00000000;
+    RCC->CR    &= 0xFEF0FFF6;   // 0xEEFAFFFE;
+    //RCC->CIER  &= 0xFFFFFF00;
 
 
     ///2. Prepare external Memory bus (not currently supported)
@@ -1020,7 +1027,7 @@ void platform_init_busclk() {
     ///           Board using HSI may only declare 2, 4, 8, or 16 MHz</LI>
 #   elif BOARD_FEATURE(FULLSPEED)
 #       if ((_FULLSPEED_VOLTAGE != POWER_1V5) && (_FULL_UPVOLT() == 0))
-            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
+            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);   ///@note This isn't running
 #       endif
         // Basic Flash setup, then run normal routine
         FLASH->ACR = FLASH_ACR_PRFTEN;
@@ -1128,9 +1135,10 @@ void platform_init_interruptor() {
 /// Kernel interrupts go in the next highest group.  Everything else is above.
 /// Apps/Builds can get quite specific about how to set up the groups.
 
-#   define _KERNEL_GROUP    b00
-#   define _HIPRI_BASE      b00
-#   define _LOPRI_BASE      b11
+#   define _SVC_GROUP       b00
+#   define _KERNEL_GROUP    b01
+#   define _HIPRI_GROUP     b10
+#   define _LOPRI_GROUP     b11
 #   define _SUB_LIMIT       b11
 
     /// 1. Set the EXTI channels using the board function.  Different boards
@@ -1152,13 +1160,16 @@ void platform_init_interruptor() {
 //  SCB->SHP[_SHP_IDX(MemoryManagement_IRQn)  = (b00 << 4);
 //  SCB->SHP[_SHP_IDX(BusFault_IRQn)]         = (b00 << 4);
 //  SCB->SHP[_SHP_IDX(UsageFault_IRQn)]       = (b00 << 4);
-    SCB->SHP[_SHP_IDX(SVC_IRQn)]            = (b00 << 4);
-    SCB->SHP[_SHP_IDX(PendSV_IRQn)]         = (b11 << 4);
+//  SCB->SHP[_SHP_IDX(SVC_IRQn)]            = (b00 << 4);
+//  SCB->SHP[_SHP_IDX(PendSV_IRQn)]         = (b11 << 4);
 //  SCB->SHP[_SHP_IDX(DebugMonitor_IRQn)]     = (b00 << 4);
-
+    
+    NVIC_SetPriority(SVC_IRQn, _SVC_GROUP);
+    NVIC_SetPriority(PendSV_IRQn, _LOPRI_GROUP);
+    
     // Systick needs SCB and NVIC to be enabled in order to run.
-#   if defined(YOU_ARE_AN_IDIOT)
-    NVIC_SetPriority(IRQn_Type IRQn, _LOPRI_BASE);
+#   if defined(SYSTICK_IS_HIGHLY_DISCOURAGED)
+    NVIC_SetPriority(IRQn_Type IRQn, _LOPRI_GROUP);
     NVIC_EnableIRQ(SysTick_IRQn);
 #   endif
 
@@ -1166,8 +1177,8 @@ void platform_init_interruptor() {
     /// each other, but there are subpriorities.  I/O interrupts should be set
     /// in their individual I/O driver initializers.
     ///    <LI> NMI will interrupt anything.  It is used for panics.    </LI>
-    ///    <LI> SVC is priority 0-0.  It runs the scheduler. </LI>
-    ///    <LI> LPTIM is priority 0-2.  It runs the tasker.  </LI>
+    ///    <LI> SVC is priority 0.  It runs the scheduler. </LI>
+    ///    <LI> LPTIM is priority 1.  It runs the tasker.  </LI>
     ///    <LI> If Mode 2 is enabled, RTC-Wakeup is the MAC-insertion timer and
     ///         is priority 0-1.  If not, RTC-Wakeup is low-priority and it is
     ///         only used for the interval timer (watchdog/systick) </LI>
@@ -1191,41 +1202,40 @@ void platform_init_interruptor() {
     EXTI->RTSR |= (1<<20) | (1<<29);
 
 #   if OT_FEATURE(M2)
-        NVIC_SetPriority(RTC_IRQn, (_KERNEL_GROUP+1));
+        NVIC_SetPriority(RTC_IRQn, _KERNEL_GROUP);
         NVIC_EnableIRQ(RTC_IRQn);
 #   else
-        NVIC_SetPriority(RTC_IRQn, (_LOPRI_BASE+1));
+        NVIC_SetPriority(RTC_IRQn, _LOPRI_GROUP);
         NVIC_EnableIRQ(RTC_IRQn);
 #   endif
 
-    NVIC_SetPriority(LPTIM1_IRQn, (_KERNEL_GROUP+2));
+    NVIC_SetPriority(LPTIM1_IRQn, _KERNEL_GROUP);
     NVIC_EnableIRQ(LPTIM1_IRQn);
 
 
     /// 5. Setup other external interrupts
     /// @note Make sure board files use the __USE_EXTI(N) definitions
 #   if defined(__USE_EXTI0) || defined(__USE_EXTI1)
-    NVIC_SetPriority(EXTI0_1_IRQn, _HIPRI_BASE);
+    NVIC_SetPriority(EXTI0_1_IRQn, _KERNEL_GROUP);
     NVIC_EnableIRQ(EXTI0_1_IRQn);
 #   endif
 #   if defined(__USE_EXTI2) || defined(__USE_EXTI3)
-    NVIC_SetPriority(EXTI2_3_IRQn, _HIPRI_BASE);
+    NVIC_SetPriority(EXTI2_3_IRQn, _KERNEL_GROUP);
     NVIC_EnableIRQ(EXTI2_3_IRQn);
 #   endif
 #   if( defined(__USE_EXTI4)  || defined(__USE_EXTI5)  || defined(__USE_EXTI6) \
     ||  defined(__USE_EXTI7)  || defined(__USE_EXTI8)  || defined(__USE_EXTI9) \
     ||  defined(__USE_EXTI10) || defined(__USE_EXTI11) || defined(__USE_EXTI12) \
     ||  defined(__USE_EXTI13) || defined(__USE_EXTI14) )
-    NVIC_SetPriority(EXTI4_15_IRQn, _HIPRI_BASE);
+    NVIC_SetPriority(EXTI4_15_IRQn, _KERNEL_GROUP);
     NVIC_EnableIRQ(EXTI4_15_IRQn);
 #   endif
 
 
     /// 6. Setup ADC interrupt.  This is needed only for ADC-enabled builds,
-    ///    but ADC is used for true-random-number generation as well as actual
-    ///    analog voltage sensing.
+    ///    but ADC is frequently used, so it is enabled by default
 //#   if defined(__USE_ADC1)
-    NVIC_SetPriority(ADC1_COMP_IRQn, _HIPRI_BASE);
+    NVIC_SetPriority(ADC1_COMP_IRQn, _HIPRI_GROUP);
     NVIC_EnableIRQ(ADC1_COMP_IRQn);
 //#   endif
 

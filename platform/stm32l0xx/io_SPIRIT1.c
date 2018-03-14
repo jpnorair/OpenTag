@@ -25,7 +25,7 @@
   */
 
 #include <otplatform.h>
-#if (OT_FEATURE(M2)) //defined(PLATFORM_STM32L1xx)
+#if (OT_FEATURE(M2) && defined(__SPIRIT1__))
 
 #include <otlib/utils.h>
 #include <otsys/types.h>
@@ -230,6 +230,13 @@ inline ot_uint spirit1_cspin_ishigh(void)      { return (RADIO_IRQ2_PORT->IDR & 
 inline ot_uint spirit1_sdnpin_setlow(void)     { return (RADIO_SDN_PORT->BSRRH = RADIO_SDN_PIN); }
 inline ot_uint spirit1_sdnpin_sethigh(void)    { return (RADIO_SDN_PORT->BSRRL = RADIO_SDN_PIN); }
 
+
+
+
+ot_u8 sprit1_getbasepwr() {
+/// Base Power code: 0-3.  For this impl it's always 3.
+    return 3;
+}
 
 
 /** Bus interface (SPI + 2x GPIO) <BR>

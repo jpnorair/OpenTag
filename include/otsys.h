@@ -27,6 +27,8 @@
 #define __OTSYS_H
 
 #include <otsys/config.h>
+#include <otsys/faults.h>
+#include <otsys/indicators.h>
 #include <otsys/mpipe.h>
 #include <otsys/support.h>
 #include <otsys/sysext.h>

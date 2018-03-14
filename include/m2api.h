@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2017 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
   * @file       /include/m2api.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    R100
-  * @date       27 August 2014
+  * @date       7 Oct 2017
   * @brief      Include file that combines m2 headers
   *
   ******************************************************************************
@@ -36,5 +36,9 @@
 #include <m2/radio.h>
 #include <m2/transport.h>
 #include <otsys/veelite.h>
+
+///@todo m2alp is defined in m2/transport.c
+///      This is temporary code until more elegant structuring is performed.
+extern alp_tmpl m2alp;
 
 #endif

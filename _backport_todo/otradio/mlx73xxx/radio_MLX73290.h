@@ -50,8 +50,8 @@
   */
 #define RF_FEATURE(VAL)                 RF_FEATURE_##VAL        // FEATURE                  AVAILABILITY
 #define RF_FEATURE_MSK                  DISABLED                // MSK Modulation           Moderate
-#define RF_FEATURE_55K                  ENABLED                 // 55kHz baudrate           High
-#define RF_FEATURE_200K                 ENABLED                 // 200kHz baudrate          High
+#define RF_FEATURE_53K                  ENABLED                 // 55kHz baudrate           High
+#define RF_FEATURE_212K                 ENABLED                 // 200kHz baudrate          High
 #define RF_FEATURE_PN9                  ENABLED                 // Integrated PN9 codec     Moderate
 #define RF_FEATURE_FEC                  DISABLED                // Integrated FEC codec     Moderate
 #define RF_FEATURE_FIFO                 ENABLED                 // RF TX/RX FIFO            High

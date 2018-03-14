@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2017 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /apps/_common/fs_default_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
-  * @version    R100
-  * @date       31 Aug 2014
+  * @version    R101
+  * @date       30 Apr 2017
   * @brief      Configuration for typical demo filesystem
   *
   * To use this typical FS configuration, include into your app/config.h header
@@ -32,6 +32,14 @@
 #define __DEFAULT_FS_CONFIG_H
 
 #include <app/build_config.h>
+
+
+#if defined(__VLSRAM__)
+#   define _NOMIRROR    1
+#else
+#   define _NOMIRROR    0
+#endif
+
 
 
 /** Veelite Addressing constants
@@ -181,7 +189,7 @@
   */
 #define ISF_TOTAL_BYTES                         1536
 #define ISF_NUM_M1_FILES                        7
-#define ISF_NUM_M2_FILES                        16
+#define ISF_NUM_M2_FILES                        18
 #define ISF_NUM_EXT_FILES                       1   // Usually at least 1 (app ext)
 #define ISF_NUM_USER_FILES                      0  //max allowed user files
 
@@ -245,36 +253,41 @@
 #define ISF_ID_table_query_size                 0x14
 #define ISF_ID_table_query_results              0x15
 #define ISF_ID_hardware_fault_status            0x16
+#define ISF_ID_gnss_output                      0x17
+#define ISF_ID_agps_input                       0x18
 #define ISF_ID_application_extension            0xFF
 
 /// ISF Mirror Enabling: <BR>
 /// ISFB files can be mirrored in RAM.  Set to 0/1 to Disable/Enable each file 
 /// mirror.  Mirroring speeds-up file access, but it can consume a lot of RAM.
+#define __SET_MIRROR(VAL)                       (VAL && !_NOMIRROR)
 #define ISF_ENMIRROR(VAL)                       ISF_ENMIRROR_##VAL
-#define ISF_ENMIRROR_network_settings           1
-#define ISF_ENMIRROR_device_features            0
-#define ISF_ENMIRROR_channel_configuration      0
-#define ISF_ENMIRROR_real_time_scheduler        0
-#define ISF_ENMIRROR_hold_scan_sequence         0
-#define ISF_ENMIRROR_sleep_scan_sequence        0
-#define ISF_ENMIRROR_beacon_transmit_sequence   0
-#define ISF_ENMIRROR_isf_list                   0
-#define ISF_ENMIRROR_isfs_list                  0
-#define ISF_ENMIRROR_gfb_file_list              0
-#define ISF_ENMIRROR_location_data_list         1
-#define ISF_ENMIRROR_ipv6_addresses             0
-#define ISF_ENMIRROR_sensor_list                0
-#define ISF_ENMIRROR_sensor_alarms              0
-#define ISF_ENMIRROR_root_authentication_key    0
-#define ISF_ENMIRROR_user_authentication_key    0
-#define ISF_ENMIRROR_routing_code               0
-#define ISF_ENMIRROR_user_id                    0
-#define ISF_ENMIRROR_optional_command_list      0
-#define ISF_ENMIRROR_memory_size                0
-#define ISF_ENMIRROR_table_query_size           0
-#define ISF_ENMIRROR_table_query_results        0
-#define ISF_ENMIRROR_hardware_fault_status      0
-#define ISF_ENMIRROR_application_extension      1
+#define ISF_ENMIRROR_network_settings           __SET_MIRROR(1)
+#define ISF_ENMIRROR_device_features            __SET_MIRROR(0)
+#define ISF_ENMIRROR_channel_configuration      __SET_MIRROR(0)
+#define ISF_ENMIRROR_real_time_scheduler        __SET_MIRROR(0)
+#define ISF_ENMIRROR_hold_scan_sequence         __SET_MIRROR(0)
+#define ISF_ENMIRROR_sleep_scan_sequence        __SET_MIRROR(0)
+#define ISF_ENMIRROR_beacon_transmit_sequence   __SET_MIRROR(0)
+#define ISF_ENMIRROR_isf_list                   __SET_MIRROR(0)
+#define ISF_ENMIRROR_isfs_list                  __SET_MIRROR(0)
+#define ISF_ENMIRROR_gfb_file_list              __SET_MIRROR(0)
+#define ISF_ENMIRROR_location_data_list         __SET_MIRROR(1)
+#define ISF_ENMIRROR_ipv6_addresses             __SET_MIRROR(0)
+#define ISF_ENMIRROR_sensor_list                __SET_MIRROR(0)
+#define ISF_ENMIRROR_sensor_alarms              __SET_MIRROR(0)
+#define ISF_ENMIRROR_root_authentication_key    __SET_MIRROR(0)
+#define ISF_ENMIRROR_user_authentication_key    __SET_MIRROR(0)
+#define ISF_ENMIRROR_routing_code               __SET_MIRROR(0)
+#define ISF_ENMIRROR_user_id                    __SET_MIRROR(0)
+#define ISF_ENMIRROR_optional_command_list      __SET_MIRROR(0)
+#define ISF_ENMIRROR_memory_size                __SET_MIRROR(0)
+#define ISF_ENMIRROR_table_query_size           __SET_MIRROR(0)
+#define ISF_ENMIRROR_table_query_results        __SET_MIRROR(0)
+#define ISF_ENMIRROR_hardware_fault_status      __SET_MIRROR(0)
+#define ISF_ENMIRROR_gnss_output                __SET_MIRROR(1)
+#define ISF_ENMIRROR_agps_input                 __SET_MIRROR(1)
+#define ISF_ENMIRROR_application_extension      __SET_MIRROR(1)
 
 
 /// ISF file default privileges                                     <BR>
@@ -309,6 +322,8 @@
 #define ISF_MOD_table_query_size                b00100100
 #define ISF_MOD_table_query_results             b00100100
 #define ISF_MOD_hardware_fault_status           b00100100
+#define ISF_MOD_gnss_output                     b00100000
+#define ISF_MOD_agps_input                      b00110000
 #define ISF_MOD_application_extension           b00100100
 
 /// ISF file default length: 
@@ -337,6 +352,8 @@
 #define ISF_LEN_table_query_size                1
 #define ISF_LEN_table_query_results             7
 #define ISF_LEN_hardware_fault_status           3
+#define ISF_LEN_gnss_output                     0
+#define ISF_LEN_agps_input                      0
 #define ISF_LEN_application_extension           0
 
 /// Stock ISF file max data lengths (not aligned, just max)
@@ -365,6 +382,8 @@
 #define ISF_MAX_table_query_size                1
 #define ISF_MAX_table_query_results             7
 #define ISF_MAX_hardware_fault_status           3
+#define ISF_MAX_gnss_output                     96  // Designed to support UBX-8 NAV-PVT
+#define ISF_MAX_agps_input                      200 // Designed for GPS MGA messages on UBX-8
 #define ISF_MAX_application_extension           64
 
 
@@ -376,33 +395,69 @@
 
 /// ISF file base address computation
 #define ISF_BASE(VAL)                           ISF_BASE_##VAL
-#define ISF_BASE_network_settings               (ISF_START_VADDR)
-#define ISF_BASE_device_features                (ISF_BASE_network_settings+ISF_ALLOC(network_settings))
-#define ISF_BASE_channel_configuration          (ISF_BASE_device_features+ISF_ALLOC(device_features))
-#define ISF_BASE_real_time_scheduler            (ISF_BASE_channel_configuration+ISF_ALLOC(channel_configuration))
-#define ISF_BASE_hold_scan_sequence             (ISF_BASE_real_time_scheduler+ISF_ALLOC(real_time_scheduler))
-#define ISF_BASE_sleep_scan_sequence            (ISF_BASE_hold_scan_sequence+ISF_ALLOC(hold_scan_sequence))
-#define ISF_BASE_beacon_transmit_sequence       (ISF_BASE_sleep_scan_sequence+ISF_ALLOC(sleep_scan_sequence))
-#define ISF_BASE_isf_list                       (ISF_BASE_beacon_transmit_sequence+ISF_ALLOC(beacon_transmit_sequence))
-#define ISF_BASE_isfs_list                      (ISF_BASE_isf_list+ISF_ALLOC(isf_list))
-#define ISF_BASE_gfb_file_list                  (ISF_BASE_isfs_list+ISF_ALLOC(isfs_list))
-#define ISF_BASE_location_data_list             (0xFFFF)
-#define ISF_BASE_ipv6_addresses                 (ISF_BASE_gfb_file_list+ISF_ALLOC(gfb_file_list))
-#define ISF_BASE_sensor_list                    (ISF_BASE_ipv6_addresses+ISF_ALLOC(ipv6_addresses))
-#define ISF_BASE_sensor_alarms                  (ISF_BASE_sensor_list+ISF_ALLOC(sensor_list))
-#define ISF_BASE_root_authentication_key        (ISF_BASE_sensor_alarms+ISF_ALLOC(sensor_alarms))
-#define ISF_BASE_user_authentication_key        (ISF_BASE_root_authentication_key+ISF_ALLOC(root_authentication_key))
-#define ISF_BASE_routing_code                   (ISF_BASE_user_authentication_key+ISF_ALLOC(user_authentication_key))
-#define ISF_BASE_user_id                        (ISF_BASE_routing_code+ISF_ALLOC(routing_code))
-#define ISF_BASE_optional_command_list          (ISF_BASE_user_id+ISF_ALLOC(user_id))
-#define ISF_BASE_memory_size                    (ISF_BASE_optional_command_list+ISF_ALLOC(optional_command_list))
-#define ISF_BASE_table_query_size               (ISF_BASE_memory_size+ISF_ALLOC(memory_size))
-#define ISF_BASE_table_query_results            (ISF_BASE_table_query_size+ISF_ALLOC(table_query_size))
-#define ISF_BASE_hardware_fault_status          (ISF_BASE_table_query_results+ISF_ALLOC(table_query_results))
-#define ISF_BASE_application_extension          (0xFFFF)
-#define ISF_BASE_NEXT                           (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
+#if _NOMIRROR
+#   undef ISF_MIRALLOC
+#   define ISF_MIRALLOC(VAL)                    0
+#   define ISF_BASE_network_settings            (ISF_START_VADDR)
+#   define ISF_BASE_device_features             (ISF_BASE_network_settings+ISF_ALLOC(network_settings))
+#   define ISF_BASE_channel_configuration       (ISF_BASE_device_features+ISF_ALLOC(device_features))
+#   define ISF_BASE_real_time_scheduler         (ISF_BASE_channel_configuration+ISF_ALLOC(channel_configuration))
+#   define ISF_BASE_hold_scan_sequence          (ISF_BASE_real_time_scheduler+ISF_ALLOC(real_time_scheduler))
+#   define ISF_BASE_sleep_scan_sequence         (ISF_BASE_hold_scan_sequence+ISF_ALLOC(hold_scan_sequence))
+#   define ISF_BASE_beacon_transmit_sequence    (ISF_BASE_sleep_scan_sequence+ISF_ALLOC(sleep_scan_sequence))
+#   define ISF_BASE_isf_list                    (ISF_BASE_beacon_transmit_sequence+ISF_ALLOC(beacon_transmit_sequence))
+#   define ISF_BASE_isfs_list                   (ISF_BASE_isf_list+ISF_ALLOC(isf_list))
+#   define ISF_BASE_gfb_file_list               (ISF_BASE_isfs_list+ISF_ALLOC(isfs_list))
+#   define ISF_BASE_location_data_list          (ISF_BASE_gfb_file_list+ISF_ALLOC(gfb_file_list))
+#   define ISF_BASE_ipv6_addresses              (ISF_BASE_location_data_list+ISF_ALLOC(location_data_list))
+#   define ISF_BASE_sensor_list                 (ISF_BASE_ipv6_addresses+ISF_ALLOC(ipv6_addresses))
+#   define ISF_BASE_sensor_alarms               (ISF_BASE_sensor_list+ISF_ALLOC(sensor_list))
+#   define ISF_BASE_root_authentication_key     (ISF_BASE_sensor_alarms+ISF_ALLOC(sensor_alarms))
+#   define ISF_BASE_user_authentication_key     (ISF_BASE_root_authentication_key+ISF_ALLOC(root_authentication_key))
+#   define ISF_BASE_routing_code                (ISF_BASE_user_authentication_key+ISF_ALLOC(user_authentication_key))
+#   define ISF_BASE_user_id                     (ISF_BASE_routing_code+ISF_ALLOC(routing_code))
+#   define ISF_BASE_optional_command_list       (ISF_BASE_user_id+ISF_ALLOC(user_id))
+#   define ISF_BASE_memory_size                 (ISF_BASE_optional_command_list+ISF_ALLOC(optional_command_list))
+#   define ISF_BASE_table_query_size            (ISF_BASE_memory_size+ISF_ALLOC(memory_size))
+#   define ISF_BASE_table_query_results         (ISF_BASE_table_query_size+ISF_ALLOC(table_query_size))
+#   define ISF_BASE_hardware_fault_status       (ISF_BASE_table_query_results+ISF_ALLOC(table_query_results))
+#   define ISF_BASE_gnss_output                 (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
+#   define ISF_BASE_agps_input                  (ISF_BASE_gnss_output+ISF_ALLOC(gnss_output))
+#   define ISF_BASE_application_extension       (ISF_BASE_agps_input+ISF_ALLOC(agps_input))
+#   define ISF_BASE_NEXT                        (ISF_BASE_application_extension+ISF_ALLOC(application_extension ))
 
-/// ISF file mirror address computation
+#else
+#   define ISF_BASE_network_settings            (ISF_START_VADDR)
+#   define ISF_BASE_device_features             (ISF_BASE_network_settings+ISF_ALLOC(network_settings))
+#   define ISF_BASE_channel_configuration       (ISF_BASE_device_features+ISF_ALLOC(device_features))
+#   define ISF_BASE_real_time_scheduler         (ISF_BASE_channel_configuration+ISF_ALLOC(channel_configuration))
+#   define ISF_BASE_hold_scan_sequence          (ISF_BASE_real_time_scheduler+ISF_ALLOC(real_time_scheduler))
+#   define ISF_BASE_sleep_scan_sequence         (ISF_BASE_hold_scan_sequence+ISF_ALLOC(hold_scan_sequence))
+#   define ISF_BASE_beacon_transmit_sequence    (ISF_BASE_sleep_scan_sequence+ISF_ALLOC(sleep_scan_sequence))
+#   define ISF_BASE_isf_list                    (ISF_BASE_beacon_transmit_sequence+ISF_ALLOC(beacon_transmit_sequence))
+#   define ISF_BASE_isfs_list                   (ISF_BASE_isf_list+ISF_ALLOC(isf_list))
+#   define ISF_BASE_gfb_file_list               (ISF_BASE_isfs_list+ISF_ALLOC(isfs_list))
+#   define ISF_BASE_location_data_list          (0xFFFF)
+#   define ISF_BASE_ipv6_addresses              (ISF_BASE_gfb_file_list+ISF_ALLOC(gfb_file_list))
+#   define ISF_BASE_sensor_list                 (ISF_BASE_ipv6_addresses+ISF_ALLOC(ipv6_addresses))
+#   define ISF_BASE_sensor_alarms               (ISF_BASE_sensor_list+ISF_ALLOC(sensor_list))
+#   define ISF_BASE_root_authentication_key     (ISF_BASE_sensor_alarms+ISF_ALLOC(sensor_alarms))
+#   define ISF_BASE_user_authentication_key     (ISF_BASE_root_authentication_key+ISF_ALLOC(root_authentication_key))
+#   define ISF_BASE_routing_code                (ISF_BASE_user_authentication_key+ISF_ALLOC(user_authentication_key))
+#   define ISF_BASE_user_id                     (ISF_BASE_routing_code+ISF_ALLOC(routing_code))
+#   define ISF_BASE_optional_command_list       (ISF_BASE_user_id+ISF_ALLOC(user_id))
+#   define ISF_BASE_memory_size                 (ISF_BASE_optional_command_list+ISF_ALLOC(optional_command_list))
+#   define ISF_BASE_table_query_size            (ISF_BASE_memory_size+ISF_ALLOC(memory_size))
+#   define ISF_BASE_table_query_results         (ISF_BASE_table_query_size+ISF_ALLOC(table_query_size))
+#   define ISF_BASE_hardware_fault_status       (ISF_BASE_table_query_results+ISF_ALLOC(table_query_results))
+#   define ISF_BASE_gnss_output                 (0xFFFF)
+#   define ISF_BASE_agps_input                  (0xFFFF)
+#   define ISF_BASE_application_extension       (0xFFFF)
+#   define ISF_BASE_NEXT                        (ISF_BASE_hardware_fault_status+ISF_ALLOC(hardware_fault_status))
+#endif
+
+
+
 #define ISF_MIRROR(VAL)                         (unsigned short)(((ISF_ENMIRROR_##VAL != 0) - 1) | (ISF_MIRROR_##VAL) )
 #define ISF_MIRROR_network_settings             (ISF_MIRROR_VADDR)
 #define ISF_MIRROR_device_features              (ISF_MIRROR_network_settings+ISF_MIRALLOC(network_settings))
@@ -427,8 +482,11 @@
 #define ISF_MIRROR_table_query_size             (ISF_MIRROR_memory_size+ISF_MIRALLOC(memory_size))
 #define ISF_MIRROR_table_query_results          (ISF_MIRROR_table_query_size+ISF_MIRALLOC(table_query_size))
 #define ISF_MIRROR_hardware_fault_status        (ISF_MIRROR_table_query_results+ISF_MIRALLOC(table_query_results))
-#define ISF_MIRROR_application_extension        (ISF_MIRROR_hardware_fault_status+ISF_MIRALLOC(hardware_fault_status))
+#define ISF_MIRROR_gnss_output                  (ISF_MIRROR_hardware_fault_status+ISF_MIRALLOC(hardware_fault_status))
+#define ISF_MIRROR_agps_input                   (ISF_MIRROR_gnss_output+ISF_MIRALLOC(gnss_output))
+#define ISF_MIRROR_application_extension        (ISF_MIRROR_agps_input+ISF_MIRALLOC(agps_input))
 #define ISF_MIRROR_NEXT                         (ISF_MIRROR_application_extension+ISF_MIRALLOC(application_extension))
+
 
 /// Total amount of stock ISF data stored in ROM
 #define ISF_VWORM_STOCK_BYTES   (ISF_ALLOC(network_settings) + \
@@ -454,6 +512,8 @@
                                 ISF_ALLOC(table_query_size) + \
                                 ISF_ALLOC(table_query_results) + \
                                 ISF_ALLOC(hardware_fault_status) + \
+                                ISF_ALLOC(gnss_output) + \
+                                ISF_ALLOC(agps_input) + \
                                 ISF_ALLOC(application_extension))
 
 #define ISF_VWORM_HEAP_BYTES    ISF_VWORM_STOCK_BYTES
@@ -462,7 +522,7 @@
 
 
 /// Total amount of allocation to the Mirror
-#define ISF_MIRROR_HEAP_BYTES   ((ISF_MIRROR_NEXT) - (ISF_MIRROR_VADDR))
+#define ISF_MIRROR_HEAP_BYTES                ((ISF_MIRROR_NEXT) - (ISF_MIRROR_VADDR))
 
 /// END OF AUTOMATIC ISF STUFF 
 

@@ -56,6 +56,8 @@ ot_int otutils_bin2hex(ot_u8* src, ot_u8* dst, ot_int size);
 // ot_int type to decimal text
 ot_int otutils_int2dec(ot_u8* dst, ot_int data);
 
+ot_int otutils_long2dec(ot_u8* dst, ot_long data);
+
 
 ot_int slistf(ot_u8* dst, const char* label, char format, ot_u8 number, ot_u8* src);
 

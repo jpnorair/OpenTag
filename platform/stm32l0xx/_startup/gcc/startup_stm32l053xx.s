@@ -180,7 +180,7 @@ g_pfnVectors:
   .word     SPI2_IRQHandler                   /* SPI2                         */
   .word     USART1_IRQHandler                 /* USART1                       */
   .word     USART2_IRQHandler                 /* USART2                       */
-  .word     RNG_LPUART1_IRQHandler            /* RNG and LPUART1              */
+  .word     AES_RNG_LPUART1_IRQHandler            /* RNG and LPUART1              */
   .word     LCD_IRQHandler                    /* LCD                          */
   .word     USB_IRQHandler                    /* USB                          */
 
@@ -282,8 +282,8 @@ g_pfnVectors:
    .weak      USART2_IRQHandler
    .thumb_set USART2_IRQHandler,Default_Handler
 
-   .weak      RNG_LPUART1_IRQHandler
-   .thumb_set RNG_LPUART1_IRQHandler,Default_Handler
+   .weak      AES_RNG_LPUART1_IRQHandler
+   .thumb_set AES_RNG_LPUART1_IRQHandler,Default_Handler
 
    .weak      LCD_IRQHandler
    .thumb_set LCD_IRQHandler,Default_Handler

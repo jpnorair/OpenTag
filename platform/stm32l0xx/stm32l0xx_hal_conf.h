@@ -2,13 +2,15 @@
   ******************************************************************************
   * @file    stm32l0xx_hal_conf.h
   * @author  MCD Application Team
-  * @version V1.1.0
-  * @date    18-June-2014
-  * @brief   HAL configuration file.
+  * @version V1.7.0
+  * @date    31-May-2016
+  * @brief   HAL configuration template file. 
+  *          This file should be copied to the application folder and renamed
+  *          to stm32l0xx_hal_conf.h.
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2014 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -34,14 +36,7 @@
   *
   ******************************************************************************
   */ 
-  
-/** @note [JPN] OpenTag Veelite driver uses the stm32l0xx_hal_flash_ex.c 
-  *       functions for writing to EEPROM.  That is the only STM32 HAL module
-  *       OpenTag uses directly.  However, the USB driver (supplied by ST)
-  *       needs the RCC and PWR modules, so those are also included.  No others
-  *       are used right now, OpenTag does the rest of the things internally.
-  */
-  
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32L0xx_HAL_CONF_H
 #define __STM32L0xx_HAL_CONF_H
@@ -50,20 +45,16 @@
  extern "C" {
 #endif
 
-
 /// @note [JPN] added these OpenTag elements
 #include <otstd.h>
 #include <board.h>
-
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
 
 /* ########################## Module Selection ############################## */
 /**
-  * @brief This is the list of modules to be used in the HAL driver.
-  *        In OpenTag, we only care about flash (FLASH), power (PWR), and Reset
-  *        Clock Config (RCC).  The rest, OpenTag implements in its own way.
+  * @brief This is the list of modules to be used in the HAL driver 
   */
 //#define HAL_MODULE_ENABLED  
 //#define HAL_ADC_MODULE_ENABLED   
@@ -72,8 +63,9 @@
 //#define HAL_CRYP_MODULE_ENABLED  
 //#define HAL_DAC_MODULE_ENABLED   
 //#define HAL_DMA_MODULE_ENABLED
-#define HAL_FLASH_MODULE_ENABLED 
-//#define HAL_GPIO_MODULE_ENABLED
+//#define HAL_FIREWALL_MODULE_ENABLED
+#define HAL_FLASH_MODULE_ENABLED
+#define HAL_GPIO_MODULE_ENABLED
 //#define HAL_I2C_MODULE_ENABLED
 //#define HAL_I2S_MODULE_ENABLED   
 //#define HAL_IWDG_MODULE_ENABLED
@@ -95,8 +87,13 @@
 //#define HAL_CORTEX_MODULE_ENABLED
 //#define HAL_PCD_MODULE_ENABLED 
 
-
 /* ########################## Oscillator Values adaptation ####################*/
+/**
+  * @brief Adjust the value of External High Speed oscillator (HSE) used in your application.
+  *        This value is used by the RCC HAL module to compute the system frequency
+  *        (when HSE is used as system clock source, directly or through the PLL).  
+  */
+  
 /**
   * @brief These "BOARD" params are pulled from the OpenTag board config file,
   * available by including board.h
@@ -121,7 +118,7 @@
 
 
 #if !defined(HSE_STARTUP_TIMEOUT)
-#   define HSE_STARTUP_TIMEOUT     ((uint32_t)5000)   /*!< Time out for HSE start up, in ms */
+#   define HSE_STARTUP_TIMEOUT     ((uint32_t)100)   /*!< Time out for HSE start up, in ms */
 #endif /* HSE_STARTUP_TIMEOUT */
 
    
@@ -129,9 +126,32 @@
 #   define LSE_STARTUP_TIMEOUT    ((uint32_t)5000)   /*!< Time out for LSE start up, in ms */
 #endif /* HSE_STARTUP_TIMEOUT */
 
+  
+
+/**
+  * @brief Internal High Speed oscillator for USB (HSI48) value.
+  */
+#if !defined  (HSI48_VALUE) 
+#define HSI48_VALUE ((uint32_t)48000000U) /*!< Value of the Internal High Speed oscillator for USB in Hz.
+                                             The real value may vary depending on the variations
+                                             in voltage and temperature.  */
+#endif /* HSI48_VALUE */
+
+/**
+  * @brief Internal Low Speed oscillator (LSI) value.
+  */
+#if !defined  (LSI_VALUE) 
+ #define LSI_VALUE  ((uint32_t)37000U)       /*!< LSI Typical Value in Hz*/
+#endif /* LSI_VALUE */                      /*!< Value of the Internal Low Speed oscillator in Hz
+                                             The real value may vary depending on the variations
+                                             in voltage and temperature.*/
 
 
 
+
+   
+/* Tip: To avoid modifying this file each time you need to use different HSE,
+   ===  you can define the HSE value in your toolchain compiler preprocessor. */
 
 /* ########################### System Configuration ######################### */
 /**
@@ -139,15 +159,12 @@
   *        STM32Cube function OpenTag uses so far.  It is left unaltered from
   *        the state ST delivered it.
   */     
-#define  VDD_VALUE                    ((uint32_t)3300) /*!< Value of VDD in mv */
-#define  TICK_INT_PRIORITY            ((uint32_t)3)    /*!< tick interrupt priority */            
-#define  USE_RTOS                     0     
-#define  PREFETCH_ENABLE              1              
-#define  PREREAD_ENABLE               1
-#define  BUFFER_CACHE_DISABLE         0
-
-
-
+#define  VDD_VALUE                    ((uint32_t)3300U) /*!< Value of VDD in mv */
+#define  TICK_INT_PRIORITY            (((uint32_t)1U<<__NVIC_PRIO_BITS) - 1U)    /*!< tick interrupt priority */            
+#define  USE_RTOS                     0U     
+#define  PREFETCH_ENABLE              1U              
+#define  PREREAD_ENABLE               0U
+#define  BUFFER_CACHE_DISABLE         0U
 
 /* ########################## Assert Selection ############################## */
 /**
@@ -164,7 +181,7 @@
 #ifdef HAL_RCC_MODULE_ENABLED
   #include "stm32l0xx_hal_rcc.h"
 #endif /* HAL_RCC_MODULE_ENABLED */
-
+  
 #ifdef HAL_GPIO_MODULE_ENABLED
   #include "stm32l0xx_hal_gpio.h"
 #endif /* HAL_GPIO_MODULE_ENABLED */
@@ -172,7 +189,7 @@
 #ifdef HAL_DMA_MODULE_ENABLED
   #include "stm32l0xx_hal_dma.h"
 #endif /* HAL_DMA_MODULE_ENABLED */
-   
+
 #ifdef HAL_CORTEX_MODULE_ENABLED
   #include "stm32l0xx_hal_cortex.h"
 #endif /* HAL_CORTEX_MODULE_ENABLED */
@@ -184,7 +201,7 @@
 #ifdef HAL_COMP_MODULE_ENABLED
   #include "stm32l0xx_hal_comp.h"
 #endif /* HAL_COMP_MODULE_ENABLED */
-   
+
 #ifdef HAL_CRC_MODULE_ENABLED
   #include "stm32l0xx_hal_crc.h"
 #endif /* HAL_CRC_MODULE_ENABLED */
@@ -197,6 +214,10 @@
   #include "stm32l0xx_hal_dac.h"
 #endif /* HAL_DAC_MODULE_ENABLED */
 
+#ifdef HAL_FIREWALL_MODULE_ENABLED
+  #include "stm32l0xx_hal_firewall.h"
+#endif /* HAL_FIREWALL_MODULE_ENABLED */
+ 
 #ifdef HAL_FLASH_MODULE_ENABLED
   #include "stm32l0xx_hal_flash.h"
 #endif /* HAL_FLASH_MODULE_ENABLED */
@@ -231,7 +252,6 @@
 
 #ifdef HAL_RTC_MODULE_ENABLED
  #include "stm32l0xx_hal_rtc.h"
-
 #endif /* HAL_RTC_MODULE_ENABLED */
 
 #ifdef HAL_SPI_MODULE_ENABLED
@@ -284,11 +304,11 @@
   *         If expr is true, it returns no value.
   * @retval None
   */
-  #define assert_param(expr) ((expr) ? (void)0 : assert_failed((uint8_t *)__FILE__, __LINE__))
+  #define assert_param(expr) ((expr) ? (void)0U : assert_failed((uint8_t *)__FILE__, __LINE__))
 /* Exported functions ------------------------------------------------------- */
   void assert_failed(uint8_t* file, uint32_t line);
 #else
-  #define assert_param(expr) ((void)0)
+  #define assert_param(expr) ((void)0U)
 #endif /* USE_FULL_ASSERT */
 
 #ifdef __cplusplus
@@ -299,3 +319,4 @@
  
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+

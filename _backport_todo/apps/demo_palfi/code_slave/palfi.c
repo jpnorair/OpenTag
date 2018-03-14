@@ -320,7 +320,7 @@ void ext_systask(ot_task task) {
     		goto sys_sig_extprocess_EXIT2;
     	}
     	if (task_next > 0) {
-    		sys_task_setnext(task, (ot_uint)task_next);
+    		sys_task_setnext(task, (ot_u32)task_next);
     	}
     }
 }

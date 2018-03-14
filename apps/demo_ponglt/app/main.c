@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /apps/demo_ponglt/code/main.c
+  * @file       /apps/demo_ponglt/app/main.c
   * @author     JP Norair
   * @version    R100
   * @date       27 Nov 2012
@@ -59,6 +59,7 @@
 #include <otstd.h>
 #include <otplatform.h>
 #include <board.h>
+#include <otlib/delay.h>
 #include <otlib/rand.h>
 #include <otlib/logger.h>
 
@@ -105,11 +106,11 @@ void app_invoke(ot_u8 call_type);
 
 /// Communication Task Applets
 void applet_send_query(m2session* active);
-void applet_send_beacon(m2session* active);
+//void applet_send_beacon(m2session* active);
 
 /// Direct Control Applets
-void opmode_goto_gateway();
-void opmode_goto_endpoint();
+//void opmode_goto_gateway();
+//void opmode_goto_endpoint();
 
 // Applets that run due to OpenTag callbacks
 //void    app_packet_routing(ot_int code, ot_int type);
@@ -134,63 +135,20 @@ void sub_button_init();
   * The button-press is unique to this application, and it is treated here.
   */
 
-#if (defined(__MSP430F5__) && defined(OT_SWITCH1_PORT))
-#   if (OT_SWITCH1_PORTNUM == 1)
-#       define PLATFORM_ISR_SW  platform_isr_p1
-#   else
-#       define PLATFORM_ISR_SW  platform_isr_p2
-#   endif
-
-void sub_button_init() {
-#   if (OT_SWITCH1_PULLING)
-    OT_SWITCH1_PORT->REN   |= OT_SWITCH1_PIN;       //Enable Internal Pull up/down
-#   endif
-#   if (OT_SWITCH1_POLARITY == 0)
-    OT_SWITCH1_PORT->DOUT  |= OT_SWITCH1_PIN;       //Set Pull-up (pull-down is default)
-    //OT_SWITCH1_PORT->IES   &= ~OT_SWITCH1_PIN;    //falling edge is default
-#   else
-    //OT_SWITCH1_PORT->DOUT  &= ~OT_SWITCH1_PIN;    //Pull-down is default
-    OT_SWITCH1_PORT->IES   |= OT_SWITCH1_PIN;       //Set Rising Edge
-#   endif
-
-    //Clear and enable interrupt
-    OT_SWITCH1_PORT->IFG    = 0;
-    OT_SWITCH1_PORT->IE    |= OT_SWITCH1_PIN;
-}
-
-
-void PLATFORM_ISR_SW() {
-/// If you implement more interrupts on this port, you can make this function
-/// into a switch statement using OT_SWITCH1_PIV.
-    OT_SWITCH1_PORT->IFG = 0;
-
+void OT_SWITCH1_ISR(void) {
     // Ignore the button press if the task is in progress already
     if (APP_TASK->event == 0) {
         app_invoke(0x18);              // Initialize Ping Task on channel 18
     }
 }
 
-#elif (defined(__STM32__) && defined(OT_SWITCH1_PINNUM) && (OT_SWITCH1_PINNUM >= 0))
-    void OT_SWITCH1_ISR(void) {
-        // Ignore the button press if the task is in progress already
-        if (APP_TASK->event == 0) {
-            app_invoke(0x18);              // Initialize Ping Task on channel 18
-        }
-    }
+void sub_button_init() {
+/// ARM Cortex M boards must prepare all EXTI line interrupts in their board
+/// configuration files, but the actual line interrupt must be enabled here.
+    EXTI->RTSR |= OT_SWITCH1_PIN;
+    EXTI->IMR  |= OT_SWITCH1_PIN;
+}
 
-    void sub_button_init() {
-    /// ARM Cortex M boards must prepare all EXTI line interrupts in their board
-    /// configuration files, but the actual line interrupt must be enabled here.
-        EXTI->RTSR |= OT_SWITCH1_PIN;
-        EXTI->IMR  |= OT_SWITCH1_PIN;
-    }
-
-
-#else
-#   warn "You are not using a known, compatible MCU.  Demo might not work."
-    void sub_button_init() {}
-
-#endif
 
 
 
@@ -447,7 +405,7 @@ void app_blink() {
         if (i&1)    BOARD_led1_on();
         else        BOARD_led2_on();
 
-        delay_ms(30);
+        delay_ti(60);
         BOARD_led2_off();
         BOARD_led1_off();
         i--;
@@ -456,6 +414,7 @@ void app_blink() {
 }
   
 void app_init() {
+    APP_TASK->event = 0;
     sub_button_init();
 }
 

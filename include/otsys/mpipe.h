@@ -49,21 +49,22 @@
 #define __OTSYS_MPIPE_H
 
 #include <otstd.h>
-
-#include <otlib/alp.h>
 #include <otsys/syskern.h>
+#include <otlib/alp.h>
+
 
 
 
 ///@todo when more hardware is supported by mpipe, variations of this will be
 ///      specified.  In certain implementations, this is superfluous
 typedef enum {
-    MPIPE_9600bps    = 0,
-    MPIPE_28800bps   = 1,
-    MPIPE_57600bps   = 2,
-    MPIPE_115200bps  = 3,
-    MPIPE_250000bps  = 4,
-    MPIPE_500000bps  = 5
+    MPIPE_default   = -1,
+    MPIPE_9600bps   = 0,
+    MPIPE_28800bps  = 1,
+    MPIPE_57600bps  = 2,
+    MPIPE_115200bps = 3,
+    MPIPE_250000bps = 4,
+    MPIPE_500000bps = 5
 } mpipe_speed;
 
 
@@ -197,10 +198,30 @@ void mpipe_open();
 void mpipe_close();
 
 
+/** @brief  Schedules reception in "wait" ticks
+  * @param  wait    (ot_int) number of ticks to wait.
+  * @retval None
+  * @ingroup Mpipe
+  * 
+  * Not generally used, since MPipe defaults to passive RF as Idle mode.
+  * Available as a hook for special hacks.
+  */
+void mpipe_rxschedule(ot_int wait);
+
+
+/** @brief  Schedules a transmission in "wait" ticks
+  * @param  wait    (ot_int) number of ticks to wait.
+  * @retval None
+  * @ingroup Mpipe
+  */
+void mpipe_txschedule(ot_int wait);
+
+
 /** @brief  Sends the contents of the mpipe output queue over the MPipe
   * @param  None
   * @retval None
   * @ingroup Mpipe
+  * @note Deprecated.  Implemented as mpipe_txschedule(0)
   */
 void mpipe_send();
 
@@ -353,6 +374,16 @@ void mpipedrv_standby();
 void mpipedrv_detach(void* port_id);
 
 
+/** @brief  Gets code about current power requirements of driver
+  * @param  None
+  * @retval ot_u8		An OpenTag "Power Code", generally 0-3.
+  * @ingroup Mpipe
+  *
+  * This function is used in mpipe_systask() only.  The kernel calls it when it needs to
+  * determine the appropriate sleep state to enter.
+  */
+ot_u8 mpipedrv_getpwrcode();
+
 
 /** @brief  Kills the Mpipe connection
   * @param  None
@@ -437,6 +468,17 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority);
 void mpipedrv_rx(ot_bool blocking, mpipe_priority data_priority);
 
 
+
+/** @brief  ISR called during detection of RX activity
+  * @param  None
+  * @retval None
+  * @ingroup Mpipe
+  *
+  * Certain configurations of Mpipe allow for asynchronous detection of RX
+  * activity.  This can be done via a number of means.  This is the synthetic
+  * ISR function that the raw ISR function should call to invoke MPipe.
+  */
+void mpipe_rxsync_isr(void);
 
 
 /** @brief  ISR Mpipe subroutine for Mpipe inclusion into global ISR function

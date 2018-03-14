@@ -527,6 +527,13 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
 #endif
 
 
+#ifndef EXTF_mpipedrv_getpwrcode
+ot_u8 mpipedrv_getpwrcode() {
+/// Power code: 0-3.  For this MPipe impl it's always 1 or 2
+    return 1 + (mpipe.state < 0);
+}
+#endif
+
 #ifndef EXTF_mpipedrv_standby
 void mpipedrv_standby() {
 }

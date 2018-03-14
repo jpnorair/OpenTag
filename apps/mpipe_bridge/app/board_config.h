@@ -29,7 +29,7 @@
 #define __BOARD_CONFIG_H
 
 #include <app/build_config.h>
-
+#include "../../_common/board_select.h"
 
 
 
@@ -38,14 +38,9 @@
 /// a command-line argument (or whatever is equivalent).  You can also change
 /// the default if you wish.
 
-#if (   !defined(BOARD_IKR001)          \
-    &&  !defined(BOARD_Pluto)               \
-    &&  !defined(BOARD_Charon_R0)           \
-    &&  !defined(BOARD_Nucleo_STM32L053)    \
-    )
-#   define BOARD_Pluto
+#if !BOARD_IS_OFFICIAL()
+#   warning "You are not using an official board.  You will need to alter board_config.h to include your board support headers."
 #endif
-
 
 
 
@@ -69,6 +64,10 @@
 #elif defined(BOARD_Nucleo_STM32L053)
 #   include <app/isr_config_STM32L0.h>
 #   include <board/stm32l0xx/Nucleo_STM32L053.h>
+
+#elif (defined(BOARD_Nucleo_LRWAN1))
+#   include <app/isr_config_STM32L0.h>
+#   include <board/stm32l0xx/Nucleo_LRWAN1.h>
 
 #else
 #   error "Selected BOARD is not supported by this app :("

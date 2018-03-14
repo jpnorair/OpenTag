@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /apps/demo_ponglt/code/board_config.h
+  * @file       /apps/demo_ponglt/app/board_config.h
   * @author     JP Norair (jpnorair@indigresso.com)
   * @version    V1.0
   * @date       31 July 2012
@@ -29,7 +29,7 @@
 #define __BOARD_CONFIG_H
 
 #include <app/build_config.h>
-
+#include "../../_common/board_select.h"
 
 
 
@@ -38,20 +38,8 @@
 /// a command-line argument (or whatever is equivalent).  You can also change
 /// the default if you wish.
 
-#if (   !defined(BOARD_OMG_CC430)       \
-    &&  !defined(BOARD_EM430RF)         \
-    &&  !defined(BOARD_eZ430Chronos)    \
-    &&  !defined(BOARD_RF430USB_5509)   \
-    &&  !defined(BOARD_IKR001)          \
-    &&  !defined(BOARD_Jupiter_R1)      \
-    &&  !defined(BOARD_Jupiter_R2)      \
-    &&  !defined(BOARD_HayTag_R1)       \
-    &&  !defined(BOARD_HayTag_LI9R1)    \
-    &&  !defined(BOARD_HayTag_LI9T1)    \
-    &&  !defined(BOARD_HayTag_LI30R1)   \
-    &&  !defined(BOARD_HayTag_LI30T1)   \
-    )
-#   define BOARD_Jupiter_R2
+#if !BOARD_IS_OFFICIAL()
+#   warning "You are not using an official board.  You will need to alter board_config.h to include your board support headers."
 #endif
 
 
@@ -93,6 +81,10 @@
 #elif (defined(BOARD_HayTag_R1) || defined(BOARD_HayTag_R1T) || defined(BOARD_HayTag_R1A))
 #   include <app/isr_config_STM32L.h>
 #   include <board/stm32l1xx/board_HayTag_R1.h>
+
+#elif (defined(BOARD_Nucleo_LRWAN1))
+#   include <app/isr_config_STM32L0.h>
+#   include <board/stm32l0xx/Nucleo_LRWAN1.h>
 
 #else
 #   error "Selected BOARD is not supported by this app :("

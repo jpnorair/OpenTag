@@ -76,9 +76,13 @@
 /// ISRs that can bring the system out of STOP mode have __ISR_WAKEUP_HOOK().
 /// When coming out of STOP, clock either MSI or HSI, and it needs to go back 
 /// to the selected value.
-#define __ISR_KTIM_WAKEUP_HOOK()    platform_ext_wakefromstop()
-#define __ISR_WAKEUP_HOOK()         platform_ext_wakefromstop()
-
+#ifdef __DEBUG__
+#   define __ISR_KTIM_WAKEUP_HOOK();
+#   define __ISR_WAKEUP_HOOK();
+#else
+#   define __ISR_KTIM_WAKEUP_HOOK()    platform_ext_wakefromstop()
+#   define __ISR_WAKEUP_HOOK()         platform_ext_wakefromstop()
+#endif
 
 
 
@@ -93,6 +97,8 @@
 /// Enable MPIPE Interrupts:
 /// DMA interrupts for UART DMA
 #if (OT_FEATURE(MPIPE) && BOARD_FEATURE(MPIPE))
+#include <otsys/mpipe.h>
+
 #   if (MCU_CONFIG(MPIPECDC))
         ///@todo USB MPipe Interrupt settings
    
@@ -352,11 +358,6 @@ void RCC_CRS_IRQHandler(void) {
 #else
 #   define APPLICATION_EXTI13_ISR(); 
 #endif
-#if defined(__ISR_EXTI0)
-#   define APPLICATION_EXTI13_ISR()  platform_isr_exti13()
-#else
-#   define APPLICATION_EXTI13_ISR(); 
-#endif
 #if defined(__ISR_EXTI14)
 #   define APPLICATION_EXTI14_ISR()  platform_isr_exti14()
 #else
@@ -374,9 +375,9 @@ void RCC_CRS_IRQHandler(void) {
 #else
 #   define __RADIO_EXTI(NUM); 
 #endif
-#if (BOARD_FEATURE(MPIPE) && defined(BOARD_COM_EXTI0))
+#if (BOARD_FEATURE(MPIPE) && defined(BOARD_COM_EXTI0_ISR))
 #   define __MPIPE_EXTI(NUM)    BOARD_COM_EXTI##NUM##_ISR()
-#elif (BOARD_FEATURE(MPIPE) && defined(BOARD_MPIPE_EXTI0))
+#elif (BOARD_FEATURE(MPIPE) && defined(BOARD_MPIPE_EXTI0_ISR))
 #   define __MPIPE_EXTI(NUM)    BOARD_MPIPE_EXTI##NUM##_ISR()
 #else
 #   define __MPIPE_EXTI(NUM); 
@@ -608,7 +609,10 @@ void ADC1_COMP_IRQHandler(void) {
 #if defined(__ISR_LPTIM1) && !defined(__N_ISR_LPTIM1)
 void LPTIM1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<29);
+    
+    ///@todo Not certain this PR clear is necessary or good
+    //EXTI->PR = (1<<29);         
+    
     __ISR_KTIM_WAKEUP_HOOK();
     platform_isr_lptim1();
     __ISR_EXIT_HOOK();
@@ -758,7 +762,7 @@ void USART2_IRQHandler(void) {
 #define _RNG    defined(__ISR_RNG) && !defined(__N_ISR_RNG)
 #define _LPUART defined(__ISR_LPUART) && !defined(__N_ISR_LPUART)
 #if (_AES || _RNG || LPUART)
-void AES_RNG_LPUART1_IRQHandler(void) {
+void RNG_LPUART1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
 #   if (_LPUART)
     {   ot_u32 exti_pr;

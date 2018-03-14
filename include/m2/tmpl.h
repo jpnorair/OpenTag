@@ -201,7 +201,8 @@ typedef enum {
     CMDEXT_no_csma          = 0x04,
     CMDEXT_ca_raind         = (1<<3),
     CMDEXT_ca_aind          = (2<<3),
-    CMDEXT_ca_mac           = (7<<3)
+    CMDEXT_ca_mac           = (7<<3),
+    CMDEXT_null_file        = (1<<6)
 } command_extensions;
 
 

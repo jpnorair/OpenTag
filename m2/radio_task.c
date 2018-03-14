@@ -162,6 +162,7 @@ OT_WEAK void rm2_init(void) {
     
     /// Set universal Radio module initialization defaults
     radio.state     = RADIO_Idle;
+    radio.flags     = RADIO_FLAG_REFRESH;
     radio.evtdone   = &otutils_sig2_null;
 
     /// These Radio Link features are available on the SPIRIT1
@@ -401,10 +402,17 @@ OT_WEAK ot_bool rm2_mac_filter() {
 #endif
 
 
+#ifndef EXTF_rm2_channel_refresh
+OT_WEAK void rm2_channel_refresh(void) {
+    radio.flags |= RADIO_FLAG_REFRESH;
+}
+#endif
+
+
 #ifndef EXTF_rm2_test_channel
 OT_WEAK ot_bool rm2_test_channel(ot_u8 channel) {
     ot_bool test;
-
+    
     test = rm2_channel_fastcheck(channel);
     if (test == False) {
         vlFILE* fp;
@@ -448,9 +456,15 @@ OT_WEAK ot_bool rm2_test_chanlist() {
 #ifndef EXTF_rm2_channel_fastcheck
 OT_WEAK ot_bool rm2_channel_fastcheck(ot_u8 chan_id) {
     ot_u8 old_chan_id;
+    
+    if (radio.flags & RADIO_FLAG_REFRESH) {
+        radio.flags ^= RADIO_FLAG_REFRESH;
+        return False;
+    }
+    
     old_chan_id = phymac[0].channel & 0x7F;
     chan_id    &= 0x7F;
-
+    
     return (ot_bool)((chan_id == 0) || (chan_id == old_chan_id));
 }
 #endif
@@ -464,7 +478,7 @@ OT_WEAK ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
 ///       before changing to the new channel, and recalibrate if so.
     ot_u8       spectrum_id;
     ot_int      i;
-    ot_uni16    scratch;
+    volatile ot_uni16    scratch;
 
     // Strip the FEC & Spread bits
     spectrum_id = chan_id & 0x3F;
@@ -472,7 +486,7 @@ OT_WEAK ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
     /// Populate the phymac flags: these are not frequently used
     /// @todo I might want to do this in radio_init() instead
     scratch.ushort  = vl_read(fp, 2);
-    phymac[0].flags = scratch.ubyte[UPPER];
+    phymac[0].flags = scratch.ubyte[0];
 
     /// Look through the channel list to find the one with matching spectrum id.
     /// The channel list is not necessarily sorted.

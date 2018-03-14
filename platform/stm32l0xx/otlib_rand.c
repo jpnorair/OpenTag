@@ -28,7 +28,7 @@
 #include <otstd.h>
 #include <otplatform.h>
 #include <otlib/rand.h>
-
+#include <otlib/crc16.h>
 
 
 

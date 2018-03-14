@@ -52,8 +52,8 @@
   */
 #define RF_FEATURE(VAL)                  RF_FEATURE_##VAL        // FEATURE                  AVAILABILITY
 #define RF_FEATURE_MSK                   ENABLED                 // MSK Modulation           Moderate
-#define RF_FEATURE_55K                   ENABLED                 // 55kHz baudrate           High
-#define RF_FEATURE_200K                  ENABLED                 // 200kHz baudrate          High
+#define RF_FEATURE_53K                   ENABLED                 // 55kHz baudrate           High
+#define RF_FEATURE_212K                  ENABLED                 // 200kHz baudrate          High
 #define RF_FEATURE_PN9                   ENABLED                 // Integrated PN9 codec     Moderate (DASH7 has particular sequence)
 #define RF_FEATURE_FEC                   ENABLED                 // Integrated FEC codec     Moderate (DASH7 has particular sequence)
 #define RF_FEATURE_FIFO                  ENABLED                 // RF TX/RX FIFO            High

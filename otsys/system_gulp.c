@@ -33,7 +33,7 @@
 #include <otplatform.h>
 
 #include <otsys/syskern.h>
-#include "system_gulp.h"
+//#include "system_gulp.h"
 #include <otsys/mpipe.h>
 #include <otsys/sysext.h>
 
@@ -330,8 +330,8 @@ void sys_task_setlatency(ot_task task, ot_u8 latency) {
 	task->latency = latency;
 }
 
-void sys_task_setnext(ot_task task, ot_u16 nextevent_ti) {
-	sys_task_setnext_clocks(task, TI2CLK(nextevent_ti));
+void sys_task_setnext(ot_task task, ot_u32 nextevent_ti) {
+	sys_task_setnext_clocks(task, (ot_long)TI2CLK(nextevent_ti));
 }
 
 void sys_task_setnext_clocks(ot_task task, ot_long nextevent_clocks) {
@@ -505,7 +505,7 @@ void sys_preempt(ot_task task, ot_uint nextevent_ti) {
 /// by manually setting the timer interrupt flag.  If a task is running while
 /// this function is called (typical usage), first the task will finish and then
 /// enable the timer interrupt via sys_runtime_manager().
-	sys_task_setnext(task, nextevent_ti);
+	sys_task_setnext(task, (ot_u32)nextevent_ti);
 	platform_ot_preempt();
 }
 

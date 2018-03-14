@@ -1,4 +1,4 @@
-/* Copyright 2010-2012 JP Norair
+/* Copyright 2017 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -706,7 +706,11 @@ void ot_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
   * Random crap
   */
 
-void delay_ti(ot_uint n) { }
+void delay_ti(ot_uint n) { 
+    useconds_t n_us;
+    n_us = n * 977;
+    usleep(n_us);
+}
 
 
 void delay_ms(ot_uint n) {
