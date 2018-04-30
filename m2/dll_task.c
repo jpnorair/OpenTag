@@ -349,17 +349,24 @@ OT_WEAK void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings) {
 
 #ifndef EXTF_dll_silence
 OT_WEAK void dll_silence(ot_bool onoff) {
-    if (onoff == false) {
-        dll.netconf.active &= ~(1<<12);
-        //if (radio.state == RADIO_Idle) {
-        //    dll.idle_state      = sub_default_idle(); 
-        //    dll_idle();
-        //}
-        dll_refresh();
-    } 
-    else {
-        dll.netconf.active |= (1<<12);
-    }
+
+	// Clever hack to postpone or re-engage the Sleep cycle.
+	// On a system where the timer runs at 32.768 kHz (fastest possible), this
+	// interval is 18 hours.  With 1.024 kHz (normal), this interval is
+	// 582 hours (3.5 weeks).
+	sys.task_SSS.nextevent = (onoff) ? INT_MAX : 0;
+
+//    if (onoff == false) {
+//        dll.netconf.active &= ~(1<<12);
+//        //if (radio.state == RADIO_Idle) {
+//        //    dll.idle_state      = sub_default_idle();
+//        //    dll_idle();
+//        //}
+//        dll_refresh();
+//    }
+//    else {
+//        dll.netconf.active |= (1<<12);
+//    }
 }
 #endif
 

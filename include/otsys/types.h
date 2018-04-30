@@ -83,6 +83,7 @@
     typedef enum { False = 0, True = !False } ot_bool;
 #endif
 
+#include <limits.h>
 
 
 /** @typedef ot_s8, ot_u8, ot_s16, ot_u16, ot_s32, ot_u32
