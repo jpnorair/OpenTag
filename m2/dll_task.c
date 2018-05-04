@@ -350,23 +350,22 @@ OT_WEAK void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings) {
 #ifndef EXTF_dll_silence
 OT_WEAK void dll_silence(ot_bool onoff) {
 
-	// Clever hack to postpone or re-engage the Sleep cycle.
-	// On a system where the timer runs at 32.768 kHz (fastest possible), this
-	// interval is 18 hours.  With 1.024 kHz (normal), this interval is
-	// 582 hours (3.5 weeks).
-	sys.task_SSS.nextevent = (onoff) ? INT_MAX : 0;
+	///@todo this is a hack to pause the idle state timers.
+	///      Replace it in the near future with a set to bit 12 on .active,
+	///      and have the actual sleep and beacon tasks simply ignore
+	{   ot_long waittime	    = (onoff) ? INT_MAX : 0;
+	    sys.task_SSS.nextevent 	= waittime;
+	    sys.task_BTS.nextevent	= waittime;
+	}
 
-//    if (onoff == false) {
-//        dll.netconf.active &= ~(1<<12);
-//        //if (radio.state == RADIO_Idle) {
-//        //    dll.idle_state      = sub_default_idle();
-//        //    dll_idle();
-//        //}
-//        dll_refresh();
-//    }
-//    else {
-//        dll.netconf.active |= (1<<12);
-//    }
+	///@todo I want to do it like below, but somehow this method completely
+	///      crashes the scheduler.  Need to investigate why.
+//	if (onoff == false) {
+//		dll.netconf.active &= ~(1<<12);
+//	}
+//	else {
+//		dll.netconf.active |= (1<<12);
+//	}
 }
 #endif
 
@@ -757,9 +756,12 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     /// Choosing Background-Scan or Foreground-Scan is based on scan-code.
     /// If b7 is set, do a Background-Scan.  At the session level, the "Flood"
     /// select uses b6, which is why there is a >> 1.
-    s_new           = session_new(&dll_scan_applet, 0, s_channel,
-                                    ((M2_NETSTATE_REQRX | M2_NETSTATE_INIT) | (s_code & 0x80) >> 1)  );
-    s_new->extra    = s_code;
+    ///@todo the method of checking for silence seems to crash OpenTag right now.
+    //if ((dll.netconf.active & (1<<12)) == 0) {
+		s_new           = session_new(&dll_scan_applet, 0, s_channel,
+										((M2_NETSTATE_REQRX | M2_NETSTATE_INIT) | (s_code & 0x80) >> 1)  );
+		s_new->extra    = s_code;
+    //}
 }
 
 
@@ -818,12 +820,15 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
     // First 2 bytes: Chan ID, Cmd Code
     // - Setup beacon ad-hoc session, on specified channel (ad hoc sessions never return NULL)
     // - Assure cmd code is always Broadcast & Announcement
-    b_session           = session_new(  &dll_beacon_applet, 0, dll.netconf.btemp[0],
-                                        (M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX)  );
-    b_session->subnet   = dll.netconf.b_subnet;
-    b_session->extra    = dll.netconf.btemp[1];
-    b_session->flags    = dll.netconf.btemp[1] & 0x78;
-    //b_session->flags   |= (b_session->extra & 0x30);
+    ///@todo the method of checking for silence (b12) seems to crash OpenTag right now.
+    //if ((dll.netconf.active & (1<<12)) == 0) {
+		b_session           = session_new(  &dll_beacon_applet, 0, dll.netconf.btemp[0],
+											(M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX)  );
+		b_session->subnet   = dll.netconf.b_subnet;
+		b_session->extra    = dll.netconf.btemp[1];
+		b_session->flags    = dll.netconf.btemp[1] & 0x78;
+		//b_session->flags   |= (b_session->extra & 0x30);
+    //}
 
     nextbeacon = (ot_u32)PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]);
     
