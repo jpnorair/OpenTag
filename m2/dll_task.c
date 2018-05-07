@@ -353,9 +353,13 @@ OT_WEAK void dll_silence(ot_bool onoff) {
 	///@todo this is a hack to pause the idle state timers.
 	///      Replace it in the near future with a set to bit 12 on .active,
 	///      and have the actual sleep and beacon tasks simply ignore
-	{   ot_long waittime	    = (onoff) ? INT_MAX : 0;
-	    sys.task_SSS.nextevent 	= waittime;
-	    sys.task_BTS.nextevent	= waittime;
+	if (onoff == true) {
+		sys.task_SSS.nextevent 	= INT_MAX;
+		sys.task_BTS.nextevent	= INT_MAX;
+	}
+	else {
+		sys_task_setnext(&sys.task_SSS, 500);
+		sys_task_setnext(&sys.task_BTS, 2000);
 	}
 
 	///@todo I want to do it like below, but somehow this method completely
