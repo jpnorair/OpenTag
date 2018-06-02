@@ -28,90 +28,146 @@
 #include <otstd.h>
 #include <otsys/indicators.h>
 
-#ifdef OT_TRIG_COUNT
-#   define _INDICATORS  OT_TRIG_COUNT
+#define INDICATOR_MAX   0
+
+#if defined(OT_TRIG1_PIN)
+#   define _T1  (1<<0)
+#   undef  INDICATOR_MAX
+#   define INDICATOR_MAX    1
 #else
-#   define _INDICATORS  ( defined(OT_TRIG1_PIN) \
-                        + defined(OT_TRIG2_PIN) \
-                        + defined(OT_TRIG3_PIN) \
-                        + defined(OT_TRIG4_PIN) \
-                        + defined(OT_TRIG5_PIN) \
-                        + defined(OT_TRIG6_PIN) \
-                        + defined(OT_TRIG7_PIN) \
-                        + defined(OT_TRIG8_PIN) \
-                        )
+#   define _T1  0
+#endif
+#if defined(OT_TRIG2_PIN)
+#   define _T2  (1<<1)
+#   undef  INDICATOR_MAX
+#   define INDICATOR_MAX    2
+#else
+#   define _T2  0
+#endif
+#if defined(OT_TRIG3_PIN)
+#   define _T3  (1<<2)
+#   undef  INDICATOR_MAX
+#   define INDICATOR_MAX    3
+#else
+#   define _T3  0
+#endif
+#if defined(OT_TRIG4_PIN)
+#   define _T4  (1<<3)
+#   undef  INDICATOR_MAX
+#   define INDICATOR_MAX    4
+#else
+#   define _T4  0
+#endif
+#if defined(OT_TRIG5_PIN)
+#   define _T5  (1<<4)
+#   undef  INDICATOR_MAX
+#   define INDICATOR_MAX    5
+#else
+#   define _T5  0
+#endif
+#if defined(OT_TRIG6_PIN)
+#   define _T6  (1<<5)
+#   undef  INDICATOR_MAX
+#   define INDICATOR_MAX    6
+#else
+#   define _T6  0
+#endif
+#if defined(OT_TRIG7_PIN)
+#   define _T7  (1<<6)
+#   undef  INDICATOR_MAX
+#   define INDICATOR_MAX    7
+#else
+#   define _T7  0
+#endif
+#if defined(OT_TRIG8_PIN)
+#   define _T8  (1<<7)
+#   undef  INDICATOR_MAX
+#   define INDICATOR_MAX    8
+#else
+#   define _T8  0
 #endif
 
-
-void indicator_set(ot_u8 indicator_id, ot_bool onoff) {
-    if (onoff)  indicator_on(indicator_id);
-    else        indicator_off(indicator_id);
-}
+#define INDICATOR_MASK   (_T1 | _T2 | _T3 | _T4 | _T5 | _T6 | _T7 | _T8) 
 
 
 
-void indicator_on(ot_u8 indicator_id) {
-    switch (indicator_id) {
-#   ifdef OT_TRIG1_PIN
-        case 1: OT_TRIG1_ON(); break;
+void indicator_on(ot_uint inum) {
+    switch (inum) {
+#   if defined(OT_TRIG1_PIN)
+        case 0: OT_TRIG1_ON();  break;
 #   endif
-#   ifdef OT_TRIG2_PIN
-        case 2: OT_TRIG2_ON(); break;
+#   if defined(OT_TRIG2_PIN) 
+        case 1: OT_TRIG2_ON();  break;
 #   endif
-#   ifdef OT_TRIG3_PIN
-        case 3: OT_TRIG3_ON(); break;
+#   if defined(OT_TRIG3_PIN)
+        case 2: OT_TRIG3_ON();  break;
 #   endif
-#   ifdef OT_TRIG4_PIN
-        case 4: OT_TRIG4_ON(); break;
+#   if defined(OT_TRIG4_PIN)
+        case 3: OT_TRIG4_ON();  break;
 #   endif
-#   ifdef OT_TRIG5_PIN
-        case 5: OT_TRIG5_ON(); break;
+#   if defined(OT_TRIG5_PIN)
+        case 4: OT_TRIG5_ON();  break;
 #   endif
-#   ifdef OT_TRIG6_PIN
-        case 6: OT_TRIG6_ON(); break;
+#   if defined(OT_TRIG6_PIN)
+        case 5: OT_TRIG6_ON();  break;
 #   endif
-#   ifdef OT_TRIG7_PIN
-        case 7: OT_TRIG7_ON(); break;
+#   if defined(OT_TRIG7_PIN)
+        case 6: OT_TRIG7_ON();  break;
 #   endif
-#   ifdef OT_TRIG8_PIN
-        case 8: OT_TRIG8_ON(); break;
+#   if defined(OT_TRIG8_PIN)
+        case 7: OT_TRIG8_ON();  break;
 #   endif
     }
 }
 
 
 
-void indicator_off(ot_u8 indicator_id) {
-    switch (indicator_id) {
-#   ifdef OT_TRIG1_PIN
-        case 1: OT_TRIG1_OFF(); break;
+
+void indicator_off(ot_uint inum) {
+    switch (inum) {
+#   if defined(OT_TRIG1_PIN)
+        case 0: OT_TRIG1_OFF();  break;
 #   endif
-#   ifdef OT_TRIG2_PIN
-        case 2: OT_TRIG2_OFF(); break;
+#   if defined(OT_TRIG2_PIN) 
+        case 1: OT_TRIG2_OFF();  break;
 #   endif
-#   ifdef OT_TRIG3_PIN
-        case 3: OT_TRIG3_OFF(); break;
+#   if defined(OT_TRIG3_PIN)
+        case 2: OT_TRIG3_OFF();  break;
 #   endif
-#   ifdef OT_TRIG4_PIN
-        case 4: OT_TRIG4_OFF(); break;
+#   if defined(OT_TRIG4_PIN)
+        case 3: OT_TRIG4_OFF();  break;
 #   endif
-#   ifdef OT_TRIG5_PIN
-        case 5: OT_TRIG5_OFF(); break;
+#   if defined(OT_TRIG5_PIN)
+        case 4: OT_TRIG5_OFF();  break;
 #   endif
-#   ifdef OT_TRIG6_PIN
-        case 6: OT_TRIG6_OFF(); break;
+#   if defined(OT_TRIG6_PIN)
+        case 5: OT_TRIG6_OFF();  break;
 #   endif
-#   ifdef OT_TRIG7_PIN
-        case 7: OT_TRIG7_OFF(); break;
+#   if defined(OT_TRIG7_PIN)
+        case 6: OT_TRIG7_OFF();  break;
 #   endif
-#   ifdef OT_TRIG8_PIN
-        case 8: OT_TRIG8_OFF(); break;
+#   if defined(OT_TRIG8_PIN)
+        case 7: OT_TRIG8_OFF();  break;
 #   endif
     }
 }
 
 
 
-#undef _INDICATORS
+
+void indicator_set(ot_uint setmask) {
+    ot_int i;
+    
+    for (i=0; i<INDICATOR_MAX; i++) {
+        if ((1<<i) & INDICATOR_MASK) {
+            indicator_on(i);
+        }
+        else {
+            indicator_off(i);
+        }
+    }
+}
+
+
 
 

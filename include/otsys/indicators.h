@@ -31,10 +31,29 @@
 #ifndef __SYS_INDICATORS_H
 #define __SYS_INDICATORS_H
 
-void indicator_set(ot_u8 indicator_id, ot_bool onoff);
+#if defined(OT_TRIG_COUNT)
+#   define INDICATORS_COUNT OT_TRIG_COUNT
+#elif defined(BOARD_PARAM_TRIGS)
+#   define INDICATORS_COUNT BOARD_PARAM_TRIGS
+#else
+#   define INDICATORS_COUNT ( defined(OT_TRIG1_PIN) \
+                        + defined(OT_TRIG2_PIN) \
+                        + defined(OT_TRIG3_PIN) \
+                        + defined(OT_TRIG4_PIN) \
+                        + defined(OT_TRIG5_PIN) \
+                        + defined(OT_TRIG6_PIN) \
+                        + defined(OT_TRIG7_PIN) \
+                        + defined(OT_TRIG8_PIN) \
+                        )
+#endif
 
-void indicator_on(ot_u8 indicator_id);
 
-void indicator_off(ot_u8 indicator_id);
+void indicator_on(ot_uint inum);
+void indicator_off(ot_uint inum);
+
+void indicator_set(ot_uint setmask);
+
+
+
 
 #endif
