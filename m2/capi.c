@@ -193,6 +193,9 @@ ot_u16 otapi_put_command_tmpl(ot_u8* status, command_tmpl* command) {
     
     if (m2qp.cmd.ext != 0) {
         q_writebyte(&txq, m2qp.cmd.ext);
+        if (m2qp.cmd.ext & 2) {
+            dll.comm.rx_timeout = 0;
+        }
     }
     
     *status = 1;
