@@ -287,8 +287,8 @@
 
 #define RFREG_LR_DETECTOPTIMIZE                     0x31
 #   define _DETECT_MASK                             0xF8
-#   define _DETECT_SF7_TO_SF12                      0x03 // Default
-#   define _DETECT_SF6                              0x05
+#   define _DETECT_SF7_TO_SF12                      (0xC0 | 0x03) // Default
+#   define _DETECT_SF6                              (0xC0 | 0x05)
 
 
 

@@ -169,12 +169,15 @@
 
 
 
-
-
-
-#ifdef __EVAL_RF__
-#   include <io/sx127x/SX1272_override.h>
+#ifdef __SX1272__
+    // include overrides from the app, if they are available
+#   ifdef RF_OVERRIDES_H
+#       include <app/rf_overrides.h>
+#   endif
+    // Any other overrides that are for general purpose operation go here
+#   ifdef __EVAL_RF__
+#       include <io/sx127x/SX1272_override.h>
+#   endif
 #endif
-
 
 #endif
