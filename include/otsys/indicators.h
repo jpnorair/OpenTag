@@ -48,6 +48,36 @@
 #endif
 
 
+typedef enum {
+#ifdef OT_TRIG1_PIN
+    INDICATOR_1 = 0,
+#endif
+#ifdef OT_TRIG2_PIN
+    INDICATOR_2,
+#endif
+#ifdef OT_TRIG3_PIN
+    INDICATOR_3,
+#endif
+#ifdef OT_TRIG4_PIN
+    INDICATOR_4,
+#endif
+#ifdef OT_TRIG5_PIN
+    INDICATOR_5,
+#endif
+#ifdef OT_TRIG6_PIN
+    INDICATOR_6,
+#endif
+#ifdef OT_TRIG7_PIN
+    INDICATOR_7,
+#endif
+#ifdef OT_TRIG8_PIN
+    INDICATOR_8,
+#endif
+    INDICATOR_MAX
+} INDICATOR_enum;
+
+
+
 void indicator_on(ot_uint inum);
 void indicator_off(ot_uint inum);
 
