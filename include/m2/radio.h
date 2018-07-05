@@ -321,7 +321,7 @@ ot_uint rm2_bgpkt_duration();
   *
   * An implicit (internal) parameter to this function is phymac[N].channel
   */
-ot_uint rm2_scale_codec(ot_uint buf_bytes);
+ot_uint rm2_scale_codec(ot_u8 channel_code, ot_uint buf_bytes);
 
 
 

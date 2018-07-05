@@ -344,7 +344,7 @@ OT_WEAK ot_int rm2_get_floodcounter() {
 /// implemented in the SPIRIT1.
     ot_int offset_count;
     offset_count    = (ot_int)spirit1_get_counter();
-    offset_count   -= rm2_scale_codec(7);   // was hardcoded at 13
+    offset_count   -= rm2_scale_codec(phymac[0].channel, 7);   // was hardcoded at 13
     return offset_count;
 }
 #endif
