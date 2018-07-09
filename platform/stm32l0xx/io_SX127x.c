@@ -297,10 +297,14 @@ void sx127x_init_bus() {
 /// @note platform_init_periphclk() should have alread enabled RADIO_SPI clock
 /// and GPIO clocks
 
+    ///0. Preliminary Stuff
+#   if (BOARD_FEATURE_RFXTALOUT)
+    sx127x.clkreq = False;
+#   endif
+
     ///1. Do a Reset.  
     ///@todo precede this with POR
     sx127x_reset();
-    
     
     ///2. Set-up DMA to work with SPI.  The DMA is bound to the SPI and it is
     ///   used for Duplex TX+RX.  The DMA RX Channel is used as an EVENT.  The
