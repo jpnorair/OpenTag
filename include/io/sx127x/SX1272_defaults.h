@@ -50,7 +50,7 @@
 #   define _XTAL_SRC    0
 #endif
 
-#if (BOARD_PARAM_RFHz != 32000000)
+#if (BOARD_PARAM_RFHz == 32000000)
 #   define _32MHz
 #else
 #   error "BOARD_PARAM_RFHz must be 32 MHz"
