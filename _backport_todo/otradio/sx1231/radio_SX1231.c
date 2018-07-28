@@ -1286,7 +1286,7 @@ void rm2_rxinit_ff(ot_u8 channel, ot_u8 netstate, ot_int est_frames, ot_sig2 cal
     //lr = LR_RM2_RXINIT_FF;
 }
 
-void rm2_txstop_flood() {
+void rm2_flood_txstop() {
 #if (SYS_FLOOD == ENABLED)
     //radio.flags &= ~RADIO_FLAG_FLOOD;
     if (radio.flags & RADIO_FLAG_FLOOD)

@@ -565,11 +565,11 @@ void rm2_calc_link();
   * transmission, in particular the Advertising packet which inserts the value 
   * of this counter into the background payload.
   *
-  * rm2_get_floodcounter should be aware of the state of each background packet 
+  * rm2_flood_getcounter should be aware of the state of each background packet 
   * transmission, such that the value returned is the amount of ticks once the
   * last bit of the packet has been modulated and put onto the air.
   */
-ot_int rm2_get_floodcounter();
+ot_int rm2_flood_getcounter();
 
 
 
@@ -657,7 +657,7 @@ void rm2_txinit(ot_u8 psettings, ot_sig2 callback);
   * 
   * This will cause the TX callback to occur.
   */
-void rm2_txstop_flood();
+void rm2_flood_txstop();
 
 
 

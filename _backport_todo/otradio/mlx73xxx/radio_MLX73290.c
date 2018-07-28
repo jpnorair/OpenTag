@@ -859,7 +859,7 @@ void rm2_txinit_bf(ot_sig2 callback) {
 
 
 
-void rm2_txstop_flood() {
+void rm2_flood_txstop() {
 #if (SYS_FLOOD == ENABLED)
     radio.flags = 0;
     radio.state = RADIO_STATE_TXDONE;

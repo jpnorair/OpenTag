@@ -492,6 +492,15 @@ void dll_rfevt_ftx(ot_int pcode, ot_int scratch);
 
 
 
+/** @brief Refresh the M2 Advertising payload between transmissions.
+  * @retval None
+  * @ingroup DLL
+  * 
+  * This is a subroutine with side-effects.  The only reason it is exposed 
+  * to the API is for the purpose of having application patches.
+  */
+void dll_m2advp_refresh(void);
+
 
 
 /** IO Management routines (deprecated) <BR>

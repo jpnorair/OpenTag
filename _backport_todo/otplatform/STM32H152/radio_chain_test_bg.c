@@ -38,7 +38,7 @@ console_service()
             uart_rx_buf[2] == 'b' &&
             uart_rx_buf[3] == 'y')
     {
-        rm2_txstop_flood();
+        rm2_flood_txstop();
     } else if (uart_rx_buf[0] == 'S') {
         /* restart SPI2 */
 //        spi2_state = SPI2_STATE__NONE;
@@ -128,7 +128,7 @@ my_rcevt_btx(ot_int flcode, ot_int scratch)
             break;
         case 2:
             /// Dump-out another flood packet                                   <BR>
-            //if stopping flood: rm2_txstop_flood();
+            //if stopping flood: rm2_flood_txstop();
 /*            else {
                 txq.front[3]    = ((ot_u8*)&scratch)[UPPER];
                 txq.front[4]    = ((ot_u8*)&scratch)[LOWER];

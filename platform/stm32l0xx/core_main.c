@@ -1169,7 +1169,7 @@ void platform_init_interruptor() {
     
     // Systick needs SCB and NVIC to be enabled in order to run.
 #   if defined(SYSTICK_IS_HIGHLY_DISCOURAGED)
-    NVIC_SetPriority(IRQn_Type IRQn, _LOPRI_GROUP);
+    NVIC_SetPriority(SysTick_IRQn, _LOPRI_GROUP);
     NVIC_EnableIRQ(SysTick_IRQn);
 #   endif
 

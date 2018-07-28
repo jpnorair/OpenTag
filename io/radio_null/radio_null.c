@@ -747,8 +747,8 @@ void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
 
 
 
-#ifndef EXTF_rm2_txstop_flood
-void rm2_txstop_flood() {
+#ifndef EXTF_rm2_flood_txstop
+void rm2_flood_txstop() {
 /// Stop the MAC counter used to clock advertising flood synchronization.
 /// Then simply configure TX driver state machine to go to TX Done state
 /// as soon as the current packet is finished transmitting.

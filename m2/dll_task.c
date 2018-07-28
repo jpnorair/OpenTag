@@ -1237,9 +1237,32 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
 }
 
 
+#ifndef EXTF_dll_m2advp_refresh
+OT_WEAK void dll_m2advp_refresh(void) {
+/// <LI> Derive current value for advertising countdown and apply </LI>
+/// <LI> Stop the flood if the countdown is shorter than one packet </LI>
+/// <LI> The Radio Driver will flood adv packets forever, in parallel
+///      with the blocked kernel, until rm2_flood_txstop() is called </LI>
+    
+    ot_int countdown;
+    //static volatile ot_u16 _testflood[500];
+    //static volatile ot_u16 _testflood_i = 0;
+    
+    countdown = rm2_flood_getcounter();
+    //_testflood[_testflood_i++] = countdown;
+    
+    if (countdown < rm2_bgpkt_duration()) {
+        dll.counter = (countdown < 0) ? 0 : countdown;
+        m2advp_close();
+        rm2_flood_txstop();
+    }
+    else {
+        m2advp_update(countdown);
+    }
+}
+#endif
 
-//volatile ot_u16 _testflood[500];
-//volatile ot_u16 _testflood_i = 0;
+
 
 OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
 #if ((M2_FEATURE(SUBCONTROLLER) == ENABLED) || (M2_FEATURE(GATEWAY) == ENABLED))
@@ -1259,24 +1282,9 @@ OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
 
         /// BG Flood Continues:
         /// ONLY USED RIGHT NOW FOR ADVERTISING
-        /// <LI> Derive current value for advertising countdown and apply </LI>
-        /// <LI> Stop the flood if the countdown is shorter than one packet </LI>
-        /// <LI> The Radio Driver will flood adv packets forever, in parallel
-        ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
         case 2: {
-            ot_int countdown;
             __DEBUG_ERRCODE_EVAL(=131);
-
-            countdown = rm2_get_floodcounter();
-            //_testflood[_testflood_i++] = countdown;
-            if (countdown < rm2_bgpkt_duration()) {
-                dll.counter = (countdown < 0) ? 0 : countdown;
-                m2advp_close();
-                rm2_txstop_flood();
-            }
-            else {
-                m2advp_update(countdown);
-            }
+            dll_m2advp_refresh();
         } return; // skip termination section
 
         /// Successful exit from BG Flood transmission
