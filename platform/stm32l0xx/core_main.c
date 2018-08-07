@@ -216,12 +216,12 @@ void otapi_pause()      { platform_ot_pause(); }
 #       define _FULLSPEED_VOLTAGE   POWER_1V2
 #       define _FULLSPEED_FLASHWAIT DISABLED
 #   endif
-#   if (BOARD_FEATURE(FULLXTAL))
+#   if (BOARD_FEATURE_FULLXTAL)
 #       define _FULLOSC_RDYFLAG         RCC_CR_HSERDY
 #       define _FULLOSC_CLOCKBIT        2
-#       if BOARD_FEATURE(HFBYPASS)
+#       if (BOARD_FEATURE_HFBYPASS)
 #           define _FULLOSC_ONBIT       (RCC_CR_HSEON | RCC_CR_HSEBYP)
-#           define _FULLOSC_TIMEOUT     1000
+#           define _FULLOSC_TIMEOUT     10
 #       else
 #           define _FULLOSC_ONBIT       RCC_CR_HSEON
 #           define _FULLOSC_TIMEOUT     3000 //HSE_STARTUP_TIMEOUT
@@ -424,6 +424,7 @@ void sub_voltage_config(ot_u16 pwr_cr_vos_x) {
 
 void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
     ///@todo figure out a way to do this with WFE
+    
     // Wait for Oscillator to get ready, counter goes to 0 on failure
     RCC->CR    |= osc_mask;
     osc_mask  <<= (osc_mask & 1);   // hack for STM32L0 HSI
@@ -438,6 +439,7 @@ void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
 
 
 void sub_osc_setclock(ot_u32 clock_mask) {
+    ///@todo have this fail into hardware fault
     ot_u32 scratch;
     scratch         = RCC->CFGR & ~(3 | RCC_CFGR_STOPWUCK);
     scratch        |= clock_mask;
@@ -736,7 +738,7 @@ void platform_full_speed() {
         
 #       if (_FULLSPEED_FLASHWAIT == ENABLED)
             FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY;
-            sub_osc_setclock(_FULLOSC_CLOCKBIT);
+            sub_osc_setclock(_FULLOSC_CLOCKBIT);    ///@todo FIXED TO HSI
 #       else
             sub_osc_setclock(_FULLOSC_CLOCKBIT);
             FLASH->ACR = FLASH_ACR_PRFTEN;
