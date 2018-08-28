@@ -612,7 +612,7 @@ OT_WEAK void m2advp_open(m2session* follower) {
     q_empty(&txq);
     txq.getcursor += 2;     //Bypass unused length and Link CTL bytes
     
-    q_writebyte(&txq, 6);   //Dummy Length value (not actually sent)
+    q_writebyte(&txq, 5);   //Dummy Length value (not actually sent)
     q_writebyte(&txq, 0);   //Dummy Link-Control (not actually sent)
     q_writebyte(&txq, 0);   //Dummy TX-EIRP (updated by RF driver)
     
