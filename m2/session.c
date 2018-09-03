@@ -51,6 +51,21 @@ void session_applet_null(m2session* a) { }
 
 
 
+static m2session* sub_store_session(m2session* store, ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel) {
+/// Attach session to location specified
+    store->applet       = applet;
+    store->counter      = wait;
+    store->channel      = channel;
+    store->netstate     = netstate;
+    store->extra        = 0;
+    store->dialog_id    = rand_prn8();
+    return store;
+}
+
+
+
+
+
 #ifndef EXTF_session_init
 void session_init() {
     session.top = &session.heap[_END];
@@ -69,20 +84,6 @@ OT_WEAK ot_uint session_getnext() {
     return wait;
 }
 #endif
-
-
-
-
-m2session* sub_store_session(m2session* store, ot_app applet, ot_u16 wait, ot_u8 netstate, ot_u8 channel) {
-/// Attach session to location specified
-    store->applet       = applet;
-    store->counter      = wait;
-    store->channel      = channel;
-    store->netstate     = netstate;
-    store->extra        = 0;
-    store->dialog_id    = rand_prn8();
-    return store;
-}
 
 
 
@@ -191,6 +192,39 @@ OT_WEAK m2session* session_continue(ot_app applet, ot_u8 next_state, ot_uint wai
 }
 #endif
 
+
+
+#ifndef EXTF_session_app_purge
+OT_WEAK void session_app_purge(ot_app applet) {
+///@todo At present the purge leaves the session-session timing delays intact.
+///      Need to determine what the right approach is: either set delays to 0
+///      or leave as programmed.
+    m2session* next;
+    next = session.top;
+
+    while (next < &session.heap[_END]) {
+        if (next->applet == applet) {
+            next->applet    = &session_applet_null;
+            next->netstate  = M2_NETSTATE_SCRAP;
+        }
+        next++;
+    }
+}
+#endif
+
+
+
+#ifndef EXTF_session_app_isloaded
+OT_WEAK ot_bool session_app_isloaded(ot_app applet) {
+    m2session* next;
+    next = session.top;
+
+    while ((next->applet != applet) && (next < &session.heap[_END])) {
+        next++;
+    }
+    return (ot_bool)(next < &session.heap[_END]);
+}
+#endif
 
 
 

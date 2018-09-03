@@ -354,6 +354,30 @@ m2session* session_continue(ot_app applet, ot_u8 next_state, ot_uint wait);
 
 
 
+/** @brief  Purges an applet from the session stack
+  * @param  applet         (ot_app) applet to purge from session stack
+  * @retval none
+  * @ingroup Session
+  *
+  * In present implementation, session_app_purge() will mark all sessions that
+  * match the input applet as SCRAP.  It will leave the intra-session timing
+  * pattern intact, although the sessions will just be deleted by the DLL
+  * activation routine as they are encountered.
+  */
+void session_app_purge(ot_app applet);
+
+
+
+/** @brief  Returns true if there is a session scheduled with the supplied applet
+  * @param  applet         (ot_app) applet to check for occupancy
+  * @retval none
+  * @ingroup Session
+  *
+  * This function replaced session_occupied() in function.
+  */
+ot_bool session_app_isloaded(ot_app applet);
+
+
 /** @brief  Returns true if there is a session scheduled on supplied channel
   * @param  chan_id         (ot_u8) channel id to check for occupancy
   * @retval none
