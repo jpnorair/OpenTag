@@ -144,7 +144,7 @@ OT_WEAK ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id) {
         // - for write and control funcs, error is the only type of response
         // - for read, data return is the response
         // - 02 is the write-cmd mask, 03 is the return-cmd mask, 0F is the error cmd
-        alp->OUTREC(CMD)  &= ~0x80;
+        alp->OUTREC(CMD)  ^= 0x80;
         alp->OUTREC(CMD)  |= (cmd_in & 0x02) ? 0x0F : 0x01;
     }
     else {
@@ -219,7 +219,6 @@ ot_int sub_fileperms( alp_tmpl* alp, id_tmpl* user_id, ot_u8 respond, ot_u8 cmd_
     }
 
     /// return number of bytes put onto the output (always x2)
-    //alp->BOOKMARK_IN = (void*)sub_testchunk(data_in);
     return data_out;
 }
 
@@ -267,6 +266,7 @@ ot_int sub_filedata( alp_tmpl* alp, id_tmpl* user_id, ot_u8 respond, ot_u8 cmd_i
     ot_u8   file_mod    = ((cmd_in & 0x02) ? VL_ACCESS_W : VL_ACCESS_R);
     ot_queue*  inq      = alp->inq;
     ot_queue*  outq     = alp->outq;
+    ot_u8* outq_marker  = alp->outq->putcursor;
 
     sub_filedata_TOP:
 
@@ -275,6 +275,7 @@ ot_int sub_filedata( alp_tmpl* alp, id_tmpl* user_id, ot_u8 respond, ot_u8 cmd_i
         ot_u8   err_code;
         ot_u8   file_id;
         ot_u16  limit;
+        ot_long lim_check;
 
         //alp->BOOKMARK_IN    = inq->getcursor;
         //alp->BOOKMARK_OUT   = NULL;
@@ -282,110 +283,132 @@ ot_int sub_filedata( alp_tmpl* alp, id_tmpl* user_id, ot_u8 respond, ot_u8 cmd_i
         file_id     = q_readbyte(inq);
         offset      = q_readshort(inq);
         span        = q_readshort(inq);
-        limit       = offset + span;
+        lim_check   = (ot_long)offset + (ot_long)span;
+        limit       = (lim_check > 65535) ? 65535 : (ot_u16)lim_check;
         err_code    = vl_getheader_vaddr(&header, file_block, file_id, file_mod, user_id);
         file_mod    = ((file_mod & VL_ACCESS_W) != 0);
-        //fp          = NULL;
 
-        // A. File error catcher Stage
-        // (In this case, gotos make it more readable)
-
-        /// Make sure file header was retrieved properly, or goto error
+        /// A. File error catcher Stage
+        /// (In this case, gotos make it more readable)
+        /// 1. Make sure file header was retrieved properly, or goto error
+        /// 2. Make sure file opens properly, or goto error
+        /// 3. Make sure offset & limit are within file bounds, or trigger errors
         if (err_code != 0) {
             goto sub_filedata_senderror;
         }
-
-        /// Make sure file opens properly, or goto error
         fp = vl_open_file(header);
         if (fp == NULL) {
             err_code = 0xFF;
             goto sub_filedata_senderror;
         }
 
-        /// Make sure offset is within file bounds, or goto error
-        if (offset >= fp->alloc) {
-            err_code = 0x07;
-            goto sub_filedata_senderror;
-        }
-
-        if (limit > fp->alloc) {
-            limit       = fp->alloc;
-            err_code    = 0x08;
-        }
-
-        // B. File Writing or Reading Stage
-        // Write to file
-        // 1. Process error on bad ALP parameters, but still do partial write
-        // 2. offset, span are adjusted to convey leftover data
-        // 3. miscellaneous write error occurs when vl_write fails
+        /// B. File Writing or Reading Stage
+        /// Write to file
+        /// 1. Negotiate write boundaries
+        /// 2. Process error on bad ALP parameters, but still do partial write
+        /// 3. offset, span are adjusted to convey leftover data
+        /// 4. miscellaneous write error occurs when vl_write fails
         if (file_mod) {
+            if (offset >= fp->alloc) {
+                err_code = 0x07;
+                goto sub_filedata_senderror;
+            }
+            if (limit > fp->alloc) {
+                limit       = fp->alloc;
+                err_code    = 0x08;
+            }
             for (; offset<limit; offset+=2, span-=2, data_in-=2) {
                 if (inq->getcursor >= inq->back) {
                     goto sub_filedata_overrun;
                 }
                 err_code |= vl_write(fp, offset, q_readshort_be(inq));
             }
+            ///@todo subtract remnant span value from putcursor (?)
         }
 
-        // Read from File
-        // 1. No error for bad read parameter, just fix the limit
-        // 2. If inc_header param is set, include the file header in output
-        // 3. Read out file data
+        /// Read from File
+        /// 1. Assure output boundaries are safe.
+        /// 2. If inc_header param is set, include the file header in output
+        /// 3. Negotiate boundaries for read -- no errors
+        /// 4. Read out file data
         else {
-            ot_u8 overhead;
-            //limit       = (limit > fp->length) ? fp->length : limit;
-            overhead    = 6;
-            overhead   += (inc_header != 0) << 2;
-
-            if ((outq->putcursor+overhead) >= outq->back) {
+            ot_u8 overhead = 5 << (inc_header != 0);
+            
+            if (overhead >= q_writespace(outq)) {
                 goto sub_filedata_overrun;
             }
-
-            q_writeshort_be(outq, vworm_read(header + 4)); // id & mod
+            
+            // The FDP spec includes:
+            // ID + Offset + Bytes Returned for Read Data
+            // ID + Mod + Length + Alloc + Offset + Bytes Returned for Read Header & Data
+            data_out += overhead;
             if (inc_header) {
+                q_writeshort_be(outq, vworm_read(header + 4));
                 q_writeshort(outq, vworm_read(header + 0));    // length
                 q_writeshort(outq, vworm_read(header + 2));    // alloc
-                data_out += 4;
+            }
+            else {
+                q_writebyte(outq, (vworm_read(header+4) & 0x00ff) );
+            }
+            
+            if (offset >= fp->length) {
+                span    = 0;
+                limit   = 0;
+            }
+            else if (limit > fp->length) {
+                span    = fp->length - offset;
+                limit   = fp->length;
             }
             q_writeshort(outq, offset);
             q_writeshort(outq, span);
-            data_out += 6;
 
             for (; offset<limit; offset+=2, span-=2, data_out+=2) {
-                if ((outq->putcursor+2) >= outq->back) {
+                if (2 >= q_writespace(outq)) {
                     goto sub_filedata_overrun;
                 }
                 q_writeshort_be(outq, vl_read(fp, offset));
             }
+            ///@todo subtract remnant span value from putcursor
         }
 
-        // C. Error Sending Stage
+        /// C. Error Sending Stage
+        /// Reads don't generally cause errors.
+        /// error on the first read item that has an error in it.
         sub_filedata_senderror:
-        if ((respond != 0) && (err_code | file_mod)) {
-            if ((outq->putcursor+2) >= outq->back) {
+        {   ot_u8 app_err;
+            app_err = vl_close(fp);
+            if ((app_err != 0) && (err_code == 0)) {
+                err_code = 0x09;    
+            }
+        }
+        
+        if (respond) {
+            if (2 >= q_writespace(outq)) {
                 goto sub_filedata_overrun;
             }
-            q_writebyte(outq, file_id);
-            q_writebyte(outq, err_code);
-            q_markbyte(inq, span);         // go past any leftover input data
-            data_out += 2;
+            if (file_mod | err_code) {
+                if (file_mod == 0) {
+                    outq->putcursor     = outq_marker;
+                    alp->OUTREC(CMD)   |= 0x0F;
+                    data_in             = 0;
+                }
+                q_writebyte(outq, file_id);
+                q_writebyte(outq, err_code);
+                q_markbyte(inq, span);         // go past any leftover input data
+                data_out += 2;
+            }
         }
 
         data_in -= 5;   // 5 bytes input header
-        vl_close(fp);
     }
 
-
     // Total Completion:
-    // Set bookmark to NULL, because the record was completely processed
-    //alp->BOOKMARK_IN = NULL;
     return data_out;
-
 
     // Partial or Non Completion:
     // Reconfigure last ALP operation, because it was not completely processed
 
-    ///@todo Bookmarking is obsolete, because the way Chunking is done has
+    ///@note Bookmarking is obsolete, because the way Chunking is done has
     /// been revised.  Chunked records must be contiguous.  ALP-Main will not
     /// call this app, and thus not call this function, until the message-end
     /// bit is detected, therefore meaning that all data is received and
@@ -395,17 +418,6 @@ ot_int sub_filedata( alp_tmpl* alp, id_tmpl* user_id, ot_u8 respond, ot_u8 cmd_i
     vl_close(fp);
 
     ///@todo alp_next_chunk(alp);
-
-//    {
-//        ot_u8* scratch;
-//        inq->getcursor  = (ot_u8*)alp->BOOKMARK_IN;
-//        scratch         = inq->getcursor + 1;
-//        *scratch++      = ((ot_u8*)&offset)[UPPER];
-//        *scratch++      = ((ot_u8*)&offset)[LOWER];
-//        *scratch++      = ((ot_u8*)&span)[UPPER];
-//        *scratch        = ((ot_u8*)&span)[LOWER];
-//    }
-
     return data_out;
 }
 
