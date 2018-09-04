@@ -107,12 +107,18 @@ ot_int q_span(ot_queue* q) {
 #endif
 
 
-#ifndef EXTF_q_space
-ot_int q_space(ot_queue* q) {
+#ifndef EXTF_q_writespace
+ot_int q_writespace(ot_queue* q) {
     return (q->back - q->putcursor);
 }
 #endif
 
+
+#ifndef EXTF_q_readspace
+ot_int q_readspace(ot_queue* q) {
+    return (q->back - q->getcursor);
+}
+#endif
 
 
 

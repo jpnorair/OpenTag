@@ -119,14 +119,25 @@ ot_int q_length(ot_queue* q);
   */
 ot_int q_span(ot_queue* q);
 
-/** @brief Returns the amount of unused bytes at end of the queue (bytes
-  *        between put and back)
+
+///@todo deprecated, replaced with q_writespace
+//ot_int q_space(ot_queue* q);
+#define q_space(Q)  q_writespace(Q)
+
+
+/** @brief Returns the writeable space (bytes) in the queue (back-put)
   * @param q        (ot_queue*) ot_queue to determine space 
   * @retval none
   * @ingroup Queue
   */
-ot_int q_space(ot_queue* q);
+ot_int q_writespace(ot_queue* q);
 
+/** @brief Returns the readable space (bytes) in the queue (back-get)
+  * @param q        (ot_queue*) ot_queue to determine space 
+  * @retval none
+  * @ingroup Queue
+  */
+ot_int q_readspace(ot_queue* q);
 
 
 
