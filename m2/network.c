@@ -43,6 +43,17 @@
 #include <otsys/veelite.h>
 
 
+///@todo This board inclusion is temporary until the usage of CRC8 for 
+///      background frames is made universal to all radio transceiver models.
+///      Right now it's only implemented on LoRa Parts.
+#include <board.h>
+#if defined(__LORA__)
+#   define BG_FRAMESIZE     6
+#else
+#   define BG_FRAMESIZE     7
+#endif
+
+
 
 //#ifdef __DEBUG__
 // Place for Debug stuff (not used currently)
@@ -612,9 +623,9 @@ OT_WEAK void m2advp_open(m2session* follower) {
     q_empty(&txq);
     txq.getcursor += 2;     //Bypass unused length and Link CTL bytes
     
-    q_writebyte(&txq, 5);   //Dummy Length value (not actually sent)
-    q_writebyte(&txq, 0);   //Dummy Link-Control (not actually sent)
-    q_writebyte(&txq, 0);   //Dummy TX-EIRP (updated by RF driver)
+    q_writebyte(&txq, (BG_FRAMESIZE-1));    //Dummy Length value (not actually sent)
+    q_writebyte(&txq, 0);                   //Dummy Link-Control (not actually sent)
+    q_writebyte(&txq, 0);                   //Dummy TX-EIRP (updated by RF driver)
     
     // This byte is two nibbles: Subnet specifier and AdvP ID (F)
     q_writebyte(&txq, (follower->subnet | 0x0F));
