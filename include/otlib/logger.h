@@ -89,6 +89,14 @@ void logger(ot_u8 subcode, ot_int length, ot_u8* data);
 
 
 
+/** @brief  Logs a string
+  * @param  data    (const char*) string to log
+  * @retval None
+  * @ingroup Logger
+  */
+void logger_str(const char* data);
+
+
 /** @brief  Log arbitrary "message," which is type + data.
   * @param  logcmd		(logmsg_type) enumerated value of message type
   * @param  label_len   (ot_int) number of bytes/chars in the label

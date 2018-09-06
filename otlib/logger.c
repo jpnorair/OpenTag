@@ -51,7 +51,7 @@
 #include <otlib/utils.h>
 #include <otsys/mpipe.h>
 
-
+#include <string.h>
 
 
 ot_bool logger_header(ot_u8 id_subcode, ot_int payload_length) {
@@ -91,6 +91,16 @@ void sub_logmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* data) {
     q_writebyte(mpipe.alp.outq, 0);
     q_writestring(mpipe.alp.outq, data, data_len);
 }
+
+
+
+#ifndef EXTF_logger_str
+void logger_str(const char* data) {
+    if (data != NULL) {
+        logger(DATA_utf8, strlen(data), data);
+    }
+}
+#endif
 
 
 
