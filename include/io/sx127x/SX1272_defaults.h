@@ -44,7 +44,7 @@
 
 #if (BOARD_FEATURE_RFXTAL != ENABLED)
 #   undef BOARD_PARAM_RFHz
-#   define BOARD_PARAM_RFHz  BOARD_PARAM_HFHz
+#   define BOARD_PARAM_RFHz  32000000
 #   define _XTAL_SRC    _EXT_REF
 #else
 #   define _XTAL_SRC    0
