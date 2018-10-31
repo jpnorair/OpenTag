@@ -43,16 +43,16 @@ OT_WEAK ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
 #include <otlib/auth.h>
 #include <otlib/queue.h>
 
-///@todo replace INREC calls with direct access from input
 
 OT_WEAK ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id) {
 /// Logger ALP is like ECHO.  The input is copied to the output.
+/// Only root user can log.  This is an important security firewall.
 
-    // Only root can log directly (this is an important security firewall)
     if (auth_isroot(user_id)) {
-        alp->OUTREC(FLAGS)  = *alp->inq->getcursor++;
-        alp->OUTREC(PLEN)   = *alp->inq->getcursor++;
-        alp->inq->getcursor+= 2;
+        alp->OUTREC(FLAGS)  = q_readbyte(alp->inq);
+        alp->OUTREC(PLEN)   = q_readbyte(alp->inq);
+        alp->OUTREC(CMD)    = q_readbyte(alp->inq);
+        alp->OUTREC(ID)     = q_readbyte(alp->inq);
 
         if (alp->inq != alp->outq) {
             q_writestring(alp->outq, alp->inq->getcursor, alp->OUTREC(PLEN));
