@@ -100,6 +100,15 @@
 #define RFREG_LR_PACONFIG                           0x09
 #   define _PABOOST                                 (1<<7)
 #   define _PANORMAL                                (0<<7)
+#   define _MAX_PWR_10dBm8                          (0<<4)
+#   define _MAX_PWR_11dBm4                          (1<<4)
+#   define _MAX_PWR_12dBm0                          (2<<4)
+#   define _MAX_PWR_12dBm6                          (3<<4)
+#   define _MAX_PWR_13dBm2                          (4<<4)
+#   define _MAX_PWR_13dBm8                          (5<<4)
+#   define _MAX_PWR_14dBm4                          (6<<4)
+#   define _MAX_PWR_15dBm0                          (7<<4)
+#   define _MAX_PWR(VAL)                            ((7&(VAL))<<4)
 #   define _OUTPUT_PWR                              (15<<0)
 #   define __OUTPUT_PWR(VAL)                        ((15&(VAL))<<0)
 
@@ -390,9 +399,8 @@
 
 
 #define RFREG_LR_PADAC                              0x5A
-#   define _PADAC_20DBM_MASK                        0xF8
-#   define _PADAC_20DBM_ON                          0x07
-#   define _PADAC_20DBM_OFF                         0x04  // Default
+#   define _PADAC_20DBM_ON                          0x17
+#   define _PADAC_20DBM_OFF                         0x14  // Default
 
 
 #define RFREG_LR_PLL                                0x5C

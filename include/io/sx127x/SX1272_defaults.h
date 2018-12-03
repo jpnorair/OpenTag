@@ -69,14 +69,22 @@
 
 
 // Tx Output Power
-#define DRF_LR_PACONFIG         (_PANORMAL | __OUTPUT_PWR(14))  //13dBm setting: -1 + 14
+#ifdef __SX127x_PABOOST__
+#define DRF_LR_PACONFIG         (_PABOOST | _MAX_PWR_15dBm0 | __OUTPUT_PWR(14))  //13dBm setting: -1 + 14
+#else
+#define DRF_LR_PACONFIG         (_PANORMAL | _MAX_PWR_15dBm0 | __OUTPUT_PWR(14))  //13dBm setting: -1 + 14
+#endif
 
 // Phase noise shouldn't matter so much for LoRa modulation, but worth a test.
 // PA-Ramp is also mostly an FSK feature, so I choose the default setting.
-#define DRF_LR_PARAMP           (_LOW_PN_TX_PLLOFF | _PA_RAMP_40us)
+#define DRF_LR_PARAMP           (_LOW_PN_TX_PLLON | _PA_RAMP_40us)
 
-// Overcurrent protection: using chip defaults.
+// Overcurrent protection
+#ifdef __SX127x_PABOOST__
+#define DRF_LR_OCP              (_OCP_OFF | _OCP_TRIM_150mA)
+#else
 #define DRF_LR_OCP              (_OCP_ON | _OCP_TRIM_100mA)
+#endif
 
 // LNA Gain: Use max gain setting
 // Boost on vs. Boost off can be fiddled-with following experimentation
