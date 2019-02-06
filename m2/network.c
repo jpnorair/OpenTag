@@ -102,11 +102,16 @@ OT_WEAK m2session* network_parse_bf() {
 // ========================================================================
     m2session*  s_next;
     ot_u8       bgpid;
+    ot_u16		pkt_ti;
     
     /// Load default attributes
     s_next  = NULL;
     bgpid   = rxq.getcursor[1] & 0x0F;
     
+    // stores the bg packet duration of the active channel.  We need this
+    // in order to deal with timing skew.
+    pkt_ti	= rm2_bgpkt_duration();
+
     /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
     if (bgpid == 15) {
         ot_u8       scancode;
@@ -124,25 +129,23 @@ OT_WEAK m2session* network_parse_bf() {
         // either a second BG scan (if too much slop), or it is FG
         // listening for the request. 
         slop = (count.ushort / OT_GPTIM_ERRDIV);
-        if (slop <= 8) {
-            scancode    = 0x0F;
-            netstate    = M2_NETSTATE_REQRX;
+        if (slop <= pkt_ti) {
+        	count.ushort   -= pkt_ti;
+        	scancode        = otutils_encode_timeout(pkt_ti<<1);
+            netstate    	= M2_NETSTATE_REQRX;
         }
         else {
-            scancode    = 0x80;
-            netstate    = M2_NETSTATE_REQRX | M2_NETFLAG_BG;
+        	count.ushort   -= slop;
+            scancode        = 0x80;
+            netstate        = M2_NETSTATE_REQRX | M2_NETFLAG_BG;
         }
         
-        // Reduce the interval time by the slop amount, also ensuring 
-        // that count value is never negative.
-        count.ushort -= slop;
+        // ensure that count value is never negative.
         if (count.sshort < 0) {
             count.sshort = 0;
         }
         
-        // Block DLL idle tasks while waiting for this next session,
-        // and create the session.
-        //dll_block_idletasks();
+        // The next session is written in-place of the current session
         s_next              = session_top();
         s_next->applet      = &dll_scan_applet;
         s_next->counter     = count.ushort;
