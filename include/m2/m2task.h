@@ -136,6 +136,8 @@ m2session* m2task_advertise(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, ot_app 
 
 
 
+///@note experimental
+m2session* m2task_page(session_tmpl* s_tmpl, ot_app applet);
 
 
 #endif
