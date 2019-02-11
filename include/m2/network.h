@@ -341,6 +341,17 @@ void m2advp_close();
 
 
 
+/** @brief  Parse an inbound m2adv frame
+  * @param  none
+  * @retval m2session*		Follow-on session
+  * @ingroup Network
+  *
+  * @note the input-output model of this function is experimental, and it may
+  * change in the future.
+  */
+m2session* m2advp_parse(void);
+
+
 /** @brief  Updates an open flood process
   * @param  countdown
   * @retval none

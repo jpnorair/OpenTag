@@ -914,10 +914,11 @@ OT_WEAK void dll_init_rx(m2session* active) {
 
 
 
-OT_WEAK void dll_init_tx(ot_u8 is_btx) {
+OT_WEAK void dll_init_tx(m2session* active) {
 /// Initialize background or foreground packet TX.  Often this includes CSMA
 /// initialization as well.
-    //sys_task_setnext_clocks(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
+	ot_bool is_btx;
+
     sys_task_setnext(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
     sys.task_RFA.latency    = 1;
@@ -926,15 +927,21 @@ OT_WEAK void dll_init_tx(ot_u8 is_btx) {
     DLL_SIG_RFINIT(sys.task_RFA.event);
 
 #if (SYS_FLOOD == ENABLED)
-    ///@todo this is a bit of a hack.  BG Floods should be used with a
-    ///      network-layer function that decides which protocol is appropriate.
-    if (is_btx == (M2_NETFLAG_BG | M2_NETFLAG_STREAM)) {
-        m2advp_open( session_follower() );
+    ///@todo this is a bit of a hack.  BG packets might be handled better with
+    /// a function that looks at the session flags to decide what to do.
+    /// Advertising must be integrated at a low level, but paging certainly
+    /// does not.
+    is_btx = (ot_bool)(active->netstate & M2_NETFLAG_BG);
+    if (is_btx) {
+    	if (active->netstate & M2_NETFLAG_STREAM) {
+    		m2advp_open(session_follower());
+    	}
     }
-
     rm2_txinit(is_btx, &dll_rfevt_txcsma);
+
 #else
     rm2_txinit(0, &dll_rfevt_txcsma);
+
 #endif
 }
 
@@ -971,7 +978,7 @@ OT_WEAK void dll_activate(void) {
         dll_init_rx(s_active);
     }
     else {
-        dll_init_tx(s_active->netstate & (M2_NETFLAG_BG | M2_NETFLAG_STREAM));
+        dll_init_tx(s_active);
     }
 }
 

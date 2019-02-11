@@ -101,64 +101,24 @@ OT_WEAK m2session* network_parse_bf() {
 ///         +---------+--------+---------+-------+   </PRE>
 // ========================================================================
     m2session*  s_next;
-    ot_u8       bgpid;
     ot_u16		pkt_ti;
     
     /// Load default attributes
     s_next  = NULL;
-    bgpid   = rxq.getcursor[1] & 0x0F;
     
     // stores the bg packet duration of the active channel.  We need this
     // in order to deal with timing skew.
     pkt_ti	= rm2_bgpkt_duration();
 
     /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
-    if (bgpid == 15) {
-        ot_u8       scancode;
-        ot_u8       netstate;
-        ot_uni16    count;
-        ot_int      slop;
-        
-        // Get the counter-ETA information from the inbound frame
-        count.ubyte[UPPER]  = rxq.getcursor[3];
-        count.ubyte[LOWER]  = rxq.getcursor[4];    
-        count.ushort       &= 0x7FFF;
+    switch (rxq.getcursor[1] & 15) {
+    case 15:    s_next = m2advp_parse();        break;
+    //case 7:     /* reserved protocol */         break;
+    //case 3:	    /* reserved protocol */         break;
+    //case 1:     /* reserved protocol */         break;
+    default:    break;
+    }
 
-        // Account for "slop" due to clock deviation, process latency, 
-        // and other such things.  Thus the follow-up session is 
-        // either a second BG scan (if too much slop), or it is FG
-        // listening for the request. 
-        slop = (count.ushort / OT_GPTIM_ERRDIV);
-        if (slop <= pkt_ti) {
-        	count.ushort   -= pkt_ti;
-        	scancode        = otutils_encode_timeout(pkt_ti<<1);
-            netstate    	= M2_NETSTATE_REQRX;
-        }
-        else {
-        	count.ushort   -= slop;
-            scancode        = 0x80;
-            netstate        = M2_NETSTATE_REQRX | M2_NETFLAG_BG;
-        }
-        
-        // ensure that count value is never negative.
-        if (count.sshort < 0) {
-            count.sshort = 0;
-        }
-        
-        // The next session is written in-place of the current session
-        s_next              = session_top();
-        s_next->applet      = &dll_scan_applet;
-        s_next->counter     = count.ushort;
-        s_next->channel     = rxq.getcursor[2];
-        s_next->netstate    = netstate;
-        s_next->extra       = scancode;
-    }
-    
-    /// Reservation Protocol has subnet = 0xY3
-    ///@todo Not presently supported
-    else if (bgpid == 3) {
-    }
-    
     return s_next;
 }
 #endif
@@ -617,6 +577,53 @@ OT_WEAK void m2np_footer() {
 #if (SYS_FLOOD == ENABLED)
     //ot_queue   advq;
     //ot_u8   txadv_buffer[10];
+#endif
+
+
+#ifndef EXTF_m2advp_parse
+OT_WEAK m2session* m2advp_parse(void) {
+    ot_u8       scancode;
+    ot_u8       netstate;
+    ot_uni16    count;
+    ot_int      slop;
+    m2session*	s_next;
+
+    // Get the counter-ETA information from the inbound frame
+    count.ubyte[UPPER]  = rxq.getcursor[3];
+    count.ubyte[LOWER]  = rxq.getcursor[4];
+    count.ushort       &= 0x7FFF;
+
+    // Account for "slop" due to clock deviation, process latency,
+    // and other such things.  Thus the follow-up session is
+    // either a second BG scan (if too much slop), or it is FG
+    // listening for the request.
+    slop = (count.ushort / OT_GPTIM_ERRDIV);
+    if (slop <= pkt_ti) {
+    	count.ushort   -= pkt_ti;
+    	scancode        = otutils_encode_timeout(pkt_ti<<1);
+        netstate    	= M2_NETSTATE_REQRX;
+    }
+    else {
+    	count.ushort   -= slop;
+        scancode        = 0x80;
+        netstate        = M2_NETSTATE_REQRX | M2_NETFLAG_BG;
+    }
+
+    // ensure that count value is never negative.
+    if (count.sshort < 0) {
+        count.sshort = 0;
+    }
+
+    // The next session is written in-place of the current session
+    s_next              = session_top();
+    s_next->applet      = &dll_scan_applet;
+    s_next->counter     = count.ushort;
+    s_next->channel     = rxq.getcursor[2];
+    s_next->netstate    = netstate;
+    s_next->extra       = scancode;
+
+    return s_next;
+}
 #endif
 
 
