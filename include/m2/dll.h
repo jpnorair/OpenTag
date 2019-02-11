@@ -476,7 +476,7 @@ void dll_scan_timeout(void);
 void dll_processing(void);
 void dll_activate(void);
 void dll_init_rx(m2session* active);
-void dll_init_tx(ot_u8 is_btx);
+void dll_init_tx(m2session* active);
 void dll_txcsma(void);
 
 
