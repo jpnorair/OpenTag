@@ -114,40 +114,12 @@
 
 
 
-/** Session power configuration (deprecated)
-  * Used in .cs_rssi, .cca_rssi, .tx_eirp containers to 
-  * move power configurations between layers.
-#define M2_RSSI_AUTOSCALE           b10000000
-#define M2_RSSI_MASK                b00011111
-#define M2_RSSI_DBM(VAL)            (ot_int)(-140 + ((VAL)*3))
-#define M2_EIRP_AUTOSCALE           b10000000
-#define M2_EIRP_MASK                b01111111
-#define M2_EIRP_DBM(VAL)            (ot_int)(-40 + ((VAL)>>1))
-#define M2_EIRP_0p5DBM(VAL)         (ot_int)(-80 + (VAL))
-  */
-
 
 /** Session persistent flags
   * Used in the m2session.flags, to pass common flags between layers.
   * The flag values are consistent with the ones used for M2NP/M2QP, but they
   * can be used for other protocols, too, since they are pretty generic.
-  *
-#define M2_FLAG_LISTEN              (1<<7)
-#define M2_FLAG_DLLS                (1<<6)
-#define M2_FLAG_NLS                 (1<<5)
-#define M2_FLAG_VID                 (1<<4)
-#define M2_FLAG_EXT                 (1<<3)      //Synthetic
-#define M2_FLAG_RSCODE              (1<<3)      
-#define M2_FLAG_STREAM              (1<<2)
-#define M2_FLAG_UCAST               (0<<0)
-#define M2_FLAG_BCAST               (1<<0)
-#define M2_FLAG_ACAST               (2<<0)
-#define M2_FLAG_MCAST               (3<<0)
 */
-
-/* Future Changes, needing alignment with referential Mode2 code files
-   ASAPI and other APIs that manipulate sessions must be altered to 
-   accept these changes. */
    
 #define M2_FLAG_LISTEN              (1<<7)
 #define M2_FLAG_CRYPTO              (3<<5)      // added since last version
