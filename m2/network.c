@@ -587,11 +587,16 @@ OT_WEAK m2session* m2advp_parse(void) {
     ot_uni16    count;
     ot_int      slop;
     m2session*	s_next;
+    ot_u16      pkt_ti;
 
     // Get the counter-ETA information from the inbound frame
     count.ubyte[UPPER]  = rxq.getcursor[3];
     count.ubyte[LOWER]  = rxq.getcursor[4];
     count.ushort       &= 0x7FFF;
+
+    // stores the bg packet duration of the active channel.  We need this
+    // in order to deal with timing skew.
+    pkt_ti  = rm2_bgpkt_duration();
 
     // Account for "slop" due to clock deviation, process latency,
     // and other such things.  Thus the follow-up session is

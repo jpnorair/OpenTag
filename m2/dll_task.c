@@ -917,7 +917,6 @@ OT_WEAK void dll_init_rx(m2session* active) {
 OT_WEAK void dll_init_tx(m2session* active) {
 /// Initialize background or foreground packet TX.  Often this includes CSMA
 /// initialization as well.
-	ot_bool is_btx;
 
     sys_task_setnext(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
@@ -927,17 +926,16 @@ OT_WEAK void dll_init_tx(m2session* active) {
     DLL_SIG_RFINIT(sys.task_RFA.event);
 
 #if (SYS_FLOOD == ENABLED)
-    ///@todo this is a bit of a hack.  BG packets might be handled better with
-    /// a function that looks at the session flags to decide what to do.
-    /// Advertising must be integrated at a low level, but paging certainly
-    /// does not.
-    is_btx = (ot_bool)(active->netstate & M2_NETFLAG_BG);
-    if (is_btx) {
+    ///@todo This is hard coded for advertising.
+    ///      Rebuild it to open DLL functions that take the session
+    ///      - One function for BG single packets
+    ///      - One function for BG Flooding
+    if (active->netstate & M2_NETFLAG_BG) {
     	if (active->netstate & M2_NETFLAG_STREAM) {
     		m2advp_open(session_follower());
     	}
     }
-    rm2_txinit(is_btx, &dll_rfevt_txcsma);
+    rm2_txinit(active->netstate, &dll_rfevt_txcsma);
 
 #else
     rm2_txinit(0, &dll_rfevt_txcsma);
