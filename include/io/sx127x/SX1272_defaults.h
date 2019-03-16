@@ -33,6 +33,8 @@
 #include <io/sx127x/SX1272_registers.h>
 
 
+#define _BGTIMEOUT_SCALAR 3/2
+
 // Some radio register settings constants
 #ifndef RF_PARAM_BAND
 #   define RF_PARAM_BAND    866
@@ -115,8 +117,8 @@
 #define DRF_LR_MODEMCONFIG2_FG  (_SF_7 | _TX_CONT_OFF | _AGC_AUTO_ON | b11)
 
 
-#define DRF_LR_SYMBTIMEOUTLSB   (17 + RF_PARAM_PREAMBLE_SYMS)
-#define DRF_LR_SYMBTIMEOUTLSB_BG (17 + RF_PARAM_PREAMBLE_SYMS)
+#define DRF_LR_SYMBTIMEOUTLSB    ((17 + RF_PARAM_PREAMBLE_SYMS) * _BGTIMEOUT_SCALAR)
+#define DRF_LR_SYMBTIMEOUTLSB_BG ((17 + RF_PARAM_PREAMBLE_SYMS) * _BGTIMEOUT_SCALAR)
 #define DRF_LR_SYMBTIMEOUTLSB_FG (255)
 
 // Preamble length is set from config settings
