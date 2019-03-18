@@ -717,14 +717,15 @@ OT_WEAK void dll_systask_holdscan(ot_task task) {
 
 
 
-
-
+// 0x40: No stream (Page), 0xC0 (normal BG)
+#define _BGRX_BITS  0xC0
 OT_WEAK void dll_systask_sleepscan(ot_task task) {
 /// The Sleep Scan process runs as an independent task.  It is very similar
 /// to the Hold Scan process, which actually calls this same routine.  They
 /// use independent task markers, however, so they behave differently.
     ot_u8       s_channel;
     ot_u8       s_code;
+    ot_u8       netstate;
     ot_uni16    scratch;
     vlFILE*     fp;
     m2session*  s_new;
@@ -762,12 +763,13 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     /// select uses b6, which is why there is a >> 1.
     ///@todo the method of checking for silence seems to crash OpenTag right now.
     //if ((dll.netconf.active & (1<<12)) == 0) {
-		s_new           = session_new(&dll_scan_applet, 0, s_channel,
-										((M2_NETSTATE_REQRX | M2_NETSTATE_INIT) | (s_code & 0x80) >> 1)  );
+        netstate        = (s_code & 0x80) ? _BGRX_BITS|M2_NETSTATE_REQRX|M2_NETSTATE_INIT \
+                                          : M2_NETSTATE_REQRX|M2_NETSTATE_INIT;
+		s_new           = session_new(&dll_scan_applet, 0, s_channel, netstate);
 		s_new->extra    = s_code;
     //}
 }
-
+#undef _BGRX_BITS
 
 
 
@@ -905,8 +907,7 @@ OT_WEAK void dll_init_rx(m2session* active) {
     //    sample_t0 = 0;
     //}
 
-    callback = (active->netstate & M2_NETFLAG_BG) ? \
-                    &dll_rfevt_brx : &dll_rfevt_frx;
+    callback = (active->netstate & M2_NETFLAG_BG) ? &dll_rfevt_brx : &dll_rfevt_frx;
 
     rm2_rxinit(active->channel, active->netstate, callback);
 }
@@ -995,9 +996,10 @@ OT_WEAK void dll_scan_timeout(void) {
 /// synchronized.  Usage of HW RX timer is mostly useful for very specific
 /// applications using very custom builds of OpenTag.
 
-#if (RF_FEATURE(RXTIMER) == DISABLED)
+#if (RF_FEATURE_RXTIMER == DISABLED)
     // If not presently receiving, time-out the RX.
     // else if presently receiving, pad timeout by 128
+    ///@todo make timeout variable, not fixed 128
     if ((radio.state != RADIO_DataRX) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) {    ///@todo change to LISTEN
         rm2_rxtimeout_isr();
     }
