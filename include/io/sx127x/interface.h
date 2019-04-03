@@ -98,7 +98,7 @@ typedef struct {
     SX127x_IMode    imode;
     ot_u8           status;
     ot_u8           spi_addr;
-    ot_u8           busrx[24];
+    ot_u8           busrx[32];
 } sx127x_struct;
 
 extern sx127x_struct sx127x;
