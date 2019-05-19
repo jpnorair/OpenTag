@@ -42,42 +42,57 @@ const ot_u8 otutils_hexlut[16] = "0123456789ABCDEF";
 
 
 
-///@todo alias this in m2dll.h
-#ifndef EXTF_otutils_calc_timeout
-ot_ulong otutils_calc_timeout(ot_u8 timeout_code) {
-    ot_u8       shift;
-    ot_ulong    timeout;
-    shift       = (timeout_code >> 3) & 0x0E;
-    timeout     = (timeout_code & 0x0F);
-    timeout    += (shift != 0);
-    timeout    *= ((ot_u16)1 << shift);
-    
-    return timeout;
+static ot_ulong sub_calc_timeout(ot_uint timeout_code, ot_uint shift, ot_uint mask) {
+	ot_ulong    timeout;
+	shift       = (timeout_code >> shift) & 0x000E;
+	timeout     = (timeout_code & mask);
+	timeout    += (shift != 0);
+	timeout    *= (1 << shift);
+	return timeout;
 }
-#endif
 
+static ot_uint sub_encode_timeout(ot_ulong timeout_ticks, ot_uint mask) {
+    ot_uint exp;
 
-
-// Exp-Mantissa expansion for common 7-bit field
-///@todo alias this in m2dll.h
-#ifndef EXTF_otutils_encode_timeout
-ot_u8 otutils_encode_timeout(ot_u16 timeout_ticks) {
-    ot_u8 exp;
-    
-    if (timeout_ticks < 16) {
-        return (ot_u8)timeout_ticks;
+    if (timeout_ticks < mask) {
+        return (ot_uint)timeout_ticks;
     }
-    
+
     exp = 1;
     timeout_ticks >>= 2;
-    
-    while (timeout_ticks > 16) {
+
+    while (timeout_ticks > mask) {
         exp += 2;
         timeout_ticks >>= 4;
     }
     timeout_ticks--;
-    
-    return (exp << 4) + (ot_u8)timeout_ticks;
+
+    return (exp << 4) + (ot_uint)timeout_ticks;
+}
+
+
+
+#ifndef EXTF_otutils_calc_longtimeout
+OT_INLINE ot_ulong otutils_calc_longtimeout(ot_u16 timeout_code) {
+	return sub_calc_timeout((ot_uint)timeout_code, 9, 0x03FF);
+}
+#endif
+
+#ifndef EXTF_otutils_encode_longtimeout
+OT_INLINE ot_u16 otutils_encode_longtimeout(ot_ulong timeout_ticks) {
+    return (ot_u16)sub_encode_timeout(timeout_ticks, 0x0400);
+}
+#endif
+
+#ifndef EXTF_otutils_calc_timeout
+OT_INLINE ot_ulong otutils_calc_timeout(ot_u8 timeout_code) {
+	return sub_calc_timeout((ot_uint)timeout_code, 3, 0x0E);
+}
+#endif
+
+#ifndef EXTF_otutils_encode_timeout
+OT_INLINE ot_u8 otutils_encode_timeout(ot_u16 timeout_ticks) {
+	return (ot_u8)sub_encode_timeout((ot_ulong)timeout_ticks, 0x10);
 }
 #endif
 
