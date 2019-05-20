@@ -42,57 +42,70 @@ const ot_u8 otutils_hexlut[16] = "0123456789ABCDEF";
 
 
 
-static ot_ulong sub_calc_timeout(ot_uint timeout_code, ot_uint shift, ot_uint mask) {
+
+#ifndef EXTF_otutils_calc_longtimeout
+ot_ulong otutils_calc_longtimeout(ot_u16 timeout_code) {
+	ot_uint 	shift;
 	ot_ulong    timeout;
-	shift       = (timeout_code >> shift) & 0x000E;
-	timeout     = (timeout_code & mask);
+	shift       = (timeout_code >> 8) & 0x001C;
+	timeout     = (timeout_code & 0x3FF);
 	timeout    += (shift != 0);
 	timeout    *= (1 << shift);
 	return timeout;
 }
-
-static ot_uint sub_encode_timeout(ot_ulong timeout_ticks, ot_uint mask) {
-    ot_uint exp;
-
-    if (timeout_ticks < mask) {
-        return (ot_uint)timeout_ticks;
-    }
-
-    exp = 1;
-    timeout_ticks >>= 2;
-
-    while (timeout_ticks > mask) {
-        exp += 2;
-        timeout_ticks >>= 4;
-    }
-    timeout_ticks--;
-
-    return (exp << 4) + (ot_uint)timeout_ticks;
-}
-
-
-
-#ifndef EXTF_otutils_calc_longtimeout
-OT_INLINE ot_ulong otutils_calc_longtimeout(ot_u16 timeout_code) {
-	return sub_calc_timeout((ot_uint)timeout_code, 9, 0x03FF);
-}
 #endif
 
 #ifndef EXTF_otutils_encode_longtimeout
-OT_INLINE ot_u16 otutils_encode_longtimeout(ot_ulong timeout_ticks) {
-    return (ot_u16)sub_encode_timeout(timeout_ticks, 0x0400);
+ot_u16 otutils_encode_longtimeout(ot_ulong timeout_ticks) {
+    ot_uint exp;
+
+	if (timeout_ticks < 0x0400) {
+		return (ot_u16)timeout_ticks;
+	}
+
+	exp 			= 1;
+	timeout_ticks >>= 3;
+
+	while (timeout_ticks > 0x0400) {
+		exp += 1;
+		timeout_ticks >>= 3;
+	}
+	timeout_ticks--;
+
+	return (exp << 10) + (ot_u8)timeout_ticks;
 }
 #endif
 
 #ifndef EXTF_otutils_calc_timeout
-OT_INLINE ot_ulong otutils_calc_timeout(ot_u8 timeout_code) {
-	return sub_calc_timeout((ot_uint)timeout_code, 3, 0x0E);
+ot_ulong otutils_calc_timeout(ot_u8 timeout_code) {
+	ot_uint		shift;
+	ot_ulong    timeout;
+	shift       = (timeout_code >> 3) & 0x000E;
+	timeout     = (timeout_code & 0x0E);
+	timeout    += (shift != 0);
+	timeout    *= (1 << shift);
+	return timeout;
 }
 #endif
 
 #ifndef EXTF_otutils_encode_timeout
-OT_INLINE ot_u8 otutils_encode_timeout(ot_u16 timeout_ticks) {
-	return (ot_u8)sub_encode_timeout((ot_ulong)timeout_ticks, 0x10);
+ot_u8 otutils_encode_timeout(ot_u16 timeout_ticks) {
+	ot_uint exp;
+
+	if (timeout_ticks < 0x10) {
+		return (ot_u8)timeout_ticks;
+	}
+
+	exp 			= 1;
+	timeout_ticks >>= 2;
+
+	while (timeout_ticks > 0x10) {
+		exp += 2;
+		timeout_ticks >>= 4;
+	}
+	timeout_ticks--;
+
+	return (exp << 4) + (ot_u8)timeout_ticks;
 }
 #endif
 
