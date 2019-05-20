@@ -109,7 +109,7 @@ m2session* m2task_advertise(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, ot_app 
 
 
 
-m2session* m2task_page(session_tmpl* s_tmpl, ot_app applet) {
+m2session* m2task_telegram(session_tmpl* s_tmpl, ot_app applet) {
 /// This is an experimental function
     m2session* next;
     next 			= sub_newtask(s_tmpl, applet, 0);

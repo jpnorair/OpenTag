@@ -179,7 +179,7 @@ void network_init();
   * @retval ot_int      -1 on ignore, non-negative on session modified/created
   * @ingroup Network
   */
-m2session* network_parse_bf();
+m2session* network_parse_bf(void);
 
 
 

@@ -67,6 +67,12 @@ m2np_struct m2np;
 
 static const ot_int _idlen[2] = { 8, 2 };
 
+m2session* m2tgram_parse(void);
+
+
+
+
+
 
 
 /** Low-Level Network Functions
@@ -91,37 +97,34 @@ OT_WEAK void network_init() {
 
 
 #ifndef EXTF_network_parse_bf
-OT_WEAK m2session* network_parse_bf() {
+OT_WEAK m2session* network_parse_bf(void) {
 /// Background Frame parsing: fill-in some stuff and treat it as foreground
 // ========================================================================
 /// General Background frame design
-/// <PRE>   +---------+--------+---------+-------+
-///         | TX EIRP | Subnet | Payload | CRC16 |
-///         |   B0    |   B1   |  B2:4   | B5:6  |
-///         +---------+--------+---------+-------+   </PRE>
+/// <PRE>   +---------+--------+---------+------+
+///         | TX EIRP | Subnet | Payload | CRC8 |
+///         |   B0    |   B1   |  B2:4   | B5   |
+///         +---------+--------+---------+------+   </PRE>
 // ========================================================================
-    m2session*  s_next;
-    ot_u16		pkt_ti;
-    
-    /// Load default attributes
-    s_next  = NULL;
-    
-    // stores the bg packet duration of the active channel.  We need this
-    // in order to deal with timing skew.
-    pkt_ti	= rm2_bgpkt_duration();
+	    m2session*  s_next;
 
-    /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
-    switch (rxq.getcursor[1] & 15) {
-    case 15:    s_next = m2advp_parse();        break;
-    //case 7:     /* reserved protocol */         break;
-    //case 3:	    /* reserved protocol */         break;
-    //case 1:     /* reserved protocol */         break;
-    default:    break;
-    }
+	    /// Load default attributes
+	    s_next  = NULL;
 
-    return s_next;
-}
+	    /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
+	    switch (rxq.getcursor[1] & 15) {
+	    case 15:    s_next = m2advp_parse();        break;
+	    //case 7:     /* reserved protocol */         break;
+	    //case 3:	    /* reserved protocol */         break;
+	    case 1:     s_next = m2tgram_parse();       break;
+	    default:    break;
+	    }
+
+	    return s_next;
+	}
 #endif
+
+
 
 
 
@@ -681,6 +684,37 @@ OT_WEAK void m2advp_close() {
 
 
 
+/// XR Telegram Format
+// ========================================================================
+/// General Background frame design
+/// <PRE>   +---------+--------+-------+-------+---------+--------+
+///         | TX EIRP | Subnet | Token | PType | Payload | CRC16  |
+///         |   B0    |   B1   | B2:5  | B6    | B7:13   | B14:15 |
+///         +---------+--------+-------+-------+---------+--------+
+/// </PRE>
+// ========================================================================
+
+///@todo This is patchwork code, just to deliver basic functionality with
+/// with existing buffer structure and M2QP impl.
+extern alp_tmpl m2alp;
+
+m2session* m2tgram_parse(void) {
+/// Telegram format is made into an ALP frame and sent to telegram forwarder
+/// ALP (ID = ???)
+/// @todo ID currently set to 16, but subject to change
+
+	ot_memcpy(&rxq.getcursor[4], &rxq.getcursor[0], 14);
+
+	rxq.getcursor[0] = 0xD0;
+	rxq.getcursor[1] = 14;
+	rxq.getcursor[2] = 16;
+	rxq.getcursor[3] = 0;
+	rxq.putcursor    = rxq.getcursor + 4 + 14;
+
+	alp_parse_message(&m2alp, AUTH_GUEST);
+
+	return NULL;
+}
 
 
 

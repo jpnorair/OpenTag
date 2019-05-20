@@ -468,26 +468,10 @@ OT_WEAK void dll_scan_applet(m2session* active) {
 OT_WEAK void dll_beacon_applet(m2session* active) {
 /// Beaconing is a Request-TX operation, and the value for Tc is the amount of
 /// time to spend in CSMA before quitting the beacon.
-    ot_queue beacon_queue;
     ot_u8 b_params;
-    ot_u8 cmd_ext;
-    ot_u8 cmd_code;
 
     b_params        = active->extra;
     active->extra   = 0;
-
-    /// Start building the beacon packet:
-    /// <LI> Calling m2np_header() will write most of the front of the frame </LI>
-    /// <LI> Add the command byte and optional command-extension byte </LI>
-    m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
-
-    cmd_ext     = (b_params & 0x06);                            // Normal extension bits
-    cmd_ext    |= (dll.netconf.btemp[2] == 0) << 6;             // Announcement No-File bit
-    cmd_code    = 0x20 | (b_params & 1) | ((cmd_ext!=0) << 7);
-    q_writebyte(&txq, cmd_code);
-    if (cmd_code) {
-        q_writebyte(&txq, cmd_ext);
-    }
 
     /// Setup the comm parameters, if the channel is available:
     /// <LI> dll.comm values tx_eirp, cs_rssi, and cca_rssi must be set by the
@@ -498,27 +482,72 @@ OT_WEAK void dll_beacon_applet(m2session* active) {
     /// <LI> Set rx_timeout for Default-Tg or 0, if beacon has no response </LI>
     dll_set_defaults(active);
     dll.comm.tc             = M2_PARAM_BEACON_TCA;  //TI2CLK(M2_PARAM_BEACON_TCA);
-    dll.comm.rx_timeout     = (b_params & 0x02) ? \
-                                0 : rm2_default_tgd(active->channel);
+    dll.comm.rx_timeout     = (b_params & 0x02) ? 0 : rm2_default_tgd(active->channel);
     dll.comm.csmaca_params |= (b_params & 0x04) | M2_CSMACA_NA2P | M2_CSMACA_MACCA;
     dll.comm.redundants     = dll.netconf.b_attempts;
 
-    q_writebyte(&txq, (ot_u8)dll.comm.rx_timeout);
+    if (dll.netconf.btemp[0] & 0x80) {
+    	ot_u32 token;
+    	vlFILE* fp;
+    	ot_u8 beacon_tgram[8];
 
-    /// Add the announcement file data if the specified return data != 0 bytes.
-    /// If the beacon data is missing or otherwise not accessible by the GUEST
-    /// user, dump the session (thus killing the beacon) and go back to idle.
-    if (dll.netconf.btemp[2] != 0) {
-        q_init(&beacon_queue, &dll.netconf.btemp[2], 4);
-        if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
-            session_pop();
-            dll_idle();
-            return;
-        }
+    	///@todo pull token from parameters or a file.
+    	token = 0x01020304;
+    	ot_memset(beacon_tgram, 0, 8);
+
+    	active->netstate |= M2_NETFLAG_BG;
+
+    	fp = vl_open(VL_ISF_BLOCKID, dll.netconf.btemp[5], VL_ACCESS_R, AUTH_GUEST);
+    	if (fp != NULL) {
+    		vl_load(fp, dll.netconf.btemp[4], beacon_tgram);
+    		vl_close(fp);
+    	}
+    	if (otapi_new_telegram(token, dll.netconf.btemp[5], beacon_tgram) == 0) {
+    		goto dll_beacon_applet_ERR;
+    	}
+    }
+    else {
+    	ot_queue beacon_queue;
+    	ot_u8 cmd_ext;
+    	ot_u8 cmd_code;
+
+		/// Start building the beacon packet:
+		/// <LI> Calling m2np_header() will write most of the front of the frame </LI>
+		/// <LI> Add the command byte and optional command-extension byte </LI>
+		m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
+
+		cmd_ext     = (b_params & 0x06);                            // Normal extension bits
+		cmd_ext    |= (dll.netconf.btemp[4] == 0) << 6;             // Announcement No-File bit
+		cmd_code    = 0x20 | (b_params & 1) | ((cmd_ext!=0) << 7);
+		q_writebyte(&txq, cmd_code);
+		if (cmd_code) {
+			q_writebyte(&txq, cmd_ext);
+		}
+
+		q_writebyte(&txq, (ot_u8)dll.comm.rx_timeout);
+
+		/// Add the announcement file data if the specified return data != 0 bytes.
+		/// If the beacon data is missing or otherwise not accessible by the GUEST
+		/// user, dump the session (thus killing the beacon) and go back to idle.
+		if (dll.netconf.btemp[4] != 0) {
+			q_init(&beacon_queue, &dll.netconf.btemp[4], 4);
+			if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
+				goto dll_beacon_applet_ERR;
+			}
+		}
+
+		/// Final step to packet generation: add footer
+		m2np_footer();
     }
 
-    /// Final step to any packet generation: add footer
-    m2np_footer();
+    // Successful exit
+    return;
+
+    // error exit
+    dll_beacon_applet_ERR:
+	session_pop();
+	dll_idle();
+	return;
 }
 
 
@@ -725,6 +754,7 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
 /// use independent task markers, however, so they behave differently.
     ot_u8       s_channel;
     ot_u8       s_code;
+    ot_u8		s_type;
     ot_u8       netstate;
     ot_uni16    scratch;
     vlFILE*     fp;
@@ -742,15 +772,17 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     ///@note fp doesn't really need to be asserted unless you are mucking
     ///      with things in test builds.
 
+    /// Set the next idle event from the two-byte Next Scan field.
+    /// The DASH7 registry is big-endian.
+    scratch.ushort  = PLATFORM_ENDIAN16( vl_read(fp, task->cursor) );
+    s_type			= (scratch.ubyte[UPPER] & 0x80) ^ 0xC0;
+    sys_task_setnext(task, (ot_u32)otutils_calc_longtimeout(scratch.ushort));
+
     /// Pull channel ID and Scan flags
+    task->cursor   += 2;
     scratch.ushort  = vl_read(fp, task->cursor);
     s_channel       = scratch.ubyte[0];
     s_code          = scratch.ubyte[1];
-
-    /// Set the next idle event from the two-byte Next Scan field.
-    /// The DASH7 registry is big-endian.
-    scratch.ushort  = PLATFORM_ENDIAN16( vl_read(fp, (task->cursor)+=2 ) );
-    sys_task_setnext(task, (ot_u32)scratch.ushort);
 
     /// Advance cursor to next datum, go back to 0 if end of sequence
     /// (still works in special case where cursor = 254)
@@ -763,8 +795,8 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     /// select uses b6, which is why there is a >> 1.
     ///@todo the method of checking for silence seems to crash OpenTag right now.
     //if ((dll.netconf.active & (1<<12)) == 0) {
-        netstate        = (s_code & 0x80) ? _BGRX_BITS|M2_NETSTATE_REQRX|M2_NETSTATE_INIT \
-                                          : M2_NETSTATE_REQRX|M2_NETSTATE_INIT;
+        netstate        = (s_code & 0x80) ? (s_type | M2_NETSTATE_REQRX | M2_NETSTATE_INIT) \
+                                          : (M2_NETSTATE_REQRX | M2_NETSTATE_INIT);
 		s_new           = session_new(&dll_scan_applet, 0, s_channel, netstate);
 		s_new->extra    = s_code;
     //}
@@ -798,7 +830,7 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
 
         fp = ISF_open_su( ISF_ID(beacon_transmit_sequence) );
         if (fp == NULL) {
-            nextbeacon = 10;               // try again after this delay
+            //nextbeacon = 10;               // try again after this delay
             goto dll_systask_beacon_END;
         }
         if (fp->length == 0)    {
@@ -814,8 +846,10 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
         /// <LI> Move cursor onto next beacon period (above, +8)</LI>
         /// <LI> Loop cursor if it is past the length of the list </LI>
         /// <LI> In special case where cursor = 254, everything still works! </LI>
-        task->cursor   += 8;
-        task->cursor    = (task->cursor >= fp->length) ? 0 : task->cursor;
+        task->cursor += 8;
+        if (task->cursor >= fp->length) {
+        	task->cursor = 0;
+        }
 
         // Load next beacon into btemp, then undo the start hack, then close
         vl_load(fp, 8, dll.netconf.btemp);
@@ -823,20 +857,21 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
         vl_close(fp);
     }
 
-    // First 2 bytes: Chan ID, Cmd Code
+    // Bytes[2:3] = Chan ID, Cmd Code
     // - Setup beacon ad-hoc session, on specified channel (ad hoc sessions never return NULL)
     // - Assure cmd code is always Broadcast & Announcement
     ///@todo the method of checking for silence (b12) seems to crash OpenTag right now.
     //if ((dll.netconf.active & (1<<12)) == 0) {
-		b_session           = session_new(  &dll_beacon_applet, 0, dll.netconf.btemp[0],
+		b_session           = session_new(  &dll_beacon_applet, 0, dll.netconf.btemp[2],
 											(M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX)  );
 		b_session->subnet   = dll.netconf.b_subnet;
-		b_session->extra    = dll.netconf.btemp[1];
-		b_session->flags    = dll.netconf.btemp[1] & 0x78;
+		b_session->extra    = dll.netconf.btemp[3];
+		b_session->flags    = dll.netconf.btemp[3] & 0x78;
 		//b_session->flags   |= (b_session->extra & 0x30);
     //}
 
-    nextbeacon = (ot_u32)PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]);
+	// Bytes[0:1] = next process code
+    nextbeacon = otutils_calc_longtimeout( PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[0]) );
     
     dll_systask_beacon_END:
     
