@@ -85,6 +85,9 @@
 #define SPLIT_LONG_LE(VAL)  (ot_u8)((ot_u32)(VAL) & 0xFF), (ot_u8)(((ot_u32)(VAL) >> 8) & 0xFF), \
                             (ot_u8)(((ot_u32)(VAL) >> 16) & 0xFF), (ot_u8)((ot_u32)(VAL) >> 24)
 
+#define TIME16(FLAG, EXP, MANT)         (ot_u16)((((FLAG)&3)<<14)|(((EXP)&7)<<10)|((MANT)&1023))
+#define SPLIT_TIME16(FLAG,EXP,MANT)     SPLIT_SHORT(TIME16(FLAG,EXP,MANT))
+
 
 /// These overhead are the Veelite vl_header files. They are hard coded,
 /// and they must be in the endian of the platform. (Little endian here)
@@ -491,8 +494,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* hold scan periods: id=0x04, len=8, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x18, 0x31, 0x00, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
-    0x2B, 0x31, 0x00, 0x00,
+    SPLIT_TIME16(0,0,0), 0x18, 0x31,                             /* Channel X scan, Scan Code, Next Scan ms */
+    SPLIT_TIME16(0,0,0), 0x2B, 0x31,
     _ERS, _ERS, _ERS, _ERS,
     _ERS, _ERS, _ERS, _ERS,
     _ERS, _ERS, _ERS, _ERS,
@@ -502,7 +505,7 @@ const ot_u8 isf_stock_files[] = {
 
     /* sleep scan periods: id=0x05, len=4, alloc=32 */
     /* Period data format in Section X.9.4.5 of Mode 2 spec */
-    0x18, 0x50, 0x00, 0x00,                             /* Channel X scan, Scan Code, Next Scan ms */
+    SPLIT_TIME16(0,0,0), 0x18, 0x50,                    /* Channel X scan, Scan Code, Next Scan ms */
     _ERS, _ERS, _ERS, _ERS,                             /* NOTE: Scan Code should be less than     */
     _ERS, _ERS, _ERS, _ERS,                             /*       Next Scan, or else you will be    */
     _ERS, _ERS, _ERS, _ERS,                             /*       doing nothing except scanning!    */
@@ -513,8 +516,8 @@ const ot_u8 isf_stock_files[] = {
 
     /* beacon transmit periods: id=0x06, len=16, alloc=24 */
     /* Period data format in Section X.9.4.7 of Mode 2 spec */ //0x0240
-    0x18, 0x02, 0x20, 0x00, 0x00, 0x08, 0x00, 0x80,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
-    0x2B, 0x02, 0x20, 0x00, 0x00, 0x08, 0x10, 0x00,
+    SPLIT_TIME16(0,0,128), 0x18, 0x02, 0x20, 0x00, 0x00, 0x08,     /* Channel X beacon, Beacon ISF File, Next Beacon ms */
+    SPLIT_TIME16(0,2,0), 0x2B, 0x02, 0x20, 0x00, 0x00, 0x08,
     _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS, _ERS,
 
     /* User ISF List: id=0x07, len=1, alloc=24 */
