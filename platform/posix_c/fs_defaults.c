@@ -11,50 +11,17 @@
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
-  *
   */
 /**
-  * @file       /platform/posix_c/otlib_delay.c
-  * @author     JP Norair
-  * @version    R100
-  * @date       26 Oct 2017
-  * @brief      Delay OTlib Functions for POSIX
-  * @ingroup    Delay
+  * @file       /platform/posix_c/fs_defaults.c
+  * @author     JP Norair (jpnorair@indigresso.com)
+  * @version    R101
+  * @date       31 Oct 2017
+  * @brief      Default Filesystem
   *
   ******************************************************************************
   */
 
-#include <otstd.h>
-#include <otplatform.h>
-#include <otlib/delay.h>
-
-#include <unistd.h>
-
-
-#ifndef EXTF_delay_sti
-void delay_sti(ot_u16 sti) {
-    delay_us( sti*31 );
-}
-#endif
-
-
-#ifndef EXTF_delay_ti
-void delay_ti(ot_u16 n) {
-    delay_us(n*977);
-}
-#endif
-
-
-#ifndef EXTF_delay_ms
-void delay_ms(ot_u16 n) {
-    delay_us(n*1000);
-}
-#endif
-
-
-#ifndef EXTF_delay_us
-void delay_us(ot_u16 n) {
-    usleep(n);
-}
-#endif
-
+/// The only thing this file needs to do is include the fs_defaults header
+#include <app/config.h>
+#include <app/fs_defaults.h>

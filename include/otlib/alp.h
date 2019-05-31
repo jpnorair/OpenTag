@@ -1,4 +1,4 @@
-/*  Copyright 2013-2014, JP Norair
+/*  Copyright 2017, JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/alp.h
   * @author     JP Norair
-  * @version    V1.0
-  * @date       25 Mar 2014
+  * @version    R103
+  * @date       31 Oct 2017
   * @brief      Application Layer Protocol Management Module
   * @defgroup   ALP
   * @ingroup    ALP
@@ -75,11 +75,14 @@
 #define _I_PLEN         -3
 #define _I_FLAGS        -4
 
-#define INREC(X)        inq->getcursor[_I_##X]
+#define INREC(ALP, X)   q_getcursor_val(ALP->inq, _I_##X)    /* inq->getcursor[_I_##X] */
 #define OUTREC(X)       outrec._O_##X
-#define BOOKMARK_IN     bookmark_in
-#define BOOKMARK_OUT    outrec.bookmark
 
+
+typedef struct {
+    ot_u8 length;
+    ot_u8* value;
+} id_tmpl;
 
 
 typedef enum {
@@ -98,24 +101,23 @@ typedef struct {
     ot_u8   plength;            // Payload Length
     ot_u8   id;                 // ALP ID (Similar to Destination Port)
     ot_u8   cmd;                // ALP CMD (ID-specific Command)
-//    void*   bookmark;           // Internal use only (private)
 } alp_record;
 
 
-///@note The alp_tmpl structure is under redesign.  inrec and outrec will be
+///@note The alp_tmpl structure is under redesign.  outrec will be
 ///      removed, and the application processors will be responsible to manage
 ///      their own record headers, with functional assitance from ALP module.
 typedef struct {
     ot_u16      purge_id;       // Internal use only: for garbage collection
 
-//    alp_record  inrec;        // Legacy: but using Macros [above] as bridge
     alp_record  outrec;         // Legacy: to be removed soon
     ot_queue*   inq;
     ot_queue*   outq;
-
     void*       sstack;         // Use NULL if the ALP is on an interface with no session stack
 } alp_tmpl;
 
+
+typedef ot_bool (*alp_fn)(alp_tmpl*, const id_tmpl*);
 
 
 #if ( OT_FEATURE(ALP) )
@@ -140,7 +142,7 @@ typedef struct {
   * implement this function somewhere.  Any ALP ID's that get processed by ALP
   * which do not match known ID's will get dumped into this function.
   */
-ot_bool alp_ext_proc(alp_tmpl* alp, id_tmpl* user_id);
+ot_bool alp_ext_proc(alp_tmpl* alp, const id_tmpl* user_id);
 #endif
 
 
@@ -189,8 +191,25 @@ ot_bool alp_load(alp_tmpl* alp, ot_u8* src, ot_int length);
 
 
 ///@todo experimental
-void alp_notify(alp_tmpl* alp, ot_sig callback);
+/** @brief  Setup a new Application queue from the main alp input queue
+ * @param  alp         (alp_tmpl*) ALP I/O control structure
+ * @param  appq        (ot_queue*) subordinate queue used by Application
+ * @retval None
+ * @ingroup ALP
+ * @sa alp_append_appq
+ * @sa alp_goto_next
+ *
+ * Non-atomic applications that run from a shared ALP usually need to maintain
+ * an independent application queue.  The functions alp_goto_next() and
+ * alp_retrieve_cmd() will will draw records from said queue, but before you
+ * can use these, you must setup an Application queue in the first place.
+ */
 
+void alp_add_app(alp_tmpl* alp, ot_u8 alp_id, alp_fn callback, ot_queue appq);
+
+
+///@todo experimental
+void alp_notify(alp_tmpl* alp, ot_sig callback);
 
 
 /** @note User IDs for ALP's
@@ -372,8 +391,6 @@ void alp_kill(alp_tmpl* alp, ot_u8 kill_id);
   * Use with caution.
   */
 
-
-
 /** @brief  Internal function for resolving the index of an app processor
   * @param  alp_id      (ot_u8) ALP ID
   * @retval ot_u8       index of the processor routine
@@ -383,9 +400,6 @@ void alp_kill(alp_tmpl* alp, ot_u8 kill_id);
   *
   */
 ot_u8 alp_get_handle(ot_u8 alp_id);
-
-
-
 
 
 /** @brief  Process a received ALP record (vectors to all supported ALP's)
@@ -466,40 +480,6 @@ void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payl
 
 
 
-/** @brief Initializes an ALP header for new message, and first record
-  * @param  alp                 (alp_tmpl*) ALP I/O control structure
-  * @param  payload_limit       (ot_u8) Limit of Payload bytes per __Record__
-  * @param  payload_remaining   (ot_int) Remaining Payload bytes in __Message__
-  * @retval None
-  * @ingroup ALP
-  * @sa alp_new_record()
-  *
-  * This function is identical to alp_new_record(), except that it also sets
-  * the "Message Begin" flag high.  If you wish to use alp_new_record() instead
-  * of alp_new_message(), you must set ALP_FLAG_MB in alp->outrec.flags AFTER
-  * alp_new_record() returns.
-
-void alp_new_message(alp_tmpl* alp, ot_u8 payload_limit, ot_int payload_remaining);
-  */
-
-
-
-/** @todo pending removal/refactoring
-  * @brief Header parser for ALP and also NDEF (ALP is a subset of NDEF)
-  * @param  alp         (alp_tmpl*) ALP I/O control structure
-  * @retval ot_u8       0 on success (valid header), non-zero on bad header.
-  * @ingroup ALP
-  *
-  * alp_parse_header() will inspect the "Type Name Field" of the Flags byte.
-  * In Pure-ALP, this is 0, and the function will read the rest of the header
-  * as a pure-ALP header.  In NDEF, this will be Non-Zero, and the function
-  * will read the rest of the header as NDEF header.  If your build does not
-  * support NDEF, the NDEF parts won't be compiled.
-  */
-ot_bool alp_parse_header(alp_tmpl* alp);
-
-
-
 
 /** @brief  Common function for responding to ALP with a simple 16-bit return
   * @param  alp         (alp_tmpl*) ALP I/O control structure
@@ -514,12 +494,7 @@ ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval);
 
 
 
-
-
 void alp_load_header(ot_queue* appq, alp_record* rec);
-
-
-
 
 
 
@@ -547,7 +522,7 @@ void alp_load_header(ot_queue* appq, alp_record* rec);
   * @retval ot_bool		Always True
   * @ingroup ALP
   */
-ot_bool alp_proc_null(alp_tmpl* alp, id_tmpl* user_id);
+ot_bool alp_proc_null(alp_tmpl* alp, const id_tmpl* user_id);
 
 
 /** @brief  Process a received filesystem ALP record
@@ -556,7 +531,7 @@ ot_bool alp_proc_null(alp_tmpl* alp, id_tmpl* user_id);
   * @retval ot_bool		True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
-ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id);
+ot_bool alp_proc_filedata(alp_tmpl* alp, const id_tmpl* user_id);
 
 
 
@@ -568,7 +543,7 @@ ot_bool alp_proc_filedata(alp_tmpl* alp, id_tmpl* user_id);
   * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
-ot_bool alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id);
+ot_bool alp_proc_sensor(alp_tmpl* alp, const id_tmpl* user_id);
 #endif
 
 
@@ -585,7 +560,7 @@ ot_bool alp_proc_sensor(alp_tmpl* alp, id_tmpl* user_id);
   * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
-ot_bool alp_proc_dashforth(alp_tmpl* alp, id_tmpl* user_id);
+ot_bool alp_proc_dashforth(alp_tmpl* alp, const id_tmpl* user_id);
 #endif
 
 
@@ -655,7 +630,7 @@ ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id);
   * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
-ot_bool alp_proc_sec(alp_tmpl* alp, id_tmpl* user_id);
+ot_bool alp_proc_sec(alp_tmpl* alp, const id_tmpl* user_id);
 #endif
 
 
@@ -698,8 +673,6 @@ void alp_stream_error_tmpl(ot_queue* out_q, void* data_type);
 void alp_stream_udp_tmpl(ot_queue* out_q, void* data_type);
 void alp_stream_isfcomp_tmpl(ot_queue* out_q, void* data_type);
 void alp_stream_isfcall_tmpl(ot_queue* out_q, void* data_type);
-
-
 
 
 

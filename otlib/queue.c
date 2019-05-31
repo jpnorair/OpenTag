@@ -58,7 +58,7 @@
   */
 
 #ifndef EXTF_q_init
-void q_init(ot_queue* q, ot_u8* buffer, ot_u16 alloc) {
+void q_init(ot_queue* q, void* buffer, ot_u16 alloc) {
     q->alloc    = alloc;
     q->front    = buffer;
     q->back     = buffer+alloc;
@@ -68,7 +68,7 @@ void q_init(ot_queue* q, ot_u8* buffer, ot_u16 alloc) {
 
 
 #ifndef EXTF_q_rebase
-void q_rebase(ot_queue* q, ot_u8* buffer) {
+void q_rebase(ot_queue* q, void* buffer) {
     q->front        = buffer;
     q->getcursor    = buffer;
     q->putcursor    = buffer;
@@ -85,6 +85,32 @@ void q_copy(ot_queue* q1, ot_queue* q2) {
 
 
 
+
+/** Queue "Intrinsics"
+  * ==================
+  */
+
+#ifndef EXTF_q_intrinsics
+OT_INLINE ot_u8 q_getcursor_val(ot_queue* q, ot_int offset) {
+    return q->getcursor[offset];
+}
+
+OT_INLINE void q_getcursor_insert(ot_queue* q, ot_int offset, ot_u8 val) {
+    q->getcursor[offset] = val;
+}
+
+OT_INLINE ot_u8 q_putcursor_val(ot_queue* q, ot_int offset) {
+    return q->putcursor[offset];
+}
+
+OT_INLINE void q_putcursor_insert(ot_queue* q, ot_int offset, ot_u8 val) {
+    q->putcursor[offset] = val;
+}
+
+OT_INLINE ot_qcur q_offset(ot_queue* q, ot_int offset) {
+    return (ot_qcur)&((ot_u8*)q->front)[offset];
+}
+#endif
 
 
 
@@ -128,15 +154,19 @@ ot_int q_readspace(ot_queue* q) {
   * ==================================
   */
 
+#ifndef EXTF_q_blocktime
 OT_INLINE ot_uint q_blocktime(ot_queue* q) {
     return q->options.ushort;
 }
+#endif
 
+#ifndef EXTF_q_blockwrite
 OT_INLINE void q_blockwrite(ot_queue* q, ot_uint blocktime) {
     q->options.ushort = blocktime;
 }
+#endif
 
-
+#ifndef EXTF_q_lock
 void q_lock(ot_queue* q) {
     while (q->options.ushort != 0) {
         //ot_thandle thandle = otthread_this_thandle();
@@ -151,12 +181,14 @@ void q_lock(ot_queue* q) {
     }
     q->options.ushort = 1;
 }
+#endif
 
+#ifndef EXTF_q_unlock
 void q_unlock(ot_queue* q) {
     // otthread_release_any( &(q->tmask) );
     q->options.ushort = 0;
 }
-
+#endif
 
 
 
@@ -188,7 +220,7 @@ void q_rewind(ot_queue* q) {
 
 
 #ifndef EXTF_q_start
-ot_u8* q_start(ot_queue* q, ot_uint offset, ot_u16 options) {
+void* q_start(ot_queue* q, ot_uint offset, ot_u16 options) {
     q_empty(q);
 
     if (offset >= q->alloc)
@@ -197,14 +229,15 @@ ot_u8* q_start(ot_queue* q, ot_uint offset, ot_u16 options) {
     q->options.ushort  = options;
     q->putcursor      += offset;
     q->getcursor      += offset;
-    return q->getcursor;
+    
+    return (void*)q->getcursor;
 }
 #endif
 
 
 #ifndef EXTF_q_markbyte
-ot_u8* q_markbyte(ot_queue* q, ot_int shift) {
-    ot_u8* output;
+ot_qcur q_markbyte(ot_queue* q, ot_int shift) {
+    ot_qcur output;
     output          = q->getcursor;
     q->getcursor   += shift;
     return output;
@@ -259,10 +292,27 @@ void q_writelong(ot_queue* q, ot_ulong long_in) {
 #   else
         ot_u8* data;
         data = (ot_u8*)&long_in;
-        *q->putcursor++ = data[B3];
-        *q->putcursor++ = data[B2];
-        *q->putcursor++ = data[B1];
-        *q->putcursor++ = data[B0];
+        *q->putcursor++ = data[_B3];
+        *q->putcursor++ = data[_B2];
+        *q->putcursor++ = data[_B1];
+        *q->putcursor++ = data[_B0];
+#   endif
+}
+#endif
+
+
+#ifndef EXTF_q_writelong_be
+void q_writelong_be(ot_queue* q, ot_ulong long_in) {
+#   if defined(__UNALIGNED_ACCESS__)
+        *(ot_u32*)q->putcursor = long_in;
+        q->putcursor          += 4;
+#   else
+        ot_u8* data;
+        data = (ot_u8*)&long_in;
+        *q->putcursor++ = data[_B0];
+        *q->putcursor++ = data[_B1];
+        *q->putcursor++ = data[_B2];
+        *q->putcursor++ = data[_B3];
 #   endif
 }
 #endif
@@ -318,10 +368,27 @@ ot_u32 q_readlong(ot_queue* q)  {
         return PLATFORM_ENDIAN32(data);
 #   else
         ot_uni32 data;
-        data.ubyte[B3]  = *q->getcursor++;
-        data.ubyte[B2]  = *q->getcursor++;
-        data.ubyte[B1]  = *q->getcursor++;
-        data.ubyte[B0]  = *q->getcursor++;
+        data.ubyte[_B3]  = *q->getcursor++;
+        data.ubyte[_B2]  = *q->getcursor++;
+        data.ubyte[_B1]  = *q->getcursor++;
+        data.ubyte[_B0]  = *q->getcursor++;
+        return data.ulong;
+#   endif
+}
+#endif
+
+#ifndef EXTF_q_readlong_be
+ot_u32 q_readlong_be(ot_queue* q)  {
+#   if defined(__UNALIGNED_ACCESS__)
+        ot_u32 data     = *(ot_u32*)q->getcursor;
+        q->getcursor   += 4;
+        return data;
+#   else
+        ot_uni32 data;
+        data.ubyte[_B0]  = *q->getcursor++;
+        data.ubyte[_B1]  = *q->getcursor++;
+        data.ubyte[_B2]  = *q->getcursor++;
+        data.ubyte[_B3]  = *q->getcursor++;
         return data.ulong;
 #   endif
 }
@@ -329,39 +396,78 @@ ot_u32 q_readlong(ot_queue* q)  {
 
 
 #ifndef EXTF_q_writestring
-void q_writestring(ot_queue* q, ot_u8* string, ot_int length) {
+ot_int q_writestring(ot_queue* q, ot_u8* string, ot_int length) {
     ot_int limit;
     
-    limit = (q->back - q->putcursor);
-    if (length > limit) {
+    if (length <= 0) {
+        return 0;
+    }
+    
+    limit = q_writespace(q);
+    if (limit < length) {
         length = limit;
     } 
-    if (length > 0) {
-        memcpy(q->putcursor, string, length);
-        q->putcursor   += length;
-    }
+
+    ot_memcpy(q->putcursor, string, length);
+    q->putcursor += length;
+    
+    return length;
 }
 #endif
 
 
 #ifndef EXTF_q_readstring
-void q_readstring(ot_queue* q, ot_u8* string, ot_int length) {
+ot_int q_readstring(ot_queue* q, ot_u8* string, ot_int length) {
     ot_int limit;
     
-    limit = (q->back - q->getcursor);
-    if (length > limit) {
+    if (length <= 0) {
+        return 0;
+    }
+    
+    limit = q_readspace(q);
+    if (limit < length) {
         length = limit;
-    }
-    if (length > 0) {
-        memcpy(string, q->getcursor, length);
-        q->getcursor += length;
-    }
+    } 
+    
+    ot_memcpy(string, q->getcursor, length);
+    q->getcursor += length;
+
+    return length;
 }
 #endif
 
 
 
-#if (defined(__STDC__) || defined (__POSIX__))
+#ifndef EXTF_q_movedata
+ot_int q_movedata(ot_queue* qdst, ot_queue* qsrc, ot_int length) {
+    ot_int writespace, readspace, limit;
+    ot_u8* dst;
+    ot_u8* src;
+
+    if (length <= 0) {
+        return 0;
+    }
+    
+    writespace  = q_writespace(qdst);
+    readspace   = q_readspace(qsrc);
+    limit       = (writespace < readspace) ? writespace : readspace;
+    if (limit < length) {
+        return length - limit;
+    }
+    
+    dst                 = qdst->putcursor;
+    src                 = qsrc->getcursor;
+    qdst->putcursor    += length;
+    qsrc->getcursor    += length;
+    ot_memcpy(dst, src, length);
+    
+    return length;
+}
+#endif
+
+
+
+#if (!defined(__C2000__) && (defined(__STDC__) || defined (__POSIX__)) )
 #include <stdio.h>
 
 void q_print(ot_queue* q) {

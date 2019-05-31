@@ -21,6 +21,9 @@
   * @brief      System Time Implementation
   * @ingroup    Time
   *
+  * The implementation concept, here, is that *getting* the time happens a lot
+  * more than *setting* the time.  Therefore, getting is optimized at the cost
+  * of setting.
   ******************************************************************************
   */
 
@@ -28,6 +31,8 @@
 #include <otsys/time.h>
 #include <platform/config.h>
 #include <platform/timers.h>
+
+#include <assert.h>
 
 #if OT_FEATURE(TIME)
 
@@ -43,109 +48,171 @@
 #endif
 
 
-static ot_time  systime;
-static ot_time  starttime;
+ot_time  time_sys;
+ot_time  time_start;
 
 
-void sub_load_now(ot_time* now) {
+
+#ifndef EXTF_time_init
+OT_WEAK void time_init(ot_time init_time) {
+    time_sys    = init_time;
+    time_start  = init_time;
+}
+#endif
+
+
+#ifndef EXTF_time_init_utc
+OT_WEAK void time_init_utc(ot_u32 utc) {
+    time_sys.upper   = (utc >> _UPPER_SHIFT);
+    time_sys.clocks  = (utc << _LOWER_SHIFT);
+    time_start 		 = time_sys;
+}
+#endif
+
+
+#ifndef EXTF_time_set
+OT_WEAK void time_set(ot_time set_time) {
+    ot_time delta;
+    time_load_now(&delta);
+    
+    /// 1. Set time_sys to new value.
+    time_sys = set_time;
+    
+    /// 2. determine delta between previous time and new time
+    delta.upper     = (time_sys.upper - delta.upper) + (time_sys.clocks < delta.clocks);
+    delta.clocks    = (time_sys.clocks - delta.clocks);
+    
+    /// 3. Apply Delta to time_start
+    ///    This is necessary to maintain relative uptime figure
+    time_start.clocks   += delta.clocks;
+    time_start.upper    += delta.upper + (time_start.clocks < delta.clocks);
+}
+#endif
+
+
+
+#ifndef EXTF_time_set_utcprecise
+OT_WEAK void time_set_utcprecise(ot_u32 utc, ot_u32 subseconds) {
+	ot_time set_time;
+    set_time.upper   = (utc >> _UPPER_SHIFT);
+    set_time.clocks  = (utc << _LOWER_SHIFT);
+    set_time.clocks |= subseconds;
+    
+    time_set(set_time);
+}
+#endif
+
+
+#ifndef EXTF_time_set_utc
+OT_WEAK void time_set_utc(ot_u32 utc) {
+    time_set_utcprecise(utc, 0);
+}
+#endif
+
+
+#ifndef EXTF_time_get
+OT_WEAK void time_get(ot_time* get_time) {
+    assert(get_time);
+    *get_time = time_sys;
+}
+#endif
+
+#ifndef EXTF_time_get_utc
+OT_WEAK ot_u32 time_get_utc(void) {
+    ot_time now;
+    time_load_now(&now);
+    now.upper  <<= _UPPER_SHIFT;
+    now.clocks >>= _LOWER_SHIFT;
+    return (now.upper | now.clocks);
+}
+#endif
+
+
+#ifndef EXTF_time_uptime_secs
+OT_WEAK ot_u32 time_uptime_secs(void) {
+    ot_time now;
+    ot_u32  startsecs, nowsecs;
+    time_load_now(&now);
+    
+    startsecs   = (time_start.upper << _UPPER_SHIFT) + (time_start.clocks >> _LOWER_SHIFT);
+    nowsecs     = (now.upper << _UPPER_SHIFT) + (now.clocks >> _LOWER_SHIFT);
+
+    return (nowsecs - startsecs);
+}
+#endif
+
+
+#ifndef EXTF_time_uptime
+OT_WEAK ot_u32 time_uptime(void) {
+    ot_time now;
+    time_load_now(&now);
+    return (now.clocks - time_start.clocks);
+}
+#endif
+
+
+#ifndef EXTF_time_add
+OT_WEAK void time_add(ot_u32 clocks) {
+    ot_u32 scratch;
+    scratch         = clocks + time_sys.clocks;
+    time_sys.upper  += (scratch < clocks);
+    time_sys.clocks  = scratch;
+}
+#endif
+
+
+#ifndef EXTF_time_add_ti
+#ifdef __C2000__
+#pragma CODE_SECTION(time_add_ti,".TI.ramfunc");
+#endif
+OT_WEAK void time_add_ti(ot_u32 ticks) {
+    ot_u32 scratch;
+    ticks           = (ticks << _SHIFT);
+    scratch         = ticks + time_sys.clocks;
+    time_sys.upper  += (scratch < ticks);
+    time_sys.clocks  = scratch;
+}
+#endif
+
+
+
+
+
+/** Driver functions 
+  * The following functions are sometimes implemented in the platform driver.
+  * They do the low-level work for the system time module.
+  */
+
+
+#ifndef EXTF_time_load_now
+OT_WEAK void time_load_now(ot_time* now) {
     ot_u32 clocks;
     ot_u32 scratch;
-    *now        = systime;
+    *now        = time_sys;
     clocks      = systim_get();
     scratch     = clocks + now->clocks;
     now->upper += (scratch < clocks);       ///@note changed this
     now->clocks = scratch;
 }
+#endif
 
 
 
-void time_init_utc(ot_u32 utc) {
-    systime.upper   = (utc >> _UPPER_SHIFT);
-    systime.clocks  = (utc << _LOWER_SHIFT);
-    starttime 		= systime;
-}
 
 
-
-void time_set_precise(ot_u32 utc, ot_u32 subseconds) {
-	ot_time delta;
-    sub_load_now(&delta);
-    
-    /// 1. Set systime to new value.
-    ///@todo scale subseconds
-    systime.upper   = (utc >> _UPPER_SHIFT);
-    systime.clocks  = (utc << _LOWER_SHIFT);
-    systime.clocks |= subseconds;
-    
-    /// 2. determine delta between previous time and new time
-    delta.upper	    = (systime.upper - delta.upper) + (systime.clocks < delta.clocks);
-    delta.clocks    = (systime.clocks - delta.clocks);
-	
-	/// 3. Apply Delta to starttime
-	///    This is necessary to maintain relative uptime figure
-	starttime.clocks   += delta.clocks;
-	starttime.upper    += delta.upper + (starttime.clocks < delta.clocks);
-}
-
-
-void time_set_utc(ot_u32 utc) {
-    time_set_precise(utc, 0);
-}
-
-
-void time_add(ot_u32 clocks) {
-    ot_u32 scratch;
-    scratch         = clocks + systime.clocks;
-    systime.upper  += (scratch < clocks);
-    systime.clocks  = scratch;
-}
-
-void time_add_ti(ot_u32 ticks) {
-    ot_u32 scratch;
-    ticks           = (ticks << _SHIFT);
-    scratch         = ticks + systime.clocks;
-    systime.upper  += (scratch < ticks);
-    systime.clocks  = scratch;
-}
-
-
-ot_u32 time_get_utc(void) {
-    ot_time now;
-    sub_load_now(&now);
-    now.upper  <<= _UPPER_SHIFT;
-    now.clocks >>= _LOWER_SHIFT;
-    return (now.upper | now.clocks);
-}
-
-
-ot_u32 time_uptime_secs(void) {
-    ot_time now;
-    ot_u32  startsecs, nowsecs;
-    sub_load_now(&now);
-    
-    startsecs   = (starttime.upper << _UPPER_SHIFT) + (starttime.clocks >> _LOWER_SHIFT);
-    nowsecs     = (now.upper << _UPPER_SHIFT) + (now.clocks >> _LOWER_SHIFT);
-
-    return (nowsecs - startsecs);
-}
-
-
-ot_u32 time_uptime(void) {
-    ot_time now;
-    sub_load_now(&now);
-    return (now.clocks - starttime.clocks);
-}
 
 
 
 #else
 void time_init_utc(ot_u32 utc)          { }
 void time_set_utc(ot_u32 utc)           { }
-void time_add(ot_u32 clocks)            { }
-void time_add_ti(ot_u32 ticks)          { }
 ot_u32 time_get_utc(void)               { return 0; }
 ot_u32 time_uptime_secs(void)           { return 0; }
 ot_u32 time_uptime(void)             	{ return 0; }
+
+void time_load_now(ot_time* now)        { }
+void time_add(ot_u32 clocks)            { }
+void time_add_ti(ot_u32 ticks)          { }
 
 #endif
 
