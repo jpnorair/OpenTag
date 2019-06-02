@@ -344,7 +344,7 @@ ot_int sub_parse_response(m2session* active) {
         /// If using A2P, put this responder's ID onto the ACK chain, reserve
         /// 48 bytes at the back for query scratchpad, increment "Number of
         /// ACKs" on each ACK generation (txq.getcursor[0]), and do callback.
-        if (((req_cmdcode & 0x60) == M2TT_REQ_M_INIT) && (q_space(&txq) > 48)) {
+        if (((req_cmdcode & 0x60) == M2TT_REQ_M_INIT) && (q_writespace(&txq) > 48)) {
             ///@todo check to make sure NumACKs is 0 on 1st run (might be done)
             ///@todo Might put in some type of return scoring, later
             txq.getcursor[0]++;

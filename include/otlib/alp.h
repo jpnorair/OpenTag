@@ -78,12 +78,12 @@
 #define INREC(ALP, X)   q_getcursor_val(ALP->inq, _I_##X)    /* inq->getcursor[_I_##X] */
 #define OUTREC(X)       outrec._O_##X
 
-
+/*
 typedef struct {
     ot_u8 length;
     ot_u8* value;
 } id_tmpl;
-
+*/
 
 typedef enum {
     MSG_Null        = 0,
@@ -157,39 +157,6 @@ void alp_init(alp_tmpl* alp, ot_queue* inq, ot_queue* outq);
 
 
 
-/** @brief  Check an ALP input to see if it has room for data
-  * @param  alp         (alp_tmpl*) ALP I/O control structure
-  * @param  length      (ot_int) Number of bytes to check for availability
-  * @retval ot_bool     True if "length" bytes are available in ALP
-  * @ingroup ALP
-  * @sa alp_load
-  * @sa alp_purge
-  *
-  * alp_load() will call this function internally, and it is the preferred way
-  * for apps that need to be thread-safe.
-  *
-  * alp_is_available() will call alp_purge() if there is not sufficient space
-  * in the ALP input, in an effort to try to make enough space by culling dead
-  * records.
-  */
-ot_bool alp_is_available(alp_tmpl* alp, ot_int reserve_bytes);
-
-
-
-
-/** @brief  Thread-safe function for loading data into ALP input
-  * @param  alp         (alp_tmpl*) ALP I/O control structure
-  * @param  src         (ot_u8*) source data to load into ALP
-  * @param  length      (ot_int) Number of bytes to load from source into ALP
-  * @retval ot_bool     True if load was possible, false if not
-  * @ingroup ALP
-  * @sa alp_is_available
-  */
-ot_bool alp_load(alp_tmpl* alp, ot_u8* src, ot_int length);
-
-
-
-
 ///@todo experimental
 /** @brief  Setup a new Application queue from the main alp input queue
  * @param  alp         (alp_tmpl*) ALP I/O control structure
@@ -204,7 +171,6 @@ ot_bool alp_load(alp_tmpl* alp, ot_u8* src, ot_int length);
  * alp_retrieve_cmd() will will draw records from said queue, but before you
  * can use these, you must setup an Application queue in the first place.
  */
-
 void alp_add_app(alp_tmpl* alp, ot_u8 alp_id, alp_fn callback, ot_queue appq);
 
 
@@ -247,138 +213,7 @@ void alp_notify(alp_tmpl* alp, ot_sig callback);
   * output ahead of input, therefore if messages are being chunked-in and out
   * at the same time, it will return MSG_Chunking_Out.
   */
-ALP_status alp_parse_message(alp_tmpl* alp, id_tmpl* user_id);
-
-
-
-
-/** @brief  Setup a new Application queue from the main alp input queue
-  * @param  alp         (alp_tmpl*) ALP I/O control structure
-  * @param  appq        (ot_queue*) subordinate queue used by Application
-  * @retval None
-  * @ingroup ALP
-  * @sa alp_append_appq
-  * @sa alp_goto_next
-  *
-  * Non-atomic applications that run from a shared ALP usually need to maintain
-  * an independent application queue.  The functions alp_goto_next() and
-  * alp_retrieve_cmd() will will draw records from said queue, but before you
-  * can use these, you must setup an Application queue in the first place.
-  */
-void alp_new_appq(alp_tmpl* alp, ot_queue* appq);
-
-
-
-/** @brief  Refresh an Application queue from the main alp input queue
-  * @param  alp         (alp_tmpl*) ALP I/O control structure
-  * @param  appq        (ot_queue*) subordinate queue used by Application
-  * @retval None
-  * @ingroup ALP
-  * @sa alp_new_appq
-  *
-  * After an Application queue has been created, you can append more parts of
-  * the ALP input queue to the App queue.  alp_append_appq() will move the
-  * getcursor of the ALP input queue past this latest-read record, and as such
-  * the App queue putcursor is extended to this new position, to include this
-  * latest-read record.
-  *
-  * @note Do not call alp_append_appq() immediately after alp_new_appq() unless
-  * you want to append a second record into the App queue.  alp_new_appq()
-  * automatically appends the first record into the App ot_queue.
-  */
-void alp_append_appq(alp_tmpl* alp, ot_queue* appq);
-
-
-
-
-/** @brief  Application Traversal Function for ALP input
-  * @param  alp         (alp_tmpl*) ALP I/O control structure
-  * @param  appq        (ot_queue*) subordinate queue used by Application
-  * @param  target      (ot_u8) ALP ID used by the Application
-  * @retval ot_u8       Record Flags for next matching record.  0 if none found
-  * @ingroup ALP
-  * @sa alp_retrieve_cmd
-  * @sa alp_new_appq
-  *
-  * This function is important for Applications that require non-atomic
-  * processing of ALP messages.  Since an ALP stream can be shared by multiple
-  * applications, this function will traverse the ALP input stream
-  */
-ot_u8 alp_goto_next(alp_tmpl* alp, ot_queue* appq, ot_u8 target);
-
-
-
-
-/** @brief  Read ALP record command value and mark record as read
-  * @param  apprec      (alp_record*) output alp record header
-  * @param  appq        (ot_queue*) Application ot_queue
-  * @param  target      (ot_u8) ALP ID used by Application
-  * @retval ot_u8*      Pointer to front of record, or NULL if no record
-  * @ingroup ALP
-  * @sa alp_goto_next
-  *
-  * A protocol processor should use this function following alp_goto_next(), to
-  * return the Command (cmd) value of the new record and also to mark the new
-  * record as the working record.
-  */
-ot_u8* alp_retrieve_record(alp_record* apprec, ot_queue* appq, ot_u8 target);
-
-
-
-/** @brief  Releases (frees) the record in the buffer
-  * @param  appq        (ot_queue*) Application ot_queue
-  * @retval None
-  * @ingroup ALP
-  * @sa alp_retrieve_record
-  *
-  * A protocol processor may use this function after it is finished with a
-  * record.  Issuing alp_retrieve_record() will mark the record as finished,
-  * allowing the ALP garbage collector (alp_purge()) to reallocate the space
-  * for future records.
-  */
-void alp_release_record(ot_queue* appq);
-
-
-
-/** @brief  Purge finished ALP records from an ALP Stream
-  * @param  alp         (alp_tmpl*) ALP stream to purge
-  * @retval None
-  * @ingroup ALP
-  * @sa alp_kill
-  *
-  * Non-atomic ALPs must set record flags to 0 after they have completed the
-  * input processing of said records.  The ALP module will call alp_purge()
-  * when the stream gets too full, and it needs to free-up space in the stream
-  * for new input records.  Users can call alp_purge() as well, although it is
-  * not usually necessary.
-  *
-  * The alp_purge() implementation is opportunistic.  It will avoid stream
-  * defragmentation whenever possible (this process is relatively expensive).
-  */
-void alp_purge(alp_tmpl* alp);
-
-
-
-
-/** @brief  Kill an Application's ALP data
-  * @param  alp         (alp_tmpl*) ALP stream to kill & purge
-  * @param  kill_id     (ot_u8) ALP ID to purge
-  * @retval None
-  * @ingroup ALP
-  * @sa alp_purge
-  *
-  * alp_purge() will only cull ALP records that have been successfully accessed
-  * and marked for deletion.  alp_kill() will seek-out any ALP records that
-  * match the supplied ALP ID, it will mark them for death, and purge them.
-  *
-  * alp_kill() is intended to be used when killing a thread that may have some
-  * unused data still in an ALP stream.
-  */
-void alp_kill(alp_tmpl* alp, ot_u8 kill_id);
-
-
-
-
+ALP_status alp_parse_message(alp_tmpl* alp, const id_tmpl* user_id);
 
 
 
@@ -390,17 +225,6 @@ void alp_kill(alp_tmpl* alp, ot_u8 kill_id);
   *
   * Use with caution.
   */
-
-/** @brief  Internal function for resolving the index of an app processor
-  * @param  alp_id      (ot_u8) ALP ID
-  * @retval ot_u8       index of the processor routine
-  * @ingroup ALP
-  * @sa alp_proc
-  *
-  *
-  */
-ot_u8 alp_get_handle(ot_u8 alp_id);
-
 
 /** @brief  Process a received ALP record (vectors to all supported ALP's)
   * @param  alp         (alp_tmpl*) ALP I/O control structure
@@ -414,14 +238,7 @@ ot_u8 alp_get_handle(ot_u8 alp_id);
   * 0x02:       Sensor Configuration subprotocol (pending)
   * 0x11-14:    Security subprotocols (pending)
   */
-ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id);
-
-
-
-
-
-
-
+ot_bool alp_proc(alp_tmpl* alp, const id_tmpl* user_id);
 
 
 
@@ -432,53 +249,6 @@ ot_bool alp_proc(alp_tmpl* alp, id_tmpl* user_id);
   * These are legacy functions.  They might get bundled into different
   * functions, changed, or removed.
   */
-
-/** @brief Break a running ALP stream (due to error), and load error record
-  * @param  alp                 (alp_tmpl*) ALP I/O control structure
-  * @retval None
-  * @ingroup ALP
-  *
-  * NDEF and Pure-ALP transport may call this function to terminate an ongoing
-  * NDEF/ALP stream.  The "User" is implicit, and always GUEST.
-  *
-  * alp_break() loads a Null-ALP NACK with MB=1 & ME=1 at the end of the
-  * message stream.  NDEF users should recognize this as a valid NACK or as a
-  * NACK also contributing a framing error (NDEF does not support nested
-  * records, so if chunking-out, this will result in a framing error).  In
-  * Pure-ALP mode, this will simply be recognized as a stream-abort NACK, and
-  * both ends should disconnect and kill their sessions.
-  */
-void alp_break(alp_tmpl* alp);
-
-
-
-
-/** @brief Initialize an ALP header for a new record
-  * @param  alp                 (alp_tmpl*) ALP I/O control structure
-  * @param  flags               (ot_u8) ALP Flags to force high
-  * @param  payload_limit       (ot_u8) Limit of Payload bytes per __Record__
-  * @param  payload_remaining   (ot_int) Remaining Payload bytes in __Message__
-  *
-  * @retval None
-  * @ingroup ALP
-  * @sa alp_new_message()
-  *
-  * <LI> The "alp" parameter must be allocated by the caller. </LI>
-  * <LI> On return, the caller must use value from alp->outrec.payload_length
-  *      to manage data buffering/queuing </LI>
-  *
-  * This function automatically assigns the ALP flags and payload length fields
-  * of the ALP header.  It does not assign ID or CMD fields, or anything else.
-  *
-  * The flags parameter requires that you specify ALP_FLAG_MB if you want to
-  * start a new message, and that you use TNF=0 for pure ALP or TNF!=0 for NDEF.
-  * If you are continuing a generic ALP stream that you don't know is Pure ALP
-  * or NDEF, use TNF=0.  The value existing in the alp_tmpl TNF will be used.
-  */
-void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payload_remaining);
-
-
-
 
 
 /** @brief  Common function for responding to ALP with a simple 16-bit return
@@ -492,9 +262,6 @@ void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payl
 ot_bool alp_load_retval(alp_tmpl* alp, ot_u16 retval);
 
 
-
-
-void alp_load_header(ot_queue* appq, alp_record* rec);
 
 
 
@@ -575,48 +342,8 @@ ot_bool alp_proc_dashforth(alp_tmpl* alp, const id_tmpl* user_id);
   * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
   * @ingroup ALP
   */
-ot_bool alp_proc_logger(alp_tmpl* alp, id_tmpl* user_id);
+ot_bool alp_proc_logger(alp_tmpl* alp, const id_tmpl* user_id);
 #endif
-
-
-
-
-
-
-
-#if (OT_FEATURE(ALPAPI) == ENABLED)
-#   if (OT_FEATURE(CAPI) != ENABLED)
-#       error For ALP-API to work, C-API must be ENABLED (it is not: check OT_config.h).
-#   endif
-
-#   if (OT_FEATURE(M2))
-    /** @brief  Process a received Session API record
-      * @param  alp         (alp_tmpl*) ALP I/O control structure
-      * @param  user_id     (id_tmpl*) user id for performing the record
-      * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
-      * @ingroup ALP
-      */
-    ot_bool alp_proc_api_session(alp_tmpl* alp, id_tmpl* user_id);
-    
-    /** @brief  Process a received System API record
-      * @param  alp         (alp_tmpl*) ALP I/O control structure
-      * @param  user_id     (id_tmpl*) user id for performing the record
-      * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
-      * @ingroup ALP
-      */
-    ot_bool alp_proc_api_system(alp_tmpl* alp, id_tmpl* user_id);
-    
-    /** @brief  Process a received Query API record
-      * @param  alp         (alp_tmpl*) ALP I/O control structure
-      * @param  user_id     (id_tmpl*) user id for performing the record
-      * @retval ot_bool     True if atomic, False if this ALP needs delayed processing
-      * @ingroup ALP
-      */
-    ot_bool alp_proc_api_query(alp_tmpl* alp, id_tmpl* user_id);
-    #endif
-#endif
-
-
 
 
 

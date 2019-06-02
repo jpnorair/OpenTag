@@ -195,8 +195,8 @@ OT_WEAK ot_sqnode* sq_new(ot_sq* sq, ot_sqcmp cmpfn, ot_sqnode* node) {
         if (cmpfn != NULL) {
             ot_int lo = 0;
             ot_int hi = sq->length - 1;
-            ot_int i;
-            ot_int cmp;
+            ot_int i = 0;
+            ot_int cmp = 0;
             
             while (lo <= hi) {
                 i   = lo + ((hi - lo) >> 1);
@@ -427,8 +427,8 @@ OT_WEAK ot_bool sq_notempty(ot_sq* sq) {
 
 
 
-
-#if (defined(__STDC__) || defined (__POSIX__))
+///@todo figure out why this needs 0
+#if 0 && (defined(__STDC__) || defined (__POSIX__))
 
 OT_WEAK void sq_print(ot_sq* sq) {
     unsigned int i;

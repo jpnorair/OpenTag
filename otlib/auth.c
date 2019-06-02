@@ -417,6 +417,7 @@ ot_int auth_decrypt(void* nonce, void* data, ot_uint datalen, ot_uint key_index)
 
 
 static ot_int sub_crypt_q(ot_queue* q, ot_uint key_index, bool enc) {
+#if (_SEC_ANY)
 #ifdef __C2000__
     ot_u32  nonce[2] = {0, 0};
     ot_int (*EAXdrv_fn)(void*, void*, ot_uint, void*);
@@ -481,6 +482,9 @@ static ot_int sub_crypt_q(ot_queue* q, ot_uint key_index, bool enc) {
     }
     
     return sub_do_crypto(nonce, data, length, key_index, EAXdrv_fn);
+#endif
+#else
+    return -1;
 #endif
 }
 
@@ -681,7 +685,7 @@ ot_u8 auth_get_user(id_tmpl* user_id, ot_uint key_index) {
 
 
 const id_tmpl* auth_intrinsic_user(ot_uint index) {
-	id_tmpl* output;
+	const id_tmpl* output;
     switch (index) {
         case 0:     output = &auth_root;	break;
         case 1:     output = &auth_user;	break;
@@ -706,11 +710,19 @@ static ot_bool sub_ismask(const id_tmpl* user_id, authmod_t authmask) {
 }
 
 ot_bool auth_isroot(const id_tmpl* user_id) {
+#if (_SEC_ANY)
     return sub_ismask(user_id, b00000000);
+#else
+    return False;
+#endif
 }
 
 ot_bool auth_isuser(const id_tmpl* user_id) {
-return sub_ismask(user_id, b00111000);
+#if (_SEC_ANY)
+	return sub_ismask(user_id, b00111000);
+#else
+    return False;
+#endif
 }
 
 
@@ -766,6 +778,7 @@ ot_u8 auth_check(ot_u8 req_mod, ot_u8 rw_mod, const id_tmpl* user_id) {
   */
   
 static ot_u8 sub_add_key(ot_uint* key_index, keytype_t type, ot_u32 lifetime, void* keydata, uint64_t id64) {
+#if (_SEC_ANY)
 #if (AUTH_NUM_ELEMENTS >= 0)
     /// Static allocation
     /// - Make sure there is space to add.
@@ -785,12 +798,13 @@ static ot_u8 sub_add_key(ot_uint* key_index, keytype_t type, ot_u32 lifetime, vo
     ///@todo implement this
     
 #endif
-
+#endif
     return 255;
 }
 
 
 ot_u8 auth_find_keyindex(ot_uint* key_index, const id_tmpl* user_id) {
+#if (_SEC_ANY)
     ot_int index;
     
     if (key_index == NULL) {
@@ -804,11 +818,15 @@ ot_u8 auth_find_keyindex(ot_uint* key_index, const id_tmpl* user_id) {
     
     *key_index = index;
     return 0;
+#else
+    return 255;
+#endif
 }
 
 
 
 ot_u8 auth_refresh_key(ot_uint* key_index, ot_u32 new_lifetime, const id_tmpl* user_id) {
+#if (_SEC_ANY)
     ot_u8 status;
     
     if (new_lifetime < AUTH_MIN_LIFETIME) {
@@ -821,11 +839,15 @@ ot_u8 auth_refresh_key(ot_uint* key_index, ot_u32 new_lifetime, const id_tmpl* u
     }
     
     return status;
+#else
+    return 255;
+#endif
 }
 
 
 
 ot_u8 auth_create_key(ot_uint* key_index, keytype_t type, ot_u32 lifetime, void* keydata, const id_tmpl* user_id) {
+#if (_SEC_ANY)
     uint64_t id64;
     idclass_t idtype;
     ot_int index;
@@ -862,11 +884,15 @@ ot_u8 auth_create_key(ot_uint* key_index, keytype_t type, ot_u32 lifetime, void*
     }
 
     return sub_add_key(key_index, type, lifetime, keydata, id64);
+#else
+    return 255;
+#endif
 }
 
 
 
 ot_u8 auth_delete_key(ot_uint key_index) {
+#if (_SEC_ANY)
 /// This will delete a key from the table of keys.  It is up to the application
 /// to maintain keys, and thus to use this function.
 /// 
@@ -908,11 +934,15 @@ ot_u8 auth_delete_key(ot_uint key_index) {
 #   else    
     return 255;
 #   endif
+#else
+    return 255;
+#endif
 }
 
 
 
 keytype_t auth_get_key(void** keydata, ot_uint key_index) { 
+#if (_SEC_ANY)
     if (keydata == NULL) {
         return KEYTYPE_none;
     }
@@ -935,5 +965,9 @@ keytype_t auth_get_key(void** keydata, ot_uint key_index) {
 #   else    
     return KEYTYPE_none;
 #   endif
+
+#else
+    return 255;
+#endif
 }
 

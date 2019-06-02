@@ -53,6 +53,32 @@ ot_time  time_start;
 
 
 
+
+
+/** Driver functions
+  * The following functions are sometimes implemented in the platform driver.
+  * They do the low-level work for the system time module.
+  */
+#ifndef EXTF_time_load_now
+OT_WEAK void time_load_now(ot_time* now) {
+    ot_u32 clocks;
+    ot_u32 scratch;
+    *now        = time_sys;
+    clocks      = systim_get();
+    scratch     = clocks + now->clocks;
+    now->upper += (scratch < clocks);       ///@note changed this
+    now->clocks = scratch;
+}
+#endif
+
+
+
+
+
+
+/** Library Functions
+  */
+
 #ifndef EXTF_time_init
 OT_WEAK void time_init(ot_time init_time) {
     time_sys    = init_time;
@@ -178,23 +204,7 @@ OT_WEAK void time_add_ti(ot_u32 ticks) {
 
 
 
-/** Driver functions 
-  * The following functions are sometimes implemented in the platform driver.
-  * They do the low-level work for the system time module.
-  */
 
-
-#ifndef EXTF_time_load_now
-OT_WEAK void time_load_now(ot_time* now) {
-    ot_u32 clocks;
-    ot_u32 scratch;
-    *now        = time_sys;
-    clocks      = systim_get();
-    scratch     = clocks + now->clocks;
-    now->upper += (scratch < clocks);       ///@note changed this
-    now->clocks = scratch;
-}
-#endif
 
 
 

@@ -37,6 +37,7 @@
 #include <otlib/auth.h>
 #include <otlib/memcpy.h>
 #include <otsys/veelite.h>
+//#include <otsys/veelite_core.h>
 #include <otsys/time.h>
 
 #if defined(__C2000__)
@@ -272,7 +273,7 @@ static ot_u8 sub_action(vlFILE* fp);
 #endif
 
 #ifndef EXTF_vl_init
-OT_WEAK ot_u8 vl_init(void* handle) {
+OT_WEAK ot_u8 vl_init(void) {
     ot_int i;
 
     /// Initialize vlactions, if enabled
@@ -430,7 +431,7 @@ OT_WEAK vlFILE* vl_get_fp(ot_int fd) {
 OT_WEAK ot_int vl_get_fd(vlFILE* fp) {
     ot_uint fd;
 
-    fd  = (ot_int)((vl_u8*)fp - (vl_u8*)vlfile);
+    fd  = (ot_int)((ot_u8*)fp - (ot_u8*)vlfile);
     fd /= sizeof(vlFILE);
 
     return (fd < OT_PARAM(VLFPS)) ? (ot_int)fd : -1;
@@ -804,15 +805,15 @@ OT_WEAK ot_u8 vl_write( vlFILE* fp, ot_uint offset, ot_u16 data ) {
 ///@todo have this bury into the driver layer to give the address of the 
 ///      file data.  Will return NULL if file is not in the mirror, which is 
 ///      the only place where it can be guaranteed to be in contiguous RAM.
-OT_WEAK vl_u8* vl_memptr( vlFILE* fp ) {
+OT_WEAK ot_u8* vl_memptr( vlFILE* fp ) {
 #   if MCU_CONFIG(DATAFLASH)
     if (FP_ISMIRRORED(fp)) {
-        return (vl_u8*)vsram_get(fp->start);
+        return (ot_u8*)vsram_get(fp->start);
     }
     return NULL;
     
 #   else
-    return (vl_u8*)vsram_get(fp->start);
+    return (ot_u8*)vsram_get(fp->start);
     
 #   endif
 }
@@ -821,7 +822,7 @@ OT_WEAK vl_u8* vl_memptr( vlFILE* fp ) {
 
 
 #ifndef EXTF_vl_load
-OT_WEAK ot_uint vl_load( vlFILE* fp, ot_uint length, vl_u8* data ) {
+OT_WEAK ot_uint vl_load( vlFILE* fp, ot_uint length, ot_u8* data ) {
     ot_uint     cursor;
 
     if (length > fp->length) {
@@ -851,7 +852,7 @@ OT_WEAK ot_uint vl_load( vlFILE* fp, ot_uint length, vl_u8* data ) {
 
 
 #ifndef EXTF_vl_store
-OT_WEAK ot_u8 vl_store( vlFILE* fp, ot_uint length, vl_u8* data ) {
+OT_WEAK ot_u8 vl_store( vlFILE* fp, ot_uint length, ot_u8* data ) {
     ot_uint cursor;
     ot_u8   test;
 
@@ -881,7 +882,7 @@ OT_WEAK ot_u8 vl_store( vlFILE* fp, ot_uint length, vl_u8* data ) {
 
 
 #ifndef EXTF_vl_append
-OT_WEAK ot_u8 vl_append( vlFILE* fp, ot_uint length, vl_u8* data ) {
+OT_WEAK ot_u8 vl_append( vlFILE* fp, ot_uint length, ot_u8* data ) {
     ot_uint cursor;
     ot_u8   test = 255;
 
@@ -910,7 +911,7 @@ OT_WEAK ot_u8 vl_append( vlFILE* fp, ot_uint length, vl_u8* data ) {
 
 
 #ifndef EXTF_vl_execute
-OT_WEAK ot_u8 vl_execute(vlFILE* fp, ot_uint input_size, vl_u8* input_stream) {
+OT_WEAK ot_u8 vl_execute(vlFILE* fp, ot_uint input_size, ot_u8* input_stream) {
     ot_u8 retval = 255;
 
 #   if (OT_FEATURE(VLACTIONS) == ENABLED)
@@ -1061,7 +1062,7 @@ OT_WEAK vlFILE* GFB_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id ) {
 #   endif
 }
 
-OT_WEAK vlFILE* ISFS_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id ) {
+OT_WEAK vlFILE* ISFS_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id ) {
     return vl_open(VL_ISFS_BLOCKID, id, mod, user_id);
 }
 

@@ -374,7 +374,7 @@ ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
     ot_u16 space;
     vlFILE* fp = NULL;
     
-    space = q_space(&txq);
+    space = q_writespace(&txq);
     
 #   if (M2_FEATURE(MULTIFRAME))
     ///@todo Multiframe support: it will still return error when the UDP data

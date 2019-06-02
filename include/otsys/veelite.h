@@ -69,46 +69,16 @@ typedef struct {
     ot_u16      alloc;
     ot_u16      idmod;
     ot_u16      length;
+    ot_u16      flags;
     vlread_fn   read;
     vlwrite_fn  write;
 } vlFILE;
 
-      
 
 
-/** @typedef M1TAG_struct
-  * A struct data type that hold Tag Data.  Tag Data is defined in the
-  * ISO 18000-7:2008 standard and includes the following:
-  * - 32 bit serial number
-  * - 16 bit manufacturer's ID
-  * - 24 bit firmware version
-  * - 32 bit model number
-  * - 8 bit maximum response length
-  */
-typedef struct {
-    ot_u16 manuf_id;
-    ot_u32 serial;
-    ot_u32 model_no;
-    ot_u32 fw_version;
-    ot_u16 max_response;
-} M1TAG_struct;
-
-
-/** @typedef M1table_header
-  * A struct data type that holds file information pertinent to tables.
-  * Currently unused, as tables are unimplemented.  Tables are an optional
-  * component of Mode 1, and at present there are no plans to build tables
-  * into the official OpenTag distribution.
-  */
-typedef struct {
-    ot_u32 placeholder;
-} M1table_header;
-
-
-
-/** @typedef vl_header
+/** @typedef vl_header_t
   * The generic form of the header used for OpenTag data files, used for
-  * ISF, ISFS, and GFB.  The mirror field should be set to NULL_vaddr if
+  * ISF, and GFB.  The mirror field should be set to NULL_vaddr if
   * not used.
   *
   * ot_u16  length      length of data in bytes (0-255)
@@ -118,14 +88,25 @@ typedef struct {
   * vaddr   base:       base (start) virtual address
   * vaddr   mirror:     base virtual address of vsram mirrored data (optional)
   */
-typedef struct {
+typedef struct OT_PACKED {
     ot_u16  length;
     ot_u16  alloc;
     ot_u16  idmod;
     vaddr   base;
     vaddr   mirror;
-} vl_header;
+#   if (OT_FEATURE(VLACTIONS) == ENABLED)
+    ot_u16  actioncode;
+#   endif
+#   if (OT_FEATURE(VLMODTIME) == ENABLED)
+    ot_u32  modtime;
+#   endif
+#   if (OT_FEATURE(VLACCTIME) == ENABLED)
+    ot_u32  acctime;
+#   endif
+} vl_header_t;
 
+///@todo deprecated: for legacy
+#define vl_header vl_header_t
 
 
 /** @note vl_link type: this may seem redundant.  It is designed to sit
@@ -142,12 +123,16 @@ typedef struct {
   *
   * ot_u8   id:         ID value of the ISF Element (8 bits)
   * ot_u8   reserved:   reserved
-  * vl_header* header: Pointer to Data file header   
+  * vl_header_t* header: Pointer to Data file header
   */
 typedef struct {
-    ot_u8           id;
-    ot_u8           reserved;
-    vl_header*    header;
+#   ifdef __C2000__
+    ot_u16      id;
+#   else
+    ot_u8       id;
+    ot_u8       reserved;
+#   endif
+    vl_header_t*  header;
 } vl_link;
 
 
@@ -161,6 +146,11 @@ typedef struct {
 #define VL_ACCESS_X         (ot_u8)b10001001
 #define VL_ACCESS_RW        (VL_ACCESS_R | VL_ACCESS_W)
 #define VL_ACCESS_CRYPTO    (ot_u8)b01000000
+
+/// File Action flags
+#define VL_FLAG_OPENED      (1<<0)
+#define VL_FLAG_MODDED      (1<<1)
+#define VL_FLAG_RESIZED     (1<<2)
 
 
 
@@ -208,15 +198,6 @@ typedef struct {
 #endif
 
 
-/// M1TAG HEAP address shortcuts ("secret" memory)
-/// The optional data for M1TAG (Mode 1 only) is stored at some location in
-/// physical memory (typically flash).  It never needs to be changed during
-/// runtime.
-#define  M1TAG_BASE             NULL_vaddr
-#define  M1TAG_BASE_PHYSICAL    M1TAG_SPACE
-
-
-
 
 // veelite functions
 
@@ -225,7 +206,7 @@ typedef struct {
   * @retval none
   * @ingroup Veelite
   */
-void vl_init();
+ot_u8 vl_init(void);
 
 
 
@@ -275,7 +256,7 @@ ot_int  vl_get_fd(vlFILE* fp);
   * <LI>   6: Not enough room for a new file                    </LI> 
   * <LI> 255: Miscellaneous Error                               </LI>
   */
-ot_u8   vl_new(vlFILE** fp_new, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, ot_uint max_length, id_tmpl* user_id);
+ot_u8   vl_new(vlFILE** fp_new, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, ot_uint max_length, const id_tmpl* user_id);
 
 
 /** @brief  Deletes a file
@@ -301,7 +282,7 @@ ot_u8   vl_new(vlFILE** fp_new, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, ot_u
   * <LI>   4: User does not have access to create a new file    </LI>
   * <LI> 255: Miscellaneous Error                               </LI>
   */
-ot_u8   vl_delete(vlBLOCK block_id, ot_u8 data_id, id_tmpl* user_id);
+ot_u8   vl_delete(vlBLOCK block_id, ot_u8 data_id, const id_tmpl* user_id);
 
 
 /** @brief  Returns a file header as the vaddr of the header
@@ -327,7 +308,7 @@ ot_u8   vl_delete(vlBLOCK block_id, ot_u8 data_id, id_tmpl* user_id);
   * <LI> 255: Miscellaneous Error                               </LI>
   */
 
-ot_u8   vl_getheader_vaddr(vaddr* header, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, id_tmpl* user_id);
+ot_u8   vl_getheader_vaddr(vaddr* header, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id);
 
 
 /** @brief  Returns file header as a vl_header datastruct
@@ -345,7 +326,7 @@ ot_u8   vl_getheader_vaddr(vaddr* header, vlBLOCK block_id, ot_u8 data_id, ot_u8
   *
   * This function is intended for use with File ALP protocols.
   */
-ot_u8   vl_getheader(vl_header* header, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, id_tmpl* user_id);
+ot_u8   vl_getheader(vl_header* header, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id);
 
 
 /** @brief  Opens a file from the virtual address of its header
@@ -377,13 +358,13 @@ vlFILE* vl_open_file(vaddr header);
   * only be used internally (not in protocol routines).  The function aliases 
   * that contain "_su" at the end are super-user (root) calls.
   */
-vlFILE* vl_open(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, id_tmpl* user_id);
+vlFILE* vl_open(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id);
 vlFILE* GFB_open_su( ot_u8 id );
 vlFILE* ISFS_open_su( ot_u8 id );
 vlFILE* ISF_open_su( ot_u8 id );
-vlFILE* GFB_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id );
-vlFILE* ISFS_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id );
-vlFILE* ISF_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id );
+vlFILE* GFB_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id );
+vlFILE* ISFS_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id );
+vlFILE* ISF_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id );
 
 
 /** @brief  File Change Mods (like chmod on POSIX)
@@ -414,7 +395,7 @@ vlFILE* ISF_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id );
   * only be used internally (not in protocol routines).  The function aliases 
   * that contain "_su" at the end are super-user (root) calls.
   */
-ot_u8 vl_chmod(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, id_tmpl* user_id);
+ot_u8 vl_chmod(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id);
 ot_u8 GFB_chmod_su( ot_u8 id, ot_u8 mod );
 ot_u8 ISFS_chmod_su( ot_u8 id, ot_u8 mod );
 ot_u8 ISF_chmod_su( ot_u8 id, ot_u8 mod );
@@ -557,34 +538,6 @@ ot_u8 ISF_loadmirror( );
 
 
 
-
-
-
-
-
-
-
-
-/* @brief Writes the M1TAG struct, which bears certain Mode 1 config data.
-  * @param new_m1tag : (M1TAG_struct*) pointer to struct bearing the new data.
-  * @retval ot_u8 : Non-zero on failure
-  * @ingroup Veelite
-  * 
-  * M1TAG_write() is typically only used or needed at the time of manufacture or
-  * "commission."
-  *
-ot_u8 M1TAG_write( M1TAG_struct* new_m1tag );
-
-* @brief Gets a copy of the M1TAG struct
-  * @param m1tag : (M1TAG_struct*) pointer to struct to return
-  * @retval ot_u8 : Non-zero on failure
-  * @ingroup Veelite
-  * 
-  * the m1tag argument must be allocated by the caller, otherwise you will 
-  * almost certainly run into a segmentation fault or similar problem!
-  *
-ot_u8 M1TAG_get( M1TAG_struct* m1tag );
-*/
 
 
 

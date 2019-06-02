@@ -156,7 +156,7 @@ void ot_memcpy(ot_u8* dst, ot_u8* src, ot_uint length) {
     }
 }
 
-void ot_memcpy2(ot_u16* dst, ot_u16* src, ot_uint length) {
+void ot_memcpy_2(ot_u16* dst, ot_u16* src, ot_uint length) {
     if (length != 0) {
 #       if MCU_CONFIG(MEMCPYDMA)
         sub_memcpy2_dma( dst, src, length);
@@ -166,7 +166,7 @@ void ot_memcpy2(ot_u16* dst, ot_u16* src, ot_uint length) {
     }
 }
 
-void ot_memcpy4(ot_u32* dst, ot_u32* src, ot_uint length) {
+void ot_memcpy_4(ot_u32* dst, ot_u32* src, ot_uint length) {
     if (length != 0) {
 #       if MCU_CONFIG(MEMCPYDMA)
         sub_memcpy4_dma( dst, src, length);
@@ -198,11 +198,11 @@ void ot_memset(ot_u8* dst, ot_u8 value, ot_uint length) {
 }
 
 
-void ot_memset2(ot_u16* dst, ot_u16 value, ot_uint length) {
+void ot_memset_2(ot_u16* dst, ot_u16 value, ot_uint length) {
     ot_memset( (ot_u8*)dst, (ot_u8)value, length<<1 );
 }
 
-void ot_memset4(ot_u32* dst, ot_u32 value, ot_uint length) {
+void ot_memset_4(ot_u32* dst, ot_u32 value, ot_uint length) {
     ot_memset( (ot_u8*)dst, (ot_u8)value, length<<2 );
 }
 
