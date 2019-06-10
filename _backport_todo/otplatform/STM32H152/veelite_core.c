@@ -118,7 +118,7 @@ ot_u8 vworm_wipeblock(vaddr addr, ot_uint wipe_span) {
 
 /* accessing files here prevents compiler from optimizing them away */
 extern const ot_u8 overhead_files[];
-extern const ot_u8 isfs_stock_codes[];
+extern const ot_u8 iss_stock_codes[];
 extern const ot_u8 gfb_stock_files[];
 extern const ot_u8 isf_stock_files[];
 
@@ -138,10 +138,10 @@ ot_u8 vworm_init( )
             asm("nop");
     }
 
-    if ( isfs_stock_codes != (ot_u8 *)(EEPROM_START_ADDR + ISFS_START_VADDR) ) {
+    if ( iss_stock_codes != (ot_u8 *)(EEPROM_START_ADDR + ISS_START_VADDR) ) {
 #ifdef RADIO_DEBUG   // 20
-        debug_printf("isfs_stock_codes at %p bad vs %p\r\n",
-            isfs_stock_codes, (ot_u8 *)(EEPROM_START_ADDR + ISFS_START_VADDR) );
+        debug_printf("iss_stock_codes at %p bad vs %p\r\n",
+            iss_stock_codes, (ot_u8 *)(EEPROM_START_ADDR + ISS_START_VADDR) );
 #endif /* RADIO_DEBUG */
         for (;;)
             asm("nop");

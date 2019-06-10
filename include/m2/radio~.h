@@ -108,7 +108,7 @@ extern radio_struct radio;
 
 
 /** Mode 2 PHY-MAC variables
-  * These variables come from the Channel Configuration ISFS File, and are 
+  * These variables come from the Channel Configuration ISS File, and are 
   * stored here (and possibly altered slightly) before the channel is used by
   * the PHY.  Some of these parameters measure RSSI or EIRP.  These assume a
   * perfectly matched, 100% efficient antenna.  You will have to offset them

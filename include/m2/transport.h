@@ -277,7 +277,7 @@ void m2qp_put_a2ptmpl(ot_u16 rx_timeout, ot_u8 csma_guard, ot_u8 rx_channels, ot
 void m2qp_set_suppliedid(ot_bool vid, ot_u8* supplied_addr);
 
 ///@todo I might be able to remove these
-ot_int m2qp_put_isfs( ot_u8* isf_template );
+ot_int m2qp_put_iss( ot_u8* isf_template );
 ot_int m2qp_put_isf( ot_u8 isf_id, ot_u8 offset, ot_u16 max_length );
 
 
@@ -388,7 +388,7 @@ ot_bool m2qp_sig_a2p(   ot_u8 code,     ot_u8 subcode,  id_tmpl* user_id    );
   */
 
 /** @brief Breaks down ISF Comparison Template, and runs the comparison
-  * @param  is_series   (ot_u8) 0 is for ISF Comp, non-zero for ISFS Comp
+  * @param  is_series   (ot_u8) 0 is for ISF Comp, non-zero for ISS Comp
   * @param  user_id      (id_tmpl*) user identifier of this comp
   * @retval ot_int:     Score value for the comparison (see notes below)
   * @ingroup Protocol_Special
@@ -421,7 +421,7 @@ ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id);
 
 
 /** @brief Breaks down ISF Call Template, and queues the ISF Return Template
-  * @param is_series    (ot_u8) 0 is for ISF Call, non-zero for ISFS Call
+  * @param is_series    (ot_u8) 0 is for ISF Call, non-zero for ISS Call
   * @param input_q      (ot_queue*) data queue containing isf call template
   * @param user_id      (id_tmpl*) user identifier of this call
   * @retval ot_int      Number of total data bytes in the called dataset

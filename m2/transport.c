@@ -746,7 +746,7 @@ OT_WEAK ot_int m2qp_isf_comp(ot_u8 is_series, id_tmpl* user_id) {
 
 #ifndef EXTF_m2qp_isf_call
 OT_WEAK ot_int m2qp_isf_call( ot_u8 is_series, ot_queue* input_q, id_tmpl* user_id ) {
-/// This function takes data from a queue.  That data is a ISF or ISFS Call
+/// This function takes data from a queue.  That data is a ISF or ISS Call
 /// Template as described in the Mode 2 Spec.
     ot_uni16 scratch;
     ot_u8   isf_id;
@@ -761,7 +761,7 @@ OT_WEAK ot_int m2qp_isf_call( ot_u8 is_series, ot_queue* input_q, id_tmpl* user_
     q_writebyte(&txq, isf_id);
 
     /// 2. Break down a ISF Series Call Template, and build the header                  <BR>
-    ///    - Open ISFS: If not accessible, don't respond by returning negative          <BR>
+    ///    - Open ISS: If not accessible, don't respond by returning negative          <BR>
     ///    - Load data offset, and write the first part of the return template          <BR>
     ///    - Go through ISF Elements and write their ID+Length to the return template   <BR>
     ///    - Write total length to the marked spot on the queue
@@ -770,7 +770,7 @@ OT_WEAK ot_int m2qp_isf_call( ot_u8 is_series, ot_queue* input_q, id_tmpl* user_
         ot_u8*  clength_ptr;
         ot_int  i;
 
-        fp_s = ISFS_open( isf_id, VL_ACCESS_R, user_id );
+        fp_s = ISS_open( isf_id, VL_ACCESS_R, user_id );
         if (fp_s == NULL) {
             return -2;
         }
@@ -854,7 +854,7 @@ OT_WEAK ot_int m2qp_load_isf(   ot_u8       is_series,
     /// 1. Open the ISF Series, if enabled
     ///    Do not respond if the series is not accessible (return negative)
     if (is_series) {
-        fp_s = ISFS_open( isf_id, VL_ACCESS_R, user_id );
+        fp_s = ISS_open( isf_id, VL_ACCESS_R, user_id );
         if (fp_s == NULL) {
             return -32768;
         }
@@ -874,7 +874,7 @@ OT_WEAK ot_int m2qp_load_isf(   ot_u8       is_series,
     for (i=0; i<n_files; i++) {
         ot_u8 align = (i & 1);
 
-        // Read the next file ID if we are processing a ISFS (series)
+        // Read the next file ID if we are processing a ISS (series)
         if ((is_series) && (align == 0)) {
             scratch.ushort = vl_read(fp_s, i);
         }

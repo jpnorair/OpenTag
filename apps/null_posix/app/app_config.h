@@ -256,89 +256,89 @@
 
 
 
-/** ISFSB Files (Indexed Short File Series Block)   <BR>
+/** ISSB Files (Indexed Short File Series Block)   <BR>
   * ========================================================================<BR>
-  * ISFSB Files are strings of ISF IDs that bundle/batch related ISF's.  ISFs
+  * ISSB Files are strings of ISF IDs that bundle/batch related ISF's.  ISFs
   * are not all the same length (max length = 16).  Also, make sure that the 
-  * TOTAL_BYTES you allocate to the ISFSB bank corresponds to the amount set in
+  * TOTAL_BYTES you allocate to the ISSB bank corresponds to the amount set in
   * the linker file.
   */
-/** ISFSB Files (Indexed Short File Series Block)   <BR>
+/** ISSB Files (Indexed Short File Series Block)   <BR>
   * ========================================================================<BR>
-  * ISFSB Files are strings of ISF IDs that bundle/batch related ISF's.  ISFs
+  * ISSB Files are strings of ISF IDs that bundle/batch related ISF's.  ISFs
   * are not all the same length (max length = 16).  Also, make sure that the 
-  * TOTAL_BYTES you allocate to the ISFSB bank corresponds to the amount set in
+  * TOTAL_BYTES you allocate to the ISSB bank corresponds to the amount set in
   * the linker file.
   */
-#define ISFS_TOTAL_BYTES        			 0xA0
-#define ISFS_NUM_M1_LISTS                    4
-#define ISFS_NUM_M2_LISTS                    4
-#define ISFS_NUM_EXT_LISTS                   0
+#define ISS_TOTAL_BYTES        			 0xA0
+#define ISS_NUM_M1_LISTS                    4
+#define ISS_NUM_M2_LISTS                    4
+#define ISS_NUM_EXT_LISTS                   0
 
-#define ISFS_START_VADDR                     (OVERHEAD_START_VADDR + OVERHEAD_TOTAL_BYTES)
-#define ISFS_NUM_USER_LISTS                  ISFS_NUM_EXT_LISTS
-#define ISFS_NUM_STOCK_LISTS                 (ISFS_NUM_M1_LISTS + ISFS_NUM_M2_LISTS)
-#define ISFS_NUM_LISTS                       (ISFS_NUM_STOCK_LISTS + ISFS_NUM_USER_LISTS)
+#define ISS_START_VADDR                     (OVERHEAD_START_VADDR + OVERHEAD_TOTAL_BYTES)
+#define ISS_NUM_USER_LISTS                  ISS_NUM_EXT_LISTS
+#define ISS_NUM_STOCK_LISTS                 (ISS_NUM_M1_LISTS + ISS_NUM_M2_LISTS)
+#define ISS_NUM_LISTS                       (ISS_NUM_STOCK_LISTS + ISS_NUM_USER_LISTS)
 
-#define ISFS_ID(VAL)                         ISFS_ID_##VAL
-#define ISFS_ID_transit_data                 0x00
-#define ISFS_ID_capability_data              0x01
-#define ISFS_ID_query_results                0x02
-#define ISFS_ID_hardware_fault               0x03
-#define ISFS_ID_device_discovery             0x10
-#define ISFS_ID_device_capability            0x11
-#define ISFS_ID_device_channel_utilization   0x12
-#define ISFS_ID_location_data                0x18
+#define ISS_ID(VAL)                         ISS_ID_##VAL
+#define ISS_ID_transit_data                 0x00
+#define ISS_ID_capability_data              0x01
+#define ISS_ID_query_results                0x02
+#define ISS_ID_hardware_fault               0x03
+#define ISS_ID_device_discovery             0x10
+#define ISS_ID_device_capability            0x11
+#define ISS_ID_device_channel_utilization   0x12
+#define ISS_ID_location_data                0x18
 
-#define ISFS_MOD(VAL)                        b00100100
+#define ISS_MOD(VAL)                        b00100100
 
-#define ISFS_LEN(VAL)                        ISFS_LEN_##VAL
-#define ISFS_LEN_transit_data                3
-#define ISFS_LEN_capability_data             4
-#define ISFS_LEN_query_results               2
-#define ISFS_LEN_hardware_fault              2
-#define ISFS_LEN_device_discovery            2
-#define ISFS_LEN_device_capability           3
-#define ISFS_LEN_device_channel_utilization  4
-#define ISFS_LEN_location_data               2
+#define ISS_LEN(VAL)                        ISS_LEN_##VAL
+#define ISS_LEN_transit_data                3
+#define ISS_LEN_capability_data             4
+#define ISS_LEN_query_results               2
+#define ISS_LEN_hardware_fault              2
+#define ISS_LEN_device_discovery            2
+#define ISS_LEN_device_capability           3
+#define ISS_LEN_device_channel_utilization  4
+#define ISS_LEN_location_data               2
 
-#define ISFS_MAX(VAL)                        ISFS_MAX_##VAL
-#define ISFS_MAX_default                     16
-#define ISFS_MAX_transit_data                4
-#define ISFS_MAX_capability_data             4
-#define ISFS_MAX_query_results               2
-#define ISFS_MAX_hardware_fault              2
-#define ISFS_MAX_device_discovery            2
-#define ISFS_MAX_device_capability           3
-#define ISFS_MAX_device_channel_utilization  4
-#define ISFS_MAX_location_data               2
+#define ISS_MAX(VAL)                        ISS_MAX_##VAL
+#define ISS_MAX_default                     16
+#define ISS_MAX_transit_data                4
+#define ISS_MAX_capability_data             4
+#define ISS_MAX_query_results               2
+#define ISS_MAX_hardware_fault              2
+#define ISS_MAX_device_discovery            2
+#define ISS_MAX_device_capability           3
+#define ISS_MAX_device_channel_utilization  4
+#define ISS_MAX_location_data               2
 
 // The +1 and bit shifting assures that 
 // the ALLOC value will be half-word (16 bit) aligned
-#define ISFS_ALLOC(VAL)                      (((ISFS_MAX_##VAL + _ALLOC_OFFSET) >> _ALLOC_SHIFT) << _ALLOC_SHIFT)
+#define ISS_ALLOC(VAL)                      (((ISS_MAX_##VAL + _ALLOC_OFFSET) >> _ALLOC_SHIFT) << _ALLOC_SHIFT)
 
-#define ISFS_BASE(VAL)                       ISFS_BASE_##VAL
-#define ISFS_BASE_transit_data               (ISFS_START_VADDR)
-#define ISFS_BASE_capability_data            (ISFS_BASE_transit_data+ISFS_ALLOC(transit_data))
-#define ISFS_BASE_query_results              (ISFS_BASE_capability_data+ISFS_ALLOC(capability_data))
-#define ISFS_BASE_hardware_fault             (ISFS_BASE_query_results+ISFS_ALLOC(query_results))
-#define ISFS_BASE_device_discovery           (ISFS_BASE_hardware_fault+ISFS_ALLOC(hardware_fault))
-#define ISFS_BASE_device_capability          (ISFS_BASE_device_discovery+ISFS_ALLOC(device_discovery))
-#define ISFS_BASE_device_channel_utilization (ISFS_BASE_device_capability+ISFS_ALLOC(device_capability))
-#define ISFS_BASE_location_data              (ISFS_BASE_device_channel_utilization+ISFS_ALLOC(device_channel_utilization))
-#define ISFS_BASE_NEXT                       (ISFS_BASE_location_data+ISFS_ALLOC(location_data))
+#define ISS_BASE(VAL)                       ISS_BASE_##VAL
+#define ISS_BASE_transit_data               (ISS_START_VADDR)
+#define ISS_BASE_capability_data            (ISS_BASE_transit_data+ISS_ALLOC(transit_data))
+#define ISS_BASE_query_results              (ISS_BASE_capability_data+ISS_ALLOC(capability_data))
+#define ISS_BASE_hardware_fault             (ISS_BASE_query_results+ISS_ALLOC(query_results))
+#define ISS_BASE_device_discovery           (ISS_BASE_hardware_fault+ISS_ALLOC(hardware_fault))
+#define ISS_BASE_device_capability          (ISS_BASE_device_discovery+ISS_ALLOC(device_discovery))
+#define ISS_BASE_device_channel_utilization (ISS_BASE_device_capability+ISS_ALLOC(device_capability))
+#define ISS_BASE_location_data              (ISS_BASE_device_channel_utilization+ISS_ALLOC(device_channel_utilization))
+#define ISS_BASE_NEXT                       (ISS_BASE_location_data+ISS_ALLOC(location_data))
 
 
-#define ISFS_STOCK_HEAP_BYTES   (ISFS_ALLOC(transit_data) + \
-                                    ISFS_ALLOC(capability_data) + \
-                                    ISFS_ALLOC(query_results) + \
-                                    ISFS_ALLOC(hardware_fault) + \
-                                    ISFS_ALLOC(device_discovery) + \
-                                    ISFS_ALLOC(device_capability) + \
-                                    ISFS_ALLOC(device_channel_utilization) + \
-                                    ISFS_ALLOC(location_data) )
+#define ISS_STOCK_BYTES   (ISS_ALLOC(transit_data) + \
+                                    ISS_ALLOC(capability_data) + \
+                                    ISS_ALLOC(query_results) + \
+                                    ISS_ALLOC(hardware_fault) + \
+                                    ISS_ALLOC(device_discovery) + \
+                                    ISS_ALLOC(device_capability) + \
+                                    ISS_ALLOC(device_channel_utilization) + \
+                                    ISS_ALLOC(location_data) )
 
-#define ISFS_HEAP_BYTES         (ISFS_STOCK_HEAP_BYTES)
+#define ISS_HEAP_BYTES         (ISS_STOCK_BYTES)
 
 
 
@@ -356,7 +356,7 @@
 #define GFB_NUM_STOCK_FILES     0   //1
 #define GFB_NUM_USER_FILES      0   //3
 
-#define GFB_START_VADDR         (ISFS_START_VADDR + ISFS_TOTAL_BYTES)
+#define GFB_START_VADDR         (ISS_START_VADDR + ISS_TOTAL_BYTES)
 #define GFB_NUM_FILES           (GFB_NUM_STOCK_FILES + GFB_NUM_USER_FILES)
 #define GFB_HEAP_BYTES          (GFB_FILE_BYTES*GFB_NUM_STOCK_FILES)
 #define GFB_MOD_standard        b00110100
@@ -433,7 +433,7 @@
 #define ISF_ID_hold_scan_sequence               0x05
 #define ISF_ID_beacon_transmit_sequence         0x06
 #define ISF_ID_protocol_list                    0x07
-#define ISF_ID_isfs_list                        0x08
+#define ISF_ID_iss_list                        0x08
 #define ISF_ID_gfb_file_list                    0x09
 #define ISF_ID_location_data_list               0x0A
 #define ISF_ID_ipv6_addresses                   0x0B
@@ -474,7 +474,7 @@
 #define ISF_MOD_hold_scan_sequence              ISF_MOD_file_standard
 #define ISF_MOD_beacon_transmit_sequence        ISF_MOD_file_standard
 #define ISF_MOD_protocol_list                   b00100100
-#define ISF_MOD_isfs_list                       b00100100
+#define ISF_MOD_iss_list                       b00100100
 #define ISF_MOD_gfb_file_list                   ISF_MOD_file_standard
 #define ISF_MOD_location_data_list              b00100100
 #define ISF_MOD_ipv6_addresses                  ISF_MOD_file_standard
@@ -503,7 +503,7 @@
 #define ISF_LEN_hold_scan_sequence              8
 #define ISF_LEN_beacon_transmit_sequence        16
 #define ISF_LEN_protocol_list                   7
-#define ISF_LEN_isfs_list                       12
+#define ISF_LEN_iss_list                       12
 #define ISF_LEN_gfb_file_list                   GFB_NUM_FILES
 #define ISF_LEN_location_data_list              0
 #define ISF_LEN_ipv6_addresses                  0
@@ -532,7 +532,7 @@
 #define ISF_MAX_hold_scan_sequence              32  //8 scans
 #define ISF_MAX_beacon_transmit_sequence        24  //3 beacons
 #define ISF_MAX_protocol_list                   16  //16 protocols
-#define ISF_MAX_isfs_list                       24  //24 isfs indices
+#define ISF_MAX_iss_list                       24  //24 iss indices
 #define ISF_MAX_gfb_file_list                   0   //8 gfb files
 #define ISF_MAX_location_data_list              96  //8 location vertices (or 16 if using VIDs)
 #define ISF_MAX_ipv6_addresses                  48
@@ -567,8 +567,8 @@
 #define ISF_BASE_hold_scan_sequence             (ISF_BASE_sleep_scan_sequence+ISF_ALLOC(sleep_scan_sequence))
 #define ISF_BASE_beacon_transmit_sequence       (ISF_BASE_hold_scan_sequence+ISF_ALLOC(hold_scan_sequence))
 #define ISF_BASE_protocol_list                  (ISF_BASE_beacon_transmit_sequence+ISF_ALLOC(beacon_transmit_sequence))
-#define ISF_BASE_isfs_list                      (ISF_BASE_protocol_list+ISF_ALLOC(protocol_list))
-#define ISF_BASE_gfb_file_list                  (ISF_BASE_isfs_list+ISF_ALLOC(isfs_list))
+#define ISF_BASE_iss_list                      (ISF_BASE_protocol_list+ISF_ALLOC(protocol_list))
+#define ISF_BASE_gfb_file_list                  (ISF_BASE_iss_list+ISF_ALLOC(iss_list))
 #define ISF_BASE_location_data_list             (ISF_BASE_gfb_file_list+ISF_ALLOC(gfb_file_list))
 #define ISF_BASE_ipv6_addresses                 (ISF_BASE_location_data_list+ISF_ALLOC(location_data_list))
 #define ISF_BASE_sensor_list                    (ISF_BASE_ipv6_addresses+ISF_ALLOC(ipv6_addresses))
@@ -596,8 +596,8 @@
 #define ISF_MIRROR_hold_scan_sequence           (ISF_MIRROR_sleep_scan_sequence+ISF_MIRALLOC(sleep_scan_sequence))
 #define ISF_MIRROR_beacon_transmit_sequence     (ISF_MIRROR_hold_scan_sequence+ISF_MIRALLOC(hold_scan_sequence))
 #define ISF_MIRROR_protocol_list                (ISF_MIRROR_beacon_transmit_sequence+ISF_MIRALLOC(beacon_transmit_sequence))
-#define ISF_MIRROR_isfs_list                    (ISF_MIRROR_protocol_list+ISF_MIRALLOC(protocol_list))
-#define ISF_MIRROR_gfb_file_list                (ISF_MIRROR_isfs_list+ISF_MIRALLOC(isfs_list))
+#define ISF_MIRROR_iss_list                    (ISF_MIRROR_protocol_list+ISF_MIRALLOC(protocol_list))
+#define ISF_MIRROR_gfb_file_list                (ISF_MIRROR_iss_list+ISF_MIRALLOC(iss_list))
 #define ISF_MIRROR_location_data_list           (ISF_MIRROR_gfb_file_list+ISF_MIRALLOC(gfb_file_list))
 #define ISF_MIRROR_ipv6_addresses               (ISF_MIRROR_location_data_list+ISF_MIRALLOC(location_data_list))
 #define ISF_MIRROR_sensor_list                  (ISF_MIRROR_ipv6_addresses+ISF_MIRALLOC(ipv6_addresses))
@@ -624,7 +624,7 @@
                                 ISF_ALLOC(hold_scan_sequence) + \
                                 ISF_ALLOC(beacon_transmit_sequence) + \
                                 ISF_ALLOC(protocol_list) + \
-                                ISF_ALLOC(isfs_list) + \
+                                ISF_ALLOC(iss_list) + \
                                 ISF_ALLOC(gfb_file_list) + \
                                 ISF_ALLOC(location_data_list) + \
                                 ISF_ALLOC(ipv6_addresses) + \

@@ -27,7 +27,7 @@
   * The data files are:
   * - ISF: Universal Data Block
   * - GFB: Raw Data Block
-  * - ISFS: ISF LIST IDs
+  * - ISS: ISF LIST IDs
   *
   * Veelite uses a virtual memory method, implemented in Veelite Core.  The user
   * does not need to interface with functions from the core.
@@ -50,7 +50,7 @@
 typedef enum {
     VL_NULL_BLOCKID = 0,
     VL_GFB_BLOCKID  = 1,
-    VL_ISFS_BLOCKID = 2,
+    VL_ISS_BLOCKID = 2,
     VL_ISF_BLOCKID  = 3
 } vlBLOCK;
 
@@ -159,20 +159,20 @@ typedef struct {
 #if (OT_FEATURE(VEELITE) == ENABLED)
 
 /// Virtual Address Shortcuts for the header blocks (VWORM)
-/// Header blocks for: GFB Elements, ISFS IDs, and ISF Elements
+/// Header blocks for: GFB Elements, ISS IDs, and ISF Elements
 #define GFB_Header_START        OVERHEAD_START_VADDR
 #define GFB_Header_START_USER   (GFB_Header_START + (GFB_NUM_STOCK_FILES*sizeof(vl_header)))
-#define ISFS_Header_START       (GFB_Header_START + (GFB_NUM_FILES*sizeof(vl_header)))
-#define ISFS_Header_START_USER  (ISFS_Header_START + (ISFS_NUM_STOCK_LISTS*sizeof(vl_header)))
-#define ISF_Header_START        (ISFS_Header_START + (ISFS_NUM_LISTS*sizeof(vl_header)))
+#define ISS_Header_START       (GFB_Header_START + (GFB_NUM_FILES*sizeof(vl_header)))
+#define ISS_Header_START_USER  (ISS_Header_START + (ISS_NUM_STOCK_LISTS*sizeof(vl_header)))
+#define ISF_Header_START        (ISS_Header_START + (ISS_NUM_LISTS*sizeof(vl_header)))
 #define ISF_Header_START_USER   (ISF_Header_START + (ISF_NUM_STOCK_FILES*sizeof(vl_header)))
 
 
-/// ISFS HEAP Virtual address shortcuts (VWORM)
+/// ISS HEAP Virtual address shortcuts (VWORM)
 /// @todo Hardcoded for the time being... fix later
-#define ISFS_HEAP_START         ISFS_START_VADDR
-#define ISFS_HEAP_USER_START    (ISFS_START_VADDR+ISFS_STOCK_HEAP_BYTES)
-#define ISFS_HEAP_END           (ISFS_START_VADDR+ISFS_TOTAL_BYTES)
+#define ISS_HEAP_START         ISS_START_VADDR
+#define ISS_HEAP_USER_START    (ISS_START_VADDR+ISS_STOCK_BYTES)
+#define ISS_HEAP_END           (ISS_START_VADDR+ISS_TOTAL_BYTES)
 
 
 /// GFB HEAP Virtual address shortcuts (VWORM)
@@ -235,7 +235,7 @@ ot_int  vl_get_fd(vlFILE* fp);
 
 /** @brief  Creates a new file
   * @param  fp_new      (vlFILE**) A file pointer handle for new file
-  * @param  block_id    (vlBLOCK) Block ID of new file (GFB, ISFB, ISFSB, etc)
+  * @param  block_id    (vlBLOCK) Block ID of new file (GFB, ISFB, ISSB, etc)
   * @param  data_id     (ot_u8) 0-255 file ID of new file
   * @param  mod         (ot_u8) Permissions for new file
   * @param  max_length  (ot_uint) Maximum length for new file (alloc)
@@ -260,7 +260,7 @@ ot_u8   vl_new(vlFILE** fp_new, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, ot_u
 
 
 /** @brief  Deletes a file
-  * @param  block_id    (vlBLOCK) Block ID of file to delete (GFB, ISFB, ISFSB, etc)
+  * @param  block_id    (vlBLOCK) Block ID of file to delete (GFB, ISFB, ISSB, etc)
   * @param  data_id     (ot_u8) 0-255 file ID of file to delete
   * @param  user_id     (id_tmpl*) User ID that is trying to create new file
   * @retval ot_u8       Return code: 0 on success, non-zero on error
@@ -360,10 +360,10 @@ vlFILE* vl_open_file(vaddr header);
   */
 vlFILE* vl_open(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id);
 vlFILE* GFB_open_su( ot_u8 id );
-vlFILE* ISFS_open_su( ot_u8 id );
+vlFILE* ISS_open_su( ot_u8 id );
 vlFILE* ISF_open_su( ot_u8 id );
 vlFILE* GFB_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id );
-vlFILE* ISFS_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id );
+vlFILE* ISS_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id );
 vlFILE* ISF_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id );
 
 
@@ -397,11 +397,11 @@ vlFILE* ISF_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id );
   */
 ot_u8 vl_chmod(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id);
 ot_u8 GFB_chmod_su( ot_u8 id, ot_u8 mod );
-ot_u8 ISFS_chmod_su( ot_u8 id, ot_u8 mod );
+ot_u8 ISS_chmod_su( ot_u8 id, ot_u8 mod );
 ot_u8 ISF_chmod_su( ot_u8 id, ot_u8 mod );
 
 
-/** @brief  Reads 16 bits at a time from the open file (GFB, ISF, ISFS)
+/** @brief  Reads 16 bits at a time from the open file (GFB, ISF, ISS)
   * @param  fp          (vlFILE*) file pointer of open file
   * @param  offset      (ot_uint) byte offset into the file
   * @retval (ot_u16)    16 bits data from the given offset
@@ -412,7 +412,7 @@ ot_u8 ISF_chmod_su( ot_u8 id, ot_u8 mod );
 ot_u16 vl_read( vlFILE* fp, ot_uint offset );
 
 
-/** @brief  Writes 16 bits at a time to the open file (GFB, ISF, ISFS)
+/** @brief  Writes 16 bits at a time to the open file (GFB, ISF, ISS)
   * @param  fp          (vlFILE*) file pointer of open file
   * @param  offset      (ot_uint) byte offset into the file
   * @param  data        (ot_u16) 16 bits data to write
@@ -481,14 +481,14 @@ ot_u8 vl_erase(vlFILE* fp);
   */
 ot_u8 vl_close( vlFILE* fp );
 
-/** @brief Returns the length of the open file (GFB, ISF, ISFS)
+/** @brief Returns the length of the open file (GFB, ISF, ISS)
   * @param none
   * @retval (ot_uint) : length in bytes
   * @ingroup Veelite
   */
 ot_uint vl_checklength( vlFILE* fp );
 
-/** @brief Returns the length of the open file (GFB, ISF, ISFS)
+/** @brief Returns the length of the open file (GFB, ISF, ISS)
   * @param none
   * @retval (ot_uint) : length in bytes
   * @ingroup Veelite
@@ -499,15 +499,15 @@ ot_uint vl_checkalloc( vlFILE* fp );
 //Compatibility definitions (deprecated)
 #define GFB_close(FP)                 vl_close(FP)
 #define ISF_close(FP)                 vl_close(FP)
-#define ISFS_close(FP)             vl_close(FP)
+#define ISS_close(FP)             vl_close(FP)
 
 #define GFB_read(FP, VAL)               vl_read(FP, VAL)
 #define ISF_read(FP, VAL)               vl_read(FP, VAL)
-#define ISFS_read(FP, VAL)           vl_read(FP, VAL)
+#define ISS_read(FP, VAL)           vl_read(FP, VAL)
 
 #define GFB_write(FP, VAL1, VAL2)       vl_write(FP, VAL1, VAL2)
 #define ISF_write(FP, VAL1, VAL2)       vl_write(FP, VAL1, VAL2)
-#define ISFS_write(FP, VAL1, VAL2)   vl_write(FP, VAL1, VAL2)
+#define ISS_write(FP, VAL1, VAL2)   vl_write(FP, VAL1, VAL2)
 
 
 

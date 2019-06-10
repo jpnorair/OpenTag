@@ -86,13 +86,13 @@ typedef vlFILE* (*sub_new)(ot_u8, ot_u8, ot_u8);
 
 // Private Functions
 vlFILE* sub_gfb_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg);
-vlFILE* sub_isfs_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg);
+vlFILE* sub_iss_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg);
 vlFILE* sub_isf_new(ot_u8 id, ot_u8 mod, ot_u8 max_length);
 ot_u8 sub_gfb_delete_check(ot_u8 id);
-ot_u8 sub_isfs_delete_check(ot_u8 id);
+ot_u8 sub_iss_delete_check(ot_u8 id);
 ot_u8 sub_isf_delete_check(ot_u8 id);
 vaddr sub_gfb_search(ot_u8 id);
-vaddr sub_isfs_search(ot_u8 id);
+vaddr sub_iss_search(ot_u8 id);
 vaddr sub_isf_search(ot_u8 id);
 
 
@@ -284,8 +284,8 @@ ot_u8 vl_new(vlFILE** fp_new, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, ot_uin
                 new_fn      = &sub_gfb_new;
                 break;
 
-        case 1: search_fn   = &sub_isfs_search;
-                new_fn      = &sub_isfs_new;
+        case 1: search_fn   = &sub_iss_search;
+                new_fn      = &sub_iss_new;
                 break;
 
         case 2: search_fn   = &sub_isf_search;
@@ -328,8 +328,8 @@ ot_u8 vl_delete(vlBLOCK block_id, ot_u8 data_id, id_tmpl* user_id) {
                 search_fn   = &sub_gfb_search;
                 break;
 
-        case 1: check_fn    = &sub_isfs_delete_check;
-                search_fn   = &sub_isfs_search;
+        case 1: check_fn    = &sub_iss_delete_check;
+                search_fn   = &sub_iss_search;
                 break;
 
         case 2: check_fn    = &sub_isf_delete_check;
@@ -374,7 +374,7 @@ ot_u8 vl_getheader_vaddr(vaddr* header, vlBLOCK block_id, ot_u8 data_id, ot_u8 m
     /// 1. Get the header from the supplied Block ID & Data ID
     switch (block_id) {
         case VL_GFB_BLOCKID:    *header = sub_gfb_search(data_id);      break;
-        case VL_ISFS_BLOCKID:   *header = sub_isfs_search(data_id);     break;
+        case VL_ISS_BLOCKID:   *header = sub_iss_search(data_id);     break;
         case VL_ISF_BLOCKID:    *header = sub_isf_search(data_id);      break;
         default:                return 255;
     }
@@ -662,8 +662,8 @@ vlFILE* GFB_open_su( ot_u8 id ) {
 #   endif
 }
 
-vlFILE* ISFS_open_su( ot_u8 id ) {
-    return vl_open(VL_ISFS_BLOCKID, id, VL_ACCESS_SU, NULL);
+vlFILE* ISS_open_su( ot_u8 id ) {
+    return vl_open(VL_ISS_BLOCKID, id, VL_ACCESS_SU, NULL);
 }
 
 vlFILE* ISF_open_su( ot_u8 id ) {
@@ -679,8 +679,8 @@ vlFILE* GFB_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id ) {
 #   endif
 }
 
-vlFILE* ISFS_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id ) {
-    return vl_open(VL_ISFS_BLOCKID, id, mod, user_id);
+vlFILE* ISS_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id ) {
+    return vl_open(VL_ISS_BLOCKID, id, mod, user_id);
 }
 
 vlFILE* ISF_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id ) {
@@ -696,8 +696,8 @@ ot_u8 GFB_chmod_su( ot_u8 id, ot_u8 mod ) {
 #   endif
 }
 
-ot_u8 ISFS_chmod_su( ot_u8 id, ot_u8 mod ) {
-    return vl_chmod(VL_ISFS_BLOCKID, id, mod, NULL);
+ot_u8 ISS_chmod_su( ot_u8 id, ot_u8 mod ) {
+    return vl_chmod(VL_ISS_BLOCKID, id, mod, NULL);
 }
 
 ot_u8 ISF_chmod_su( ot_u8 id, ot_u8 mod ) {
@@ -757,8 +757,8 @@ vlFILE* sub_gfb_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
 #endif
 }
 
-vlFILE* sub_isfs_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
-#if ((OT_FEATURE(VLNEW) == ENABLED) && (ISFS_NUM_USER_CODES > 0))
+vlFILE* sub_iss_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
+#if ((OT_FEATURE(VLNEW) == ENABLED) && (ISS_NUM_USER_CODES > 0))
     ot_uni16   idmod;
     vl_header  new_header;
 
@@ -767,16 +767,16 @@ vlFILE* sub_isfs_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
 
     // Fill vl_header
     new_header.length   = (ot_u16)0;
-    new_header.alloc    = (ot_u16)ISFS_MAX_default;
+    new_header.alloc    = (ot_u16)ISS_MAX_default;
     new_header.idmod    = idmod.ushort;
     new_header.mirror   = NULL_vaddr;
 
     // Find where to put the new data, and if heap is full
     return sub_new_file(    &new_header,
-                        ISFS_HEAP_USER_START,
-                        ISFS_HEAP_END,
-                        ISFS_Header_START_USER,
-                        ISFS_NUM_USER_CODES   );
+                        ISS_HEAP_USER_START,
+                        ISS_HEAP_END,
+                        ISS_Header_START_USER,
+                        ISS_NUM_USER_CODES   );
 #else
     return NULL;
 #endif
@@ -825,9 +825,9 @@ ot_u8 sub_gfb_delete_check(ot_u8 id) {
 }
 
 
-ot_u8 sub_isfs_delete_check(ot_u8 id) {
-#if ((OT_FEATURE(VLNEW) == ENABLED) && (ISFS_NUM_USER_CODES > 0))
-    return ( id >= ISFS_ID_extended_service);
+ot_u8 sub_iss_delete_check(ot_u8 id) {
+#if ((OT_FEATURE(VLNEW) == ENABLED) && (ISS_NUM_USER_CODES > 0))
+    return ( id >= ISS_ID_extended_service);
 #else
     return 0;
 #endif
@@ -851,8 +851,8 @@ vaddr sub_gfb_search(ot_u8 id) {
 }
 
 
-vaddr sub_isfs_search(ot_u8 id) {
-    return sub_header_search( ISFS_Header_START, id, ISFS_NUM_LISTS );
+vaddr sub_iss_search(ot_u8 id) {
+    return sub_header_search( ISS_Header_START, id, ISS_NUM_LISTS );
 }
 
 
