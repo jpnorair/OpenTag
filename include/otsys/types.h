@@ -76,6 +76,7 @@
 #endif
 #if defined(__HAS_C99) || 1
 #   include <stdbool.h>
+//#error "good error"
     typedef bool    ot_bool;
 #   define True     true
 #   define False    false

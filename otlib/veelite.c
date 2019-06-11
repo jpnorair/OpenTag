@@ -1254,14 +1254,14 @@ static vaddr sub_gfb_search(ot_u8 id) {
 
 
 static vaddr sub_iss_search(ot_u8 id) {
-    return sub_header_search( ISS_Header_START, id, ISS_NUM_LISTS );
+    return sub_header_search( ISS_Header_START, id, ISS_NUM_FILES );
 }
 
 
 static vaddr sub_isf_search(ot_u8 id) {
 #   if (OT_FEATURE(VLNEW) == ENABLED)
     // Check IDs added by the user during runtime
-    if ( (id >= (ISF_NUM_M1_FILES+ISF_NUM_M2_FILES)) && (id < (256-ISF_NUM_EXT_FILES)) ) {
+    if ( (id >= ISF_NUM_STOCK_FILES) && (id < (256-ISF_NUM_EXT_FILES)) ) {
         return sub_header_search(ISF_Header_START_USER, id, ISF_NUM_USER_FILES);
     }
 #   endif
