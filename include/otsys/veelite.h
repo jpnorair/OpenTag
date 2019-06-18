@@ -158,14 +158,7 @@ typedef struct {
 
 #if (OT_FEATURE(VEELITE) == ENABLED)
 
-/// Virtual Address Shortcuts for the header blocks (VWORM)
-/// Header blocks for: GFB Elements, ISS IDs, and ISF Elements
-#define GFB_Header_START        OVERHEAD_START_VADDR
-#define GFB_Header_START_USER   (GFB_Header_START + (GFB_NUM_STOCK_FILES*sizeof(vl_header)))
-#define ISS_Header_START       (GFB_Header_START + (GFB_NUM_FILES*sizeof(vl_header)))
-#define ISS_Header_START_USER  (ISS_Header_START + (ISS_NUM_STOCK_LISTS*sizeof(vl_header)))
-#define ISF_Header_START        (ISS_Header_START + (ISS_NUM_LISTS*sizeof(vl_header)))
-#define ISF_Header_START_USER   (ISF_Header_START + (ISF_NUM_STOCK_FILES*sizeof(vl_header)))
+
 
 
 /// ISS HEAP Virtual address shortcuts (VWORM)
@@ -448,11 +441,11 @@ ot_uint vl_load( vlFILE* fp, ot_uint length, ot_u8* data );
   * @retval (ot_u8)     Non-zero on failure
   * @ingroup Veelite
   */
-ot_u8 vl_store( vlFILE* fp, ot_uint length, ot_u8* data );
+ot_u8 vl_store( vlFILE* fp, ot_uint length, const ot_u8* data );
 
 
 
-ot_u8 vl_append( vlFILE* fp, ot_uint length, ot_u8* data );
+ot_u8 vl_append( vlFILE* fp, ot_uint length, const ot_u8* data );
 
 
 

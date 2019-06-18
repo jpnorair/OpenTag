@@ -271,14 +271,14 @@
   * the linker file.
   */
 #define ISS_TOTAL_BYTES        			 0xA0
-#define ISS_NUM_M1_LISTS                    4
-#define ISS_NUM_M2_LISTS                    4
-#define ISS_NUM_EXT_LISTS                   0
+#define ISS_NUM_M1_FILES                    4
+#define ISS_NUM_M2_FILES                    4
+#define ISS_NUM_EXT_FILES                   0
 
 #define ISS_START_VADDR                     (OVERHEAD_START_VADDR + OVERHEAD_TOTAL_BYTES)
-#define ISS_NUM_USER_LISTS                  ISS_NUM_EXT_LISTS
-#define ISS_NUM_STOCK_LISTS                 (ISS_NUM_M1_LISTS + ISS_NUM_M2_LISTS)
-#define ISS_NUM_LISTS                       (ISS_NUM_STOCK_LISTS + ISS_NUM_USER_LISTS)
+#define ISS_NUM_USER_FILES                  ISS_NUM_EXT_FILES
+#define ISS_NUM_STOCK_FILES                 (ISS_NUM_M1_FILES + ISS_NUM_M2_FILES)
+#define ISS_NUM_FILES                       (ISS_NUM_STOCK_FILES + ISS_NUM_USER_FILES)
 
 #define ISS_ID(VAL)                         ISS_ID_##VAL
 #define ISS_ID_transit_data                 0x00

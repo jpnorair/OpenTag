@@ -102,10 +102,13 @@ static vlFSHEADER vlfs;
 #define OCTETS_IN_vl_header_t   (sizeof(vl_header_t) * OCTETS_IN_U16)
 
 /// Virtual Address Shortcuts for the header blocks (VWORM)
-#define GFB_Header_START        ( (OVERHEAD_START_VADDR) + OCTETS_IN_vlFSHEADER )
-#define GFB_Header_START_USER   ( (GFB_Header_START) + (GFB_NUM_STOCK_FILES*OCTETS_IN_vl_header_t) )
-#define ISF_Header_START        ( (GFB_Header_START) + (GFB_NUM_FILES*OCTETS_IN_vl_header_t) )
-#define ISF_Header_START_USER   ( (ISF_Header_START) + (ISF_NUM_STOCK_FILES*OCTETS_IN_vl_header_t) )
+/// Header blocks for: GFB Elements, ISS IDs, and ISF Elements
+#define GFB_Header_START        (OVERHEAD_START_VADDR + OCTETS_IN_vlFSHEADER)
+#define GFB_Header_START_USER   (GFB_Header_START + (GFB_NUM_STOCK_FILES*sizeof(vl_header)))
+#define ISS_Header_START        (GFB_Header_START + (GFB_NUM_FILES*sizeof(vl_header)))
+#define ISS_Header_START_USER   (ISS_Header_START + (ISS_NUM_STOCK_FILES*sizeof(vl_header)))
+#define ISF_Header_START        (ISS_Header_START + (ISS_NUM_FILES*sizeof(vl_header)))
+#define ISF_Header_START_USER   (ISF_Header_START + (ISF_NUM_STOCK_FILES*sizeof(vl_header)))
 
 /// GFB HEAP Virtual address shortcuts (VWORM)
 #define GFB_HEAP_START          GFB_START_VADDR
@@ -575,7 +578,7 @@ OT_WEAK ot_u8 vl_getheader_vaddr(vaddr* header, vlBLOCK block_id, ot_u8 data_id,
     /// 1. Get the header from the supplied Block ID & Data ID
     switch (block_id) {
         case VL_GFB_BLOCKID:    *header = sub_gfb_search(data_id);      break;
-        case VL_ISS_BLOCKID:   *header = sub_iss_search(data_id);     break;
+        case VL_ISS_BLOCKID:    *header = sub_iss_search(data_id);     break;
         case VL_ISF_BLOCKID:    *header = sub_isf_search(data_id);      break;
         default:                return 255;
     }
@@ -852,7 +855,7 @@ OT_WEAK ot_uint vl_load( vlFILE* fp, ot_uint length, ot_u8* data ) {
 
 
 #ifndef EXTF_vl_store
-OT_WEAK ot_u8 vl_store( vlFILE* fp, ot_uint length, ot_u8* data ) {
+OT_WEAK ot_u8 vl_store( vlFILE* fp, ot_uint length, const ot_u8* data ) {
     ot_uint cursor;
     ot_u8   test;
 
@@ -882,7 +885,7 @@ OT_WEAK ot_u8 vl_store( vlFILE* fp, ot_uint length, ot_u8* data ) {
 
 
 #ifndef EXTF_vl_append
-OT_WEAK ot_u8 vl_append( vlFILE* fp, ot_uint length, ot_u8* data ) {
+OT_WEAK ot_u8 vl_append( vlFILE* fp, ot_uint length, const ot_u8* data ) {
     ot_uint cursor;
     ot_u8   test = 255;
 

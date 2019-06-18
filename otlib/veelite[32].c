@@ -852,7 +852,7 @@ vaddr sub_gfb_search(ot_u8 id) {
 
 
 vaddr sub_iss_search(ot_u8 id) {
-    return sub_header_search( ISS_Header_START, id, ISS_NUM_LISTS );
+    return sub_header_search( ISS_Header_START, id, ISS_NUM_FILES );
 }
 
 

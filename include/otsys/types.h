@@ -98,7 +98,7 @@ typedef signed long         ot_s32;
 typedef unsigned long       ot_u32;
 
 
-    
+
 /** @typedef ot_int, ot_uint
   * Signed and Unsigned integers that have at least 16 bits of scope.  
   * They could be implemented as larger integers, however, if the target

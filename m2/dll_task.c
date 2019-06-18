@@ -44,6 +44,7 @@
 
 #if (OT_FEATURE(M2) == ENABLED)
 
+#include <m2/capi.h>
 #include <m2/dll.h>
 #include <m2/network.h>
 #include <m2/radio.h>
@@ -54,6 +55,7 @@
 
 #include <otlib/auth.h>         ///@todo might not be necessary here
 #include <otlib/buffers.h>
+#include <otlib/memcpy.h>
 #include <otlib/rand.h>
 #include <otlib/utils.h>
 #include <otsys/veelite.h>

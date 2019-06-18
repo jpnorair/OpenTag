@@ -929,7 +929,7 @@ void sub_load_overhead_data() {
                                          
     // Write overhead data
     cursor      = (ot_u16*)overhead_files;
-    data_amount = (GFB_NUM_FILES + ISS_NUM_LISTS + ISF_NUM_STOCK_FILES) * sizeof(vl_header);
+    data_amount = (GFB_NUM_FILES + ISS_NUM_FILES + ISF_NUM_STOCK_FILES) * sizeof(vl_header);
     for (i=0; i<data_amount; i+=2) {
         vworm_mark(i, *cursor); 
         cursor++;
