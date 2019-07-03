@@ -901,7 +901,7 @@ void mpipedrv_isr() {
             uart.rxplen = PLATFORM_ENDIAN16(uart.header.plen);
             if (uart.rxplen == 0)                           error_code = -1;
             else if (q_blocktime(mpipe.alp.inq))            error_code = -11;
-            else if (q_space(mpipe.alp.inq) < uart.rxplen)  error_code = -7;
+            else if (q_writespace(mpipe.alp.inq) < uart.rxplen)  error_code = -7;
             
             // No error, start receiving packet formally
             // Most important first thing is to reset DMA to grab first frame.

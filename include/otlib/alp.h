@@ -147,6 +147,18 @@ ot_bool alp_ext_proc(alp_tmpl* alp, const id_tmpl* user_id);
 
 
 
+
+
+/** Functions Under Review <BR>
+  * ========================================================================<BR>
+  * These are legacy functions.  They might get bundled into different
+  * functions, changed, or removed.
+  */
+
+void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payload_remaining);
+
+
+
 /** Main Library Functions <BR>
   * ========================================================================<BR>
   * These are the functions that OpenTag and your OpenTag-based code should be

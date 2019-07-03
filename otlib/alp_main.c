@@ -430,6 +430,70 @@ ALP_status alp_parse_message(alp_tmpl* alp, const id_tmpl* user_id) {
   * functions, changed, or removed.
   */
 
+/** @brief Initialize an ALP header for a new record
+  * @param  alp                 (alp_tmpl*) ALP I/O control structure
+  * @param  flags               (ot_u8) ALP Flags to force high
+  * @param  payload_limit       (ot_u8) Limit of Payload bytes per __Record__
+  * @param  payload_remaining   (ot_int) Remaining Payload bytes in __Message__
+  *
+  * @retval None
+  * @ingroup ALP
+  * @sa alp_new_message()
+  *
+  * <LI> The "alp" parameter must be allocated by the caller. </LI>
+  * <LI> On return, the caller must use value from alp->outrec.payload_length
+  *      to manage data buffering/queuing </LI>
+  *
+  * This function automatically assigns the ALP flags and payload length fields
+  * of the ALP header.  It does not assign ID or CMD fields, or anything else.
+  *
+  * The flags parameter requires that you specify ALP_FLAG_MB if you want to
+  * start a new message, and that you use TNF=0 for pure ALP or TNF!=0 for NDEF.
+  * If you are continuing a generic ALP stream that you don't know is Pure ALP
+  * or NDEF, use TNF=0.  The value existing in the alp_tmpl TNF will be used.
+  */
+
+/// @note This function is used by the logger (logger.c), but nowhere
+/// else.  The ability to create a new output record/message is required, but
+/// the method of doing it may likely get re-architected.
+OT_WEAK void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payload_remaining) {
+    // Clear control flags (begin, end, chunk)
+	// Chunk and End will be intelligently set in this function, but Begin must
+	// be set by the caller, AFTER this function.
+	alp->OUTREC(FLAGS) |= flags;
+	alp->OUTREC(FLAGS) |= NDEF_SR;
+#   if (OT_FEATURE(NDEF))
+	alp->OUTREC(FLAGS) &= ~(ALP_FLAG_ME | ALP_FLAG_CF | NDEF_IL);
+#   else
+    alp->OUTREC(FLAGS) &= (ALP_FLAG_MB | NDEF_SR);
+#   endif
+
+    // NDEF TNF needs to be 5 (with ID) on MB=1 and 6 (no ID) or MB=0
+	// Pure ALP should always have IL=0 and TNF=0
+#   if (OT_FEATURE(NDEF))
+    if (alp->OUTREC(FLAGS) & 7) {
+        alp->OUTREC(FLAGS) &= ~7;
+        alp->OUTREC(FLAGS) |= (alp->OUTREC(FLAGS) & ALP_FLAG_MB) ? (NDEF_IL+5) : 6;
+    }
+#   endif
+
+	// Automatically set Chunk or End.
+	// "payload_remaining" is re-purposed to contain the number of bytes loaded
+	// Chunk Flag is ignored by pure-ALP
+	if (payload_remaining > payload_limit) {
+		payload_remaining   = payload_limit;
+#       if (OT_FEATURE(NDEF))
+		alp->OUTREC(FLAGS)  |= ALP_FLAG_CF;
+#       endif
+	}
+	else {
+		alp->OUTREC(FLAGS)  |= ALP_FLAG_ME;
+	}
+
+	alp->OUTREC(PLEN) = (ot_u8)payload_remaining;
+	sub_insert_header(alp, NULL, sub_get_headerlen(alp->OUTREC(FLAGS)&7));
+}
+
 
 #if 0
 
@@ -839,72 +903,6 @@ void alp_purge(alp_tmpl* alp) {
 
 
 
-
-
-
-/** @brief Initialize an ALP header for a new record
-  * @param  alp                 (alp_tmpl*) ALP I/O control structure
-  * @param  flags               (ot_u8) ALP Flags to force high
-  * @param  payload_limit       (ot_u8) Limit of Payload bytes per __Record__
-  * @param  payload_remaining   (ot_int) Remaining Payload bytes in __Message__
-  *
-  * @retval None
-  * @ingroup ALP
-  * @sa alp_new_message()
-  *
-  * <LI> The "alp" parameter must be allocated by the caller. </LI>
-  * <LI> On return, the caller must use value from alp->outrec.payload_length
-  *      to manage data buffering/queuing </LI>
-  *
-  * This function automatically assigns the ALP flags and payload length fields
-  * of the ALP header.  It does not assign ID or CMD fields, or anything else.
-  *
-  * The flags parameter requires that you specify ALP_FLAG_MB if you want to
-  * start a new message, and that you use TNF=0 for pure ALP or TNF!=0 for NDEF.
-  * If you are continuing a generic ALP stream that you don't know is Pure ALP
-  * or NDEF, use TNF=0.  The value existing in the alp_tmpl TNF will be used.
-  */
-
-/// @note This function is used by the logger (logger.c), but nowhere
-/// else.  The ability to create a new output record/message is required, but
-/// the method of doing it may likely get re-architected.
-OT_WEAK void alp_new_record(alp_tmpl* alp, ot_u8 flags, ot_u8 payload_limit, ot_int payload_remaining) {
-    // Clear control flags (begin, end, chunk)
-	// Chunk and End will be intelligently set in this function, but Begin must
-	// be set by the caller, AFTER this function.
-	alp->OUTREC(FLAGS) |= flags;
-	alp->OUTREC(FLAGS) |= NDEF_SR;
-#   if (OT_FEATURE(NDEF))
-	alp->OUTREC(FLAGS) &= ~(ALP_FLAG_ME | ALP_FLAG_CF | NDEF_IL);
-#   else
-    alp->OUTREC(FLAGS) &= (ALP_FLAG_MB | NDEF_SR);
-#   endif
-
-    // NDEF TNF needs to be 5 (with ID) on MB=1 and 6 (no ID) or MB=0
-	// Pure ALP should always have IL=0 and TNF=0
-#   if (OT_FEATURE(NDEF))
-    if (alp->OUTREC(FLAGS) & 7) {
-        alp->OUTREC(FLAGS) &= ~7;
-        alp->OUTREC(FLAGS) |= (alp->OUTREC(FLAGS) & ALP_FLAG_MB) ? (NDEF_IL+5) : 6;
-    }
-#   endif
-
-	// Automatically set Chunk or End.
-	// "payload_remaining" is re-purposed to contain the number of bytes loaded
-	// Chunk Flag is ignored by pure-ALP
-	if (payload_remaining > payload_limit) {
-		payload_remaining   = payload_limit;
-#       if (OT_FEATURE(NDEF))
-		alp->OUTREC(FLAGS)  |= ALP_FLAG_CF;
-#       endif
-	}
-	else {
-		alp->OUTREC(FLAGS)  |= ALP_FLAG_ME;
-	}
-
-	alp->OUTREC(PLEN) = (ot_u8)payload_remaining;
-	sub_insert_header(alp, NULL, sub_get_headerlen(alp->OUTREC(FLAGS)&7));
-}
 
 
 
