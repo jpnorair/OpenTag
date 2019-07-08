@@ -1042,6 +1042,8 @@ void mpipedrv_isr() {
     // - If RX CRC matters, then make sure to compute it.
     mpipedrv_isr_RXSIG:
     mpipedrv_rx(False, 0);
+
+    q_unlock(mpipe.alp.inq);
     mpipeevt_rxdone(error_code);
 }
 
