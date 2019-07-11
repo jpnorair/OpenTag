@@ -765,6 +765,12 @@ void sub_txopen() {
     sub_mpipe_open();
     mpipe.state = MPIPE_Tx_Wait;
     __UART_TXOPEN();
+
+    ///@note Some UART host drivers (looking at you, Onion Omega2) will just scrub an entire FIFO
+    /// worth of data if there's a framing violation caused by the fact that they didn't catch the
+    /// falling edge fast enough.  You may need to tweak the number of us per your host.
+    delay_us(6);
+
     __DMA_TXOPEN(&uart.header.syncFF, 8);
 }
 
