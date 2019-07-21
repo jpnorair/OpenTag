@@ -142,8 +142,8 @@ void sub_insert_header(alp_tmpl* alp, ot_qcur hdr_position, ot_u8 hdr_len) {
     else
 #   else
     {
-        q_writelong_be(alp->outq, alp->OUTREC(FLAGS));
-        //ot_memcpy(hdr_position, &alp->OUTREC(FLAGS), 4);
+        //q_writelong_be(alp->outq, alp->OUTREC(FLAGS));
+        ot_memcpy(alp->outq->putcursor, &(alp->OUTREC(FLAGS)), 4);
     }
 #   endif
 
