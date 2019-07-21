@@ -748,8 +748,7 @@ OT_WEAK void dll_systask_holdscan(ot_task task) {
 
 
 
-// 0x40: No stream (Page), 0xC0 (normal BG)
-#define _BGRX_BITS  0xC0
+
 OT_WEAK void dll_systask_sleepscan(ot_task task) {
 /// The Sleep Scan process runs as an independent task.  It is very similar
 /// to the Hold Scan process, which actually calls this same routine.  They
@@ -803,7 +802,6 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
 		s_new->extra    = s_code;
     //}
 }
-#undef _BGRX_BITS
 
 
 

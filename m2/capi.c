@@ -93,6 +93,7 @@ ot_u16 otapi_new_telegram(ot_u32 token, ot_u8 data_id, const ot_u8* data) {
 
         // Set the dll parameters to a safe setting; can be changed later
         dll_set_defaults(s_active);
+        dll.comm.rx_timeout = 0;
 
         q_empty(&txq);
         txq.getcursor += 2;         // Bypass unused length and Link CTL bytes
