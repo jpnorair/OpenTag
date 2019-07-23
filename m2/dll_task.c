@@ -810,6 +810,7 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
 /// The beacon rountine runs as an idependent systask.
     m2session*  b_session;
     ot_u16      nextbeacon;
+    ot_u8       b_flags;
 
     if ((task->event == 0) || (dll.netconf.b_attempts == 0)) {
         dll_idle();
@@ -862,12 +863,14 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
     // - Assure cmd code is always Broadcast & Announcement
     ///@todo the method of checking for silence (b12) seems to crash OpenTag right now.
     //if ((dll.netconf.active & (1<<12)) == 0) {
-		b_session           = session_new(  &dll_beacon_applet, 0, dll.netconf.btemp[2],
-											(M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX)  );
+    	b_flags             = (M2_NETSTATE_INIT|M2_NETSTATE_REQTX|M2_NETFLAG_FIRSTRX);
+		b_session           = session_new(  &dll_beacon_applet, 0, dll.netconf.btemp[2], b_flags);
 		b_session->subnet   = dll.netconf.b_subnet;
 		b_session->extra    = dll.netconf.btemp[3];
-		b_session->flags    = dll.netconf.btemp[3] & 0x78;
-		//b_session->flags   |= (b_session->extra & 0x30);
+
+		///@note I'm not sure what this is about
+		//b_session->flags    = dll.netconf.btemp[3] & 0x78;
+
     //}
 
 	// Bytes[0:1] = next process code
