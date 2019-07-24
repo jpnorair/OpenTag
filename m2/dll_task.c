@@ -776,7 +776,7 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     /// Set the next idle event from the two-byte Next Scan field.
     /// The DASH7 registry is big-endian.
     scratch.ushort  = PLATFORM_ENDIAN16( vl_read(fp, task->cursor) );
-    s_type			= (scratch.ubyte[UPPER] & 0x80) ^ 0xC0;
+    s_type			= (scratch.ubyte[UPPER] & 0x80);
     sys_task_setnext(task, (ot_u32)otutils_calc_longtimeout(scratch.ushort));
 
     /// Pull channel ID and Scan flags
@@ -796,8 +796,31 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     /// select uses b6, which is why there is a >> 1.
     ///@todo the method of checking for silence seems to crash OpenTag right now.
     //if ((dll.netconf.active & (1<<12)) == 0) {
-        netstate        = (s_code & 0x80) ? (s_type | M2_NETSTATE_REQRX | M2_NETSTATE_INIT) \
-                                          : (M2_NETSTATE_REQRX | M2_NETSTATE_INIT);
+
+    	///@todo canonical behavior of s_type, and temporary hack to fit s_type into existing flags model
+        /// Canonical s_type, s_code:
+        ///   s_type
+        ///   C0: telegram beacon (should be impossible value, here)
+        ///   80: telegram scan
+        ///   40: normal beacon (should be impossible value, here)
+        ///   00: normal scan
+        /// (s_code & 0x80)
+        ///   80: BG scan type
+        ///   00: FG scan type
+        /// (s_type & 0x80) | ((s_code & 0x80) >> 1)
+        ///   C0: BG scan for telegram
+    	///   80: FG scan for telegram
+    	///   40: BG scan for normal packet
+    	///   00: FG scan for normal packet
+        ///
+        /// Temporary Hack s_type, s_code
+        ///   C0: background normal scan
+        ///   80: unsupported
+        ///   40: foreground telegram scan
+        ///   00: foreground normal scan
+
+    	s_type          = (stype >> 1) | (s_code & 0x80);
+    	netstate        = s_type | (M2_NETSTATE_REQRX | M2_NETSTATE_INIT);
 		s_new           = session_new(&dll_scan_applet, 0, s_channel, netstate);
 		s_new->extra    = s_code;
     //}
