@@ -96,17 +96,16 @@ ot_u16 otapi_new_telegram(ot_u32 token, ot_u8 data_id, const ot_u8* data) {
         dll.comm.rx_timeout = 0;
 
         q_empty(&txq);
-        txq.getcursor += 2;         // Bypass unused length and Link CTL bytes
 
+        // Implicit Header
+        txq.getcursor += 2;         // Bypass unused length and Link CTL bytes
         q_writebyte(&txq, 14);      // Dummy Length value (not actually sent)
         q_writebyte(&txq, 0);       // Dummy Link-Control (not actually sent)
-        q_writebyte(&txq, 0);       // Dummy TX-EIRP (updated by RF driver)
 
-        // This byte is two nibbles: Subnet specifier and Page ID (1)
-        q_writebyte(&txq, (s_active->subnet | 0x01));
-
-        // Token
-        q_writelong(&txq, token);
+        // Explicit Header
+        q_writebyte(&txq, 0);                           // Dummy TX-EIRP (updated by RF driver)
+        q_writebyte(&txq, (s_active->subnet | 0x01));   // This byte is two nibbles: Subnet specifier and Page ID (1)
+        q_writelong(&txq, token);                       // Application Token (32 bits)
 
         // Payload ID (1 byte) & payload (7 bytes)
         q_writebyte(&txq, data_id);

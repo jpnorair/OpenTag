@@ -703,13 +703,19 @@ m2session* m2tgram_parse(void) {
 /// ALP (ID = ???)
 /// @todo ID currently set to 16, but subject to change
 
-	ot_memcpy(&rxq.getcursor[4], &rxq.getcursor[0], 14);
+	// Shift 14 byte telegram by four bytes to make room for ALP header
+	for (ot_int i=13; i>=0; i--) {
+		rxq.getcursor[i+4] = rxq.getcursor[i];
+	}
 
+	// Putcursor re-oriented to include only ALP header and telegram payload
+	rxq.putcursor    = rxq.getcursor + 4 + 14;
+
+	// Put ALP header
 	rxq.getcursor[0] = 0xD0;
 	rxq.getcursor[1] = 14;
 	rxq.getcursor[2] = 16;
 	rxq.getcursor[3] = 0;
-	rxq.putcursor    = rxq.getcursor + 4 + 14;
 
 	alp_parse_message(&m2alp, AUTH_GUEST);
 

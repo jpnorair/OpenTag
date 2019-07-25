@@ -819,7 +819,7 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
         ///   40: foreground telegram scan
         ///   00: foreground normal scan
 
-    	s_type          = (stype >> 1) | (s_code & 0x80);
+    	s_type          = (s_type >> 1) | (s_code & 0x80);
     	netstate        = s_type | (M2_NETSTATE_REQRX | M2_NETSTATE_INIT);
 		s_new           = session_new(&dll_scan_applet, 0, s_channel, netstate);
 		s_new->extra    = s_code;
@@ -1096,7 +1096,7 @@ OT_WEAK void dll_rfevt_brx(ot_int scode, ot_int fcode) {
     __DEBUG_ERRCODE_EVAL(=100);
 
     // CRC Failure (or init), retry
-    if ((scode == -1) && (dll.comm.redundants != 0)) {
+    if ((fcode != 0) && (dll.comm.redundants != 0)) {
         __DEBUG_ERRCODE_EVAL(=101);
         rm2_reenter_rx(&dll_rfevt_brx);   //non-blocking
         return;
