@@ -393,10 +393,10 @@
   * ========================================================================<BR>
   */
 
-/// @todo lookup actual data rate in use: this is hardcoded for 115200
+/// @todo lookup actual data rate in use: this is hardcoded for 115200/57600
 //#define __MPIPE_TIMEOUT(BYTES)  (1 + ((_miti_per_byte[uart.baudrate] * BYTES) >> 10))
 #define __MPIPE_TIMEOUT(BYTES)  ( 1 + ((BYTES+8) >> 3) )
-
+//#define __MPIPE_TIMEOUT(BYTES)  ( 1 + ((BYTES+8) >> 2) )
 
 
 /** Mpipe Driver Data  <BR>
@@ -810,7 +810,7 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     
     /// Load Queue payload into tlist ring buffer
     /// Tlist RB doesn't store a copy, just references.
-    holdtime                    = __MPIPE_TIMEOUT(q_length(mpipe.alp.outq));
+    holdtime                    = __MPIPE_TIMEOUT(8+q_length(mpipe.alp.outq));
     uart.tlist.size            += 1;
     uart.tlist.j                = (uart.tlist.j + 1) & (UART_RB_MAX-1);
     txpayload                   = &uart.tlist.rb[uart.tlist.j];
