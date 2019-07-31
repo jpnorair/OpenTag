@@ -852,6 +852,9 @@ void platform_poweron() {
     /// 3. Configure Clocks
     platform_init_periphclk();
     platform_init_busclk();
+#   if (BOARD_FEATURE(HFXTAL) != ENABLED)
+    //platform_ext_hsitrim();
+#   endif
 
     /// 5. Debugging setup: apply to all peripherals
 #   if defined(__DEBUG__)
