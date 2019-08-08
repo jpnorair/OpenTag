@@ -810,7 +810,7 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     
     /// Load Queue payload into tlist ring buffer
     /// Tlist RB doesn't store a copy, just references.
-    holdtime                    = __MPIPE_TIMEOUT(8+q_length(mpipe.alp.outq));
+    holdtime                    = __MPIPE_TIMEOUT(q_length(mpipe.alp.outq));
     uart.tlist.size            += 1;
     uart.tlist.j                = (uart.tlist.j + 1) & (UART_RB_MAX-1);
     txpayload                   = &uart.tlist.rb[uart.tlist.j];
