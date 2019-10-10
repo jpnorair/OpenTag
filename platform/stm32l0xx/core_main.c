@@ -453,10 +453,10 @@ void sub_osc_setclock(ot_u32 clock_mask) {
 void sub_set_clockhz(ot_ulong cpu_clock_hz) {
 /// In interest of speed and size, you need to setup your clock dividers as
 /// constants in the board configuration file.
-    ///@todo map these 0 shifts to derived constants
-    platform_ext.clock_hz[0]    = cpu_clock_hz >> 0;    //AHB
-    platform_ext.clock_hz[1]    = cpu_clock_hz >> 0;    //APB1
-    platform_ext.clock_hz[2]    = cpu_clock_hz >> 0;    //APB2
+    ///@todo Additional argument for changing the clock dividers.
+    platform_ext.clock_hz[0]    = cpu_clock_hz >> (BOARD_PARAM_AHBCLKDIV-1);    //AHB
+    platform_ext.clock_hz[1]    = cpu_clock_hz >> (BOARD_PARAM_APB1CLKDIV-1);    //APB1
+    platform_ext.clock_hz[2]    = cpu_clock_hz >> (BOARD_PARAM_APB2CLKDIV-1);    //APB2
 }
 
 
@@ -1047,7 +1047,7 @@ void platform_init_busclk() {
     ///           (96 MHz / BOARD_PARAM_PLLdiv) == PLATFORM_HSCLOCK_HZ. </LI>
 #   elif BOARD_FEATURE(FLANKSPEED)
 #       if ((_FLANKSPEED_VOLTAGE != POWER_1V5) && (_FLANK_UPVOLT() == 0))
-            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
+            sub_voltage_config(_FLANKSPEED_VOLTAGE | _RTC_PROTECTION);
 #       endif
         // Basic Flash setup, then run normal routine
         FLASH->ACR = FLASH_ACR_PRFTEN;

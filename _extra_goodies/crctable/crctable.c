@@ -43,10 +43,11 @@
 /*    #define TB_POLY   0x8005L                                               */
 /*    #define TB_REVER  TRUE                                                  */
 
-#define TB_FILE   "crctable_CRC-Baicheva.txt"
-#define TB_WIDTH  1
-#define TB_POLY   0x002FL
-#define TB_REVER  FALSE
+#define TB_FILE     "crctable_CRC6.txt"
+#define TB_WIDTH    1
+#define TB_POLYBITS 6
+#define TB_POLY     0x03L
+#define TB_REVER    FALSE
 
 /******************************************************************************/
 
@@ -60,21 +61,16 @@ FILE *outfile;
 
 /******************************************************************************/
 
-LOCAL void chk_err P_((char *));
-LOCAL void chk_err (mess)
+LOCAL void chk_err(char* mess) {
 /* If mess is non-empty, write it out and abort. Otherwise, check the error   */
 /* status of outfile and abort if an error has occurred.                      */
-char *mess;
-{
- if (mess[0] != 0   ) {printf("%s\n",mess); exit(EXIT_FAILURE);}
- if (ferror(outfile)) {perror("chk_err");   exit(EXIT_FAILURE);}
+    if (mess[0] != 0   ) {printf("%s\n",mess); exit(EXIT_FAILURE);}
+    if (ferror(outfile)) {perror("chk_err");   exit(EXIT_FAILURE);}
 }
 
 /******************************************************************************/
 
-LOCAL void chkparam P_((void));
-LOCAL void chkparam ()
-{
+LOCAL void chkparam (void) {
     if ((TB_WIDTH != 1) && (TB_WIDTH != 2) && (TB_WIDTH != 4))
         chk_err("chkparam: Width parameter is illegal.");
     if ((TB_WIDTH == 1) && (TB_POLY & 0xFFFFFF00L))
@@ -87,9 +83,7 @@ LOCAL void chkparam ()
 
 /******************************************************************************/
 
-LOCAL void gentable P_((void));
-LOCAL void gentable ()
-{
+LOCAL void gentable (void) {
  WR("/*****************************************************************/\n");
  WR("/*                                                               */\n");
  WR("/* CRC LOOKUP TABLE                                              */\n");
@@ -132,29 +126,29 @@ LOCAL void gentable ()
   int i;
   cm_t cm;
 #if (TB_WIDTH==1)
-    char *form    = "#define CRCx%02lX 0x%02lX";
+    char *form    = "0x%02lX";
     int   perline = 16;
 #elif (TB_WIDTH==2)
-    char *form    = "#define CRCx%02lX 0x%04lX";
+    char *form    = "0x%04lX";
     int   perline = 8;
 #else
-    char *form    = "#define CRCx%02lX 0x%08lXL";
+    char *form    = "0x%08lXL";
     int   perline = 4;
 #endif
   
   
 
-  cm.cm_width = TB_WIDTH*8;
+  cm.cm_width = TB_POLYBITS; //TB_WIDTH*8;
   cm.cm_poly  = TB_POLY;
   cm.cm_refin = TB_REVER;
 
   for (i=0; i<256; i++)
     {
      WR(" ");
-     WP2(form, i, (ulong) cm_tab(&cm,i));
-     //if (i != 255) WR(",");
-     //if (((i+1) % perline) == 0) WR("\n");
-     WR("\n");
+     WP(form, (ulong)cm_tab(&cm,i));
+     if (i != 255) WR(",");
+     if (((i+1) % perline) == 0) WR("\n");
+     //WR("\n");
      chk_err("");
     }
 
@@ -170,8 +164,7 @@ LOCAL void gentable ()
 
 /******************************************************************************/
 
-main ()
-{
+int main (void) {
  printf("\n");
  printf("Rocksoft^tm Model CRC Algorithm Table Generation Program V1.0\n");
  printf("-------------------------------------------------------------\n");
