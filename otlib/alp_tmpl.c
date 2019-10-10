@@ -69,16 +69,33 @@ OT_WEAK void alp_stream_u32(ot_queue* out_q, void* data_type) {
 
 
 OT_WEAK void alp_breakdown_queue(ot_queue* in_q, void* data_type) {
+#ifndef __C2000__
     ot_u16 queue_length;
-    ot_u8* queue_front;
-    queue_length                    = q_readshort(in_q);
-    ((ot_queue*)data_type)->alloc      = queue_length;
-    ((ot_queue*)data_type)->options    = in_q->options;
-    queue_front                     = q_markbyte(in_q, queue_length);
-    ((ot_queue*)data_type)->front      = queue_front;
-    ((ot_queue*)data_type)->back       = queue_front+queue_length;
-    ((ot_queue*)data_type)->getcursor  = queue_front;
-    ((ot_queue*)data_type)->putcursor  = queue_front;
+    void* queue_front;
+    queue_length                        = q_readshort(in_q);
+    ((ot_queue*)data_type)->alloc       = queue_length;
+    ((ot_queue*)data_type)->options     = in_q->options;
+    queue_front                         = q_markbyte(in_q, queue_length);
+    ((ot_queue*)data_type)->front       = queue_front;
+    ((ot_queue*)data_type)->back        = q_offset((ot_queue*)data_type, queue_length);
+    ((ot_queue*)data_type)->getcursor   = q_offset((ot_queue*)data_type, 0);
+    ((ot_queue*)data_type)->putcursor   = q_offset((ot_queue*)data_type, 0);
+    //((ot_queue*)data_type)->back        = queue_front+queue_length;
+    //((ot_queue*)data_type)->getcursor   = queue_front;
+    //((ot_queue*)data_type)->putcursor   = queue_front;
+    
+#else
+    ot_u16 queue_length;
+    ot_qcur marker;
+    queue_length                        = q_readshort(in_q);
+    ((ot_queue*)data_type)->alloc       = queue_length;
+    ((ot_queue*)data_type)->options     = in_q->options;
+    marker                              = q_markbyte(in_q, queue_length);
+    ((ot_queue*)data_type)->front       = (void*)((uint32_t)in_q->front + (marker>>1));
+    ((ot_queue*)data_type)->back        = q_offset((ot_queue*)data_type, queue_length);
+    ((ot_queue*)data_type)->getcursor   = q_offset((ot_queue*)data_type, 0);
+    ((ot_queue*)data_type)->putcursor   = q_offset((ot_queue*)data_type, 0);
+#endif
 }
 
 OT_WEAK void alp_stream_queue(ot_queue* out_q, void* data_type) { 
@@ -97,12 +114,6 @@ OT_WEAK void alp_stream_queue(ot_queue* out_q, void* data_type) {
 
 OT_WEAK void alp_breakdown_session_tmpl(ot_queue* in_q, void* data_type) {
     q_readstring(in_q, (ot_u8*)data_type, 6);
-    //((session_tmpl*)data_type)->reserved    = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->channel     = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->subnet      = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->subnetmask  = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->flags       = q_readbyte(in_q);
-    //((session_tmpl*)data_type)->flagmask    = q_readbyte(in_q);
 }
 
 OT_WEAK void alp_stream_session_tmpl(ot_queue* out_q, void* data_type) {
@@ -186,11 +197,23 @@ OT_WEAK void alp_stream_routing_tmpl(ot_queue* out_q, void* data_type) {
 
 
 
+
+
 OT_WEAK void alp_breakdown_id_tmpl(ot_queue* in_q, void* data_type) {
+#ifndef __C2000__
     ot_int id_length;
     id_length                       = q_readbyte(in_q);
     ((id_tmpl*)data_type)->length   = id_length;
     ((id_tmpl*)data_type)->value    = (id_length==0) ? NULL : q_markbyte(in_q, id_length);
+
+#else
+    ot_int id_length;
+    ot_qcur marker;
+    id_length                       = q_readbyte(in_q);
+    ((id_tmpl*)data_type)->length   = id_length;
+    marker                          = q_markbyte(in_q, id_length);
+    ((id_tmpl*)data_type)->value    = (id_length==0) ? NULL : (void*)((uint32_t)in_q->front + (marker>>1));
+#endif
 }
 
 OT_WEAK void alp_stream_id_tmpl(ot_queue* out_q, void* data_type) { 

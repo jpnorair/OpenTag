@@ -114,40 +114,12 @@
 
 
 
-/** Session power configuration (deprecated)
-  * Used in .cs_rssi, .cca_rssi, .tx_eirp containers to 
-  * move power configurations between layers.
-#define M2_RSSI_AUTOSCALE           b10000000
-#define M2_RSSI_MASK                b00011111
-#define M2_RSSI_DBM(VAL)            (ot_int)(-140 + ((VAL)*3))
-#define M2_EIRP_AUTOSCALE           b10000000
-#define M2_EIRP_MASK                b01111111
-#define M2_EIRP_DBM(VAL)            (ot_int)(-40 + ((VAL)>>1))
-#define M2_EIRP_0p5DBM(VAL)         (ot_int)(-80 + (VAL))
-  */
-
 
 /** Session persistent flags
   * Used in the m2session.flags, to pass common flags between layers.
   * The flag values are consistent with the ones used for M2NP/M2QP, but they
   * can be used for other protocols, too, since they are pretty generic.
-  *
-#define M2_FLAG_LISTEN              (1<<7)
-#define M2_FLAG_DLLS                (1<<6)
-#define M2_FLAG_NLS                 (1<<5)
-#define M2_FLAG_VID                 (1<<4)
-#define M2_FLAG_EXT                 (1<<3)      //Synthetic
-#define M2_FLAG_RSCODE              (1<<3)      
-#define M2_FLAG_STREAM              (1<<2)
-#define M2_FLAG_UCAST               (0<<0)
-#define M2_FLAG_BCAST               (1<<0)
-#define M2_FLAG_ACAST               (2<<0)
-#define M2_FLAG_MCAST               (3<<0)
 */
-
-/* Future Changes, needing alignment with referential Mode2 code files
-   ASAPI and other APIs that manipulate sessions must be altered to 
-   accept these changes. */
    
 #define M2_FLAG_LISTEN              (1<<7)
 #define M2_FLAG_CRYPTO              (3<<5)      // added since last version
@@ -352,6 +324,30 @@ m2session* session_extend(ot_app applet, ot_u16 wait, ot_u8 channel, ot_u8 netst
   */
 m2session* session_continue(ot_app applet, ot_u8 next_state, ot_uint wait);
 
+
+
+/** @brief  Purges an applet from the session stack
+  * @param  applet         (ot_app) applet to purge from session stack
+  * @retval none
+  * @ingroup Session
+  *
+  * In present implementation, session_app_purge() will mark all sessions that
+  * match the input applet as SCRAP.  It will leave the intra-session timing
+  * pattern intact, although the sessions will just be deleted by the DLL
+  * activation routine as they are encountered.
+  */
+void session_app_purge(ot_app applet);
+
+
+
+/** @brief  Returns true if there is a session scheduled with the supplied applet
+  * @param  applet         (ot_app) applet to check for occupancy
+  * @retval none
+  * @ingroup Session
+  *
+  * This function replaced session_occupied() in function.
+  */
+ot_bool session_app_isloaded(ot_app applet);
 
 
 /** @brief  Returns true if there is a session scheduled on supplied channel

@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2017 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/delay_driver.c
+  * @file       /platform/posix_c/otlib_delay.c
   * @author     JP Norair
   * @version    R100
-  * @date       26 Aug 2014
-  * @brief      Delay OTlib Functions for STM32L
+  * @date       26 Oct 2017
+  * @brief      Delay OTlib Functions for POSIX
   * @ingroup    Delay
   *
   ******************************************************************************
@@ -28,63 +28,33 @@
 #include <otplatform.h>
 #include <otlib/delay.h>
 
-
-void sub_timed_wfe(ot_u16 count, ot_u16 prescaler) {
-/// Low power blocking function: uses Wait For Event (WFE) and a TIM update event.
-
-    // Enable TIMx
-    // load prescaler
-    // load 0-count
-    // trigger it
-    //while ((TIMx->SR & TIM_SR_UIF) == 0) {
-    //    __WFE();
-    //}
-    // disable TIMx
-}
+#include <unistd.h>
 
 
 #ifndef EXTF_delay_sti
 void delay_sti(ot_u16 sti) {
-///@todo get WFE working on STM32L
-    delay_us( (sti<<5) );
-    //sub_timed_wfe(sti, 0);
+    delay_us( sti*31 );
 }
 #endif
 
 
 #ifndef EXTF_delay_ti
 void delay_ti(ot_u16 n) {
-    sub_timed_wfe(n, 31);
+    delay_us(n*977);
 }
 #endif
 
 
-
 #ifndef EXTF_delay_ms
 void delay_ms(ot_u16 n) {
-    ot_long c;
-    c   = (platform_ext.clock_hz[0]>>10);   // Set cycles per ms
-    c  *= n;                                // Multiply by number of ms
-    do {
-        c -= 7;                         // 7 cycles per loop (measured)
-    } while (c > 0);
+    delay_us(n*1000);
 }
 #endif
 
 
 #ifndef EXTF_delay_us
 void delay_us(ot_u16 n) {
-    ot_long c;
-    c   = (platform_ext.clock_hz[0]>>10);   // Set cycles per ms
-    c  *= n;                                // Multiply by number of us
-    c >>= 10;                               // Divide into cycles per us
-    do {
-        c -= 7;                         // 7 cycles per loop (measured)
-    } while (c > 0);
+    usleep(n);
 }
 #endif
-
-
-
-
 

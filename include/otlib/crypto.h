@@ -77,7 +77,7 @@
   * this function will always be 4 on success, since this is the length of the
   * Authentication tag, per specification.
   */
-ot_int EAX_encrypt(ot_u8* dst, ot_u8* src, ot_uint srclen, ot_u8* nonce, ot_u8* key);
+ot_int EAX_encrypt(void* dst, void* src, ot_uint srclen, void* nonce, void* key);
 
 
 
@@ -101,7 +101,7 @@ ot_int EAX_encrypt(ot_u8* dst, ot_u8* src, ot_uint srclen, ot_u8* nonce, ot_u8* 
   * this function will always be 4 on success, since this is the length of the
   * Authentication tag, per specification.
   */
-ot_int EAX_decrypt(ot_u8* dst, ot_u8* src, ot_uint srclen, ot_u8* nonce, ot_u8* key);
+ot_int EAX_decrypt(void* dst, void* src, ot_uint srclen, void* nonce, void* key);
 
 
 
@@ -113,10 +113,10 @@ ot_int EAX_decrypt(ot_u8* dst, ot_u8* src, ot_uint srclen, ot_u8* nonce, ot_u8* 
   * The driver/platform code must implement these functions.
   */
 
-ot_int EAXdrv_init(ot_u8* key, EAXdrv_t* context);
-ot_int EAXdrv_clear(EAXdrv_t* context);
-ot_int EAXdrv_encrypt(ot_u8* nonce, ot_u8* data, ot_uint datalen, EAXdrv_t* context);
-ot_int EAXdrv_decrypt(ot_u8* nonce, ot_u8* data, ot_uint datalen, EAXdrv_t* context);
+ot_int EAXdrv_init(void* key, void* context);
+ot_int EAXdrv_clear(void* context);
+ot_int EAXdrv_encrypt(void* nonce, void* data, ot_uint datalen, void* context);
+ot_int EAXdrv_decrypt(void* nonce, void* data, ot_uint datalen, void* context);
 
 
 #endif

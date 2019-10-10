@@ -985,8 +985,8 @@ void rm2_txinit(ot_u8 psettings, ot_sig2 callback) {
 
 
 
-#ifndef EXTF_rm2_txstop_flood
-void rm2_txstop_flood() {
+#ifndef EXTF_rm2_flood_txstop
+void rm2_flood_txstop() {
 #if (SYS_FLOOD == ENABLED)
     cc430.state = RADIO_STATE_TXDONE;
     RF_CoreITConfig(RF_CoreIT_TXBelowThresh, DISABLE);  //RFCONFIG_TXFIFOLOW_INTOFF();

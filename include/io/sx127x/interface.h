@@ -92,10 +92,13 @@ typedef struct {
 #   if (BOARD_FEATURE_RFXTALOUT)
     ot_bool         clkreq;
 #   endif
+// #   if (__SX127x_PABOOST__)
+//     ot_bool         is_paboost;
+// #   endif
     SX127x_IMode    imode;
     ot_u8           status;
     ot_u8           spi_addr;
-    ot_u8           busrx[24];
+    ot_u8           busrx[32];
 } sx127x_struct;
 
 extern sx127x_struct sx127x;

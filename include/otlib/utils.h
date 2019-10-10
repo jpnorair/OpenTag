@@ -39,12 +39,12 @@ void otutils_sigv_null(void* a);
 
 
 
-// Exp-Mantissa expansion for common 7-bit field
+ot_ulong otutils_calc_longtimeout(ot_u16 timeout_code);
+ot_u16 otutils_encode_longtimeout(ot_ulong timeout_ticks);
+
 ot_ulong otutils_calc_timeout(ot_u8 timeout_code);
-
-
-// Exp-Mantissa expansion for common 7-bit field
 ot_u8 otutils_encode_timeout(ot_u16 timeout_ticks);
+
 
 // 1 byte to 2 hex chars
 ot_u16 otutils_byte2hex(ot_u8 input);

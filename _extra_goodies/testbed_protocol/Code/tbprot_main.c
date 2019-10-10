@@ -412,7 +412,7 @@ int main(int argc, char** argv) {
   * - Wear leveling overhead is configurable, but fixed for all FS sizes
   * - Veelite virtual addressing allocations of key sectors below:
   *     Overhead:   0000 to 03FF        (1024 bytes alloc)
-  *     ISFSB:      0400 to 049F        (160 bytes alloc)
+  *     ISSB:      0400 to 049F        (160 bytes alloc)
   *     GFB:        04A0 to 089F        (1024 bytes)
   *     ISFB:       08A0 to 0FFF        (1888 bytes)
   */
@@ -442,60 +442,60 @@ static const ot_u8 overhead_files[] = {
     0x03, GFB_MOD_standard, 
     0x00, 0x17, 0xFF, 0xFF,
     
-    ISFS_LEN(transit_data), 0x00, 
-    ISFS_ALLOC(transit_data), 0x00, 
-    ISFS_ID(transit_data), 
-    ISFS_MOD(transit_data),
-    SPLIT_SHORT_LE(ISFS_BASE(transit_data)), 
+    ISS_LEN(transit_data), 0x00, 
+    ISS_ALLOC(transit_data), 0x00, 
+    ISS_ID(transit_data), 
+    ISS_MOD(transit_data),
+    SPLIT_SHORT_LE(ISS_BASE(transit_data)), 
     0xFF, 0xFF, 
     
-    ISFS_LEN(capability_data), 0x00, 
-    ISFS_ALLOC(capability_data), 0x00, 
-    ISFS_ID(capability_data), 
-    ISFS_MOD(capability_data),
-    SPLIT_SHORT_LE(ISFS_BASE(capability_data)), 
+    ISS_LEN(capability_data), 0x00, 
+    ISS_ALLOC(capability_data), 0x00, 
+    ISS_ID(capability_data), 
+    ISS_MOD(capability_data),
+    SPLIT_SHORT_LE(ISS_BASE(capability_data)), 
     0xFF, 0xFF, 
     
-    ISFS_LEN(query_results), 0x00, 
-    ISFS_ALLOC(query_results), 0x00, 
-    ISFS_ID(query_results), 
-    ISFS_MOD(query_results),
-    SPLIT_SHORT_LE(ISFS_BASE(query_results)),  
+    ISS_LEN(query_results), 0x00, 
+    ISS_ALLOC(query_results), 0x00, 
+    ISS_ID(query_results), 
+    ISS_MOD(query_results),
+    SPLIT_SHORT_LE(ISS_BASE(query_results)),  
     0xFF, 0xFF, 
     
-    ISFS_LEN(hardware_fault), 0x00, 
-    ISFS_ALLOC(hardware_fault), 0x00, 
-    ISFS_ID(hardware_fault), 
-    ISFS_MOD(hardware_fault),
-    SPLIT_SHORT_LE(ISFS_BASE(hardware_fault)),  
+    ISS_LEN(hardware_fault), 0x00, 
+    ISS_ALLOC(hardware_fault), 0x00, 
+    ISS_ID(hardware_fault), 
+    ISS_MOD(hardware_fault),
+    SPLIT_SHORT_LE(ISS_BASE(hardware_fault)),  
     0xFF, 0xFF, 
     
-    ISFS_LEN(device_discovery), 0x00, 
-    ISFS_ALLOC(device_discovery), 0x00, 
-    ISFS_ID(device_discovery), 
-    ISFS_MOD(device_discovery),
-    SPLIT_SHORT_LE(ISFS_BASE(device_discovery)),  
+    ISS_LEN(device_discovery), 0x00, 
+    ISS_ALLOC(device_discovery), 0x00, 
+    ISS_ID(device_discovery), 
+    ISS_MOD(device_discovery),
+    SPLIT_SHORT_LE(ISS_BASE(device_discovery)),  
     0xFF, 0xFF, 
     
-    ISFS_LEN(device_capability), 0x00, 
-    ISFS_ALLOC(device_capability), 0x00, 
-    ISFS_ID(device_capability), 
-    ISFS_MOD(device_capability),
-    SPLIT_SHORT_LE(ISFS_BASE(device_capability)), 
+    ISS_LEN(device_capability), 0x00, 
+    ISS_ALLOC(device_capability), 0x00, 
+    ISS_ID(device_capability), 
+    ISS_MOD(device_capability),
+    SPLIT_SHORT_LE(ISS_BASE(device_capability)), 
     0xFF, 0xFF, 
     
-    ISFS_LEN(device_channel_utilization), 0x00, 
-    ISFS_ALLOC(device_channel_utilization), 0x00, 
-    ISFS_ID(device_channel_utilization), 
-    ISFS_MOD(device_channel_utilization),
-    SPLIT_SHORT_LE(ISFS_BASE(device_channel_utilization)),  
+    ISS_LEN(device_channel_utilization), 0x00, 
+    ISS_ALLOC(device_channel_utilization), 0x00, 
+    ISS_ID(device_channel_utilization), 
+    ISS_MOD(device_channel_utilization),
+    SPLIT_SHORT_LE(ISS_BASE(device_channel_utilization)),  
     0xFF, 0xFF, 
     
-    ISFS_LEN(location_data), 0x00, 
-    ISFS_ALLOC(location_data), 0x00, 
-    ISFS_ID(location_data), 
-    ISFS_MOD(location_data),
-    SPLIT_SHORT_LE(ISFS_BASE(location_data)),  
+    ISS_LEN(location_data), 0x00, 
+    ISS_ALLOC(location_data), 0x00, 
+    ISS_ID(location_data), 
+    ISS_MOD(location_data),
+    SPLIT_SHORT_LE(ISS_BASE(location_data)),  
     0xFF, 0xFF, 
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
@@ -571,11 +571,11 @@ static const ot_u8 overhead_files[] = {
     SPLIT_SHORT_LE(ISF_BASE(protocol_list)), 
     0xFF, 0xFF, 
     
-    ISF_LEN(isfs_list), 0x00, 
-    SPLIT_SHORT_LE(ISF_ALLOC(isfs_list)),
-    ISF_ID(isfs_list), 
-    ISF_MOD(isfs_list),
-    SPLIT_SHORT_LE(ISF_BASE(isfs_list)), 
+    ISF_LEN(iss_list), 0x00, 
+    SPLIT_SHORT_LE(ISF_ALLOC(iss_list)),
+    ISF_ID(iss_list), 
+    ISF_MOD(iss_list),
+    SPLIT_SHORT_LE(ISF_BASE(iss_list)), 
     0xFF, 0xFF, 
     
     ISF_LEN(gfb_file_list), 0x00, 
@@ -700,8 +700,8 @@ static const ot_u8 overhead_files[] = {
 
 
 
-/// This array contains stock codes for isfs.  They are ordered strings.
-static const ot_u8 isfs_stock_codes[] = {   
+/// This array contains stock codes for iss.  They are ordered strings.
+static const ot_u8 iss_stock_codes[] = {   
     0x10, 0x11, 0xFF, 0xFF, 
     0x12, 0x13, 0x14, 0xFF, 
     0x15, 0xFF, 
@@ -758,8 +758,8 @@ static const ot_u8 isf_stock_files[] = {
     SPLIT_SHORT(0),                                     /* NLS Methods */
     SPLIT_SHORT(ISF_TOTAL_BYTES),                       /* ISFB Total Memory */
     SPLIT_SHORT(ISF_TOTAL_BYTES-ISF_HEAP_BYTES),        /* ISFB Available Memory */
-    SPLIT_SHORT(ISFS_TOTAL_BYTES),                      /* ISFSB Total Memory */
-    SPLIT_SHORT(ISFS_TOTAL_BYTES-ISFS_HEAP_BYTES),      /* ISFSB Available Memory */
+    SPLIT_SHORT(ISS_TOTAL_BYTES),                      /* ISSB Total Memory */
+    SPLIT_SHORT(ISS_TOTAL_BYTES-ISS_HEAP_BYTES),      /* ISSB Available Memory */
     SPLIT_SHORT(GFB_TOTAL_BYTES),                       /* GFB Total Memory */
     SPLIT_SHORT(GFB_TOTAL_BYTES-GFB_HEAP_BYTES),        /* GFB Available Memory */
     SPLIT_SHORT(GFB_FILE_BYTES),                        /* GFB File Size */
@@ -851,7 +851,7 @@ static const ot_u8 isf_stock_files[] = {
     0x00, 0x50, 0x60, 0xF0, 0xFF, 0xFF, 0xFF, 0xFF,     /* List of Protocols supported (Tentative)*/
     0x60, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
     
-    /* ISFS list: id=0x08, len=12, alloc=24 */
+    /* ISS list: id=0x08, len=12, alloc=24 */
     0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x18,     
     0x80, 0x81, 0x82, 0x83, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -929,23 +929,23 @@ void sub_load_overhead_data() {
                                          
     // Write overhead data
     cursor      = (ot_u16*)overhead_files;
-    data_amount = (GFB_NUM_FILES + ISFS_NUM_LISTS + ISF_NUM_STOCK_FILES) * sizeof(vl_header);
+    data_amount = (GFB_NUM_FILES + ISS_NUM_FILES + ISF_NUM_STOCK_FILES) * sizeof(vl_header);
     for (i=0; i<data_amount; i+=2) {
         vworm_mark(i, *cursor); 
         cursor++;
     }
 }
 
-void sub_load_isfs_data() {
+void sub_load_iss_data() {
     ot_long     i;
     ot_long     data_amount;
     ot_u16*     cursor;
     
-    // Write ISFS data
-    cursor      = (ot_u16*)isfs_stock_codes;
-    data_amount = (ISFS_STOCK_HEAP_BYTES);
-    data_amount += ISFS_START_VADDR;
-    for (i=ISFS_START_VADDR; i<data_amount; i+=2) {
+    // Write ISS data
+    cursor      = (ot_u16*)iss_stock_codes;
+    data_amount = (ISS_STOCK_BYTES);
+    data_amount += ISS_START_VADDR;
+    for (i=ISS_START_VADDR; i<data_amount; i+=2) {
         vworm_mark(i, *cursor);
         cursor++;
     } 
@@ -969,7 +969,7 @@ void sub_load_isf_data() {
 void program_defaults() {
     vworm_format();
     sub_load_overhead_data();
-    sub_load_isfs_data();
+    sub_load_iss_data();
     sub_load_isf_data();
 }
 

@@ -78,13 +78,21 @@
 /// Chip default is to have AGC Automatic control as off.
 /// Experiment with this value to get best results.
 //#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_OFF | _AGC_AUTO_ON)
+//#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_ON | _AGC_AUTO_OFF)
 #define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_OFF | _AGC_AUTO_OFF)
 
 
 
 
-#ifdef __EVAL_RF__
-#   include <io/sx127x/SX1276_override.h>
+#ifdef __SX1276__
+    // include overrides from the app, if they are available
+#   ifdef RF_OVERRIDES_H
+#       include <app/rf_overrides.h>
+#   endif
+    // Any other overrides that are for general purpose operation go here
+#   ifdef __EVAL_RF__
+#       include <io/sx127x/SX1276_override.h>
+#   endif
 #endif
 
 

@@ -133,9 +133,11 @@
 #define RF_PARAM(VAL)                   RF_PARAM_##VAL
 #define RF_PARAM_SSBIT_US               
 #define RF_PARAM_RAMP_BYTES             0                       // Ramp-up + Down
-#define RF_PARAM_PREAMBLE_BASESYMS      10
+#ifndef RF_PARAM_PREAMBLE_BASESYMS
+#	define RF_PARAM_PREAMBLE_BASESYMS   10
+#endif
 #define RF_PARAM_PREAMBLE_SYMS          (RF_PARAM_PREAMBLE_BASESYMS+5)                   
-                 
+
 #define RF_PARAM_SYNC_BYTES             1                       // Always 1
 #define RF_PARAM_PKT_OVERHEAD           (RF_PARAM_PREAMBLE_SYMS)
 #define RF_PARAM_BGPKT_SYMS             (RF_PARAM_PREAMBLE_SYMS + 15)

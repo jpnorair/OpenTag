@@ -51,7 +51,7 @@
 #include <otlib/utils.h>
 #include <otsys/mpipe.h>
 
-
+#include <string.h>
 
 
 ot_bool logger_header(ot_u8 id_subcode, ot_int payload_length) {
@@ -91,6 +91,16 @@ void sub_logmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* data) {
     q_writebyte(mpipe.alp.outq, 0);
     q_writestring(mpipe.alp.outq, data, data_len);
 }
+
+
+
+#ifndef EXTF_logger_str
+void logger_str(const char* data) {
+    if (data != NULL) {
+        logger(DATA_utf8, strlen(data), data);
+    }
+}
+#endif
 
 
 
@@ -138,7 +148,7 @@ void logger_hexmsg(ot_int label_len, ot_int data_len, ot_u8* label, ot_u8* data)
 void logger_direct() {
 /// Use this if you have already created a valid MPipe ALP/NDEF frame in the
 /// MPipe output queue and all you want to do is log it.
-    mpipe.alp.outq->getcursor[1] = (mpipe.alp.outq->putcursor - mpipe.alp.outq->getcursor - 6);
+    mpipe.alp.outq->getcursor[1] = q_span(mpipe.alp.outq) - 4;
     mpipe_txschedule(0); //mpipe_send();
 }
 #endif

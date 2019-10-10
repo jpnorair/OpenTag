@@ -208,7 +208,7 @@ static const otapi_cmd m2qp_cmd[11] = {
 ot_bool sub_proc_api_irregular(alp_tmpl* alp, id_tmpl* user_id, otapi_icmd* cmd, ot_u8 cmd_limit) {
     ot_u16  retval;
     ot_u8   rec_cmd     = alp->inq->getcursor[3];   // record command
-    ot_u8   respond     = (rec_cmd & 0x80);
+    //ot_u8   respond     = (rec_cmd & 0x80);
     ot_u8   lookup_cmd  = (rec_cmd & ~0x80) - 1;
     
     alp->inq->getcursor += 4;

@@ -25,7 +25,7 @@
   */
 
 #include <app/build_config.h>
-#if defined(__KERNEL_HICCULP__)
+#if 1 || defined(__KERNEL_HICCULP__)
 
 #include <otstd.h>
 #include <otplatform.h>
@@ -55,7 +55,8 @@
 #elif OT_FEATURE(IAP)
 #   include <hbsys/iap.h>
 #endif
-#if OT_FEATURE(UBX_GNSS)
+#if OT_FEATURE(GNSS)
+#   include <io/gnss_null/interface.h>
 #   include <io/ubx_gnss.h>
 #endif
 

@@ -41,27 +41,48 @@
 #include <otstd.h>
 #include <platform/config.h>
 
-#if defined(__STM32L0xx__)      // L0 can be debugged through STOP mode
-#   ifdef __DEBUG__
-#       define _USE_STOP    1
-#   else
-#       define _USE_STOP    1
+
+#if BOARD_FEATURE(FAST_WAKEUP) || OT_FEATURE(FAST_WAKEUP)
+#   define _USE_STOP 0
+
+#else
+    // L0 can be debugged through STOP mode
+#   if defined(__STM32L0xx__)      
+#       ifdef __DEBUG__
+#           define _USE_STOP    1
+#       else
+#           define _USE_STOP    1
+#       endif
+
+    // L1 cannot be debugged through STOP mode
+#   elif defined(__STM32L1xx__)
+#       ifdef __DEBUG__
+#           define _USE_STOP    0
+#       else
+#           define _USE_STOP    1
+#       endif
+
+#   else 
+#       warning "unsupported type of STM32 defined, it should work OK, but no guarantee."
 #   endif
 
-#elif defined(__STM32L1xx__)    // any L1-specific things
-#   ifdef __DEBUG__
-#       define _USE_STOP    0
-#   else
-#       define _USE_STOP    1
-#   endif
-
-#else 
-#   warning "unsupported type of STM32 defined, it should work OK, but no guarantee."
 #endif
+
+
 
 #ifndef _USE_STOP
 #   define _USE_STOP    0
 #endif
+
+
+void sys_sig_waitforevent(void) {
+    ot_u32 scbscr_save;
+    
+    scbscr_save = SCB->SCR;
+    SCB->SCR    = scbscr_save | SCB_SCR_SEVONPEND_Msk;
+    __WFE();
+    SCB->SCR    = scbscr_save;
+}
 
 
 //#ifdef EXTF_sys_sig_powerdown

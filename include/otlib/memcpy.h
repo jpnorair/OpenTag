@@ -39,16 +39,16 @@
 
 #if (OS_FEATURE(MEMCPY) == ENABLED)
 #   include <string.h>
-#   define memcpy2(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<1)
-#   define memcpy4(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<2)
+#   define memcpy_2(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<1)
+#   define memcpy_4(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<2)
 #else
-#   include <platform/memcpy.h>
+//#   include <platform/memcpy.h>
 #   define memcpy       ot_memcpy
-#   define memcpy2      ot_memcpy2
-#   define memcpy4      ot_memcpy4
+#   define memcpy_2     ot_memcpy_2
+#   define memcpy_4     ot_memcpy_4
 #   define memset       ot_memset
-#   define memset2      ot_memset2
-#   define memset4      ot_memset4
+#   define memset_2     ot_memset_2
+#   define memset_4     ot_memset_4
 #endif
 
 
@@ -58,19 +58,19 @@
   * @param  length      (ot_uint) number of bytes to transfer/copy
   * @retval None
   * @ingroup Memcpy
-  * @sa ot_memcpy2()
-  * @sa ot_memcpy4()
+  * @sa ot_memcpy_2()
+  * @sa ot_memcpy_4()
   * @sa ot_memset()
   *
   * ot_memcpy() is the generic implementation of memcpy, which must
   * handle byte-aligned memory copies.
   *
-  * ot_memcpy2() and ot_memcpy4() are two and four byte aligned
+  * ot_memcpy_2() and ot_memcpy_4() are two and four byte aligned
   * variants of ot_memcpy()
   */
-void ot_memcpy(ot_u8* dst, ot_u8* src, ot_uint length);
-void ot_memcpy2(ot_u16* dst, ot_u16* src, ot_uint length);
-void ot_memcpy4(ot_u32* dst, ot_u32* src, ot_uint length);
+void ot_memcpy(void* dst, void* src, ot_uint length);
+void ot_memcpy_2(void* dst, void* src, ot_uint length);
+void ot_memcpy_4(void* dst, void* src, ot_uint length);
 
 
 
@@ -82,9 +82,9 @@ void ot_memcpy4(ot_u32* dst, ot_u32* src, ot_uint length);
   * @ingroup Memcpy
   * @sa memcpy()
   */
-void ot_memset(ot_u8* dst, ot_u8 value, ot_uint length);
-void ot_memset2(ot_u16* dst, ot_u16 value, ot_uint length);
-void ot_memset4(ot_u32* dst, ot_u32 value, ot_uint length);
+void ot_memset(void* dst, ot_u8 value, ot_uint length);
+void ot_memset_2(void* dst, ot_u16 value, ot_uint length);
+void ot_memset_4(void* dst, ot_u32 value, ot_uint length);
 
 
 

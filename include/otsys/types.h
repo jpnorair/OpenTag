@@ -76,6 +76,7 @@
 #endif
 #if defined(__HAS_C99) || 1
 #   include <stdbool.h>
+//#error "good error"
     typedef bool    ot_bool;
 #   define True     true
 #   define False    false
@@ -83,6 +84,7 @@
     typedef enum { False = 0, True = !False } ot_bool;
 #endif
 
+#include <limits.h>
 
 
 /** @typedef ot_s8, ot_u8, ot_s16, ot_u16, ot_s32, ot_u32
@@ -96,7 +98,7 @@ typedef signed long         ot_s32;
 typedef unsigned long       ot_u32;
 
 
-    
+
 /** @typedef ot_int, ot_uint
   * Signed and Unsigned integers that have at least 16 bits of scope.  
   * They could be implemented as larger integers, however, if the target
@@ -181,6 +183,12 @@ typedef void (*ot_sigv)(void*);
   */
 typedef void (*ot_sigv2)(void*, void*);
 
+
+/** @typedef ot_procv
+  * void-pointer-argument process callback (endless possibilities)
+  * looks like: ot_int callback(void*)
+  */
+typedef ot_int (*ot_procv)(void*);
 
 
 

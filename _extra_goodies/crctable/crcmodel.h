@@ -86,9 +86,6 @@ typedef unsigned char * p_ubyte_;
 #define TRUE  1
 #endif
 
-/* Change to the second definition if you don't have prototypes. */
-#define P_(A) A
-//#define P_(A) () 
 
 /* Uncomment this definition if you don't have void. */
 /* typedef int void; */
@@ -121,17 +118,17 @@ typedef cm_t *p_cm_t;
 /* ---------------------------------- */
 /* The following functions animate the cm_t abstraction. */
 
-void cm_ini P_((p_cm_t p_cm));
+void cm_ini(p_cm_t p_cm);
 /* Initializes the argument CRC model instance.          */
 /* All parameter fields must be set before calling this. */
 
-void cm_nxt P_((p_cm_t p_cm,int ch));
+void cm_nxt(p_cm_t p_cm, int ch);
 /* Processes a single message byte [0,255]. */
 
-void cm_blk P_((p_cm_t p_cm,p_ubyte_ blk_adr,ulong blk_len));
+void cm_blk(p_cm_t p_cm, p_ubyte_ blk_adr, ulong blk_len);
 /* Processes a block of message bytes. */
 
-ulong cm_crc P_((p_cm_t p_cm));
+ulong cm_crc(p_cm_t p_cm);
 /* Returns the CRC value for the message bytes processed so far. */
 
 /******************************************************************************/
@@ -141,7 +138,7 @@ ulong cm_crc P_((p_cm_t p_cm));
 /* The following function can be used to calculate a CRC lookup table.        */
 /* It can also be used at run-time to create or check static tables.          */
 
-ulong cm_tab P_((p_cm_t p_cm,int index));
+ulong cm_tab(p_cm_t p_cm, int index);
 /* Returns the i'th entry for the lookup table for the specified algorithm.   */
 /* The function examines the fields cm_width, cm_poly, cm_refin, and the      */
 /* argument table index in the range [0,255] and returns the table entry in   */

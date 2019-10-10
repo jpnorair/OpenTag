@@ -259,7 +259,7 @@ vas_loc vas_check(vaddr addr) {
 
 #if defined(_TOUCH_FILEDATA)
     extern volatile const ot_u8 overhead_files[];
-    extern const ot_u8 isfs_stock_codes[];
+    extern const ot_u8 iss_stock_codes[];
     extern const ot_u8 gfb_stock_files[];
     extern const ot_u8 isf_stock_files[];
 #endif

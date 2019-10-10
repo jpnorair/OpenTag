@@ -81,6 +81,40 @@ typedef enum {
 
 
 
+/** @typedef vl_blockheader
+  * Header for a Veelite block: meant for internal use only.
+  * It goes into the overhead section of the Veelite FS, via vlFSHEADER.
+  */
+typedef struct OT_PACKED {
+    ot_u16  alloc;
+    ot_u16  used;
+    ot_u16  files;
+} vlBLOCKHEADER;
+
+
+/** @typedef vl_fsheader
+  * Filesystem Header: meant for internal/external use.
+  * Must be stored at the base of the filesystem.
+  * Must be the size of 2 vl_header_t structs.
+  */
+typedef struct OT_PACKED {
+    ot_u16          ftab_alloc;
+#   if (OT_FEATURE(VLACTIONS) == ENABLED)
+    ot_u16          res_act0;
+    ot_u16          res_act2;
+#   endif
+    vlBLOCKHEADER   gfb;
+    vlBLOCKHEADER   iss;
+    vlBLOCKHEADER   isf;
+#   if (OT_FEATURE(VLMODTIME) == ENABLED)
+    ot_u32          res_time0;
+    ot_u32          res_time4;
+#   endif
+} vlFSHEADER;
+
+
+
+
 /** @typedef vaddr
   * A currently 16 bit virtual address.  Later upgradable to 32 bit.
   * NULL_vaddr is not 0 but 0xFFFF, because in NAND Flash this value represents
@@ -159,6 +193,14 @@ vas_loc vas_check(vaddr addr);
   */
 ot_u8 vworm_format( );
 
+
+/** @brief Return the maximum size (allocation) of the filesystem heap.
+  * @param fs           (const vlFSHEADER*) use NULL on single-vworm systems
+  * @retval ot_u32      Number of bytes (octets) of allocation
+  * @ingroup Veelite
+  *
+  */
+ot_u32 vworm_fsalloc(const vlFSHEADER* fs);
 
 
 /** @brief Initializes the VWORM memory system

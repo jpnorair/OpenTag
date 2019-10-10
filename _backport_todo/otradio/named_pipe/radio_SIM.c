@@ -783,7 +783,7 @@ radio_init(void)
     }
 }
 
-void rm2_txstop_flood() {
+void rm2_flood_txstop() {
 #if (SYS_FLOOD == ENABLED)
     radio.flags &= ~RADIO_FLAG_FLOOD;
 #endif

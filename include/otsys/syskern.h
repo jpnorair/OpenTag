@@ -558,6 +558,8 @@ void sys_sig_panic(ot_int code);
 void sys_sig_powerdown(ot_int code);
 
 
+void sys_sig_waitforevent(void);
+
 
 /** @brief External process callback function
   * @param event_data   (void*) pointer to kernel-dependent event datatype

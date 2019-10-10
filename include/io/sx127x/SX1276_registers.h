@@ -102,4 +102,7 @@
 #   define __PPMCORRECTION(VAL)                     (0xFF(&(VAL)))
 
 
+#undef RFREG_LR_PADAC
+#define RFREG_LR_PADAC                              0x4D
+
 #endif

@@ -33,6 +33,8 @@
 #include <io/sx127x/SX1272_registers.h>
 
 
+#define _BGTIMEOUT_SCALAR 5/2
+
 // Some radio register settings constants
 #ifndef RF_PARAM_BAND
 #   define RF_PARAM_BAND    866
@@ -44,13 +46,13 @@
 
 #if (BOARD_FEATURE_RFXTAL != ENABLED)
 #   undef BOARD_PARAM_RFHz
-#   define BOARD_PARAM_RFHz  BOARD_PARAM_HFHz
+#   define BOARD_PARAM_RFHz  32000000
 #   define _XTAL_SRC    _EXT_REF
 #else
 #   define _XTAL_SRC    0
 #endif
 
-#if (BOARD_PARAM_RFHz != 32000000)
+#if (BOARD_PARAM_RFHz == 32000000)
 #   define _32MHz
 #else
 #   error "BOARD_PARAM_RFHz must be 32 MHz"
@@ -69,14 +71,22 @@
 
 
 // Tx Output Power
-#define DRF_LR_PACONFIG         (_PANORMAL | __OUTPUT_PWR(14))  //13dBm setting: -1 + 14
+#ifdef __SX127x_PABOOST__
+#define DRF_LR_PACONFIG         (_PABOOST | _MAX_PWR_15dBm0 | __OUTPUT_PWR(14))  //13dBm setting: -1 + 14
+#else
+#define DRF_LR_PACONFIG         (_PANORMAL | _MAX_PWR_15dBm0 | __OUTPUT_PWR(14))  //13dBm setting: -1 + 14
+#endif
 
 // Phase noise shouldn't matter so much for LoRa modulation, but worth a test.
 // PA-Ramp is also mostly an FSK feature, so I choose the default setting.
-#define DRF_LR_PARAMP           (_LOW_PN_TX_PLLOFF | _PA_RAMP_40us)
+#define DRF_LR_PARAMP           (_LOW_PN_TX_PLLON | _PA_RAMP_40us)
 
-// Overcurrent protection: using chip defaults.
+// Overcurrent protection
+#ifdef __SX127x_PABOOST__
+#define DRF_LR_OCP              (_OCP_OFF | _OCP_TRIM_150mA)
+#else
 #define DRF_LR_OCP              (_OCP_ON | _OCP_TRIM_100mA)
+#endif
 
 // LNA Gain: Use max gain setting
 // Boost on vs. Boost off can be fiddled-with following experimentation
@@ -107,8 +117,8 @@
 #define DRF_LR_MODEMCONFIG2_FG  (_SF_7 | _TX_CONT_OFF | _AGC_AUTO_ON | b11)
 
 
-#define DRF_LR_SYMBTIMEOUTLSB   (17 + RF_PARAM_PREAMBLE_SYMS)
-#define DRF_LR_SYMBTIMEOUTLSB_BG (17 + RF_PARAM_PREAMBLE_SYMS)
+#define DRF_LR_SYMBTIMEOUTLSB    ((RF_PARAM_BGPKT_SYMS) * _BGTIMEOUT_SCALAR)
+#define DRF_LR_SYMBTIMEOUTLSB_BG ((RF_PARAM_BGPKT_SYMS) * _BGTIMEOUT_SCALAR)
 #define DRF_LR_SYMBTIMEOUTLSB_FG (255)
 
 // Preamble length is set from config settings
@@ -169,12 +179,15 @@
 
 
 
-
-
-
-#ifdef __EVAL_RF__
-#   include <io/sx127x/SX1272_override.h>
+#ifdef __SX1272__
+    // include overrides from the app, if they are available
+#   ifdef RF_OVERRIDES_H
+#       include <app/rf_overrides.h>
+#   endif
+    // Any other overrides that are for general purpose operation go here
+#   ifdef __EVAL_RF__
+#       include <io/sx127x/SX1272_override.h>
+#   endif
 #endif
-
 
 #endif

@@ -216,12 +216,12 @@ void otapi_pause()      { platform_ot_pause(); }
 #       define _FULLSPEED_VOLTAGE   POWER_1V2
 #       define _FULLSPEED_FLASHWAIT DISABLED
 #   endif
-#   if (BOARD_FEATURE(FULLXTAL))
+#   if (BOARD_FEATURE_FULLXTAL)
 #       define _FULLOSC_RDYFLAG         RCC_CR_HSERDY
 #       define _FULLOSC_CLOCKBIT        2
-#       if BOARD_FEATURE(HFBYPASS)
+#       if (BOARD_FEATURE_HFBYPASS)
 #           define _FULLOSC_ONBIT       (RCC_CR_HSEON | RCC_CR_HSEBYP)
-#           define _FULLOSC_TIMEOUT     1000
+#           define _FULLOSC_TIMEOUT     10
 #       else
 #           define _FULLOSC_ONBIT       RCC_CR_HSEON
 #           define _FULLOSC_TIMEOUT     3000 //HSE_STARTUP_TIMEOUT
@@ -424,6 +424,7 @@ void sub_voltage_config(ot_u16 pwr_cr_vos_x) {
 
 void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
     ///@todo figure out a way to do this with WFE
+    
     // Wait for Oscillator to get ready, counter goes to 0 on failure
     RCC->CR    |= osc_mask;
     osc_mask  <<= (osc_mask & 1);   // hack for STM32L0 HSI
@@ -438,6 +439,7 @@ void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
 
 
 void sub_osc_setclock(ot_u32 clock_mask) {
+    ///@todo have this fail into hardware fault
     ot_u32 scratch;
     scratch         = RCC->CFGR & ~(3 | RCC_CFGR_STOPWUCK);
     scratch        |= clock_mask;
@@ -451,10 +453,10 @@ void sub_osc_setclock(ot_u32 clock_mask) {
 void sub_set_clockhz(ot_ulong cpu_clock_hz) {
 /// In interest of speed and size, you need to setup your clock dividers as
 /// constants in the board configuration file.
-    ///@todo map these 0 shifts to derived constants
-    platform_ext.clock_hz[0]    = cpu_clock_hz >> 0;    //AHB
-    platform_ext.clock_hz[1]    = cpu_clock_hz >> 0;    //APB1
-    platform_ext.clock_hz[2]    = cpu_clock_hz >> 0;    //APB2
+    ///@todo Additional argument for changing the clock dividers.
+    platform_ext.clock_hz[0]    = cpu_clock_hz >> (BOARD_PARAM_AHBCLKDIV-1);    //AHB
+    platform_ext.clock_hz[1]    = cpu_clock_hz >> (BOARD_PARAM_APB1CLKDIV-1);    //APB1
+    platform_ext.clock_hz[2]    = cpu_clock_hz >> (BOARD_PARAM_APB2CLKDIV-1);    //APB2
 }
 
 
@@ -736,7 +738,7 @@ void platform_full_speed() {
         
 #       if (_FULLSPEED_FLASHWAIT == ENABLED)
             FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY;
-            sub_osc_setclock(_FULLOSC_CLOCKBIT);
+            sub_osc_setclock(_FULLOSC_CLOCKBIT);    ///@todo FIXED TO HSI
 #       else
             sub_osc_setclock(_FULLOSC_CLOCKBIT);
             FLASH->ACR = FLASH_ACR_PRFTEN;
@@ -850,6 +852,9 @@ void platform_poweron() {
     /// 3. Configure Clocks
     platform_init_periphclk();
     platform_init_busclk();
+#   if (BOARD_FEATURE(HFXTAL) != ENABLED)
+    //platform_ext_hsitrim();
+#   endif
 
     /// 5. Debugging setup: apply to all peripherals
 #   if defined(__DEBUG__)
@@ -1042,7 +1047,7 @@ void platform_init_busclk() {
     ///           (96 MHz / BOARD_PARAM_PLLdiv) == PLATFORM_HSCLOCK_HZ. </LI>
 #   elif BOARD_FEATURE(FLANKSPEED)
 #       if ((_FLANKSPEED_VOLTAGE != POWER_1V5) && (_FLANK_UPVOLT() == 0))
-            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
+            sub_voltage_config(_FLANKSPEED_VOLTAGE | _RTC_PROTECTION);
 #       endif
         // Basic Flash setup, then run normal routine
         FLASH->ACR = FLASH_ACR_PRFTEN;
@@ -1169,7 +1174,7 @@ void platform_init_interruptor() {
     
     // Systick needs SCB and NVIC to be enabled in order to run.
 #   if defined(SYSTICK_IS_HIGHLY_DISCOURAGED)
-    NVIC_SetPriority(IRQn_Type IRQn, _LOPRI_GROUP);
+    NVIC_SetPriority(SysTick_IRQn, _LOPRI_GROUP);
     NVIC_EnableIRQ(SysTick_IRQn);
 #   endif
 

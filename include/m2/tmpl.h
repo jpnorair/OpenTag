@@ -296,15 +296,15 @@ typedef struct {
 } isfreturn_tmpl;
 
 
-#define __SIZEOF_isfseriesreturn_tmpl (1+1+2+2+(2*PLATFORM_POINTER_SIZE))
+#define __SIZEOF_isseriesreturn_tmpl (1+1+2+2+(2*PLATFORM_POINTER_SIZE))
 typedef struct {
-    ot_u8   isfs_id;
+    ot_u8   iss_id;
     ot_u8   series_length;
     ot_s16  contents_offset;
     ot_s16  content_length;
     ot_u8*  series_data;
     ot_u8*  contents_data;
-} isfseriesreturn_tmpl;
+} isseriesreturn_tmpl;
 
 
 typedef enum {

@@ -143,9 +143,28 @@ ot_u8 vworm_format( ) {
 #endif
 
 
+#ifndef EXTF_vworm_fsalloc
+ot_u32 vworm_fsalloc(const vlFSHEADER* fs) {
+    ot_u32 alloc;
+
+    if (fs == NULL) {
+        alloc   = 0;
+    }
+    else {
+        alloc   = fs->ftab_alloc;
+        alloc  += fs->gfb.alloc;
+        alloc  += fs->iss.alloc;
+        alloc  += fs->isf.alloc;
+    }
+
+    return alloc;
+}
+#endif
+
+
 #ifndef EXTF_vworm_init
 ot_u8 vworm_init() {
-    ot_memcpy4(fsram, (ot_u32*)FLASH_FS_ADDR, sizeof(fsram)/4);
+    ot_memcpy_4(fsram, (ot_u32*)FLASH_FS_ADDR, sizeof(fsram)/4);
     return 0;
 }
 #endif

@@ -115,7 +115,7 @@ extern radio_struct radio;
 
 
 /** Mode 2 PHY-MAC variables
-  * These variables come from the Channel Configuration ISFS File, and are
+  * These variables come from the Channel Configuration ISS File, and are
   * stored here (and possibly altered slightly) before the channel is used by
   * the PHY.  Some of these parameters measure RSSI or EIRP.  These assume a
   * perfectly matched, 100% efficient antenna.  You will have to offset them
@@ -309,7 +309,7 @@ ot_uint rm2_pkt_duration(ot_queue* pkt_q);
   * This is an optimized version of rm2_pkt_duration(), for background
   * packets.
   */
-ot_uint rm2_bgpkt_duration();
+ot_uint rm2_bgpkt_duration(void);
 
 
 
@@ -321,7 +321,7 @@ ot_uint rm2_bgpkt_duration();
   *
   * An implicit (internal) parameter to this function is phymac[N].channel
   */
-ot_uint rm2_scale_codec(ot_uint buf_bytes);
+ot_uint rm2_scale_codec(ot_u8 channel_code, ot_uint buf_bytes);
 
 
 
@@ -330,7 +330,7 @@ ot_uint rm2_scale_codec(ot_uint buf_bytes);
   * @retval ot_bool     True/False on MAC filter pass/fail
   * @ingroup Radio
   */
-ot_bool rm2_mac_filter();
+ot_bool rm2_mac_filter(void);
 
 
 /** @brief  Tell Channel search process that it needs to refresh itself
@@ -365,7 +365,7 @@ ot_bool rm2_test_channel(ot_u8 channel);
   * available (dll.chanlist), and it has been entered into phymac[0] and the
   * radio hardware.
   */
-ot_bool rm2_test_chanlist();
+ot_bool rm2_test_chanlist(void);
 
 
 
@@ -432,7 +432,7 @@ ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE *fp);
   *  B. the registers on the radio device need resetting to defaults
   *  C. the peripherals on the MCU need to be reconfigured for UHF usage
   */
-void radio_init();
+void radio_init(void);
 
 
 
@@ -447,7 +447,7 @@ void radio_init();
   * Typically this function is run through the kernel itself or via a
   * task on event-number 255.
   */
-ot_u8 radio_getpwrcode();
+ot_u8 radio_getpwrcode(void);
 
 
 
@@ -491,7 +491,7 @@ void radio_set_mactimer(ot_u16 clocks);
   * and the HW ISR for GPTIM is in otplatform/xxx/platform_xxx.c.  The HW ISR
   * should call radio_mactimer() if the mactimer channel is interrupting.
   */
-void radio_mac_isr();
+void radio_mac_isr(void);
 
 
 
@@ -576,7 +576,7 @@ void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp);
   * @retval None
   * @ingroup Radio
   */
-void rm2_mac_configure();
+void rm2_mac_configure(void);
 
 
 
@@ -593,7 +593,7 @@ void rm2_mac_configure();
   * received.  It also uses the Mode 2 TX EIRP field (in every Mode 2 frame) in
   * order to calculate link loss.
   */
-void rm2_calc_link();
+void rm2_calc_link(void);
 
 
 
@@ -606,11 +606,33 @@ void rm2_calc_link();
   * transmission, in particular the Advertising packet which inserts the value
   * of this counter into the background payload.
   *
-  * rm2_get_floodcounter should be aware of the state of each background packet
+  * rm2_flood_getcounter should be aware of the state of each background packet
   * transmission, such that the value returned is the amount of ticks once the
   * last bit of the packet has been modulated and put onto the air.
   */
-ot_int rm2_get_floodcounter();
+ot_int rm2_flood_getcounter(void);
+
+
+
+/** @brief  Starts the flood harmoniously 
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  * @sa rm2_flood_txstop
+  */
+void rm2_flood_txstart(void);
+
+
+
+/** @brief  Stops the flood harmoniously (finishes the current packet and stops)
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  * @sa rm2_txinit_bf
+  *
+  * This will cause the TX callback to occur.
+  */
+void rm2_flood_txstop(void);
 
 
 
@@ -619,7 +641,7 @@ ot_int rm2_get_floodcounter();
   * @retval None
   * @ingroup Radio
   */
-void rm2_kill();
+void rm2_kill(void);
 
 
 /** @brief  ISR that is called internally when FF RX times out
@@ -630,7 +652,7 @@ void rm2_kill();
   * __Best to ignore__.  If you are an expert you can call this to force radio
   * actions, which may force callbacks.
   */
-void rm2_rxtimeout_isr();
+void rm2_rxtimeout_isr(void);
 
 
 
@@ -739,18 +761,6 @@ void rm2_txtest(ot_u8 channel, ot_u8 eirp, ot_u8 tsettings, ot_u16 timeout);
 
 
 
-/** @brief  Stops the flood harmoniously (finishes the current packet and stops)
-  * @param  None
-  * @retval None
-  * @ingroup Radio
-  * @sa rm2_txinit_bf
-  *
-  * This will cause the TX callback to occur.
-  */
-void rm2_txstop_flood();
-
-
-
 /** @brief  Instructs radio to re-enter RX mode immediately
   * @param  callback 	(ot_bool) re-supplied RX-done callback
   * @retval None
@@ -790,7 +800,7 @@ void rm2_resend(ot_sig2 callback);
   * __Best to ignore__.  If you are an expert you can call this to force radio
   * actions, which may force callbacks.
   */
-void rm2_rxsync_isr();
+void rm2_rxsync_isr(void);
 
 
 
@@ -802,7 +812,7 @@ void rm2_rxsync_isr();
   * __Best to ignore__.  If you are an expert you can call this to force radio
   * actions, which may force callbacks.
   */
-void rm2_rxdata_isr();
+void rm2_rxdata_isr(void);
 
 
 
@@ -813,7 +823,7 @@ void rm2_rxdata_isr();
   * @sa rm2_txinit_ff, rm2_txinit_bf
   *
   */
-void rm2_txcsma_isr();
+void rm2_txcsma_isr(void);
 
 
 
@@ -825,7 +835,7 @@ void rm2_txcsma_isr();
   * __Best to ignore__.  If you are an expert you can call this to force radio
   * actions, which may force callbacks.
   */
-void rm2_txdata_isr();
+void rm2_txdata_isr(void);
 
 
 
@@ -837,7 +847,7 @@ void rm2_txdata_isr();
   * __Best to ignore__.  If you are an expert you can call this to force RX
   * termination.
   */
-void rm2_rxend_isr();
+void rm2_rxend_isr(void);
 
 
 
@@ -866,7 +876,7 @@ void rm2_rxend_isr();
   * The radio_init() function must be called to bring radio from the off state
   * into the sleep state.
   */
-void radio_off();
+void radio_off(void);
 
 
 /** @brief Disables all Events/Interrupts used by the radio module
@@ -879,8 +889,8 @@ void radio_off();
   * called to make sure the radio doesn't keep sending interrupts when you want
   * it to just go idle and shut-up.
   */
-void radio_gag();
-void radio_ungag();
+void radio_gag(void);
+void radio_ungag(void);
 
 
 
@@ -900,7 +910,7 @@ void radio_ungag();
   * ADµCRF101:  ~600 µs
   * SX1212:     ~1500 µs    (Integer PLL is slow but allows 2.5mA RX)
   */
-void radio_sleep();
+void radio_sleep(void);
 
 
 
@@ -914,7 +924,7 @@ void radio_sleep();
   * RX or TX is usually quite fast.  Power used in idle mode varies, but it is
   * usually between 0.5mW and 5mW.
   */
-void radio_idle();
+void radio_idle(void);
 
 
 /** @brief Flushes the TX buffer
@@ -926,7 +936,7 @@ void radio_idle();
   * the radio driver module.  In both cases, this flushes the TX buffer,
   * however, it may also flush the RX buffer if they are co-located.
   */
-void radio_flush_tx();
+void radio_flush_tx(void);
 
 /** @brief Flushes the RX buffer
   * @param None
@@ -937,7 +947,7 @@ void radio_flush_tx();
   * the radio driver module.  In both cases, this flushes the RX buffer,
   * however, it may also flush the TX buffer if they are co-located.
   */
-void radio_flush_rx();
+void radio_flush_rx(void);
 
 
 
@@ -966,7 +976,7 @@ void radio_putfourbytes(ot_u8* data);
   * @retval ot_u8       byte from radio RX
   * @ingroup Radio
   */
-ot_u8 radio_getbyte();
+ot_u8 radio_getbyte(void);
 
 /** @brief Gets 4 bytes from the RX radio buffer
   * @param data         (ot_u8*) pointer to an array to load into
@@ -986,14 +996,14 @@ void radio_getfourbytes(ot_u8* data);
   * @retval ot_bool     True if at least 1 more byte in buffer
   * @ingroup Radio
   */
-ot_bool radio_rxopen();
+ot_bool radio_rxopen(void);
 
 /** @brief Checks the RX buffer to see if there are at least 4 more bytes in it
   * @param none
   * @retval ot_bool     True if at least 4 more bytes in buffer
   * @ingroup Radio
   */
-ot_bool radio_rxopen_4();
+ot_bool radio_rxopen_4(void);
 
 
 
@@ -1002,14 +1012,14 @@ ot_bool radio_rxopen_4();
   * @retval ot_bool     True if at least 1 more byte can fit
   * @ingroup Radio
   */
-ot_bool radio_txopen();
+ot_bool radio_txopen(void);
 
 /** @brief Checks the TX buffer to see if at least 4 more bytes can fit in it
   * @param none
   * @retval ot_bool     True if at least 4 more bytes can fit
   * @ingroup Radio
   */
-ot_bool radio_txopen_4();
+ot_bool radio_txopen_4(void);
 
 
 
@@ -1027,7 +1037,7 @@ ot_bool radio_txopen_4();
   * On most hardware, the RSSI range of -100 to -40 dBm [-200 to -80 returned]
   * is the area of interest.
   */
-ot_int radio_rssi();
+ot_int radio_rssi(void);
 
 
 
@@ -1036,7 +1046,7 @@ ot_int radio_rssi();
   * @retval ot_bool     True if Clear-Channel-Assesment is indicated
   * @ingroup Radio
   */
-ot_bool radio_check_cca();
+ot_bool radio_check_cca(void);
 
 
 
@@ -1051,7 +1061,7 @@ ot_bool radio_check_cca();
   * will simply be scheduled for the next time the VCO is turned-on (i.e. RX or
   * TX startup).
   */
-void radio_calibrate();
+void radio_calibrate(void);
 
 
 

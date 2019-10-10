@@ -35,27 +35,106 @@
 #include <platform/config.h>
 #include <otlib/utils.h>
 #include <otlib/auth.h>
+#include <otlib/memcpy.h>
 #include <otsys/veelite.h>
+//#include <otsys/veelite_core.h>
+#include <otsys/time.h>
 
-///@todo remove this legacy provision
-#   ifndef ISF_NUM_EXT_FILES
-#       define ISF_NUM_EXT_FILES 1
-#   endif
+#if defined(__C2000__)
+#   define LSB16(_x)        (_x&0xFF)
+#   define MSB16(_x)        (_x>>8)
+#   define BYTE1(_x)        (_x&0xFF)
+#   define BYTE0(_x)        (_x>>8)
+#   define JOIN_2B(B0, B1)  (ot_u16)((((ot_u16)(B1))<<8)|((ot_u16)(B0)))
+#endif
+
+///@todo quick hack to support this function
+//#if (OT_FEATURE(VLMODTIME) == ENABLED)
+//#	include <time.h>
+//#	define time_get_utc()	(ot_u32)time(NULL)
+//#endif
+
 
 
 // You can open a finite number of files simultaneously
-vlFILE vl_file[OT_PARAM(VLFPS)];
+static vlFILE vlfile[OT_PARAM(VLFPS)];
 
 
+// If file actions are enabled, you can have a certain number of callbacks
+#if (OT_FEATURE(VLACTIONS))
+static ot_procv vlaction[OT_PARAM(VLACTIONS)];
+static ot_u8    vlaction_users[OT_PARAM(VLACTIONS)];
+
+#endif
+
+
+
+// Two checks for File Pointer Validity
+// Bottom option is slower but more robust.  Good for Debug but unnecessary.
 #define FP_ISVALID(fp_VAL)  (fp_VAL != NULL)
-
-//Slower but more robust version of above
-//#define FP_ISVALID(fp_VAL)  ((fp_VAL >= &vl_file[0]) && (fp_VAL <= &vl_file[OT_PARAM(VLFPS)-1]))
+//#define FP_ISVALID(fp_VAL)  ((fp_VAL >= &vlfile[0]) && (fp_VAL <= &vlfile[OT_PARAM(VLFPS)-1]))
 
 
-// ISF Mirroring
-#define MIRROR_TO_SRAM      0x00
-#define MIRROR_TO_FLASH     0xFF
+// Two checks for File being Mirrored
+// Bottom option is slower but more robust.  If you are using RAM exclusively for FS, you may need bottom option
+//#define FP_ISMIRRORED(fp_VAL) ((fp_VAL)->read == &vsram_read)
+#define FP_ISMIRRORED(fp_VAL) (vworm_read((fp_VAL)->header + 8) != NULL_vaddr)
+
+
+// If creating new files is permitted, then we store a mirror of the filesystem header.
+#if (OT_FEATURE(VLNEW) == ENABLED)
+static vlFSHEADER vlfs;
+
+
+#endif
+
+
+
+
+/** @note Boundary Definitions
+  * Boundary definitions are based on virtual addressing, so regardless of what
+  * is implemented at the lower layer of the filesystem, these boundaries are
+  * valid.
+  */
+
+#define OCTETS_IN_U16           (2 / sizeof(ot_u16))
+#define OCTETS_IN_vlFSHEADER    (sizeof(vlFSHEADER) * OCTETS_IN_U16)
+#define OCTETS_IN_vl_header_t   (sizeof(vl_header_t) * OCTETS_IN_U16)
+
+/// Virtual Address Shortcuts for the header blocks (VWORM)
+/// Header blocks for: GFB Elements, ISS IDs, and ISF Elements
+#define GFB_Header_START        (OVERHEAD_START_VADDR + OCTETS_IN_vlFSHEADER)
+#define GFB_Header_START_USER   (GFB_Header_START + (GFB_NUM_STOCK_FILES*sizeof(vl_header)))
+#define ISS_Header_START        (GFB_Header_START + (GFB_NUM_FILES*sizeof(vl_header)))
+#define ISS_Header_START_USER   (ISS_Header_START + (ISS_NUM_STOCK_FILES*sizeof(vl_header)))
+#define ISF_Header_START        (ISS_Header_START + (ISS_NUM_FILES*sizeof(vl_header)))
+#define ISF_Header_START_USER   (ISF_Header_START + (ISF_NUM_STOCK_FILES*sizeof(vl_header)))
+
+/// GFB HEAP Virtual address shortcuts (VWORM)
+#define GFB_HEAP_START          GFB_START_VADDR
+#define GFB_HEAP_USER_START     (GFB_START_VADDR+(GFB_NUM_STOCK_FILES*GFB_FILE_BYTES))
+#define GFB_HEAP_END            (GFB_START_VADDR+GFB_TOTAL_BYTES)
+
+/// ISF HEAP Virtual address shortcuts (VWORM)
+#define ISF_HEAP_START          ISF_START_VADDR
+#define ISF_HEAP_STOCK_START    ISF_START_VADDR
+#define ISF_HEAP_USER_START     (ISF_START_VADDR+ISF_VWORM_STOCK_BYTES)
+#define ISF_HEAP_END            (ISF_START_VADDR+ISF_TOTAL_BYTES)
+
+/// ISF MIRROR Virtual address shortcuts (VSRAM)
+#if (ISF_MIRROR_HEAP_BYTES > 0)
+#   define ISF_MIRROR_BASE      VSRAM_BASE_VADDR
+#   undef VSRAM_USED
+#   define  VSRAM_USED          1
+#endif
+
+
+
+
+
+
+
+
 
 
 typedef ot_u8 (*sub_check)(ot_u8);
@@ -70,29 +149,22 @@ typedef vlFILE* (*sub_new)(ot_u8, ot_u8, ot_u8);
   * VWORM memory.  NAND Flash, for example, cannot be written to arbitrarily.
   */
 #if (CC_SUPPORT == SIM_GCC)
-    ot_u16*          VWORM_Heap;
-    ot_u16*          VSRAM_Heap;
-    //M1TAG_struct     M1TAG;
+    ot_u16* VWORM_Heap;
+    ot_u16* VSRAM_Heap;
 #endif
 
 
 
-
-
-
-
-
-
 // Private Functions
-vlFILE* sub_gfb_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg);
-vlFILE* sub_isfs_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg);
-vlFILE* sub_isf_new(ot_u8 id, ot_u8 mod, ot_u8 max_length);
-ot_u8 sub_gfb_delete_check(ot_u8 id);
-ot_u8 sub_isfs_delete_check(ot_u8 id);
-ot_u8 sub_isf_delete_check(ot_u8 id);
-vaddr sub_gfb_search(ot_u8 id);
-vaddr sub_isfs_search(ot_u8 id);
-vaddr sub_isf_search(ot_u8 id);
+static vlFILE* sub_gfb_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg);
+static vlFILE* sub_iss_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg);
+static vlFILE* sub_isf_new(ot_u8 id, ot_u8 mod, ot_u8 max_length);
+static ot_u8 sub_gfb_delete_check(ot_u8 id);
+static ot_u8 sub_iss_delete_check(ot_u8 id);
+static ot_u8 sub_isf_delete_check(ot_u8 id);
+static vaddr sub_gfb_search(ot_u8 id);
+static vaddr sub_iss_search(ot_u8 id);
+static vaddr sub_isf_search(ot_u8 id);
 
 
 /** @brief Performs mirroring operations on ISF files
@@ -101,15 +173,15 @@ vaddr sub_isf_search(ot_u8 id);
   *
   * For @c direction @c 0 is vworm->vsram, and non-zero is vsram->vworm
   */
-ot_u8 sub_isf_mirror(ot_u8 direction);
+static ot_u8 sub_isf_mirror(ot_u8 direction);
 
 
 
 
-vlFILE* sub_new_fp();
-vlFILE* sub_new_file(vl_header* new_header, vaddr heap_base, vaddr heap_end, vaddr header_base, ot_int header_window );
-void sub_delete_file(vaddr del_header);
-void sub_copy_header( vaddr header, ot_u16* output_header );
+static vlFILE* sub_new_fp();
+static vlFILE* sub_new_file(vl_header_t* new_header, vaddr heap_base, vaddr heap_end, vaddr header_base, ot_int header_window );
+static void sub_delete_file(vaddr del_header);
+static void sub_copy_header(vl_header_t* output_header, vaddr header);
 
 /** @brief Writes a block of data to the header
   * @param addr : (ot_u8*) physical address of the start of the write
@@ -120,7 +192,7 @@ void sub_copy_header( vaddr header, ot_u16* output_header );
   * @note @c addr @c parameter should be half word aligned (i.e. even).
   *       Behavior is not guaranteed with non half-word aligned addresses
   */
-void sub_write_header(vaddr header, ot_u16* data, ot_uint length );
+static void sub_write_header(vaddr header, ot_u16* data, ot_uint length );
 
 
 
@@ -138,7 +210,7 @@ void sub_write_header(vaddr header, ot_u16* data, ot_uint length );
   * @c sub_find_empty_header() @c will always return the nearest header to the front
   * of the array.
   */
-vaddr sub_find_empty_header(vaddr header, ot_int num_headers);
+static vaddr sub_find_empty_header(vaddr header, ot_int num_headers);
 
 
 
@@ -155,7 +227,7 @@ vaddr sub_find_empty_header(vaddr header, ot_int num_headers);
   * could be made faster.  @c sub_find_empty_heap() @c only runs when adding a ISF
   * file, which may never even happen.
   */
-vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
+static vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
                         vaddr header, ot_uint new_alloc, ot_int num_headers);
 
 
@@ -170,7 +242,7 @@ vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
   *
   * Not implemented at time being.
   */
-ot_u8 sub_defragment_heap(vaddr base, ot_uint window);
+static ot_u8 sub_defragment_heap(vaddr base, ot_uint window);
 
 
 
@@ -182,10 +254,12 @@ ot_u8 sub_defragment_heap(vaddr base, ot_uint window);
   * @retval ot_int : Number of headers searched through until ID was found.
   *                  -1 if no headers were found.
   */
-vaddr sub_header_search(vaddr header, ot_u8 search_id, ot_int num_headers);
+static vaddr sub_header_search(vaddr header, ot_u8 search_id, ot_int num_headers);
 
 
 
+
+static ot_u8 sub_action(vlFILE* fp);
 
 
 
@@ -202,16 +276,23 @@ vaddr sub_header_search(vaddr header, ot_u8 search_id, ot_int num_headers);
 #endif
 
 #ifndef EXTF_vl_init
-OT_WEAK void vl_init() {
+OT_WEAK ot_u8 vl_init(void) {
     ot_int i;
 
+    /// Initialize vlactions, if enabled
+#   if (OT_FEATURE(VLACTIONS))
+    memset(vlaction, 0, sizeof(vlaction));
+    memset(vlaction_users, 0, sizeof(vlaction_users));
+#   endif
+
     /// Initialize environment variables
+    memset(vlfile, 0, sizeof(vlfile));
     for (i=0; i<OT_PARAM(VLFPS); i++) {
-        vl_file[i].header   = NULL_vaddr;
-        vl_file[i].start    = 0;
-        vl_file[i].length   = 0;
-        vl_file[i].read     = NULL;
-        vl_file[i].write    = NULL;
+        vlfile[i].header   = NULL_vaddr;
+//        vlfile[i].start    = 0;
+//        vlfile[i].length   = 0;
+//        vlfile[i].read     = NULL;
+//        vlfile[i].write    = NULL;
     }
 
     /// Initialize core
@@ -221,23 +302,122 @@ OT_WEAK void vl_init() {
     // Copy to mirror
     ISF_loadmirror();
 
-
 #if (CC_SUPPORT == SIM_GCC)
-
     // Set up memory files if using Simulator
     VWORM_Heap  = (ot_u16*)&(NAND.ubyte[VWORM_BASE_PHYSICAL]);
     //VSRAM_Heap  = (ot_u16*)&(NAND.ubyte[VSRAM_BASE_PHYSICAL]);    //vsram declared in veelite_core
-
-    // Write dummy data to M1TAG file
-    //M1TAG.manuf_id      = 0x0001;
-    //M1TAG.serial        = 0x01020304;
-    //M1TAG.model_no      = 0x01020304;
-    //M1TAG.fw_version    = 0x00000001;
-    //M1TAG.max_response  = 255;
 #endif
+
+    return 0;
 }
 #endif
 
+
+// Add Action (Infrequently called)
+// This function is only accessible from internal code (not via protocol)
+#ifndef EXTF_vl_add_action
+OT_WEAK ot_int vl_add_action(vlBLOCK block_id, ot_u8 data_id, ot_u8 condition, ot_procv action) {
+#   if (OT_FEATURE(VLACTIONS))
+    /// 1. See if action parameter is already in the list.
+    /// 2. If so, then return the index.
+    /// 3. If not present, add at first NULL
+    ot_int i;
+    ot_int select = -1;
+    vaddr header = NULL_vaddr;
+    
+    if (0 == vl_getheader_vaddr(&header, block_id, data_id, VL_ACCESS_SU, NULL)) {
+        for (i=0, select=-1; i<OT_PARAM(VLACTIONS); i++) {
+            if (vlaction[i] == NULL) {
+                if (select < 0) {
+                    select = i;
+                }
+            }
+            else if (vlaction[i] == action) {
+                select = i;
+                break;
+            }
+        }
+    
+        if (select >= 0) {
+#       if !defined(__C2000__)
+            ot_uni16 actioncode;
+            actioncode.ubyte[0]     = condition;
+            actioncode.ubyte[1]     = select;
+            vlaction[select]        = action;
+            vlaction_users[select] += 1;
+            vworm_write(header+10, actioncode.ushort);
+            
+#       else
+            ot_u16 actioncode;
+            __byte((int*)&actioncode, 0)    = condition;
+            __byte((int*)&actioncode, 1)    = select;
+            vlaction[select]                = action;
+            vlaction_users[select]         += 1;
+            vworm_write(header+10, actioncode);
+#       endif
+        }
+    }
+    
+    return select;
+    
+#   else
+    return -1;
+    
+#   endif
+}
+#endif
+
+
+#ifndef EXTF_vl_remove_action
+OT_WEAK void vl_remove_action(vlBLOCK block_id, ot_u8 data_id) {
+#   if (OT_FEATURE(VLACTIONS))
+    vaddr header = NULL_vaddr;
+    
+    if (0 == vl_getheader_vaddr(&header, block_id, data_id, VL_ACCESS_SU, NULL)) {
+        ot_u16 select;
+        select = vworm_read(header+10) >> 8;        ///@todo this is little endian only
+        vworm_write(header+10, 0);
+        
+        if (select < OT_PARAM(VLACTIONS)) {
+            if (vlaction_users[select] != 0) {
+                vlaction_users[select]--;
+                if (vlaction_users[select] == 0) {
+                    vlaction[select] = NULL;
+                }
+            }
+        }
+    }
+#   endif
+}
+#endif
+
+
+static ot_u8 sub_action(vlFILE* fp) {
+    ot_u8 retval = 0;
+
+#   if (OT_FEATURE(VLACTIONS))
+    ot_u16 select;
+    select = vworm_read(fp->header+10) >> 8;        ///@todo this is little endian only
+    
+    if (select < OT_PARAM(VLACTIONS)) {
+        retval = vlaction[select](fp);
+    }
+#   endif
+    
+    return retval;
+}
+
+
+
+
+
+
+#ifndef EXTF_vl_get_fsalloc
+OT_WEAK ot_u32 vl_get_fsalloc(const vlFSHEADER* fshdr) {
+///@todo have this work for different core structures.
+    return vworm_fsalloc(fshdr);
+}
+#endif
 
 
 
@@ -245,46 +425,49 @@ OT_WEAK void vl_init() {
 // General File Functions
 #ifndef EXTF_vl_get_fp
 OT_WEAK vlFILE* vl_get_fp(ot_int fd) {
-    return &vl_file[fd];
+    return &vlfile[fd];
 }
 #endif
 
 
 #ifndef EXTF_vl_get_fd
 OT_WEAK ot_int vl_get_fd(vlFILE* fp) {
-    ot_int fd;
+    ot_uint fd;
 
-    fd  = (ot_int)((ot_u8*)fp - (ot_u8*)vl_file);
+    fd  = (ot_int)((ot_u8*)fp - (ot_u8*)vlfile);
     fd /= sizeof(vlFILE);
 
-    return fd;
+    return (fd < OT_PARAM(VLFPS)) ? (ot_int)fd : -1;
 }
 #endif
 
 
 #ifndef EXTF_vl_new
-OT_WEAK ot_u8 vl_new(vlFILE** fp_new, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, ot_uint max_length, id_tmpl* user_id) {
+OT_WEAK ot_u8 vl_new(vlFILE** fp_new, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, ot_uint max_length, const id_tmpl* user_id) {
 #if (OT_FEATURE(VLNEW) == ENABLED)
     vaddr header;
     sub_vaddr search_fn;
     sub_new   new_fn;
 
-    /// 1. Authenticate, when it's not a su call
+    /// 1. Authenticate, when it's not a su call:
+    ///    Authentication failure error code is 0x04.
     if (user_id != NULL) {
         if ( auth_check(VL_ACCESS_USER, VL_ACCESS_W, user_id) == 0 ) {
             return 0x04;
         }
     }
 
-    /// 2. Make sure the file is not already there
+    /// 2. Make sure the file does not already exist.
+    ///    If it already exists, the error code is 0x02.
+    ///    If the block is not available, the error code is 0xFF.
     block_id--;
     switch (block_id) {
         case 0: search_fn   = &sub_gfb_search;
                 new_fn      = &sub_gfb_new;
                 break;
 
-        case 1: search_fn   = &sub_isfs_search;
-                new_fn      = &sub_isfs_new;
+        case 1: search_fn   = &sub_iss_search;
+                new_fn      = &sub_iss_new;
                 break;
 
         case 2: search_fn   = &sub_isf_search;
@@ -299,14 +482,23 @@ OT_WEAK ot_u8 vl_new(vlFILE** fp_new, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod
         return 0x02;
     }
 
+    /// 3. Create the new file.
+    ///    Error code for inability to create file is 0x06.
     *fp_new = new_fn(data_id, mod, max_length);
     if (*fp_new == NULL) {
         return 0x06;
     }
+    
+    /// 4. Update the filesystem header, on successful file creation.
+    {   vlBLOCKHEADER* block    = &vlfs.gfb;
+        block[block_id].files  += 1;
+    }
 
     return 0;
+
 #else
     return 255;
+
 #endif
 }
 #endif
@@ -314,7 +506,7 @@ OT_WEAK ot_u8 vl_new(vlFILE** fp_new, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod
 
 
 #ifndef EXTF_vl_delete
-OT_WEAK ot_u8 vl_delete(vlBLOCK block_id, ot_u8 data_id, id_tmpl* user_id) {
+OT_WEAK ot_u8 vl_delete(vlBLOCK block_id, ot_u8 data_id, const id_tmpl* user_id) {
 #if (OT_FEATURE(VLNEW) == ENABLED)
     vaddr header = NULL_vaddr;
     sub_vaddr   search_fn;
@@ -327,8 +519,8 @@ OT_WEAK ot_u8 vl_delete(vlBLOCK block_id, ot_u8 data_id, id_tmpl* user_id) {
                 search_fn   = &sub_gfb_search;
                 break;
 
-        case 1: check_fn    = &sub_isfs_delete_check;
-                search_fn   = &sub_isfs_search;
+        case 1: check_fn    = &sub_iss_delete_check;
+                search_fn   = &sub_iss_search;
                 break;
 
         case 2: check_fn    = &sub_isf_delete_check;
@@ -349,31 +541,44 @@ OT_WEAK ot_u8 vl_delete(vlBLOCK block_id, ot_u8 data_id, id_tmpl* user_id) {
 
     /// 3. Authenticate, when it's not a su call
     if (user_id != NULL) {
+#   if !defined(__C2000__)
         ot_uni16 filemod;
         filemod.ushort = vworm_read(header + 4);
-
         if ( auth_check(filemod.ubyte[1], VL_ACCESS_RW, user_id) == 0 ) {
             return 0x04;
         }
+#   else
+        ot_u16 filemod = vworm_read(header + 4);
+        if ( auth_check(BYTE1(filemod), VL_ACCESS_RW, user_id) == 0 ) {
+            return 0x04;
+        }
+#   endif
     }
-
+    
+    /// 4. Delete the file, and update the fs header.
     sub_delete_file(header);
+    {   vlBLOCKHEADER* block    = &vlfs.gfb;
+        block[block_id].files  -= 1;
+    }
+    
     return 0;
+    
 #else
     return 255; //error, delete disabled
+
 #endif
 }
 #endif
 
 
 
-#ifndef EXTF_vl_getheader
-OT_WEAK ot_u8 vl_getheader_vaddr(vaddr* header, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, id_tmpl* user_id) {
+#ifndef EXTF_vl_getheader_vaddr
+OT_WEAK ot_u8 vl_getheader_vaddr(vaddr* header, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id) {
 
     /// 1. Get the header from the supplied Block ID & Data ID
     switch (block_id) {
         case VL_GFB_BLOCKID:    *header = sub_gfb_search(data_id);      break;
-        case VL_ISFS_BLOCKID:   *header = sub_isfs_search(data_id);     break;
+        case VL_ISS_BLOCKID:    *header = sub_iss_search(data_id);     break;
         case VL_ISF_BLOCKID:    *header = sub_isf_search(data_id);      break;
         default:                return 255;
     }
@@ -385,12 +590,19 @@ OT_WEAK ot_u8 vl_getheader_vaddr(vaddr* header, vlBLOCK block_id, ot_u8 data_id,
 
     /// 3. Authenticate, when it's not a su call
     if (user_id != NULL) {
+#   if !defined(__C2000__)
         ot_uni16 filemod;
         filemod.ushort = vworm_read(*header + 4);
-
         if ( auth_check(filemod.ubyte[1], mod, user_id) == 0 ) {
             return 0x04;
         }
+#   else
+        ot_u16 filemod;
+        filemod = vworm_read(*header + 4);
+        if ( auth_check(BYTE0(filemod), mod, user_id) == 0 ) {
+            return 0x04;
+        }
+#   endif
     }
 
     return 0;
@@ -400,13 +612,13 @@ OT_WEAK ot_u8 vl_getheader_vaddr(vaddr* header, vlBLOCK block_id, ot_u8 data_id,
 
 
 #ifndef EXTF_vl_getheader
-OT_WEAK ot_u8 vl_getheader(vl_header* header, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, id_tmpl* user_id) {
+OT_WEAK ot_u8 vl_getheader(vl_header_t* header, vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id) {
     vaddr   header_vaddr = NULL_vaddr;
     ot_u8   output;
 
     output = vl_getheader_vaddr(&header_vaddr, block_id, data_id, mod, user_id);
     if (output == 0) {
-        sub_copy_header( header_vaddr, (ot_u16*)header );
+        sub_copy_header(header, header_vaddr);
     }
 
     return output;
@@ -418,6 +630,7 @@ OT_WEAK ot_u8 vl_getheader(vl_header* header, vlBLOCK block_id, ot_u8 data_id, o
 #ifndef EXTF_vl_open_file
 OT_WEAK vlFILE* vl_open_file(vaddr header) {
     vlFILE* fp;
+    //ot_u16 actioncode;
 
     fp = sub_new_fp();
 
@@ -426,6 +639,7 @@ OT_WEAK vlFILE* vl_open_file(vaddr header) {
         fp->alloc   = vworm_read(header + 2);               //alloc
         fp->idmod   = vworm_read(header + 4);
         fp->start   = vworm_read(header + 8);               //mirror base addr
+        fp->flags   = VL_FLAG_OPENED;
 
         if (fp->start != NULL_vaddr) {
             ot_u16 mlen = fp->start;
@@ -448,7 +662,7 @@ OT_WEAK vlFILE* vl_open_file(vaddr header) {
 
 
 #ifndef EXTF_vl_open
-OT_WEAK vlFILE* vl_open(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, id_tmpl* user_id) {
+OT_WEAK vlFILE* vl_open(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id) {
     vaddr header = NULL_vaddr;
 
     if (vl_getheader_vaddr(&header, block_id, data_id, mod, user_id) == 0) {
@@ -459,22 +673,108 @@ OT_WEAK vlFILE* vl_open(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, id_tmpl* use
 #endif
 
 
+#ifndef EXTF_vl_getmodtime
+OT_WEAK ot_u32 vl_getmodtime(vlFILE* fp) {
+    ot_uni32 modtime;
+    modtime.ulong = 0;
+#   if (OT_FEATURE(VLMODTIME) == ENABLED)
+    if (fp != NULL) {
+        modtime.ushort[0]   = vworm_read(fp->header + 12);
+        modtime.ushort[1]   = vworm_read(fp->header + 14);
+    }
+#   endif
+    return modtime.ulong;
+}
+#endif
 
+
+#ifndef EXTF_vl_getacctime
+OT_WEAK ot_u32 vl_getacctime(vlFILE* fp) {
+#   if (OT_FEATURE(VLACCTIME) == ENABLED)
+    ot_uni32 acctime;
+    acctime.ulong = 0;
+    if (fp != NULL) {
+        acctime.ushort[0]   = vworm_read(fp->header + 16);
+        acctime.ushort[1]   = vworm_read(fp->header + 18);
+    }
+    return acctime.ulong;
+#   else
+    return vl_getmodtime(fp);
+#   endif
+}
+#endif
+
+
+#ifndef EXTF_vl_setmodtime
+OT_WEAK ot_u8 vl_setmodtime(vlFILE* fp, ot_u32 newtime) {
+    ot_uni32 modtime;
+    modtime.ulong = newtime;
+#   if (OT_FEATURE(VLMODTIME) == ENABLED)
+    if (fp != NULL) {
+        vworm_write(fp->header+12, modtime.ushort[0]);
+        vworm_write(fp->header+14, modtime.ushort[1]);
+    }
+#   endif
+    return modtime.ulong;
+}
+#endif
+
+#ifndef EXTF_vl_setacctime
+OT_WEAK ot_u8 vl_setacctime(vlFILE* fp, ot_u32 newtime) {
+    ot_uni32 acctime;
+    acctime.ulong = newtime;
+#   if (OT_FEATURE(VLACCTIME) == ENABLED)
+    if (fp != NULL) {
+        vworm_write(fp->header+16, acctime.ushort[0]);
+        vworm_write(fp->header+18, acctime.ushort[1]);
+    }
+#   endif
+    return acctime.ulong;
+}
+#endif
+
+
+///@todo [header]
 #ifndef EXTF_vl_chmod
-OT_WEAK ot_u8 vl_chmod(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, id_tmpl* user_id) {
+OT_WEAK ot_u8 vl_chmod(vlBLOCK block_id, ot_u8 data_id, ot_u8 mod, const id_tmpl* user_id) {
     vaddr header = NULL_vaddr;
     ot_u8 output;
 
     output = vl_getheader_vaddr(&header, block_id, data_id, VL_ACCESS_RW, user_id);
     if (output == 0) {
+#   if !defined(__C2000__)
         ot_uni16 idmod;
         idmod.ubyte[0]  = data_id;
         idmod.ubyte[1]  = mod;
-
         sub_write_header((header+4), &idmod.ushort, 2);
+#   else
+        ot_u16 idmod    = JOIN_2B(data_id, mod);
+        sub_write_header((header+4), &idmod, 2);
+#   endif
+
+        ///@todo could put file action for chmod here, if ever required
     }
 
     return output;
+}
+#endif
+
+
+#ifndef EXTF_vl_touch
+OT_WEAK ot_u8 vl_touch(vlBLOCK block_id, ot_u8 data_id, ot_u8 flags, const id_tmpl* user_id) {
+    vlFILE* fp;
+    ot_u8 retval;
+    
+    fp = vl_open(block_id, data_id, VL_ACCESS_RW, user_id);
+    if (fp != NULL) {
+        fp->flags &= (VL_FLAG_OPENED | VL_FLAG_MODDED);
+        retval = vl_close(fp);
+    }
+    else {
+        retval = 255;   ///@todo replace with error code constant 
+    }
+
+    return retval;
 }
 #endif
 
@@ -494,10 +794,31 @@ OT_WEAK ot_u8 vl_write( vlFILE* fp, ot_uint offset, ot_u16 data ) {
         return 255;
     }
     if (offset >= fp->length) {
-        fp->length = offset+2;
+        fp->length  = offset+2;
+        fp->flags  |= VL_FLAG_RESIZED;
     }
+    fp->flags |= VL_FLAG_MODDED;
 
     return fp->write( (offset+fp->start), data);
+}
+#endif
+
+
+#ifndef EXTF_vl_memptr
+///@todo have this bury into the driver layer to give the address of the 
+///      file data.  Will return NULL if file is not in the mirror, which is 
+///      the only place where it can be guaranteed to be in contiguous RAM.
+OT_WEAK ot_u8* vl_memptr( vlFILE* fp ) {
+#   if MCU_CONFIG(DATAFLASH)
+    if (FP_ISMIRRORED(fp)) {
+        return (ot_u8*)vsram_get(fp->start);
+    }
+    return NULL;
+    
+#   else
+    return (ot_u8*)vsram_get(fp->start);
+    
+#   endif
 }
 #endif
 
@@ -505,23 +826,28 @@ OT_WEAK ot_u8 vl_write( vlFILE* fp, ot_uint offset, ot_u16 data ) {
 
 #ifndef EXTF_vl_load
 OT_WEAK ot_uint vl_load( vlFILE* fp, ot_uint length, ot_u8* data ) {
-    ot_uni16    scratch;
     ot_uint     cursor;
 
     if (length > fp->length) {
         length = fp->length;
     }
-
-    cursor      = fp->start;
+    cursor      = fp->start;        // guaranteed to be 16 bit aligned
     length      = cursor+length;
 
+#   if !defined(__C2000__)
     for (; cursor<length; cursor++) {
+        ot_uni16 scratch;
         ot_u8 align = (cursor & 1);
         if (align == 0) {
             scratch.ushort = fp->read(cursor);
         }
         *data++ = scratch.ubyte[align];
     }
+#   else
+    for (; cursor<length; cursor+=2) {
+        *data++ = fp->read(cursor);
+    }
+#   endif
 
     return (length - fp->start);
 }
@@ -529,77 +855,151 @@ OT_WEAK ot_uint vl_load( vlFILE* fp, ot_uint length, ot_u8* data ) {
 
 
 #ifndef EXTF_vl_store
-OT_WEAK ot_u8 vl_store( vlFILE* fp, ot_uint length, ot_u8* data ) {
-    ot_uni16    scratch;
-    ot_uint     cursor;
-    ot_u8       test;
+OT_WEAK ot_u8 vl_store( vlFILE* fp, ot_uint length, const ot_u8* data ) {
+    ot_uint cursor;
+    ot_u8   test;
 
     if (length > fp->alloc) {
-        return 255;
+        length = fp->alloc;
     }
 
+    fp->flags  |= (length != fp->length) ? (VL_FLAG_RESIZED|VL_FLAG_MODDED) : VL_FLAG_MODDED;
     fp->length  = length;
     cursor      = fp->start;
     length      = cursor+length;
 
     for (test=0; cursor<length; cursor+=2) {
+#   if !defined(__C2000__)    
+        ot_uni16 scratch;
         scratch.ubyte[0]    = *data++;
         scratch.ubyte[1]    = *data++;
         test               |= fp->write(cursor, scratch.ushort);
+#   else
+        test               |= fp->write(cursor, *data++);
+#   endif
     }
-
+    
     return test;
 }
 #endif
 
 
 #ifndef EXTF_vl_append
-OT_WEAK ot_u8 vl_append( vlFILE* fp, ot_uint length, ot_u8* data ) {
-    ot_uni16    scratch;
-    ot_uint     cursor;
-    ot_u8       test = 255;
+OT_WEAK ot_u8 vl_append( vlFILE* fp, ot_uint length, const ot_u8* data ) {
+    ot_uint cursor;
+    ot_u8   test = 255;
 
     length = (fp->length+length);
     if (length <= fp->alloc) {
         cursor      = fp->start + fp->length;
         fp->length  = length;
         length     += cursor;
+        fp->flags  |= (VL_FLAG_RESIZED|VL_FLAG_MODDED);
 
         for (test=0; cursor<length; cursor+=2) {
+#       if !defined(__C2000__)
+            ot_uni16 scratch;
             scratch.ubyte[0]    = *data++;
             scratch.ubyte[1]    = *data++;
             test               |= fp->write(cursor, scratch.ushort);
+#       else
+            test               |= fp->write(cursor, *data++);
+#       endif
         }
     }
+    
     return test;
 }
 #endif
 
 
+#ifndef EXTF_vl_execute
+OT_WEAK ot_u8 vl_execute(vlFILE* fp, ot_uint input_size, ot_u8* input_stream) {
+    ot_u8 retval = 255;
 
+#   if (OT_FEATURE(VLACTIONS) == ENABLED)
+    retval = vl_store(fp, input_size, input_stream);
+    if (retval != 0) {
+        // Always call the action (no conditions)
+        retval = sub_action(fp);
+    }
+#   endif
+    
+    return retval;
+}
+#endif
 
 #ifndef EXTF_vl_close
 OT_WEAK ot_u8 vl_close( vlFILE* fp ) {
+    ot_u8 retval = 0;
+    ot_u32 epoch_s;
+
     if (FP_ISVALID(fp)) {
-        if (fp->read == &vsram_read) {
+#       if MCU_CONFIG(DATAFLASH)
+        if (FP_ISMIRRORED(fp)) {
             ot_u16* mhead;
             mhead   = (ot_u16*)vsram_get(fp->start-2);
             *mhead  = (*mhead != fp->length) ? fp->length : *mhead;
         }
-        else if ( vworm_read(fp->header+0) != fp->length ) {
+        else
+#       endif
+        if (vworm_read(fp->header+0) != fp->length) {
             sub_write_header( (fp->header+0), &(fp->length), 2);
         }
+
+
+        // Change Modification Time if there was a modification
+        ///@todo make sure all platforms are supporting the time module from OpenTag,
+        ///      which itself must be added to libotfs
+        ///@todo make sure enabling VLMODTIME also mandatorily enables TIME features
+#       if (OT_FEATURE(VLMODTIME) == ENABLED) || (OT_FEATURE(VLACCTIME) == ENABLED)
+        epoch_s = time_get_utc();
+#       endif
+#       if (OT_FEATURE(VLACCTIME) == ENABLED)
+        sub_write_header( (fp->header+16), (ot_u16*)&epoch_s, 4);    ///@todo make offset constant instead of 12
+#       endif
+#       if (OT_FEATURE(VLMODTIME) == ENABLED)
+        if (fp->flags & VL_FLAG_MODDED) {
+            sub_write_header( (fp->header+12), (ot_u16*)&epoch_s, 4);    ///@todo make offset constant instead of 12
+        }
+#       endif
+
+        // Treatment of Actions
+#       if (OT_FEATURE(VLACTIONS) == ENABLED)
+#       if !defined(__C2000__)
+        {   ot_uni16 action; 
+            action.ushort       = vworm_read(fp->header+10);    ///@todo make offset constant instead of 10
+            action.ubyte[0]    &= (ot_u8)fp->flags;
+            
+            if (action.ubyte[0] != 0) {
+                retval = sub_action(fp);
+            }
+        }
+#       else
+        {   ot_u16 action;
+            action = vworm_read(fp->header+10);    ///@todo make offset constant instead of 10
+            action &= fp->flags & 0x00FF;
+
+            if (action != 0) {
+                retval = sub_action(fp);
+            }
+        }
+#       endif
+#       endif
 
         // Kill file attributes
         fp->start   = 0;
         fp->length  = 0;
         //fp->header  = NULL_vaddr;
+        fp->flags   = 0;
         fp->read    = NULL;
         fp->write   = NULL;
-
-        return 0;
     }
-    return 255;
+    else {
+        retval = 255;
+    }
+    
+    return retval;
 }
 #endif
 
@@ -632,13 +1032,13 @@ OT_WEAK ot_uint vl_checkalloc( vlFILE* fp ) {
 
 
 
-
-
-
-
-
 /// Public Block Functions
 /// Usually these are just shortcuts
+
+// ISF Mirroring
+#define MIRROR_TO_SRAM      0x00
+#define MIRROR_TO_FLASH     0xFF
+
 
 OT_WEAK vlFILE* GFB_open_su( ot_u8 id ) {
 #   if ( GFB_HEAP_BYTES > 0 )
@@ -648,8 +1048,8 @@ OT_WEAK vlFILE* GFB_open_su( ot_u8 id ) {
 #   endif
 }
 
-OT_WEAK vlFILE* ISFS_open_su( ot_u8 id ) {
-    return vl_open(VL_ISFS_BLOCKID, id, VL_ACCESS_SU, NULL);
+OT_WEAK vlFILE* ISS_open_su( ot_u8 id ) {
+    return vl_open(VL_ISS_BLOCKID, id, VL_ACCESS_SU, NULL);
 }
 
 OT_WEAK vlFILE* ISF_open_su( ot_u8 id ) {
@@ -657,7 +1057,7 @@ OT_WEAK vlFILE* ISF_open_su( ot_u8 id ) {
 }
 
 
-OT_WEAK vlFILE* GFB_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id ) {
+OT_WEAK vlFILE* GFB_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id ) {
 #   if ( GFB_HEAP_BYTES > 0 )
         return vl_open(VL_GFB_BLOCKID, id, mod, user_id);
 #   else
@@ -665,11 +1065,11 @@ OT_WEAK vlFILE* GFB_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id ) {
 #   endif
 }
 
-OT_WEAK vlFILE* ISFS_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id ) {
-    return vl_open(VL_ISFS_BLOCKID, id, mod, user_id);
+OT_WEAK vlFILE* ISS_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id ) {
+    return vl_open(VL_ISS_BLOCKID, id, mod, user_id);
 }
 
-OT_WEAK vlFILE* ISF_open( ot_u8 id, ot_u8 mod, id_tmpl* user_id ) {
+OT_WEAK vlFILE* ISF_open( ot_u8 id, ot_u8 mod, const id_tmpl* user_id ) {
     return vl_open(VL_ISF_BLOCKID, id, mod, user_id);
 }
 
@@ -682,8 +1082,8 @@ OT_WEAK ot_u8 GFB_chmod_su( ot_u8 id, ot_u8 mod ) {
 #   endif
 }
 
-OT_WEAK ot_u8 ISFS_chmod_su( ot_u8 id, ot_u8 mod ) {
-    return vl_chmod(VL_ISFS_BLOCKID, id, mod, NULL);
+OT_WEAK ot_u8 ISS_chmod_su( ot_u8 id, ot_u8 mod ) {
+    return vl_chmod(VL_ISS_BLOCKID, id, mod, NULL);
 }
 
 OT_WEAK ot_u8 ISF_chmod_su( ot_u8 id, ot_u8 mod ) {
@@ -716,24 +1116,36 @@ OT_WEAK ot_u8 ISF_loadmirror() {
 
 
 /// Private Block Functions
+///@note There are two variants of these functions.  First variant uses file boundaries
+///      determined at compile time.  Second uses the Filesystem Header.
 
-vlFILE* sub_gfb_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
-#if ((OT_FEATURE(VLNEW) == ENABLED) && \
-     ((GFB_HEAP_BYTES > 0) && (GFB_NUM_USER_FILES > 0)))
-    ot_uni16   idmod;
-    vl_header  new_header;
+/// First Variant
+#if (OT_FEATURE(MULTIFS) != ENABLED)
 
+static vlFILE* sub_gfb_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
+#if ((OT_FEATURE(VLNEW) == ENABLED) && ((GFB_HEAP_BYTES > 0) && (GFB_NUM_USER_FILES > 0)))
+    vl_header_t  new_header;
+    
+#   if !defined(__C2000__)
+    ot_uni16 idmod;
     idmod.ubyte[0]  = id;
     idmod.ubyte[1]  = mod;
+#   else
+    ot_u16 idmod    = JOIN_2B(id, mod);
+#   endif
 
-    // Fill vl_header
+    // Fill vl_header_t
     new_header.length   = (ot_u16)0;
     new_header.alloc    = (ot_u16)GFB_FILE_BYTES;
+#   if !defined(__C2000__)
     new_header.idmod    = idmod.ushort;
+#   else
+    new_header.idmod    = idmod;
+#   endif
     new_header.mirror   = NULL_vaddr;
 
     // Find where to put the new data, and if heap is full
-    return sub_new_file(    &new_header,
+    return sub_new_file(&new_header,
                         GFB_HEAP_USER_START,
                         GFB_HEAP_END,
                         GFB_Header_START_USER,
@@ -743,8 +1155,8 @@ vlFILE* sub_gfb_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
 #endif
 }
 
-vlFILE* sub_isfs_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
-#if ((OT_FEATURE(VLNEW) == ENABLED) && (ISFS_NUM_USER_CODES > 0))
+vlFILE* sub_iss_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
+#if ((OT_FEATURE(VLNEW) == ENABLED) && (ISS_NUM_USER_CODES > 0))
     ot_uni16   idmod;
     vl_header  new_header;
 
@@ -753,34 +1165,42 @@ vlFILE* sub_isfs_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
 
     // Fill vl_header
     new_header.length   = (ot_u16)0;
-    new_header.alloc    = (ot_u16)ISFS_MAX_default;
+    new_header.alloc    = (ot_u16)ISS_MAX_default;
     new_header.idmod    = idmod.ushort;
     new_header.mirror   = NULL_vaddr;
 
     // Find where to put the new data, and if heap is full
     return sub_new_file(    &new_header,
-                        ISFS_HEAP_USER_START,
-                        ISFS_HEAP_END,
-                        ISFS_Header_START_USER,
-                        ISFS_NUM_USER_CODES   );
+                        ISS_HEAP_USER_START,
+                        ISS_HEAP_END,
+                        ISS_Header_START_USER,
+                        ISS_NUM_USER_CODES   );
 #else
     return NULL;
 #endif
 }
 
 
-vlFILE* sub_isf_new(ot_u8 id, ot_u8 mod, ot_u8 max_length ) {
+static vlFILE* sub_isf_new(ot_u8 id, ot_u8 mod, ot_u8 max_length ) {
 #if ((OT_FEATURE(VLNEW) == ENABLED) && (ISF_NUM_USER_FILES > 0))
-    ot_uni16   idmod;
-    vl_header new_header;
-
+    vl_header_t new_header;
+    
+#   if !defined(__C2000__)
+    ot_uni16 idmod;
     idmod.ubyte[0]  = id;
     idmod.ubyte[1]  = mod;
+#   else
+    ot_u16 idmod    = JOIN_2B(id, mod);
+#   endif
 
-    // Fill vl_header
+    // Fill vl_header_t
     new_header.length   = (ot_u16)0;
     new_header.alloc    = (ot_u16)max_length;
+#   if !defined(__C2000__)
     new_header.idmod    = idmod.ushort;
+#   else
+    new_header.idmod    = idmod;
+#   endif
     new_header.mirror   = NULL_vaddr;
 
     // determine amount of actual ISF allocation needed (keeping it even)
@@ -801,9 +1221,8 @@ vlFILE* sub_isf_new(ot_u8 id, ot_u8 mod, ot_u8 max_length ) {
 
 
 
-ot_u8 sub_gfb_delete_check(ot_u8 id) {
-#if ((OT_FEATURE(VLNEW) == ENABLED) && \
-     ((GFB_HEAP_BYTES > 0) && (GFB_NUM_USER_FILES > 0)))
+static ot_u8 sub_gfb_delete_check(ot_u8 id) {
+#if ((OT_FEATURE(VLNEW) == ENABLED) && ((GFB_HEAP_BYTES > 0) && (GFB_NUM_USER_FILES > 0)))
     return ( id > GFB_NUM_STOCK_FILES );
 #else
     return 0;
@@ -811,16 +1230,16 @@ ot_u8 sub_gfb_delete_check(ot_u8 id) {
 }
 
 
-ot_u8 sub_isfs_delete_check(ot_u8 id) {
-#if ((OT_FEATURE(VLNEW) == ENABLED) && (ISFS_NUM_USER_CODES > 0))
-    return ( id >= ISFS_ID_extended_service);
+static ot_u8 sub_iss_delete_check(ot_u8 id) {
+#if ((OT_FEATURE(VLNEW) == ENABLED) && (ISS_NUM_USER_CODES > 0))
+    return ( id >= ISS_ID_extended_service);
 #else
     return 0;
 #endif
 }
 
 
-ot_u8 sub_isf_delete_check(ot_u8 id) {
+static ot_u8 sub_isf_delete_check(ot_u8 id) {
 #if ((OT_FEATURE(VLNEW) == ENABLED) && (ISF_NUM_USER_FILES > 0))
     return ((id >= (ISF_NUM_M1_FILES+ISF_NUM_M2_FILES)) && \
             (id < (256-ISF_NUM_EXT_FILES)) );
@@ -832,21 +1251,20 @@ ot_u8 sub_isf_delete_check(ot_u8 id) {
 
 
 
-vaddr sub_gfb_search(ot_u8 id) {
+static vaddr sub_gfb_search(ot_u8 id) {
     return sub_header_search( GFB_Header_START, id, GFB_NUM_USER_FILES );
 }
 
 
-vaddr sub_isfs_search(ot_u8 id) {
-    return sub_header_search( ISFS_Header_START, id, ISFS_NUM_LISTS );
+static vaddr sub_iss_search(ot_u8 id) {
+    return sub_header_search( ISS_Header_START, id, ISS_NUM_FILES );
 }
 
 
-vaddr sub_isf_search(ot_u8 id) {
+static vaddr sub_isf_search(ot_u8 id) {
 #   if (OT_FEATURE(VLNEW) == ENABLED)
     // Check IDs added by the user during runtime
-    if ( (id >= (ISF_NUM_M1_FILES+ISF_NUM_M2_FILES)) && \
-            (id < (256-ISF_NUM_EXT_FILES)) ) {
+    if ( (id >= ISF_NUM_STOCK_FILES) && (id < (256-ISF_NUM_EXT_FILES)) ) {
         return sub_header_search(ISF_Header_START_USER, id, ISF_NUM_USER_FILES);
     }
 #   endif
@@ -854,25 +1272,20 @@ vaddr sub_isf_search(ot_u8 id) {
 #   if (ISF_NUM_EXT_FILES != 0)
     // Translate EXT IDs to a contiguous indexing with Stock Files
     if (id > (255-ISF_NUM_EXT_FILES)) {
-        id = (ot_u8)((ot_int)ISF_NUM_STOCK_FILES + ((ot_int)id-256));
+        id = (ot_u8)((ot_int)ISF_NUM_STOCK_FILES + (255-id));
     }
 #   endif
-
-    // Look in stock files
-    //if (id <= (ISF_NUM_STOCK_FILES-1)) {
-    	return (sizeof(vl_header) * id) + ISF_Header_START;
-    //}
-
-    // File ID does not exist
-    //return NULL_vaddr;
+    
+    return (OCTETS_IN_vl_header_t * id) + ISF_Header_START;
 }
 
 
 
 
 
-ot_u8 sub_isf_mirror(ot_u8 direction) {
+static ot_u8 sub_isf_mirror(ot_u8 direction) {
 #if (ISF_MIRROR_HEAP_BYTES > 0)
+#   error "should be no mirror"
     vaddr   header;
     vaddr   header_base;
     vaddr   header_alloc;
@@ -883,7 +1296,7 @@ ot_u8 sub_isf_mirror(ot_u8 direction) {
 
     // Go through ISF Header array
     header = ISF_Header_START;
-    for (i=0; i<ISF_NUM_STOCK_FILES; i++, header+=sizeof(vl_header)) {
+    for (i=0; i<ISF_NUM_STOCK_FILES; i++, header+=OCTETS_IN_vl_header_t) {
 
         //get header data
         header_alloc    = vworm_read(header+2);
@@ -896,7 +1309,7 @@ ot_u8 sub_isf_mirror(ot_u8 direction) {
         // 2. Load/Save Mirror Data (header_alloc is repurposed)
         if ((header_mirror != NULL_vaddr) && (header_alloc  != 0)) {
         	mirror_ptr = (ot_u16*)vsram_get(header_mirror);
-            if (direction == MIRROR_TO_SRAM) {  // LOAD
+            if (direction == MIRROR_TO_SRAM) { // LOAD
                 *mirror_ptr = vworm_read(header+0);
             }
             if (header_base == NULL_vaddr) {	// EXIT if file is mirror-only
@@ -909,11 +1322,11 @@ ot_u8 sub_isf_mirror(ot_u8 direction) {
             header_alloc = header_base + *mirror_ptr;
             mirror_ptr++;
             for ( ; header_base<header_alloc; header_base+=2, mirror_ptr++) {
-                if (direction == MIRROR_TO_SRAM) {
+                if (direction == MIRROR_TO_SRAM) { 
                     *mirror_ptr = vworm_read(header_base);
                 }
-                else {
-                    vworm_write(header_base, *mirror_ptr);
+                else { 
+                    vworm_write(header_base, *mirror_ptr); 
                 }
             }
         }
@@ -924,19 +1337,210 @@ ot_u8 sub_isf_mirror(ot_u8 direction) {
 
 
 
+/// Second Variant: To use with MultiFS or runtime-defined FS
+#else
+
+
+static vlFILE* sub_gfb_new(ot_u8 id, ot_u8 mod, ot_u8 null_arg) {
+#   if (OT_FEATURE(VLNEW) == ENABLED)
+    vl_header_t new_header;
+    ot_uni16    idmod;
+    vlFSHEADER* fshdr;
+    ot_int      num_files;
+    
+    fshdr       = vworm_get(OVERHEAD_START_VADDR);
+    num_files   = fshdr->gfb.files - fshdr->gfb.used;
+    
+    if (num_files > 0) {
+        idmod.ubyte[0]  = id;
+        idmod.ubyte[1]  = mod;
+
+        // Fill vl_header_t
+        new_header.length   = (ot_u16)0;
+        new_header.alloc    = (ot_u16)GFB_FILE_BYTES;
+        new_header.idmod    = idmod.ushort;
+        new_header.mirror   = NULL_vaddr;
+
+        // Find where to put the new data, and if heap is full
+        return sub_new_file(&new_header,
+                            fshdr->ftab_alloc,
+                            fshdr->ftab_alloc+fshdr->gfb.alloc,
+                            GFB_Header_START + ((fshdr->gfb.used)*sizeof(vl_header_t)),
+                            num_files   );
+    }
+#   endif
+    
+    return NULL;
+}
+
+
+
+static vlFILE* sub_isf_new(ot_u8 id, ot_u8 mod, ot_u8 max_length ) {
+#   if (OT_FEATURE(VLNEW) == ENABLED)
+    vl_header_t new_header;
+    ot_uni16    idmod;
+    vlFSHEADER* fshdr;
+    ot_int      num_files;
+    
+    fshdr       = vworm_get(OVERHEAD_START_VADDR);
+    num_files   = fshdr->isf.files - fshdr->isf.used
+    
+    if (num_files > 0) {
+        idmod.ubyte[0]  = id;
+        idmod.ubyte[1]  = mod;
+
+        // Fill vl_header_t
+        new_header.length   = (ot_u16)0;
+        new_header.alloc    = (ot_u16)max_length;
+        new_header.idmod    = idmod.ushort;
+        new_header.mirror   = NULL_vaddr;
+
+        // determine amount of actual ISF allocation needed (keeping it even)
+        new_header.alloc += 1;
+        new_header.alloc &= ~1;
+
+        // Find where to put the new data, and if heap is full
+        return sub_new_file(&new_header,
+                            fshdr->ftab_alloc + fshdr->gfb.alloc + fshdr->iss.alloc,
+                            fshdr->ftab_alloc + fshdr->gfb.alloc + fshdr->iss.alloc + fshdr->isf.alloc,
+                            GFB_Header_START + ((fshdr->gfb.files+fshdr->iss.files+fshdr->isf.used)*sizeof(vl_header_t)),
+                            num_files );
+    }
+#   endif
+    
+    return NULL;
+}
+
+
+static ot_u8 sub_gfb_delete_check(ot_u8 id) {
+#   if (OT_FEATURE(VLNEW) == ENABLED)
+    vlFSHEADER* fshdr = vworm_get(OVERHEAD_START_VADDR);
+    return ( id > fshdr->gfb.used );
+#   endif
+
+    return 0;
+}
+
+
+static ot_u8 sub_isf_delete_check(ot_u8 id) {
+#   if (OT_FEATURE(VLNEW) == ENABLED)
+    ot_uni16        idmod;
+    vlFSHEADER*     fshdr;
+    vl_header_t*    isfhdr;
+    ot_int          i;
+    
+    fshdr   = vworm_get(OVERHEAD_START_VADDR);
+    isfhdr  = (void*)fshdr + sizeof(vlFSHEADER) + ((fshdr->gfb.files+fshdr->iss.files)*sizeof(vl_header_t));
+    i       = fshdr->isf.used-1;
+    
+    while (i >= 0) {
+        idmod.ushort = isfhdr[i].idmod;
+        if (idmod.ubyte[0] == id) {
+            break;
+        }
+        i--;
+    }
+    
+    return (i >= 0);
+    
+#   else
+
+    return 0;
+#   endif
+}
+
+
+static vaddr sub_gfb_search(ot_u8 id) {
+    vlFSHEADER* fshdr;
+    fshdr = vworm_get(OVERHEAD_START_VADDR);
+    return sub_header_search( GFB_Header_START, id, fshdr->gfb.files );
+}
+
+
+static vaddr sub_isf_search(ot_u8 id) {
+    vlFSHEADER* fshdr;
+    fshdr = vworm_get(OVERHEAD_START_VADDR);
+    return sub_header_search(   GFB_Header_START+((fshdr->gfb.files+fshdr->iss.files)*sizeof(vl_header_t)), 
+                                id, 
+                                fshdr->isf.files);
+}
+
+
+
+static ot_u8 sub_isf_mirror(ot_u8 direction) {
+#if (ISF_MIRROR_HEAP_BYTES > 0)
+#   error "should be no mirror"
+    vlFSHEADER* fshdr;
+    vaddr   header;
+    vaddr   header_base;
+    vaddr   header_alloc;
+    vaddr   header_mirror;
+    //vaddr   header_end;
+    ot_int  i;
+    ot_u16* mirror_ptr;
+
+    
+    fshdr = vworm_get(OVERHEAD_START_VADDR);
+
+    // Go through ISF Header array
+    header = GFB_Header_START+((fshdr->gfb.files+fshdr->iss.files)*sizeof(vl_header_t));
+    for (i=0; i<fshdr->isf.used; i++, header+=OCTETS_IN_vl_header_t) {
+
+        //get header data
+        header_alloc    = vworm_read(header+2);
+        header_base     = vworm_read(header+6);
+        header_mirror   = vworm_read(header+8);
+
+        // Copy vworm to mirror if there is a mirror
+        // 0. Skip unmirrored or uninitialized, or unallocated files
+        // 1. Resolve Mirror Length (in vsram it is right ahead of the data)
+        // 2. Load/Save Mirror Data (header_alloc is repurposed)
+        if ((header_mirror != NULL_vaddr) && (header_alloc  != 0)) {
+        	mirror_ptr = (ot_u16*)vsram_get(header_mirror);
+            if (direction == MIRROR_TO_SRAM) { // LOAD
+                *mirror_ptr = vworm_read(header+0);
+            }
+            if (header_base == NULL_vaddr) {	// EXIT if file is mirror-only
+            	continue;
+            }
+            if (direction != MIRROR_TO_SRAM) {  // SAVE
+                vworm_write((header+0), *mirror_ptr);
+            }
+
+            header_alloc = header_base + *mirror_ptr;
+            mirror_ptr++;
+            for ( ; header_base<header_alloc; header_base+=2, mirror_ptr++) {
+                if (direction == MIRROR_TO_SRAM) { 
+                    *mirror_ptr = vworm_read(header_base);
+                }
+                else { 
+                    vworm_write(header_base, *mirror_ptr); 
+                }
+            }
+        }
+    }
+#endif
+    return 0;
+}
+
+#endif
+
+
+
 
 
 
 
 /// Generic Subroutines
+///@note All these are MULTIFS SAFE
 
-vlFILE* sub_new_fp() {
+static vlFILE* sub_new_fp() {
 #if (OT_PARAM(VLFPS) < 8)
     ot_int fd;
 
     for (fd=0; fd<OT_PARAM(VLFPS); fd++) {
-        if (vl_file[fd].read == NULL)
-            return &vl_file[fd];
+        if (vlfile[fd].read == NULL)
+            return &vlfile[fd];
     }
 #else
         ///@todo do a binary search
@@ -946,7 +1550,7 @@ vlFILE* sub_new_fp() {
 }
 
 
-vlFILE* sub_new_file(vl_header* new_header, vaddr heap_base, vaddr heap_end, vaddr header_base, ot_int header_window ) {
+static vlFILE* sub_new_file(vl_header_t* new_header, vaddr heap_base, vaddr heap_end, vaddr header_base, ot_int header_window ) {
 #if (OT_FEATURE(VLNEW) == ENABLED)
     //vlFILE* fp;
     //vaddr   new_base    = 0;
@@ -966,22 +1570,8 @@ vlFILE* sub_new_file(vl_header* new_header, vaddr heap_base, vaddr heap_end, vad
     if (new_header->base == NULL_vaddr)
         return NULL;
 
-    // Make sure new header has the right base address
-    //new_header->base = new_base;
-
     // Write header to the header array
-    sub_write_header(header_addr, (ot_u16*)new_header, sizeof(vl_header));
-
-    // Open a file, now that data is allocated
-    //fp = vl_open_file( header_addr );
-
-    //commented out... seems to be useless (and broken) legacy code
-    //if (FP_ISVALID(fp)) {
-        //fp->start   = 0;
-        //fp->length  = 0;
-    //}
-
-    //return fp;
+    sub_write_header(header_addr, (ot_u16*)new_header, OCTETS_IN_vl_header_t);
 
     return vl_open_file( header_addr );
 #else
@@ -991,7 +1581,7 @@ vlFILE* sub_new_file(vl_header* new_header, vaddr heap_base, vaddr heap_end, vad
 
 
 
-void sub_delete_file(vaddr del_header) {
+static void sub_delete_file(vaddr del_header) {
 #if (OT_FEATURE(VLNEW) == ENABLED)
     vaddr   header_base;
     ot_u16  header_alloc;
@@ -1008,37 +1598,61 @@ void sub_delete_file(vaddr del_header) {
 
 
 
-vaddr sub_header_search(vaddr header, ot_u8 search_id, ot_int num_headers) {
-    ot_uni16    idmod;
-    ot_u16      base;
+static vaddr sub_header_search(vaddr header, ot_u8 search_id, ot_int num_headers) {
 
+    // Quick check to see if Header is at the indexed location.
+#   if (OT_FEATURE(MULTIFS) == ENABLED)
+    ot_uni16 idmod;
+    const vl_header_t* hdr = vworm_get(header);
+    
+    if (search_id < num_headers) {
+        idmod.ushort = hdr[search_id].idmod;
+        if (idmod.ubyte[0] == search_id) {
+            return header + (search_id * sizeof(vl_header_t));
+        }
+    }
+#   endif
+
+    // Normal check, includes mirror checking
     for (; num_headers > 0; num_headers--) {
-        base            = vworm_read(header + 6);
+#       if !defined(__C2000__)
+        ot_uni16 idmod;
+        ot_u16 base     = vworm_read(header + 6);
         idmod.ushort    = vworm_read(header + 4);
-
         if ( base != 0 && base != 0xFFFF) {
             if (idmod.ubyte[0] == search_id)
                 return header;
         }
+        
+#       else
+        ot_u16 base     = vworm_read(header + 6);
+        ot_u16 idmod    = vworm_read(header + 4);
+        if ( base != 0 && base != 0xFFFF) {
+            if (BYTE0(idmod) == search_id)
+                return header;
+        }
 
-        header += sizeof(vl_header);
+#       endif
+
+        header += OCTETS_IN_vl_header_t;
     }
     return NULL_vaddr;
 }
 
 
-void sub_copy_header( vaddr header, ot_u16* output_header ) {
+static void sub_copy_header(vl_header_t* output_header, vaddr header ) {
     ot_int i;
-    ot_int copy_length = sizeof(vl_header) / 2;
+    ot_int copy_length  = (OCTETS_IN_vl_header_t / 2);
+    ot_u16* header_u16  = (ot_u16*)output_header;
 
     for (i=0; i<copy_length; i++) {
-        output_header[i] = vworm_read(header);
+        header_u16[i] = vworm_read(header);
         header += 2;
     }
 }
 
 
-void sub_write_header(vaddr header, ot_u16* data, ot_uint length ) {
+static void sub_write_header(vaddr header, ot_u16* data, ot_uint length ) {
     ot_int i;
 
     for (i=0; i<length; i+=2, data++) {
@@ -1047,7 +1661,7 @@ void sub_write_header(vaddr header, ot_u16* data, ot_uint length ) {
 }
 
 
-vaddr sub_find_empty_header(vaddr header, ot_int num_headers) {
+static vaddr sub_find_empty_header(vaddr header, ot_int num_headers) {
     vaddr header_base;
 
     for (; num_headers>0; num_headers--) {
@@ -1056,16 +1670,14 @@ vaddr sub_find_empty_header(vaddr header, ot_int num_headers) {
         if ( header_base == NULL_vaddr ) {
             return header;
         }
-        header += sizeof(vl_header);
+        header += OCTETS_IN_vl_header_t;
     }
 
     return NULL_vaddr;
 }
 
 
-/// @todo This checks out in testing, although it is a complex function that
-///       probably merits further testing
-vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
+static vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
                         vaddr header, ot_uint new_alloc, ot_int num_headers) {
 #if (OT_FEATURE(VLNEW) == ENABLED)
     //Search all header combinations to find:
@@ -1077,7 +1689,6 @@ vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
     ot_uint loop1_alloc;
     vaddr   loop2;
     vaddr   loop2_base;
-    //ot_uint loop2_alloc;	///@todo figure out why this is disused
 
     ot_int  i;
     ot_int  j;
@@ -1085,9 +1696,8 @@ vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
     ot_int  closest_gap     = (ot_int)(heap_end - heap_base);
     ot_int  bestfit_alloc   = (ot_int)(32767);
     vaddr   bestfit_base    = NULL_vaddr;
-    //vaddr   loop1_end       = heap_base;
 
-    for (i=0; i<num_headers; i++, loop1+=sizeof(vl_header) ) {
+    for (i=0; i<num_headers; i++, loop1+=OCTETS_IN_vl_header_t ) {
         loop1_alloc = vworm_read(loop1 + 2);                                    // load alloc (max) from header
         loop1_base  = vworm_read(loop1 + 6);                                    // load base from header
 
@@ -1095,8 +1705,7 @@ vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
             heap_base   = (vaddr)(loop1_base + loop1_alloc);
             loop2       = header;
 
-            for (j=0; j<num_headers; j++, loop2+=sizeof(vl_header) ) {
-                //loop2_alloc = vworm_read(loop2 + 2);
+            for (j=0; j<num_headers; j++, loop2+=OCTETS_IN_vl_header_t ) {
                 loop2_base  = vworm_read(loop2 + 6);
 
                 if ( (loop2_base != NULL_vaddr) && (loop2_base > heap_base) ) { // if header is valid ...
@@ -1104,17 +1713,13 @@ vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
 
                     if (gap < closest_gap) {                                    // The closest gap ...
                         closest_gap = gap;                                      // will be between two adjacent ...
-                        //heap_base   = loop1_end;                                // files in the heap.
-                    }
+                    }                                                           // files in the heap.
                 }
             }
         }
-        //if (closest_gap >= new_alloc) {                                         // If the gap between loop1 and next file ...
-        //    if (closest_gap < bestfit_alloc) {                                  // is big enough for the data we need ...
-        //        bestfit_alloc   = closest_gap;                                  // and is smaller than other big-enough gaps ...
-        //        bestfit_base    = heap_base;                                    // then it is the gap we will write into.
-        //    }
-        //}
+        
+        // If the gap between loop1 and next file is big enough for the data we need ...
+        // and is smaller than other big-enough gaps then it is the gap we will write into.
         if ((closest_gap >= new_alloc) && (closest_gap < bestfit_alloc))  {
             bestfit_alloc   = closest_gap;
             bestfit_base    = heap_base;
@@ -1132,44 +1737,13 @@ vaddr sub_find_empty_heap(  vaddr heap_base, vaddr heap_end,
 
 
 //Save sub_defragment_heap for a rainy day
-ot_u8 sub_defragment_heap(vaddr base, ot_uint window) {
+static ot_u8 sub_defragment_heap(vaddr base, ot_uint window) {
     return ~0;
 }
 
 
 
 
-
-
-/*
-ot_u8 M1TAG_write( M1TAG_struct* new_m1tag ) {
-    ///@todo for now, only done at compile time
-    return ~0;
-}
-
-
-
-ot_u8 M1TAG_get( M1TAG_struct* m1tag ) {
-#   if (M1_FEATURESET == ENABLED)
-        ot_int i;
-        ot_u16* input;
-        ot_u16* output;
-
-        input   = (ot_u16*)M1TAG;
-        output  = (ot_u16*)m1tag;
-
-        for (i=0; i<(sizeof(M1TAG_Struct)/2); i++) {
-            output[i] = input[i];
-        }
-
-        return 0;
-
-#   else
-        return ~0;
-
-
-}
-*/
 
 
 

@@ -35,11 +35,11 @@
 typedef enum {
 	DATA_raw 		= 0,
 	DATA_utf8 		= 1,
-	DATA_utf16		= 2,
+	DATA_json		= 2,
 	DATA_utf8hex	= 3,
 	MSG_raw 		= 4,
 	MSG_utf8		= 5,
-	MSG_utf16		= 6,
+	MSG_json		= 6,
 	MSG_utf8hex		= 7
 } logmsg_type;
 
@@ -87,6 +87,14 @@ void logger_direct();
 void logger(ot_u8 subcode, ot_int length, ot_u8* data);
 #define logger_response(LENGTH, DATA)    logger(0x01, LENGTH, DATA)
 
+
+
+/** @brief  Logs a string
+  * @param  data    (const char*) string to log
+  * @retval None
+  * @ingroup Logger
+  */
+void logger_str(const char* data);
 
 
 /** @brief  Log arbitrary "message," which is type + data.

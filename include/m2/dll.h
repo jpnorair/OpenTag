@@ -476,7 +476,7 @@ void dll_scan_timeout(void);
 void dll_processing(void);
 void dll_activate(void);
 void dll_init_rx(m2session* active);
-void dll_init_tx(ot_u8 is_btx);
+void dll_init_tx(m2session* active);
 void dll_txcsma(void);
 
 
@@ -491,6 +491,15 @@ void dll_rfevt_btx(ot_int flcode, ot_int scratch);
 void dll_rfevt_ftx(ot_int pcode, ot_int scratch);
 
 
+
+/** @brief Refresh the M2 Advertising payload between transmissions.
+  * @retval None
+  * @ingroup DLL
+  * 
+  * This is a subroutine with side-effects.  The only reason it is exposed 
+  * to the API is for the purpose of having application patches.
+  */
+void dll_m2advp_refresh(void);
 
 
 

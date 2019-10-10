@@ -280,7 +280,7 @@ OT_WEAK ot_uint rm2_pkt_duration(ot_queue* pkt_q) {
         pkt_bytes += (pkt_bytes+3)>>2;
     }
 
-    pkt_duration    = rm2_scale_codec(pkt_bytes);
+    pkt_duration    = rm2_scale_codec(phymac[0].channel, pkt_bytes);
     pkt_duration   += preheader_ti[(phymac[0].channel>>4) & 3];
     return pkt_duration;
 }
@@ -337,7 +337,7 @@ OT_WEAK ot_uint rm2_scale_codec(ot_uint buf_bytes) {
     return buf_bytes;
 }
 */
-OT_WEAK ot_uint rm2_scale_codec(ot_uint buf_bytes) {
+OT_WEAK ot_uint rm2_scale_codec(ot_u8 channel_code, ot_uint buf_bytes) {
 /// Turns a number of bytes (buf_bytes) into a number of ti units.
 /// To refresh your memory:
 /// 1 ti    = ((1sec/32768) * 2^5) = 2^-10 sec = ~0.977 ms
@@ -355,7 +355,7 @@ OT_WEAK ot_uint rm2_scale_codec(ot_uint buf_bytes) {
     ot_ulong bytes_miti;
     ot_u8 encoding;
 
-    encoding = (phymac[0].channel >> 4);
+    encoding = (channel_code >> 4);
 
     // If channel is FEC'ed
     if (encoding & 0x08) {

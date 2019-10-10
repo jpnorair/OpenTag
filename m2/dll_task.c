@@ -44,6 +44,7 @@
 
 #if (OT_FEATURE(M2) == ENABLED)
 
+#include <m2/capi.h>
 #include <m2/dll.h>
 #include <m2/network.h>
 #include <m2/radio.h>
@@ -54,6 +55,7 @@
 
 #include <otlib/auth.h>         ///@todo might not be necessary here
 #include <otlib/buffers.h>
+#include <otlib/memcpy.h>
 #include <otlib/rand.h>
 #include <otlib/utils.h>
 #include <otsys/veelite.h>
@@ -349,17 +351,27 @@ OT_WEAK void dll_change_settings(ot_u16 new_mask, ot_u16 new_settings) {
 
 #ifndef EXTF_dll_silence
 OT_WEAK void dll_silence(ot_bool onoff) {
-    if (onoff == false) {
-        dll.netconf.active &= ~(1<<12);
-        //if (radio.state == RADIO_Idle) {
-        //    dll.idle_state      = sub_default_idle(); 
-        //    dll_idle();
-        //}
-        dll_refresh();
-    } 
-    else {
-        dll.netconf.active |= (1<<12);
-    }
+
+	///@todo this is a hack to pause the idle state timers.
+	///      Replace it in the near future with a set to bit 12 on .active,
+	///      and have the actual sleep and beacon tasks simply ignore
+	if (onoff == true) {
+		sys.task_SSS.nextevent 	= INT_MAX;
+		sys.task_BTS.nextevent	= INT_MAX;
+	}
+	else {
+		sys_task_setnext(&sys.task_SSS, 500);
+		sys_task_setnext(&sys.task_BTS, 2000);
+	}
+
+	///@todo I want to do it like below, but somehow this method completely
+	///      crashes the scheduler.  Need to investigate why.
+//	if (onoff == false) {
+//		dll.netconf.active &= ~(1<<12);
+//	}
+//	else {
+//		dll.netconf.active |= (1<<12);
+//	}
 }
 #endif
 
@@ -458,26 +470,10 @@ OT_WEAK void dll_scan_applet(m2session* active) {
 OT_WEAK void dll_beacon_applet(m2session* active) {
 /// Beaconing is a Request-TX operation, and the value for Tc is the amount of
 /// time to spend in CSMA before quitting the beacon.
-    ot_queue beacon_queue;
     ot_u8 b_params;
-    ot_u8 cmd_ext;
-    ot_u8 cmd_code;
 
     b_params        = active->extra;
     active->extra   = 0;
-
-    /// Start building the beacon packet:
-    /// <LI> Calling m2np_header() will write most of the front of the frame </LI>
-    /// <LI> Add the command byte and optional command-extension byte </LI>
-    m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
-
-    cmd_ext     = (b_params & 0x06);                            // Normal extension bits
-    cmd_ext    |= (dll.netconf.btemp[2] == 0) << 6;             // Announcement No-File bit
-    cmd_code    = 0x20 | (b_params & 1) | ((cmd_ext!=0) << 7);
-    q_writebyte(&txq, cmd_code);
-    if (cmd_code) {
-        q_writebyte(&txq, cmd_ext);
-    }
 
     /// Setup the comm parameters, if the channel is available:
     /// <LI> dll.comm values tx_eirp, cs_rssi, and cca_rssi must be set by the
@@ -488,27 +484,72 @@ OT_WEAK void dll_beacon_applet(m2session* active) {
     /// <LI> Set rx_timeout for Default-Tg or 0, if beacon has no response </LI>
     dll_set_defaults(active);
     dll.comm.tc             = M2_PARAM_BEACON_TCA;  //TI2CLK(M2_PARAM_BEACON_TCA);
-    dll.comm.rx_timeout     = (b_params & 0x02) ? \
-                                0 : rm2_default_tgd(active->channel);
+    dll.comm.rx_timeout     = (b_params & 0x02) ? 0 : rm2_default_tgd(active->channel);
     dll.comm.csmaca_params |= (b_params & 0x04) | M2_CSMACA_NA2P | M2_CSMACA_MACCA;
     dll.comm.redundants     = dll.netconf.b_attempts;
 
-    q_writebyte(&txq, (ot_u8)dll.comm.rx_timeout);
+    if (dll.netconf.btemp[0] & 0x80) {
+    	ot_u32 token;
+    	vlFILE* fp;
+    	ot_u8 beacon_tgram[8];
 
-    /// Add the announcement file data if the specified return data != 0 bytes.
-    /// If the beacon data is missing or otherwise not accessible by the GUEST
-    /// user, dump the session (thus killing the beacon) and go back to idle.
-    if (dll.netconf.btemp[2] != 0) {
-        q_init(&beacon_queue, &dll.netconf.btemp[2], 4);
-        if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
-            session_pop();
-            dll_idle();
-            return;
-        }
+    	///@todo pull token from parameters or a file.
+    	token = 0x01020304;
+    	ot_memset(beacon_tgram, 0, 8);
+
+    	active->netstate |= M2_NETFLAG_BG;
+
+    	fp = vl_open(VL_ISF_BLOCKID, dll.netconf.btemp[5], VL_ACCESS_R, AUTH_GUEST);
+    	if (fp != NULL) {
+    		vl_load(fp, dll.netconf.btemp[4], beacon_tgram);
+    		vl_close(fp);
+    	}
+    	if (otapi_new_telegram(token, dll.netconf.btemp[5], beacon_tgram) == 0) {
+    		goto dll_beacon_applet_ERR;
+    	}
+    }
+    else {
+    	ot_queue beacon_queue;
+    	ot_u8 cmd_ext;
+    	ot_u8 cmd_code;
+
+		/// Start building the beacon packet:
+		/// <LI> Calling m2np_header() will write most of the front of the frame </LI>
+		/// <LI> Add the command byte and optional command-extension byte </LI>
+		m2np_header(active, M2RT_BROADCAST, M2FI_FRDIALOG);
+
+		cmd_ext     = (b_params & 0x06);                            // Normal extension bits
+		cmd_ext    |= (dll.netconf.btemp[4] == 0) << 6;             // Announcement No-File bit
+		cmd_code    = 0x20 | (b_params & 1) | ((cmd_ext!=0) << 7);
+		q_writebyte(&txq, cmd_code);
+		if (cmd_code) {
+			q_writebyte(&txq, cmd_ext);
+		}
+
+		q_writebyte(&txq, (ot_u8)dll.comm.rx_timeout);
+
+		/// Add the announcement file data if the specified return data != 0 bytes.
+		/// If the beacon data is missing or otherwise not accessible by the GUEST
+		/// user, dump the session (thus killing the beacon) and go back to idle.
+		if (dll.netconf.btemp[4] != 0) {
+			q_init(&beacon_queue, &dll.netconf.btemp[4], 4);
+			if (m2qp_isf_call((b_params & 1), &beacon_queue, AUTH_GUEST) < 0) {
+				goto dll_beacon_applet_ERR;
+			}
+		}
+
+		/// Final step to packet generation: add footer
+		m2np_footer();
     }
 
-    /// Final step to any packet generation: add footer
-    m2np_footer();
+    // Successful exit
+    return;
+
+    // error exit
+    dll_beacon_applet_ERR:
+	session_pop();
+	dll_idle();
+	return;
 }
 
 
@@ -708,13 +749,14 @@ OT_WEAK void dll_systask_holdscan(ot_task task) {
 
 
 
-
 OT_WEAK void dll_systask_sleepscan(ot_task task) {
 /// The Sleep Scan process runs as an independent task.  It is very similar
 /// to the Hold Scan process, which actually calls this same routine.  They
 /// use independent task markers, however, so they behave differently.
     ot_u8       s_channel;
     ot_u8       s_code;
+    ot_u8		s_type;
+    ot_u8       netstate;
     ot_uni16    scratch;
     vlFILE*     fp;
     m2session*  s_new;
@@ -731,15 +773,17 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     ///@note fp doesn't really need to be asserted unless you are mucking
     ///      with things in test builds.
 
+    /// Set the next idle event from the two-byte Next Scan field.
+    /// The DASH7 registry is big-endian.
+    scratch.ushort  = PLATFORM_ENDIAN16( vl_read(fp, task->cursor) );
+    s_type			= (scratch.ubyte[UPPER] & 0x80);
+    sys_task_setnext(task, (ot_u32)otutils_calc_longtimeout(scratch.ushort));
+
     /// Pull channel ID and Scan flags
+    task->cursor   += 2;
     scratch.ushort  = vl_read(fp, task->cursor);
     s_channel       = scratch.ubyte[0];
     s_code          = scratch.ubyte[1];
-
-    /// Set the next idle event from the two-byte Next Scan field.
-    /// The DASH7 registry is big-endian.
-    scratch.ushort  = PLATFORM_ENDIAN16( vl_read(fp, (task->cursor)+=2 ) );
-    sys_task_setnext(task, (ot_u32)scratch.ushort);
 
     /// Advance cursor to next datum, go back to 0 if end of sequence
     /// (still works in special case where cursor = 254)
@@ -750,11 +794,37 @@ OT_WEAK void dll_systask_sleepscan(ot_task task) {
     /// Choosing Background-Scan or Foreground-Scan is based on scan-code.
     /// If b7 is set, do a Background-Scan.  At the session level, the "Flood"
     /// select uses b6, which is why there is a >> 1.
-    s_new           = session_new(&dll_scan_applet, 0, s_channel,
-                                    ((M2_NETSTATE_REQRX | M2_NETSTATE_INIT) | (s_code & 0x80) >> 1)  );
-    s_new->extra    = s_code;
-}
+    ///@todo the method of checking for silence seems to crash OpenTag right now.
+    //if ((dll.netconf.active & (1<<12)) == 0) {
 
+    	///@todo canonical behavior of s_type, and temporary hack to fit s_type into existing flags model
+        /// Canonical s_type, s_code:
+        ///   s_type
+        ///   C0: telegram beacon (should be impossible value, here)
+        ///   80: telegram scan
+        ///   40: normal beacon (should be impossible value, here)
+        ///   00: normal scan
+        /// (s_code & 0x80)
+        ///   80: BG scan type
+        ///   00: FG scan type
+        /// (s_type & 0x80) | ((s_code & 0x80) >> 1)
+        ///   C0: BG scan for telegram
+    	///   80: FG scan for telegram
+    	///   40: BG scan for normal packet
+    	///   00: FG scan for normal packet
+        ///
+        /// Temporary Hack s_type, s_code
+        ///   C0: background normal scan
+        ///   80: unsupported
+        ///   40: foreground telegram scan
+        ///   00: foreground normal scan
+
+    	s_type          = (s_type >> 1) | (s_code & 0x80);
+    	netstate        = s_type | (M2_NETSTATE_REQRX | M2_NETSTATE_INIT);
+		s_new           = session_new(&dll_scan_applet, 0, s_channel, netstate);
+		s_new->extra    = s_code;
+    //}
+}
 
 
 
@@ -763,6 +833,7 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
 /// The beacon rountine runs as an idependent systask.
     m2session*  b_session;
     ot_u16      nextbeacon;
+    ot_u8       b_flags;
 
     if ((task->event == 0) || (dll.netconf.b_attempts == 0)) {
         dll_idle();
@@ -783,7 +854,7 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
 
         fp = ISF_open_su( ISF_ID(beacon_transmit_sequence) );
         if (fp == NULL) {
-            nextbeacon = 10;               // try again after this delay
+            //nextbeacon = 10;               // try again after this delay
             goto dll_systask_beacon_END;
         }
         if (fp->length == 0)    {
@@ -799,8 +870,10 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
         /// <LI> Move cursor onto next beacon period (above, +8)</LI>
         /// <LI> Loop cursor if it is past the length of the list </LI>
         /// <LI> In special case where cursor = 254, everything still works! </LI>
-        task->cursor   += 8;
-        task->cursor    = (task->cursor >= fp->length) ? 0 : task->cursor;
+        task->cursor += 8;
+        if (task->cursor >= fp->length) {
+        	task->cursor = 0;
+        }
 
         // Load next beacon into btemp, then undo the start hack, then close
         vl_load(fp, 8, dll.netconf.btemp);
@@ -808,17 +881,23 @@ OT_WEAK void dll_systask_beacon(ot_task task) {
         vl_close(fp);
     }
 
-    // First 2 bytes: Chan ID, Cmd Code
+    // Bytes[2:3] = Chan ID, Cmd Code
     // - Setup beacon ad-hoc session, on specified channel (ad hoc sessions never return NULL)
     // - Assure cmd code is always Broadcast & Announcement
-    b_session           = session_new(  &dll_beacon_applet, 0, dll.netconf.btemp[0],
-                                        (M2_NETSTATE_INIT | M2_NETSTATE_REQTX | M2_NETFLAG_FIRSTRX)  );
-    b_session->subnet   = dll.netconf.b_subnet;
-    b_session->extra    = dll.netconf.btemp[1];
-    b_session->flags    = dll.netconf.btemp[1] & 0x78;
-    //b_session->flags   |= (b_session->extra & 0x30);
+    ///@todo the method of checking for silence (b12) seems to crash OpenTag right now.
+    //if ((dll.netconf.active & (1<<12)) == 0) {
+    	b_flags             = (M2_NETSTATE_INIT|M2_NETSTATE_REQTX|M2_NETFLAG_FIRSTRX);
+		b_session           = session_new(  &dll_beacon_applet, 0, dll.netconf.btemp[2], b_flags);
+		b_session->subnet   = dll.netconf.b_subnet;
+		b_session->extra    = dll.netconf.btemp[3];
 
-    nextbeacon = (ot_u32)PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[6]);
+		///@note I'm not sure what this is about
+		//b_session->flags    = dll.netconf.btemp[3] & 0x78;
+
+    //}
+
+	// Bytes[0:1] = next process code
+    nextbeacon = otutils_calc_longtimeout( PLATFORM_ENDIAN16(*(ot_u16*)&dll.netconf.btemp[0]) );
     
     dll_systask_beacon_END:
     
@@ -889,8 +968,7 @@ OT_WEAK void dll_init_rx(m2session* active) {
     //    sample_t0 = 0;
     //}
 
-    callback = (active->netstate & M2_NETFLAG_BG) ? \
-                    &dll_rfevt_brx : &dll_rfevt_frx;
+    callback = (active->netstate & M2_NETFLAG_BG) ? &dll_rfevt_brx : &dll_rfevt_frx;
 
     rm2_rxinit(active->channel, active->netstate, callback);
 }
@@ -898,10 +976,10 @@ OT_WEAK void dll_init_rx(m2session* active) {
 
 
 
-OT_WEAK void dll_init_tx(ot_u8 is_btx) {
+OT_WEAK void dll_init_tx(m2session* active) {
 /// Initialize background or foreground packet TX.  Often this includes CSMA
 /// initialization as well.
-    //sys_task_setnext_clocks(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
+
     sys_task_setnext(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
     sys.task_RFA.latency    = 1;
@@ -910,15 +988,20 @@ OT_WEAK void dll_init_tx(ot_u8 is_btx) {
     DLL_SIG_RFINIT(sys.task_RFA.event);
 
 #if (SYS_FLOOD == ENABLED)
-    ///@todo this is a bit of a hack.  BG Floods should be used with a
-    ///      network-layer function that decides which protocol is appropriate.
-    if (is_btx == (M2_NETFLAG_BG | M2_NETFLAG_STREAM)) {
-        m2advp_open( session_follower() );
+    ///@todo This is hard coded for advertising.
+    ///      Rebuild it to open DLL functions that take the session
+    ///      - One function for BG single packets
+    ///      - One function for BG Flooding
+    if (active->netstate & M2_NETFLAG_BG) {
+    	if (active->netstate & M2_NETFLAG_STREAM) {
+    		m2advp_open(session_follower());
+    	}
     }
+    rm2_txinit(active->netstate, &dll_rfevt_txcsma);
 
-    rm2_txinit(is_btx, &dll_rfevt_txcsma);
 #else
     rm2_txinit(0, &dll_rfevt_txcsma);
+
 #endif
 }
 
@@ -955,7 +1038,7 @@ OT_WEAK void dll_activate(void) {
         dll_init_rx(s_active);
     }
     else {
-        dll_init_tx(s_active->netstate & (M2_NETFLAG_BG | M2_NETFLAG_STREAM));
+        dll_init_tx(s_active);
     }
 }
 
@@ -974,9 +1057,10 @@ OT_WEAK void dll_scan_timeout(void) {
 /// synchronized.  Usage of HW RX timer is mostly useful for very specific
 /// applications using very custom builds of OpenTag.
 
-#if (RF_FEATURE(RXTIMER) == DISABLED)
+#if (RF_FEATURE_RXTIMER == DISABLED)
     // If not presently receiving, time-out the RX.
     // else if presently receiving, pad timeout by 128
+    ///@todo make timeout variable, not fixed 128
     if ((radio.state != RADIO_DataRX) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) {    ///@todo change to LISTEN
         rm2_rxtimeout_isr();
     }
@@ -1012,7 +1096,7 @@ OT_WEAK void dll_rfevt_brx(ot_int scode, ot_int fcode) {
     __DEBUG_ERRCODE_EVAL(=100);
 
     // CRC Failure (or init), retry
-    if ((scode == -1) && (dll.comm.redundants != 0)) {
+    if ((fcode != 0) && (dll.comm.redundants != 0)) {
         __DEBUG_ERRCODE_EVAL(=101);
         rm2_reenter_rx(&dll_rfevt_brx);   //non-blocking
         return;
@@ -1221,9 +1305,32 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
 }
 
 
+#ifndef EXTF_dll_m2advp_refresh
+OT_WEAK void dll_m2advp_refresh(void) {
+/// <LI> Derive current value for advertising countdown and apply </LI>
+/// <LI> Stop the flood if the countdown is shorter than one packet </LI>
+/// <LI> The Radio Driver will flood adv packets forever, in parallel
+///      with the blocked kernel, until rm2_flood_txstop() is called </LI>
+    
+    ot_int countdown;
+    //static volatile ot_u16 _testflood[500];
+    //static volatile ot_u16 _testflood_i = 0;
+    
+    countdown = rm2_flood_getcounter();
+    //_testflood[_testflood_i++] = countdown;
+    
+    if (countdown < rm2_bgpkt_duration()) {
+        dll.counter = (countdown < 0) ? 0 : countdown;
+        m2advp_close();
+        rm2_flood_txstop();
+    }
+    else {
+        m2advp_update(countdown);
+    }
+}
+#endif
 
-//volatile ot_u16 _testflood[500];
-//volatile ot_u16 _testflood_i = 0;
+
 
 OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
 #if ((M2_FEATURE(SUBCONTROLLER) == ENABLED) || (M2_FEATURE(GATEWAY) == ENABLED))
@@ -1243,24 +1350,9 @@ OT_WEAK void dll_rfevt_btx(ot_int flcode, ot_int scratch) {
 
         /// BG Flood Continues:
         /// ONLY USED RIGHT NOW FOR ADVERTISING
-        /// <LI> Derive current value for advertising countdown and apply </LI>
-        /// <LI> Stop the flood if the countdown is shorter than one packet </LI>
-        /// <LI> The Radio Driver will flood adv packets forever, in parallel
-        ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
         case 2: {
-            ot_int countdown;
             __DEBUG_ERRCODE_EVAL(=131);
-
-            countdown = rm2_get_floodcounter();
-            //_testflood[_testflood_i++] = countdown;
-            if (countdown < rm2_bgpkt_duration()) {
-                dll.counter = (countdown < 0) ? 0 : countdown;
-                m2advp_close();
-                rm2_txstop_flood();
-            }
-            else {
-                m2advp_update(countdown);
-            }
+            dll_m2advp_refresh();
         } return; // skip termination section
 
         /// Successful exit from BG Flood transmission

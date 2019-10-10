@@ -335,8 +335,8 @@ OT_WEAK void rm2_calc_link() {
 #endif
 
 
-#ifndef EXTF_rm2_get_floodcounter
-OT_WEAK ot_int rm2_get_floodcounter() {
+#ifndef EXTF_rm2_flood_getcounter
+OT_WEAK ot_int rm2_flood_getcounter() {
 /// The time value put into countdown should indicate the amount of time following
 /// the end of the BG packet it is inserted into.  This depends on the number of
 /// bytes of a BG packet (always seven), the number of bytes remaining in the FIFO
@@ -344,7 +344,7 @@ OT_WEAK ot_int rm2_get_floodcounter() {
 /// implemented in the SPIRIT1.
     ot_int offset_count;
     offset_count    = (ot_int)spirit1_get_counter();
-    offset_count   -= rm2_scale_codec(7);   // was hardcoded at 13
+    offset_count   -= rm2_scale_codec(phymac[0].channel, 7);   // was hardcoded at 13
     return offset_count;
 }
 #endif
@@ -821,8 +821,8 @@ OT_WEAK void rm2_resend(ot_sig2 callback) {
 #endif
 
 
-#ifndef EXTF_rm2_txstop_flood
-OT_WEAK void rm2_txstop_flood() {
+#ifndef EXTF_rm2_flood_txstop
+OT_WEAK void rm2_flood_txstop() {
 /// Stop the MAC counter used to clock advertising flood synchronization.
 /// Then simply configure TX driver state machine to go to TX Done state
 /// as soon as the current packet is finished transmitting.

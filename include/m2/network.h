@@ -179,7 +179,7 @@ void network_init();
   * @retval ot_int      -1 on ignore, non-negative on session modified/created
   * @ingroup Network
   */
-m2session* network_parse_bf();
+m2session* network_parse_bf(void);
 
 
 
@@ -339,6 +339,17 @@ void m2advp_open(m2session* follower);
   */
 void m2advp_close();
 
+
+
+/** @brief  Parse an inbound m2adv frame
+  * @param  none
+  * @retval m2session*		Follow-on session
+  * @ingroup Network
+  *
+  * @note the input-output model of this function is experimental, and it may
+  * change in the future.
+  */
+m2session* m2advp_parse(void);
 
 
 /** @brief  Updates an open flood process

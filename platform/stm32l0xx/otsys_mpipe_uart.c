@@ -81,13 +81,14 @@
 #define MPIPEDRV_ENABLED        (BOARD_FEATURE(MPIPE))
 #define THIS_MPIPEDRV_SUPPORTED ((BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_UART))
 
-#if (defined(__STM32L0__) && OT_FEATURE(MPIPE) && MPIPEDRV_ENABLED && THIS_MPIPEDRV_SUPPORTED)
+#if (defined(__STM32L0__) && OT_FEATURE_MPIPE && MPIPEDRV_ENABLED && THIS_MPIPEDRV_SUPPORTED)
 
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>
 #include <otsys/mpipe.h>
 #include <otsys/sysclock.h>
 #include <otlib/memcpy.h>
+#include <otlib/delay.h>
 
 
 /** MPipe Default speed configuration <BR>
@@ -392,10 +393,10 @@
   * ========================================================================<BR>
   */
 
-/// @todo lookup actual data rate in use: this is hardcoded for 115200
+/// @todo lookup actual data rate in use: this is hardcoded for 115200/57600
 //#define __MPIPE_TIMEOUT(BYTES)  (1 + ((_miti_per_byte[uart.baudrate] * BYTES) >> 10))
 #define __MPIPE_TIMEOUT(BYTES)  ( 1 + ((BYTES+8) >> 3) )
-
+//#define __MPIPE_TIMEOUT(BYTES)  ( 1 + ((BYTES+8) >> 2) )
 
 
 /** Mpipe Driver Data  <BR>
@@ -901,7 +902,7 @@ void mpipedrv_isr() {
             uart.rxplen = PLATFORM_ENDIAN16(uart.header.plen);
             if (uart.rxplen == 0)                           error_code = -1;
             else if (q_blocktime(mpipe.alp.inq))            error_code = -11;
-            else if (q_space(mpipe.alp.inq) < uart.rxplen)  error_code = -7;
+            else if (q_writespace(mpipe.alp.inq) < uart.rxplen)  error_code = -7;
             
             // No error, start receiving packet formally
             // Most important first thing is to reset DMA to grab first frame.
@@ -1042,6 +1043,8 @@ void mpipedrv_isr() {
     // - If RX CRC matters, then make sure to compute it.
     mpipedrv_isr_RXSIG:
     mpipedrv_rx(False, 0);
+
+    q_unlock(mpipe.alp.inq);
     mpipeevt_rxdone(error_code);
 }
 

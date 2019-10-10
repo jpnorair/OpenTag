@@ -1246,13 +1246,13 @@ void rfevt_btx(ot_int flcode, ot_int scratch) {
         /// <LI> Derive current value for advertising countdown and apply </LI>
         /// <LI> Stop the flood if the countdown is shorter than one packet </LI>
         /// <LI> The Radio Driver will flood adv packets forever, in parallel
-        ///      with the blocked kernel, until rm2_txstop_flood() is called </LI>
+        ///      with the blocked kernel, until rm2_flood_txstop() is called </LI>
         case 2: {
-            ot_int countdown = rm2_get_floodcounter();
+            ot_int countdown = rm2_flood_getcounter();
             if (countdown < rm2_bgpkt_duration()) {
                 dll.counter = countdown;
                 m2advp_close();
-                rm2_txstop_flood();
+                rm2_flood_txstop();
             }
             else {
                 m2advp_update(countdown);

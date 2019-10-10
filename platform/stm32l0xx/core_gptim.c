@@ -505,7 +505,8 @@ void systim_stop_clocker() {
 
 ot_u32 systim_chronstamp(ot_u32* timestamp) {
     ot_u16 timer_cnt = __read_lptim_cnt();
-
+    timer_cnt >>= OT_GPTIM_OVERSAMPLE;
+    
     if (timestamp != NULL) {
         timer_cnt -= (ot_u16)*timestamp;
     }

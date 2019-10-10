@@ -858,8 +858,8 @@ void rm2_txinit_ff(ot_u8 psettings, ot_sig2 callback) {
 
 
 
-#ifndef EXTF_rm2_txstop_flood
-void rm2_txstop_flood() {
+#ifndef EXTF_rm2_flood_txstop
+void rm2_flood_txstop() {
 #if (M2_FEATURE(GATEWAY) || M2_FEATURE(SUBCONTROLLER))
     rfctl.state = RADIO_STATE_TXDONE;
 #   ifdef RADIO_IRQ2_PIN

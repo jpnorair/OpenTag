@@ -74,6 +74,50 @@ ot_u16 otapi_new_advdialog(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, void* ap
 }
 
 
+///@todo this function is experimental, and it is subject to change
+ot_u16 otapi_new_telegram(ot_u32 token, ot_u8 data_id, const ot_u8* data) {
+/// XR Telegram Format
+// ========================================================================
+/// General Background frame design
+/// <PRE>   +---------+--------+-------+-------+---------+--------+
+///         | TX EIRP | Subnet | Token | PType | Payload | CRC16  |
+///         |   B0    |   B1   | B2:5  | B6    | B7:13   | B14:15 |
+///         +---------+--------+-------+-------+---------+--------+
+/// </PRE>
+// ========================================================================
+/// Set the header if the session is valid.  Also conditionally write the header
+/// depending on the address type (a parameter).
+    if (session_notempty()) {
+        m2session* s_active;
+        s_active = session_top();
+
+        // Set the dll parameters to a safe setting; can be changed later
+        dll_set_defaults(s_active);
+        dll.comm.rx_timeout = 0;
+
+        q_empty(&txq);
+
+        // Implicit Header
+        txq.getcursor += 2;         // Bypass unused length and Link CTL bytes
+        q_writebyte(&txq, 14);      // Dummy Length value (not actually sent)
+        q_writebyte(&txq, 0);       // Dummy Link-Control (not actually sent)
+
+        // Explicit Header
+        q_writebyte(&txq, 0);                           // Dummy TX-EIRP (updated by RF driver)
+        q_writebyte(&txq, (s_active->subnet | 0x01));   // This byte is two nibbles: Subnet specifier and Page ID (1)
+        q_writelong(&txq, token);                       // Application Token (32 bits)
+
+        // Payload ID (1 byte) & payload (7 bytes)
+        q_writebyte(&txq, data_id);
+        q_writestring(&txq, data, 7);
+
+        return 1;
+    }
+    return 0;
+}
+
+
+
 ot_u16 otapi_open_request(addr_type addr, routing_tmpl* routing) {
 /// Set the header if the session is valid.  Also conditionally write the header
 /// depending on the address type (a parameter).  
@@ -193,6 +237,9 @@ ot_u16 otapi_put_command_tmpl(ot_u8* status, command_tmpl* command) {
     
     if (m2qp.cmd.ext != 0) {
         q_writebyte(&txq, m2qp.cmd.ext);
+        if (m2qp.cmd.ext & 2) {
+            dll.comm.rx_timeout = 0;
+        }
     }
     
     *status = 1;
@@ -327,7 +374,7 @@ ot_u16 otapi_put_udp_tmpl(ot_u8* status, udp_tmpl* udp) {
     ot_u16 space;
     vlFILE* fp = NULL;
     
-    space = q_space(&txq);
+    space = q_writespace(&txq);
     
 #   if (M2_FEATURE(MULTIFRAME))
     ///@todo Multiframe support: it will still return error when the UDP data

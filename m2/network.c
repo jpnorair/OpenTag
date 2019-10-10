@@ -43,6 +43,17 @@
 #include <otsys/veelite.h>
 
 
+///@todo This board inclusion is temporary until the usage of CRC8 for 
+///      background frames is made universal to all radio transceiver models.
+///      Right now it's only implemented on LoRa Parts.
+#include <board.h>
+#if defined(__LORA__)
+#   define BG_FRAMESIZE     6
+#else
+#   define BG_FRAMESIZE     7
+#endif
+
+
 
 //#ifdef __DEBUG__
 // Place for Debug stuff (not used currently)
@@ -55,6 +66,12 @@
 m2np_struct m2np;
 
 static const ot_int _idlen[2] = { 8, 2 };
+
+m2session* m2tgram_parse(void);
+
+
+
+
 
 
 
@@ -80,74 +97,34 @@ OT_WEAK void network_init() {
 
 
 #ifndef EXTF_network_parse_bf
-OT_WEAK m2session* network_parse_bf() {
+OT_WEAK m2session* network_parse_bf(void) {
 /// Background Frame parsing: fill-in some stuff and treat it as foreground
 // ========================================================================
 /// General Background frame design
-/// <PRE>   +---------+--------+---------+-------+
-///         | TX EIRP | Subnet | Payload | CRC16 |
-///         |   B0    |   B1   |  B2:4   | B5:6  |
-///         +---------+--------+---------+-------+   </PRE>
+/// <PRE>   +---------+--------+---------+------+
+///         | TX EIRP | Subnet | Payload | CRC8 |
+///         |   B0    |   B1   |  B2:4   | B5   |
+///         +---------+--------+---------+------+   </PRE>
 // ========================================================================
-    m2session*  s_next;
-    ot_u8       bgpid;
-    
-    /// Load default attributes
-    s_next  = NULL;
-    bgpid   = rxq.getcursor[1] & 0x0F;
-    
-    /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
-    if (bgpid == 15) {
-        ot_u8       scancode;
-        ot_u8       netstate;
-        ot_uni16    count;
-        ot_int      slop;
-        
-        // Get the counter-ETA information from the inbound frame
-        count.ubyte[UPPER]  = rxq.getcursor[3];
-        count.ubyte[LOWER]  = rxq.getcursor[4];    
-        count.ushort       &= 0x7FFF;
+	    m2session*  s_next;
 
-        // Account for "slop" due to clock deviation, process latency, 
-        // and other such things.  Thus the follow-up session is 
-        // either a second BG scan (if too much slop), or it is FG
-        // listening for the request. 
-        slop = (count.ushort / OT_GPTIM_ERRDIV);
-        if (slop <= 8) {
-            scancode    = 0x0F;
-            netstate    = M2_NETSTATE_REQRX;
-        }
-        else {
-            scancode    = 0x80;
-            netstate    = M2_NETSTATE_REQRX | M2_NETFLAG_BG;
-        }
-        
-        // Reduce the interval time by the slop amount, also ensuring 
-        // that count value is never negative.
-        count.ushort -= slop;
-        if (count.sshort < 0) {
-            count.sshort = 0;
-        }
-        
-        // Block DLL idle tasks while waiting for this next session,
-        // and create the session.
-        //dll_block_idletasks();
-        s_next              = session_top();
-        s_next->applet      = &dll_scan_applet;
-        s_next->counter     = count.ushort;
-        s_next->channel     = rxq.getcursor[2];
-        s_next->netstate    = netstate;
-        s_next->extra       = scancode;
-    }
-    
-    /// Reservation Protocol has subnet = 0xY3
-    ///@todo Not presently supported
-    else if (bgpid == 3) {
-    }
-    
-    return s_next;
-}
+	    /// Load default attributes
+	    s_next  = NULL;
+
+	    /// Advertising Protocol has subnet =  0xYF, where "Y" is any four bits
+	    switch (rxq.getcursor[1] & 15) {
+	    case 15:    s_next = m2advp_parse();        break;
+	    //case 7:     /* reserved protocol */         break;
+	    //case 3:	    /* reserved protocol */         break;
+	    case 1:     s_next = m2tgram_parse();       break;
+	    default:    break;
+	    }
+
+	    return s_next;
+	}
 #endif
+
+
 
 
 
@@ -606,15 +583,67 @@ OT_WEAK void m2np_footer() {
 #endif
 
 
+#ifndef EXTF_m2advp_parse
+OT_WEAK m2session* m2advp_parse(void) {
+    ot_u8       scancode;
+    ot_u8       netstate;
+    ot_uni16    count;
+    ot_int      slop;
+    m2session*	s_next;
+    ot_u16      pkt_ti;
+
+    // Get the counter-ETA information from the inbound frame
+    count.ubyte[UPPER]  = rxq.getcursor[3];
+    count.ubyte[LOWER]  = rxq.getcursor[4];
+    count.ushort       &= 0x7FFF;
+
+    // stores the bg packet duration of the active channel.  We need this
+    // in order to deal with timing skew.
+    pkt_ti  = rm2_bgpkt_duration();
+
+    // Account for "slop" due to clock deviation, process latency,
+    // and other such things.  Thus the follow-up session is
+    // either a second BG scan (if too much slop), or it is FG
+    // listening for the request.
+    slop = (count.ushort / OT_GPTIM_ERRDIV);
+    if (slop <= pkt_ti) {
+    	count.ushort   -= pkt_ti;
+    	scancode        = otutils_encode_timeout(pkt_ti<<1);
+        netstate    	= M2_NETSTATE_REQRX;
+    }
+    else {
+    	count.ushort   -= slop;
+        scancode        = 0x80;
+        netstate        = M2_NETSTATE_REQRX | M2_NETFLAG_BG;
+    }
+
+    // ensure that count value is never negative.
+    if (count.sshort < 0) {
+        count.sshort = 0;
+    }
+
+    // The next session is written in-place of the current session
+    s_next              = session_top();
+    s_next->applet      = &dll_scan_applet;
+    s_next->counter     = count.ushort;
+    s_next->channel     = rxq.getcursor[2];
+    s_next->netstate    = netstate;
+    s_next->extra       = scancode;
+
+    return s_next;
+}
+#endif
+
+
 
 #ifndef EXTF_m2advp_open
 OT_WEAK void m2advp_open(m2session* follower) {
     q_empty(&txq);
     txq.getcursor += 2;     //Bypass unused length and Link CTL bytes
     
-    q_writebyte(&txq, 6);   //Dummy Length value (not actually sent)
-    q_writebyte(&txq, 0);   //Dummy Link-Control (not actually sent)
-    q_writebyte(&txq, 0);   //Dummy TX-EIRP (updated by RF driver)
+    q_writebyte(&txq, (BG_FRAMESIZE-1));    //Dummy Length value (not actually sent)
+    q_writebyte(&txq, 0);                   //Dummy Link-Control (not actually sent)
+    q_writebyte(&txq, 0);                   //Dummy TX-EIRP (updated by RF driver)
     
     // This byte is two nibbles: Subnet specifier and AdvP ID (F)
     q_writebyte(&txq, (follower->subnet | 0x0F));
@@ -655,6 +684,43 @@ OT_WEAK void m2advp_close() {
 
 
 
+/// XR Telegram Format
+// ========================================================================
+/// General Background frame design
+/// <PRE>   +---------+--------+-------+-------+---------+--------+
+///         | TX EIRP | Subnet | Token | PType | Payload | CRC16  |
+///         |   B0    |   B1   | B2:5  | B6    | B7:13   | B14:15 |
+///         +---------+--------+-------+-------+---------+--------+
+/// </PRE>
+// ========================================================================
+
+///@todo This is patchwork code, just to deliver basic functionality with
+/// with existing buffer structure and M2QP impl.
+extern alp_tmpl m2alp;
+
+m2session* m2tgram_parse(void) {
+/// Telegram format is made into an ALP frame and sent to telegram forwarder
+/// ALP (ID = ???)
+/// @todo ID currently set to 16, but subject to change
+
+	// Shift 14 byte telegram by four bytes to make room for ALP header
+	for (ot_int i=13; i>=0; i--) {
+		rxq.getcursor[i+4] = rxq.getcursor[i];
+	}
+
+	// Putcursor re-oriented to include only ALP header and telegram payload
+	rxq.putcursor    = rxq.getcursor + 4 + 14;
+
+	// Put ALP header
+	rxq.getcursor[0] = 0xD0;
+	rxq.getcursor[1] = 14;
+	rxq.getcursor[2] = 16;
+	rxq.getcursor[3] = 0;
+
+	alp_parse_message(&m2alp, AUTH_GUEST);
+
+	return NULL;
+}
 
 
 

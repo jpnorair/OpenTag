@@ -124,6 +124,17 @@ ot_u16 otapi_new_advdialog(advert_tmpl* adv_tmpl, session_tmpl* s_tmpl, void* ap
 
 
 
+///@todo this function is experimental, and it is subject to change
+/** @brief Creates new Telegram session and prepares communication task
+  * @param  token 		(ot_u32) Addressing Token
+  * @param  data_id		(ot_u8) Specifier for data payload format, 0-255
+  * @param  data		(const ot_u8*) data payload, always 7 bytes
+  * @retval ot_u16      The session number (see otapi_session_number)
+  *
+  */
+ot_u16 otapi_new_telegram(ot_u32 token, ot_u8 data_id, const ot_u8* data);
+
+
 /** @brief  Manually creates (and opens) a request frame in the top session
   * @param  addr        (addr_type) enumerated addressing method (unicast, broadcast, etc)
   * @param  routing     (routing_tmpl*) A routing_tmpl

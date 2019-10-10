@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2017 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,16 +14,14 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/eax_driver.c
+  * @file       /platform/stdc/otlib_eax.c
   * @author     JP Norair
   * @version    R100
-  * @date       21 Aug 2014
-  * @brief      EAX Cryptographic Driver for STM32L1xx
+  * @date       28 Oct 2017
+  * @brief      EAX Cryptographic Driver for POSIX & STD C
   * @defgroup   EAX Driver
   * @ingroup    EAX Driver
   *
-  * Some STM32L devices have internal AES acceleration hardware.  EAX requires
-  * AES-CTR as a foundation.
   * 
   ******************************************************************************
   */
@@ -37,21 +35,28 @@
 // This is the OTEAX library include, which does the heavy lifting
 #include <oteax.h>
 
-
-OT_INLINE ot_int EAXdrv_init(ot_u8* key, EAXdrv_t* context) {
-    return (ot_int)eax_init_and_key((const unsigned char*)key, context);
+static void sub_printctx(void* ctx) {
+    for (int i=0; i<44; i++) {
+        fprintf(stdout, "ctx[%02d] = %08X\n", i, ((uint32_t*)ctx)[i]);
+    }
+    fprintf(stdout, "\n");
 }
 
-OT_INLINE ot_int EAXdrv_clear(EAXdrv_t* context) {
-    return (ot_int)eax_end(context);
+
+OT_INLINE ot_int EAXdrv_init(void* key, void* context) {
+    return (ot_int)eax_init_and_key((const unsigned char*)key, (EAXdrv_t*)context);;
 }
 
-OT_INLINE ot_int EAXdrv_encrypt(ot_u8* nonce, ot_u8* data, ot_uint datalen, EAXdrv_t* context) {
-    return (ot_int)eax_encrypt_message(nonce, data, datalen, context);
+OT_INLINE ot_int EAXdrv_clear(void* context) {
+    return (ot_int)eax_end((EAXdrv_t*)context);
 }
 
-OT_INLINE ot_int EAXdrv_decrypt(ot_u8* nonce, ot_u8* data, ot_uint datalen, EAXdrv_t* context) {
-    return (ot_int)eax_decrypt_message(nonce, data, datalen, context);
+OT_INLINE ot_int EAXdrv_encrypt(void* nonce, void* data, ot_uint datalen, void* context) {
+    return (ot_int)eax_encrypt_message(nonce, data, datalen, (EAXdrv_t*)context);
+}
+
+OT_INLINE ot_int EAXdrv_decrypt(void* nonce, void* data, ot_uint datalen, void* context) {
+    return (ot_int)eax_decrypt_message(nonce, data, datalen, (EAXdrv_t*)context);
 }
 
 
