@@ -1096,10 +1096,13 @@ OT_WEAK void dll_rfevt_brx(ot_int scode, ot_int fcode) {
     __DEBUG_ERRCODE_EVAL(=100);
 
     // CRC Failure (or init), retry
-    if ((fcode != 0) && (dll.comm.redundants != 0)) {
-        __DEBUG_ERRCODE_EVAL(=101);
-        rm2_reenter_rx(&dll_rfevt_brx);   //non-blocking
-        return;
+    if (fcode != 0) {
+    	__DEBUG_ERRCODE_EVAL(=101);
+    	if (dll.comm.redundants != 0) {
+    		rm2_reenter_rx(&dll_rfevt_brx);   //non-blocking
+    		return;
+    	}
+        goto dll_rfevt_FAILURE;
     }
 
     // General Error: usually a timeout
@@ -1262,7 +1265,8 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
         ///@note tcode MUST have bit 0 set during BG mode and bit 1
         /// set during multiframe mode
         radio.evtdone   = (tcode & 1) ? &dll_rfevt_btx : &dll_rfevt_ftx;
-        event_ticks     = (tcode & 2) ? dll.counter+20 : (ot_uint)(rm2_pkt_duration(&txq) + 4);
+        //event_ticks     = (tcode & 2) ? dll.counter+20 : (ot_uint)(rm2_pkt_duration(&txq) + 4);
+        event_ticks = 300;
         radio_idle();
     }
 

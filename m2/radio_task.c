@@ -433,6 +433,8 @@ OT_WEAK ot_bool rm2_test_channel(ot_u8 channel) {
 OT_WEAK ot_bool rm2_test_chanlist() {
     vlFILE* fp;
     ot_int  i;
+    ot_bool test;
+    ot_u8	next_channel;
 
     fp = ISF_open_su( ISF_ID(channel_configuration) );
     ///@todo assert fp
@@ -441,31 +443,45 @@ OT_WEAK ot_bool rm2_test_chanlist() {
     /// <LI> Make sure the channel ID is valid. </LI>
     /// <LI> Make sure the transmission can fit within the contention period. </LI>
     /// <LI> Scan it, to make sure it can be used. </LI>
-    for (i=0; i<dll.comm.tx_channels; i++) {
-        ot_u8 next_channel = dll.comm.tx_chanlist[i];
-        if (rm2_channel_fastcheck(next_channel))        break;
-        if (rm2_channel_lookup(next_channel, fp))       break;
+    for (i=0, test=False; i<dll.comm.tx_channels; i++) {
+        next_channel = dll.comm.tx_chanlist[i];
+        if (rm2_channel_fastcheck(next_channel)) {
+        	test = True;
+        	break;
+        }
+        if (rm2_channel_lookup(next_channel, fp)) {
+        	test = True;
+			break;
+        }
     }
-
     vl_close(fp);
-    return (ot_bool)(i < dll.comm.tx_channels);
+
+    return test;
 }
 #endif
 
 
 #ifndef EXTF_rm2_channel_fastcheck
 OT_WEAK ot_bool rm2_channel_fastcheck(ot_u8 chan_id) {
-    ot_u8 old_chan_id;
     
+    // Check if there's a forced-refresh condition (always fail)
     if (radio.flags & RADIO_FLAG_REFRESH) {
         radio.flags ^= RADIO_FLAG_REFRESH;
         return False;
     }
     
-    old_chan_id = phymac[0].channel & 0x7F;
-    chan_id    &= 0x7F;
+    // Use Last Channel on chan_id == 0
+    if (chan_id == 0) {
+    	return True;
+    }
     
-    return (ot_bool)((chan_id == 0) || (chan_id == old_chan_id));
+    // If lower bits are the same, only change the encoding (radio settings remain the same)
+    if ((chan_id & 0x7F) == (phymac[0].channel & 0x7F)) {
+    	phymac[0].channel = chan_id;
+    	return True;
+    }
+
+    return False;
 }
 #endif
 
