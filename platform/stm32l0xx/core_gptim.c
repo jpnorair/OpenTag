@@ -133,12 +133,12 @@ void platform_isr_lptim1() {
 void platform_isr_rtcwakeup() { 
 #if (OT_FEATURE(M2))
 #if (RF_FEATURE(CSMATIMER) != ENABLED)
-    if (systim.opt & SYSTIM_INSERTION_ON) {
-        systim.opt ^= SYSTIM_INSERTION_ON;
-        RTC->ISR    = ~RTC_ISR_WUTF;
-        RTC->CR    &= ~RTC_CR_WUTE;
+    //if (systim.opt & SYSTIM_INSERTION_ON) {
+        //systim.opt ^= SYSTIM_INSERTION_ON;
+        //RTC->ISR    = ~RTC_ISR_WUTF;
+        //RTC->CR    &= ~RTC_CR_WUTE;
         radio_mac_isr();
-    }
+    //}
 #endif
 #endif
 }
@@ -337,15 +337,9 @@ void sub_enable_wkuptim() {
 /// <LI> Wakeup Timer interrupt is always enabled (see systim_init()) </LI>
     ot_u32 scratch;
 
-//#   if (BOARD_FEATURE(HWRTC) != ENABLED)
-//    scratch = RCC->CSR;
-//    if !(scratch & RCC_CSR_RTCEN) {
-//        RCC->CSR = scratch | RCC_CSR_RTCEN;
-//    }
-//#   endif
     scratch = RTC->CR;
     if ((scratch & RTC_CR_WUTE) == 0) {
-        RTC->CR = scratch | RTC_CR_WUTE;
+        RTC->CR = scratch | (RTC_CR_WUTE | RTC_CR_WUTIE);
     }
 }
 
@@ -357,14 +351,8 @@ void sub_disable_wkuptim() {
     
     scratch = RTC->CR;
     if (scratch & RTC_CR_WUTE) {
-        RTC->CR = scratch ^ RTC_CR_WUTE;
+        RTC->CR = scratch & ~(RTC_CR_WUTE|RTC_CR_WUTIE);
     }
-//#   if (PLATFORM_FEATURE(HWRTC) != ENABLED)
-//    scratch = RCC->CSR;
-//    if (scratch & RCC_CSR_RTCEN) {
-//        RCC->CSR = scratch ^ RCC_CSR_RTCEN;
-//    }
-//#   endif
 }
 
 void sub_set_wkuptim(ot_uint period) {
