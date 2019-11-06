@@ -177,8 +177,8 @@ OT_WEAK void rm2_init(void) {
     radio.link.flags        = _CORRECTIONS | RADIO_LINK_PQI | RADIO_LINK_SQI \
                             | RADIO_LINK_LQI | RADIO_LINK_AGC;
 #   endif
-    radio.link.offset_thr   = 0;
-    radio.link.raw_thr      = 0;
+    radio.threshold.offset  = 0;
+    radio.threshold.raw     = 0;
     
     /// Set startup channel to an always invalid channel ID (0xF0), and run 
     /// lookup on the default channel (0x18) to kick things off.  Since the 
@@ -532,8 +532,8 @@ OT_WEAK ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
             //phymac[0].cca_thr   = scratch.ubyte[1];
             //phymac[0].cs_thr    = rm2_calc_rssithr(phymac[0].cs_thr);
             //phymac[0].cca_thr   = rm2_calc_rssithr(phymac[0].cca_thr);
-            radio.link.raw_thr  = scratch.ubyte[0];
-            phymac[0].cs_thr    = rm2_calc_rssithr( (ot_u8)(radio.link.raw_thr + radio.link.offset_thr) );
+            radio.threshold.raw = scratch.ubyte[0];
+            phymac[0].cs_thr    = rm2_calc_rssithr( (ot_u8)(radio.threshold.raw + radio.threshold.offset) );
             phymac[0].cca_thr   = rm2_calc_rssithr( scratch.ubyte[1] );
             
             rm2_enter_channel(old_chan_id, old_tx_eirp);

@@ -82,10 +82,19 @@ typedef struct {
     ot_u8   lqi;          // Link Quality Index
     ot_u8   agc;          // AGC Parameters
 #endif
-    ot_u8   offset_thr;
-    ot_u8   raw_thr;
 } radio_link_struct;
 
+typedef struct {
+    ot_s16  min_ebn0;
+    ot_s16  max_ebn0;
+    ot_s16  mean_snr;
+} radio_snr_t;
+
+
+typedef struct {
+    ot_u8   offset;
+    ot_u8   raw;
+} radiothresh_struct;
 
 
 /** Universal Radio Driver Control
@@ -96,10 +105,11 @@ typedef struct {
 typedef struct {
     radio_state         state;
     ot_u8               flags;
+    radiothresh_struct  threshold;
     ot_int              last_rssi;
     ot_int              last_linkloss;
     ot_sig2             evtdone;
-    radio_link_struct   link;
+    //radio_link_struct   link;
 } radio_struct;
 
 extern radio_struct radio;
@@ -436,7 +446,15 @@ void radio_init(void);
 
 
 
-
+/** @brief Returns a pointer to a struct containing device-specific link information
+  * @param None
+  * @retval void*       Pointer to link information struct
+  * @ingroup Radio
+  *
+  * User will need to cast the output appropriately given the device used.  Different
+  * radios have different types of link information.
+  */
+void* radio_getlinkinfo(void);
 
 
 /** @brief Gets a code (typically 0-3) about module's power requirements
