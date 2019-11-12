@@ -77,9 +77,9 @@
 
 /// Chip default is to have AGC Automatic control as off.
 /// Experiment with this value to get best results.
-//#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_OFF | _AGC_AUTO_ON)
+#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_OFF | _AGC_AUTO_ON)
 //#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_ON | _AGC_AUTO_OFF)
-#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_OFF | _AGC_AUTO_OFF)
+//#define DRF_LR_MODEMCONFIG3     (_LOWDATARATEOPTIMIZE_OFF | _AGC_AUTO_OFF)
 
 
 
