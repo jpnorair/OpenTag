@@ -1265,8 +1265,8 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
         ///@note tcode MUST have bit 0 set during BG mode and bit 1
         /// set during multiframe mode
         radio.evtdone   = (tcode & 1) ? &dll_rfevt_btx : &dll_rfevt_ftx;
-        //event_ticks     = (tcode & 2) ? dll.counter+20 : (ot_uint)(rm2_pkt_duration(&txq) + 4);
-        event_ticks = 300;
+        event_ticks     = (tcode & 2) ? dll.counter+20 : (ot_uint)(rm2_pkt_duration(&txq));
+        //event_ticks = 300;
         radio_idle();
     }
 

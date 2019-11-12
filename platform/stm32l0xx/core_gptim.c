@@ -374,12 +374,13 @@ void sub_set_wkuptim(ot_uint period) {
     }
     
     // Ticks interval to run wakeup.
-    RTC->WUTR = (period << _TICKER_SHIFT);
+    //RTC->WUTR = (period << _TICKER_SHIFT);
+    RTC->WUTR = period;
 
     // Enable Wakeup with interrupt
     // This will do nothing more than wake-up the chip from STOP at the set
     // interval.  The default ISR in platform_isr_STM32L.c is sufficient.
-    RTC->CR = rtc_cr | RTC_CR_WUTIE | RTC_CR_WUTE | b000;
+    RTC->CR = rtc_cr | RTC_CR_WUTIE | RTC_CR_WUTE | b010;
 }
 
 
