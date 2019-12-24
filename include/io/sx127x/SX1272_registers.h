@@ -399,8 +399,8 @@
 
 
 #define RFREG_LR_PADAC                              0x5A
-#   define _PADAC_20DBM_ON                          0x17
-#   define _PADAC_20DBM_OFF                         0x14  // Default
+#   define _PADAC_20DBM_ON                          0x87
+#   define _PADAC_20DBM_OFF                         0x84  // Default
 
 
 #define RFREG_LR_PLL                                0x5C

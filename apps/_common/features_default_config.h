@@ -198,7 +198,7 @@
 #   define OT_FEATURE_TIME              ENABLED                             // Do you have a precise 32768 Hz clock?
 #endif
 #ifndef OT_FEATURE_RF_LINKINFO
-#   define OT_FEATURE_RF_LINKINFO       ENABLED
+#   define OT_FEATURE_RF_LINKINFO       DISABLED
 #endif
 #ifndef OT_FEATURE_EXT_TASK
 #   define OT_FEATURE_EXT_TASK          ENABLED

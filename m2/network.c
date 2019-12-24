@@ -671,7 +671,6 @@ OT_WEAK void m2advp_update(ot_u16 countdown) {
     *txq.putcursor++    = ((ot_u8*)&countdown)[UPPER];  //Countdown (upper 8 bits)
     *txq.putcursor++    = ((ot_u8*)&countdown)[LOWER];  //Countdown (lower 8 bits)
 }
-
 #endif
 
 

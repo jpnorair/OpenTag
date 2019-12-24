@@ -141,13 +141,13 @@
 #define DRF_LR_INVERTIQ         (_INVERTIQ_RX_OFF | 0x27)   // chip default
 
 // Not using SF6
-#define DRF_LR_DETECTIONTHRESHOLD (_THRESH_SF7_TO_SF12)     // chip default
+#define DRF_LR_DETECTIONTHRESHOLD  (_THRESH_SF7_TO_SF12)     // chip default
 
 // Default is 0x12, LoRaWAN is 0x34, we use 0xD7!
 // This syncword is not a normal binary sync word, so its value doesn't matter so much
 #define DRF_LR_SYNCWORD         (0xD7)
 
-// Undocumented Register.  Leave alone!
+// Undocumented Register.
 #define DRF_LR_INVERTIQ2        (_INVERTIQ2_OFF)    // let this stay at chip default
 
 
@@ -166,10 +166,10 @@
 
 // There is insufficient application information to select non-default values
 // for the following registers
-#define DRF_LR_AGCREF
-#define DRF_LR_AGCTHRESH1
-#define DRF_LR_AGCTHRESH2
-#define DRF_LR_AGCTHRESH3
+#define DRF_LR_AGCREF           0x1C
+#define DRF_LR_AGCTHRESH1       0x0E
+#define DRF_LR_AGCTHRESH2       0x5B
+#define DRF_LR_AGCTHRESH3       0xCC
 #define DRF_LR_PLLHOP
 #define DRF_LR_TCXO
 #define DRF_LR_PADAC

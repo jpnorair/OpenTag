@@ -119,6 +119,12 @@ extern fn_codec em2_decode_data;
 
 
 
+void em2_add_crc5();
+ot_u8 em2_check_crc5();
+
+
+
+
 /** @brief  Initializes the encoder for a new Mode 2 packet
   * @param  None
   * @retval None

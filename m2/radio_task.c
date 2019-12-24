@@ -177,8 +177,8 @@ OT_WEAK void rm2_init(void) {
     radio.link.flags        = _CORRECTIONS | RADIO_LINK_PQI | RADIO_LINK_SQI \
                             | RADIO_LINK_LQI | RADIO_LINK_AGC;
 #   endif
-    radio.link.offset_thr   = 0;
-    radio.link.raw_thr      = 0;
+    radio.threshold.offset  = 0;
+    radio.threshold.raw     = 0;
     
     /// Set startup channel to an always invalid channel ID (0xF0), and run 
     /// lookup on the default channel (0x18) to kick things off.  Since the 
@@ -433,6 +433,8 @@ OT_WEAK ot_bool rm2_test_channel(ot_u8 channel) {
 OT_WEAK ot_bool rm2_test_chanlist() {
     vlFILE* fp;
     ot_int  i;
+    ot_bool test;
+    ot_u8	next_channel;
 
     fp = ISF_open_su( ISF_ID(channel_configuration) );
     ///@todo assert fp
@@ -441,31 +443,45 @@ OT_WEAK ot_bool rm2_test_chanlist() {
     /// <LI> Make sure the channel ID is valid. </LI>
     /// <LI> Make sure the transmission can fit within the contention period. </LI>
     /// <LI> Scan it, to make sure it can be used. </LI>
-    for (i=0; i<dll.comm.tx_channels; i++) {
-        ot_u8 next_channel = dll.comm.tx_chanlist[i];
-        if (rm2_channel_fastcheck(next_channel))        break;
-        if (rm2_channel_lookup(next_channel, fp))       break;
+    for (i=0, test=False; i<dll.comm.tx_channels; i++) {
+        next_channel = dll.comm.tx_chanlist[i];
+        if (rm2_channel_fastcheck(next_channel)) {
+        	test = True;
+        	break;
+        }
+        if (rm2_channel_lookup(next_channel, fp)) {
+        	test = True;
+			break;
+        }
     }
-
     vl_close(fp);
-    return (ot_bool)(i < dll.comm.tx_channels);
+
+    return test;
 }
 #endif
 
 
 #ifndef EXTF_rm2_channel_fastcheck
 OT_WEAK ot_bool rm2_channel_fastcheck(ot_u8 chan_id) {
-    ot_u8 old_chan_id;
     
+    // Check if there's a forced-refresh condition (always fail)
     if (radio.flags & RADIO_FLAG_REFRESH) {
         radio.flags ^= RADIO_FLAG_REFRESH;
         return False;
     }
     
-    old_chan_id = phymac[0].channel & 0x7F;
-    chan_id    &= 0x7F;
+    // Use Last Channel on chan_id == 0
+    if (chan_id == 0) {
+    	return True;
+    }
     
-    return (ot_bool)((chan_id == 0) || (chan_id == old_chan_id));
+    // If lower bits are the same, only change the encoding (radio settings remain the same)
+    if ((chan_id & 0x7F) == (phymac[0].channel & 0x7F)) {
+    	phymac[0].channel = chan_id;
+    	return True;
+    }
+
+    return False;
 }
 #endif
 
@@ -516,8 +532,8 @@ OT_WEAK ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
             //phymac[0].cca_thr   = scratch.ubyte[1];
             //phymac[0].cs_thr    = rm2_calc_rssithr(phymac[0].cs_thr);
             //phymac[0].cca_thr   = rm2_calc_rssithr(phymac[0].cca_thr);
-            radio.link.raw_thr  = scratch.ubyte[0];
-            phymac[0].cs_thr    = rm2_calc_rssithr( (ot_u8)(radio.link.raw_thr + radio.link.offset_thr) );
+            radio.threshold.raw = scratch.ubyte[0];
+            phymac[0].cs_thr    = rm2_calc_rssithr( (ot_u8)(radio.threshold.raw + radio.threshold.offset) );
             phymac[0].cca_thr   = rm2_calc_rssithr( scratch.ubyte[1] );
             
             rm2_enter_channel(old_chan_id, old_tx_eirp);

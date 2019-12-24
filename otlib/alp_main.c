@@ -355,6 +355,9 @@ ALP_status alp_parse_message(alp_tmpl* alp, const id_tmpl* user_id) {
     q_lock(alp->inq);
     q_lock(alp->outq);
 
+    // HACK: See note later in the function
+    alp_parse_message_LOOP:
+
     /// Safety check: make sure both queues have room remaining for the
     /// most minimal type of message, an empty message
     if ((q_readspace(alp->inq) < 4) || (q_writespace(alp->outq) < 4)) {
@@ -403,10 +406,25 @@ ALP_status alp_parse_message(alp_tmpl* alp, const id_tmpl* user_id) {
         memcpy(hdr_position, &alp->OUTREC(FLAGS), 4);
         alp->OUTREC(FLAGS)  &= ~ALP_FLAG_MB;
     }
+    
+    ///@note Added from old sources to handle batched ALP inputs
+    {   ot_u8* nextrecord;
+        nextrecord = input_position + input_position[1] + 4;
+        if (nextrecord == alp->inq->putcursor) {
+            /// The input record, now treated, shall be rewound
+            alp->inq->putcursor = input_position;
+            alp->inq->getcursor = input_position;
+        }
+        else {
+            alp->inq->getcursor = nextrecord;
 
-    /// The input record, now treated, shall be rewound
-    alp->inq->putcursor = input_position;
-    alp->inq->getcursor = input_position;
+            ///@note HACK
+            /// should be put into a loop
+            if (alp->inq->putcursor > alp->inq->getcursor) {
+                goto alp_parse_message_LOOP;
+            }
+        }
+    }
     
     /// Unlock the ot_queues after ALP is parsing/processing
     q_unlock(alp->inq);
