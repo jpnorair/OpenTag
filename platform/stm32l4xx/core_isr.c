@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2019 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /platform/stm32l0xx/core_isr.c
+  * @file       /platform/stm32l4xx/core_isr.c
   * @author     JP Norair
   * @version    R100
-  * @date       16 Sept 2014
+  * @date       16 Dec 2019
   * @brief      ISRs abstracted by the platform module
   * @ingroup    Platform
   *
@@ -27,10 +27,10 @@
 
 
 #include <otplatform.h>
-#if defined(__STM32L0__)
+#if defined(__STM32L4__)
 
 #include <otstd.h>
-#include <app/isr_config_STM32L0.h>      // Must be in your app distribution!
+#include <app/isr_config_STM32L4.h>      // Must be in your app distribution!
 
 
 
@@ -114,43 +114,23 @@
 //#           undef __ISR_USART1
 //#           define __ISR_USART1
 #       elif (MPIPE_UART_ID == 2)
-//#           undef __USE_DMA1_CHAN6
+//#           undef __USE_DMA1_CHAN7
 //#           undef __ISR_USART2
 //#           define __ISR_USART2
 #       elif (MPIPE_UART_ID == 3)
 //#           undef __USE_DMA1_CHAN2
 //#           undef __ISR_USART3
 //#           define __ISR_USART3
+#       elif (MPIPE_UART_ID == 4)
+//#           undef __USE_DMA2_CHAN3
+//#           undef __ISR_USART4
+//#           define __ISR_USART4
 #       endif
 
 #   else
 #       error "MPIPE is not enabled on a known communication interface."
 #   endif
 
-#else
-/*
-#   if ((MPIPE_DMA_TXCHAN_ID == 1) || (MPIPE_DMA_RXCHAN_ID == 1))
-#       undef __USE_DMA1_CHAN1
-#   endif
-#   if ((MPIPE_DMA_TXCHAN_ID == 2) || (MPIPE_DMA_RXCHAN_ID == 2))
-#       undef __USE_DMA1_CHAN2
-#   endif
-#   if ((MPIPE_DMA_TXCHAN_ID == 3) || (MPIPE_DMA_RXCHAN_ID == 3))
-#       undef __USE_DMA1_CHAN3
-#   endif
-#   if ((MPIPE_DMA_TXCHAN_ID == 4) || (MPIPE_DMA_RXCHAN_ID == 4))
-#       undef __USE_DMA1_CHAN4
-#   endif
-#   if ((MPIPE_DMA_TXCHAN_ID == 5) || (MPIPE_DMA_RXCHAN_ID == 5))
-#       undef __USE_DMA1_CHAN5
-#   endif
-#   if ((MPIPE_DMA_TXCHAN_ID == 6) || (MPIPE_DMA_RXCHAN_ID == 6))
-#       undef __USE_DMA1_CHAN6
-#   endif
-#   if ((MPIPE_DMA_TXCHAN_ID == 7) || (MPIPE_DMA_RXCHAN_ID == 7))
-#       undef __USE_DMA1_CHAN7
-#   endif
-*/
 #endif
 
 
@@ -184,9 +164,6 @@
 #endif
 
 
-
-
-
 /// Open Window-Watchdog interrupt (todo)
 #if defined(__ISR_WWDG) && !defined(__N_ISR_WWDG)
 void WWDG_IRQHandler(void) {
@@ -197,64 +174,92 @@ void WWDG_IRQHandler(void) {
 #endif
 
 
-
 /// Open PVD (supply monitor) Interrupt (todo)
 #if defined(__ISR_PVD) && !defined(__N_ISR_PVD)
-void PVD_IRQHandler(void) {
+void PVD_PVM_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<16);
+    
+    // clear PVD (16), and PVM1-4 (35,36,37,38)
+    // Use PVMO flags in PWR->SR2 for PVM detection
+    // Use PVDO flag in PWR->SR2 for PVD detection
+    EXTI->PR = (1<<16) | (1<<35)|(1<<36)|(1<<37)|(1<<38);
+    
     __ISR_WAKEUP_HOOK();
-    platform_isr_pvd();
+    platform_isr_pvdpvm();
     __ISR_EXIT_HOOK();
 }
 #endif
 
 
-
-
-/// Open RTC interrupt, which has 4 synthetic interrupts    
-#define _RTCALARM   (defined(__ISR_RTC_Alarm) && !defined(__N_ISR_RTC_Alarm))
-#define _RTCWKUP    (defined(__ISR_RTC_WKUP) && !defined(__N_ISR_RTC_WKUP)) 
+/// Open RTC_TAMP_STAMP/CSS_LSE interupt, which has 2 synthetic interrupts
 #define _TAMPER     (defined(__ISR_TAMPER_STAMP) && !defined(__N_ISR_TAMPER_STAMP))
 #define _CSSLSE     (defined(__ISR_CSSLSE) && !defined(__N_ISR_CSSLSE))
-#if (_RTCALARM || _RTCWKUP || _TAMPER || CSSLSE)
-void RTC_IRQHandler(void) {
+#if (_TAMPER || CSSLSE)
+void TAMP_STAMP_IRQHandler(void) {
     ot_u32 exti_pr;
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
     exti_pr     = EXTI->PR;
-    EXTI->PR    = (1<<17) | (1<<19) | (1<<20);
-    RTC->ISR   &= ~(RTC_ISR_RSF | RTC_ISR_WUTF);
-    
-#   if (CSSLSE)
-    if (RCC->CIER & RCC->CIFR & RCC_CIFR_CSSLSEF) {
-        platform_isr_csslse();
-    }
-#   endif
-#   if (_RTCWKUP)
-    if (exti_pr & (1<<20)) 
-        platform_isr_rtcwakeup();
-#   endif
-#   if (_RTCALARM)
-    if (exti_pr & (1<<17))
-        // platform_isr_rtcalarm must clear its own flags in RTC->ISR
-        platform_isr_rtcalarm();
+    EXTI->PR    = (1<<19);
+
+#   if (_CSSLSE)
+#       if (_TAMPER) 
+        if (RCC->CIER & RCC->CIFR & RCC_CIFR_CSSLSEF)
+#       endif
+            platform_isr_csslse();
 #   endif
 #   if (_TAMPER) 
-    if (exti_pr & (1<<19)) 
-        // platform_isr_tamperstamp must clear its own flags in RTC->ISR
-        platform_isr_tamperstamp();
+#       if (_CSSLSE)
+        if (TAMP->MISR & (TAMP_MISR_TAMP2MF | TAMP_MISR_TAMP1MF))
+#       endif
+            // platform_isr_tamperstamp must clear its own flags in RTC->ISR
+            platform_isr_tamperstamp();
 #   endif
+    __ISR_EXIT_HOOK();
+}
+#endif
+#undef _TAMPER
+#undef _CCSLSE
+
+
+/// Open RTC_WKUP interrupt
+#if defined(__ISR_RTCWKUP) && !defined(__N_ISR_RTCWKUP)
+void RTC_WKUP_IRQHandler(void) {
+    ot_u32 exti_pr;
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<20);
+    __ISR_WAKEUP_HOOK();
+    
+    ///@todo put this in entry/wakeup hook?
+    RTC->ICSR  &= ~RTC_ICSR_RSF;
+    
+    RTC->SCR   |= RTC_SCR_CWUTF;
+    platform_isr_rtcwakeup();
 
     __ISR_EXIT_HOOK();
 }
 #endif
 
 
+/// Open RTC_Alarm interrupt
+#if defined(__ISR_RTC_Alarm) && !defined(__N_ISR_RTC_Alarm)
+void RTC_Alarm_IRQHandler(void) {
+    ot_u32 exti_pr;
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<18);
+    __ISR_WAKEUP_HOOK();
+    
+    ///@todo put this in entry/wakeup hook?
+    RTC->ICSR  &= ~RTC_ICSR_RSF;
+    
+    // platform_isr_rtcalarm must clear its own flags in RTC->ISR / RTC->SCR
+    platform_isr_rtcalarm();
 
+    __ISR_EXIT_HOOK();
+}
+#endif
 
-
-/// Open FLASH interrupt (todo)
+///@todo Open FLASH interrupt
 #if defined(__ISR_FLASH) && !defined(__N_ISR_FLASH)
 void FLASH_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
@@ -264,27 +269,14 @@ void FLASH_IRQHandler(void) {
 #endif
 
 
-
-
-/// Open RCC_CRS interrupt
-/// The individual RCC and CRS interrupts are synthetic
-#define _RCC    (defined(__ISR_RCC) && !defined(__N_ISR_RCC))
-#define _CRS    (defined(__ISR_CRS) && !defined(__N_ISR_CRS))
-#if (_RCC || _CRS)
-void RCC_CRS_IRQHandler(void) {
+/// Open RCC
+#if (defined(__ISR_RCC) && !defined(__N_ISR_RCC))
+void RCC_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-#   if (_RCC)
-    if (RCC->CIER & RCC->CIFR & 0x017F)
-        platform_isr_rcc();
-#   endif
-#   if (_CRS)
-    if (CRS->CR & CRS->ISR & (CRS_ESYNCIE | CRS_ERRIE | CRS_SYNCWARNIE | CRS_SYNCOKIE))
-        platform_isr_crs();
-#   endif
+    platform_isr_rcc();
     __ISR_EXIT_HOOK();
 }
 #endif
-
 
 
 /// Open EXTI interrupts
@@ -369,7 +361,6 @@ void RCC_CRS_IRQHandler(void) {
 #   define APPLICATION_EXTI15_ISR(); 
 #endif
 
-
 #if (OT_FEATURE(M2))
 #   define __RADIO_EXTI(NUM)    BOARD_RADIO_EXTI##NUM##_ISR()
 #else
@@ -382,8 +373,6 @@ void RCC_CRS_IRQHandler(void) {
 #else
 #   define __MPIPE_EXTI(NUM); 
 #endif
-
-
 
 #define __EXTI_MACRO_LOW(NUM);  \
     EXTI->PR = (1<<NUM);  \
@@ -400,63 +389,59 @@ void RCC_CRS_IRQHandler(void) {
     } \
     else
 
-
-
-#if (  ((defined(__ISR_EXTI0) || defined(__USE_EXTI0)) && !defined(__N_ISR_EXTI0)) \
-    || ((defined(__ISR_EXTI1) || defined(__USE_EXTI1)) && !defined(__N_ISR_EXTI1)) )
-void EXTI0_1_IRQHandler(void) {
+// EXTI0 - EXTI4
+#if ((defined(__ISR_EXTI0) || defined(__USE_EXTI0)) && !defined(__N_ISR_EXTI0))
+void EXTI0_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    
-#   if ((defined(__ISR_EXTI0) || defined(__USE_EXTI0)) && !defined(__N_ISR_EXTI0))
-    __EXTI_MACRO(0);
-#   endif
-#   if ((defined(__ISR_EXTI1) || defined(__USE_EXTI1)) && !defined(__N_ISR_EXTI1))
-    __EXTI_MACRO(1);
-#   endif
-    { } //to terminate "else"
-
+    __EXTI_MACRO_LOW(0);
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if ((defined(__ISR_EXTI1) || defined(__USE_EXTI1)) && !defined(__N_ISR_EXTI1))
+void EXTI1_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+    __EXTI_MACRO_LOW(1);
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if ((defined(__ISR_EXTI2) || defined(__USE_EXTI2)) && !defined(__N_ISR_EXTI2))
+void EXTI2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+    __EXTI_MACRO_LOW(2);
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if ((defined(__ISR_EXTI3) || defined(__USE_EXTI3)) && !defined(__N_ISR_EXTI3))
+void EXTI3_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+    __EXTI_MACRO_LOW(3);
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if ((defined(__ISR_EXTI4) || defined(__USE_EXTI4)) && !defined(__N_ISR_EXTI4))
+void EXTI4_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+    __EXTI_MACRO_LOW(4);
     __ISR_EXIT_HOOK();
 }
 #endif
 
-#if (  ((defined(__ISR_EXTI2) || defined(__USE_EXTI2)) && !defined(__N_ISR_EXTI2)) \
-    || ((defined(__ISR_EXTI3) || defined(__USE_EXTI3)) && !defined(__N_ISR_EXTI3)) )
-void EXTI2_3_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    __ISR_WAKEUP_HOOK();
-    
-#   if ((defined(__ISR_EXTI2) || defined(__USE_EXTI2)) && !defined(__N_ISR_EXTI2))
-    __EXTI_MACRO(2);
-#   endif
-#   if ((defined(__ISR_EXTI3) || defined(__USE_EXTI3)) && !defined(__N_ISR_EXTI3))
-    __EXTI_MACRO(3);
-#   endif
-    { } //to terminate "else"
-
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-#if (  ((defined(__ISR_EXTI4) || defined(__USE_EXTI4)) && !defined(__N_ISR_EXTI4)) \
-    || ((defined(__ISR_EXTI5) || defined(__USE_EXTI5)) && !defined(__N_ISR_EXTI5)) \
+// EXTI5-9
+#if (  ((defined(__ISR_EXTI5) || defined(__USE_EXTI5)) && !defined(__N_ISR_EXTI5)) \
     || ((defined(__ISR_EXTI6) || defined(__USE_EXTI6)) && !defined(__N_ISR_EXTI6)) \
     || ((defined(__ISR_EXTI7) || defined(__USE_EXTI7)) && !defined(__N_ISR_EXTI7)) \
     || ((defined(__ISR_EXTI8) || defined(__USE_EXTI8)) && !defined(__N_ISR_EXTI8)) \
     || ((defined(__ISR_EXTI9) || defined(__USE_EXTI9)) && !defined(__N_ISR_EXTI9)) \
-    || ((defined(__ISR_EXTI10) || defined(__USE_EXTI10)) && !defined(__N_ISR_EXTI10)) \
-    || ((defined(__ISR_EXTI11) || defined(__USE_EXTI11)) && !defined(__N_ISR_EXTI11)) \
-    || ((defined(__ISR_EXTI12) || defined(__USE_EXTI12)) && !defined(__N_ISR_EXTI12)) \
-    || ((defined(__ISR_EXTI13) || defined(__USE_EXTI13)) && !defined(__N_ISR_EXTI13)) \
-    || ((defined(__ISR_EXTI14) || defined(__USE_EXTI14)) && !defined(__N_ISR_EXTI14)) \
-    || ((defined(__ISR_EXTI15) || defined(__USE_EXTI15)) && !defined(__N_ISR_EXTI15)) )
-void EXTI4_15_IRQHandler(void) {
+    )
+void EXTI9_5_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-
-#   if ((defined(__ISR_EXTI4) || defined(__USE_EXTI4)) && !defined(__N_ISR_EXTI4))
-    __EXTI_MACRO(4);
-#   endif
+    
 #   if ((defined(__ISR_EXTI5) || defined(__USE_EXTI5)) && !defined(__N_ISR_EXTI5))
     __EXTI_MACRO(5);
 #   endif
@@ -471,7 +456,24 @@ void EXTI4_15_IRQHandler(void) {
 #   endif
 #   if ((defined(__ISR_EXTI9) || defined(__USE_EXTI9)) && !defined(__N_ISR_EXTI9))
     __EXTI_MACRO(9);
-#   endif    
+#   endif  
+    { } //to terminate "else"
+
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+// EXTI10-15
+#if (  ((defined(__ISR_EXTI10) || defined(__USE_EXTI10)) && !defined(__N_ISR_EXTI10)) \
+    || ((defined(__ISR_EXTI11) || defined(__USE_EXTI11)) && !defined(__N_ISR_EXTI11)) \
+    || ((defined(__ISR_EXTI12) || defined(__USE_EXTI12)) && !defined(__N_ISR_EXTI12)) \
+    || ((defined(__ISR_EXTI13) || defined(__USE_EXTI13)) && !defined(__N_ISR_EXTI13)) \
+    || ((defined(__ISR_EXTI14) || defined(__USE_EXTI14)) && !defined(__N_ISR_EXTI14)) \
+    || ((defined(__ISR_EXTI15) || defined(__USE_EXTI15)) && !defined(__N_ISR_EXTI15)) )
+void EXTI15_10_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+ 
 #   if ((defined(__ISR_EXTI10) || defined(__USE_EXTI10)) && !defined(__N_ISR_EXTI10))
     __EXTI_MACRO(10);
 #   endif
@@ -497,6 +499,540 @@ void EXTI4_15_IRQHandler(void) {
 #endif
 
 
+/// Open DMA interrupts:
+/// If you are using a DMA, the interrupt is available unless you declare
+/// __N_ISR_DMAX_ChannelY in your app.  MEMCPY uses a DMA without interrupt, so
+/// you'll see below how to force-off a DMA channel interrupt.
+#if (defined(__USE_DMA1_CHAN1) || defined(__ISR_DMA1_Channel1)) && !defined(__N_ISR_DMA1_Channel1)
+void DMA1_Channel1_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma1ch1();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA1_CHAN2) || defined(__ISR_DMA1_Channel2)) && !defined(__N_ISR_DMA1_Channel2)
+void DMA1_Channel2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma1ch2();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA1_CHAN3) || defined(__ISR_DMA1_Channel3)) && !defined(__N_ISR_DMA1_Channel3)
+void DMA1_Channel2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma1ch3();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA1_CHAN4) || defined(__ISR_DMA1_Channel4)) && !defined(__N_ISR_DMA1_Channel4)
+void DMA1_Channel4_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma1ch4();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA1_CHAN4) || defined(__ISR_DMA1_Channel4)) && !defined(__N_ISR_DMA1_Channel4)
+void DMA1_Channel4_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma1ch4();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA1_CHAN5) || defined(__ISR_DMA1_Channel5)) && !defined(__N_ISR_DMA1_Channel5)
+void DMA1_Channel5_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma1ch5();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA1_CHAN6) || defined(__ISR_DMA1_Channel6)) && !defined(__N_ISR_DMA1_Channel6)
+void DMA1_Channel6_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma1ch6();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA1_CHAN7) || defined(__ISR_DMA1_Channel7)) && !defined(__N_ISR_DMA1_Channel7)
+void DMA1_Channel7_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma1ch7();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA2_CHAN1) || defined(__ISR_DMA2_Channel1)) && !defined(__N_ISR_DMA2_Channel1)
+void DMA2_Channel1_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma2ch1();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA2_CHAN2) || defined(__ISR_DMA2_Channel2)) && !defined(__N_ISR_DMA2_Channel2)
+void DMA2_Channel2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma2ch2();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+#if (defined(__USE_DMA2_CHAN3) || defined(__ISR_DMA2_Channel3)) && !defined(__N_ISR_DMA2_Channel3)
+void DMA2_Channel2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma2ch3();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA2_CHAN4) || defined(__ISR_DMA2_Channel4)) && !defined(__N_ISR_DMA2_Channel4)
+void DMA2_Channel4_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma2ch4();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA2_CHAN5) || defined(__ISR_DMA2_Channel5)) && !defined(__N_ISR_DMA2_Channel5)
+void DMA2_Channel5_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma2ch5();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA2_CHAN6) || defined(__ISR_DMA2_Channel6)) && !defined(__N_ISR_DMA2_Channel6)
+void DMA2_Channel6_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma2ch6();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if (defined(__USE_DMA2_CHAN7) || defined(__ISR_DMA2_Channel7)) && !defined(__N_ISR_DMA2_Channel7)
+void DMA2_Channel7_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_dma2ch7();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open ADC Interrupts
+#define _ADC1   defined(__ISR_ADC1) && !defined(__N_ISR_ADC1)
+#define _ADC2   defined(__ISR_ADC2) && !defined(__N_ISR_ADC2)
+#if (_ADC1 || _ADC2)
+void ADC1_2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    
+#   if (_ADC1)
+#       if (_ADC2)
+        if ((ADC1->ISR & ADC1->IER) && (ADC1->CR & 1))
+#       endif
+            platform_isr_adc1();
+#   endif
+#   if (_ADC2)
+#       if (_ADC1)
+        if ((ADC2->ISR & ADC2->IER) && (ADC2->CR & 1))
+#       endif
+            platform_isr_adc2();
+#   endif
+    __ISR_EXIT_HOOK();
+}
+#endif
+#undef _ADC1
+#undef _ADC2
+
+
+
+
+
+
+/// Open TIM1BRK or TIM15 interrupts
+#define _TIM1BRK    defined(__ISR_TIM1BRK) && !defined(__N_ISR_TIM1BRK)
+#define _TIM15      defined(__ISR_TIM15) && !defined(__N_ISR_TIM15)
+#if (_TIM1BRK || _TIM15)
+void TIM1_BRK_TIM15_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    
+#   if (_TIM1BRK)
+#       if (_TIM15)
+        if ((TIM1->DIER & TIM1_DIER_BIE) && (TIM1->SR & (TIM1_SR_B2IF | TIM1_SR_BIF)) && (TIM1->CR1 & 1))
+#       endif
+            platform_isr_tim1brk();
+#   endif
+#   if (_TIM15)
+#       if (_TIM1BRK)
+        if ((TIM15->DIER & TIM15->SR & 0x00E7) && (TIM15->CR1 & 1))
+#       endif
+            platform_isr_tim15();
+#   endif
+    
+    __ISR_EXIT_HOOK();
+}
+#endif
+#undef _TIM1BRK
+#undef _TIM15
+
+
+/// Open TIM1UP or TIM16 interrupts
+#define _TIM1UP     defined(__ISR_TIM1UP) && !defined(__N_ISR_TIM1UP)
+#define _TIM16      defined(__ISR_TIM16) && !defined(__N_ISR_TIM16)
+#if (_TIM1UP || _TIM16)
+void TIM1_UP_TIM16_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    
+#   if (_TIM1UP)
+#       if (_TIM16)
+        if ((TIM1->DIER & TIM1->SR & TIM1_DIER_UIE) && (TIM1->CR1 & 1))
+#       endif
+            platform_isr_tim1up();
+#   endif
+#   if (_TIM16)
+#       if (_TIM1UP)
+        if ((TIM16->DIER & TIM16->SR & 0x00E7) && (TIM16->CR1 & 1))
+#       endif
+            platform_isr_tim16();
+#   endif
+    
+    __ISR_EXIT_HOOK();
+}
+#endif
+#undef _TIM1UP
+#undef _TIM16
+
+
+/// Open TIM1_TRG_COM interrupt
+#define _TIM1TRG    defined(__ISR_TIM1TRG) && !defined(__N_ISR_TIM1TRG)
+#define _TIM1COM    defined(__ISR_TIM1COM) && !defined(__N_ISR_TIM1COM)
+#if (_TIM1TRG || _TIM1COM)
+void TIM1_TRG_COM_IRQHandler(void) {
+    ot_u32 tim1_msk;
+    
+    __ISR_ENTRY_HOOK();
+    
+    tim1_msk = TIM1->DIER & TIM1->SR;
+    
+    if (tim1_msk & TIM1_DIER_COMIE)
+        platform_isr_tim1com();
+
+    if (tim1_msk & TIM1_DIER_TIE)
+        platform_isr_tim1trg();
+    
+    __ISR_EXIT_HOOK();
+}
+#endif
+#undef _TIM1TRG
+#undef _TIM1COM
+
+
+/// Open TIM1_CC interrupt
+#if defined(__ISR_TIM1CC) && !defined(__N_ISR_TIM1CC)
+void TIM1_CC_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_tim1cc();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open TIM2 interrupt
+#if defined(__ISR_TIM2) && !defined(__N_ISR_TIM2)
+void TIM2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_tim2();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open TIM3 interrupt
+#if defined(__ISR_TIM3) && !defined(__N_ISR_TIM3)
+void TIM3_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_tim3();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open LPTIM1 Interrupt
+#if defined(__ISR_LPTIM1) && !defined(__N_ISR_LPTIM1)
+void LPTIM1_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    ///@todo Not certain this PR clear is necessary or good
+    //EXTI->PR = (1<<32);         
+    __ISR_KTIM_WAKEUP_HOOK();
+    platform_isr_lptim1();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open LPTIM2 Interrupt
+#if defined(__ISR_LPTIM2) && !defined(__N_ISR_LPTIM2)
+void LPTIM2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    ///@todo Not certain this PR clear is necessary or good
+    //EXTI->PR = (1<<33);         
+    __ISR_KTIM_WAKEUP_HOOK();
+    platform_isr_lptim2();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+///Open TIM6 & DAC Interrupts
+#define _TIM6   defined(__ISR_TIM6) && !defined(__N_ISR_TIM6)
+#define _DAC    defined(__ISR_DACUNDER) && !defined(__N_ISR_DACUNDER)
+#if (_TIM6 || _DAC)
+void TIM6_DACUNDER_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+#   if (_TIM6)
+#       if (_DAC)
+        if ((TIM6->CR1 & TIM6->DIER & TIM6->SR) && (TIM6->CR1 & TIM6_CR1_CEN))
+#       endif
+            platform_isr_tim6();
+#   endif
+#   if (_DAC)
+    {   
+#       if (_TIM6)
+        bool dac1_en    = DAC->CR & DAC_CR_EN1;
+        bool dac2_en    = DAC->CR & DAC_CR_EN2;
+        ot_u32 dac1_if  = DAC->CR & DAC->SR & DAC_CR_DMAUDRIE1;
+        ot_u32 dac1_if  = DAC->CR & DAC->SR & DAC_CR_DMAUDRIE2;
+        if ((dac1_en && dac1_if) || (dac2_en && dac2_if))
+#       endif
+            platform_isr_dacunder();
+    }
+#   endif
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+///Open TIM7 Interrupts
+#if defined(__ISR_TIM7) && !defined(__N_ISR_TIM7)
+void TIM7_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_tim7();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open I2C1 interrupts 
+#if defined(__USE_I2C1EV) || (defined(__ISR_I2C1EV) && !defined(__N_ISR_I2C1EV))
+void I2C1_EV_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<23);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_i2c1ev();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if defined(__USE_I2C1ER) || (defined(__ISR_I2C1ER) && !defined(__N_ISR_I2C1ER))
+void I2C1_ER_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+    platform_isr_i2c1er();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+/// Open I2C2 interrupts 
+#if defined(__USE_I2C2EV) || (defined(__ISR_I2C2EV) && !defined(__N_ISR_I2C2EV))
+void I2C2_EV_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<24);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_i2c2ev();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if defined(__USE_I2C2ER) || (defined(__ISR_I2C2ER) && !defined(__N_ISR_I2C2ER))
+void I2C2_ER_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+    platform_isr_i2c2er();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+/// Open I2C3 interrupts 
+#if defined(__USE_I2C3EV) || (defined(__ISR_I2C3EV) && !defined(__N_ISR_I2C3EV))
+void I2C3_EV_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<25);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_i2c3ev();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if defined(__USE_I2C3ER) || (defined(__ISR_I2C3ER) && !defined(__N_ISR_I2C3ER))
+void I2C3_ER_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+    platform_isr_i2c3er();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+/// Open I2C4 interrupts 
+#if defined(__USE_I2C4EV) || (defined(__ISR_I2C4EV) && !defined(__N_ISR_I2C4EV))
+void I2C4_EV_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<40);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_i2c4ev();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if defined(__USE_I2C4ER) || (defined(__ISR_I2C4ER) && !defined(__N_ISR_I2C4ER))
+void I2C4_ER_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+    platform_isr_i2c4er();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+
+/// Open SPI interrupts 
+#if defined(__ISR_SPI1) && !defined(__N_ISR_SPI1)
+void SPI1_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_spi1();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if defined(__ISR_SPI2) && !defined(__N_ISR_SPI2)
+void SPI2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_spi2();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if defined(__ISR_SPI3) && !defined(__N_ISR_SPI3)
+void SPI3_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_spi3();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open USART interrupts
+#if defined(__ISR_USART1) && !defined(__N_ISR_USART1)
+void USART1_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<26);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_usart1();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if defined(__ISR_USART2) && !defined(__N_ISR_USART2)
+void USART2_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<27);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_usart2();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if defined(__ISR_USART3) && !defined(__N_ISR_USART3)
+void USART3_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<28);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_usart3();
+    __ISR_EXIT_HOOK();
+}
+#endif
+#if defined(__ISR_USART4) && !defined(__N_ISR_USART4)
+void USART4_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<29);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_usart4();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open SD-MMC Interrupts: Only available on some parts
+#if defined(__ISR_SDMMC) && !defined(__N_ISR_SDMMC)
+void SDMMC_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_sdmmc();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open COMPARATOR Interrupts
+#if defined(__ISR_COMP) && !defined(__N_ISR_COMP)
+void COMP_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    __ISR_WAKEUP_HOOK();
+    {   ot_u32 exti_pr;
+        exti_pr     = EXTI->PR;
+        EXTI->PR    = (1<<21) | (1<<22);
+        if (exti_pr & (1<<21))  platform_isr_comp1();
+        if (exti_pr & (1<<22))  platform_isr_comp2();
+    }
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+/// Open LPUART interrupt
+#if defined(__ISR_LPUART1) && !defined(__N_ISR_LPUART1)
+void RNG_LPUART1_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<31);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_lpuart1();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+///Open USB Interrupts
+#if defined(__ISR_USB) && !defined(__N_ISR_USB)
+void USBFS_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<17);
+    __ISR_WAKEUP_HOOK();
+    platform_isr_usbfs();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+///Open Quad-SPI Interrupts
+#if defined(__ISR_QUADSPI) && !defined(__N_ISR_QUADSPI)
+void QUADSPI_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_quadspi();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+///Open SAI1 Interrupts
+#if defined(__ISR_SAI1) && !defined(__N_ISR_SAI1)
+void SAI1_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_sai1();
+    __ISR_EXIT_HOOK();
+}
+#endif
+
+
+///Open SWPMI1 Interrupts
+#if defined(__ISR_SWPMI1) && !defined(__N_ISR_SWPMI1)
+void SWPMI1_IRQHandler(void) {
+    __ISR_ENTRY_HOOK();
+    platform_isr_swpmi1();
+    __ISR_EXIT_HOOK();
+}
+#endif
 
 
 /// Open Touch Screen Controller (TSC) Interrupt
@@ -509,304 +1045,56 @@ void TSC_IRQHandler(void) {
 #endif
 
 
-
-/// Open DMA interrupts:
-/// If you are using a DMA, the interrupt is available unless you declare
-/// __N_ISR_DMAX_ChannelY in your app.  MEMCPY uses a DMA without interrupt, so
-/// you'll see below how to force-off a DMA channel interrupt.
-
-#if (defined(__USE_DMA1_CHAN1) || defined(__ISR_DMA1_Channel1)) && !defined(__N_ISR_DMA1_Channel1)
-void DMA1_Channel1_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    platform_isr_dma1ch1();
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-#define _DMA2   ((defined(__USE_DMA1_CHAN2) || defined(__ISR_DMA1_Channel2)) && !defined(__N_ISR_DMA1_Channel2))
-#define _DMA3   ((defined(__USE_DMA1_CHAN3) || defined(__ISR_DMA1_Channel3)) && !defined(__N_ISR_DMA1_Channel3))
-#if (_DMA2 || _DMA3)
-void DMA1_Channel2_3_IRQHandler(void) {
-    ot_u32 chan_x;
-    __ISR_ENTRY_HOOK();
-#   if (_DMA2)
-    chan_x = DMA->CCR2;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA->ISR & (1<<4))
-        platform_isr_dma1ch2();
-#   endif
-#   if (_DMA3)
-    chan_x = DMA->CCR3;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA->ISR & (1<<8))
-        platform_isr_dma1ch3();
-#   endif
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-#define _DMA4   ((defined(__USE_DMA1_CHAN4) || defined(__ISR_DMA1_Channel4)) && !defined(__N_ISR_DMA1_Channel4))
-#define _DMA5   ((defined(__USE_DMA1_CHAN5) || defined(__ISR_DMA1_Channel5)) && !defined(__N_ISR_DMA1_Channel5))
-#define _DMA6   ((defined(__USE_DMA1_CHAN6) || defined(__ISR_DMA1_Channel6)) && !defined(__N_ISR_DMA1_Channel6))
-#define _DMA7   ((defined(__USE_DMA1_CHAN7) || defined(__ISR_DMA1_Channel7)) && !defined(__N_ISR_DMA1_Channel7))
-#if (_DMA4 || _DMA5 || _DMA6 || _DMA7)
-void DMA1_Channel4_5_6_7_IRQHandler(void) {
-    ot_u32 chan_x;
-    __ISR_ENTRY_HOOK();
-#   if (_DMA4)
-        chan_x = DMA1_Channel4->CCR;
-        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<12)))
-            platform_isr_dma1ch4();
-#   endif
-#   if (_DMA5)
-        chan_x = DMA1_Channel5->CCR;
-        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<16)))
-            platform_isr_dma1ch5();
-#   endif
-#   if (_DMA6)
-        chan_x = DMA1_Channel6->CCR;
-        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<20)))
-            platform_isr_dma1ch6();
-#   endif
-#   if (_DMA7)
-        chan_x = DMA1_Channel7->CCR;
-        if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<24)))
-            platform_isr_dma1ch7();
-#   endif
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-
-
-
-
-/// Open ADC & COMPARATOR Interrupts
-/// OpenTag Kernel uses DMA with ADC, if/when if uses ADC
-#define _ADC1   defined(__ISR_ADC1) && !defined(__N_ISR_ADC1)
-#define _COMP   defined(__ISR_COMP) && !defined(__N_ISR_COMP)
-#if (_ADC1 || _COMP)
-void ADC1_COMP_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-#   if (_COMP)
-    __ISR_WAKEUP_HOOK();
-    {   ot_u32 exti_pr;
-        exti_pr     = EXTI->PR;
-        EXTI->PR    = (1<<21) | (1<<22);
-        if (exti_pr & (1<<21))  platform_isr_comp1();
-        if (exti_pr & (1<<22))  platform_isr_comp2();
-    }
-#   endif
-#   if (_ADC1)
-        if ((ADC1->ISR & ADC1->IER) && (ADC1->CR & 1))
-            platform_isr_adc1();
-#   endif
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-
-
-/// Open LPTIM Interrupt
-#if defined(__ISR_LPTIM1) && !defined(__N_ISR_LPTIM1)
-void LPTIM1_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    
-    ///@todo Not certain this PR clear is necessary or good
-    //EXTI->PR = (1<<29);         
-    
-    __ISR_KTIM_WAKEUP_HOOK();
-    platform_isr_lptim1();
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-
-
-
-
-/// Open LCD interface interrupts (todo)
+/// Open LCD interface interrupt
 #if defined(__ISR_LCD) && !defined(__N_ISR_LCD)
 void LCD_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
+    EXTI->PR = (1<<39);
+    __ISR_WAKEUP_HOOK();
     platform_isr_lcd();
     __ISR_EXIT_HOOK();
 }
 #endif
 
 
-
-///Open TIM6 & DAC Interrupts
-#define _TIM6   defined(__ISR_TIM6) && !defined(__N_ISR_TIM6)
-#define _DAC    defined(__ISR_DAC) && !defined(__N_ISR_DAC)
-#if (_TIM6 || _DAC)
-void TIM6_DAC_IRQHandler(void) {
+/// Open AES Interrupt
+#if defined(__ISR_AES) && !defined(__N_ISR_AES)
+void AES_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-#   if (_TIM6)
-        if (TIM6->CR1 & TIM6->DIER & TIM6->SR)
-            platform_isr_tim6()
-#   endif
-#   if (_DAC)
-    {   ot_u32 dac_cr;
-        dac_cr  = DAC->CR;
-        if ((DAC->CR & (DAC_CR_DMAEN1 | DAC_CR_EN1)) && (DAC->SR & DAC->CR))
-            platform_isr_dac();
-    }
-#   endif
+    platform_isr_aes();
     __ISR_EXIT_HOOK();
 }
 #endif
 
 
-
-/// Open TIM2, TIM21, TIM22 timer interrupts
-#if defined(__ISR_TIM2) && !defined(__N_ISR_TIM2)
-void TIM2_IRQHandler(void) {
+/// Open RNG Interrupt
+#if defined(__ISR_RNG) && !defined(__N_ISR_RNG)
+void RNG_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    platform_isr_tim2();
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-#if defined(__ISR_TIM21) && !defined(__N_ISR_TIM21)
-void TIM21_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    platform_isr_tim21();
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-#if defined(__ISR_TIM22) && !defined(__N_ISR_TIM22)
-void TIM22_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    platform_isr_tim22();
+    platform_isr_rng();
     __ISR_EXIT_HOOK();
 }
 #endif
 
 
-
-
-
-
-
-
-/// Open I2C interrupts 
-#if defined(__USE_I2C1) || (defined(__ISR_I2C1) && !defined(__N_ISR_I2C1))
-void I2C1_IRQHandler(void) {
+/// Open FPU Interrupt
+#if defined(__ISR_FPU) && !defined(__N_ISR_FPU)
+void RNG_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<23);
-    __ISR_WAKEUP_HOOK();
-    platform_isr_i2c1();
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-#if defined(__USE_I2C2) || (defined(__ISR_I2C2) && !defined(__N_ISR_I2C2))
-void I2C2_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    platform_isr_i2c2();
+    platform_isr_fpu();
     __ISR_EXIT_HOOK();
 }
 #endif
 
 
-
-
-
-/// Open SPI interrupts 
-#if defined(__ISR_SPI1) && !defined(__N_ISR_SPI1)
-void SPI1_IRQHandler(void) {
+/// Open CRS Interrupt
+#if defined(__ISR_CRS) && !defined(__N_ISR_CRS)
+void RNG_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    platform_isr_spi1();
+    platform_isr_crs();
     __ISR_EXIT_HOOK();
 }
 #endif
-
-#if defined(__ISR_SPI2) && !defined(__N_ISR_SPI2)
-void SPI2_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    platform_isr_spi2();
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-
-/// Open USART interrupts
-#if defined(__ISR_USART1) && !defined(__N_ISR_USART1)
-void USART1_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<25);
-    __ISR_WAKEUP_HOOK();
-    platform_isr_usart1();
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-#if defined(__ISR_USART2) && !defined(__N_ISR_USART2)
-void USART2_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<26);
-    __ISR_WAKEUP_HOOK();
-    platform_isr_usart2();
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-
-
-
-
-
-
-/// Open AES / RNG / LPUART interrupts
-#define _AES    defined(__ISR_AES) && !defined(__N_ISR_AES)
-#define _RNG    defined(__ISR_RNG) && !defined(__N_ISR_RNG)
-#define _LPUART defined(__ISR_LPUART) && !defined(__N_ISR_LPUART)
-#if (_AES || _RNG || LPUART)
-void RNG_LPUART1_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-#   if (_LPUART)
-    {   ot_u32 exti_pr;
-        exti_pr = EXTI->PR;
-        if (exti_pr & (1<<28)) {
-            EXTI->PR = (1<<28);
-            __ISR_WAKEUP_HOOK();
-            platform_isr_lpuart();
-        }
-    }
-#   endif
-#   if (_AES)
-    {   ot_u32 aes_cr;
-        aes_cr = AES->CR;
-        if ((aes_cr & (AES_CR_EN)) \
-        &&  (aes_cr & (AES_CR_ERRIE | AES_CR_CCFIE)) \
-        &&  (AES->SR != 0))
-            platform_isr_aes();
-    }
-#   endif
-#   if (_RNG)
-        if ((RNG->CR == (RNG_CR_IE | RNG_CR_RNGEN)) && (RNG->SR != 0))
-            platform_isr_rng();
-#   endif
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-
-
-
-
-///Open USB Interrupts (todo)
-#if defined(__ISR_USB) && !defined(__N_ISR_USB)
-void USB_IRQHandler(void) {
-    __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<18);
-    __ISR_WAKEUP_HOOK();
-    platform_isr_usb(); //HAL_PCD_IRQHandler(&hpcd);
-    __ISR_EXIT_HOOK();
-}
-#endif
-
-
 
 
 #endif  // if defined(__STM32L__)
