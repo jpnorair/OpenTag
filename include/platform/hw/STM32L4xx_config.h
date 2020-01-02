@@ -401,7 +401,6 @@ void platform_isr_pvdpvm(void);
 
 // Synthetic ISRs for RTC_tamp_stamp/css_lse interrupt
 void platform_isr_rtctamper(void);
-void platform_isr_rtctimestamp(void);
 void platform_isr_csslse(void);
 
 void platform_isr_rtcwakeup(void);
@@ -449,7 +448,10 @@ void platform_isr_tim15(void);
 void platform_isr_tim1up(void);
 void platform_isr_tim16(void);
 
-void platform_isr_tim1trgcom(void);
+// Synthetic ISRs, via TIM1_TRG_COM Interrupt
+void platform_isr_tim1trg(void);
+void platform_isr_tim1com(void);
+
 void platform_isr_tim1cc(void);
 
 void platform_isr_tim2(void);
@@ -491,13 +493,13 @@ void platform_isr_dacunder(void);
 
 void platform_isr_tim7(void);       // Only on 43xxx, 44xxx
 
-void platform_isr_dma1ch1(void);
-void platform_isr_dma1ch2(void);
-void platform_isr_dma1ch3(void);
-void platform_isr_dma1ch4(void);
-void platform_isr_dma1ch5(void);
-void platform_isr_dma1ch6(void);
-void platform_isr_dma1ch7(void);
+void platform_isr_dma2ch1(void);
+void platform_isr_dma2ch2(void);
+void platform_isr_dma2ch3(void);
+void platform_isr_dma2ch4(void);
+void platform_isr_dma2ch5(void);
+void platform_isr_dma2ch6(void);
+void platform_isr_dma2ch7(void);
 
 void platform_isr_comp(void);
 
