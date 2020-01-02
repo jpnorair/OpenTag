@@ -198,7 +198,7 @@ g_pfnVectors:
 	.word	0
 	.word	0
 	.word	0
-	.word	TIM6_IRQHandler
+	.word	TIM6_DAC_IRQHandler
 	.word	0
 	.word	DMA2_Channel1_IRQHandler
 	.word	DMA2_Channel2_IRQHandler
@@ -372,8 +372,8 @@ g_pfnVectors:
 	.weak	RTC_Alarm_IRQHandler
 	.thumb_set RTC_Alarm_IRQHandler,Default_Handler
 
-	.weak	TIM6_IRQHandler
-	.thumb_set TIM6_IRQHandler,Default_Handler
+	.weak	TIM6_DAC_IRQHandler
+	.thumb_set TIM6_DAC_IRQHandler,Default_Handler
 
 	.weak	DMA2_Channel1_IRQHandler
 	.thumb_set DMA2_Channel1_IRQHandler,Default_Handler
