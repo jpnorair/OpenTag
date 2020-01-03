@@ -209,70 +209,74 @@
 #   if (MPIPE_DMA_RXCHAN_ID == 5)
 #       define _DMARX       DMA1_Channel5
 #       define __DMARX_ISR  platform_isr_dma1ch5
-#   elif (MPIPE_DMA_RXCHAN_ID == 3)
-#       define _DMARX       DMA1_Channel3
-#       define __DMARX_ISR  platform_isr_dma1ch3
+#       define _DMARX_IRQ   DMA1_Channel5_IRQn
+#       define _DMARX_CHAN  5
+#   elif (MPIPE_DMA_RXCHAN_ID == 14)
+#       define _DMARX       DMA2_Channel7
+#       define __DMARX_ISR  platform_isr_dma2ch7
+#       define _DMARX_IRQ   DMA2_Channel7_IRQn
+#       define _DMARX_CHAN  7
 #   else
-#       error "MPipe RX DMA not configured on channel 3 or 5."
+#       error "MPipe RX DMA not configured on channel 5 or 14."
 #   endif
 #   if (MPIPE_DMA_TXCHAN_ID == 4)
 #       define _DMATX       DMA1_Channel4
 #       define __DMATX_ISR  platform_isr_dma1ch4
-#   elif (MPIPE_DMA_TXCHAN_ID == 2)
-#       define _DMATX       DMA1_Channel2
-#       define __DMATX_ISR  platform_isr_dma1ch2
+#       define _DMATX_IRQ   DMA1_Channel4_IRQn
+#       define _DMATX_CHAN  4
+#   elif (MPIPE_DMA_TXCHAN_ID == 13)
+#       define _DMATX       DMA2_Channel6
+#       define __DMATX_ISR  platform_isr_dma2ch6
+#       define _DMATX_IRQ   DMA2_Channel6_IRQn
+#       define _DMATX_CHAN  6
 #   else
-#       error "MPipe TX DMA not configured on channel 2 or 4."
+#       error "MPipe TX DMA not configured on channel 4 or 13."
 #   endif
+
 #   define _UART_IRQ        USART1_IRQn
-#   define _DMARX_IRQ       DMA1_Channel4_5_6_7_IRQn
-#   define _DMATX_IRQ       DMA1_Channel4_5_6_7_IRQn
-#   define _DMARX_IFG       (0xF << (4*(MPIPE_DMA_RXCHAN_ID-1)))
-#   define _DMATX_IFG       (0xF << (4*(MPIPE_DMA_TXCHAN_ID-1)))
-#   define _DMA_CSEL_MASK   ((0xF << (4*(MPIPE_DMA_RXCHAN_ID-1))) | (0xF << (4*(MPIPE_DMA_TXCHAN_ID-1))))
-#   define _DMA_CSEL        ((0x3 << (4*(MPIPE_DMA_RXCHAN_ID-1))) | (0x3 << (4*(MPIPE_DMA_TXCHAN_ID-1))))
-#   define _DMARX_CSEL      (0x3 << (4*(MPIPE_DMA_RXCHAN_ID-1)))
-#   define _DMATX_CSEL      (0x3 << (4*(MPIPE_DMA_TXCHAN_ID-1)))
+#   define _DMARX_IFG       (0xF << (4*(_DMARX_CHAN-1)))
+#   define _DMATX_IFG       (0xF << (4*(_DMATX_CHAN-1)))
+#   define _DMA_CSEL_MASK   ((0xF << (4*(_DMARX_CHAN-1))) | (0xF << (4*(_DMATX_CHAN-1))))
+#   define _DMA_CSEL        ((0x3 << (4*(_DMARX_CHAN-1))) | (0x3 << (4*(_DMATX_CHAN-1))))
+#   define _DMARX_CSEL      (0x3 << (4*(_DMARX_CHAN-1)))
+#   define _DMATX_CSEL      (0x3 << (4*(_DMATX_CHAN-1)))
 #   define __UART_ISR       platform_isr_usart1
-#   define __UART_CLKHZ()   platform_get_clockhz(2)
+#   define __UART_CLKHZ()   platform_get_clockhz(4)
 #   define __UART_CLKON()   (RCC->APB2ENR |= RCC_APB2ENR_USART1EN)
 #   define __UART_CLKOFF()  (RCC->APB2ENR &= ~RCC_APB2ENR_USART1EN)
 
 #elif (MPIPE_UART_ID == 2)
-#   if (MPIPE_DMA_RXCHAN_ID == 5)
-#       define _DMARX       DMA1_Channel5
-#       define __DMARX_ISR  platform_isr_dma1ch5
-#   elif (MPIPE_DMA_RXCHAN_ID == 6)
-#       define _DMARX       DMA1_Channel6 
+#   if (MPIPE_DMA_RXCHAN_ID == 6)
+#       define _DMARX       DMA1_Channel6
 #       define __DMARX_ISR  platform_isr_dma1ch6
+#       define _DMARX_IRQ   DMA1_Channel6_IRQn
+#       define _DMARX_CHAN  6
 #   else
-#       error "MPipe RX DMA not configured on channel 5 or 6."
+#       error "MPipe RX DMA not configured on channel 6."
 #   endif
-#   if (MPIPE_DMA_TXCHAN_ID == 4)
-#       define _DMATX       DMA1_Channel4
-#       define __DMATX_ISR  platform_isr_dma1ch4
-#   elif (MPIPE_DMA_TXCHAN_ID == 7)
-#       define _DMATX       DMA1_Channel7 
+#   if (MPIPE_DMA_TXCHAN_ID == 7)
+#       define _DMATX       DMA1_Channel7
 #       define __DMATX_ISR  platform_isr_dma1ch7
+#       define _DMATX_IRQ   DMA1_Channel7_IRQn
+#       define _DMATX_CHAN  7
 #   else
-#       error "MPipe TX DMA not configured on channel 4 or 7."
+#       error "MPipe TX DMA not configured on channel 7."
 #   endif
 #   define _UART_IRQ        USART2_IRQn
-#   define _DMARX_IRQ       DMA1_Channel4_5_6_7_IRQn
-#   define _DMATX_IRQ       DMA1_Channel4_5_6_7_IRQn
-#   define _DMARX_IFG       (0xF << (4*(MPIPE_DMA_RXCHAN_ID-1)))
-#   define _DMATX_IFG       (0xF << (4*(MPIPE_DMA_TXCHAN_ID-1)))
-#   define _DMA_CSEL_MASK   ((0xF << (4*(MPIPE_DMA_RXCHAN_ID-1))) | (0xF << (4*(MPIPE_DMA_TXCHAN_ID-1))))
-#   define _DMA_CSEL        ((0x4 << (4*(MPIPE_DMA_RXCHAN_ID-1))) | (0x4 << (4*(MPIPE_DMA_TXCHAN_ID-1))))
-#   define _DMARX_CSEL      (0x4 << (4*(MPIPE_DMA_RXCHAN_ID-1)))
-#   define _DMATX_CSEL      (0x4 << (4*(MPIPE_DMA_TXCHAN_ID-1)))
+#   define _DMARX_IFG       (0xF << (4*(_DMARX_CHAN-1)))
+#   define _DMATX_IFG       (0xF << (4*(_DMATX_IRQ-1)))
+#   define _DMA_CSEL_MASK   ((0xF << (4*(_DMARX_CHAN-1))) | (0xF << (4*(_DMATX_IRQ-1))))
+#   define _DMA_CSEL        ((0x4 << (4*(_DMARX_CHAN-1))) | (0x4 << (4*(_DMATX_IRQ-1))))
+#   define _DMARX_CSEL      (0x4 << (4*(_DMARX_CHAN-1)))
+#   define _DMATX_CSEL      (0x4 << (4*(_DMATX_IRQ-1)))
 #   define __UART_ISR       platform_isr_usart2
-#   define __UART_CLKHZ()   platform_get_clockhz(1)
+#   define __UART_CLKHZ()   platform_get_clockhz(3)
 #   define __UART_CLKON()   (RCC->APB1ENR |= RCC_APB1ENR_USART2EN)
 #   define __UART_CLKOFF()  (RCC->APB1ENR &= ~RCC_APB1ENR_USART2EN)
 
 //#elif (MPIPE_UART_ID == 3)
-// This could be the LPUART, but that is not supported at the moment
+//#elif (MPIPE_UART_ID == 4)
+//#elif (MPIPE_UART_ID == 'L')
 
 #else
 #   error "MPIPE_UART_ID is misdefined, must be 1, or 2"

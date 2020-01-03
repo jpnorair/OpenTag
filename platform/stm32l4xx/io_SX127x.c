@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /platform/stm32l0xx/io_SX127x.c
+  * @file       /platform/stm32l4xx/io_SX127x.c
   * @author     JP Norair
   * @version    R100
   * @date       4 Nov 2016
@@ -48,21 +48,7 @@
 #if defined(RADIO_IRQ5_SRCLINE)
 #   define _READY_PORT  RADIO_IRQ5_PORT
 #   define _READY_PIN   RADIO_IRQ5_PIN
-#   if (RADIO_IRQ5_SRCLINE < 0)
-#       undef _RFIRQ5
-#   elif (RADIO_IRQ5_SRCLINE < 2)
-#       define _RFIRQ5  (EXTI0_1_IRQn)
-#       undef _EXTI0_1_USED
-#       define _EXTI0_1_USED
-#   elif (RADIO_IRQ5_SRCLINE < 4)
-#       define _RFIRQ5  (EXTI2_3_IRQn)
-#       undef _EXTI2_3_USED
-#       define _EXTI2_3_USED
-#   else
-#       define _RFIRQ5  (EXTI4_15_IRQn)
-#       undef _EXTI4_15_USED
-#       define _EXTI4_15_USED
-#   endif
+#   undef _RFIRQ5
 #endif
 
 // DIO4 is not required or really needed at all with this driver
@@ -73,19 +59,35 @@
 // DIO3 is used for the ValidHeader Interrupt
 #if defined(RADIO_IRQ3_SRCLINE)
 #   if (RADIO_IRQ3_SRCLINE < 0)
-#       undef _RFIRQ3
-#   elif (RADIO_IRQ3_SRCLINE < 2) 
-#       define _RFIRQ3  (EXTI0_1_IRQn)
-#       undef _EXTI0_1_USED
-#       define _EXTI0_1_USED
-#   elif (RADIO_IRQ3_SRCLINE < 4)
-#       define _RFIRQ3  (EXTI2_3_IRQn)
-#       undef _EXTI2_3_USED
-#       define _EXTI2_3_USED
+#       error "SX127x DIO3 must be connected to an EXTI line"
+#   elif (RADIO_IRQ3_SRCLINE == 0) 
+#       define _RFIRQ3  (EXTI0_IRQn)
+#       undef _EXTI0_USED
+#       define _EXTI0_USED
+#   elif (RADIO_IRQ3_SRCLINE == 1) 
+#       define _RFIRQ3  (EXTI1_IRQn)
+#       undef _EXTI1_USED
+#       define _EXTI1_USED
+#   elif (RADIO_IRQ3_SRCLINE == 2) 
+#       define _RFIRQ3  (EXTI2_IRQn)
+#       undef _EXTI2_USED
+#       define _EXTI2_USED
+#   elif (RADIO_IRQ3_SRCLINE == 3) 
+#       define _RFIRQ3  (EXTI3_IRQn)
+#       undef _EXTI3_USED
+#       define _EXTI3_USED
+#   elif (RADIO_IRQ3_SRCLINE == 4)
+#       define _RFIRQ3  (EXTI4_IRQn)
+#       undef _EXTI4_USED
+#       define _EXTI4_USED
+#   elif (RADIO_IRQ3_SRCLINE < 10)
+#       define _RFIRQ3  (EXTI9_5_IRQn)
+#       undef _EXTI9_5_USED
+#       define _EXTI9_5_USED
 #   else
-#       define _RFIRQ3  (EXTI4_15_IRQn)
-#       undef _EXTI4_15_USED
-#       define _EXTI4_15_USED
+#       define _RFIRQ3  (EXTI15_10_IRQn)
+#       undef _EXTI15_10_USED
+#       define _EXTI15_10_USED
 #   endif
 #else
 #   error "This SX127x driver depends on DIO3 being used for ValidHeader signal."
@@ -103,19 +105,35 @@
 #       define _CAD_DETECT_PIN  RADIO_IRQ1_PIN
 #   endif
 #   if (RADIO_IRQ1_SRCLINE < 0)
-#       undef _RFIRQ1
-#   elif (RADIO_IRQ1_SRCLINE < 2)
-#       define _RFIRQ1  (EXTI0_1_IRQn)
-#       undef _EXTI0_1_USED
-#       define _EXTI0_1_USED
-#   elif (RADIO_IRQ1_SRCLINE < 4)
-#       define _RFIRQ1  (EXTI2_3_IRQn)
-#       undef _EXTI2_3_USED
-#       define _EXTI2_3_USED
+#       error "SX127x DIO1 must be connected to an EXTI line"
+#   elif (RADIO_IRQ1_SRCLINE == 0) 
+#       define _RFIRQ1  (EXTI0_IRQn)
+#       undef _EXTI0_USED
+#       define _EXTI0_USED
+#   elif (RADIO_IRQ1_SRCLINE == 1) 
+#       define _RFIRQ1  (EXTI1_IRQn)
+#       undef _EXTI1_USED
+#       define _EXTI1_USED
+#   elif (RADIO_IRQ1_SRCLINE == 2) 
+#       define _RFIRQ1  (EXTI2_IRQn)
+#       undef _EXTI2_USED
+#       define _EXTI2_USED
+#   elif (RADIO_IRQ1_SRCLINE == 3) 
+#       define _RFIRQ1  (EXTI3_IRQn)
+#       undef _EXTI3_USED
+#       define _EXTI3_USED
+#   elif (RADIO_IRQ1_SRCLINE == 4)
+#       define _RFIRQ1  (EXTI4_IRQn)
+#       undef _EXTI4_USED
+#       define _EXTI4_USED
+#   elif (RADIO_IRQ1_SRCLINE < 10)
+#       define _RFIRQ1  (EXTI9_5_IRQn)
+#       undef _EXTI9_5_USED
+#       define _EXTI9_5_USED
 #   else
-#       define _RFIRQ1  (EXTI4_15_IRQn)
-#       undef _EXTI4_15_USED
-#       define _EXTI4_15_USED
+#       define _RFIRQ1  (EXTI15_10_IRQn)
+#       undef _EXTI15_10_USED
+#       define _EXTI15_10_USED
 #   endif
 #else
 #   error "This SX127x driver depends on DIO1 being used for RxTimeout & CAD Detect signals."
@@ -123,19 +141,35 @@
 
 #if defined(RADIO_IRQ0_SRCLINE)
 #   if (RADIO_IRQ0_SRCLINE < 0)
-#       undef _RFIRQ0
-#   elif (RADIO_IRQ0_SRCLINE < 2) 
-#       define _RFIRQ0  (EXTI0_1_IRQn)
-#       undef _EXTI0_1_USED
-#       define _EXTI0_1_USED
-#   elif (RADIO_IRQ0_SRCLINE < 4)
-#       define _RFIRQ0  (EXTI2_3_IRQn)
-#       undef _EXTI2_3_USED
-#       define _EXTI2_3_USED
+#       error "SX127x DIO0 must be connected to an EXTI line"
+#   elif (RADIO_IRQ0_SRCLINE == 0) 
+#       define _RFIRQ0  (EXTI0_IRQn)
+#       undef _EXTI0_USED
+#       define _EXTI0_USED
+#   elif (RADIO_IRQ0_SRCLINE == 1) 
+#       define _RFIRQ0  (EXTI1_IRQn)
+#       undef _EXTI1_USED
+#       define _EXTI1_USED
+#   elif (RADIO_IRQ0_SRCLINE == 2) 
+#       define _RFIRQ0  (EXTI2_IRQn)
+#       undef _EXTI2_USED
+#       define _EXTI2_USED
+#   elif (RADIO_IRQ0_SRCLINE == 3) 
+#       define _RFIRQ0  (EXTI3_IRQn)
+#       undef _EXTI3_USED
+#       define _EXTI3_USED
+#   elif (RADIO_IRQ0_SRCLINE == 4)
+#       define _RFIRQ0  (EXTI4_IRQn)
+#       undef _EXTI4_USED
+#       define _EXTI4_USED
+#   elif (RADIO_IRQ0_SRCLINE < 10)
+#       define _RFIRQ0  (EXTI9_5_IRQn)
+#       undef _EXTI9_5_USED
+#       define _EXTI9_5_USED
 #   else
-#       define _RFIRQ0  (EXTI4_15_IRQn)
-#       undef _EXTI4_15_USED
-#       define _EXTI4_15_USED
+#       define _RFIRQ0  (EXTI15_10_IRQn)
+#       undef _EXTI15_10_USED
+#       define _EXTI15_10_USED
 #   endif
 #else
 #   error "This SX127x driver depends on DIO0 being used for RX/TX/CAD-Done signals."
@@ -156,7 +190,7 @@
 #   define _DMA_ISR         platform_dma1ch2_isr
 #   define _DMARX           DMA1_Channel2
 #   define _DMATX           DMA1_Channel3
-#   define _DMA_IRQ         DMA1_Channel2_3_IRQn
+#   define _DMA_IRQ         DMA1_Channel2_IRQn
 #   define _DMARX_IFG       (0x2 << (4*(2-1)))
 #   define _DMATX_IFG       (0x2 << (4*(3-1)))
 #   define _DMA_CSEL_MASK   ((0xF << (4*(2-1))) | (0xF << (4*(3-1))))
@@ -171,7 +205,7 @@
 #   define _DMA_ISR         platform_dma1ch4_isr
 #   define _DMARX           DMA1_Channel4
 #   define _DMATX           DMA1_Channel5
-#   define _DMA_IRQ         DMA1_Channel4_5_6_7_IRQn
+#   define _DMA_IRQ         DMA1_Channel4_IRQn
 #   define _DMARX_IFG       (0x2 << (4*(4-1)))
 #   define _DMATX_IFG       (0x2 << (4*(5-1)))
 #   define _DMA_CSEL_MASK   ((0xF << (4*(4-1))) | (0xF << (4*(5-1))))
@@ -338,17 +372,33 @@ void sx127x_init_bus() {
     ///      It is not always required, since default EXTI prorities are
     ///      already defined at startup, and they are usually the same.
 #   if (PLATFORM_NVIC_RF_GROUP != PLATFORM_NVIC_IO_GROUP)
-#       if defined(_EXTI0_1_USED)
-        NVIC_SetPriority(EXTI0_1_IRQn, PLATFORM_NVIC_RF_GROUP);
-        NVIC_EnableIRQ(EXTI0_1_IRQn);
+#       if defined(_EXTI0_USED)
+        NVIC_SetPriority(EXTI0_IRQn, PLATFORM_NVIC_RF_GROUP);
+        NVIC_EnableIRQ(EXTI0_IRQn);
 #       endif
-#       if defined(_EXTI2_3_USED)
-        NVIC_SetPriority(EXTI2_3_IRQn, PLATFORM_NVIC_RF_GROUP);
+#       if defined(_EXTI1_USED)
+        NVIC_SetPriority(EXTI1_IRQn, PLATFORM_NVIC_RF_GROUP);
+        NVIC_EnableIRQ(EXTI1_IRQn);
+#       endif
+#       if defined(_EXTI2_USED)
+        NVIC_SetPriority(EXTI2_IRQn, PLATFORM_NVIC_RF_GROUP);
+        NVIC_EnableIRQ(EXTI2_IRQn);
+#       endif
+#       if defined(_EXTI3_USED)
+        NVIC_SetPriority(EXTI3_IRQn, PLATFORM_NVIC_RF_GROUP);
+        NVIC_EnableIRQ(EXTI3_IRQn);
+#       endif
+#       if defined(_EXTI4_USED)
+        NVIC_SetPriority(EXTI4_IRQn, PLATFORM_NVIC_RF_GROUP);
+        NVIC_EnableIRQ(EXTI4_IRQn);
+#       endif
+#       if defined(_EXTI9_5_USED)
+        NVIC_SetPriority(EXTI9_5_IRQn, PLATFORM_NVIC_RF_GROUP);
         NVIC_EnableIRQ(EXTI2_3_IRQn);
 #       endif
-#       if defined(_EXTI4_15_USED)
-        NVIC_SetPriority(EXTI4_15_IRQn, PLATFORM_NVIC_RF_GROUP);
-        NVIC_EnableIRQ(EXTI4_15_IRQn);
+#       if defined(_EXTI15_10_USED)
+        NVIC_SetPriority(EXTI15_10_IRQn, PLATFORM_NVIC_RF_GROUP);
+        NVIC_EnableIRQ(EXTI15_10_IRQn);
 #       endif
 #   endif
     
