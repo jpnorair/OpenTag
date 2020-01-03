@@ -1,4 +1,4 @@
-/* Copyright 2010-2013 JP Norair
+/* Copyright 2019 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,53 +14,16 @@
   *
   */
 /**
-  * @file       /platform/stm32l0xx/otsys_mpipe_usbcdc.c
+  * @file       /platform/stm32l4xx/otsys_mpipe_usbcdc.c
   * @author     JP Norair
   * @version    R101
-  * @date       14 Nov 2013
+  * @date       30 Dec 2019
   * @brief      Message Pipe (MPIPE) USB CDC ACM implementation for STM32L0
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
   *
-  * CDC ACM stands for "Communication Device Class Abstract Control Model."
-  * Windows people call it a virtual COM port.
-  *
-  * This implementation utilizes a modestly upgraded, but functionally
-  * identical, version of STMicro's standard USB library for STM32.  The code
-  * for the USB library is stored in:
-  * /otplatform/stm32_mculib/STM32_USB-FS-Device_Driver
-  *
-  * CDC pretents to be a TTY UART device.  All of the features of a serial DB9
-  * connector (and more) are available as control commands via the ACM profile,
-  * but this ACM driver doesn't use any of the control signals.  The STM32L has
-  * an auto-wakeup on USB feature, so none of those are necessary.
-  *
-  * The UART simulation via ACM supports the following configurations:
-  * Baudrates (kbps):   9.6, 28.8, 57.6, 115.2, 125, 250, 500, 1000
-  * Byte structure:     8N1
-  * Duplex:             Half
-  * Flow control:       None
-  *
-  * MPipe Protocol for USB-CDC-ACM:
-  * <PRE>
-  * +-------+-----------+-------+-----------+----------+---------+---------+
-  * | Field | Sync Word | CRC16 | P. Length | Sequence | Control | Payload |
-  * | Bytes |     2     |   2   |     2     |     1    |    1    |    N    |
-  * | Value |   FF55    |       |     N     |  0-255   |   RFU   |   ALP   |
-  * +-------+-----------+-------+-----------+----------+---------+---------+
-  * </PRE>
-  *
-  * The protocol includes an ACK/NACK feature, although this is only of any
-  * importance if you have a lossy link between client and server.  If you are
-  * using a USB->UART converter, USB has a reliable MAC implementation that
-  * eliminates the need for MPipe ACKing.
-  *
-  * Anyway, after receiving a message, the Mpipe send an ACK/NACK.  The "YY"
-  * byte is 0 for ACK and non-zero for ACK.  Presently, 0x7F is used as the YY
-  * NACK value.
-  * <PRE>
-  * [ Seq ID ] 0xDD 0x00 0x00 0x02 0x00 0xYY  [ CRC16 ]
-  * </PRE>
+  * This implementation is the same as for STM32L0, so refer to that impl
+  * for more documentation.
   *
   ******************************************************************************
   */
@@ -73,7 +36,7 @@
 #   define BOARD_PARAM_MPIPE_IFS 1
 #endif
 
-#if (defined(__STM32L0__) && OT_FEATURE(MPIPE) && (BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_USB))
+#if (defined(__STM32L4__) && OT_FEATURE(MPIPE) && (BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_USB))
 
 #include <otlib/buffers.h>
 #include <otsys/mpipe.h>

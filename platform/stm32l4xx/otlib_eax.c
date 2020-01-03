@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/eax_driver.c
+  * @file       /otplatform/stm32l4xx/eax_driver.c
   * @author     JP Norair
   * @version    R100
   * @date       21 Aug 2014
-  * @brief      EAX Cryptographic Driver for STM32L1xx
+  * @brief      EAX Cryptographic Driver for STM32L4xx
   * @defgroup   EAX Driver
   * @ingroup    EAX Driver
   *

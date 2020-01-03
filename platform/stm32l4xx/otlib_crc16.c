@@ -1,4 +1,4 @@
-/* Copyright 2013 JP Norair
+/* Copyright 2014 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /platform/stm32l0xx/otlib_crc16.c
+  * @file       /platform/stm32l4xx/otlib_crc16.c
   * @author     JP Norair
   * @version    R100
   * @date       26 Aug 2014
-  * @brief      CRC16 Hardware driver STM32L0
+  * @brief      CRC16 Hardware driver STM32L4
   * @ingroup    CRC16
   *
   * It's not apparent this hardware actually works in an advantageous way.

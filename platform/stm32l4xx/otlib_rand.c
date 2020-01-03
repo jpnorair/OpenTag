@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /platform/stm32l0xx/otlib_rand.c
+  * @file       /platform/stm32l4xx/otlib_rand.c
   * @author     JP Norair
   * @version    R100
   * @date       27 Aug 2014
-  * @brief      Random Number driver for STM32L0
+  * @brief      Random Number driver for STM32L4
   * @ingroup    Rand
   *
   ******************************************************************************

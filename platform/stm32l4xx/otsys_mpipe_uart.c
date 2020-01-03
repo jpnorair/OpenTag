@@ -1,4 +1,4 @@
-/* Copyright 2010-2014 JP Norair
+/* Copyright 2019 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,59 +14,16 @@
   *
   */
 /**
-  * @file       /platform/stm32l0xx/otsys_mpipe_uart.c
+  * @file       /platform/stm32l4xx/otsys_mpipe_uart.c
   * @author     JP Norair
   * @version    R103
-  * @date       21 Sept 2014
-  * @brief      Message Pipe v2 (MPIPEv2) UART implementation for STM32L0xx
+  * @date       31 Dec 2019
+  * @brief      Message Pipe v2 (MPIPEv2) UART implementation for STM32L4xx
   * @defgroup   MPipe (Message Pipe)
   * @ingroup    MPipe
   *
-  * The STM32L has the ability to use the following peripherals for the MPIPE:
-  *     I/F     HW      Impl.   Baudrate Notes
-  * 1.  UART    USART   yes     Capable of 1Mbps @ 16 MHz clock
-  * 2.  USB     USB     pend    Full Speed USB using CDC-ACM profile
-  * 3.  SPI     SPI     no      Potentially up to 16 Mbps
-  * 4.  I2C     I2C     no      100, 400, 1000 kbps, maybe more
-  *
-  * The UART implementation is the one implemented in this file.
-  * Baudrates supported:    9600, 28800, 57600, 115200, (higher possible)
-  * Byte structure:         8N1
-  * Duplex:                 Half
-  * Flow control:           None, DTR, RTS/CTS
-  * Connection:             RS-232, DTE-DTE (use a null-modem connector)
-  *
-  * Design Assumptions:
-  * <LI> The peripheral bus clock is of high-enough frequency to cleanly
-  *         generate 115200 baud -- 1.8432 MHz or higher is recommended.  </LI>
-  *
-  * MPipe Protocol for Serial:
-  * <PRE>
-  * +-------+-----------+-------+-----------+----------+---------+---------+
-  * | Field | Sync Word | CRC16 | P. Length | Sequence | Control | Payload |
-  * | Bytes |     2     |   2   |     2     |     1    |    1    |    N    |
-  * | Value |   FF55    |       |     N     |   0-255  |   RFU   |   ALP   |
-  * +-------+-----------+-------+-----------+----------+---------+---------+
-  * </PRE>
-  *
-  * The protocol includes an ACK/NACK feature, although this is only of any
-  * importance if you have a lossy link between client and server.  If you are
-  * using a USB->UART converter, USB has a reliable MAC implementation that
-  * eliminates the need for MPipe ACKing.
-  *
-  * Anyway, after receiving a message, the Mpipe send an ACK/NACK.  The "YY"
-  * byte is 0 for ACK and non-zero for ACK.  Presently, 0x7F is used as the YY
-  * NACK value.
-  * <PRE>
-  * [ Seq ID ] 0xDD 0x00 0x00 0x02 0x00 0xYY  [ CRC16 ]
-  * </PRE>
-  *
-  * The MPipe driver also supports a Raw-ALP build.  MPIPE_USE_MAC can be set
-  * to zero through the board config header or in this file (Default is ON).
-  * Raw ALP does not include NDEF-compliant header or any footer.  Therefore,
-  * there is no ACK ability.  Raw ALP has a 4-byte ALP header, identical to
-  * NDEF header except Type Length and ID Length are removed.  Type Length is
-  * implicitly 0 and ID Length is implicitly 2.
+  * STM32L4 uses the same implementation and code as STM32L0.  Refer to that
+  * implementation for more documentation.
   *
   ******************************************************************************
   */
@@ -81,7 +38,7 @@
 #define MPIPEDRV_ENABLED        (BOARD_FEATURE(MPIPE))
 #define THIS_MPIPEDRV_SUPPORTED ((BOARD_PARAM_MPIPE_IFS == 1) && defined(MPIPE_UART))
 
-#if (defined(__STM32L0__) && OT_FEATURE_MPIPE && MPIPEDRV_ENABLED && THIS_MPIPEDRV_SUPPORTED)
+#if (defined(__STM32L4__) && OT_FEATURE_MPIPE && MPIPEDRV_ENABLED && THIS_MPIPEDRV_SUPPORTED)
 
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>

@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/delay_driver.c
+  * @file       /platform/stm32l4xx/delay_driver.c
   * @author     JP Norair
   * @version    R100
   * @date       26 Aug 2014

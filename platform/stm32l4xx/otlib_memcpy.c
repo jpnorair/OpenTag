@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2019 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/memcpy_driver.c
+  * @file       /platform/stm32l4xx/memcpy_driver.c
   * @author     JP Norair
   * @version    R100
-  * @date       27 Aug 2014
+  * @date       30 Dec 2019
   * @brief      Memcpy Driver for STM32L (uses DMA)
   * @ingroup    Memcpy
   *
