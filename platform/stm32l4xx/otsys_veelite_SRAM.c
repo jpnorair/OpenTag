@@ -1,4 +1,4 @@
-/* Copyright 2016 JP Norair
+/* Copyright 2019 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
   *
   */
 /**
-  * @file       /platform/stm32l0xx/otsys_veelite_SRAM.c
+  * @file       /platform/stm32l4xx/otsys_veelite_SRAM.c
   * @author     JP Norair
   * @version    R100
-  * @date       30 Dec 2016
+  * @date       30 Dec 2019
   * @brief      SRAM Method for Veelite Core Functions
   * @ingroup    Veelite
   *
@@ -39,24 +39,19 @@
 #include <otplatform.h>
 #if defined(__STM32L0xx__) && (defined(__NOEEPROM__) || defined(__VLSRAM__))
 
-#include "stm32l0xx_hal.h"
+#include "stm32l4xx_hal.h"
 
 #include <otsys/veelite_core.h>
 #include <otlib/logger.h>
 #include <otlib/memcpy.h>
 
 
-
+///@todo define section for this in SRAM2
 static ot_u32 fsram[FLASH_FS_ALLOC/4];
 #define FSRAM ((ot_u16*)fsram)
 
 
-/** MACROS for STM32F0xx library <BR>
-  * ========================================================================<BR>
-  * @note If you are upgrading the STM32 FW lib, you need to modify the file 
-  * stm32f0xx_flash.h file in a simple way.  The FLASH_Status enum type needs to
-  * have FLASH_COMPLETE = 0 instead of 4.
-  */
+
 
 /// NAND wrappers
 ot_u8 NAND_erase_page(ot_u16* page_addr) {
