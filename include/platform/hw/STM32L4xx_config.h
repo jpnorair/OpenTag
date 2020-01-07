@@ -600,8 +600,8 @@ typedef struct {
     // Tasking parameters
     void* task_exit;
     
-    // Clock speed saves: AHB1, AHB2, AHB3, APB1, APB2
-    ot_ulong clock_hz[5];
+    // Clock speed saves: AHB1, APB1, APB2
+    ot_ulong clock_hz[3];
     
     // LSI kHz divisor, only needed if LSI is actually used
 #   if (BOARD_FEATURE_LFXTAL != ENABLED)
