@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2014-2019 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,12 +14,17 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/core_tasking.c
+  * @file       /platform/stm32l4xx/core_tasking.c
   * @author     JP Norair
   * @version    R100
-  * @date       27 Aug 2014
-  * @brief      Main, core platform implementation for STM32L
+  * @date       31 Dec 2019
+  * @brief      Main, core platform implementation for STM32L4
   * @ingroup    Platform
+  *
+  * @note this is the same implementation as for STM32L1, and can be also 
+  *       identical to STM32L0 as long as the multithreading part is not
+  *       used.  A generic platform for universal STM32L (or even Cortex-M)
+  *       devices should be created to minimize code duplication.
   *
   ******************************************************************************
   */

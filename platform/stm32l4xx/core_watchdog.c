@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2014-2019 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,12 +14,15 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/core_watchdog.c
+  * @file       /otplatform/stm32l4xx/core_watchdog.c
   * @author     JP Norair
   * @version    R100
-  * @date       26 Aug 2014
-  * @brief      Core Watchdog implementation in STM32L
+  * @date       31 Dec 2019
+  * @brief      Core Watchdog implementation in STM32L4
   * @ingroup    Platform
+  *
+  * @note STM32L4 uses the same Watchdog IP as STM32L0/1.  Probably should have
+  *       a universal STM32L platform to minimize code duplication
   *
   ******************************************************************************
   */
