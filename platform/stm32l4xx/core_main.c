@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/core_main.c
+  * @file       /platform/stm32l4xx/core_main.c
   * @author     JP Norair
   * @version    R100
-  * @date       27 Aug 2014
-  * @brief      Main, core platform implementation for STM32L
+  * @date       31 Dec 2019
+  * @brief      Main, core platform implementation for STM32L4
   * @ingroup    Platform
   *
   ******************************************************************************
@@ -42,7 +42,6 @@
 //#include <m2/session.h>
 
 
-
 //API wrappers
 void otapi_poweron()    { platform_poweron(); }
 void otapi_poweroff()   { platform_poweroff(); }
@@ -55,8 +54,8 @@ void otapi_pause()      { platform_ot_pause(); }
 
 
 ///@note for some reason, the Constant "RCC_CR_HSION" from the device header
-/// is possessed by Satan.  Compiler flails and flails over it.
-#define _RCC_CR_HSI     1
+/// is possessed by Satan.  Compiler isn't happy with it.
+#define _RCC_CR_HSI     RCC_CR_HSION
 
 
 
@@ -65,10 +64,10 @@ void otapi_pause()      { platform_ot_pause(); }
   * STM32L and all other Cortex M devices have a hardware mechanism to assist
   * the caching of multiple contexts and levels of interrupt preemption.
   *
-  * GULP kernels should use __CM0_NVIC_GROUPS == 1, which will create a single,
+  * GULP kernels should use __CM4_NVIC_GROUPS == 1, which will create a single,
   * global interrupt context.  Tasks must manage their own contexts.
   *
-  * HICCULP kernels can use __CM0_NVIC_GROUPS > 1, but each extra group (each
+  * HICCULP kernels can use __CM4_NVIC_GROUPS > 1, but each extra group (each
   * extra context) will require the allocation of extra stack.
   *
   * Usually, these configuration parameters are set in the compiler or in the
@@ -81,12 +80,13 @@ void otapi_pause()      { platform_ot_pause(); }
   * ========================================================================<BR>
   */
 
-#define POWER_1V8   0x0800
-#define POWER_1V5   0x1000
-#define POWER_1V2   0x1800
+// This impl permanently uses Range 1 (1.2 V)
+#define POWER_1V0   0x0400  // Range 2
+#define POWER_1V2   0x0200  // Range 1
 
 
-///@todo build a board-defaults file with all of these
+// The Board header should define these.  
+// If not, these are the defaults.
 #ifndef BOARD_FEATURE_HFXTAL
 #   define BOARD_FEATURE_HFXTAL     DISABLED
 #endif
@@ -103,7 +103,7 @@ void otapi_pause()      { platform_ot_pause(); }
 #   define BOARD_FEATURE_USBPLL     DISABLED
 #endif
 #ifndef PLATFORM_PLLCLOCK_OUT
-#   define PLATFORM_PLLCLOCK_OUT    96000000
+#   define PLATFORM_PLLCLOCK_OUT    128000000
 #endif
 
 
@@ -121,100 +121,110 @@ void otapi_pause()      { platform_ot_pause(); }
 // If GPTIM/KTIM uses RTC as a time source, we need to keep it open,
 // and unfortunately this access tends to be in the same place as clocking.
 // Also, the interval-timer uses WUTE, so basically DBP is always set
-#if 1 || (OT_GPTIM_ID == 'R')
-#   define _RTC_PROTECTION  PWR_CR_DBP
+#if 1 || (OT_GPTIM_ID == 'L') || (OT_GPTIM_ID == 'R')
+#   define _RTC_PROTECTION  PWR_CR1_DBP
 #else
 #   define _RTC_PROTECTION  0
 #endif
 
-// Flankspeed uses PLL, which requires 1.8V
-#if (BOARD_FEATURE(FLANKSPEED) || BOARD_FEATURE(PLL))
+// System PLL is configured by default to 64MHz via HSI16*4
+// Currently, PLL may be clocked either by HSE or HSI
+// Support for other clock sources is pending
+#if BOARD_FEATURE(PLL)
 #   define _USE_PLL
-#   define _PLL_SRC             ((BOARD_FEATURE(FLANKXTAL) == ENABLED) << 16)
-#   define _FLANKSPEED_VOLTAGE  POWER_1V8
-#   if (BOARD_PARAM(PLLmult) == 3)
-#       define _PLL_MULT    (0<<18)
-#   elif (BOARD_PARAM(PLLmult) == 4)
-#       define _PLL_MULT    (1<<18)
-#   elif (BOARD_PARAM(PLLmult) == 6)
-#       define _PLL_MULT    (2<<18)
-#   elif (BOARD_PARAM(PLLmult) == 8)
-#       define _PLL_MULT    (3<<18)
-#   elif (BOARD_PARAM(PLLmult) == 12)
-#       define _PLL_MULT    (4<<18)
-#   elif (BOARD_PARAM(PLLmult) == 16)
-#       define _PLL_MULT    (5<<18)
-#   elif (BOARD_PARAM(PLLmult) == 24)
-#       define _PLL_MULT    (6<<18)
-#   elif (BOARD_PARAM(PLLmult) == 32)
-#       define _PLL_MULT    (7<<18)
-#   elif (BOARD_PARAM(PLLmult) == 48)
-#       define _PLL_MULT    (8<<18)
+#   define _PLL_SRC     (2 + ((BOARD_FEATURE(FLANKXTAL) == ENABLED))
+
+#   if (BOARD_PARAM(PLLmult) >= 8) && (BOARD_PARAM(PLLmult) <= 86)
+#       define _PLL_MULT    (BOARD_PARAM(PLLmult)<<8)
 #   else
 #       error "PLL Multiplier from BOARD_PARAM_PLLmult is out of range"
 #   endif
 #   if (BOARD_PARAM(PLLdiv) == 2)
-#       define _PLL_DIV    (1<<22)
-#   elif (BOARD_PARAM(PLLdiv) == 3)
-#       define _PLL_DIV    (2<<22)
+#       define _PLL_DIV    (0<<25)
 #   elif (BOARD_PARAM(PLLdiv) == 4)
-#       define _PLL_DIV    (3<<22)
+#       define _PLL_DIV    (1<<25)
+#   elif (BOARD_PARAM(PLLdiv) == 6)
+#       define _PLL_DIV    (2<<25)
+#   elif (BOARD_PARAM(PLLdiv) == 8)
+#       define _PLL_DIV    (3<<25)
 #   else
 #       error "PLL Divider from BOARD_PARAM_PLLdiv is out of range"
 #   endif
-#   if (PLATFORM_PLLCLOCK_HZ > 32000000)
-#       error "PLL Flank Speed Clock must be less than 32 MHz"
+#   if (PLATFORM_PLLCLOCK_HZ > 80000000)
+#       error "PLL Flank Speed Clock must be less than 80 MHz"
+#   elif (PLATFORM_PLLCLOCK_HZ > 64000000)
+#       define _FLANKSPEED_FLASHWAIT    4
+#   elif (PLATFORM_PLLCLOCK_HZ > 48000000)
+#       define _FLANKSPEED_FLASHWAIT    3
+#   elif (PLATFORM_PLLCLOCK_HZ > 32000000)
+#       define _FLANKSPEED_FLASHWAIT    2
 #   elif (PLATFORM_PLLCLOCK_HZ > 16000000)
-#       define _FLANKSPEED_FLASHWAIT ENABLED
+#       define _FLANKSPEED_FLASHWAIT    1
 #   else
-#       define _FLANKSPEED_FLASHWAIT DISABLED
-#   endif
-#   if BOARD_FEATURE(FLANKXTAL)
-#       define _FLANKOSC_RDYFLAG        RCC_CR_HSERDY
-#       define _FLANKOSC_CLOCKBIT       3
-#       if BOARD_FEATURE(HFBYPASS)
-#           define _FLANKOSC_ONBIT      (RCC_CR_HSEON | RCC_CR_HSEBYP)
-#           define _FLANKOSC_TIMEOUT    1000
-#       else
-#           define _FLANKOSC_ONBIT      RCC_CR_HSEON
-#           define _FLANKOSC_TIMEOUT    3000 //HSE_STARTUP_TIMEOUT
-#       endif
-#   else
-#       define _FLANKOSC_ONBIT      _RCC_CR_HSI
-#       define _FLANKOSC_RDYFLAG    RCC_CR_HSIRDY
-#       define _FLANKOSC_CLOCKBIT   (3 | RCC_CFGR_STOPWUCK)
-#       define _FLANKOSC_TIMEOUT    300 //HSI_STARTUP_TIMEOUT
+#       define _FLANKSPEED_FLASHWAIT    0
 #   endif
 #else
 #   define _PLL_SRC     0
 #   define _PLL_MULT    0
 #   define _PLL_DIV     0
+#endif
+
+// Flankspeed must use the PLL (that's the whole point)
+#if BOARD_FEATURE(FLANKSPEED)
+#   if (BOARD_FEATURE(PLL) != ENABLED)
+#       error "Cannot have Flank Speed without PLL"
+#   endif
+
+#   define _FLANKOSC_CLOCKBIT       3
+#   define _FLANKSPEED_VOLTAGE      POWER_1V2
+#   define _FLANKSPEED_HZ           PLATFORM_PLLCLOCK_HZ
+#   define _DEFCLK_HZ               _FLANKSPEED_HZ
+#   define _DEFCLK_MODE             SPEED_Flank
+
+#   if BOARD_FEATURE(FLANKXTAL)
+#       if BOARD_FEATURE(HFBYPASS)
+#           define _FLANKOSC_ONBIT      (RCC_CR_HSEON | RCC_CR_HSEBYP)
+#           define _FLANKOSC_TIMEOUT    1000
+#       else 
+#           define _FLANKOSC_ONBIT      RCC_CR_HSEON
+#           define _FLANKOSC_TIMEOUT    3000 //HSE_STARTUP_TIMEOUT
+#       endif
+#       define _FLANKOSC_RDYFLAG        RCC_CR_HSERDY
+#   else
+#       define _FLANKOSC_ONBIT          _RCC_CR_HSI
+#       define _FLANKOSC_RDYFLAG        RCC_CR_HSIRDY
+#       define _FLANKOSC_TIMEOUT        300 //HSI_STARTUP_TIMEOUT
+#   endif
+
+#   define _FLANKSPEED_ON()     ((RCC->CFGR & 3) == _FLANKOSC_CLOCKBIT)
+#   define _FLANKSPEED_OFF()    ((RCC->CFGR & 3) != _FLANKOSC_CLOCKBIT)
+#   define _FLANKRQ()           (platform_ext.rqflank != 0)
+
+#else
+#   define _FLANKSPEED_ON()     0
+#   define _FLANKSPEED_OFF()    1
+#   define _FLANKRQ()           0
 
 #endif
 
 // Fullspeed uses HSE or HSI without PLL
-///@todo See if USB requires 1V8 for sure, and make it dynamic only when active.
+// Support for other clocking options is pending
 #if BOARD_FEATURE(FULLSPEED)
-#   if (PLATFORM_HSCLOCK_HZ > 32000000)
-#       error "High Speed Clock must be less than 32 MHz"     
+#   define _FULLSPEED_VOLTAGE   POWER_1V2
+#   define _FULLSPEED_HZ        PLATFORM_HSCLOCK_HZ
+#   undef _DEFCLK_HZ
+#   undef _DEFCLK_MODE
+#   define _DEFCLK_HZ           _FULLSPEED_HZ
+#   define _DEFCLK_MODE         SPEED_Full
+
+#   if (PLATFORM_HSCLOCK_HZ > 48000000)
+#       error "High Speed Clock must be less than 48 MHz"
+#   elif (PLATFORM_HSCLOCK_HZ > 32000000)
+#       define _FULLSPEED_FLASHWAIT 2
 #   elif (PLATFORM_HSCLOCK_HZ > 16000000)
-#       define _FULLSPEED_VOLTAGE   POWER_1V8
-#       define _FULLSPEED_FLASHWAIT ENABLED
-#   elif (MCU_CONFIG(USB) && (PLATFORM_HSCLOCK_HZ <= 16000000))
-#       define _FULLSPEED_VOLTAGE   POWER_1V8
-#       define _FULLSPEED_FLASHWAIT DISABLED
-#   elif (PLATFORM_HSCLOCK_HZ > 8000000)
-#       define _FULLSPEED_VOLTAGE   POWER_1V5
-#       define _FULLSPEED_FLASHWAIT ENABLED
-#   elif (PLATFORM_HSCLOCK_HZ > 4000000)
-#       define _FULLSPEED_VOLTAGE   POWER_1V5
-#       define _FULLSPEED_FLASHWAIT DISABLED
-#   elif (PLATFORM_HSCLOCK_HZ > 2000000)
-#       define _FULLSPEED_VOLTAGE   POWER_1V2
-#       define _FULLSPEED_FLASHWAIT ENABLED
+#       define _FULLSPEED_FLASHWAIT 1
 #   else
-#       define _FULLSPEED_VOLTAGE   POWER_1V2
-#       define _FULLSPEED_FLASHWAIT DISABLED
+#       define _FULLSPEED_FLASHWAIT 0
 #   endif
 #   if (BOARD_FEATURE_FULLXTAL)
 #       define _FULLOSC_RDYFLAG         RCC_CR_HSERDY
@@ -227,76 +237,41 @@ void otapi_pause()      { platform_ot_pause(); }
 #           define _FULLOSC_TIMEOUT     3000 //HSE_STARTUP_TIMEOUT
 #       endif
 #   else
-#       define _FULLOSC_ONBIT           _RCC_CR_HSI
+#       define _FULLOSC_ONBIT           RCC_CR_HSION
 #       define _FULLOSC_RDYFLAG         RCC_CR_HSIRDY
-#       define _FULLOSC_CLOCKBIT        (1 | RCC_CFGR_STOPWUCK)
+#       define _FULLOSC_CLOCKBIT        1
 #       define _FULLOSC_TIMEOUT         300 //HSI_STARTUP_TIMEOUT
 #   endif
-#endif
-
-// Standard Speed uses the MSI
-#if BOARD_FEATURE(STDSPEED)
-#   if (PLATFORM_MSCLOCK_HZ == 4200000)
-#       define _MSIRANGE    6
-#   elif (PLATFORM_MSCLOCK_HZ == 2100000)
-#       define _MSIRANGE    5
-#   elif (PLATFORM_MSCLOCK_HZ == 1050000)
-#       define _MSIRANGE    4
-#   elif (PLATFORM_MSCLOCK_HZ == 524000)
-#       define _MSIRANGE    3
-#   elif (PLATFORM_MSCLOCK_HZ == 262000)
-#       define _MSIRANGE    2
-#   elif (PLATFORM_MSCLOCK_HZ == 131000)
-#       define _MSIRANGE    1
-#   elif (PLATFORM_MSCLOCK_HZ == 655000)
-#       define _MSIRANGE    0
-#   else 
-#       error "PLATFORM_MSCLOCK_HZ is not set to a value matching HW options"
-#   endif
-#   define _STDSPEED_VOLTAGE    POWER_1V2
-#   define _STDSPEED_FLASHWAIT  DISABLED
-#endif
-
-// For systems with only FLANKSPEED enabled, drop APB clocks by half
-#if ( BOARD_FEATURE(FLANKSPEED)             \
-  && (BOARD_FEATURE(STDSPEED) != ENABLED)   \
-  && (BOARD_FEATURE(FULLSPEED) != ENABLED)  )
-#   undef BOARD_PARAM_AHBCLKDIV
-#   define BOARD_PARAM_AHBCLKDIV 2
-#   define _APB1SCALE    0
-#   define _APB2SCALE    0
+#   define _FULLSPEED_ON()      ((RCC->CFGR & 3) == _FULLOSC_CLOCKBIT)
+#   define _FULLSPEED_OFF()     ((RCC->CFGR & 3) != _FULLOSC_CLOCKBIT)
+#   define _FULLRQ()            (platform_ext.rqfull != 0)
 #else
-#   define _APB1SCALE    0
-#   define _APB2SCALE    0
+#   define _FULLSPEED_ON()      0
+#   define _FULLSPEED_OFF()     1
+#   define _FULLRQ()            0
 #endif
 
-// Speed Change configurations
+// Standard Speed uses HSI16 at voltage range 1 (1.2V)
+#if BOARD_FEATURE(STDSPEED)
+#   define _STDSPEED_VOLTAGE    POWER_1V2
+#   define _STDSPEED_HZ         16000000
+#   define _STDSPEED_FLASHWAIT  0
+#   undef _DEFCLK_HZ
+#   undef _DEFCLK_MODE
+#   define _DEFCLK_HZ           _STDSPEED_HZ
+#   define _DEFCLK_MODE         SPEED_enum
+#   define _STDSPEED_ON()       ((RCC->CFGR & 3) == 1)
+#   define _STDSPEED_OFF()      ((RCC->CFGR & 3) != 1)
+#else
+#   define _STDSPEED_VOLTAGE    POWER_1V2
+#   define _STDSPEED_HZ         16000000
+#   define _STDSPEED_FLASHWAIT  0
+#   define _STDSPEED_ON()       0
+#   define _STDSPEED_OFF()      1
+#endif
+
+
 #if MCU_CONFIG(MULTISPEED)
-#   if BOARD_FEATURE(STDSPEED)
-#       define _STDSPEED_ON()       (RCC->CR & RCC_CR_MSION)
-#       define _STDSPEED_OFF()      ((RCC->CR & RCC_CR_MSION) == 0)
-#   else
-#       define _STDSPEED_ON()       0
-#       define _STDSPEED_OFF()      1
-#   endif
-#   if BOARD_FEATURE(FULLSPEED)
-#       define _FULLSPEED_ON()      ((RCC->CR & (RCC_CR_PLLON | RCC_CR_MSION)) == 0)
-#       define _FULLSPEED_OFF()     (RCC->CR & (RCC_CR_PLLON | RCC_CR_MSION))
-#       define _FULLRQ()            (platform_ext.rqfull != 0)
-#   else
-#       define _FULLSPEED_ON()      0
-#       define _FULLSPEED_OFF()     1
-#       define _FULLRQ()            0
-#   endif
-#   if BOARD_FEATURE(FLANKSPEED)
-#       define _FLANKSPEED_ON()     (RCC->CR & RCC_CR_PLLON)
-#       define _FLANKSPEED_OFF()    ((RCC->CR & RCC_CR_PLLON) == 0)
-#       define _FLANKRQ()           (platform_ext.rqflank != 0)
-#   else
-#       define _FLANKSPEED_ON()     0
-#       define _FLANKSPEED_OFF()    1
-#       define _FLANKRQ()           0
-#   endif
 #   define _STDFULL_DOWNVOLT()      (_FULLSPEED_ON() && (_FULLSPEED_VOLTAGE != _STDSPEED_VOLTAGE))
 #   define _STDFLANK_DOWNVOLT()     (_FLANKSPEED_ON() && (_STDSPEED_VOLTAGE != _FLANKSPEED_VOLTAGE))
 #   define _STD_DOWNVOLT()          (_STDFLANK_DOWNVOLT() || _STDFULL_DOWNVOLT())
@@ -306,90 +281,238 @@ void otapi_pause()      { platform_ot_pause(); }
 #   define _FLANKFULL_UPVOLT()      (_FULLSPEED_ON() && (_FULLSPEED_VOLTAGE != _FLANKSPEED_VOLTAGE))
 #   define _FLANK_UPVOLT()          (_FLANKSTD_UPVOLT() || _FLANKFULL_UPVOLT())
 #elif BOARD_FEATURE(STDSPEED)
-#   define _STDSPEED_ON()       (RCC->CR & RCC_CR_MSION)
-#   define _STDSPEED_OFF()      ((RCC->CR & RCC_CR_MSION) == 0)
+#   undef _FULLRQ
+#   undef _FLANKRQ
 #   define _STD_DOWNVOLT()      0
 #   define _FULLRQ()            0
 #   define _FLANKRQ()           0
 #   define _FLANK_UPVOLT()      (_STDSPEED_VOLTAGE != _FLANKSPEED_VOLTAGE)
 #elif BOARD_FEATURE(FULLSPEED)
-#   define _FULLSPEED_ON()      ((RCC->CR & (RCC_CR_PLLON | RCC_CR_MSION)) == 0)
-#   define _FULLSPEED_OFF()     (RCC->CR & (RCC_CR_PLLON | RCC_CR_MSION))
+#   undef _FULLRQ
+#   undef _FLANKRQ
 #   define _FULL_UPVOLT()       0
 #   define _FULL_DOWNVOLT()     0
 #   define _FULLRQ()            1
 #   define _FLANKRQ()           0
 #   define _FLANK_UPVOLT()      (_FULLSPEED_VOLTAGE != _FLANKSPEED_VOLTAGE)
 #elif BOARD_FEATURE(FLANKSPEED)
-#   define _FLANKSPEED_ON()     (RCC->CR & RCC_CR_PLLON)
-#   define _FLANKSPEED_OFF()    ((RCC->CR & RCC_CR_PLLON) == 0)
+#   undef _FULLRQ
+#   undef _FLANKRQ
 #   define _FLANK_UPVOLT()      0
 #   define _FULL_DOWNVOLT()     0
 #   define _FULLRQ()            0
 #   define _FLANKRQ()           1
 #endif
 
-//Validate and set AHB Divider based on board config header setting
-#if (BOARD_PARAM_AHBCLKDIV == 1)
-#   define _AHB_DIV     (0<<4)
-#elif (BOARD_PARAM_AHBCLKDIV == 2)
-#   define _AHB_DIV     (8<<4)
-#elif (BOARD_PARAM_AHBCLKDIV == 4)
-#   define _AHB_DIV     (9<<4)
-#elif (BOARD_PARAM_AHBCLKDIV == 8)
-#   define _AHB_DIV     (10<<4)
-#elif (BOARD_PARAM_AHBCLKDIV == 16)
-#   define _AHB_DIV     (11<<4)
-#elif (BOARD_PARAM_AHBCLKDIV == 64)
-#   define _AHB_DIV     (12<<4)
-#elif (BOARD_PARAM_AHBCLKDIV == 128)
-#   define _AHB_DIV     (13<<4)
-#elif (BOARD_PARAM_AHBCLKDIV == 256)
-#   define _AHB_DIV     (14<<4)
-#elif (BOARD_PARAM_AHBCLKDIV == 512)
-#   define _AHB_DIV     (15<<4)
-#else
-#   error "BOARD_PARAM_AHBCLKDIV not set to a value permitted by this HW"
+
+// Final derivation of clock dividers for each speed, and conversion to register values
+#define _STD_AHBHZ           (_STDSPEED_HZ/BOARD_PARAM_AHBCLKDIV)
+#define _STD_APB1HZ          (_STD_AHBHZ/BOARD_PARAM_APB1CLKDIV)
+#define _STD_APB2HZ          (_STD_AHBHZ/BOARD_PARAM_APB2CLKDIV)
+#define _STD_AHBDIV          BOARD_PARAM_AHBCLKDIV
+#define _STD_APB1DIV         BOARD_PARAM_APB1CLKDIV
+#define _STD_APB2DIV         BOARD_PARAM_APB2CLKDIV
+#if ((_STD_AHBDIV!=1)||(_STD_AHBDIV!=2)||(_STD_AHBDIV!=4)||(_STD_AHBDIV!=8)||(_STD_AHBDIV!=16)) 
+#    error "AHB in standard speed configuration is out of range (divider must be: 1,2,4,8,16)."
+#endif 
+#if ((_STD_APB1DIV!=1)||(_STD_APB1DIV!=2)||(_STD_APB1DIV!=4)||(_STD_APB1DIV!=8)||(_STD_APB1DIV!=16)) 
+#    error "APB1 in standard speed configuration is out of range (divider must be: 1,2,4,8,16)."
+#endif 
+#if ((_STD_APB2DIV!=1)||(_STD_APB2DIV!=2)||(_STD_APB2DIV!=4)||(_STD_APB2DIV!=8)||(_STD_APB2DIV!=16)) 
+#    error "APB2 in standard speed configuration is out of range (divider must be: 1,2,4,8,16)."
+#endif
+#if (_STD_AHBDIV == 1)
+#    define _STD_AHBDIV_VAL (0<<4)
+#    define _STD_AHBSHIFT   (0)
+#elif (_STD_AHBDIV == 2)
+#    define _STD_AHBDIV_VAL (8<<4)
+#    define _STD_AHBSHIFT   (1)
+#elif (_STD_AHBDIV == 4)
+#    define _STD_AHBDIV_VAL (9<<4)
+#    define _STD_AHBSHIFT   (2)
+#elif (_STD_AHBDIV == 8)
+#    define _STD_AHBDIV_VAL (10<<4)
+#    define _STD_AHBSHIFT   (3)
+#elif (_STD_AHBDIV == 16)
+#    define _STD_AHBDIV_VAL (11<<4)
+#    define _STD_AHBSHIFT   (4)
+#endif
+#if (_STD_APB1DIV == 1)
+#    define _STD_APB1DIV_VAL (0<<8)
+#    define _STD_APB1SHIFT   (0)
+#elif (_STD_APB1DIV == 2)
+#    define _STD_APB1DIV_VAL (4<<8)
+#    define _STD_APB1SHIFT   (1)
+#elif (_STD_APB1DIV == 4)
+#    define _STD_APB1DIV_VAL (5<<8)
+#    define _STD_APB1SHIFT   (2)
+#elif (_STD_APB1DIV == 8)
+#    define _STD_APB1DIV_VAL (6<<8)
+#    define _STD_APB1SHIFT   (3)
+#elif (_STD_APB1DIV == 16)
+#    define _STD_APB1DIV_VAL (7<<8)
+#    define _STD_APB1SHIFT   (4)
+#endif
+#if (_STD_APB2DIV == 1)
+#    define _STD_APB2DIV_VAL (0<<11)
+#    define _STD_APB2SHIFT   (0)
+#elif (_STD_APB2DIV == 2)
+#    define _STD_APB2DIV_VAL (4<<11)
+#    define _STD_APB2SHIFT   (1)
+#elif (_STD_APB2DIV == 4)
+#    define _STD_APB2DIV_VAL (5<<11)
+#    define _STD_APB2SHIFT   (2)
+#elif (_STD_APB2DIV == 8)
+#    define _STD_APB2DIV_VAL (6<<11)
+#    define _STD_APB2SHIFT   (3)
+#elif (_STD_APB2DIV == 16)
+#    define _STD_APB2DIV_VAL (7<<11)
+#    define _STD_APB2SHIFT   (4)
 #endif
 
-//Validate and set APB1 Divider based on board config header setting
-#if (BOARD_PARAM_APB1CLKDIV == 1)
-#   define _APB1_DIV    ((0+_APB1SCALE)<<8)
-#elif (BOARD_PARAM_APB1CLKDIV == 2)
-#   define _APB1_DIV    ((4+_APB1SCALE)<<8)
-#elif (BOARD_PARAM_APB1CLKDIV == 4)
-#   define _APB1_DIV    ((5+_APB1SCALE)<<8)
-#elif (BOARD_PARAM_APB1CLKDIV == 8)
-#   define _APB1_DIV    ((6+_APB1SCALE)<<8)
-#elif (BOARD_PARAM_APB1CLKDIV == 16)
-#   define _APB1_DIV    (7<<8)
+#if BOARD_FEATURE(FULLSPEED)
+#   define _FULL_AHBHZ          (_FULLSPEED_HZ/BOARD_PARAM_AHBCLKDIV)
+#   define _FULL_AHBDIV         (BOARD_PARAM_AHBCLKDIV)
+#   define _FULL_APB1DIV        (BOARD_PARAM_APB1CLKDIV*((_FULLSPEED_HZ+_DEFCLK_HZ-1)/_DEFCLK_HZ))
+#   define _FULL_APB2DIV        (BOARD_PARAM_APB2CLKDIV*((_FULLSPEED_HZ+_DEFCLK_HZ-1)/_DEFCLK_HZ))
+#   if ((_FULL_AHBDIV!=1)||(_FULL_AHBDIV!=2)||(_FULL_AHBDIV!=4)||(_FULL_AHBDIV!=8)||(_FULL_AHBDIV!=16)) 
+#       error "AHB in Full speed configuration is out of range (divider must be: 1,2,4,8,16)."
+#   endif
+#   if ((_FULL_APB1DIV!=1)||(_FULL_APB1DIV!=2)||(_FULL_APB1DIV!=4)||(_FULL_APB1DIV!=8)||(_FULL_APB1DIV!=16)) 
+#       error "APB1 in Full speed configuration is out of range (divider must be: 1,2,4,8,16)."
+#   endif
+#   if ((_FULL_APB2DIV!=1)||(_FULL_APB2DIV!=2)||(_FULL_APB2DIV!=4)||(_FULL_APB2DIV!=8)||(_FULL_APB2DIV!=16)) 
+#       error "APB2 in Full speed configuration is out of range (divider must be: 1,2,4,8,16)."
+#   endif
+#   if (_FULL_AHBDIV == 1)
+#       define _FULL_AHBDIV_VAL (0<<4)
+#       define _FULL_AHBSHIFT   (0)
+#   elif (_FULL_AHBDIV == 2)
+#       define _FULL_AHBDIV_VAL (8<<4)
+#       define _FULL_AHBSHIFT   (1)
+#   elif (_FULL_AHBDIV == 4)
+#       define _FULL_AHBDIV_VAL (9<<4)
+#       define _FULL_AHBSHIFT   (2)
+#   elif (_FULL_AHBDIV == 8)
+#       define _FULL_AHBDIV_VAL (10<<4)
+#       define _FULL_AHBSHIFT   (3)
+#   elif (_FULL_AHBDIV == 16)
+#       define _FULL_AHBDIV_VAL (11<<4)
+#       define _FULL_AHBSHIFT   (4)
+#   endif
+#   if (_FULL_APB1DIV == 1)
+#       define _FULL_APB1DIV_VAL (0<<8)
+#       define _FULL_APB1SHIFT   (0)
+#   elif (_FULL_APB1DIV == 2)
+#       define _FULL_APB1DIV_VAL (4<<8)
+#       define _FULL_APB1SHIFT   (1)
+#   elif (_FULL_APB1DIV == 4)
+#       define _FULL_APB1DIV_VAL (5<<8)
+#       define _FULL_APB1SHIFT   (2)
+#   elif (_FULL_APB1DIV == 8)
+#       define _FULL_APB1DIV_VAL (6<<8)
+#       define _FULL_APB1SHIFT   (3)
+#   elif (_FULL_APB1DIV == 16)
+#       define _FULL_APB1DIV_VAL (7<<8)
+#       define _FULL_APB1SHIFT   (4)
+#   endif
+#   if (_FULL_APB2DIV == 1)
+#       define _FULL_APB2DIV_VAL (0<<11)
+#       define _FULL_APB2SHIFT   (0)
+#   elif (_FULL_APB2DIV == 2)
+#       define _FULL_APB2DIV_VAL (4<<11)
+#       define _FULL_APB2SHIFT   (1)
+#   elif (_FULL_APB2DIV == 4)
+#       define _FULL_APB2DIV_VAL (5<<11)
+#       define _FULL_APB2SHIFT   (2)
+#   elif (_FULL_APB2DIV == 8)
+#       define _FULL_APB2DIV_VAL (6<<11)
+#       define _FULL_APB2SHIFT   (3)
+#   elif (_FULL_APB2DIV == 16)
+#       define _FULL_APB2DIV_VAL (7<<11)
+#       define _FULL_APB2SHIFT   (4)
+#   endif
 #else
-#   error "BOARD_PARAM_APB1CLKDIV not set to a value permitted by this HW"
+#   define _FULL_AHBDIV_VAL     _STD_AHBDIV_VAL
+#   define _FULL_APB2DIV_VAL    _STD_APB2DIV_VAL
+#   define _FULL_APB1DIV_VAL    _STD_APB1DIV_VAL
+#   define _FULLOSC_CLOCKBIT    1
+#   define _FULL_AHBSHIFT       _STD_AHBSHIFT
+#   define _FULL_APB1SHIFT      _STD_APB1SHIFT
+#   define _FULL_APB2SHIFT      _STD_APB2SHIFT
 #endif
 
-//Validate and set APB2 Divider based on board config header setting
-#if (BOARD_PARAM_APB2CLKDIV == 1)
-#   define _APB2_DIV    ((0+_APB2SCALE)<<11)
-#elif (BOARD_PARAM_APB2CLKDIV == 2)
-#   define _APB2_DIV    ((4+_APB2SCALE)<<11)
-#elif (BOARD_PARAM_APB2CLKDIV == 4)
-#   define _APB2_DIV    ((5+_APB2SCALE)<<11)
-#elif (BOARD_PARAM_APB2CLKDIV == 8)
-#   define _APB2_DIV    ((6+_APB2SCALE)<<11)
-#elif (BOARD_PARAM_APB2CLKDIV == 16)
-#   define _APB2_DIV    (7<<11)
+#if BOARD_FEATURE(FLANKSPEED)
+#   define _FLANK_AHBHZ         (_FLANKSPEED_HZ/BOARD_PARAM_AHBCLKDIV)
+#   define _FLANK_AHBDIV        (BOARD_PARAM_AHBCLKDIV)
+#   define _FLANK_APB1DIV       (BOARD_PARAM_APB1CLKDIV*((_FLANKSPEED_HZ+_DEFCLK_HZ-1)/_DEFCLK_HZ))
+#   define _FLANK_APB2DIV       (BOARD_PARAM_APB2CLKDIV*((_FLANKSPEED_HZ+_DEFCLK_HZ-1)/_DEFCLK_HZ))
+#   if ((_FLANK_AHBDIV!=1)||(_FLANK_AHBDIV!=2)||(_FLANK_AHBDIV!=4)||(_FLANK_AHBDIV!=8)||(_FLANK_AHBDIV!=16)) 
+#       error "AHB in Flank speed configuration is out of range (divider must be: 1,2,4,8,16)."
+#   endif
+#   if ((_FLANK_APB1DIV!=1)||(_FLANK_APB1DIV!=2)||(_FLANK_APB1DIV!=4)||(_FLANK_APB1DIV!=8)||(_FLANK_APB1DIV!=16)) 
+#       error "APB1 in Flank speed configuration is out of range (divider must be: 1,2,4,8,16)."
+#   endif
+#   if ((_FLANK_APB2DIV!=1)||(_FLANK_APB2DIV!=2)||(_FLANK_APB2DIV!=4)||(_FLANK_APB2DIV!=8)||(_FLANK_APB2DIV!=16)) 
+#       error "APB2 in Flank speed configuration is out of range (divider must be: 1,2,4,8,16)."
+#   endif
+#   if (_FLANK_AHBDIV == 1)
+#       define _FLANK_AHBDIV_VAL (0<<4)
+#       define _FLANK_AHBSHIFT   (0)
+#   elif (_FLANK_AHBDIV == 2)
+#       define _FLANK_AHBDIV_VAL (8<<4)
+#       define _FLANK_AHBSHIFT   (1)
+#   elif (_FLANK_AHBDIV == 4)
+#       define _FLANK_AHBDIV_VAL (9<<4)
+#       define _FLANK_AHBSHIFT   (2)
+#   elif (_FLANK_AHBDIV == 8)
+#       define _FLANK_AHBDIV_VAL (10<<4)
+#       define _FLANK_AHBSHIFT   (3)
+#   elif (_FLANK_AHBDIV == 16)
+#       define _FLANK_AHBDIV_VAL (11<<4)
+#       define _FLANK_AHBSHIFT   (4)
+#   endif
+#   if (_FLANK_APB1DIV == 1)
+#       define _FLANK_APB1DIV_VAL (0<<8)
+#       define _FLANK_APB1SHIFT   (0)
+#   elif (_FLANK_APB1DIV == 2)
+#       define _FLANK_APB1DIV_VAL (4<<8)
+#       define _FLANK_APB1SHIFT   (1)
+#   elif (_FLANK_APB1DIV == 4)
+#       define _FLANK_APB1DIV_VAL (5<<8)
+#       define _FLANK_APB1SHIFT   (2)
+#   elif (_FLANK_APB1DIV == 8)
+#       define _FLANK_APB1DIV_VAL (6<<8)
+#       define _FLANK_APB1SHIFT   (3)
+#   elif (_FLANK_APB1DIV == 16)
+#       define _FLANK_APB1DIV_VAL (7<<8)
+#       define _FLANK_APB1SHIFT   (4)
+#   endif
+#   if (_FLANK_APB2DIV == 1)
+#       define _FLANK_APB2DIV_VAL (0<<11)
+#       define _FLANK_APB2SHIFT   (0)
+#   elif (_FLANK_APB2DIV == 2)
+#       define _FLANK_APB2DIV_VAL (4<<11)
+#       define _FLANK_APB2SHIFT   (1)
+#   elif (_FLANK_APB2DIV == 4)
+#       define _FLANK_APB2DIV_VAL (5<<11)
+#       define _FLANK_APB2SHIFT   (2)
+#   elif (_FLANK_APB2DIV == 8)
+#       define _FLANK_APB2DIV_VAL (6<<11)
+#       define _FLANK_APB2SHIFT   (3)
+#   elif (_FLANK_APB2DIV == 16)
+#       define _FLANK_APB2DIV_VAL (7<<11)
+#       define _FLANK_APB2SHIFT   (4)
+#   endif
 #else
-#   error "BOARD_PARAM_APB2CLKDIV not set to a value permitted by this HW"
+#   define _FLANK_AHBDIV_VAL    _FULL_AHBDIV_VAL
+#   define _FLANK_APB2DIV_VAL   _FULL_APB2DIV_VAL
+#   define _FLANK_APB1DIV_VAL   _FULL_APB1DIV_VAL
+#   define _FLANKOSC_CLOCKBIT   _FULLOSC_CLOCKBIT
+#   define _FLANK_AHBSHIFT      _FULL_AHBSHIFT
+#   define _FLANK_APB1SHIFT     _FULL_APB1SHIFT
+#   define _FLANK_APB2SHIFT     _FULL_APB2SHIFT
 #endif
-
-
-
-
-
-
-
-
-
 
 
 
@@ -408,27 +531,37 @@ platform_ext_struct platform_ext;
   */
 void sub_voltage_config(ot_u16 pwr_cr_vos_x) {
 /// Set Power Configuration based on Voltage Level parameters.
-/// Input must be: POWER_1V2, POWER_1V5, POWER_1V8
-/// Additionally, PWR_CR_DBP can be ORed in for RTC hacking
+/// Input must be: POWER_1V0, POWER_1V2
     ot_u16 scratch;
-    // Power should be enabled by periphclk function, not here
-    //RCC->APB1ENR   |= RCC_APB1ENR_PWREN;
-    scratch     = PWR->CR & ~(ot_u32)((3<<11) | (1<<8) | (7<<5));
+    
+    scratch     = PWR->CR1 & ~(ot_u32)(PWR_CR1_VOS_Msk);
     scratch    |= pwr_cr_vos_x;
-    PWR->CR     = scratch;
+    PWR->CR1    = scratch;
 
     // Wait Until the Voltage Regulator is ready
-    while((PWR->CSR & PWR_CSR_VOSF) != 0) { }
+    while((PWR->CSR2 & PWR_CSR2_VOSF) != 0) { }
 }
 
 
 void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
-    ///@todo figure out a way to do this with WFE
+///@todo figure out a way to do this with WFE
+///@note HSIASFS bit is not set here, because the clock system
+///      only uses one clock at a time.
+    //ot_u32 hsi_asfs_bit;
+    ot_int osc_shift;
+    
+    if (osc_mask & RCC_CR_HSION) {
+        //hsi_asfs_bit = RCC_CR_HSIASFS;
+        osc_shift    = 2;
+    }
+    else {
+        //hsi_asfs_bit = 0;
+        osc_shift    = 1;
+    }
     
     // Wait for Oscillator to get ready, counter goes to 0 on failure
-    RCC->CR    |= osc_mask;
-    osc_mask  <<= (osc_mask & 1);   // hack for STM32L0 HSI
-    osc_mask  <<= 1;
+    RCC->CR    |= osc_mask /*| hsi_asfs_bit*/;
+    osc_mask  <<= osc_shift;
     while ( ((RCC->CR & osc_mask) == 0) && (--counter) );
 
     /// Test if oscillator failed to startup
@@ -438,36 +571,44 @@ void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
 }
 
 
-void sub_osc_setclock(ot_u32 clock_mask) {
-    ///@todo have this fail into hardware fault
-    ot_u32 scratch;
-    scratch         = RCC->CFGR & ~(3 | RCC_CFGR_STOPWUCK);
-    scratch        |= clock_mask;
-    clock_mask      = (clock_mask & 3) << 2;
-    RCC->CFGR       = scratch;
-    while ( (RCC->CFGR & (3<<2)) != clock_mask);
-}
 
 
-
-void sub_set_clockhz(ot_ulong cpu_clock_hz) {
+void sub_setclocks(SPEED_enum mode) {
 /// In interest of speed and size, you need to setup your clock dividers as
-/// constants in the board configuration file.
-    ///@todo Additional argument for changing the clock dividers.
-    platform_ext.clock_hz[0]    = cpu_clock_hz >> (BOARD_PARAM_AHBCLKDIV-1);    //AHB
-    platform_ext.clock_hz[1]    = cpu_clock_hz >> (BOARD_PARAM_APB1CLKDIV-1);    //APB1
-    platform_ext.clock_hz[2]    = cpu_clock_hz >> (BOARD_PARAM_APB2CLKDIV-1);    //APB2
+/// constants in the board configuration file.    
+    static const ot_u32 params[3][4] = {
+        { (_STD_AHBDIV_VAL|_STD_APB2DIV_VAL|_STD_APB1DIV_VAL|1), \
+            _STD_AHBSHIFT, _STD_APB1SHIFT, _STD_APB2SHIFT },
+        { (_FULL_AHBDIV_VAL|_FULL_APB2DIV_VAL|_FULL_APB1DIV_VAL|_FULLOSC_CLOCKBIT), \
+            _FULL_AHBSHIFT, _FULL_APB1SHIFT, _FULL_APB2SHIFT },
+        { (_FLANK_AHBDIV_VAL|_FLANK_APB2DIV_VAL|_FLANK_APB1DIV_VAL|_FLANKOSC_CLOCKBIT), \
+            _FLANK_AHBSHIFT, _FLANK_APB1SHIFT, _FLANK_APB2SHIFT }
+    };
+    ot_u32 scratch;
+    ot_u32* mode_params;
+
+    // Configure clock source and dividers
+    scratch     = RCC->CFGR;
+    scratch    &= ~(RCC_CFGR_HPRE_Msk|RCC_CFGR_PPRE1_Msk|RCC_CFGR_PPRE2_Msk|RCC_CFGR_SW_Msk);
+    mode_params = params[mode];
+    scratch    |= mode_params[0];
+    RCC->CFGR   = scratch;
+    
+    // Validate that configuration was successful, and bail-out to hwfault if not.
+    scratch     = (scratch & 3) << 2;
+    while ( (RCC->CFGR & (3<<2)) != scratch) {
+        ///@todo have this fail into hardware fault
+    }
+    
+    platform_ext.clock_hz[0] = sysclock_hz >> mode_params[1];                   //AHB
+    platform_ext.clock_hz[1] = platform_ext.clock_hz[0] >> mode_params[2];      //APB1
+    platform_ext.clock_hz[2] = platform_ext.clock_hz[0] >> mode_params[3];      //APB2
 }
 
 
 
 
-
-
-
-
-
-/** Extended Platform (STM32L-specific) power and PLL control<BR>
+/** Extended Platform (STM32L4-specific) power and PLL control<BR>
   * ========================================================================<BR>
   */
 #ifndef EXTF_platform_ext_wakefromstop
@@ -479,7 +620,7 @@ void platform_ext_wakefromstop() {
 
     // If using Multispeed setup, we want to use the clock that was in use 
     // before going into STOP.
-    // - In Standard Speed, don't do anything, MSI is already up and running
+    // - In Standard Speed, don't do anything, HSI is already up and running
     // - In Full Speed + HSI, STOPWUCK will be set and still nothing to do 
     // - In Full Speed + HSE, we need to start-up the crystal
     // - In Flank Speed, we need to start up the PLL and optionally the crystal
@@ -487,13 +628,13 @@ void platform_ext_wakefromstop() {
         if ( _FLANKRQ() ) {
             platform_flank_speed();
         }
-        else if ( _FULLRQ() && ((_FULLOSC_ONBIT & _RCC_CR_HSI) == 0)) {
+        else if ( _FULLRQ() && (_FULLOSC_CLOCKBIT != 1)) {
             platform_full_speed();
         }
 
     // Same basic rules as above apply to single-speed configurations.
     // MSI and HSI based clocks will be already running on wakeup.
-#   elif (BOARD_FEATURE(FULLSPEED) && ((_FULLOSC_ONBIT & _RCC_CR_HSI) == 0))       
+#   elif (BOARD_FEATURE(FULLSPEED) && (_FULLOSC_CLOCKBIT != 1))       
         platform_full_speed();
 #   elif BOARD_FEATURE(FLANKSPEED)
         platform_flank_speed();
@@ -503,19 +644,30 @@ void platform_ext_wakefromstop() {
 #endif
 
 
+
+void sub_hsi48on(void) {
+    ot_int limit = 3;
+    RCC->CRRCR = RCC_CRRCR_HSI48ON;
+    
+    while (((RCC->CRRCR & RCC_CRRCR_HSI48RDY) == 0) && --limit);
+    if (limit == 0) {
+        __NOP();
+        //HW Fault;
+        //Reset
+    }
+}
+
+void sub_hsi48off(void) {
+    RCC->CRRCR = 0;
+}
+
+
 #ifndef EXTF_platform_ext_usbcrson
 void platform_ext_usbcrson(void) {
-    RCC->CRRCR      = RCC_CRRCR_HSI48ON;
-    {   ot_int limit = 3;
-        while (((RCC->CRRCR & RCC_CRRCR_HSI48RDY) == 0) && --limit);
-        if (limit == 0) {
-            __NOP();
-            //HW Fault;
-            //Reset
-        }
-    }
+    sub_hsi48on();
     
-    RCC->APB1ENR   |= (RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
+    RCC->APB1ENR   |= (RCC_APB1ENR1_USBFSEN | RCC_APB1ENR1_CRSEN);
+    
     CRS->CFGR       = (0 << CRS_CFGR_SYNCPOL_Pos) \
                     | (2 << CRS_CFGR_SYNCSRC_Pos) \
                     | (0x22 << 16) /* Default FELIM */ \
@@ -523,15 +675,6 @@ void platform_ext_usbcrson(void) {
 
     ///@todo make sure CEN doesn't need to be set as an independent follow-up
     CRS->CR         = (32 << 8) | CRS_CR_AUTOTRIMEN | CRS_CR_CEN;
-    
-    
-    // HSI48 requires 6 pulses to stabilize (according to ref manual), so by 
-    // this point it should be stable even if CPU is running at 32 MHz.
-    // nop nop nop
-    //if ((RCC->CRRCR & RCC_CRRCR_HSI48RDY) == 0) {
-    //    platform_ext_usbcrsoff();
-    //    ///@todo HW Fault
-    //}
 }
 #endif
 
@@ -539,24 +682,18 @@ void platform_ext_usbcrson(void) {
 #ifndef EXTF_platform_ext_usbcrsoff
 void platform_ext_usbcrsoff(void) {
     CRS->CR         = (32 << 8) | CRS_CR_AUTOTRIMEN | 0;
-    RCC->APB1ENR   &= ~(RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
-    RCC->CRRCR      = 0;
+    RCC->APB1ENR1  &= ~(RCC_APB1ENR1_USBFSEN | RCC_APB1ENR1_CRSEN);
+    
+    sub_hsi48off();
 }
 #endif
-
 
 
 #ifndef EXTF_platform_ext_pllon
 void platform_ext_pllon() {
 #if BOARD_FEATURE(PLL)
-    if ( _FLANK_UPVOLT() ) {
-        sub_voltage_config((POWER_1V8 | PWR_CR_DBP | (b010 << 5)));
-    }
-    BOARD_HSXTAL_ON();
-    sub_osc_startup(_FLANKOSC_TIMEOUT, _FLANKOSC_ONBIT);
-
-    RCC->CR |= RCC_CR_PLLON;
-    while((RCC->CR & RCC_CR_PLLRDY) == 0) { }
+    ///@todo this is specifically to use the PLL that drives USB or other peripherals,
+    /// which for this platform may not be necessary
 #endif
 }
 #endif
@@ -565,11 +702,8 @@ void platform_ext_pllon() {
 #ifndef EXTF_platform_ext_plloff
 void platform_ext_plloff() {
 #if BOARD_FEATURE(PLL)
-/// Don't call this function unless you know what you are doing.  STM32L will
-/// not shut-off an active clock, so you won't kill your app, but worse: the
-/// PLL will stay on even if you probably think it is off.
-    RCC->CR &= ~RCC_CR_PLLON;
-    BOARD_HSXTAL_OFF();
+    ///@todo this is specifically to use the PLL that drives USB or other peripherals,
+    /// which for this platform may not be necessary
 #endif
 }
 #endif
@@ -596,10 +730,6 @@ ot_u16 platform_ext_lsihz() {
 
 
 
-
-
-
-
 /** Clock Hz retrieval function
   * ========================================================================<BR>
   */
@@ -608,18 +738,9 @@ ot_ulong platform_get_clockhz(ot_uint clock_index) {
     if (clock_index > 2) {
         while(1);   //trap in debugging
     }
-#   elif defined(__API__)
-    if (clock_index > 2) {
-        return 0;   //result for dumb APIs
-    }
 #   endif
     return (clock_index > 2) ? 0 : platform_ext.clock_hz[clock_index];
 }
-
-
-
-
-
 
 
 
@@ -635,7 +756,7 @@ ot_ulong platform_get_clockhz(ot_uint clock_index) {
   * kernel and indeed the hardware itself manage down-speeding when going
   * into STOP mode.
   */
-
+  
 ot_int sysclock_request(SPEED_enum Speed) {
 #if MCU_CONFIG(MULTISPEED)
     ot_int handle;
@@ -649,16 +770,19 @@ ot_int sysclock_request(SPEED_enum Speed) {
 #   if BOARD_FEATURE(FLANKSPEED)
         case SPEED_Flank:   platform_flank_speed();
                             platform_ext.rqflank++;
-                            handle = 1;
+                            handle = (BOARD_FEATURE(FULLSPEED) == ENABLED);
                             break;
 #   endif
         default: return -1;
     }
     return handle;
+    
 #else
     return -1;
+    
 #endif
 }
+
 
 ot_int sysclock_dismiss(ot_int handle) {
 #if MCU_CONFIG(MULTISPEED)
@@ -674,41 +798,44 @@ ot_int sysclock_dismiss(ot_int handle) {
     
 #else
     return -1;
+    
 #endif
 }
 
 
 #ifndef EXTF_platform_standard_speed
 void platform_standard_speed() {
-/// Best efficient speed.  (MSI)
-/// typ config: 4.2 MHz, Power Level 3, 0 wait state.  ~0.63mA, 4 DMIPS
-/// 
-/// Only go through the process of entering Standard Speed if it is not
-/// activated already.  Also, in Multispeed systems, we need to make sure
-/// there are no active full speed or flank speed requests.
-#if BOARD_FEATURE(STDSPEED)
+/// Best efficient speed. (HSI16)
+/// typ: 16 MHz, 1.2V, 0 wait state
+
+    // If Std speed is enabled and Fullspeed is the same thing...
+#   if BOARD_FEATURE(STDSPEED) && (_FULLOSC_CLOCKBIT == 1)
+    platform_full_speed();
+
+    // If std speed is enabled but not the same as full speed, then
+    // it is 16 MHz via HSI.
+#   elif BOARD_FEATURE(STDSPEED)
     if ( _STDSPEED_OFF() /* && !_FULLRQ() && !_FLANKRQ() */ ) {
         platform_disable_interrupts();
         
-        sub_osc_startup(300, RCC_CR_MSION);
+        // Don't need to startup HSI, because it is always on in this impl
+        //sub_osc_startup(300, RCC_CR_HSION);
 
-        // On STM32L0, MSI speeds never require flash wait states or prefetch
-        sub_osc_setclock(0);
-        FLASH->ACR = 0;
+        // HSI @ 16MHz and 1.2V never require flash wait states or prefetch
+        sub_setclocks(SPEED_Standard);
+        FLASH->ACR = (FLASH_ACR_DCEN | FLASH_ACR_ICEN);
         
         // Set new core voltage, if necessary.
         if (STD_DOWNVOLT()) {
             sub_voltage_config(_STDSPEED_VOLTAGE | _RTC_PROTECTION);
         }
+
+        // Turn off any clocks that are not HSI
+        RCC->CR &= RCC_CR_HSION | ~(RCC_CR_HSEBYP|RCC_CR_HSEON|RCC_CR_MSION|RCC_CR_PLLON);
+        BOARD_HSXTAL_OFF();
         
-        // Turn off non-MSI clocks to save power
-#       if (BOARD_FEATURE(FULLSPEED) && (_FULLOSC_ONBIT & _RCC_CR_HSI))
-        RCC->CFGR  &= ~(RCC_CFGR_STOPWUCK);
-#       endif
-        RCC->CR    &= ~(RCC_CR_PLLON | RCC_CR_HSEON | _RCC_CR_HSI);
-        sub_set_clockhz(PLATFORM_MSCLOCK_HZ);
-        platform_ensable_interrupts();
-    }
+        platform_enable_interrupts();
+    }    
 #endif
 }
 #endif
@@ -719,43 +846,54 @@ void platform_standard_speed() {
 #ifndef EXTF_platform_full_speed
 void platform_full_speed() {
 /// All Ahead Full.  (HSI or HSE, no PLL)
-/// <LI> typ config: 16MHz, Power Level 2, 1 wait state. ~2.6mA, 15 DMIPS </LI>
-/// <LI> In system with attachable USB, check for flank-enable </LI>
+/// <LI> typ config: 16MHz HSI, 1.2V, 0 wait states</LI>
+/// <LI> In system with attachable USB, check for flank-enable or CRS </LI>
 /// 
 /// Only go through the process of entering Full Speed if it is not activated
-/// already.  Also, in Multispeed systems, we need to make sure there are no
-/// active full speed or flank speed requests.
-
-#if BOARD_FEATURE(FULLSPEED)
-    if ( _FULLSPEED_OFF() /* && !_FLANKRQ() */ ) {
+/// already.  In multispeed systems, don't call this function directly unless you know
+/// exactly what you're doing.  Use sysclock_request() instead.
+///
+#   if BOARD_FEATURE(FULLSPEED)
+    if (_FULLSPEED_OFF()) {
         platform_disable_interrupts();
         
+        // Increase the voltage if necessary (must happen before configuration).
+        // Platform impl has universal 1.2V, but code is left in case that ever changes.
         if (_FULL_UPVOLT()) {
-            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
+            sub_voltage_config(_FULLSPEED_VOLTAGE);
         }
         
-        sub_osc_startup(_FULLOSC_TIMEOUT, _FULLOSC_ONBIT);
-        
-#       if (_FULLSPEED_FLASHWAIT == ENABLED)
-            FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY;
-            sub_osc_setclock(_FULLOSC_CLOCKBIT);    ///@todo FIXED TO HSI
+        // HSI16 is always active, so don't start the fullspeed clock unless it's
+        // a different clock than HSI16.  After it's ready, set it as system clock.
+#       if (_FULLOSC_CLOCKBIT != 1)
+            sub_osc_startup(_FULLOSC_TIMEOUT, _FULLOSC_ONBIT);
+#       endif
+        sub_setclocks(SPEED_Full);
+
+        // Set the Flash Wait States, bus caches, and prefetch feature as needed.
+        // For Flash latency 0, prefetch and wait states are off.
+#       if (_FULLSPEED_FLASHWAIT > 0)
+            FLASH->ACR = (FLASH_ACR_DCEN | FLASH_ACR_ICEN | FLASH_ACR_PRFTEN | _FULLSPEED_FLASHWAIT);
 #       else
-            sub_osc_setclock(_FULLOSC_CLOCKBIT);
-            FLASH->ACR = FLASH_ACR_PRFTEN;
+            ///@todo have this as default setting in platform_busclk_init()
+            FLASH->ACR = (FLASH_ACR_DCEN | FLASH_ACR_ICEN | 0);
 #       endif
 
+        // Turn off Clocks not used by Fullspeed, although HSI16 must stay on.
+        RCC->CR &= _FULLOSC_ONBIT | ~(RCC_CR_HSEBYP|RCC_CR_HSEON|RCC_CR_PLLON|RCC_CR_MSION);
+#       if ((_FULLOSC_ONBIT & (RCC_CR_HSEON | RCC_CR_HSEBYP)) == 0)
+        BOARD_HSXTAL_OFF();
+#       endif
+        
+        // Decrease the voltage if necessary (must happen after configuration).
+        // Platform impl has universal 1.2V, but code is left in case that ever changes.
         if (_FULL_DOWNVOLT()) {
-            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);
+            sub_voltage_config(_FULLSPEED_VOLTAGE);
         }
 
-#       if ((_FLANKOSC_ONBIT & _RCC_CR_HSI) || (BOARD_FEATURE(FULLSPEED) && (_FULLOSC_ONBIT & _RCC_CR_HSI)))
-        RCC->CFGR  |= RCC_CFGR_STOPWUCK;
-#       endif
-        RCC->CR    &= ~(RCC_CR_MSION | RCC_CR_PLLON);
-        sub_set_clockhz(PLATFORM_HSCLOCK_HZ);
         platform_enable_interrupts();
     }
-#endif
+#   endif
 }
 #endif
 
@@ -763,32 +901,46 @@ void platform_full_speed() {
 #ifndef EXTF_platform_flank_speed
 void platform_flank_speed() {
 /// Coming in hot!  (HSI or HSE + PLL)
-/// typ config: 32MHz, Power Level 1, 1 wait state.  ~6.3mA, 30 DMIPS.
-#if BOARD_FEATURE(FLANKSPEED)
-#   if (BOARD_FEATURE(PLL) != ENABLED)
-#       error "Cannot have Flank Speed without PLL"
-#   endif
-
+/// typ config: 64MHz, 1.2V, 3 wait states
+#   if BOARD_FEATURE(FLANKSPEED)
     if ( _FLANKSPEED_OFF() ) {
         platform_disable_interrupts();
-        platform_ext_pllon();           // This function Manages the UPVOLTING
+        
+        // Flank Speed, by definition, uses the PLL.
+        // platform_busclk_init() will pre-set all the PLL specifications at startup.
+        if ((RCC->CR & RCC_CR_PLLON) == 0) {
+            if ( _FLANK_UPVOLT() ) {
+                sub_voltage_config(_FLANKSPEED_VOLTAGE);
+            }
+    
+            // Startup the oscillator used by Flank Speed
+#           if (_FLANKOSC_ONBIT & (RCC_CR_HSEON | RCC_CR_HSEBYP))
+            BOARD_HSXTAL_ON();
+#           elif (_FLANKOSC_ONBIT & RCC_CR_HSION)
+            sub_osc_startup(_FLANKOSC_TIMEOUT, _FLANKOSC_ONBIT);
+#           endif
 
-#       if (BOARD_FEATURE(STDSPEED) || BOARD_FEATURE(FULLSPEED))
-            RCC->CFGR = _PLL_SRC | _PLL_MULT | _PLL_DIV | (8<<4) | _APB1_DIV | _APB2_DIV;
-#       endif
-#       if (_FLANKSPEED_FLASHWAIT == ENABLED)
-            FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_LATENCY;
-            sub_osc_setclock(_FLANKOSC_CLOCKBIT);
+            // Startup PLL and wait for ready
+            ///@todo have a counter to wait here and go to hwfault
+            RCC->CR |= RCC_CR_PLLON;
+            while((RCC->CR & RCC_CR_PLLRDY) == 0) { }
+        }
+
+        // Set the Flank-speed oscillator (PLL) as the system clock
+        sub_setclocks(SPEED_Flank);
+
+        // Set the Flash Wait States, bus caches, and prefetch feature as needed.
+        // For Flash latency 0, prefetch and wait states are off.
+#       if (_FLANKSPEED_FLASHWAIT > 0)
+            FLASH->ACR = (FLASH_ACR_DCEN | FLASH_ACR_ICEN | FLASH_ACR_PRFTEN | _FULLSPEED_FLASHWAIT);
 #       else
-            sub_osc_setclock(_FLANKOSC_CLOCKBIT);
-            FLASH->ACR = FLASH_ACR_PRFTEN;
+            ///@todo have this as default setting in platform_busclk_init()
+            FLASH->ACR = (FLASH_ACR_DCEN | FLASH_ACR_ICEN | 0);
 #       endif
 
-#       if (BOARD_FEATURE(FULLSPEED) && (_FULLOSC_ONBIT & RCC_CR_HSION))
-        RCC->CFGR  &= ~(RCC_CFGR_STOPWUCK);
-#       endif
-        RCC->CR &= ~RCC_CR_MSION;
-        sub_set_clockhz(PLATFORM_PLLCLOCK_HZ);
+        // Flank speed leaves all clocks on.
+        //RCC->CR &= _FLANKOSC_ONBIT | ~(RCC_CR_HSEBYP|RCC_CR_HSEON|RCC_CR_MSION|RCC_CR_PLLON|RCC_CR_MSION);
+        
         platform_enable_interrupts();
     }
 
@@ -842,8 +994,10 @@ void platform_poweron() {
     __set_MSP( (ot_u32)&platform_ext.sstack[(OT_PARAM_SSTACK_ALLOC/4)-1] );
 
     /// 3. Board-Specific power-up configuration
+    /// 3b. Platform impl demands that voltage is at 1.2V
     BOARD_PERIPH_INIT();
     BOARD_POWER_STARTUP();
+    sub_voltage_config(POWER_1V2);
 
     ///2. Configure GPIO
     //platform_init_gpio();
@@ -858,19 +1012,23 @@ void platform_poweron() {
 
     /// 5. Debugging setup: apply to all peripherals
 #   if defined(__DEBUG__)
-    DBGMCU->CR     |= ( DBGMCU_CR_DBG_SLEEP | DBGMCU_CR_DBG_STOP | DBGMCU_CR_DBG_STANDBY);
+    DBGMCU->CR         |= ( DBGMCU_CR_DBG_SLEEP | DBGMCU_CR_DBG_STOP | DBGMCU_CR_DBG_STANDBY);
 
-    DBGMCU->APB1FZ |= ( DBGMCU_APB1_FZ_DBG_TIM2_STOP \
-                      | DBGMCU_APB1_FZ_DBG_TIM6_STOP \
-                      | DBGMCU_APB1_FZ_DBG_RTC_STOP \
-                      | DBGMCU_APB1_FZ_DBG_WWDG_STOP \
-                      | DBGMCU_APB1_FZ_DBG_IWDG_STOP \
-                      | DBGMCU_APB1_FZ_DBG_I2C1_STOP \
-                      | DBGMCU_APB1_FZ_DBG_I2C2_STOP \
-                      | DBGMCU_APB1_FZ_DBG_LPTIMER_STOP );
+    DBGMCU->APB1FZR1   |=DBGMCU_APB1FZR1_DBG_TIM2_STOP \
+                       | DBGMCU_APB1FZR1_DBG_TIM6_STOP \
+                       | DBGMCU_APB1FZR1_DBG_RTC_STOP \
+                       | DBGMCU_APB1FZR1_DBG_WWDG_STOP \
+                       | DBGMCU_APB1FZR1_DBG_IWDG_STOP \
+                       | DBGMCU_APB1FZR1_DBG_I2C1_STOP \
+                       | DBGMCU_APB1FZR1_DBG_I2C2_STOP \
+                       | DBGMCU_APB1FZR1_DBG_I2C3_STOP \
+                       | DBGMCU_APB1FZR1_DBG_LPTIM1_STOP;
+                       
+    DBGMCU->APB1FZR2   |= DBGMCU_APB1FZR2_DBG_LPTIM2_STOP;
 
-    DBGMCU->APB2FZ |= ( DBGMCU_APB2_FZ_DBG_TIM22_STOP \
-                      | DBGMCU_APB2_FZ_DBG_TIM21_STOP );
+    DBGMCU->APB2FZ     |=DBGMCU_APB2FZ_DBG_TIM1_STOP \
+                       | DBGMCU_APB2FZ_DBG_TIM15_STOP \
+                       | DBGMCU_APB2FZ_DBG_TIM16_STOP;
 #   endif
 
     /// 6. Final initialization of OpenTag system resources
@@ -954,13 +1112,15 @@ void platform_init_OT() {
         ot_u16* hwid;
         ot_int  i;
 
-        generated_id.word[0]    = *((ot_u32*)(0x1FF80050));
-        generated_id.halfw[1]  ^= *((ot_u16*)(0x1FF80064));
-        generated_id.halfw[2]   = *((ot_u16*)(0x1FF80066));
-        generated_id.word[0]   ^= *((ot_u32*)(0x1FF80054));
+        // 96 bits with ASCII
+        chip_id.word[2] = *((ot_u32*)(0x1FFF7590));     //X/Y coords on wafer
+        chip_id.word[1] = *((ot_u32*)(0x1FFF7594));     //Lower Lot number (ASCII, b31:8) and wafer number (b7:0)
+        chip_id.word[0] = *((ot_u32*)(0x1FFF7598));     //Upper Lot number (ASCII)
+        
+        ///@todo compression of the ID.  There are many gaps in the ID
         
         fpid    = ISF_open_su(ISF_ID(device_features));
-        hwid    = &generated_id.halfw[0];
+        hwid    = &generated_id.halfw[3];
         for (i=6; i!=0; i-=2) {
             vl_write(fpid, i, *hwid++);
         }
@@ -984,88 +1144,63 @@ void platform_init_busclk() {
 /// This function should be called during initialization and restart, right at
 /// the top of platform_poweron().
 
-    ///1. RESET System Clocks
-    ///@todo This may not be necessary.  These settings should be reset default settings.
+    // Load Default Clock Configuration
+    // On the STM32L4 platform, OpenTag uses HSI16 for a number of peripherals.
+    // HSI16 MUST be available, and thus it's OK to have STOPWUCK set permanently.
+    RCC->CFGR |= RCC_CFGR_STOPWUCK;
 
-    // Assure MSI bit is on (it should be, by default)
-    RCC->CR    |= (uint32_t)0x00000100;
-
-    // Configure dividers and PLL information (even if not used) and keep 
-    // active clock via MSI (these fields are 0)
-    RCC->CFGR   = ( _PLL_SRC | _PLL_MULT | _PLL_DIV | _AHB_DIV | _APB1_DIV | _APB2_DIV );
-
-    // Reset HSION, HSEON, HSEBYP, CSSON and PLLON bits
-    // Disable all clocker interrupts (default)
-    RCC->CR    &= 0xFEF0FFF6;   // 0xEEFAFFFE;
-    //RCC->CIER  &= 0xFFFFFF00;
-
+    // Load Default PLL specification.
+    // This specification cannot be changed at runtime.
+    RCC->PLLCFGR = _PLL_DIV | _PLL_MULT | (0<<4) | _PLL_SRC;
+    
+    // MSI is the startup clock.  HSI, however, is to be our default clock via using 
+    // the STOPWUCK bit.  Several peripherals will use HSI16 directly, so it will be
+    // always on.
+    // HSI @ 16MHz and 1.2V never require flash wait states or prefetch
+    sub_osc_startup(300, RCC_CR_HSION);
+    sub_setclocks(SPEED_Standard);
+    FLASH->ACR = (FLASH_ACR_DCEN | FLASH_ACR_ICEN);
+    
+    // Disable all clocks that aren't HSI16, and disable all clock interrupts
+    RCC->CR    &= ~(RCC_CR_HSEON|RCC_CR_HSEBYP|RCC_CR_CSSON|RCC_CR_PLLON|RCC_CR_MSION);
+    RCC->CIER   = 0;
 
     ///2. Prepare external Memory bus (not currently supported)
 //#   ifdef DATA_IN_ExtSRAM
 //        SystemInit_ExtMemCtl();
 //#   endif
 
-
-    ///3a. Begin clocking system with MSI clock at specified frequency.
-    ///    <LI> Specified as PLATFORM_MSCLOCK_HZ in board support header </LI>
-    ///    <LI> MSI is only used as standard clock if BOARD_FEATURE_STDSPEED
-    ///           is also ENABLED in board support header.
+    ///3a. If Standard Speed is enabled, it is already underway (HSI16), so do nothing
 #   if BOARD_FEATURE(STDSPEED)
-        FLASH->ACR = 0;
-        sub_voltage_config((_STDSPEED_VOLTAGE | PWR_CR_DBP));
-        {   ot_u32 rcc_icscr;
-            rcc_icscr   = RCC->ICSCR;
-            rcc_icscr  &= ~(7 << 13);
-            rcc_icscr  |= (_MSIRANGE << 13);
-            RCC->ICSCR  = rcc_icscr;
-        }
 
-        // Setup the Bus Dividers as specified (MSI already selected as system clock)
-        sub_set_clockhz(PLATFORM_MSCLOCK_HZ);
-
-
-    ///3b. Use HSE or HSI without PLL as Full-Speed clock
-    ///    <LI> HSE or HSI is full speed clock if BOARD_FEATURE_STDSPEED is
-    ///           DISABLED and BOARD_FEATURE_FULLSPEED is ENABLED</LI>
-    ///    <LI> HSE is used if BOARD_FEATURE_HFXTAL is ENABLED, else HSI used. </LI>
-    ///    <LI> Boards using HSE can declare any value into PLATFORM_HSCLOCK_HZ.
-    ///           Board using HSI may only declare 2, 4, 8, or 16 MHz</LI>
-#   elif BOARD_FEATURE(FULLSPEED)
-#       if ((_FULLSPEED_VOLTAGE != POWER_1V5) && (_FULL_UPVOLT() == 0))
-            sub_voltage_config(_FULLSPEED_VOLTAGE | _RTC_PROTECTION);   ///@note This isn't running
-#       endif
-        // Basic Flash setup, then run normal routine
-        FLASH->ACR = FLASH_ACR_PRFTEN;
+    ///3b. Use HSE or HSI16 without PLL as Full-Speed clock
+    ///    <LI> If HSI16, that's already active, so do nothing. </LI>
+    ///    <LI> If HSE, switch to it.</LI>
+#   elif BOARD_FEATURE(FULLSPEED) && (_FULLOSC_CLOCKBIT != 1)
         platform_full_speed();
 
-
     ///3c. Begin clocking system with PLL driven from HSE or HSI
-    ///    <LI> PLL only used if .... </LI>
-    ///    <LI> Use BOARD_PARAM_PLLdiv, BOARD_PARAM_PLLmult to specify the
-    ///           particular PLL configuration.  For example, if using USB
-    ///           (BOARD_PARAM_HFHz * BOARD_PARAM_PLLmult) must be 96 MHz, and
-    ///           (96 MHz / BOARD_PARAM_PLLdiv) == PLATFORM_HSCLOCK_HZ. </LI>
 #   elif BOARD_FEATURE(FLANKSPEED)
-#       if ((_FLANKSPEED_VOLTAGE != POWER_1V5) && (_FLANK_UPVOLT() == 0))
-            sub_voltage_config(_FLANKSPEED_VOLTAGE | _RTC_PROTECTION);
-#       endif
-        // Basic Flash setup, then run normal routine
-        FLASH->ACR = FLASH_ACR_PRFTEN;
         platform_flank_speed();
 
 #   else
 #       error "At least one of BOARD_FEATURE_STDSPEED, _FULLSPEED, or _FLANKSPEED must be ENABLED"
 #   endif
-
     
-    ///4. Clock selection for special buses
-    RCC->CCIPR  = ((BOARD_FEATURE(USBPLL)!=ENABLED) << 26)  /* HSI48MSEL */ \
-                | (BOARD_FEATURE(LFXTAL) << 19) | (1 << 18) /* LSI/LSE for LPTIM */ \
+    RCC->CCIPR  = (0) \
+                | (0 << RCC_CCIPR_CLK48SEL_Pos) \
+                | (BOARD_FEATURE(LFXTAL) << 21) | (1 << 20) /* LSI/LSE for LPTIM2 */ \
+                | (BOARD_FEATURE(LFXTAL) << 19) | (1 << 18) /* LSI/LSE for LPTIM1 */ \
+                | ((MCU_CONFIG(MULTISPEED)*2) << 16)        /* APB/HSI16 for I2C3 */ \
+                | ((MCU_CONFIG(MULTISPEED)*2) << 14)        /* APB/HSI16 for I2C2 */
                 | ((MCU_CONFIG(MULTISPEED)*2) << 12)        /* APB/HSI16 for I2C1 */ \
-                | ((BOARD_FEATURE(LFXTAL)*3) << 10)         /* APB/LSE for LPUART */ \
-                | ((MCU_CONFIG(MULTISPEED)*2) << 2)         /* Use APB/HSI16 for USART2 */ \
-                | ((MCU_CONFIG(MULTISPEED)*2) << 0);        /* APB/HSI16 for USART1 Clock */
-
+                | ((BOARD_FEATURE(LFXTAL)*3) << 10)         /* APB/LSE for LPUART1 */ \
+                | ((MCU_CONFIG(MULTISPEED)*2) << 6)         /* APB/HSI16 for USART4 */ \
+                | ((MCU_CONFIG(MULTISPEED)*2) << 4)         /* APB/HSI16 for USART3 */ \
+                | ((MCU_CONFIG(MULTISPEED)*2) << 2)         /* APB/HSI16 for USART2 */ \
+                | ((MCU_CONFIG(MULTISPEED)*2) << 0);        /* APB/HSI16 for USART1 */
+                
+    RCC->CCIPR2 = ((MCU_CONFIG(MULTISPEED)*2) << 0);        /* APB/HSI16 for I2C4 */
 
     /// X. Vector Table Relocation in Internal SRAM or FLASH.
 #   ifdef VECT_TAB_SRAM
@@ -1082,41 +1217,37 @@ void platform_init_busclk() {
 #ifndef EXTF_platform_init_periphclk
 void platform_init_periphclk() {
 /// Turn-on LSE or LSI, it is used by some peripherals.  In particular,
-/// OpenTag likes having a 32768Hz clock for timing purposes.  TIM9, 10, 11,
-/// and the RTC are all driven by the LF clock.
+/// OpenTag likes having a 32768Hz clock for timing purposes.
+/// LPTIM1, 2, and the RTC are all driven by the LF clock.
 
-/*
-#   define CSR_BYTE2_ADDRESS        ((uint32_t)0x40023835)
-#   define RCC_LSE_OFF              ((uint8_t)0x00)
-#   define RCC_LSE_ON               ((uint8_t)0x01)
-#   define RCC_LSE_Bypass           ((uint8_t)0x05)
-#   define RCC_LSE_RDY              ((uint8_t)0x02)
-#   define RCC_LSI_OFF              ((uint8_t))
-#   define RCC_LSI_ON               ((uint8_t))
-#   define RCC_LSI_Bypass           ((uint8_t))
-#   define RCC_LSI_RDY              ((uint8_t))
-
-#define CR_OFFSET                (PWR_OFFSET + 0x00)
-#define DBP_BitNumber            0x08
-#define CR_DBP_BB                (PERIPH_BB_BASE + (CR_OFFSET * 32) + (DBP_BitNumber * 4))
-*/
-    ot_u32  pwr_cr_save = (PWR->CR | PWR_CR_DBP);
-
+    ///@todo have a setting that looks at the backup domain to make sure the clocking
+    ///      for it is not already what it should be.
+    
+    PWR->CR1 |= PWR_CR_DBP;
+    //RCC->BDCSR |= RCC_BDCSR_RTCRST;
+    
 #   if BOARD_FEATURE(LFXTAL)
-    PWR->CR     = ((1 << 11) | PWR_CR_DBP);
-    RCC->CSR    = RCC_CSR_RMVF | RCC_CSR_RTCRST;
-    RCC->CSR    = RCC_CSR_LSEON | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSE;
-    while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
+        RCC->CSR    = RCC_CSR_RMVF;
+        RCC->BDCSR  = (1<<RCC_BDCR_LSCOSEL_Pos) \
+                    | (b01<<RCC_BDCR_RTCSEL_Pos) \
+                    | RCC_BDCR_LSECSSD \
+                    | (b00<<RCC_BDCR_LSEDRV_Pos) \
+                    | RCC_BDCR_LSEON;
+                
+        while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
+    
+        RCC->BDCSR |= RCC_BDCR_LSCOEN | RCC_BDCR_RTCEN | RCC_BDCR_LSECSSON;   
 
 #   else // enable LSI
-    PWR->CR     = ((1 << 11) | PWR_CR_DBP);
-    RCC->CSR    = RCC_CSR_RMVF | RCC_CSR_RTCRST;
-    RCC->CSR    = RCC_CSR_LSION | RCC_CSR_RTCEN | RCC_CSR_RTCSEL_LSI;
-    while ((RCC->CSR & RCC_CSR_LSIRDY) == 0);
-
+        PWR->CR     = ((1<<9) | PWR_CR_DBP);
+        //RCC->BDCSR |= RCC_BDCSR_RTCRST;
+        RCC->CSR    = RCC_CSR_RMVF | RCC_CSR_LSION;
+        while ((RCC->CSR & RCC_CSR_LSIRDY) == 0);
+    
+        RCC->BDCSR  = (0<<RCC_BDCR_LSCOSEL_Pos) | RCC_BDCR_LSCOEN \
+                    | (b10<<RCC_BDCR_RTCSEL_Pos) | RCC_BDCR_RTCEN;
 #   endif
 
-   PWR->CR = (pwr_cr_save);
 }
 #endif
 
@@ -1188,23 +1319,34 @@ void platform_init_interruptor() {
     ///         is priority 0-1.  If not, RTC-Wakeup is low-priority and it is
     ///         only used for the interval timer (watchdog/systick) </LI>
 
-    // From Reference Manual RM0376, page 263:
+    // From Reference Manual RM0394 Rev 4, page 328:
     // Line 16: PVD
-    // Line 17: RTC Alaram
-    // Line 18: USB Wakeup Event
+    // Line 17: USB FS Wakeup Event
+    // Line 18: RTC Alarms
     // Line 19: RTC-Tamper/Timestamp/CSS_LSE
     // Line 20: RTC-Wakeup
     // Line 21: COMP1-out
     // Line 22: COMP2-out
     // Line 23: I2C1-wakeup
-    // Line 25: USART1-wakeup
-    // Line 26: USART2-wakeup
-    // Line 28: LPUART1-wakeup
-    // Line 29: LPTIM-wakeup
+    // Line 24: I2C2-wakeup
+    // Line 25: I2C3-wakeup
+    // Line 26: USART1-wakeup
+    // Line 27: USART2-wakeup
+    // Line 28: USART3-wakeup
+    // Line 29: UART4-wakeup
+    // Line 31: LPUART1-wakeup
+    // Line 32: LPTIM1
+    // Line 33: LPTIM2
+    // Line 34: SWPMI1
+    // Line 35: PVM1
+    // Line 37: PVM3
+    // Line 38: PVM4
+    // Line 39: LCD wakeup
+    // Line 40: I2C4-wakeup
 
-    EXTI->PR    = (1<<20) | (1<<29);
-    EXTI->IMR  |= (1<<20) | (1<<29);
-    EXTI->RTSR |= (1<<20) | (1<<29);
+    EXTI->PR    = (1<<20) | (1<<32);
+    EXTI->IMR  |= (1<<20) | (1<<32);
+    EXTI->RTSR |= (1<<20) | (1<<32);
 
 #   if OT_FEATURE(M2)
         NVIC_SetPriority(RTC_IRQn, _KERNEL_GROUP);
@@ -1220,28 +1362,42 @@ void platform_init_interruptor() {
 
     /// 5. Setup other external interrupts
     /// @note Make sure board files use the __USE_EXTI(N) definitions
-#   if defined(__USE_EXTI0) || defined(__USE_EXTI1)
-    NVIC_SetPriority(EXTI0_1_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI0_1_IRQn);
+#   if defined(__USE_EXTI0)
+    NVIC_SetPriority(EXTI0_IRQn, _KERNEL_GROUP);
+    NVIC_EnableIRQ(EXTI0_IRQn);
 #   endif
-#   if defined(__USE_EXTI2) || defined(__USE_EXTI3)
-    NVIC_SetPriority(EXTI2_3_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI2_3_IRQn);
+#   if defined(__USE_EXTI1)
+    NVIC_SetPriority(EXTI1_IRQn, _KERNEL_GROUP);
+    NVIC_EnableIRQ(EXTI1_IRQn);
 #   endif
-#   if( defined(__USE_EXTI4)  || defined(__USE_EXTI5)  || defined(__USE_EXTI6) \
-    ||  defined(__USE_EXTI7)  || defined(__USE_EXTI8)  || defined(__USE_EXTI9) \
-    ||  defined(__USE_EXTI10) || defined(__USE_EXTI11) || defined(__USE_EXTI12) \
-    ||  defined(__USE_EXTI13) || defined(__USE_EXTI14) )
-    NVIC_SetPriority(EXTI4_15_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI4_15_IRQn);
+#   if defined(__USE_EXTI2)
+    NVIC_SetPriority(EXTI2_IRQn, _KERNEL_GROUP);
+    NVIC_EnableIRQ(EXTI2_IRQn);
+#   endif
+#   if defined(__USE_EXTI3)
+    NVIC_SetPriority(EXTI3_IRQn, _KERNEL_GROUP);
+    NVIC_EnableIRQ(EXTI3_IRQn);
+#   endif
+#   if defined(__USE_EXTI4)
+    NVIC_SetPriority(EXTI4_IRQn, _KERNEL_GROUP);
+    NVIC_EnableIRQ(EXTI4_IRQn);
+#   endif
+#   if defined(__USE_EXTI5) || defined(__USE_EXTI6) || defined(__USE_EXTI7) || defined(__USE_EXTI8) || defined(__USE_EXTI9)
+    NVIC_SetPriority(EXTI9_5_IRQn, _KERNEL_GROUP);
+    NVIC_EnableIRQ(EXTI9_5_IRQn);
+#   endif
+#   if( defined(__USE_EXTI10) || defined(__USE_EXTI11) || defined(__USE_EXTI12) \
+    ||  defined(__USE_EXTI13) || defined(__USE_EXTI14) || defined(__USE_EXTI15) )
+    NVIC_SetPriority(EXTI15_10_IRQn, _KERNEL_GROUP);
+    NVIC_EnableIRQ(EXTI15_10_IRQn);
 #   endif
 
 
     /// 6. Setup ADC interrupt.  This is needed only for ADC-enabled builds,
     ///    but ADC is frequently used, so it is enabled by default
 //#   if defined(__USE_ADC1)
-    NVIC_SetPriority(ADC1_COMP_IRQn, _HIPRI_GROUP);
-    NVIC_EnableIRQ(ADC1_COMP_IRQn);
+    NVIC_SetPriority(ADC1_2_IRQHandler, _HIPRI_GROUP);
+    NVIC_EnableIRQ(ADC1_2_IRQn);
 //#   endif
 
 }
