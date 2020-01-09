@@ -249,6 +249,7 @@
 #   define _BW_250_KHZ                              0x40 
 #   define _BW_500_KHZ                              0x80 
 #   define _CODINGRATE_MASK                         0xC7 
+#   define _CODINGRATE_4_4                          0x00 // Not sure if this works
 #   define _CODINGRATE_4_5                          0x08
 #   define _CODINGRATE_4_6                          0x10 // Default
 #   define _CODINGRATE_4_7                          0x18 

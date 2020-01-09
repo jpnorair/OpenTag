@@ -47,6 +47,7 @@
 #   undef _BW_250_KHZ
 #   undef _BW_500_KHZ
 #   undef _CODINGRATE_MASK 
+#   undef _CODINGRATE_4_4
 #   undef _CODINGRATE_4_5 
 #   undef _CODINGRATE_4_6 
 #   undef _CODINGRATE_4_7 
@@ -72,6 +73,7 @@
 #   define _BW_250_KHZ                              (8<<4) 
 #   define _BW_500_KHZ                              (9<<4) 
 #   define _CODINGRATE_MASK                         0xF1 
+#   define _CODINGRATE_4_4                          (0<<1)  // Not sure if this works
 #   define _CODINGRATE_4_5                          (1<<1)
 #   define _CODINGRATE_4_6                          (2<<1) // Default
 #   define _CODINGRATE_4_7                          (3<<1)
