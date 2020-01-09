@@ -1,4 +1,4 @@
-/* Copyright 2014 JP Norair
+/* Copyright 2014-2019 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
   *
   */
 /** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-  * @file       /platform/stm32l0xx/core_gptim.c
+  * @file       /platform/stm32l4xx/core_gptim.c
   * @author     JP Norair
   * @version    R101
   * @date       14 Sep 2014
   * @brief      GPTIM driver for STM32L0
   * @ingroup    Platform
   *
-  * STM32L0 uses its LPTIM timer as the kernel timer.  GPTIM2 is implemented
+  * STM32L4 uses its LPTIM timer as the kernel timer.  GPTIM2 is implemented
   * as a one-shot via the RTC Wakeup timer (RTC->WUTR).
   *
   * The OpenTag System Time module is driven also by LPTIM.  Each time the
@@ -44,10 +44,6 @@
 systim_struct systim;
 
 
-/// Temporary Hack.  LPTIM has big overhead, and it will be phased-out for usage
-/// as the gptim in the next version.
-#define _LPTIM_OVERHEAD_HACK    0 //4
-
 
 /// Local Options Flags (systim.opt)
 #define SYSTIM_INSERTION_ON     1
@@ -65,7 +61,7 @@ systim_struct systim;
 
 /** @brief LPTIM is not using the APB clock, so there can be clock sync errors
   *        when reading changing registers like the counter register.  The
-  *        STM320 reference manual recommends reading the CNT in a loop until
+  *        STM32L4 reference manual recommends reading the CNT in a loop until
   *        two successive reads match.  That is the purpose of this function.
   */
 ot_u16 __read_lptim_cnt() {
@@ -135,7 +131,7 @@ void platform_isr_rtcwakeup() {
 #if (RF_FEATURE(CSMATIMER) != ENABLED)
     if (systim.opt & SYSTIM_INSERTION_ON) {
         systim.opt ^= SYSTIM_INSERTION_ON;
-        RTC->ISR    = ~RTC_ISR_WUTF;
+        RTC->SCR    = RTC_SCR_CWUTF;
         RTC->CR    &= ~RTC_CR_WUTE;
         radio_mac_isr();
     }
@@ -152,20 +148,19 @@ void platform_isr_rtcwakeup() {
 
 #ifndef EXTF_systim_init
 void systim_init(void* tim_init) {
-/// This is the DEBUG implementation that uses TIM9 at 1024 Hz rather than
-/// the RTC hybrid method.
-
     /// 1. The iTimer uses the RTC Wakeup Timer, as does the Mode-2
     ///    MAC Timer.  We must:
     ///    <LI> Unlock RTC as a whole </LI>
     ///    <LI> put into INIT mode </LI>
     ///    <LI> Use a prescaler to match the clock used.  For LSE, this is 1.
     ///         (set to 0).  For LSI, this is...
+    RCC->BDCR  |= RCC_BDCR_RTCEN;
+    
     RTC->WPR    = 0xCA;
     RTC->WPR    = 0x53;
     RTC->CR     = 0;    //(1<<5);
-    RTC->ISR    = 0xFFFFFFFF;
-    while ((RTC->ISR & RTC_ISR_INITF) == 0);
+    RTC->ICSR  |= RTC_ICSR_INIT;
+    while ((RTC->ICSR & RTC_ICSR_INITF) == 0);
     RTC->TR     = 0;
 
 #   if BOARD_FEATURE(LFXTAL)
@@ -178,8 +173,8 @@ void systim_init(void* tim_init) {
     }
 #   endif
 
-    // Clear any ISRs
-    RTC->ISR = 0;
+    // Clear any flags.
+    RTC->SCR    = 0xFFFFFFFF;
 
     /// 2. Set LPTIM1 to use LSE/32 (or LSI/32)
     
@@ -210,7 +205,7 @@ void systim_init(void* tim_init) {
     TIM6->CR2       = (b001 << 4);
     TIM6->DIER      = 0;
     TIM6->ARR       = 65535;
-    TIM6->PSC       = ((PLATFORM_HSCLOCK_HZ / BOARD_PARAM_APB1CLKDIV) / 32768);
+    TIM6->PSC       = (platform_get_clockhz(1) / 32768);
     //TIM6->EGR   = TIM_EGR_UG;
 }
 #endif
@@ -247,7 +242,7 @@ void systim_disable() {
 void systim_pend() {
     systim.stamp1 = __read_lptim_cnt();
     __write_lptim_cmp(systim.stamp1);
-    EXTI->SWIER = (1<<29);
+    EXTI->SWIER = (1<<32);
 }
 
 void systim_flush() {
@@ -269,13 +264,6 @@ ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
         return 0;
     }
     
-    /// If the nextevent is less that the minimum time overhead of the LPTIM
-    /// CMP setting process (which is consequential), then don't use LPTIM, 
-    /// use the clocker Timer.
-//    if ((ot_long)nextevent <= _LPTIM_SETCMP_OVERHEAD) {
-//        ///@todo implement this and have a way to go into deepest sleep without stop.
-//    }
-    
     /// Program the scheduled time into the timer, in ticks.
     /// Oversampling is done at the driver level, versus shifting which is done
     /// at the kernel level.  Oversampling can help timers without synchronized 
@@ -284,8 +272,7 @@ ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
     LPTIM1->ICR     = 0x7f;     //LPTIM_ICR_CMPMCF;                 // Clear compare match
     systim.stamp1   = __read_lptim_cnt();
     
-    LPTIM1->CMP     = _LPTIM_OVERHEAD_HACK + systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE);
-    //__write_lptim_cmp(_LPTIM_OVERHEAD_HACK + systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE) );
+    LPTIM1->CMP     = systim.stamp1 + (ot_u16)(nextevent << OT_GPTIM_OVERSAMPLE);
 
     return (ot_u16)nextevent;
 }
@@ -338,9 +325,9 @@ void sub_enable_wkuptim() {
     ot_u32 scratch;
 
 //#   if (BOARD_FEATURE(HWRTC) != ENABLED)
-//    scratch = RCC->CSR;
-//    if !(scratch & RCC_CSR_RTCEN) {
-//        RCC->CSR = scratch | RCC_CSR_RTCEN;
+//    scratch = RCC->BDCR;
+//    if !(scratch & RCC_BDCR_RTCEN) {
+//        RCC->BDCR = scratch | RCC_BDCR_RTCEN;
 //    }
 //#   endif
     scratch = RTC->CR;
@@ -360,9 +347,9 @@ void sub_disable_wkuptim() {
         RTC->CR = scratch ^ RTC_CR_WUTE;
     }
 //#   if (PLATFORM_FEATURE(HWRTC) != ENABLED)
-//    scratch = RCC->CSR;
-//    if (scratch & RCC_CSR_RTCEN) {
-//        RCC->CSR = scratch ^ RCC_CSR_RTCEN;
+//    scratch = RCC->BDCR;
+//    if (scratch & RCC_BDCR_RTCEN) {
+//        RCC->BDCR = scratch ^ RCC_BDCR_RTCEN;
 //    }
 //#   endif
 }
@@ -378,7 +365,7 @@ void sub_set_wkuptim(ot_uint period) {
     // Poll WUTWF until it is set, afterwhich WUTR can be set
     // SW watchdog assumes 10 clocks per loop, to yield ~80us at 32MHz
     wdog = 256; // ~70 us at 32 MHz 
-    while ((RTC->ISR & RTC_ISR_WUTWF) == 0) {
+    while ((RTC->ICSR & RTC_ICSR_WUTWF) == 0) {
         if (--wdog == 0) {
             ///@todo error, do reset 
             break;
@@ -398,14 +385,14 @@ void sub_set_wkuptim(ot_uint period) {
 
 #ifndef EXTF_systim_set_ticker
 void systim_set_ticker(ot_uint period) {
-/// Ticker is not used on STM32L0 implementation
+/// Ticker is not used on STM32L4 implementation
     //sub_set_wkuptim(period);
 }
 #endif
 
 #ifndef EXTF_systim_stop_ticker
 void systim_stop_ticker() {
-/// Ticker is not used on STM32L0 implementation
+/// Ticker is not used on STM32L4 implementation
     //sub_disable_wkuptim();
 }
 #endif
@@ -420,10 +407,9 @@ void systim_stop_ticker() {
   * cause a software interrupt when it expires.  The time base is 1-tick for
   * all standard implementations.
   *
-  * @note On STM32L0, the insertor utilizes the ticker, therefore you can only
-  * use one or the other safely.  Also, in OpenTag, the Mode 2 MAC timer needs
-  * the insertor, so if Mode 2 is being used then you can't really use either
-  * except for special cases (e.g. during bootup).
+  * @note In OpenTag, the Mode 2 MAC timer needs the insertor, so if Mode 2 is 
+  * being used then you can't really use it except for special cases (e.g. 
+  * during bootup).
   */
 void systim_set_insertion(ot_u16 value) {
     if (systim.opt & SYSTIM_INSERTION_ON) {
@@ -461,17 +447,8 @@ OT_INLINE void systim_disable_insertion() {
   *
   * @note Generally speaking, don't use the clocker directly.  The Scheduler
   * usually needs it, and it will manage it in a specific way.  Clocker uses
-  * TIM6 in the STM32L0 implementation.
-  *
-  * @note Using it with MULTISPEED features may be unreliable.  Some platforms
-  * like STM32L1 have timers that are independent from the core or bus clocks,
-  * and on these platforms it is easier to implement clocker.  If clocker is
-  * run from a bus-clock, you will need to change the bus-clock divider,
-  * correspondingly, whenever changing the core speed.
+  * TIM6 in the STM32L4 implementation.
   */
-
-///@todo clocker implementation.  OpenTag doesn't really care about clocker, so
-/// we also need a way to configure if it should be enabled or not.
 
 void systim_start_clocker() {
     TIM6->CR1 = TIM_CR1_CEN;
@@ -489,8 +466,6 @@ ot_u16 systim_get_clocker() {
 void systim_stop_clocker() {
     TIM6->CR1 = 0;
 }
-
-
 
 
 

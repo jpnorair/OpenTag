@@ -827,7 +827,7 @@ void platform_standard_speed() {
         
         // Set new core voltage, if necessary.
         if (STD_DOWNVOLT()) {
-            sub_voltage_config(_STDSPEED_VOLTAGE | _RTC_PROTECTION);
+            sub_voltage_config(_STDSPEED_VOLTAGE);
         }
 
         // Turn off any clocks that are not HSI
@@ -1224,11 +1224,11 @@ void platform_init_periphclk() {
     ///      for it is not already what it should be.
     
     PWR->CR1 |= PWR_CR_DBP;
-    //RCC->BDCSR |= RCC_BDCSR_RTCRST;
+    //RCC->BDCR |= RCC_BDCR_RTCRST;
     
 #   if BOARD_FEATURE(LFXTAL)
         RCC->CSR    = RCC_CSR_RMVF;
-        RCC->BDCSR  = (1<<RCC_BDCR_LSCOSEL_Pos) \
+        RCC->BDCR  = (1<<RCC_BDCR_LSCOSEL_Pos) \
                     | (b01<<RCC_BDCR_RTCSEL_Pos) \
                     | RCC_BDCR_LSECSSD \
                     | (b00<<RCC_BDCR_LSEDRV_Pos) \
@@ -1236,15 +1236,15 @@ void platform_init_periphclk() {
                 
         while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
     
-        RCC->BDCSR |= RCC_BDCR_LSCOEN | RCC_BDCR_RTCEN | RCC_BDCR_LSECSSON;   
+        RCC->BDCR |= RCC_BDCR_LSCOEN | RCC_BDCR_RTCEN | RCC_BDCR_LSECSSON;   
 
 #   else // enable LSI
         PWR->CR     = ((1<<9) | PWR_CR_DBP);
-        //RCC->BDCSR |= RCC_BDCSR_RTCRST;
+        //RCC->BDCR |= RCC_BDCR_RTCRST;
         RCC->CSR    = RCC_CSR_RMVF | RCC_CSR_LSION;
         while ((RCC->CSR & RCC_CSR_LSIRDY) == 0);
     
-        RCC->BDCSR  = (0<<RCC_BDCR_LSCOSEL_Pos) | RCC_BDCR_LSCOEN \
+        RCC->BDCR  = (0<<RCC_BDCR_LSCOSEL_Pos) | RCC_BDCR_LSCOEN \
                     | (b10<<RCC_BDCR_RTCSEL_Pos) | RCC_BDCR_RTCEN;
 #   endif
 

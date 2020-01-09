@@ -14,11 +14,11 @@
   *
   */
 /**
-  * @file       /otplatform/stm32l1xx/core_errors.c
+  * @file       /otplatform/stm32l4xx/core_errors.c
   * @author     JP Norair
   * @version    R100
   * @date       27 Aug 2014
-  * @brief      Core Error Handlers for STM32F0, F1, L0, L1
+  * @brief      Core Error Handlers for STM32F0, F1, L0, L1, L4
   * @ingroup    Platform
   *
   * This implementation is universal to STM32.
@@ -44,7 +44,7 @@ void sub_save_error(ot_u16 vector_code) {
     RTC->BKP1R = __get_PSP();
     RTC->BKP0R = __get_MSP();
     
-    NVIC_SystemReset();     //see core_cm0.h in CMSIS
+    NVIC_SystemReset();     //see core_cmX.h in CMSIS
 }
 
 
