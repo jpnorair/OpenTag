@@ -869,6 +869,16 @@ void rm2_rxend_isr(void);
 
 
 
+/** @brief  Second stage decoding function, often empty.
+  * @param  None
+  * @retval None
+  * @ingroup Radio
+  *
+  * This function is used in the dll task.  You don't need to worry about it
+  * unless you are writing it.  The purpose is to do secondary decoding as part
+  * of the task context rather than the ISR context.
+  */
+void rm2_decode_s2(void);
 
 
 

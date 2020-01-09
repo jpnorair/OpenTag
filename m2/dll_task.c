@@ -1,4 +1,4 @@
-/* Copyright 2013-2014 JP Norair
+/* Copyright 2013-2020 JP Norair
   *
   * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 /**
   * @file       /otlib/m2_dll_task.c
   * @author     JP Norair
-  * @version    R106
-  * @date       7 May 2014
+  * @version    R107
+  * @date       8 Jan 2020
   * @brief      Data Link Layer Task for DASH7
   * @ingroup    DLL
   *
@@ -644,6 +644,9 @@ OT_WEAK void dll_systask_rf(ot_task task) {
             // TX & CSMA Timeout Watchdog
             case 5: rm2_kill();             break;
             
+            // Second Stage decoding option (used for streaming decoders implemented in FW)
+            case 6: rm2_decode_s2();        break;
+
             // Power Code setting on cursor
             case 255: task->cursor = radio_getpwrcode(); break;
             
