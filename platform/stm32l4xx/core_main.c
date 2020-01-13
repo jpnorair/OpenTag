@@ -64,15 +64,26 @@ void otapi_pause()      { platform_ot_pause(); }
   * STM32L and all other Cortex M devices have a hardware mechanism to assist
   * the caching of multiple contexts and levels of interrupt preemption.
   *
-  * GULP kernels should use __CM4_NVIC_GROUPS == 1, which will create a single,
+  * GULP kernels should use __CM3_NVIC_GROUPS == 1, which will create a single,
   * global interrupt context.  Tasks must manage their own contexts.
   *
-  * HICCULP kernels can use __CM4_NVIC_GROUPS > 1, but each extra group (each
+  * HICCULP kernels can use __CM3_NVIC_GROUPS > 1, but each extra group (each
   * extra context) will require the allocation of extra stack.
   *
   * Usually, these configuration parameters are set in the compiler or in the
   * build_config.h file.  If they are not set, defaults are used.
   */
+#if (__CM4_NVIC_GROUPS < 2)
+#   define _GROUP_PRIORITY  7
+#elif (__CM4_NVIC_GROUPS < 4)
+#   define _GROUP_PRIORITY  6
+#elif (__CM4_NVIC_GROUPS < 8)
+#   define _GROUP_PRIORITY  5
+#elif (__CM4_NVIC_GROUPS < 16)
+#   define _GROUP_PRIORITY  4
+#else
+#   error "Cortex M4 may support more than 8 NVIC Groups, but STM32L supports no more than 8"
+#endif
 
 
 
@@ -1271,11 +1282,30 @@ void platform_init_interruptor() {
 /// Kernel interrupts go in the next highest group.  Everything else is above.
 /// Apps/Builds can get quite specific about how to set up the groups.
 
-#   define _SVC_GROUP       b00
-#   define _KERNEL_GROUP    b01
-#   define _HIPRI_GROUP     b10
-#   define _LOPRI_GROUP     b11
-#   define _SUB_LIMIT       b11
+#   define _KERNEL_GROUP   b0000
+#   if (__CM4_NVIC_GROUPS == 1)
+#       define _HIPRI_BASE      b0000
+#       define _LOPRI_BASE      b0000
+#       define _SUB_LIMIT       b1111
+#       define _SVC_GROUP       b0000
+#       define _KERNEL_GROUP    b0100
+#       define _HIPRI_GROUP     b1000
+#       define _LOPRI_GROUP     b1100
+#   elif (__CM4_NVIC_GROUPS == 2)
+#       define _HIPRI_BASE  b1000
+#       define _LOPRI_BASE  b1000
+#       define _SUB_LIMIT   b0111
+#   elif (__CM4_NVIC_GROUPS == 4)
+#       define _HIPRI_BASE  b0100
+#       define _LOPRI_BASE  b1100
+#       define _SUB_LIMIT   b0011
+#   elif (__CM4_NVIC_GROUPS == 8)
+#       define _HIPRI_BASE  b0010
+#       define _LOPRI_BASE  b1110
+#       define _SUB_LIMIT   b0001
+#   endif
+
+
 
     /// 1. Set the EXTI channels using the board function.  Different boards
     ///    are connected differently, so this function must be implemented in

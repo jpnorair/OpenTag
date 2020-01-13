@@ -159,8 +159,8 @@
 
 /// Enable RF Module interrupts
 #if OT_FEATURE(M2)
-#   undef __ISR_RF1A
-#   define __ISR_RF1A
+//#   undef __ISR_RF1A
+//#   define __ISR_RF1A
 #endif
 
 
@@ -777,9 +777,9 @@ void LPTIM2_IRQHandler(void) {
 
 ///Open TIM6 & DAC Interrupts
 #define _TIM6   defined(__ISR_TIM6) && !defined(__N_ISR_TIM6)
-#define _DAC    defined(__ISR_DACUNDER) && !defined(__N_ISR_DACUNDER)
+#define _DAC    defined(__ISR_DAC) && !defined(__N_ISR_DAC)
 #if (_TIM6 || _DAC)
-void TIM6_DACUNDER_IRQHandler(void) {
+void TIM6_DAC_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
 #   if (_TIM6)
 #       if (_DAC)
@@ -796,7 +796,7 @@ void TIM6_DACUNDER_IRQHandler(void) {
         ot_u32 dac1_if  = DAC->CR & DAC->SR & DAC_CR_DMAUDRIE2;
         if ((dac1_en && dac1_if) || (dac2_en && dac2_if))
 #       endif
-            platform_isr_dacunder();
+            platform_isr_dac();
     }
 #   endif
     __ISR_EXIT_HOOK();
@@ -944,12 +944,12 @@ void USART3_IRQHandler(void) {
     __ISR_EXIT_HOOK();
 }
 #endif
-#if defined(__ISR_USART4) && !defined(__N_ISR_USART4)
-void USART4_IRQHandler(void) {
+#if defined(__ISR_UART4) && !defined(__N_ISR_UART4)
+void UART4_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     EXTI->PR = (1<<29);
     __ISR_WAKEUP_HOOK();
-    platform_isr_usart4();
+    platform_isr_uart4();
     __ISR_EXIT_HOOK();
 }
 #endif
@@ -1079,7 +1079,7 @@ void RNG_IRQHandler(void) {
 
 /// Open FPU Interrupt
 #if defined(__ISR_FPU) && !defined(__N_ISR_FPU)
-void RNG_IRQHandler(void) {
+void FPU_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_fpu();
     __ISR_EXIT_HOOK();
@@ -1089,7 +1089,7 @@ void RNG_IRQHandler(void) {
 
 /// Open CRS Interrupt
 #if defined(__ISR_CRS) && !defined(__N_ISR_CRS)
-void RNG_IRQHandler(void) {
+void CRS_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     platform_isr_crs();
     __ISR_EXIT_HOOK();
