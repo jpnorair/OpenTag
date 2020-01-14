@@ -54,6 +54,14 @@
 #           define _USE_STOP    1
 #       endif
 
+    // L4 can be debugged through STOP mode
+#   elif defined(__STM32L4xx__)
+#       ifdef __DEBUG__
+#           define _USE_STOP    1
+#       else
+#           define _USE_STOP    1
+#       endif
+
     // L1 cannot be debugged through STOP mode
 #   elif defined(__STM32L1xx__)
 #       ifdef __DEBUG__
@@ -96,11 +104,11 @@ void sys_sig_powerdown(ot_int code) {
 /// code = 0: Use fastest-exit powerdown mode                   (SLEEP)
 
     // STOP mode:
-    // - ULP option only reduces power in cases where Vdd < 3V
-    // - FWU option is superfluous unless ULP is set
-    // - In STM32 implementations we must kill the chrono timer before STOP
-    //     and also clear EXTI's.  In very rare cases, an EXTI might be 
-    //     missed, but there is nothing that can be done about this.
+    // - ULP option (L0, L1) only reduces power in cases where Vdd < 3V
+    // - FWU option (L0, L1) is superfluous unless ULP is set
+    // - In STM32L1 implementations we must kill the chrono timer before STOP.
+    // - In all STM32L impls, we must clear EXTI's before stop.  In very rare cases,
+    //   an EXTI might be missed, but there is nothing that can be done about this.
 #   if _USE_STOP
     if (code & 2) {
         BOARD_STOP(code);
@@ -109,7 +117,11 @@ void sys_sig_powerdown(ot_int code) {
 #   endif
     {   // Normal Sleeping mode (not deep sleep)
         SCB->SCR   &= ~((ot_u32)SCB_SCR_SLEEPDEEP_Msk);
+#       if defined(__STM32L4xx__)
+        // Nothing do to here for L4
+#       else
         PWR->CR    &= ~(PWR_CR_PDDS | PWR_CR_LPSDSR | PWR_CR_FWU | PWR_CR_ULP);
+#       endif
         platform_enable_interrupts();
         __WFI();
     }
