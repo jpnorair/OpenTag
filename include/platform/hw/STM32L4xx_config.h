@@ -47,11 +47,12 @@
 #define __STM32__
 #define __STM32L__
 #define __STM32L4__
-#define __STM32L4x2__
+#define __STM32L4xx__
+
 #define STM32
 #define STM32L
-#define STM32L0
-#define STM32L4x2
+#define STM32L4
+#define STM32L4xx
 
 
 // 32 Pin STM32L0's are in LQFP32 or UFQFPN32 packages
@@ -59,6 +60,8 @@
 // Port B: { 0:7 } 
 // Port C: { 14, 15 }
 #if defined(__STM32L412KB__)
+#   define __STM32L4x2__
+#   define STM32L4x2
 #   define MCU_PARAM_PORTS  3
 #   define FLASH_SIZE       (128*1024)
 #   define SRAM_SIZE        (32*1024)    
@@ -66,6 +69,8 @@
 #   define STM32L412xx
 
 #elif defined(__STM32L422KB__)
+#   define __STM32L4x2__
+#   define STM32L4x2
 #   define MCU_PARAM_PORTS  3
 #   define FLASH_SIZE       (128*1024)
 #   define SRAM_SIZE        (32*1024)    
