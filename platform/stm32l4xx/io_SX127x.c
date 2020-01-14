@@ -361,12 +361,12 @@ void sx127x_init_bus() {
     /// and configure the NVIC.  Eventually, the NVIC stuff might be done in
     /// the platform module JUST FOR EXTI interrupts though.
 
-    EXTI->PR    =  RFI_ALL;         //clear flag bits
-    EXTI->IMR  &= ~RFI_ALL;         //clear interrupt enablers
-    EXTI->EMR  &= ~RFI_ALL;         //clear event enablers
+    EXTI->PR1   =  RFI_ALL;         //clear flag bits
+    EXTI->IMR1 &= ~RFI_ALL;         //clear interrupt enablers
+    EXTI->EMR1 &= ~RFI_ALL;         //clear event enablers
 
     // All IRQ pins are rising edge detect
-    EXTI->RTSR |= (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 | RFI_SOURCE3);
+    EXTI->RTSR1|= (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 | RFI_SOURCE3);
 
     ///@note This block redefines priorities of the RF GPIO interrupts.
     ///      It is not always required, since default EXTI prorities are
@@ -523,28 +523,28 @@ void sx127x_antsw_rx(void) {
 
 void sx127x_int_config(ot_u32 ie_sel) {
     ot_u32 scratch;
-    EXTI->PR    = (ot_u32)RFI_ALL;
-    scratch     = EXTI->IMR;
+    EXTI->PR1   = (ot_u32)RFI_ALL;
+    scratch     = EXTI->IMR1;
     scratch    &= ~((ot_u32)RFI_ALL);
     scratch    |= ie_sel;
-    EXTI->IMR   = scratch;
+    EXTI->IMR1  = scratch;
 }
 
 inline void sx127x_int_clearall(void) {
-    EXTI->PR = RFI_ALL;
+    EXTI->PR1 = RFI_ALL;
 }
 
 inline void sx127x_int_force(ot_u16 ifg_sel) { 
-    EXTI->SWIER |= (ot_u32)ifg_sel; 
+    EXTI->SWIER1 |= (ot_u32)ifg_sel;
 }
 
 inline void sx127x_int_turnon(ot_u16 ie_sel) { 
-    EXTI->IMR   |= (ot_u32)ie_sel;  
+    EXTI->IMR1  |= (ot_u32)ie_sel;
 }
 
 inline void sx127x_int_turnoff(ot_u16 ie_sel)  {
-    EXTI->PR    = (ot_u32)ie_sel;
-    EXTI->IMR  &= ~((ot_u32)ie_sel);
+    EXTI->PR1   = (ot_u32)ie_sel;
+    EXTI->IMR1 &= ~((ot_u32)ie_sel);
 }
 
 
@@ -554,13 +554,13 @@ void sx127x_wfe(ot_u16 ifg_sel) {
     do {
         __WFE();
     }
-    while((EXTI->PR & ifg_sel) == 0);
+    while((EXTI->PR1 & ifg_sel) == 0);
 
     // clear IRQ value in SX127x by setting IRQFLAGS to 0xFF
     sx127x_write(RFREG(LR_IRQFLAGS), 0xFF);
 
     // clear pending register(s)
-    EXTI->PR = ifg_sel;
+    EXTI->PR1 = ifg_sel;
 }
 
 

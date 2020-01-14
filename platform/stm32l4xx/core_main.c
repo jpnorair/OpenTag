@@ -212,6 +212,7 @@ void otapi_pause()      { platform_ot_pause(); }
 #   define _FLANKRQ()           (platform_ext.rqflank != 0)
 
 #else
+#   define _FLANKSPEED_HZ       0
 #   define _FLANKSPEED_ON()     0
 #   define _FLANKSPEED_OFF()    1
 #   define _FLANKRQ()           0
@@ -323,13 +324,13 @@ void otapi_pause()      { platform_ot_pause(); }
 #define _STD_AHBDIV          BOARD_PARAM_AHBCLKDIV
 #define _STD_APB1DIV         BOARD_PARAM_APB1CLKDIV
 #define _STD_APB2DIV         BOARD_PARAM_APB2CLKDIV
-#if ((_STD_AHBDIV!=1)||(_STD_AHBDIV!=2)||(_STD_AHBDIV!=4)||(_STD_AHBDIV!=8)||(_STD_AHBDIV!=16)) 
+#if ((_STD_AHBDIV!=1)&&(_STD_AHBDIV!=2)&&(_STD_AHBDIV!=4)&&(_STD_AHBDIV!=8)&&(_STD_AHBDIV!=16))
 #    error "AHB in standard speed configuration is out of range (divider must be: 1,2,4,8,16)."
 #endif 
-#if ((_STD_APB1DIV!=1)||(_STD_APB1DIV!=2)||(_STD_APB1DIV!=4)||(_STD_APB1DIV!=8)||(_STD_APB1DIV!=16)) 
+#if ((_STD_APB1DIV!=1)&&(_STD_APB1DIV!=2)&&(_STD_APB1DIV!=4)&&(_STD_APB1DIV!=8)&&(_STD_APB1DIV!=16))
 #    error "APB1 in standard speed configuration is out of range (divider must be: 1,2,4,8,16)."
 #endif 
-#if ((_STD_APB2DIV!=1)||(_STD_APB2DIV!=2)||(_STD_APB2DIV!=4)||(_STD_APB2DIV!=8)||(_STD_APB2DIV!=16)) 
+#if ((_STD_APB2DIV!=1)&&(_STD_APB2DIV!=2)&&(_STD_APB2DIV!=4)&&(_STD_APB2DIV!=8)&&(_STD_APB2DIV!=16))
 #    error "APB2 in standard speed configuration is out of range (divider must be: 1,2,4,8,16)."
 #endif
 #if (_STD_AHBDIV == 1)
@@ -386,13 +387,13 @@ void otapi_pause()      { platform_ot_pause(); }
 #   define _FULL_AHBDIV         (BOARD_PARAM_AHBCLKDIV)
 #   define _FULL_APB1DIV        (BOARD_PARAM_APB1CLKDIV*((_FULLSPEED_HZ+_DEFCLK_HZ-1)/_DEFCLK_HZ))
 #   define _FULL_APB2DIV        (BOARD_PARAM_APB2CLKDIV*((_FULLSPEED_HZ+_DEFCLK_HZ-1)/_DEFCLK_HZ))
-#   if ((_FULL_AHBDIV!=1)||(_FULL_AHBDIV!=2)||(_FULL_AHBDIV!=4)||(_FULL_AHBDIV!=8)||(_FULL_AHBDIV!=16)) 
+#   if ((_FULL_AHBDIV!=1)&&(_FULL_AHBDIV!=2)&&(_FULL_AHBDIV!=4)&&(_FULL_AHBDIV!=8)&&(_FULL_AHBDIV!=16))
 #       error "AHB in Full speed configuration is out of range (divider must be: 1,2,4,8,16)."
 #   endif
-#   if ((_FULL_APB1DIV!=1)||(_FULL_APB1DIV!=2)||(_FULL_APB1DIV!=4)||(_FULL_APB1DIV!=8)||(_FULL_APB1DIV!=16)) 
+#   if ((_FULL_APB1DIV!=1)&&(_FULL_APB1DIV!=2)&&(_FULL_APB1DIV!=4)&&(_FULL_APB1DIV!=8)&&(_FULL_APB1DIV!=16))
 #       error "APB1 in Full speed configuration is out of range (divider must be: 1,2,4,8,16)."
 #   endif
-#   if ((_FULL_APB2DIV!=1)||(_FULL_APB2DIV!=2)||(_FULL_APB2DIV!=4)||(_FULL_APB2DIV!=8)||(_FULL_APB2DIV!=16)) 
+#   if ((_FULL_APB2DIV!=1)&&(_FULL_APB2DIV!=2)&&(_FULL_APB2DIV!=4)&&(_FULL_APB2DIV!=8)&&(_FULL_APB2DIV!=16))
 #       error "APB2 in Full speed configuration is out of range (divider must be: 1,2,4,8,16)."
 #   endif
 #   if (_FULL_AHBDIV == 1)
@@ -550,7 +551,7 @@ void sub_voltage_config(ot_u16 pwr_cr_vos_x) {
     PWR->CR1    = scratch;
 
     // Wait Until the Voltage Regulator is ready
-    while((PWR->CSR2 & PWR_CSR2_VOSF) != 0) { }
+    while((PWR->SR2 & PWR_SR2_VOSF) != 0) { }
 }
 
 
@@ -588,15 +589,24 @@ void sub_setclocks(SPEED_enum mode) {
 /// In interest of speed and size, you need to setup your clock dividers as
 /// constants in the board configuration file.    
     static const ot_u32 params[3][4] = {
-        { (_STD_AHBDIV_VAL|_STD_APB2DIV_VAL|_STD_APB1DIV_VAL|1), \
-            _STD_AHBSHIFT, _STD_APB1SHIFT, _STD_APB2SHIFT },
-        { (_FULL_AHBDIV_VAL|_FULL_APB2DIV_VAL|_FULL_APB1DIV_VAL|_FULLOSC_CLOCKBIT), \
-            _FULL_AHBSHIFT, _FULL_APB1SHIFT, _FULL_APB2SHIFT },
-        { (_FLANK_AHBDIV_VAL|_FLANK_APB2DIV_VAL|_FLANK_APB1DIV_VAL|_FLANKOSC_CLOCKBIT), \
-            _FLANK_AHBSHIFT, _FLANK_APB1SHIFT, _FLANK_APB2SHIFT }
+        {   (_STD_AHBDIV_VAL|_STD_APB2DIV_VAL|_STD_APB1DIV_VAL|1),
+            (_STDSPEED_HZ >> _STD_AHBSHIFT),
+            ((_STDSPEED_HZ >> _STD_AHBSHIFT) >> _STD_APB1SHIFT),
+            ((_STDSPEED_HZ >> _STD_AHBSHIFT) >> _STD_APB2SHIFT)
+        },
+        {   (_FULL_AHBDIV_VAL|_FULL_APB2DIV_VAL|_FULL_APB1DIV_VAL|_FULLOSC_CLOCKBIT),
+            (_FULLSPEED_HZ >> _FULL_AHBSHIFT),
+            ((_FULLSPEED_HZ >> _FULL_AHBSHIFT) >> _FULL_APB1SHIFT),
+            ((_FULLSPEED_HZ >> _FULL_AHBSHIFT) >> _FULL_APB2SHIFT)
+        },
+        {   (_FLANK_AHBDIV_VAL|_FLANK_APB2DIV_VAL|_FLANK_APB1DIV_VAL|_FLANKOSC_CLOCKBIT),
+            (_FLANKSPEED_HZ >> _FLANK_AHBSHIFT),
+            ((_FLANKSPEED_HZ >> _FLANK_AHBSHIFT) >> _FLANK_APB1SHIFT),
+            ((_FLANKSPEED_HZ >> _FLANK_AHBSHIFT) >> _FLANK_APB2SHIFT)
+        }
     };
     ot_u32 scratch;
-    ot_u32* mode_params;
+    const ot_u32* mode_params;
 
     // Configure clock source and dividers
     scratch     = RCC->CFGR;
@@ -611,9 +621,9 @@ void sub_setclocks(SPEED_enum mode) {
         ///@todo have this fail into hardware fault
     }
     
-    platform_ext.clock_hz[0] = sysclock_hz >> mode_params[1];                   //AHB
-    platform_ext.clock_hz[1] = platform_ext.clock_hz[0] >> mode_params[2];      //APB1
-    platform_ext.clock_hz[2] = platform_ext.clock_hz[0] >> mode_params[3];      //APB2
+    platform_ext.clock_hz[0] = mode_params[1];      //AHB
+    platform_ext.clock_hz[1] = mode_params[2];      //APB1
+    platform_ext.clock_hz[2] = mode_params[3];      //APB2
 }
 
 
@@ -677,7 +687,7 @@ void sub_hsi48off(void) {
 void platform_ext_usbcrson(void) {
     sub_hsi48on();
     
-    RCC->APB1ENR   |= (RCC_APB1ENR1_USBFSEN | RCC_APB1ENR1_CRSEN);
+    RCC->APB1ENR1  |= (RCC_APB1ENR1_USBFSEN | RCC_APB1ENR1_CRSEN);
     
     CRS->CFGR       = (0 << CRS_CFGR_SYNCPOL_Pos) \
                     | (2 << CRS_CFGR_SYNCSRC_Pos) \
@@ -1086,14 +1096,14 @@ void platform_init_OT() {
 
     /// 3. Look for errors, report them, and make sure to clear the error RAM.
     /// @note This is a decent place to put a breakpoint when debugging.
-    if (RTC->BKP2R != 0) {
+    if (TAMP->BKP2R != 0) {
         vlFILE*     fp;
         ot_uni16    resets;
         ot_uni16    faults;
         ot_uni32    error;
 
-        error.ulong     = RTC->BKP2R;
-        RTC->BKP2R      = 0;
+        error.ulong     = TAMP->BKP2R;
+        TAMP->BKP2R     = 0;
         fp              = ISF_open_su(ISF_ID(hardware_fault_status));
         resets.ushort   = vl_read(fp, 0);
         faults.ushort   = vl_read(fp, 2);
@@ -1119,7 +1129,7 @@ void platform_init_OT() {
         union {
             ot_u32 word[3];
             ot_u16 halfw[6];
-        } generated_id;
+        } chip_id;
         ot_u16* hwid;
         ot_int  i;
 
@@ -1129,9 +1139,8 @@ void platform_init_OT() {
         chip_id.word[0] = *((ot_u32*)(0x1FFF7598));     //Upper Lot number (ASCII)
         
         ///@todo compression of the ID.  There are many gaps in the ID
-        
         fpid    = ISF_open_su(ISF_ID(device_features));
-        hwid    = &generated_id.halfw[3];
+        hwid    = &chip_id.halfw[3];
         for (i=6; i!=0; i-=2) {
             vl_write(fpid, i, *hwid++);
         }
@@ -1169,7 +1178,7 @@ void platform_init_busclk() {
     // always on.
     // HSI @ 16MHz and 1.2V never require flash wait states or prefetch
     sub_osc_startup(300, RCC_CR_HSION);
-    sub_setclocks(SPEED_Standard);
+    sub_setclocks(SPEED_Std);
     FLASH->ACR = (FLASH_ACR_DCEN | FLASH_ACR_ICEN);
     
     // Disable all clocks that aren't HSI16, and disable all clock interrupts
@@ -1194,8 +1203,6 @@ void platform_init_busclk() {
 #   elif BOARD_FEATURE(FLANKSPEED)
         platform_flank_speed();
 
-#   else
-#       error "At least one of BOARD_FEATURE_STDSPEED, _FULLSPEED, or _FLANKSPEED must be ENABLED"
 #   endif
     
     RCC->CCIPR  = (0) \
@@ -1210,8 +1217,10 @@ void platform_init_busclk() {
                 | ((MCU_CONFIG(MULTISPEED)*2) << 4)         /* APB/HSI16 for USART3 */ \
                 | ((MCU_CONFIG(MULTISPEED)*2) << 2)         /* APB/HSI16 for USART2 */ \
                 | ((MCU_CONFIG(MULTISPEED)*2) << 0);        /* APB/HSI16 for USART1 */
-                
+
+#   if defined(RCC_CCIPR2_I2C4SEL)
     RCC->CCIPR2 = ((MCU_CONFIG(MULTISPEED)*2) << 0);        /* APB/HSI16 for I2C4 */
+#   endif
 
     /// X. Vector Table Relocation in Internal SRAM or FLASH.
 #   ifdef VECT_TAB_SRAM
@@ -1234,7 +1243,7 @@ void platform_init_periphclk() {
     ///@todo have a setting that looks at the backup domain to make sure the clocking
     ///      for it is not already what it should be.
     
-    PWR->CR1 |= PWR_CR_DBP;
+    PWR->CR1 |= PWR_CR1_DBP;
     //RCC->BDCR |= RCC_BDCR_RTCRST;
     
 #   if BOARD_FEATURE(LFXTAL)
@@ -1245,7 +1254,7 @@ void platform_init_periphclk() {
                     | (b00<<RCC_BDCR_LSEDRV_Pos) \
                     | RCC_BDCR_LSEON;
                 
-        while ((RCC->CSR & RCC_CSR_LSERDY) == 0);
+        while ((RCC->BDCR & RCC_BDCR_LSERDY) == 0);
     
         RCC->BDCR |= RCC_BDCR_LSCOEN | RCC_BDCR_RTCEN | RCC_BDCR_LSECSSON;   
 
@@ -1281,39 +1290,36 @@ void platform_init_interruptor() {
 /// strategy is to store I/O interrupts as the highest priority group.  The
 /// Kernel interrupts go in the next highest group.  Everything else is above.
 /// Apps/Builds can get quite specific about how to set up the groups.
-
-#   define _KERNEL_GROUP   b0000
 #   if (__CM4_NVIC_GROUPS == 1)
-#       define _HIPRI_BASE      b0000
-#       define _LOPRI_BASE      b0000
+#       define _HIPRI_BASE      b0100
+#       define _LOPRI_BASE      b1000
 #       define _SUB_LIMIT       b1111
-#       define _SVC_GROUP       b0000
-#       define _KERNEL_GROUP    b0100
-#       define _HIPRI_GROUP     b1000
-#       define _LOPRI_GROUP     b1100
 #   elif (__CM4_NVIC_GROUPS == 2)
-#       define _HIPRI_BASE  b1000
-#       define _LOPRI_BASE  b1000
-#       define _SUB_LIMIT   b0111
+#       define _HIPRI_BASE      b1000
+#       define _LOPRI_BASE      b1000
+#       define _SUB_LIMIT       b0111
 #   elif (__CM4_NVIC_GROUPS == 4)
-#       define _HIPRI_BASE  b0100
-#       define _LOPRI_BASE  b1100
-#       define _SUB_LIMIT   b0011
+#       define _HIPRI_BASE      b0100
+#       define _LOPRI_BASE      b1100
+#       define _SUB_LIMIT       b0011
 #   elif (__CM4_NVIC_GROUPS == 8)
-#       define _HIPRI_BASE  b0010
-#       define _LOPRI_BASE  b1110
-#       define _SUB_LIMIT   b0001
+#       define _HIPRI_BASE      b0010
+#       define _LOPRI_BASE      b1110
+#       define _SUB_LIMIT       b0001
 #   endif
-
-
+#   define _KERNEL_GROUP        b0000
+#   define _OT_SUB1             (b0001)
+#   define _OT_SUB2             ((_OT_SUB1+1)*(_SUB_LIMIT >= (_OT_SUB1+1)))
+#   define _OT_SUB3             ((_OT_SUB2+1)*(_SUB_LIMIT >= (_OT_SUB2+1)))
 
     /// 1. Set the EXTI channels using the board function.  Different boards
     ///    are connected differently, so this function must be implemented in
     ///    the board support header.
     BOARD_EXTI_STARTUP();
 
-    /// 2. Cortex M0 doesn't have NVIC priority grouping, so nothing to do here
-    //NVIC_SetPriorityGrouping(_GROUP_PRIORITY);
+    /// 2. Set main NVIC parameters: Vector Table @ 0x08000000 (offset = 0),
+    ///    _GROUP_PRIORITY is a constant set above in this C file
+    NVIC_SetPriorityGrouping(_GROUP_PRIORITY);
 
     /// 3. Setup Cortex-M system interrupts
     /// <LI> Fault IRQs (Mem management, bus-fault, usage-fault) can be enabled
@@ -1323,113 +1329,76 @@ void platform_init_interruptor() {
     /// <LI> Debug-Monitor is not used </LI>
     /// <LI> Systick is not used and it is inadvisable to use because it is a
     ///         power hog and because it is mostly useless with OpenTag. </LI>
-//  SCB->SHP[_SHP_IDX(MemoryManagement_IRQn)  = (b00 << 4);
-//  SCB->SHP[_SHP_IDX(BusFault_IRQn)]         = (b00 << 4);
-//  SCB->SHP[_SHP_IDX(UsageFault_IRQn)]       = (b00 << 4);
-//  SCB->SHP[_SHP_IDX(SVC_IRQn)]            = (b00 << 4);
-//  SCB->SHP[_SHP_IDX(PendSV_IRQn)]         = (b11 << 4);
-//  SCB->SHP[_SHP_IDX(DebugMonitor_IRQn)]     = (b00 << 4);
-    
-    NVIC_SetPriority(SVC_IRQn, _SVC_GROUP);
-    NVIC_SetPriority(PendSV_IRQn, _LOPRI_GROUP);
+//  SCB->SHP[((uint32_t)(MemoryManagement_IRQn)&0xF)-4] = (b0000 << 4);
+//  SCB->SHP[((uint32_t)(BusFault_IRQn)&0xF)-4]         = (b0000 << 4);
+//  SCB->SHP[((uint32_t)(UsageFault_IRQn)&0xF)-4]       = (b0000 << 4);
+    SCB->SHP[((uint32_t)(SVCall_IRQn)&0xF)-4]              = (b0000 << 4);
+    SCB->SHP[((uint32_t)(PendSV_IRQn)&0xF)-4]           = (b1111 << 4);
+//  SCB->SHP[((uint32_t)(DebugMonitor_IRQn)&0xF)-4]     = (b0000 << 4);
     
     // Systick needs SCB and NVIC to be enabled in order to run.
 #   if defined(SYSTICK_IS_HIGHLY_DISCOURAGED)
-    NVIC_SetPriority(SysTick_IRQn, _LOPRI_GROUP);
-    NVIC_EnableIRQ(SysTick_IRQn);
+    SCB->SHP[((uint32_t)(SysTick_IRQn)&0xF)-4]  = (_LOPRI_BASE << 4);
+    NVIC->IP[(uint32_t)(OT_SYSTICK_IRQn)]       = ((_KERNEL_GROUP+_OT_SUB2) << 4);
+    NVIC->ISER[((uint32_t)(OT_SYSTICK_IRQn)>>5)]= (1 << ((uint32_t)(OT_SYSTICK_IRQn) & 0x1F));
 #   endif
-
+    
     /// 4. Setup NVIC for Kernel Interrupts.  Kernel interrupts cannot interrupt
     /// each other, but there are subpriorities.  I/O interrupts should be set
     /// in their individual I/O driver initializers.
     ///    <LI> NMI will interrupt anything.  It is used for panics.    </LI>
-    ///    <LI> SVC is priority 0.  It runs the scheduler. </LI>
-    ///    <LI> LPTIM is priority 1.  It runs the tasker.  </LI>
-    ///    <LI> If Mode 2 is enabled, RTC-Wakeup is the MAC-insertion timer and
-    ///         is priority 0-1.  If not, RTC-Wakeup is low-priority and it is
-    ///         only used for the interval timer (watchdog/systick) </LI>
-
-    // From Reference Manual RM0394 Rev 4, page 328:
-    // Line 16: PVD
-    // Line 17: USB FS Wakeup Event
-    // Line 18: RTC Alarms
-    // Line 19: RTC-Tamper/Timestamp/CSS_LSE
-    // Line 20: RTC-Wakeup
-    // Line 21: COMP1-out
-    // Line 22: COMP2-out
-    // Line 23: I2C1-wakeup
-    // Line 24: I2C2-wakeup
-    // Line 25: I2C3-wakeup
-    // Line 26: USART1-wakeup
-    // Line 27: USART2-wakeup
-    // Line 28: USART3-wakeup
-    // Line 29: UART4-wakeup
-    // Line 31: LPUART1-wakeup
-    // Line 32: LPTIM1
-    // Line 33: LPTIM2
-    // Line 34: SWPMI1
-    // Line 35: PVM1
-    // Line 37: PVM3
-    // Line 38: PVM4
-    // Line 39: LCD wakeup
-    // Line 40: I2C4-wakeup
-
-    EXTI->PR    = (1<<20) | (1<<32);
-    EXTI->IMR  |= (1<<20) | (1<<32);
-    EXTI->RTSR |= (1<<20) | (1<<32);
-
-#   if OT_FEATURE(M2)
-        NVIC_SetPriority(RTC_IRQn, _KERNEL_GROUP);
-        NVIC_EnableIRQ(RTC_IRQn);
-#   else
-        NVIC_SetPriority(RTC_IRQn, _LOPRI_GROUP);
-        NVIC_EnableIRQ(RTC_IRQn);
-#   endif
-
-    NVIC_SetPriority(LPTIM1_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(LPTIM1_IRQn);
-
-
+    ///    <LI> SVC is priority 0-0.  It runs the scheduler. </LI>
+    ///    <LI> GPTIM (via LPTIM1) is priority 0-1.  It runs the tasker.  </LI>
+    ///    <LI> RTC-Wakeup is priority 0-0, for critical interval timing tasks </LI>
+    EXTI->PR1   = (1<<20);
+    EXTI->PR2   = (1<<(32-32));
+    EXTI->IMR1 |= (1<<20);
+    EXTI->IMR2 |= (1<<(32-32));
+    EXTI->RTSR1|= (1<<20);
+    EXTI->RTSR2|= (1<<(32-32));
+    NVIC->IP[(uint32_t)(LPTIM1_IRQn)]           = ((_KERNEL_GROUP+_OT_SUB1) << 4);
+    NVIC->ISER[((uint32_t)(LPTIM1_IRQn)>>5)]    = (1 << ((uint32_t)(LPTIM1_IRQn) & 0x1F));
+    NVIC->IP[(uint32_t)(RTC_WKUP_IRQn)]         = (_KERNEL_GROUP << 4);
+    NVIC->ISER[((uint32_t)(RTC_WKUP_IRQn)>>5)]  = (1 << ((uint32_t)(RTC_WKUP_IRQn) & 0x1F));
+    
     /// 5. Setup other external interrupts
-    /// @note Make sure board files use the __USE_EXTI(N) definitions
-#   if defined(__USE_EXTI0)
-    NVIC_SetPriority(EXTI0_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI0_IRQn);
+#   ifdef __USE_EXTI0
+    NVIC->IP[(uint32_t)(EXTI0_IRQn)]        = (PLATFORM_NVIC_IO_GROUP << 4);
+    NVIC->ISER[((uint32_t)(EXTI0_IRQn)>>5)] = (1 << ((uint32_t)(EXTI0_IRQn) & 0x1F));
 #   endif
-#   if defined(__USE_EXTI1)
-    NVIC_SetPriority(EXTI1_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI1_IRQn);
+#   ifdef __USE_EXTI1
+    NVIC->IP[(uint32_t)(EXTI1_IRQn)]        = (PLATFORM_NVIC_IO_GROUP << 4);
+    NVIC->ISER[((uint32_t)(EXTI1_IRQn)>>5)] = (1 << ((uint32_t)(EXTI1_IRQn) & 0x1F));
 #   endif
-#   if defined(__USE_EXTI2)
-    NVIC_SetPriority(EXTI2_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI2_IRQn);
+#   ifdef __USE_EXTI2
+    NVIC->IP[(uint32_t)(EXTI2_IRQn)]        = (PLATFORM_NVIC_IO_GROUP << 4);
+    NVIC->ISER[((uint32_t)(EXTI2_IRQn)>>5)] = (1 << ((uint32_t)(EXTI2_IRQn) & 0x1F));
 #   endif
-#   if defined(__USE_EXTI3)
-    NVIC_SetPriority(EXTI3_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI3_IRQn);
+#   ifdef __USE_EXTI3
+    NVIC->IP[(uint32_t)(EXTI3_IRQn)]        = (PLATFORM_NVIC_IO_GROUP << 4);
+    NVIC->ISER[((uint32_t)(EXTI3_IRQn)>>5)] = (1 << ((uint32_t)(EXTI3_IRQn) & 0x1F));
 #   endif
-#   if defined(__USE_EXTI4)
-    NVIC_SetPriority(EXTI4_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI4_IRQn);
+#   ifdef __USE_EXTI4
+    NVIC->IP[(uint32_t)(EXTI4_IRQn)]        = (PLATFORM_NVIC_IO_GROUP << 4);
+    NVIC->ISER[((uint32_t)(EXTI4_IRQn)>>5)] = (1 << ((uint32_t)(EXTI4_IRQn) & 0x1F));
 #   endif
-#   if defined(__USE_EXTI5) || defined(__USE_EXTI6) || defined(__USE_EXTI7) || defined(__USE_EXTI8) || defined(__USE_EXTI9)
-    NVIC_SetPriority(EXTI9_5_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI9_5_IRQn);
+#   if (  defined(__USE_EXTI5) || defined(__USE_EXTI6) || defined(__USE_EXTI7) \
+       || defined(__USE_EXTI8) || defined(__USE_EXTI9) )
+    NVIC->IP[(uint32_t)(EXTI9_5_IRQn)]        = (PLATFORM_NVIC_IO_GROUP << 4);
+    NVIC->ISER[((uint32_t)(EXTI9_5_IRQn)>>5)] = (1 << ((uint32_t)(EXTI9_5_IRQn) & 0x1F));
 #   endif
-#   if( defined(__USE_EXTI10) || defined(__USE_EXTI11) || defined(__USE_EXTI12) \
-    ||  defined(__USE_EXTI13) || defined(__USE_EXTI14) || defined(__USE_EXTI15) )
-    NVIC_SetPriority(EXTI15_10_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI15_10_IRQn);
+#   if (  defined(__USE_EXTI15) || defined(__USE_EXTI14) || defined(__USE_EXTI13) \
+       || defined(__USE_EXTI12) || defined(__USE_EXTI11) || defined(__USE_EXTI10) )
+    NVIC->IP[(uint32_t)(EXTI15_10_IRQn)]        = (PLATFORM_NVIC_IO_GROUP << 4);
+    NVIC->ISER[((uint32_t)(EXTI15_10_IRQn)>>5)] = (1 << ((uint32_t)(EXTI15_10_IRQn) & 0x1F));
 #   endif
-
 
     /// 6. Setup ADC interrupt.  This is needed only for ADC-enabled builds,
-    ///    but ADC is frequently used, so it is enabled by default
-//#   if defined(__USE_ADC1)
-    NVIC_SetPriority(ADC1_2_IRQHandler, _HIPRI_GROUP);
-    NVIC_EnableIRQ(ADC1_2_IRQn);
-//#   endif
-
+    ///    but ADC is frequently used, so it is enabled by default.
+    ///    The priority is "High Priority", although this is relative to Task Group
+    ///    (not Kernel Group).
+    NVIC->IP[(uint32_t)(ADC1_2_IRQn)]         = (_HIPRI_BASE << 4);
+    NVIC->ISER[((uint32_t)(ADC1_2_IRQn)>>5)]  = (1 << ((uint32_t)(ADC1_2_IRQn) & 0x1F));
 }
 #endif
 

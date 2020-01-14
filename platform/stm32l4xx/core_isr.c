@@ -182,7 +182,8 @@ void PVD_PVM_IRQHandler(void) {
     // clear PVD (16), and PVM1-4 (35,36,37,38)
     // Use PVMO flags in PWR->SR2 for PVM detection
     // Use PVDO flag in PWR->SR2 for PVD detection
-    EXTI->PR = (1<<16) | (1<<35)|(1<<36)|(1<<37)|(1<<38);
+    EXTI->PR1 = (1<<16);
+    EXTI->PR2 = (1<<(35-32))|(1<<(36-32))|(1<<(37-32))|(1<<(38-32));
     
     __ISR_WAKEUP_HOOK();
     platform_isr_pvdpvm();
@@ -199,8 +200,8 @@ void TAMP_STAMP_IRQHandler(void) {
     ot_u32 exti_pr;
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    exti_pr     = EXTI->PR;
-    EXTI->PR    = (1<<19);
+    exti_pr     = EXTI->PR1;
+    EXTI->PR1    = (1<<19);
 
 #   if (_CSSLSE)
 #       if (_TAMPER) 
@@ -227,7 +228,7 @@ void TAMP_STAMP_IRQHandler(void) {
 void RTC_WKUP_IRQHandler(void) {
     ot_u32 exti_pr;
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<20);
+    EXTI->PR1 = (1<<20);
     __ISR_WAKEUP_HOOK();
     
     ///@todo put this in entry/wakeup hook?
@@ -246,7 +247,7 @@ void RTC_WKUP_IRQHandler(void) {
 void RTC_Alarm_IRQHandler(void) {
     ot_u32 exti_pr;
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<18);
+    EXTI->PR1 = (1<<18);
     __ISR_WAKEUP_HOOK();
     
     ///@todo put this in entry/wakeup hook?
@@ -375,14 +376,14 @@ void RCC_IRQHandler(void) {
 #endif
 
 #define __EXTI_MACRO_LOW(NUM);  \
-    EXTI->PR = (1<<NUM);  \
+    EXTI->PR1 = (1<<NUM);  \
     __RADIO_EXTI(NUM); \
     __MPIPE_EXTI(NUM); \
     APPLICATION_EXTI##NUM##_ISR();
     
 #define __EXTI_MACRO(NUM);   \
-    if (EXTI->PR & (1<<NUM)) { \
-        EXTI->PR = (1<<NUM);  \
+    if (EXTI->PR1 & (1<<NUM)) { \
+        EXTI->PR1 = (1<<NUM);  \
         __RADIO_EXTI(NUM); \
         __MPIPE_EXTI(NUM); \
         APPLICATION_EXTI##NUM##_ISR(); \
@@ -754,7 +755,7 @@ void TIM3_IRQHandler(void) {
 void LPTIM1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     ///@todo Not certain this PR clear is necessary or good
-    //EXTI->PR = (1<<32);         
+    //EXTI->PR2 = (1<<(32-32));
     __ISR_KTIM_WAKEUP_HOOK();
     platform_isr_lptim1();
     __ISR_EXIT_HOOK();
@@ -767,7 +768,7 @@ void LPTIM1_IRQHandler(void) {
 void LPTIM2_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     ///@todo Not certain this PR clear is necessary or good
-    //EXTI->PR = (1<<33);         
+    //EXTI->PR2 = (1<<(33-32));
     __ISR_KTIM_WAKEUP_HOOK();
     platform_isr_lptim2();
     __ISR_EXIT_HOOK();
@@ -818,7 +819,7 @@ void TIM7_IRQHandler(void) {
 #if defined(__USE_I2C1EV) || (defined(__ISR_I2C1EV) && !defined(__N_ISR_I2C1EV))
 void I2C1_EV_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<23);
+    EXTI->PR1 = (1<<23);
     __ISR_WAKEUP_HOOK();
     platform_isr_i2c1ev();
     __ISR_EXIT_HOOK();
@@ -837,7 +838,7 @@ void I2C1_ER_IRQHandler(void) {
 #if defined(__USE_I2C2EV) || (defined(__ISR_I2C2EV) && !defined(__N_ISR_I2C2EV))
 void I2C2_EV_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<24);
+    EXTI->PR1 = (1<<24);
     __ISR_WAKEUP_HOOK();
     platform_isr_i2c2ev();
     __ISR_EXIT_HOOK();
@@ -856,7 +857,7 @@ void I2C2_ER_IRQHandler(void) {
 #if defined(__USE_I2C3EV) || (defined(__ISR_I2C3EV) && !defined(__N_ISR_I2C3EV))
 void I2C3_EV_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<25);
+    EXTI->PR1 = (1<<25);
     __ISR_WAKEUP_HOOK();
     platform_isr_i2c3ev();
     __ISR_EXIT_HOOK();
@@ -875,7 +876,7 @@ void I2C3_ER_IRQHandler(void) {
 #if defined(__USE_I2C4EV) || (defined(__ISR_I2C4EV) && !defined(__N_ISR_I2C4EV))
 void I2C4_EV_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<40);
+    EXTI->PR2 = (1<<(40-32));
     __ISR_WAKEUP_HOOK();
     platform_isr_i2c4ev();
     __ISR_EXIT_HOOK();
@@ -920,7 +921,7 @@ void SPI3_IRQHandler(void) {
 #if defined(__ISR_USART1) && !defined(__N_ISR_USART1)
 void USART1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<26);
+    EXTI->PR1 = (1<<26);
     __ISR_WAKEUP_HOOK();
     platform_isr_usart1();
     __ISR_EXIT_HOOK();
@@ -929,7 +930,7 @@ void USART1_IRQHandler(void) {
 #if defined(__ISR_USART2) && !defined(__N_ISR_USART2)
 void USART2_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<27);
+    EXTI->PR1 = (1<<27);
     __ISR_WAKEUP_HOOK();
     platform_isr_usart2();
     __ISR_EXIT_HOOK();
@@ -938,7 +939,7 @@ void USART2_IRQHandler(void) {
 #if defined(__ISR_USART3) && !defined(__N_ISR_USART3)
 void USART3_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<28);
+    EXTI->PR1 = (1<<28);
     __ISR_WAKEUP_HOOK();
     platform_isr_usart3();
     __ISR_EXIT_HOOK();
@@ -947,7 +948,7 @@ void USART3_IRQHandler(void) {
 #if defined(__ISR_UART4) && !defined(__N_ISR_UART4)
 void UART4_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<29);
+    EXTI->PR1 = (1<<29);
     __ISR_WAKEUP_HOOK();
     platform_isr_uart4();
     __ISR_EXIT_HOOK();
@@ -971,8 +972,8 @@ void COMP_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
     {   ot_u32 exti_pr;
-        exti_pr     = EXTI->PR;
-        EXTI->PR    = (1<<21) | (1<<22);
+        exti_pr     = EXTI->PR1;
+        EXTI->PR1    = (1<<21) | (1<<22);
         if (exti_pr & (1<<21))  platform_isr_comp1();
         if (exti_pr & (1<<22))  platform_isr_comp2();
     }
@@ -985,7 +986,7 @@ void COMP_IRQHandler(void) {
 #if defined(__ISR_LPUART1) && !defined(__N_ISR_LPUART1)
 void RNG_LPUART1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<31);
+    EXTI->PR1 = (1<<31);
     __ISR_WAKEUP_HOOK();
     platform_isr_lpuart1();
     __ISR_EXIT_HOOK();
@@ -997,7 +998,7 @@ void RNG_LPUART1_IRQHandler(void) {
 #if defined(__ISR_USB) && !defined(__N_ISR_USB)
 void USBFS_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    EXTI->PR = (1<<17);
+    EXTI->PR1 = (1<<17);
     __ISR_WAKEUP_HOOK();
     platform_isr_usbfs();
     __ISR_EXIT_HOOK();

@@ -195,11 +195,11 @@
 
 /** MPIPE Peripheral Mapping  <BR>
   * ========================================================================<BR>
-  * The STM32L0 can support the following channels for UART DMA:
-  * UART1 TX:   Ch2 or Ch4
-  * UART1 RX:   Ch3 or Ch5
-  * UART2 TX:   Ch4 or Ch7
-  * UART2 RX:   Ch5 or Ch6
+  * The STM32L4 can support the following channels for UART DMA:
+  * UART1 TX:   1.Ch4
+  * UART1 RX:   1.Ch5
+  * UART2 TX:   1.Ch7
+  * UART2 RX:   1.Ch6
   *
   * It is recommended to use Ch4 & Ch5, because most STM32L0 devices do not
   * have I2C2 (which shares these channels), because SPI1 needs Ch2 & Ch3, and
@@ -264,15 +264,15 @@
 #   endif
 #   define _UART_IRQ        USART2_IRQn
 #   define _DMARX_IFG       (0xF << (4*(_DMARX_CHAN-1)))
-#   define _DMATX_IFG       (0xF << (4*(_DMATX_IRQ-1)))
-#   define _DMA_CSEL_MASK   ((0xF << (4*(_DMARX_CHAN-1))) | (0xF << (4*(_DMATX_IRQ-1))))
-#   define _DMA_CSEL        ((0x4 << (4*(_DMARX_CHAN-1))) | (0x4 << (4*(_DMATX_IRQ-1))))
+#   define _DMATX_IFG       (0xF << (4*(_DMATX_CHAN-1)))
+#   define _DMA_CSEL_MASK   ((0xF << (4*(_DMARX_CHAN-1))) | (0xF << (4*(_DMATX_CHAN-1))))
+#   define _DMA_CSEL        ((0x4 << (4*(_DMARX_CHAN-1))) | (0x4 << (4*(_DMATX_CHAN-1))))
 #   define _DMARX_CSEL      (0x4 << (4*(_DMARX_CHAN-1)))
-#   define _DMATX_CSEL      (0x4 << (4*(_DMATX_IRQ-1)))
+#   define _DMATX_CSEL      (0x4 << (4*(_DMATX_CHAN-1)))
 #   define __UART_ISR       platform_isr_usart2
 #   define __UART_CLKHZ()   platform_get_clockhz(1)
-#   define __UART_CLKON()   (RCC->APB1ENR |= RCC_APB1ENR_USART2EN)
-#   define __UART_CLKOFF()  (RCC->APB1ENR &= ~RCC_APB1ENR_USART2EN)
+#   define __UART_CLKON()   (RCC->APB1ENR1 |= RCC_APB1ENR1_USART2EN)
+#   define __UART_CLKOFF()  (RCC->APB1ENR1 &= ~RCC_APB1ENR1_USART2EN)
 
 //#elif (MPIPE_UART_ID == 3)
 //#elif (MPIPE_UART_ID == 4)
@@ -489,7 +489,7 @@ void sub_mpipe_close() {
 void mpipe_rxsync_isr(void) {
 #   if (BOARD_FEATURE(MPIPE_BREAK))
     // Falling edge ISR on RX line, which can wakeup from stop
-    EXTI->IMR  &= ~MPIPE_UART_RXPIN;
+    EXTI->IMR1  &= ~MPIPE_UART_RXPIN;
 #   endif
 
     // Open UART for character-RX
@@ -623,8 +623,8 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
     NVIC_EnableIRQ(_UART_IRQ);
     
 #   if (BOARD_FEATURE(MPIPE_BREAK))
-        EXTI->PR    = MPIPE_UART_RXPIN;
-        EXTI->RTSR |= MPIPE_UART_RXPIN;
+        EXTI->PR1   = MPIPE_UART_RXPIN;
+        EXTI->RTSR1|= MPIPE_UART_RXPIN;
 #   endif
 
     /// Configure MPipe Queues
@@ -818,7 +818,7 @@ void mpipedrv_rx(ot_bool blocking, mpipe_priority data_priority) {
 #if (BOARD_FEATURE(MPIPE_BREAK))
     /// Wait for Line Sync.  Sync interrupt will call sub_rx()
     sub_mpipe_close();
-    EXTI->IMR  |= MPIPE_UART_RXPIN;
+    EXTI->IMR1 |= MPIPE_UART_RXPIN;
 #else
     /// Wait for character Sync.
     mpipe_rxsync_isr();

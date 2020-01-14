@@ -200,7 +200,7 @@ void systim_init(void* tim_init) {
     
     /// 4. Clocker initialization.  OpenTag doesn't really care about Clocker
     ///    so we also need a way to configure if it should be enabled or not.
-    RCC->APB1ENR   |= (RCC_APB1ENR_TIM6EN); 
+    RCC->APB1ENR1  |= (RCC_APB1ENR1_TIM6EN);
     TIM6->CR1       = 0;
     TIM6->CR2       = (b001 << 4);
     TIM6->DIER      = 0;
@@ -242,7 +242,7 @@ void systim_disable() {
 void systim_pend() {
     systim.stamp1 = __read_lptim_cnt();
     __write_lptim_cmp(systim.stamp1);
-    EXTI->SWIER = (1<<32);
+    EXTI->SWIER2 = (1<<(32-32));
 }
 
 void systim_flush() {
@@ -414,7 +414,7 @@ void systim_stop_ticker() {
 void systim_set_insertion(ot_u16 value) {
     if (systim.opt & SYSTIM_INSERTION_ON) {
         if (value == 0) {
-            EXTI->SWIER = (1<<20);
+            EXTI->SWIER1 = (1<<20);
         }
         else {
             sub_set_wkuptim(value);
