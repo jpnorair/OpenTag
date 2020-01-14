@@ -74,7 +74,7 @@ ot_bool logger_header(ot_u8 id_subcode, ot_int payload_length) {
 
 
 #ifndef EXTF_logger
-void logger(ot_u8 subcode, ot_int length, ot_u8* data) {
+void logger(ot_u8 subcode, ot_int length, const ot_u8* data) {
 /// Log raw data that is able to fit in the MPipe output queue.
 
     if (logger_header(subcode, length)) {

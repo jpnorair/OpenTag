@@ -33,8 +33,10 @@
 #if (OT_FEATURE(SERVER) && OT_FEATURE(M2))
 
 #include <m2/network.h>
+
 #include <m2/transport.h>
 #include <m2/dll.h>
+#include <m2/radio.h>
 #include <m2/tmpl.h>
 
 #include <otlib/auth.h>

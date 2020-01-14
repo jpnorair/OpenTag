@@ -376,13 +376,13 @@ OT_WEAK void session_print() {
     m2session* test;
 
     i   = (ot_int)((ot_u8*)&session.heap[_END] - (ot_u8*)session.top);
-    printf("Number of Sessions: %lu\n", i/sizeof(m2session));
+    printf("Number of Sessions: %u\n", i/sizeof(m2session));
 
     if (i > 0) {
         printf("===  SCHED CHAN N.ST D.ID SNET EXTR FLAG\n");
         test = session.top;
         do {
-            printf("%02lu: 0x%04X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+            printf("%02u: 0x%04X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
                 (test - session.top),
                 test->counter,
                 test->channel,
