@@ -74,7 +74,7 @@ void logger_direct();
 /** @brief  Format and log a generic block of data
   * @param  subcode (ot_u8) Type of data that's being logged
   * @param  length  (ot_int) length in bytes of the supplied datastream
-  * @param  data    (ot_u8*) the arbitrary datastream
+  * @param  data    (const ot_u8*) the arbitrary datastream
   * @retval ot_u16  0 on failure, non-zero on non-failure
   * @ingroup Logger
   *
@@ -84,7 +84,7 @@ void logger_direct();
   * 0x01 is for response logging.  You can use any other subcode, although there 
   * might be some standards that emerge.
   */
-void logger(ot_u8 subcode, ot_int length, ot_u8* data);
+void logger(ot_u8 subcode, ot_int length, const ot_u8* data);
 #define logger_response(LENGTH, DATA)    logger(0x01, LENGTH, DATA)
 
 
