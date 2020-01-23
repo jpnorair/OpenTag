@@ -55,6 +55,7 @@ void SVC_Handler(void) {
     sys_event_manager();
 
 #if 0 //(OT_PARAM_SYSTHREADS != 0)
+    ///@todo this impl is from M0+, migrate the M3 version into this code
     ot_u8* task_lr;
     register ot_u32* stack;
 

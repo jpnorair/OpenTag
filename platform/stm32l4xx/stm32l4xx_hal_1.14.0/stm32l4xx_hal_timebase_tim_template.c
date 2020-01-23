@@ -49,6 +49,8 @@
   * @{
   */
 
+#ifdef HAL_TIM_MODULE_ENABLED
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -172,6 +174,8 @@ void TIM6_DAC_IRQHandler(void)
 {
   HAL_TIM_IRQHandler(&TimHandle);
 }
+
+#endif
 
 /**
   * @}

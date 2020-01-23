@@ -39,27 +39,21 @@
 #include <otplatform.h>
 #if defined(__STM32L4xx__) && (defined(__NOEEPROM__) || defined(__VLSRAM__))
 
-#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_1.14.0/stm32l4xx_hal.h"
 
 #include <otsys/veelite_core.h>
 #include <otlib/logger.h>
 #include <otlib/memcpy.h>
 
 
-///@todo define section for this in SRAM2
+#if (CC_SUPPORT != GCC)
+#   error "GCC required for this linker featureset."
+#endif
+#pragma DATA_SECTION(fsram, ".vl_sram")
 static ot_u32 fsram[FLASH_FS_ALLOC/4];
+
 #define FSRAM ((ot_u16*)fsram)
 
-
-
-
-/// NAND wrappers
-ot_u8 NAND_erase_page(ot_u16* page_addr) {
-    HAL_FLASH_Unlock();
-    FLASH_ErasePage((uint32_t)page_addr);
-    HAL_FLASH_Lock();
-    return 0;
-}
 
 
 
@@ -175,24 +169,37 @@ void vworm_print_table() {
 #ifndef EXTF_vworm_save
 ot_u8 vworm_save( ) {
 /// Save data from fsram into FLASH
-    uint32_t*   ram1    = &fsram[0];
-    uint32_t*   ram2    = &fsram[16];
-    uint32_t*   limit   = &fsram[ sizeof(fsram)/4 ];
-    uint32_t    flash1  = FLASH_FS_ADDR;
-    uint32_t    flash2  = FLASH_FS_ADDR+64;
+#   define FLASH_ROWSIZE 256
+    void*   cursor_ram;
+    void*   limit_ram;
+    uint32_t    cursor_fl;
+
+    HAL_StatusTypeDef status;
+
     
     HAL_FLASH_Unlock();
     
-    while (ram2 < limit) {
-        HAL_FLASHEx_ProgramParallelHalfPage(flash1, ram1, flash2, ram2);
-        ram1    = (ot_u32*)(128 + (ot_u8*)ram1);
-        ram2    = (ot_u32*)(128 + (ot_u8*)ram1);
-        flash1 += 128;
-        flash2 += 128;
+    // Erase FS that's currently backed-up in flash
+    for (cursor_fl=FLASH_FS_PAGE0; cursor_fl<(FLASH_FS_PAGE0+FLASH_FS_PAGES); cursor_fl++) {
+        FLASH_PageErase(cursor_fl, FLASH_BANK_1);
     }
-    
+
+    // Do fast program, which programs 256 bytes at a time (32 u64's)
+    for (cursor_ram=&fsram[0], limit_ram=((void*)fsram+sizeof(fsram)-FLASH_ROWSIZE), cursor_fl=FLASH_FS_ADDR;
+        (cursor_fl<(FLASH_FS_END-FLASH_ROWSIZE)) && (cursor_ram<limit_ram);
+        cursor_fl+=256, cursor_ram+=256) {
+
+        status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, cursor_fl, (uint32_t)cursor_ram);
+        if (status != HAL_OK) {
+            goto vworm_save_EXIT;
+        }
+    }
+    status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST_AND_LAST, cursor_fl, (uint32_t)cursor_ram);
+
+    ///@todo could log a hardware fault of some kind here, if status fails
+    vworm_save_EXIT:
     HAL_FLASH_Lock();
-    return 0;
+    return (status == HAL_OK) ? 0 : 255;
 }
 #endif
 

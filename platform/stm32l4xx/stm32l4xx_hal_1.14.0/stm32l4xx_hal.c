@@ -33,6 +33,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "stm32l4xx_hal_conf.h"
 #include "stm32l4xx_hal.h"
 
 /** @addtogroup STM32L4xx_HAL_Driver
@@ -149,8 +150,7 @@ uint32_t uwTickFreq = HAL_TICK_FREQ_DEFAULT;  /* 1KHz */
   *
   * @retval HAL status
   */
-HAL_StatusTypeDef HAL_Init(void)
-{
+HAL_StatusTypeDef HAL_Init(void) {
   HAL_StatusTypeDef  status = HAL_OK;
 
   /* Configure Flash prefetch, Instruction cache, Data cache */

@@ -271,7 +271,7 @@ void otapi_pause()      { platform_ot_pause(); }
 #   undef _DEFCLK_HZ
 #   undef _DEFCLK_MODE
 #   define _DEFCLK_HZ           _STDSPEED_HZ
-#   define _DEFCLK_MODE         SPEED_enum
+#   define _DEFCLK_MODE         SPEED_Std
 #   define _STDSPEED_ON()       ((RCC->CFGR & 3) == 1)
 #   define _STDSPEED_OFF()      ((RCC->CFGR & 3) != 1)
 #else
@@ -584,35 +584,46 @@ void sub_osc_startup(ot_u16 counter, ot_u32 osc_mask) {
 
 
 
+typedef struct {
+    ot_u32 cfgr_val;
+    ot_u32 ahb_hz;
+    ot_u32 apb1_hz;
+    ot_u32 apb2_hz;
+} setclocks_t;
 
 void sub_setclocks(SPEED_enum mode) {
 /// In interest of speed and size, you need to setup your clock dividers as
 /// constants in the board configuration file.    
-    static const ot_u32 params[3][4] = {
-        {   (_STD_AHBDIV_VAL|_STD_APB2DIV_VAL|_STD_APB1DIV_VAL|1),
-            (_STDSPEED_HZ >> _STD_AHBSHIFT),
-            ((_STDSPEED_HZ >> _STD_AHBSHIFT) >> _STD_APB1SHIFT),
-            ((_STDSPEED_HZ >> _STD_AHBSHIFT) >> _STD_APB2SHIFT)
+    static const setclocks_t params[3] = {
+        {   .cfgr_val = (_STD_AHBDIV_VAL|_STD_APB2DIV_VAL|_STD_APB1DIV_VAL|1),
+            .ahb_hz = (_STDSPEED_HZ >> _STD_AHBSHIFT),
+            .apb1_hz = ((_STDSPEED_HZ >> _STD_AHBSHIFT) >> _STD_APB1SHIFT),
+            .apb2_hz = ((_STDSPEED_HZ >> _STD_AHBSHIFT) >> _STD_APB2SHIFT)
         },
-        {   (_FULL_AHBDIV_VAL|_FULL_APB2DIV_VAL|_FULL_APB1DIV_VAL|_FULLOSC_CLOCKBIT),
-            (_FULLSPEED_HZ >> _FULL_AHBSHIFT),
-            ((_FULLSPEED_HZ >> _FULL_AHBSHIFT) >> _FULL_APB1SHIFT),
-            ((_FULLSPEED_HZ >> _FULL_AHBSHIFT) >> _FULL_APB2SHIFT)
+        {   .cfgr_val = (_FULL_AHBDIV_VAL|_FULL_APB2DIV_VAL|_FULL_APB1DIV_VAL|_FULLOSC_CLOCKBIT),
+            .ahb_hz = (_FULLSPEED_HZ >> _FULL_AHBSHIFT),
+            .apb1_hz = ((_FULLSPEED_HZ >> _FULL_AHBSHIFT) >> _FULL_APB1SHIFT),
+            .apb2_hz = ((_FULLSPEED_HZ >> _FULL_AHBSHIFT) >> _FULL_APB2SHIFT)
         },
-        {   (_FLANK_AHBDIV_VAL|_FLANK_APB2DIV_VAL|_FLANK_APB1DIV_VAL|_FLANKOSC_CLOCKBIT),
-            (_FLANKSPEED_HZ >> _FLANK_AHBSHIFT),
-            ((_FLANKSPEED_HZ >> _FLANK_AHBSHIFT) >> _FLANK_APB1SHIFT),
-            ((_FLANKSPEED_HZ >> _FLANK_AHBSHIFT) >> _FLANK_APB2SHIFT)
+        {   .cfgr_val = (_FLANK_AHBDIV_VAL|_FLANK_APB2DIV_VAL|_FLANK_APB1DIV_VAL|_FLANKOSC_CLOCKBIT),
+            .ahb_hz = (_FLANKSPEED_HZ >> _FLANK_AHBSHIFT),
+            .apb1_hz = ((_FLANKSPEED_HZ >> _FLANK_AHBSHIFT) >> _FLANK_APB1SHIFT),
+            .apb2_hz = ((_FLANKSPEED_HZ >> _FLANK_AHBSHIFT) >> _FLANK_APB2SHIFT)
         }
     };
     ot_u32 scratch;
-    const ot_u32* mode_params;
+    const setclocks_t* mode_params;
 
     // Configure clock source and dividers
     scratch     = RCC->CFGR;
     scratch    &= ~(RCC_CFGR_HPRE_Msk|RCC_CFGR_PPRE1_Msk|RCC_CFGR_PPRE2_Msk|RCC_CFGR_SW_Msk);
-    mode_params = params[mode];
-    scratch    |= mode_params[0];
+    mode_params = &params[mode];
+
+    platform_ext.clock_hz[0] = mode_params->ahb_hz;      //AHB
+    platform_ext.clock_hz[1] = mode_params->apb1_hz;      //APB1
+    platform_ext.clock_hz[2] = mode_params->apb2_hz;      //APB2
+
+    scratch    |= mode_params->cfgr_val;
     RCC->CFGR   = scratch;
     
     // Validate that configuration was successful, and bail-out to hwfault if not.
@@ -620,10 +631,6 @@ void sub_setclocks(SPEED_enum mode) {
     while ( (RCC->CFGR & (3<<2)) != scratch) {
         ///@todo have this fail into hardware fault
     }
-    
-    platform_ext.clock_hz[0] = mode_params[1];      //AHB
-    platform_ext.clock_hz[1] = mode_params[2];      //APB1
-    platform_ext.clock_hz[2] = mode_params[3];      //APB2
 }
 
 

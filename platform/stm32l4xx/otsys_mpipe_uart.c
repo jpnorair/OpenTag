@@ -166,30 +166,13 @@
 
 /** Platform Clock Configuration   <BR>
   * ========================================================================<BR>
-  * MPIPE typically requires the system clock to be set to a certain speed in
-  * order for the baud rate generation to work.  So, platforms that are using
-  * multispeed clocking will need some extra logic in the MPIPE driver to
-  * assure that the clock speed is on the right setting during MPIPE usage.
+  * On STM32L4, in a MULTISPEED configuration, UART will run using HSI16
+  * directly as the peripheral clock.  OpenTag for STM32L4 will setup the UART
+  * used for MPIPE in this manner during the initialization of bus clocks in
+  * the startup routine.
   */
-#if MCU_CONFIG(MULTISPEED)
-#   if BOARD_FEATURE(FULLSPEED)
-#       define __SYS_CLKON()    (uart.clkhandle = sysclock_request(SPEED_Full))
-#       define __SYS_CLKOFF()   sysclock_dismiss(uart.clkhandle)
-#   elif BOARD_FEATURE(FLANKSPEED)
-#       define __SYS_CLKON()    (uart.clkhandle = sysclock_request(SPEED_Flank))
-#       define __SYS_CLKOFF()   sysclock_dismiss(uart.clkhandle)
-#   else
-#       warning "MSI oscillator (Std Speed) is not usually precise enough to run UART."
-#       define __SYS_CLKON();
-#       define __SYS_CLKOFF();
-#   endif
-#else
-#   if ((BOARD_FEATURE(FULLSPEED) != ENABLED) && (BOARD_FEATURE(FLANKSPEED) != ENABLED))
-#       warning "MSI oscillator (Std Speed) is not usually precise enough to run UART."
-#   endif
-#       define __SYS_CLKON();
-#       define __SYS_CLKOFF();
-#endif
+#define __SYS_CLKON();
+#define __SYS_CLKOFF();
 
 
 
@@ -237,11 +220,15 @@
 #   define _DMARX_IFG       (0xF << (4*(_DMARX_CHAN-1)))
 #   define _DMATX_IFG       (0xF << (4*(_DMATX_CHAN-1)))
 #   define _DMA_CSEL_MASK   ((0xF << (4*(_DMARX_CHAN-1))) | (0xF << (4*(_DMATX_CHAN-1))))
-#   define _DMA_CSEL        ((0x3 << (4*(_DMARX_CHAN-1))) | (0x3 << (4*(_DMATX_CHAN-1))))
-#   define _DMARX_CSEL      (0x3 << (4*(_DMARX_CHAN-1)))
-#   define _DMATX_CSEL      (0x3 << (4*(_DMATX_CHAN-1)))
+#   define _DMA_CSEL        ((0x2 << (4*(_DMARX_CHAN-1))) | (0x2 << (4*(_DMATX_CHAN-1))))
+#   define _DMARX_CSEL      (0x2 << (4*(_DMARX_CHAN-1)))
+#   define _DMATX_CSEL      (0x2 << (4*(_DMATX_CHAN-1)))
 #   define __UART_ISR       platform_isr_usart1
-#   define __UART_CLKHZ()   platform_get_clockhz(2)
+#   if MCU_CONFIG(MULTISPEED)
+#       define __UART_CLKHZ()   16000000
+#   else
+#       define __UART_CLKHZ()   platform_get_clockhz(2)
+#   endif
 #   define __UART_CLKON()   (RCC->APB2ENR |= RCC_APB2ENR_USART1EN)
 #   define __UART_CLKOFF()  (RCC->APB2ENR &= ~RCC_APB2ENR_USART1EN)
 
@@ -266,11 +253,15 @@
 #   define _DMARX_IFG       (0xF << (4*(_DMARX_CHAN-1)))
 #   define _DMATX_IFG       (0xF << (4*(_DMATX_CHAN-1)))
 #   define _DMA_CSEL_MASK   ((0xF << (4*(_DMARX_CHAN-1))) | (0xF << (4*(_DMATX_CHAN-1))))
-#   define _DMA_CSEL        ((0x4 << (4*(_DMARX_CHAN-1))) | (0x4 << (4*(_DMATX_CHAN-1))))
-#   define _DMARX_CSEL      (0x4 << (4*(_DMARX_CHAN-1)))
-#   define _DMATX_CSEL      (0x4 << (4*(_DMATX_CHAN-1)))
+#   define _DMA_CSEL        ((0x2 << (4*(_DMARX_CHAN-1))) | (0x2 << (4*(_DMATX_CHAN-1))))
+#   define _DMARX_CSEL      (0x2 << (4*(_DMARX_CHAN-1)))
+#   define _DMATX_CSEL      (0x2 << (4*(_DMATX_CHAN-1)))
 #   define __UART_ISR       platform_isr_usart2
-#   define __UART_CLKHZ()   platform_get_clockhz(1)
+#   if MCU_CONFIG(MULTISPEED)
+#       define __UART_CLKHZ()   16000000
+#   else
+#       define __UART_CLKHZ()   platform_get_clockhz(1)
+#   endif
 #   define __UART_CLKON()   (RCC->APB1ENR1 |= RCC_APB1ENR1_USART2EN)
 #   define __UART_CLKOFF()  (RCC->APB1ENR1 &= ~RCC_APB1ENR1_USART2EN)
 
@@ -363,7 +354,7 @@
 /** Mpipe Driver Data  <BR>
   * ========================================================================<BR>
   */
-static const ot_u16 _miti_per_byte[ (MPIPE_500000bps + 1) ] = { \
+static const ot_u16 _miti_per_byte[MPIPE_speed_modes] = { \
     (1093),     // 9600
     (377),      // 28800
     (193),      // 57600
@@ -372,7 +363,7 @@ static const ot_u16 _miti_per_byte[ (MPIPE_500000bps + 1) ] = { \
     (21)        // 500000
 };
 
-static const ot_u32 _brtable[ (MPIPE_500000bps + 1) ] = { \
+static const ot_u32 _brtable[MPIPE_speed_modes] = { \
     MCU_PARAM(UART_9600BPS),
     MCU_PARAM(UART_28800BPS),
     MCU_PARAM(UART_57600BPS),

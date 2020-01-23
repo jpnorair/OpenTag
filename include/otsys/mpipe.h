@@ -64,7 +64,8 @@ typedef enum {
     MPIPE_57600bps  = 2,
     MPIPE_115200bps = 3,
     MPIPE_250000bps = 4,
-    MPIPE_500000bps = 5
+    MPIPE_500000bps = 5,
+    MPIPE_speed_modes
 } mpipe_speed;
 
 
@@ -73,7 +74,8 @@ typedef enum {
     MPIPE_Low       = 0,
     MPIPE_High      = 1,
     MPIPE_Broadcast = 2,
-    MPIPE_Ack       = 3
+    MPIPE_Ack       = 3,
+    MPIPE_priority_modes
 } mpipe_priority;
 
 //Definitions to support legacy code (deprecated)
@@ -92,7 +94,8 @@ typedef enum {
     MPIPE_Tx_Wait       = 5,
     MPIPE_Tx_Done       = 6,
     MPIPE_RxAck         = 7,
-    MPIPE_RxAckHeader   = 8
+    MPIPE_RxAckHeader   = 8,
+    MPIPE_state_modes
 } mpipe_state;
 
 

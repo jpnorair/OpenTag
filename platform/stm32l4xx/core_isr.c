@@ -224,7 +224,7 @@ void TAMP_STAMP_IRQHandler(void) {
 
 
 /// Open RTC_WKUP interrupt
-#if defined(__ISR_RTCWKUP) && !defined(__N_ISR_RTCWKUP)
+#if defined(__ISR_RTC_WKUP) && !defined(__N_ISR_RTC_WKUP)
 void RTC_WKUP_IRQHandler(void) {
     ot_u32 exti_pr;
     __ISR_ENTRY_HOOK();

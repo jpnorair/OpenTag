@@ -248,12 +248,12 @@
 #define __SPI_CS_OFF()      __SPI_CS_HIGH()
 
 #define __SPI_ENABLE()      do { \
-                                RADIO_SPI->CR2 = (SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN); \
+                                RADIO_SPI->CR2 = (SPI_CR2_FRXTH | (7<<SPI_CR2_DS_Pos) | SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN); \
                                 RADIO_SPI->SR  = 0; \
                                 RADIO_SPI->CR1 = (SPI_CR1_SSI | SPI_CR1_SSM | SPI_CR1_MSTR | _SPI_DIV | SPI_CR1_SPE); \
                             } while(0)
 
-#define __SPI_DISABLE()     (RADIO_SPI->CR1 = (SPI_CR1_SSI | SPI_CR1_SSM | SPI_CR1_MSTR | _SPI_DIV))
+#define __SPI_DISABLE()     (RADIO_SPI->CR1 = (/*SPI_CR1_SSI | SPI_CR1_SSM |*/ SPI_CR1_MSTR | _SPI_DIV))
 #define __SPI_GET(VAL)      VAL = RADIO_SPI->DR
 #define __SPI_PUT(VAL)      RADIO_SPI->DR = VAL
 
@@ -424,9 +424,9 @@ void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
 /// off the DMA for all other modules.
 
     platform_disable_interrupts();
+    __SPI_CS_ON();
     __SPI_CLKON();
     __SPI_ENABLE();
-    __SPI_CS_ON();
 
     /// Set-up DMA, and trigger it.  TX goes out from parameter.  RX goes into
     /// module buffer.  If doing a read, the garbage data getting duplexed onto
@@ -452,8 +452,8 @@ void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
     __DMA_DISABLE();
 
     /// Turn-off and disable SPI to save energy
-    __SPI_CS_OFF();
     __SPI_DISABLE();
+    __SPI_CS_OFF();
     __SPI_CLKOFF();
     BOARD_DMA_CLKOFF();
     BOARD_RFSPI_CLKOFF();
