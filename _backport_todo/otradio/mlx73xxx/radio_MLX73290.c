@@ -538,7 +538,7 @@ ot_int rm2_default_tgd(ot_u8 chan_id) {
 
 
 
-ot_int rm2_pkt_duration(ot_int pkt_bytes) {
+ot_int rm2_txpkt_duration(ot_int pkt_bytes) {
 /// Wrapper function for rm2_scale_codec that adds some slop overhead
 /// Slop = preamble bytes + sync bytes + ramp-up + ramp-down + padding
     pkt_bytes  += RADIO_PKT_OVERHEAD + 2;

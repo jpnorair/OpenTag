@@ -430,7 +430,7 @@ OT_WEAK void dll_response_applet(m2session* active) {
         ot_u8 substate = active->netstate & M2_NETSTATE_TMASK;
 
         if (substate == M2_NETSTATE_RESPTX) {
-            dll.comm.tc -= TI2CLK(rm2_pkt_duration(&txq));
+            dll.comm.tc -= TI2CLK(rm2_txpkt_duration(&txq));
         }
         else if (substate == M2_NETSTATE_REQRX) {
             sys.task_HSS.cursor     = 0;
@@ -1106,7 +1106,7 @@ void rfevt_txcsma(ot_int pcode, ot_int tcode) {
 #       endif
         {
             radio.evtdone   = &rfevt_ftx;
-            event_ticks     = (ot_uint)(rm2_pkt_duration(&txq) + 4);
+            event_ticks     = (ot_uint)(rm2_txpkt_duration(&txq) + 4);
         }
     }
 
@@ -1409,7 +1409,7 @@ CLK_UNIT sub_fcinit() {
     if (dll.comm.csmaca_params & M2_CSMACA_RAIND) {
         CLK_UNIT random;
         random  = TI2CLK(rand_prn16());
-        random %= (dll.comm.tc - TI2CLK(rm2_pkt_duration(&txq)) );
+        random %= (dll.comm.tc - TI2CLK(rm2_txpkt_duration(&txq)) );
         return random;
     }
 
@@ -1438,7 +1438,7 @@ CLK_UNIT sub_fcloop() {
 
     // AIND & RAIND Loop
     if (dll.comm.csmaca_params & 0x18) {    //RAIND, AIND
-        return TI2CLK(rm2_pkt_duration(&txq));
+        return TI2CLK(rm2_txpkt_duration(&txq));
     }
 
     // RIGD loop
@@ -1476,7 +1476,7 @@ CLK_UNIT sub_rigd_nextslot() {
 
 CLK_UNIT sub_aind_nextslot() {
 /// Works for RAIND or AIND next slot
-    return TI2CLK(rm2_pkt_duration(&txq));
+    return TI2CLK(rm2_txpkt_duration(&txq));
 }
 */
 

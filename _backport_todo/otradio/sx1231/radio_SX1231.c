@@ -810,7 +810,7 @@ rm2_default_tgd(ot_u8 chan_id)
 #define RADIO_PKT_OVERHEAD  (RADIO_RAMP_UP + RADIO_RAMP_DOWN + RADIO_PKT_PADDING)
 
 ot_int
-rm2_pkt_duration(ot_int pkt_bytes)
+rm2_txpkt_duration(ot_int pkt_bytes)
 {
 /// Wrapper function for rm2_scale_codec that adds some slop overhead
 /// Slop = preamble bytes + sync bytes + ramp-up + ramp-down + padding

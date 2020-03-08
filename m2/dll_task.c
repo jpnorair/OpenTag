@@ -437,7 +437,7 @@ OT_WEAK void dll_response_applet(m2session* active) {
         ot_u8 substate = active->netstate & M2_NETSTATE_TMASK;
 
         if (substate == M2_NETSTATE_RESPTX) {
-            dll.comm.tc -= rm2_pkt_duration(&txq);  //TI2CLK(rm2_pkt_duration(&txq));
+            dll.comm.tc -= rm2_txpkt_duration(&txq);  //TI2CLK(rm2_txpkt_duration(&txq));
         }
         else if (substate == M2_NETSTATE_REQRX) {
             sys.task_HSS.cursor     = 0;
@@ -1268,7 +1268,7 @@ OT_WEAK void dll_rfevt_txcsma(ot_int pcode, ot_int tcode) {
         ///@note tcode MUST have bit 0 set during BG mode and bit 1
         /// set during multiframe mode
         radio.evtdone   = (tcode & 1) ? &dll_rfevt_btx : &dll_rfevt_ftx;
-        event_ticks     = (tcode & 2) ? dll.counter+20 : (ot_uint)(rm2_pkt_duration(&txq));
+        event_ticks     = (tcode & 2) ? dll.counter+20 : (ot_uint)(rm2_txpkt_duration(&txq));
         //event_ticks = 300;
         radio_idle();
     }
@@ -1599,9 +1599,9 @@ CLK_UNIT sub_fcinit(void) {
     if (dll.comm.csmaca_params & M2_CSMACA_RAIND) {
         CLK_UNIT random;
         //random  = TI2CLK(rand_prn16());
-        //random %= (dll.comm.tc - TI2CLK(rm2_pkt_duration(&txq)) );
+        //random %= (dll.comm.tc - TI2CLK(rm2_txpkt_duration(&txq)) );
         random  = rand_prn16();
-        random %= dll.comm.tc - rm2_pkt_duration(&txq);
+        random %= dll.comm.tc - rm2_txpkt_duration(&txq);
         return random;
     }
 
@@ -1630,7 +1630,7 @@ CLK_UNIT sub_fcloop(void) {
 
     // AIND & RAIND Loop
     if (dll.comm.csmaca_params & 0x18) {    //RAIND, AIND
-        return rm2_pkt_duration(&txq); //TI2CLK(rm2_pkt_duration(&txq));
+        return rm2_txpkt_duration(&txq); //TI2CLK(rm2_txpkt_duration(&txq));
     }
 
     // RIGD loop
@@ -1668,7 +1668,7 @@ CLK_UNIT sub_rigd_nextslot() {
 
 CLK_UNIT sub_aind_nextslot() {
 /// Works for RAIND or AIND next slot
-    return TI2CLK(rm2_pkt_duration(&txq));
+    return TI2CLK(rm2_txpkt_duration(&txq));
 }
 */
 

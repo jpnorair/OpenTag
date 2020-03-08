@@ -278,7 +278,7 @@ ot_uint rm2_rxtimeout_floor(ot_u8 chan_id);
   * Basically identical to rm2_scale_codec(), except that some padding is added
   * to the output in order to account for FIFO lag of the radio.
   */
-ot_uint rm2_pkt_duration(ot_queue* pkt_q);
+ot_uint rm2_txpkt_duration(ot_queue* pkt_q);
 
 
 
@@ -286,9 +286,9 @@ ot_uint rm2_pkt_duration(ot_queue* pkt_q);
   * @param  None
   * @retval ot_uint     Duration of packet in ticks (units: 1/1024 seconds)
   * @ingroup Radio
-  * @sa rm2_pkt_duration()
+  * @sa rm2_txpkt_duration()
   *
-  * This is an optimized version of rm2_pkt_duration(), for background
+  * This is an optimized version of rm2_txpkt_duration(), for background
   * packets.
   */
 ot_uint rm2_bgpkt_duration();
@@ -299,7 +299,7 @@ ot_uint rm2_bgpkt_duration();
   * @param  pkt_bytes   (ot_u8) number of bytes (or bytes left) in the packet
   * @retval ot_uint     Duration of packet in ticks (units: 1/1024 seconds)
   * @ingroup Radio
-  * @sa rm2_pkt_duration()
+  * @sa rm2_txpkt_duration()
   *
   * An implicit (internal) parameter to this function is phymac[N].channel
   */

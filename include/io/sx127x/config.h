@@ -52,8 +52,8 @@
 #undef EXTF_rm2_default_tgd
 #define EXTF_rm2_default_tgd
 
-#undef EXTF_rm2_pkt_duration
-#define EXTF_rm2_pkt_duration
+#undef EXTF_rm2_txpkt_duration
+#define EXTF_rm2_txpkt_duration
 
 #undef EXTF_rm2_bgpkt_duration
 #define EXTF_rm2_bgpkt_duration

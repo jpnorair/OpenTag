@@ -222,7 +222,7 @@ void sx127x_spibus_wait();
   * equal to 25 bytes.  In practice, this is more than enough for OpenTag in 
   * its current implementation.
   */
-void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd);
+void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd);
 
 
 
@@ -626,6 +626,22 @@ ot_u8 sx127x_clip_txeirp(ot_u8 input_eirp);
   * is nice and smooth.
   */
 void sx127x_set_txpwr(ot_u8 pwr_code);
+
+
+
+
+/** Channel configurations <BR>
+  * ========================================================================<BR>
+  */
+void sx127x_configure_chan(ot_u8 region_code, ot_u8 chan_ordinal);
+
+ot_u8 sx127x_get_bw(ot_u8 region_code);
+
+ot_u16 sx127x_symbol_miti(ot_u8 region_code, ot_u8 rate_code);
+
+ot_u16 sx127x_block_miti(const void* phy_handle);
+
+ot_u16 sx127x_hscblock_ti(const void* phy_handle);
 
 
 

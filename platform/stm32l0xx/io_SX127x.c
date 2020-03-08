@@ -367,7 +367,7 @@ void sx127x_spibus_wait() {
 
 
 
-void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, ot_u8* cmd) {
+void sx127x_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
 ///@note BOARD_DMA_CLKON() must be defined in the board support header as a
 /// macro or inline function.  As the board may be using DMA for numerous
 /// peripherals, we cannot assume in this module if it is appropriate to turn-

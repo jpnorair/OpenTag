@@ -733,7 +733,7 @@ rm2_scale_codec(ot_int buf_bytes)
     return buf_bytes;
 }
 
-ot_int rm2_pkt_duration(ot_int pkt_bytes) {
+ot_int rm2_txpkt_duration(ot_int pkt_bytes) {
     return rm2_scale_codec(pkt_bytes + 8);
 }
 

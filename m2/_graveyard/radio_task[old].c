@@ -97,8 +97,8 @@ OT_WEAK ot_u16 rm2_rxtimeout_floor(ot_u8 chan_id) {
 
 
 
-#ifndef EXTF_rm2_pkt_duration
-OT_WEAK ot_uint rm2_pkt_duration(ot_queue* pkt_q) {
+#ifndef EXTF_rm2_txpkt_duration
+OT_WEAK ot_uint rm2_txpkt_duration(ot_queue* pkt_q) {
 /// Wrapper function for rm2_scale_codec that adds some slop overhead
 /// Slop = preamble bytes + sync bytes + ramp-up + ramp-down + padding
     ot_uint pkt_bytes;
@@ -119,7 +119,7 @@ OT_WEAK ot_uint rm2_pkt_duration(ot_queue* pkt_q) {
 #ifndef EXTF_rm2_bgpkt_duration
 OT_WEAK ot_uint rm2_bgpkt_duration() {
 /// Fast lookup for background packets.  If you care more about code size, 
-/// you can change this implementation to: rm2_pkt_duration(7).  That said,
+/// you can change this implementation to: rm2_txpkt_duration(7).  That said,
 /// it doesn't save you much.
     static const ot_u8 bg_ti[4] = 
     {  ((RF_PARAM_PKT_OVERHEAD*8*19) + (56*19)) / 1024,
