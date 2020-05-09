@@ -1,0 +1,5 @@
+core_tasking.c:46:6:SVC_Handler	8	static
+core_tasking.c:160:6:PendSV_Handler	0	static,ignoring_inline_asm
+core_tasking.c:196:6:platform_drop_context	0	static,ignoring_inline_asm
+core_tasking.c:223:6:platform_ot_preempt	0	static
+core_tasking.c:246:16:platform_ot_run	8	static,ignoring_inline_asm

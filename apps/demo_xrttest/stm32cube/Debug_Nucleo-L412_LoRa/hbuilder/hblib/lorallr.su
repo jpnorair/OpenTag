@@ -1,0 +1,6 @@
+lorallr.c:211:16:sub_calc_llrindex	0	static
+lorallr.c:252:17:sub_scale_llrmag	0	static
+lorallr.c:270:6:lorallr_init	16	static
+lorallr.c:293:6:lorallr_pushsample	16	static
+lorallr.c:339:8:lorallr_getblock	4	static
+lorallr.c:383:6:lorallr_popblock	8	static

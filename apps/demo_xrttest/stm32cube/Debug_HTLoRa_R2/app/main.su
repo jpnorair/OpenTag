@@ -1,0 +1,10 @@
+main.c:238:6:xrt_applet_fec	16	static
+main.c:162:9:alp_ext_proc	16	static
+main.c:255:6:xrt_applet_nofec	16	static
+main.c:290:6:xrt_invoke	8	static
+main.c:388:6:app_set_txpwr	16	static
+main.c:437:6:setup_init	8	static
+main.c:482:8:setup_beacons	24	static
+main.c:511:6:setup_listen	24	static
+main.c:301:6:xrttest_systask	16	static
+main.c:571:6:main	8	static

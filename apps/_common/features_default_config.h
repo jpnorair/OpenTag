@@ -1,6 +1,5 @@
 /* Copyright 2010-2014 JP Norair
-  *
-  * Licensed under the OpenTag License, Version 1.0 (the "License");
+ * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
@@ -11,7 +10,6 @@
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
-  *
   */
 /**
   * @file       /apps/_common/features_default_config.h
@@ -106,6 +104,9 @@
 #ifndef OT_PARAM_VLFPS
 #   define OT_PARAM_VLFPS               3                                   // Number of files that can be open simultaneously
 #endif
+#ifndef OT_PARAM_VLACTIONS
+#   define OT_PARAM_VLACTIONS           8                                   // Number of file action applets that can be kept simultaneously
+#endif
 #ifndef OT_PARAM_SESSION_DEPTH
 #   define OT_PARAM_SESSION_DEPTH       4                                   // Max simultaneous sessions (i.e. tasks)
 #endif
@@ -130,6 +131,9 @@
 #endif
 #ifndef OT_FEATURE_M2
 #   define OT_FEATURE_M2                ENABLED                             // Mode 2 Featureset: Implemented
+#endif
+#ifndef OT_FEATURE_GNSS
+#   define OT_FEATURE_GNSS              DISABLED                            // GNSS Support
 #endif
 #ifndef OT_FEATURE_CAPI
 #   define OT_FEATURE_CAPI              ENABLED                             // "otapi" C function usage in server-side apps
@@ -172,6 +176,18 @@
 #endif
 #ifndef OT_FEATURE_VL_SECURITY
 #   define OT_FEATURE_VL_SECURITY       NOT_AVAILABLE                       // AES128 on pre-shared key, for stored files
+#endif
+#ifndef OT_FEATURE_VLACTIONS
+#   define OT_FEATURE_VLACTIONS         ENABLED                             // File Actions in Veelite
+#endif
+#ifndef OT_FEATURE_VLMODTIME
+#   define OT_FEATURE_VLMODTIME         ENABLED                             // File Modification Timestamp
+#endif
+#ifndef OT_FEATURE_VLACCTIME
+//#   undef OT_FEATURE_VLMODTIME
+//#   define OT_FEATURE_VLMODTIME         ENABLED
+//#   define OT_FEATURE_VLACCTIME         ENABLED                             // File Access Timestamp
+#define OT_FEATURE_VLACCTIME			DISABLED
 #endif
 #ifndef OT_FEATURE_DLL_SECURITY
 #   define OT_FEATURE_DLL_SECURITY      DISABLED                            // AES128 on pre-shared key, for data-link

@@ -1,0 +1,9 @@
+crc16.c:41:6:crc_init_stream	0	static
+crc16.c:81:9:crc_check	0	static
+crc16.c:88:8:crc_get	0	static
+crc16.c:154:18:crc16drv_init	0	static
+crc16.c:162:16:crc16drv_block_manual	4	static
+crc16.c:61:6:crc_calc_nstream	8	static
+crc16.c:49:8:crc_block	16	static
+crc16.c:56:16:crc_calc_stream	8	static
+crc16.c:178:18:crc16drv_block	8	static

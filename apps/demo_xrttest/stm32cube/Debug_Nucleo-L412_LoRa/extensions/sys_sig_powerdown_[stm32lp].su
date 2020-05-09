@@ -1,0 +1,2 @@
+sys_sig_powerdown_[stm32lp].c:86:6:sys_sig_waitforevent	0	static,ignoring_inline_asm
+sys_sig_powerdown_[stm32lp].c:97:6:sys_sig_powerdown	24	static,ignoring_inline_asm

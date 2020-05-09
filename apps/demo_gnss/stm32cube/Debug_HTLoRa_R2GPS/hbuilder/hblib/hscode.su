@@ -1,0 +1,10 @@
+hscode.c:118:9:crccalc	8	static
+hscode.c:536:9:hsc_bytesperblock	0	static
+hscode.c:543:10:hsc_octetsinframe	8	static
+hscode.c:555:6:hsc_init	8	static
+hscode.c:567:6:hsc_deinit	0	static
+hscode.c:573:6:hsc_encode	64	static
+hscode.c:667:9:hsc_decode	136	static
+hscode.c:980:9:hsc_decode_blockllr	136	static
+hscode.c:1304:6:hsc_pack	16	static
+hscode.c:1320:6:hsc_unpack	8	static

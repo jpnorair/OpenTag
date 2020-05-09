@@ -1,0 +1,17 @@
+main.c:550:6:gnss_callback	8	static
+main.c:131:6:app_set_txpwr	16	static
+main.c:201:6:setup_button_init	0	static
+main.c:222:9:m2qp_sig_isf	0	static
+main.c:455:6:ping_systask	16	static
+main.c:583:6:gnss_storedata	24	static
+main.c:678:6:gnss_telegram_applet	32	static
+main.c:604:6:gnssreporter_systask	48	static
+main.c:729:6:gnss_broadcast_applet	80	static
+main.c:790:6:ping_query_applet	48	static
+main.c:863:6:setup_init	8	static
+main.c:910:6:ping_invoke	16	static
+main.c:273:9:alp_ext_proc	64	static
+main.c:940:8:beacons_off	16	static
+main.c:955:8:sleepyrx_on	16	static
+main.c:972:6:setup_tgramlisten	16	static
+main.c:988:6:main	16	static

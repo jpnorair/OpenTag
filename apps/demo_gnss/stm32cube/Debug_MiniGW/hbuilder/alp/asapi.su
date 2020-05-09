@@ -1,0 +1,13 @@
+asapi.c:237:13:sub_release_record	0	static
+asapi.c:230:13:sub_q_purge	8	static
+asapi.c:243:15:sub_retrieve_record	8	static
+asapi.c:249:14:sub_check_more_records	8	static
+asapi.c:83:8:sub_test_stream	24	static
+asapi.c:125:8:sub_test_tmpl	12	static
+asapi.c:187:6:asapi_init_srv	8	static
+asapi.c:222:13:sub_stop_srv	8	static
+asapi.c:357:15:sub_start_session	48	static
+asapi.c:450:6:asapi_applet	96	static
+asapi.c:197:6:asapi_open_srv	0	static
+asapi.c:207:9:asapi_close_srv	8	static
+asapi.c:260:9:asapi_proc	32	static

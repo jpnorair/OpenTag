@@ -1,0 +1,9 @@
+alp_main.c:102:7:sub_get_headerlen	0	static
+alp_main.c:116:6:sub_insert_header	16	static
+alp_main.c:165:17:alp_proc_null	0	static
+alp_main.c:302:6:alp_init	0	static
+alp_main.c:315:17:alp_load_retval	8	static
+alp_main.c:334:6:alp_notify	0	static
+alp_main.c:340:6:alp_add_app	0	static
+alp_main.c:346:12:alp_parse_message	24	static
+alp_main.c:477:14:alp_new_record	8	static

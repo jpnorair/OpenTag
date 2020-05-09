@@ -1,0 +1,12 @@
+core_isr.c:228:6:RTC_WKUP_IRQHandler	8	static
+core_isr.c:395:6:EXTI0_IRQHandler	8	static
+core_isr.c:403:6:EXTI1_IRQHandler	8	static
+core_isr.c:411:6:EXTI2_IRQHandler	0	static
+core_isr.c:419:6:EXTI3_IRQHandler	8	static
+core_isr.c:427:6:EXTI4_IRQHandler	0	static
+core_isr.c:442:6:EXTI9_5_IRQHandler	0	static
+core_isr.c:474:6:EXTI15_10_IRQHandler	8	static
+core_isr.c:550:6:DMA1_Channel6_IRQHandler	8	static
+core_isr.c:557:6:DMA1_Channel7_IRQHandler	8	static
+core_isr.c:755:6:LPTIM1_IRQHandler	8	static
+core_isr.c:931:6:USART2_IRQHandler	8	static

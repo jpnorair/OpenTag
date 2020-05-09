@@ -1,0 +1,7 @@
+gnssnull_task.c:29:6:gnssnull_config	0	static
+gnssnull_task.c:32:6:gnssnull_connect	0	static
+gnssnull_task.c:35:6:gnssnull_disconnect	0	static
+gnssnull_task.c:38:6:gnssnull_agps_stamp	0	static
+gnssnull_task.c:42:8:gnssnull_latlon_sprint	0	static
+gnssnull_task.c:47:8:gnssnull_distance_sprint	0	static
+gnssnull_task.c:59:6:gnssnull_systask	8	static

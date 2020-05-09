@@ -1,0 +1,7 @@
+core_isr.c:221:6:RTC_IRQHandler	8	static
+core_isr.c:407:6:EXTI0_1_IRQHandler	8	static
+core_isr.c:425:6:EXTI2_3_IRQHandler	0	static
+core_isr.c:453:6:EXTI4_15_IRQHandler	8	static
+core_isr.c:551:6:DMA1_Channel4_5_6_7_IRQHandler	8	static
+core_isr.c:610:6:LPTIM1_IRQHandler	8	static
+core_isr.c:735:6:USART1_IRQHandler	8	static

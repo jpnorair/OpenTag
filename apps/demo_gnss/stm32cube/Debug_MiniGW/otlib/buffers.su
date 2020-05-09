@@ -1,0 +1,2 @@
+buffers.c:59:6:buffers_init	16	static
+buffers.c:74:6:buffers_swap	40	static
