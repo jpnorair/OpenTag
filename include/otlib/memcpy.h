@@ -37,10 +37,13 @@
 #include <app/build_config.h>
 
 
-#if (OS_FEATURE(MEMCPY) == ENABLED)
+//#if (OS_FEATURE(MEMCPY) == ENABLED)
+#if (OS_FEATURE_MEMCPY == ENABLED)
 #   include <string.h>
 #   define memcpy_2(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<1)
 #   define memcpy_4(DST, SRC, LEN)   memcpy(DST, SRC, LEN<<2)
+#   define memset_2(DST, VAL, LEN)   memset(DST, VAL, LEN<<1)
+#   define memset_4(DST, VAL, LEN)   memset(DST, VAL, LEN<<2)
 #else
 //#   include <platform/memcpy.h>
 #   define memcpy       ot_memcpy

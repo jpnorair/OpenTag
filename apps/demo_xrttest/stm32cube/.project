@@ -87,11 +87,6 @@
 			<locationURI>PARENT-4-PROJECT_LOC/OpenTag/extensions/applets_std/sys_sig_panic.c</locationURI>
 		</link>
 		<link>
-			<name>extensions/sys_sig_powerdown_[stm32lp].c</name>
-			<type>1</type>
-			<locationURI>PARENT-4-PROJECT_LOC/OpenTag/extensions/applets_std/sys_sig_powerdown_%5Bstm32lp%5D.c</locationURI>
-		</link>
-		<link>
 			<name>include/board/stm32l4xx</name>
 			<type>2</type>
 			<location>/Users/jpnbook/Sync/Repository/OpenTag_HDO/hbuilder/include/board/stm32l4xx</location>
@@ -200,6 +195,11 @@
 			<name>platform/stm32l0xx/otsys_mpipe_usbcdc.c</name>
 			<type>1</type>
 			<locationURI>PARENT-4-PROJECT_LOC/OpenTag/platform/stm32l0xx/otsys_mpipe_usbcdc.c</locationURI>
+		</link>
+		<link>
+			<name>platform/stm32l0xx/otsys_sig_powerdown.c</name>
+			<type>1</type>
+			<locationURI>PARENT-3-PROJECT_LOC/platform/stm32l0xx/otsys_sig_powerdown.c</locationURI>
 		</link>
 		<link>
 			<name>platform/stm32l0xx/otsys_veelite_EE.c</name>

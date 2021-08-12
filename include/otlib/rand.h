@@ -40,9 +40,10 @@
 #endif
 
 // Hooks to traditional features
-#define srand(x)    rand_seed32(x)
-#define rand()      rand_prn32()
-
+#ifndef OS_FEATURE_RAND
+#   define srand(x)    rand_seed32(x)
+#   define rand()      rand_prn32()
+#endif
 
 
 /** @brief A random number generator.  Used within OpenTag.
