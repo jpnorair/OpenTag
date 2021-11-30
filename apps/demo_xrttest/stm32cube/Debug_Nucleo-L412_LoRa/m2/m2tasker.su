@@ -1,6 +1,0 @@
-m2tasker.c:35:6:sub_apply_subnet_flags	4	static
-m2tasker.c:44:12:sub_newtask	16	static
-m2tasker.c:63:12:m2task_immediate	8	static
-m2tasker.c:71:12:m2task_schedule	8	static
-m2tasker.c:79:12:m2task_advertise	16	static
-m2tasker.c:112:12:m2task_telegram	8	static

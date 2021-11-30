@@ -1,2 +1,0 @@
-crypto.c:121:8:EAX_encrypt	0	static
-crypto.c:124:8:EAX_decrypt	0	static

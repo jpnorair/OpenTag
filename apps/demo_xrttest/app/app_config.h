@@ -81,8 +81,7 @@ void xrttest_systask(void* arg);
 
 #define ALP_ASAPI                   ENABLED
 #define M2_FEATURE_RSCODE           DISABLED
-#define M2_FEATURE_HSCODE			ENABLED
-#define M2_FEATURE_LDPC             ((M2_FEATURE_HSCODE!=ENABLED) && ENABLED)
+#define M2_FEATURE_HSCODE			DISABLED
 
 #include <../_common/features_default_config.h>
 

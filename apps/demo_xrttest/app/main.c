@@ -641,12 +641,12 @@ void main(void) {
 /** Patches
   * ---------------------------------------------------------------------------
   */
-
-#include <../hbio/sx127x/radio_rm2.h>
+/*
+#include <../io/sx127x/radio_rm2.h>
 #include <m2/network.h>
 #include <m2/dll.h>
 
-/*
+
 static m2session* sub_xrt_parse(void) {
 /// XR Telegram Format
 // ========================================================================

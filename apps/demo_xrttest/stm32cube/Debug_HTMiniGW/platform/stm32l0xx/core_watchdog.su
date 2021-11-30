@@ -1,5 +1,0 @@
-core_watchdog.c:33:6:WWDG_IRQHandler	0	static
-core_watchdog.c:39:6:platform_set_watchdog	0	static
-core_watchdog.c:65:6:platform_kill_watchdog	0	static
-core_watchdog.c:69:6:platform_pause_watchdog	0	static
-core_watchdog.c:73:6:platform_resume_watchdog	0	static

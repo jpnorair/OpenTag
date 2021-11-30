@@ -856,7 +856,7 @@ OT_WEAK void rm2_rxend_isr(void) {
 
 #ifndef EXTF_rm2_decode_s2
 void rm2_decode_s2(void) {
-
+#if (M2_FEATURE_HSCODE == ENABLED)
     ///@todo new function to get duration for an HSC coded block
 //    static const ot_u8 ti_per_block[4] = {
 //        51, 17, 6, 2
@@ -907,6 +907,7 @@ void rm2_decode_s2(void) {
     sys.task_RFA.event      = 5;
     sys.task_RFA.nextevent  = (ot_uint)sx127x_hscblock_ti(&phymac[0]);
     return;
+#endif
 }
 #endif
 

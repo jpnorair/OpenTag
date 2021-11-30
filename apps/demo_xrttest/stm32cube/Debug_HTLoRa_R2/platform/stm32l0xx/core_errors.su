@@ -1,7 +1,0 @@
-core_errors.c:39:6:sub_save_error	0	static,ignoring_inline_asm
-core_errors.c:53:6:NMI_Handler	8	static
-core_errors.c:67:6:HardFault_Handler	16	static
-core_errors.c:92:6:MemManage_Handler	0	static
-core_errors.c:103:6:BusFault_Handler	0	static
-core_errors.c:113:6:UsageFault_Handler	0	static
-core_errors.c:124:6:DebugMon_Handler	0	static

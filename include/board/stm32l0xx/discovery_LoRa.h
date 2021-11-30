@@ -1,6 +1,5 @@
 /* Copyright 2013-2014 JP Norair
-  *
-  * Licensed under the OpenTag License, Version 1.0 (the "License");
+ * Licensed under the OpenTag License, Version 1.0 (the "License");
   * you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
@@ -11,44 +10,41 @@
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
-  *
   */
 /**
-  * @file       /board/stm32l0xx/nucleo_LRWAN1.h
+  * @file       /board/stm32l0xx/discovery_LoRa.h
   * @author     JP Norair
-  * @version    R101
-  * @date       29 May 2017
-  * @brief      Board Configuration for Nucleo STM32L073 with LoRa module
+  * @version    R100
+  * @date       10 Apr 2017
+  * @brief      Board Configuration for ST Discovery LoRa 
   * @ingroup    Platform
   *
   * Do not include this file, include /platform/config.h
   *
   * SPECIAL NOTE: search for "note BOARD Macro" lines in this file.  These
   * must be ported to other STM32L boards, because the OpenTag STM32L platform 
-  * implementation depends on them.
+  * implementation depends on them. 
   *
   ******************************************************************************
   */
   
 
-#ifndef __nucleo_LRWAN1_H
-#define __nucleo_LRWAN1_H
+#ifndef __discovery_LoRa_H
+#define __discovery_LoRa_H
 
 /// MCU definition for the board must be the first thing
-#define __STM32L073RZ__
+#define __STM32L072CZ__
 
 #include <app/app_config.h>
 #include <platform/hw/STM32L0xx_config.h>
 #include <platform/interrupts.h>
 
-/// This is a major difference between the LRWAN1 system and the unladen Nucleo
 #if OT_FEATURE(M2)
 #   define __USE_RADIO
 #endif
 
-
-/// It's possible to add a GNSS shield to this device, although support is coming later
-//#define __HAS_GNSS
+/// You can add this shield
+//#define __EXT_GNSS__
 
 
 /// Macro settings: ENABLED, DISABLED, NOT_AVAILABLE
@@ -68,6 +64,37 @@
 #define NOT_AVAILABLE   DISABLED
 
 
+/// Configuration of system with or without Radio
+#if defined(__USE_RADIO)
+#   ifdef __NULL_RADIO__
+#       include <io/radio_null/config.h>
+#   else
+#       define __LORA__
+#		define __SX127x__
+#		define __SX1276__
+#       define __SX127x_TXSW__
+#       define __SX127x_RXSW__
+#       define __SX127x_PABOOST__
+#		define __SX127x_20dBm__
+#       include <io/sx127x/config.h>
+#   endif
+#endif
+
+#if defined(__EXT_GNSS__)
+#   if defined(__UBX_GNSS__)
+#       define __UBX_GNSS__
+#       define __UBX_M8__
+#       define __UBX_MAXM8x__
+#       define __UBX_MAXM8C__
+#       include <io/ubx_gnss.h>
+#   else // __NULL_GNSS__
+#		define __NULL_GNSS__
+#       include <io/gnss_null/config.h>
+#	endif
+#endif
+
+
+
 
 /** Additional RF Front End Parameters and Settings <BR>
   * ========================================================================<BR>
@@ -75,10 +102,11 @@
   * has a 50% efficiency (-3dB) with 1dB insertion loss
   */
 #ifdef __USE_RADIO
-//#   define RF_PARAM_BAND    866              //Can be 866 or 915
+#   ifndef RF_PARAM_BAND
 #   define RF_PARAM_BAND    915
-#   define RF_HDB_ATTEN     8                //Half dB attenuation (units = 0.5dB), used to scale TX power
-#   define RF_HDB_RXATTEN   6
+#   endif
+#   define RF_HDB_ATTEN     4                //Half dB attenuation (units = 0.5dB), used to scale TX power
+#   define RF_HDB_RXATTEN   4
 #   define RF_RSSI_OFFSET   RF_HDB_RXATTEN   //Offset applied to RSSI calculation
 #endif
 
@@ -171,15 +199,14 @@
 
 /** Board-based Feature Settings <BR>
   * ========================================================================<BR>
-  * 1. One button is supported on PC13.  The button must be attached by the 
-  *    user.  It is active low.  Other buttons could be added on the unused
-  *    pins, but only one is pre-defined.
+  * 1. One button is supported on PB2.  It is the "User" button that comes with
+  *    the discovery board.
   * 
-  * 2. Two LEDs are defined on PC2, PC3, but the user must attach LEDs.
-  *    <LI> TRIG1 (typically Orange LED) is on PC2.  It typically indicates 
-  *         that the radio is on and in RX mode.</LI>
-  *    <LI> TRIG2 (typically Green LED) is on PC3.  It typically indicates
-  *         that the radio is on and in TX mode.</LI>
+  * 2. There are many LEDs available:
+  *    <LI> LD1, Green, PB5.  It is used as TRIG2 to show RF TX active. </LI>
+  *    <LI> LD2, Red, PA5.  It is used as TRIG1 to show RF RX active. </LI>
+  *    <LI> LD3, Blue, PB6.  It is unused. </LI>
+  *    <LI> LD4, Red, PB7.  It is unused. </LI>
   *
   * 3. MPIPE can support UART TX/RX (no flow control) or I2C.  MPIPE supports
   *    a "break" mode, in both I2C and UART interfaces, where a break character 
@@ -203,27 +230,56 @@
 #define BOARD_FEATURE_MPIPE_BREAK       DISABLED                    // Send/receive leading break for wakeup
 #define BOARD_FEATURE_MPIPE_DIRECT      (BOARD_FEATURE_MPIPE_BREAK != ENABLED) 
 
+#define BOARD_FEATURE_I2C               DISABLED
+
 // If you have installed GNSS extension board from Haystack
-#define BOARD_FEATURE_UBX_GNSS          DISABLED
-#define BOARD_FEATURE_RF_PABOOST 		DISABLED
-#define BOARD_FEATURE_RF_MAXPOWER       DISABLED
+#if defined(__UBX_GNSS__)
+#	define BOARD_FEATURE_UBX_GNSS       ENABLED       // Ublox GNSS
+#	define BOARD_FEATURE_GNSS_SDN       DISABLED      // GNSS can be completely powered-off
+#elif defined(__NULL_GNSS__)
+#	define BOARD_FEATURE_GNSSNULL 		ENABLED
+#endif
 
 // MPIPE UART modes are deprecated.  Only Break-mode or Direct-Mode should be used.
 //#define BOARD_FEATURE_MPIPE_CS          DISABLED                    // Chip-Select / DTR wakeup control
 //#define BOARD_FEATURE_MPIPE_FLOWCTL     DISABLED                    // RTS/CTS style flow control 
 
+#ifndef BOARD_FEATURE_LFXTAL
 #define BOARD_FEATURE_LFXTAL            ENABLED                                 // LF XTAL used as Clock source
+#endif
+#ifndef BOARD_FEATURE_HFXTAL
 #define BOARD_FEATURE_HFXTAL            DISABLED                                // HF XTAL used as Clock source
+#endif
+#ifndef BOARD_FEATURE_HFBYPASS
 #define BOARD_FEATURE_HFBYPASS          DISABLED                                // Use an externally driven oscillator
+#endif
+#ifndef BOARD_FEATURE_HFCRS
 #define BOARD_FEATURE_HFCRS             (BOARD_FEATURE_HFXTAL != ENABLED)       // Use STM32L0's Clock-Recovery-System for USB
-#define BOARD_FEATURE_RFXTAL            DISABLED                                // XTAL for RF chipset
+#endif
+#ifndef BOARD_FEATURE_RFXTAL
+#define BOARD_FEATURE_RFXTAL            ENABLED                                 // XTAL for RF chipset
+#endif
+#ifndef BOARD_FEATURE_RFXTALOUT
 #define BOARD_FEATURE_RFXTALOUT         DISABLED
+#endif
+#ifndef BOARD_FEATURE_PLL
 #define BOARD_FEATURE_PLL               (MCU_CONFIG_MULTISPEED == ENABLED)
+#endif
+#ifndef BOARD_FEATURE_STDSPEED
 #define BOARD_FEATURE_STDSPEED          (MCU_CONFIG_MULTISPEED == ENABLED)
+#endif
+#ifndef BOARD_FEATURE_FULLSPEED
 #define BOARD_FEATURE_FULLSPEED         ENABLED
+#endif
+#ifndef BOARD_FEATURE_FULLXTAL
 #define BOARD_FEATURE_FULLXTAL          DISABLED
+#endif
+#ifndef BOARD_FEATURE_FLANKSPEED
 #define BOARD_FEATURE_FLANKSPEED        (MCU_CONFIG_MULTISPEED == ENABLED)
+#endif
+#ifndef BOARD_FEATURE_FLANKXTAL
 #define BOARD_FEATURE_FLANKXTAL         (BOARD_FEATURE_HFCRS != ENABLED)
+#endif
 #if (MCU_CONFIG(USB) && BOARD_FEATURE(PLL) && (BOARD_FEATURE(HFXTAL) || BOARD_FEATURE(HFBYPASS)))
 #   warning "Nucleo board does not normally support XTAL-based USB.  Make sure you have a crystal mounted."
 #   define BOARD_FEATURE_USBPLL         ENABLED
@@ -234,9 +290,20 @@
 #else
 #   define BOARD_FEATURE_USBPLL         DISABLED
 #endif
+#if !defined(BOARD_FEATURE_RF_PABOOST)
+#	if !defined(__SX127x_PABOOST__)
+#	define BOARD_FEATURE_RF_PABOOST		DISABLED
+#	else
+#	define BOARD_FEATURE_RF_PABOOST		ENABLED
+#	endif
+#endif
 
 // Number of Triggers/LEDs
-#define BOARD_PARAM_TRIGS               2
+#if (BOARD_FEATURE_I2C)
+#   define BOARD_PARAM_TRIGS            4
+#else
+#   define BOARD_PARAM_TRIGS            6
+#endif
 
 // MPIPE speed: ignored with USB MPipe.  
 // Actual speed will be closest supported bps.
@@ -249,13 +316,21 @@
 #define BOARD_PARAM_MFmult              1                       // Main CLK = HFHz * (MFmult/MFdiv)
 #define BOARD_PARAM_MFdiv               1
 #define BOARD_PARAM_MFtol               0.02
+
+#ifndef BOARD_PARAM_HFHz
 #define BOARD_PARAM_HFHz                16000000
+#endif
+#ifndef BOARD_PARAM_HFtol
 #define BOARD_PARAM_HFtol               0.02
+#endif
+#ifndef BOARD_PARAM_HFppm
 #define BOARD_PARAM_HFppm               20000
-//#define BOARD_PARAM_RFHz                48000000
-//#define BOARD_PARAM_RFdiv               6
-//#define BOARD_PARAM_RFout               (BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)
-//#define BOARD_PARAM_RFtol               0.00003
+#endif
+
+#define BOARD_PARAM_RFHz                32000000
+#define BOARD_PARAM_RFdiv               1
+#define BOARD_PARAM_RFout               (BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)
+#define BOARD_PARAM_RFtol               0.000002
 #define BOARD_PARAM_PLLout              96000000
 #define BOARD_PARAM_PLLmult             (BOARD_PARAM_PLLout/BOARD_PARAM_HFHz)
 #define BOARD_PARAM_PLLdiv              3
@@ -279,96 +354,134 @@
 //#define BOARD_TRACESWO_PINNUM           (1<<3)
 //#define BOARD_TRACESWO_PIN              3
 
-// SW1 is implemented on PC13, active low.
-#define BOARD_SW1_PORTNUM               2                   // Port C
-#define BOARD_SW1_PORT                  GPIOC
-#define BOARD_SW1_PINNUM                13
+// SW1 is implemented on PB2, active low.
+#define BOARD_SW1_PORTNUM               1                   // Port B
+#define BOARD_SW1_PORT                  GPIOB
+#define BOARD_SW1_PINNUM                2
 #define BOARD_SW1_PIN                   (1<<BOARD_SW1_PINNUM)
 #define BOARD_SW1_POLARITY              0
 #define BOARD_SW1_PULLING               0
 
-// TEST0, TEST1 pins are on PC4, PC5.
+// TEST0, TEST1 pins are on PB14, PB15.
 // They are not necessary, but Haystack uses them for manufacturing tests.
 // They are usually outputs but they could be pull-up inputs also.
-#define BOARD_TEST0_PORTNUM             2                   // Port C
-#define BOARD_TEST0_PORT                GPIOC
-#define BOARD_TEST0_PINNUM              4
+#define BOARD_TEST0_PORTNUM             1                   // Port B
+#define BOARD_TEST0_PORT                GPIOB
+#define BOARD_TEST0_PINNUM              14
 #define BOARD_TEST0_PIN                 (1<<BOARD_TEST0_PINNUM)
 #define BOARD_TEST0_POLARITY            0
 #define BOARD_TEST0_PULLING             1
-#define BOARD_TEST1_PORTNUM             2                   // Port C
-#define BOARD_TEST1_PORT                GPIOC
-#define BOARD_TEST1_PINNUM              5
+#define BOARD_TEST1_PORTNUM             1                   // Port B
+#define BOARD_TEST1_PORT                GPIOB
+#define BOARD_TEST1_PINNUM              15
 #define BOARD_TEST1_PIN                 (1<<BOARD_TEST1_PINNUM)
 #define BOARD_TEST1_POLARITY            0
 #define BOARD_TEST1_PULLING             1
 
-// LED interface is implemented on PC2 and PC3, which means you
-// need to connect your own LEDS to these pins.
-// Additionally, there is an optional Red-LED spec'ed on PC10
-#define BOARD_LEDG_PORTNUM              2                   // Port C
-#define BOARD_LEDG_PORT                 GPIOC
-#define BOARD_LEDG_PINNUM               2
+// LED interface is implemented on PB5 and PB7.
+// Additionally, there is an optional Red-LED spec'ed on PA5
+// The Blue LED on PB6 is available, but we use it with our GNSS extension board
+// to show TIMEPULSE output from GNSS.
+#define BOARD_LEDG_PORTNUM              1                   // PB5
+#define BOARD_LEDG_PORT                 GPIOB
+#define BOARD_LEDG_PINNUM               5
 #define BOARD_LEDG_PIN                  (1<<BOARD_LEDG_PINNUM)
-#define BOARD_LEDG_POLARITY             0
-#define BOARD_LEDO_PORTNUM              2                   // Port C
-#define BOARD_LEDO_PORT                 GPIOC
-#define BOARD_LEDO_PINNUM               3
+#define BOARD_LEDG_POLARITY             1
+#define BOARD_LEDO_PORTNUM              1                   // PB7
+#define BOARD_LEDO_PORT                 GPIOB
+#define BOARD_LEDO_PINNUM               7
 #define BOARD_LEDO_PIN                  (1<<BOARD_LEDO_PINNUM)
-#define BOARD_LEDO_POLARITY             0
-#define BOARD_LEDR_PORTNUM              2                   // Port C
-#define BOARD_LEDR_PORT                 GPIOC
-#define BOARD_LEDR_PINNUM               10
+#define BOARD_LEDO_POLARITY             1
+#define BOARD_LEDR_PORTNUM              0                   // PA5
+#define BOARD_LEDR_PORT                 GPIOA
+#define BOARD_LEDR_PINNUM               5
 #define BOARD_LEDR_PIN                  (1<<BOARD_LEDR_PINNUM)
-#define BOARD_LEDR_POLARITY             0
+#define BOARD_LEDR_POLARITY             1
+#define BOARD_LEDB_PORTNUM              1                   // PB6
+#define BOARD_LEDB_PORT                 GPIOB
+#define BOARD_LEDB_PINNUM               6
+#define BOARD_LEDB_PIN                  (1<<BOARD_LEDB_PINNUM)
+#define BOARD_LEDB_POLARITY             1
+
+// Supplemental Triggers
+// These are optional and may be used instead of I2C if the application calls for more
+// triggers, and obviously doesn't call for I2C
+#if (BOARD_PARAM_TRIGS > 4)
+#   define BOARD_TRIG5_PORTNUM          1                   // PB8
+#   define BOARD_TRIG5_PORT             GPIOB
+#   define BOARD_TRIG5_PINNUM           8
+#   define BOARD_TRIG5_PIN              (1<<BOARD_TRIG5_PINNUM)
+#endif
+#if (BOARD_PARAM_TRIGS > 5)
+#   define BOARD_TRIG6_PORTNUM          1                   // PB9
+#   define BOARD_TRIG6_PORT             GPIOB
+#   define BOARD_TRIG6_PINNUM           9
+#   define BOARD_TRIG6_PIN              (1<<BOARD_TRIG6_PINNUM)
+#endif
 
 // LoRa Module SX127x Bus
 #ifdef __USE_RADIO
-#   define BOARD_RFGPIO_0PORTNUM        0        // "D2" : PA10
-#   define BOARD_RFGPIO_0PORT           GPIOA
-#   define BOARD_RFGPIO_0PINNUM         10
+#   define BOARD_RFGPIO_0PORTNUM        1        // PB4
+#   define BOARD_RFGPIO_0PORT           GPIOB
+#   define BOARD_RFGPIO_0PINNUM         4
 #   define BOARD_RFGPIO_0PIN            (1<<BOARD_RFGPIO_0PINNUM)
-#   define BOARD_RFGPIO_1PORTNUM        1        // "D3" : PB3
+#   define BOARD_RFGPIO_1PORTNUM        1        // PB1
 #   define BOARD_RFGPIO_1PORT           GPIOB
-#   define BOARD_RFGPIO_1PINNUM         3
+#   define BOARD_RFGPIO_1PINNUM         1
 #   define BOARD_RFGPIO_1PIN            (1<<BOARD_RFGPIO_1PINNUM)
-#   define BOARD_RFGPIO_2PORTNUM        1        // "D4" : PB5
+#   define BOARD_RFGPIO_2PORTNUM        1        // PB0
 #   define BOARD_RFGPIO_2PORT           GPIOB
-#   define BOARD_RFGPIO_2PINNUM         5
+#   define BOARD_RFGPIO_2PINNUM         0
 #   define BOARD_RFGPIO_2PIN            (1<<BOARD_RFGPIO_2PINNUM)
-#   define BOARD_RFGPIO_3PORTNUM        1        // "D5" : PB4
-#   define BOARD_RFGPIO_3PORT           GPIOB
-#   define BOARD_RFGPIO_3PINNUM         4
+#   define BOARD_RFGPIO_3PORTNUM        2        // PC13
+#   define BOARD_RFGPIO_3PORT           GPIOC
+#   define BOARD_RFGPIO_3PINNUM         13
 #   define BOARD_RFGPIO_3PIN            (1<<BOARD_RFGPIO_3PINNUM)
 
-// DIO4 is not connected in the hardware, and not required
-// If you want to connect it, wire it to D6
-//#   define BOARD_RFGPIO_4PORTNUM        1        // "D6" : PB10
-//#   define BOARD_RFGPIO_4PORT           GPIOB
-//#   define BOARD_RFGPIO_4PINNUM         10
-//#   define BOARD_RFGPIO_4PIN            (1<<BOARD_RFGPIO_4PINNUM)
+// DIO4 and DIO5 aren't generally connected
+#   define BOARD_RFGPIO_4PORTNUM        0        // PA5
+#   define BOARD_RFGPIO_4PORT           GPIOA
+#   define BOARD_RFGPIO_4PINNUM         5
+#   define BOARD_RFGPIO_4PIN            (1<<BOARD_RFGPIO_4PINNUM)
+#   define BOARD_RFGPIO_5PORTNUM        0        // PA4
+#   define BOARD_RFGPIO_5PORT           GPIOA
+#   define BOARD_RFGPIO_5PINNUM         4
+#   define BOARD_RFGPIO_5PIN            (1<<BOARD_RFGPIO_5PINNUM)
 
-// DIO5 is not connected in the hardware, but if you can wire it to D7, 
-// there's an improvement to efficiency & reliability
-//#   define BOARD_RFGPIO_5PORTNUM        0        // "D7" : PA8
-//#   define BOARD_RFGPIO_5PORT           GPIOA
-//#   define BOARD_RFGPIO_5PINNUM         8
-//#   define BOARD_RFGPIO_5PIN            (1<<BOARD_RFGPIO_5PINNUM)
+// This is to give power to the TCXO
+#	define BOARD_RFTCXO_PORTNUM			0		//PA12
+#	define BOARD_RFTCXO_PORT            GPIOA
+#	define BOARD_RFTCXO_PINNUM          12
+#	define BOARD_RFTCXO_PIN  			(1<<BOARD_RFTCXO_PINNUM)
 
-#   define BOARD_RFCTL_RESETPORTNUM     0       // "A0" : PA0
-#   define BOARD_RFCTL_RESETPORT        GPIOA
+// Antenna Switch Pins
+#	define BOARD_RFANT_RXPORTNUM        0		//PA1
+#	define BOARD_RFANT_RXPORT           GPIOA
+#	define BOARD_RFANT_RXPINNUM         1
+#	define BOARD_RFANT_RXPIN            (1<<BOARD_RFANT_RXPINNUM)
+#	define BOARD_RFBOOST_PORTNUM      	2		//PC1
+#	define BOARD_RFBOOST_PORT         	GPIOC
+#	define BOARD_RFBOOST_PINNUM       	1
+#	define BOARD_RFBOOST_PIN          	(1<<BOARD_RFBOOST_PINNUM)
+#	define BOARD_RFRFO_PORTNUM          2		//PC2
+#	define BOARD_RFRFO_PORT             GPIOC
+#	define BOARD_RFRFO_PINNUM           2
+#	define BOARD_RFRFO_PIN              (1<<BOARD_RFRFO_PINNUM)
+
+#   define BOARD_RFCTL_RESETPORTNUM     2       //PC0
+#   define BOARD_RFCTL_RESETPORT        GPIOC
 #   define BOARD_RFCTL_RESETPINNUM      0       
 #   define BOARD_RFCTL_RESETPIN         (1<<BOARD_RFCTL_RESETPINNUM)
-#   define BOARD_RFSPI_NSSPORTNUM       1       // "D10" : PB6
-#   define BOARD_RFSPI_NSSPORT          GPIOB
-#   define BOARD_RFSPI_NSSPINNUM        6       
+#   define BOARD_RFSPI_NSSPORTNUM       0       //PA15
+#   define BOARD_RFSPI_NSSPORT          GPIOA
+#   define BOARD_RFSPI_NSSPINNUM        15       
 #   define BOARD_RFSPI_NSSPIN           (1<<BOARD_RFSPI_NSSPINNUM)
 #   define BOARD_RFSPI_ID               1       //SPI1
 #   define BOARD_RFSPI_PORTNUM          0       //Port A
 #   define BOARD_RFSPI_PORT             GPIOA
 #   define BOARD_RFSPI_MOSIPINNUM       7       // "D11" : PA7
 #   define BOARD_RFSPI_MISOPINNUM       6       // "D12" : PA6
-#   define BOARD_RFSPI_SCLKPINNUM       5       // "D13" : PA5
+#   define BOARD_RFSPI_SCLKPINNUM       3       // "D13" : PB3
 #   define BOARD_RFSPI_MOSIPIN          (1<<BOARD_RFSPI_MOSIPINNUM)
 #   define BOARD_RFSPI_MISOPIN          (1<<BOARD_RFSPI_MISOPINNUM)
 #   define BOARD_RFSPI_SCLKPIN          (1<<BOARD_RFSPI_SCLKPINNUM)
@@ -385,7 +498,7 @@
 #define BOARD_I2C_SCLPIN                (1<<BOARD_I2C_SCLPINNUM)
 #define BOARD_I2C_SDAPIN                (1<<BOARD_I2C_SDAPINNUM)
 
-// UART on PA2/PA3 or "D1/D0"
+// UART on PA2/PA3 or "D1/D0" (UART2)
 #define BOARD_UART_PORTNUM              0
 #define BOARD_UART_PORT                 GPIOA
 #define BOARD_UART_ID                   2
@@ -393,6 +506,49 @@
 #define BOARD_UART_RXPINNUM             3
 #define BOARD_UART_TXPIN                (1<<BOARD_UART_TXPINNUM)
 #define BOARD_UART_RXPIN                (1<<BOARD_UART_RXPINNUM)
+
+// EXTUART on PA9/PA10 (UART1)
+// This is for "Extension UART"
+#define BOARD_EXTUART_PORTNUM           0
+#define BOARD_EXTUART_PORT              GPIOA
+#define BOARD_EXTUART_ID                1
+#define BOARD_EXTUART_TXPINNUM          9
+#define BOARD_EXTUART_RXPINNUM          10
+#define BOARD_EXTUART_TXPIN             (1<<BOARD_EXTUART_TXPINNUM)
+#define BOARD_EXTUART_RXPIN             (1<<BOARD_EXTUART_RXPINNUM)
+
+#if defined(__EXT_GNSS__)
+#   define BOARD_GNSS_RESETPORTNUM      0       //PA8
+#   define BOARD_GNSS_RESETPORT         GPIOA
+#   define BOARD_GNSS_RESETPINNUM       8       
+#   define BOARD_GNSS_RESETPIN          (1<<BOARD_GNSS_RESETPINNUM)
+
+#   define BOARD_GNSS_INT0PORTNUM       1       //PB13
+#   define BOARD_GNSS_INT0PORT          GPIOB
+#   define BOARD_GNSS_INT0PINNUM        13       
+#   define BOARD_GNSS_INT0PIN           (1<<BOARD_GNSS_INT0PINNUM)
+
+#   define BOARD_GNSS_PULSEPORTNUM      1       //PB6
+#   define BOARD_GNSS_PULSEPORT         GPIOB
+#   define BOARD_GNSS_PULSEPINNUM       6       
+#   define BOARD_GNSS_PULSEPIN          (1<<BOARD_GNSS_PULSEPINNUM)
+
+    static inline void BOARD_GNSS_TURNOFF(void) {
+    }
+    static inline void BOARD_GNSS_TURNON(void) {
+    }
+    static inline void BOARD_GNSS_INTON(void) {
+        BOARD_GNSS_INT0PORT->BSRR = BOARD_GNSS_INT0PIN;
+    }
+    static inline void BOARD_GNSS_INTOFF(void) {
+        BOARD_GNSS_INT0PORT->BRR = BOARD_GNSS_INT0PIN;
+    }
+
+#else
+#   define BOARD_GNSS_RESETPIN          0
+
+#endif
+
 
 // USB is always on PA11/A12
 #define BOARD_USB_PORTNUM               0
@@ -402,9 +558,9 @@
 #define BOARD_USB_DMPIN                 (1<<BOARD_USB_DMPINNUM)
 #define BOARD_USB_DPPIN                 (1<<BOARD_USB_DPPINNUM)
 
-// ADC Analog inputs on PA0,PA1,PA4,PB0,PC1,PC0 or "A0,A1,A2,A3,A4,A5"
-#define BOARD_ADC_PINS                  6
-#define BOARD_ADC_PORTS                 3
+// ADC Analog inputs on PA0, PA4 (A0, A2 in 'duino lingo)
+#define BOARD_ADC_PINS                  2
+#define BOARD_ADC_PORTS                 1
 #define BOARD_ADC_0PORTNUM              0
 #define BOARD_ADC_0PORT                 GPIOA
 #define BOARD_ADC_0CHAN                 0
@@ -412,29 +568,9 @@
 #define BOARD_ADC_0PIN                  (1<<BOARD_ADC_0PINNUM)
 #define BOARD_ADC_1PORTNUM              0
 #define BOARD_ADC_1PORT                 GPIOA
-#define BOARD_ADC_1CHAN                 1
-#define BOARD_ADC_1PINNUM               1
+#define BOARD_ADC_1CHAN                 4
+#define BOARD_ADC_1PINNUM               4
 #define BOARD_ADC_1PIN                  (1<<BOARD_ADC_1PINNUM)
-#define BOARD_ADC_2PORTNUM              0
-#define BOARD_ADC_2PORT                 GPIOA
-#define BOARD_ADC_2CHAN                 4
-#define BOARD_ADC_2PINNUM               4
-#define BOARD_ADC_2PIN                  (1<<BOARD_ADC_2PINNUM)
-#define BOARD_ADC_3PORTNUM              1
-#define BOARD_ADC_3PORT                 GPIOB
-#define BOARD_ADC_3CHAN                 8
-#define BOARD_ADC_3PINNUM               0
-#define BOARD_ADC_3PIN                  (1<<BOARD_ADC_3PINNUM)
-#define BOARD_ADC_4PORTNUM              2
-#define BOARD_ADC_4PORT                 GPIOC
-#define BOARD_ADC_4CHAN                 1
-#define BOARD_ADC_4PINNUM               1
-#define BOARD_ADC_4PIN                  (1<<BOARD_ADC_4PINNUM)
-#define BOARD_ADC_5PORTNUM              2
-#define BOARD_ADC_5PORT                 GPIOC
-#define BOARD_ADC_5CHAN                 0
-#define BOARD_ADC_5PINNUM               0
-#define BOARD_ADC_5PIN                  (1<<BOARD_ADC_5PINNUM)
 
 
 
@@ -537,18 +673,22 @@
 #   define _DMACLK_DYNAMIC
 #endif
 
-// This board enabled all GPIO on ports A, B, C, and D.
+// This board enabled all GPIO on ports A, B, C.
 // On startup (_SU), port H is also enabled
 // On Stop (LP) Port A should be open for UART or USB
-// On Stop-with-RF (LPRF), Ports A and B should be open
-#define _GPIOCLK_N      (RCC_IOPENR_GPIOAEN | RCC_IOPENR_GPIOBEN | RCC_IOPENR_GPIOCEN | RCC_IOPENR_GPIODEN)
+// On Stop-with-RF (LPRF), Ports A, B, C should be open
+#define _GPIOCLK_N      (RCC_IOPENR_GPIOAEN | RCC_IOPENR_GPIOBEN | RCC_IOPENR_GPIOCEN)
 #define _GPIOCLK_SU     (_GPIOCLK_N | RCC_IOPENR_GPIOHEN)
 #define _GPIOCLK_LP     (RCC_IOPENR_GPIOAEN)
-#define _GPIOCLK_LPRF   (_GPIOCLK_LP | RCC_IOPENR_GPIOBEN)
+#define _GPIOCLK_LPRF   (RCC_IOPENR_GPIOAEN | RCC_IOPENR_GPIOBEN | RCC_IOPENR_GPIOCEN)
 
 #define _IOPENR_STARTUP  (_DMACLK_N | _MIFCLK_N | _CRCCLK_N | _GPIOCLK_SU)
 #define _IOPENR_RUNTIME  (_CRYPCLK_N | _MIFCLK_N | _CRCCLK_N | _GPIOCLK_N)
 
+#ifndef _APB2_PERIPH_CLK
+#   define _APB2_PERIPH_CLK     0
+#endif
+    
 
 //@note BOARD Macro for Peripheral Clock initialization at startup
 static inline void BOARD_PERIPH_INIT(void) {
@@ -564,9 +704,9 @@ static inline void BOARD_PERIPH_INIT(void) {
     // enable/disable their clocks as needed.  SYSCFG and Debug Module are on
     // without needing driver support
 #   if defined(__DEBUG__) || defined(__PROTO__)
-    RCC->APB2ENR   = (RCC_APB2ENR_DBGMCUEN | RCC_APB2ENR_SYSCFGEN);
+    RCC->APB2ENR   = (RCC_APB2ENR_DBGMCUEN | RCC_APB2ENR_SYSCFGEN | _APB2_PERIPH_CLK);
 #   else
-    RCC->APB2ENR   = (RCC_APB2ENR_SYSCFGEN);
+    RCC->APB2ENR   = (RCC_APB2ENR_SYSCFGEN | _APB2_PERIPH_CLK);
 #   endif
 
     // 3. APB1 Clocks in Active Mode.  APB1 is the low-speed peripheral bus.
@@ -596,40 +736,29 @@ static inline void BOARD_DMA_CLKOFF(void) {
 
 ///@note BOARD Macro for EXTI initialization.  See also EXTI macros at the
 ///      bottom of the page.
-///      - Radio EXTIs: {GPIO-0, -1, -3} : {PA10, PB3, PB4}
-#ifdef __USE_RADIO
-#   define _EXTICR3_PORTNUM     BOARD_RFGPIO_1PORTNUM
-#   define _EXTICR4_PORTNUM     BOARD_RFGPIO_3PORTNUM
-#   define _EXTICR5_PORTNUM     BOARD_RFGPIO_2PORTNUM
-#   define _EXTICR10_PORTNUM    BOARD_RFGPIO_0PORTNUM
-#else
-#   define _EXTICR3_PORTNUM     0
-#   define _EXTICR4_PORTNUM     0
-#   define _EXTICR5_PORTNUM     0
-#   define _EXTICR10_PORTNUM    0
-#endif
+///      - Radio EXTIs: {GPIO-0, -1, -3} : {PB4, PB1, PC13}
 static inline void BOARD_EXTI_STARTUP(void) {
-    // EXTI0-3: A0, A1, B2, RFGPIO-1 (B3)
+    // EXTI0-3: A0, RF1 (B1), B2, A3 (UART RX Trigger)
     SYSCFG->EXTICR[0]   = (0 << 0) \
-                        | (0 << 4) \
+                        | (BOARD_RFGPIO_1PORTNUM << 4) \
                         | (1 << 8) \
-                        | (_EXTICR3_PORTNUM << 12);
+                        | (0 << 12);
     
-    // EXTI4-7: RFGPIO-3 (B4), RFGPIO-2 (B5), B6, C7
-    SYSCFG->EXTICR[1]   = (_EXTICR4_PORTNUM << 0) \
-                        | (_EXTICR5_PORTNUM << 4) \
+    // EXTI4-7: RF0 (B4), B5, B6, C7
+    SYSCFG->EXTICR[1]   = (BOARD_RFGPIO_0PORTNUM << 0) \
+                        | (1 << 4) \
                         | (1 << 8) \
                         | (2 << 12);
                         
-    // EXTI8-11: A8, A9, RFGPIO-0 (A10), A11
+    // EXTI8-11: A8, B9, A10 (UART RX Trigger), A11
     SYSCFG->EXTICR[2]   = (0 << 0) \
-                        | (0 << 4) \
-                        | (_EXTICR10_PORTNUM << 8) \
+                        | (1 << 4) \
+                        | (0 << 8) \
                         | (0 << 12);
 
-    // EXTI12-15: A12, SW1 (C13), B14, A15
+    // EXTI12-15: A12, RF3 (C13), B14, A15
     SYSCFG->EXTICR[3]   = (0 << 0) \
-                        | (BOARD_SW1_PORTNUM << 4) \
+                        | (BOARD_RFGPIO_3PORTNUM << 4) \
                         | (1 << 8) \
                         | (0 << 12);
 }
@@ -644,185 +773,179 @@ static inline void BOARD_PORT_STARTUP(void) {
     /// B. Random Number ADC pins: A Zener can be used to generate noise.
     
     /// Configure Port A IO.  
-    // - A0:  Radio Reset, which starts as a floating input and the driver later sorts-out
-    // - A1:  Analog Input
+    // - A0:  Analog Input
+    // - A1:  RF RX Switch, output
     // - A2:  UART-TX, which is ALT push-pull output
-    // - A3:  UART-RX, which is ALT push-pull input
-    // - A4:  Analog Input
-    // - A5:7 are SPI bus, set to ALT.
-    // - A8:  This is where Radio GPIO5 goes, if enabled.  Otherwise, Unused Analog-In
-    // - A9:  Unused Analog-In
-    // - A10: Radio GPIO0, Hi-Z input
-    // - A11:12 are inputs which are not available on the Arduino pinout (USB)
+    // - A3:  UART-RX, which is ALT pull up input, 
+    // - A4:  Analog Input for Battery sensing
+    // - A5:  Red LED
+    // - A6:7 Radio MISO/MOSI
+    // - A8:  GNSS RESET Pin -- Output Push-Pull
+    // - A9:  EXT-UART-TX (managed by driver)
+    // - A10: EXT-UART-RX (managed by driver)
+    // - A11: Would be USB-DM, but not used here
+    // - A12: TCXO enable (push pull output, default high)
     // - A13:14 are SWD, set to ALT
-    // - A15: Unused Analog-In
+    // - A15: Radio SPI CS.  Set to Output, default high
     
-#   if defined(BOARD_RFGPIO_5PIN)
-#       define _GPIO_MODER_PA8  GPIO_MODER_IN
-#   else
-#       define _GPIO_MODER_PA8  GPIO_MODER_ANALOG
-#   endif
-    GPIOA->MODER    = (GPIO_MODER_IN    << (0*2)) \
-                    | (GPIO_MODER_ANALOG << (1*2)) \
+    // Set this for startup, the driver can deal with it after startup
+	GPIOA->BSRR     = (BOARD_RFTCXO_PIN \
+	                |  BOARD_EXTUART_TXPIN \
+	                |  BOARD_GNSS_RESETPIN \
+	                |  BOARD_RFSPI_NSSPIN);
+	
+    GPIOA->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
+                    | (GPIO_MODER_OUT    << (1*2)) \
                     | (GPIO_MODER_ALT    << (2*2)) \
                     | (GPIO_MODER_ALT    << (3*2)) \
                     | (GPIO_MODER_ANALOG << (4*2)) \
-                    | (GPIO_MODER_ALT    << (5*2)) \
+                    | (GPIO_MODER_OUT    << (5*2)) \
                     | (GPIO_MODER_ALT    << (6*2)) \
                     | (GPIO_MODER_ALT    << (7*2)) \
-                    | (_GPIO_MODER_PA8   << (8*2)) \
-                    | (GPIO_MODER_ANALOG << (9*2)) \
+                    | (GPIO_MODER_OUT    << (8*2)) \
+                    | (GPIO_MODER_OUT    << (9*2)) \
                     | (GPIO_MODER_IN     << (10*2)) \
-                    | (GPIO_MODER_IN     << (11*2)) \
-                    | (GPIO_MODER_IN     << (12*2)) \
+                    | (GPIO_MODER_ANALOG << (11*2)) \
+                    | (GPIO_MODER_OUT    << (12*2)) \
                     | (GPIO_MODER_ALT    << (13*2)) \
                     | (GPIO_MODER_ALT    << (14*2)) \
-                    | (GPIO_MODER_ANALOG << (15*2));
-
-    GPIOA->OTYPER   = 0;
+                    | (GPIO_MODER_OUT    << (15*2));
     
-    GPIOA->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (2*2)) \
+    GPIOA->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (1*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (2*2)) \
                     | (GPIO_OSPEEDR_10MHz << (3*2)) \
                     | (GPIO_OSPEEDR_10MHz << (5*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (6*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (7*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (6*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (7*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (9*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (10*2)) \
                     | (GPIO_OSPEEDR_40MHz << (13*2)) \
                     | (GPIO_OSPEEDR_40MHz << (14*2));
     
-    GPIOA->PUPDR    = (1 << (3*2)) \
-                    | (1 << (13*2)) | (2 << (14*2));
+//    GPIOA->PUPDR    = (1 << (3*2)) \
+//                    | (1 << (10*2)) \
+//                    | (1 << (13*2)) \
+//                    | (2 << (14*2));
     
-
-#   ifndef __USE_RADIO
-    GPIOA->AFR[0]   = (4 << (BOARD_UART_TXPINNUM*4)) \
-                    | (4 << (BOARD_UART_RXPINNUM*4));
-#   else
+    ///@note sometimes extended UART needs to have open-drain transmitter
+    GPIOA->OTYPER   = 0; //(1 << (9));
+    
+    GPIOA->PUPDR    = (1 << (3*2)) \
+                    | (1 << (9*2)) \
+    				| (1 << (10*2)) \
+                    | (1 << (13*2)) \
+                    | (2 << (14*2));
+    
     GPIOA->AFR[0]   = (4 << (BOARD_UART_TXPINNUM*4)) \
                     | (4 << (BOARD_UART_RXPINNUM*4)) \
                     | (0 << ((BOARD_RFSPI_MOSIPINNUM)*4)) \
-                    | (0 << ((BOARD_RFSPI_MISOPINNUM)*4)) \
-                    | (0 << ((BOARD_RFSPI_SCLKPINNUM)*4));
-#   endif
+                    | (0 << ((BOARD_RFSPI_MISOPINNUM)*4));
 
     /// If USB is used, set ALT.
     ///@todo validate this ALT implementation.
 #   if (MCU_CONFIG(USB))
-    GPIOA->AFR[1]   = (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
+    GPIOA->AFR[1]   = (4 << ((BOARD_EXTUART_TXPINNUM-8)*4)) \
+                    | (4 << ((BOARD_EXTUART_RXPINNUM-8)*4)) \
+    				| (10 << ((BOARD_USB_DMPINNUM-8)*4)) \
                     | (10 << ((BOARD_USB_DPPINNUM-8)*4));
-#   endif
+#   else
+	GPIOA->AFR[1]   = (4 << ((BOARD_EXTUART_TXPINNUM-8)*4)) \
+                    | (4 << ((BOARD_EXTUART_RXPINNUM-8)*4));
+#	endif
 
     /// Configure Port B IO.
-    /// Port B is used for external (module) IO.
-    // - B0:  Analog Input
-    // - B1:2 are unused and set to Analog mode
-    // - B3:  Radio GPIO input, else unused Analog
-    // - B4:  Radio GPIO input, else unused Analog
-    // - B5:  Radio GPIO input, else unused Analog
-    // - B6:  Radio SPI-NSS, an output
-    // - B7:  unused and set to Analog mode
-    // - B8:9 are setup for I2C bus: They start as output with Open Drain
-    // - B10: is a PWM output, set to Analog until configured
-    // - B11:15 are unused and set to Analog mode
-#   if defined(__USE_RADIO)
-    GPIOB->BSRR     = BOARD_RFSPI_NSSPIN;
-#       define _GPIO_MODER_PB3  GPIO_MODER_IN
-#       define _GPIO_MODER_PB4  GPIO_MODER_IN
-#       define _GPIO_MODER_PB5  GPIO_MODER_IN
-#       define _GPIO_MODER_PB6  GPIO_MODER_OUT
+    // - B0:  RF GPIO 2 -- Input
+    // - B1:  RF GPIO 1 -- Input
+    // - B2:  User Switch -- Input Hi-Z
+    // - B3:  RF SCLK (ALT)
+    // - B4:  RF GPIO 0 -- Input
+    // - B5:  Green LED
+    // - B6:  Blue LED: Use as Hi-Z Input with GNSS attached
+    // - B7:  Orange LED
+    // - B8:9 I2C Bus (Open Drain) or Triggers 5 & 6
+    // - B10:12 Unused, set to Analog
+	// - B13: GNSS INT pin, an output
+    // - B14:15 are Test outputs
+#   if defined(__EXT_GNSS__)
+#   define MODER_PB6    GPIO_MODER_IN
 #   else
-#       define _GPIO_MODER_PB3  GPIO_MODER_ANALOG
-#       define _GPIO_MODER_PB4  GPIO_MODER_ANALOG
-#       define _GPIO_MODER_PB5  GPIO_MODER_ANALOG
-#       define _GPIO_MODER_PB6  GPIO_MODER_ANALOG
+#   define MODER_PB6    GPIO_MODER_OUT
 #   endif
-    
+#   if (BOARD_FEATURE_I2C) 
     GPIOB->OTYPER   = (1 << (8)) | (1 << (9));
     GPIOB->BSRR     = (1 << (8)) | (1 << (9));
-    GPIOB->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
-                    | (GPIO_MODER_ANALOG << (1*2)) \
-                    | (GPIO_MODER_ANALOG << (2*2)) \
-                    | (_GPIO_MODER_PB3 << (3*2)) \
-                    | (_GPIO_MODER_PB4 << (4*2)) \
-                    | (_GPIO_MODER_PB5 << (5*2)) \
-                    | (_GPIO_MODER_PB6 << (6*2)) \
-                    | (GPIO_MODER_ANALOG << (7*2)) \
+#   endif
+    GPIOB->MODER    = (GPIO_MODER_IN     << (0*2)) \
+                    | (GPIO_MODER_IN     << (1*2)) \
+                    | (GPIO_MODER_IN     << (2*2)) \
+                    | (GPIO_MODER_ALT    << (3*2)) \
+                    | (GPIO_MODER_IN     << (4*2)) \
+                    | (GPIO_MODER_OUT    << (5*2)) \
+                    | (MODER_PB6         << (6*2)) \
+                    | (GPIO_MODER_OUT    << (7*2)) \
                     | (GPIO_MODER_OUT    << (8*2)) \
                     | (GPIO_MODER_OUT    << (9*2)) \
                     | (GPIO_MODER_ANALOG << (10*2)) \
                     | (GPIO_MODER_ANALOG << (11*2)) \
                     | (GPIO_MODER_ANALOG << (12*2)) \
-                    | (GPIO_MODER_ANALOG << (13*2)) \
-                    | (GPIO_MODER_ANALOG << (14*2)) \
-                    | (GPIO_MODER_ANALOG << (15*2));
+                    | (GPIO_MODER_OUT    << (13*2)) \
+                    | (GPIO_MODER_OUT    << (14*2)) \
+                    | (GPIO_MODER_OUT    << (15*2));
     
-    GPIOB->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (8*2)) \
+    // PB0, 1, 2 (RFIOs) should be pullups with high speed, according to STCube
+    GPIOB->PUPDR    = (1 << (0*2)) \
+                    | (1 << (1*2)) \
+                    | (1 << (4*2));
+    
+    GPIOB->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (0*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (1*2)) \
+                    | (GPIO_OSPEEDR_40MHz << (3*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (4*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (8*2)) \
                     | (GPIO_OSPEEDR_10MHz << (9*2));
+                    
+	GPIOB->AFR[0]   = (0 << ((BOARD_RFSPI_SCLKPINNUM)*4));
     
     /// Configure Port C IO.
     /// Port C is used only for USB sense and 32kHz crystal driving
-    // - C0:1   are analog inputs
-    // - C2:3   LED0 and LED1 Output Triggers: Push-Pull output or Open Drain depending on Polarity
-    // - C4:5   TEST0 and TEST1 outputs
-    // - C6:9   are unused and set to analog
-    // - C10    LED2 (optional red): Push-Pull output or Open Drain depending on Polarity
-    // - C11:12 are unused and set to analog
-    // - C13 is the user button, set to input HiZ
+    // - C0:    Radio Reset, which starts as a floating input and the driver later sorts-out
+    // - C1:    RF Boost setting, output
+    // - C2:    RF RFO (tx switch), output
+    // - C3:12  Unused -- Analog
+    // - C13    RF GPIO3 Input
     // - C14:15 are 32kHz crystal driving, they are set in a particular way
-#   if (BOARD_LEDG_POLARITY == 0)
-#       define _GPIO_OTYPER_PC2     (1<<2)
-#       define _GPIO_ODR_PC2        (1<<2)
-#   else
-#       define _GPIO_OTYPER_PC2     0
-#       define _GPIO_ODR_PC2        0
-#   endif
-#   if (BOARD_LEDO_POLARITY == 0)
-#       define _GPIO_OTYPER_PC3     (1<<3)
-#       define _GPIO_ODR_PC3        (1<<3)
-#   else
-#       define _GPIO_OTYPER_PC3     0
-#       define _GPIO_ODR_PC3        0
-#   endif
-#   if (BOARD_LEDR_POLARITY == 0)
-#       define _GPIO_OTYPER_PC10    (1<<10)
-#       define _GPIO_ODR_PC10       (1<<10)
-#   else
-#       define _GPIO_OTYPER_PC10    0
-#       define _GPIO_ODR_PC10       0
-#   endif
-#   ifdef __USE_RADIO
-#       define _GPIO_ODR_RFRESET    BOARD_RFCTL_RESETPIN
-#   else
-#       define _GPIO_ODR_RFRESET    0
-#   endif
 
-    GPIOC->OTYPER   = (_GPIO_OTYPER_PC2 | _GPIO_OTYPER_PC3 | _GPIO_OTYPER_PC10);
-    GPIOC->BSRR     = (_GPIO_ODR_PC2 | _GPIO_ODR_PC3 | _GPIO_ODR_PC10 | _GPIO_ODR_RFRESET);
-    
-
-    GPIOC->MODER    = (GPIO_MODER_ANALOG << (0*2)) \
-                    | (GPIO_MODER_ANALOG << (1*2)) \
+    GPIOC->MODER    = (GPIO_MODER_IN     << (0*2)) \
+                    | (GPIO_MODER_OUT    << (1*2)) \
                     | (GPIO_MODER_OUT    << (2*2)) \
-                    | (GPIO_MODER_OUT    << (3*2)) \
-                    | (GPIO_MODER_OUT    << (4*2)) \
-                    | (GPIO_MODER_OUT    << (5*2)) \
+                    | (GPIO_MODER_ANALOG << (3*2)) \
+                    | (GPIO_MODER_ANALOG << (4*2)) \
+                    | (GPIO_MODER_ANALOG << (5*2)) \
                     | (GPIO_MODER_ANALOG << (6*2)) \
                     | (GPIO_MODER_ANALOG << (7*2)) \
                     | (GPIO_MODER_ANALOG << (8*2)) \
                     | (GPIO_MODER_ANALOG << (9*2)) \
-                    | (GPIO_MODER_OUT    << (10*2)) \
+                    | (GPIO_MODER_ANALOG << (10*2)) \
                     | (GPIO_MODER_ANALOG << (11*2)) \
                     | (GPIO_MODER_ANALOG << (12*2)) \
                     | (GPIO_MODER_IN     << (13*2)) \
                     | (GPIO_MODER_OUT    << (14*2)) \
                     | (GPIO_MODER_ALT    << (15*2));
     
-    /// Configure Port D I/O
-    /// Port D is completely unused and set by default to Analog
-    GPIOD->MODER    = 0xFFFFFFFF;
+    // PC13 (RFIO3) should be pullup and high speed, according to ST
+    GPIOC->PUPDR    = (1 << (13*2));
+    GPIOC->OSPEEDR  = (GPIO_OSPEEDR_10MHz << (1*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (2*2)) \
+                    | (GPIO_OSPEEDR_10MHz << (13*2));
     
     // Assert Port H as HiZ
+#   if 0    //BOARD_FEATURE_HFXTAL
+    GPIOH->MODER    = (GPIO_MODER_IN << (0*2))
+                    | (GPIO_MODER_OUT << (1*2));
+#   else
     GPIOH->MODER    = (GPIO_MODER_IN << (0*2))
                     | (GPIO_MODER_IN << (1*2));
+#   endif
     
     /// Configure Port H for Crystal Bypass
     /// By default it is set to HiZ input.  It is changed on-demand in FW
@@ -883,33 +1006,83 @@ static inline void BOARD_OPEN_FLASH(void* start, void* end) {
 */
 
 
+static inline void BOARD_RFANT_OFF(void) {
+/// Clear PA1, PC1, PC2 and change to Analog-In
+    ot_u32 ant_moder;
+    GPIOA->BSRR = ((1<<1) << 16);
+    GPIOC->BSRR = (((1<<1) | (1<<2)) << 16);
+    
+    ant_moder       = GPIOA->MODER;
+    ant_moder      &= ~((3 << (1*2)));
+    ant_moder      |= ((3 << (1*2)));
+    GPIOA->MODER    = ant_moder;
+    
+    ant_moder       = GPIOC->MODER;
+    ant_moder      &= ~((3 << (1*2)) | (3 << (2*2)));
+    ant_moder      |= ((3 << (1*2)) | (3 << (2*2)));
+    GPIOC->MODER    = ant_moder;
+}
+
+
+static inline void BOARD_RFANT_ON(void) {
+/// Clear PA1, PC1, PC2 and change to Analog-In
+    ot_u32 ant_moder;
+    GPIOA->BSRR = ((1<<1) << 16);
+    GPIOC->BSRR = (((1<<1) | (1<<2)) << 16);
+    
+    ant_moder       = GPIOA->MODER;
+    ant_moder      &= ~((3 << (1*2)));
+    ant_moder      |= ((1 << (1*2)));
+    GPIOA->MODER    = ant_moder;
+    
+    ant_moder       = GPIOC->MODER;
+    ant_moder      &= ~((3 << (1*2)) | (3 << (2*2)));
+    ant_moder      |= ((1 << (1*2)) | (1 << (2*2)));
+    GPIOC->MODER    = ant_moder;
+}
+
+static inline void BOARD_RFANT_TX(ot_bool use_boost) {
+    GPIOC->BSRR = ((1<<2) >> (ot_u32)use_boost);
+}
+
+static inline void BOARD_RFANT_RX(void) {
+    GPIOA->BSRR = (1<<1);
+}
+
+
+
 static inline void BOARD_RFSPI_CLKON(void) {
 #ifdef __USE_RADIO
     ot_u32 spi_moder;
-    spi_moder   = BOARD_RFSPI_PORT->MODER;
-    spi_moder  &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                  | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
+    spi_moder   = GPIOA->MODER;
+    spi_moder  &= ~((3 << (BOARD_RFSPI_MISOPINNUM*2)) \
                   | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
-    spi_moder  |= (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                | (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
+    spi_moder  |= (GPIO_MODER_ALT << (BOARD_RFSPI_MISOPINNUM*2)) \
                 | (GPIO_MODER_ALT << (BOARD_RFSPI_MOSIPINNUM*2));
+    GPIOA->MODER = spi_moder;
     
-    BOARD_RFSPI_PORT->MODER = spi_moder;
+    spi_moder   = GPIOB->MODER;
+    spi_moder  &= ~(3 << (BOARD_RFSPI_SCLKPINNUM*2));
+    spi_moder  |= (GPIO_MODER_ALT << (BOARD_RFSPI_SCLKPINNUM*2));
+    GPIOB->MODER = spi_moder;
 #endif
 }
 
 static inline void BOARD_RFSPI_CLKOFF(void) {
 #ifdef __USE_RADIO
     ot_u32 spi_moder;
-    spi_moder   = BOARD_RFSPI_PORT->MODER;
-    spi_moder  &= ~((3 << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                  | (3 << (BOARD_RFSPI_MISOPINNUM*2)) \
+    spi_moder   = GPIOA->MODER;
+    spi_moder  &= ~((3 << (BOARD_RFSPI_MISOPINNUM*2)) \
                   | (3 << (BOARD_RFSPI_MOSIPINNUM*2)) );
-    spi_moder  |= (GPIO_MODER_OUT << (BOARD_RFSPI_SCLKPINNUM*2)) \
-                | (GPIO_MODER_IN << (BOARD_RFSPI_MISOPINNUM*2)) \
+    spi_moder  |= (GPIO_MODER_IN << (BOARD_RFSPI_MISOPINNUM*2)) \
                 | (GPIO_MODER_OUT << (BOARD_RFSPI_MOSIPINNUM*2));
+    GPIOA->MODER = spi_moder;
     
-    BOARD_RFSPI_PORT->MODER = spi_moder;
+    spi_moder   = GPIOB->MODER;
+    spi_moder  &= ~(3 << (BOARD_RFSPI_SCLKPINNUM*2));
+    spi_moder  |= (GPIO_MODER_OUT << (BOARD_RFSPI_SCLKPINNUM*2));
+    GPIOB->MODER = spi_moder;
+    
 #endif
 }
 
@@ -1057,25 +1230,24 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 ///      These Macros will get called in the universal EXTI interrupt handler,
 ///      typically implemented in platform_isr_STM32L.c
 #define BOARD_RADIO_EXTI0_ISR(); 
-#define BOARD_RADIO_EXTI1_ISR();   
+#define BOARD_RADIO_EXTI1_ISR()     sx127x_irq1_isr()
 #define BOARD_RADIO_EXTI2_ISR();
-#define BOARD_RADIO_EXTI3_ISR()     sx127x_irq1_isr()
-#define BOARD_RADIO_EXTI4_ISR()     sx127x_irq3_isr()
+#define BOARD_RADIO_EXTI3_ISR();  
+#define BOARD_RADIO_EXTI4_ISR()     sx127x_irq0_isr()
 #define BOARD_RADIO_EXTI5_ISR();
 #define BOARD_RADIO_EXTI6_ISR();     
 #define BOARD_RADIO_EXTI7_ISR();     
 #define BOARD_RADIO_EXTI8_ISR();
 #define BOARD_RADIO_EXTI9_ISR();
-#define BOARD_RADIO_EXTI10_ISR()    sx127x_irq0_isr()    
+#define BOARD_RADIO_EXTI10_ISR();
 #define BOARD_RADIO_EXTI11_ISR();
 #define BOARD_RADIO_EXTI12_ISR();
-#define BOARD_RADIO_EXTI13_ISR();
+#define BOARD_RADIO_EXTI13_ISR()    sx127x_irq3_isr()
 #define BOARD_RADIO_EXTI14_ISR();
 #define BOARD_RADIO_EXTI15_ISR();
 
 
-///@todo Create a more intelligent setup that knows how to use the UART, even
-///      though for this board UART is not generally the MPipe
+///@todo Create a more intelligent setup that knows how to use the UART
 ///@note BOARD Macros for Com module interrupt vectoring.  Connect these to
 ///      the Com interface driver you are using.  Check the schematic of your
 ///      board to see where the Com IRQ lines are routed. 
@@ -1083,6 +1255,12 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #   define _UART_RXSYNC_ISR()       mpipe_rxsync_isr()
 #else
 #   define _UART_RXSYNC_ISR()       ;
+#endif
+
+#if defined(__UBX_GNSS__)
+#   define _GNSS_RXSYNC_ISR()       ubxdrv_rxsync_isr()
+#else
+#   define _GNSS_RXSYNC_ISR()       ;
 #endif
 
 #define BOARD_COM_EXTI0_ISR();
@@ -1095,7 +1273,7 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define BOARD_COM_EXTI7_ISR();     
 #define BOARD_COM_EXTI8_ISR();     
 #define BOARD_COM_EXTI9_ISR();
-#define BOARD_COM_EXTI10_ISR();   
+#define BOARD_COM_EXTI10_ISR()  _GNSS_RXSYNC_ISR()
 #define BOARD_COM_EXTI11_ISR();
 #define BOARD_COM_EXTI12_ISR();
 #define BOARD_COM_EXTI13_ISR();
@@ -1162,8 +1340,12 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define OT_GPTIM_ID         'L'
 #define OT_GPTIM            LPTIM1
 #define OT_GPTIM_CLOCK      32768
-#define OT_GPTIM_SHIFT      0
-#define OT_GPTIM_OVERSAMPLE 1
+
+// Default is 2^3 oversampling.  If you want to change defaults, you can, but
+// be careful.
+#define OT_GPTIM_SHIFT      MCU_PARAM_GPTIM_SHIFT
+#define OT_GPTIM_OVERSAMPLE MCU_PARAM_GPTIM_OVERSAMPLE
+
 #define OT_GPTIM_RES        (1024 << OT_GPTIM_SHIFT)    //1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
 #define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
@@ -1182,6 +1364,7 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 
 
 
+// Primary LED triggers
 #define OT_TRIG1_PORT       BOARD_LEDG_PORT
 #define OT_TRIG1_PINNUM     BOARD_LEDG_PINNUM
 #define OT_TRIG1_PIN        BOARD_LEDG_PIN
@@ -1194,6 +1377,22 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #define OT_TRIG3_PINNUM     BOARD_LEDR_PINNUM
 #define OT_TRIG3_PIN        BOARD_LEDR_PIN
 #define OT_TRIG3_POLARITY   BOARD_LEDR_POLARITY
+#define OT_TRIG4_PORT       BOARD_LEDB_PORT
+#define OT_TRIG4_PINNUM     BOARD_LEDB_PINNUM
+#define OT_TRIG4_PIN        BOARD_LEDB_PIN
+#define OT_TRIG4_POLARITY   BOARD_LEDB_POLARITY
+
+// Secondary pin triggers
+#define OT_TRIG5_PORT       BOARD_TRIG5_PORT
+#define OT_TRIG5_PINNUM     BOARD_TRIG5_PINNUM
+#define OT_TRIG5_PIN        BOARD_TRIG5_PIN
+#define OT_TRIG5_POLARITY   1
+#define OT_TRIG6_PORT       BOARD_TRIG6_PORT
+#define OT_TRIG6_PINNUM     BOARD_TRIG6_PINNUM
+#define OT_TRIG6_PIN        BOARD_TRIG6_PIN
+#define OT_TRIG6_POLARITY   1
+
+
 
 #define OT_TRIG(NUM, SET)   OT_TRIG##NUM##_##SET##()
 
@@ -1227,6 +1426,36 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 #   define OT_TRIG3_TOG()   OT_TRIG3_PORT->ODR  ^= OT_TRIG3_PIN;
 #endif
 
+#if (OT_TRIG4_POLARITY != 0)
+#   define OT_TRIG4_ON()    OT_TRIG4_PORT->BSRR  = OT_TRIG4_PIN;
+#   define OT_TRIG4_OFF()   OT_TRIG4_PORT->BRR   = OT_TRIG4_PIN;
+#   define OT_TRIG4_TOG()   OT_TRIG4_PORT->ODR  ^= OT_TRIG4_PIN;
+#else 
+#   define OT_TRIG4_ON()    OT_TRIG4_PORT->BRR   = OT_TRIG4_PIN;
+#   define OT_TRIG4_OFF()   OT_TRIG4_PORT->BSRR  = OT_TRIG4_PIN;
+#   define OT_TRIG4_TOG()   OT_TRIG4_PORT->ODR  ^= OT_TRIG4_PIN;
+#endif
+
+#if (OT_TRIG5_POLARITY != 0)
+#   define OT_TRIG5_ON()    OT_TRIG5_PORT->BSRR  = OT_TRIG5_PIN;
+#   define OT_TRIG5_OFF()   OT_TRIG5_PORT->BRR   = OT_TRIG5_PIN;
+#   define OT_TRIG5_TOG()   OT_TRIG5_PORT->ODR  ^= OT_TRIG5_PIN;
+#else 
+#   define OT_TRIG5_ON()    OT_TRIG5_PORT->BRR   = OT_TRIG5_PIN;
+#   define OT_TRIG5_OFF()   OT_TRIG5_PORT->BSRR  = OT_TRIG5_PIN;
+#   define OT_TRIG5_TOG()   OT_TRIG5_PORT->ODR  ^= OT_TRIG5_PIN;
+#endif
+
+#if (OT_TRIG6_POLARITY != 0)
+#   define OT_TRIG6_ON()    OT_TRIG6_PORT->BSRR  = OT_TRIG6_PIN;
+#   define OT_TRIG6_OFF()   OT_TRIG6_PORT->BRR   = OT_TRIG6_PIN;
+#   define OT_TRIG6_TOG()   OT_TRIG6_PORT->ODR  ^= OT_TRIG6_PIN;
+#else 
+#   define OT_TRIG6_ON()    OT_TRIG6_PORT->BRR   = OT_TRIG6_PIN;
+#   define OT_TRIG6_OFF()   OT_TRIG6_PORT->BSRR  = OT_TRIG6_PIN;
+#   define OT_TRIG6_TOG()   OT_TRIG6_PORT->ODR  ^= OT_TRIG6_PIN;
+#endif
+
 static inline void BOARD_led1_on(void)      { OT_TRIG1_ON(); }
 static inline void BOARD_led1_off(void)     { OT_TRIG1_OFF(); }
 static inline void BOARD_led1_toggle(void)  { OT_TRIG1_TOG(); }
@@ -1236,12 +1465,15 @@ static inline void BOARD_led2_toggle(void)  { OT_TRIG2_TOG(); }
 static inline void BOARD_led3_on(void)      { OT_TRIG3_ON(); }
 static inline void BOARD_led3_off(void)     { OT_TRIG3_OFF(); }
 static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
+static inline void BOARD_led4_on(void)      { OT_TRIG4_ON(); }
+static inline void BOARD_led4_off(void)     { OT_TRIG4_OFF(); }
+static inline void BOARD_led4_toggle(void)  { OT_TRIG4_TOG(); }
 
 
-#ifndef __ISR_EXTI13
-#   define __ISR_EXTI13
+#ifndef __ISR_EXTI2
+#   define __ISR_EXTI2
 #endif
-#define OT_SWITCH1_ISR      platform_isr_exti13
+#define OT_SWITCH1_ISR      platform_isr_exti2
 #define OT_SWITCH1_PORTNUM  BOARD_SW1_PORTNUM
 #define OT_SWITCH1_PORT     BOARD_SW1_PORT
 #define OT_SWITCH1_PINNUM   BOARD_SW1_PINNUM
@@ -1258,7 +1490,7 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 
 
 
-/** Nucleo STM32L0 MPipe Setup <BR>
+/** STM32L0 MPipe Setup <BR>
   * ========================================================================<BR>
   * USB MPipe requires a CDC firmware library subsystem, which typically uses
   * memcpy to move data across HW buffers and such, and memcpy typically is
@@ -1308,11 +1540,16 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 #   ifndef __ISR_USART2
 #       define __ISR_USART2
 #   endif
+
+#   if (defined(__USE_DMA1_CHAN6) || defined(__USE_DMA1_CHAN7))
+#       error "MPIPE UART is UART2 is set-up on DMA channels 6 and 7, but they are already configured elsewhere."
+#   endif
 #   define MPIPE_UART           USART2
-#   define MPIPE_DMA_RXCHAN_ID  5
-#   define MPIPE_DMA_TXCHAN_ID  4
-#   define __USE_DMA1_CHAN5
-#   define __USE_DMA1_CHAN4
+#   define MPIPE_DMA_RXCHAN_ID  6
+#   define MPIPE_DMA_TXCHAN_ID  7
+#   define __USE_DMA1_CHAN6
+#   define __USE_DMA1_CHAN7
+
 #endif
 
 #if (MCU_CONFIG_MPIPEI2C == ENABLED)
@@ -1327,6 +1564,9 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 #       error "MPIPE I2C must be on I2C2 for this board."
 #   endif
 #   ifndef MPIPE_DMANUM
+#       if (defined(__USE_DMA1_CHAN4) || defined(__USE_DMA1_CHAN5))
+#           error "MPIPE is on I2C and set-up on DMA channels 4 and 5, but they are already configured elsewhere."
+#       endif
 #       define MPIPE_DMANUM         1
 #       define MPIPE_DMA            DMA1
 #       define MPIPE_DMA_RXCHAN_ID  5
@@ -1339,6 +1579,34 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 
 
 
+
+/** UBX GNSS UART Setup forBR>
+  * ========================================================================<BR>
+  */
+#if (OT_FEATURE(GNSS) && BOARD_FEATURE(UBX_GNSS))
+#   define GNSS_DMANUM         1
+#   define GNSS_DMA            DMA1
+#   define GNSS_UART_ID        BOARD_EXTUART_ID
+#   define GNSS_UART_PORTNUM   BOARD_EXTUART_PORTNUM
+#   define GNSS_UART_PORT      BOARD_EXTUART_PORT
+#   define GNSS_UART_RXPIN     BOARD_EXTUART_RXPIN
+#   define GNSS_UART_TXPIN     BOARD_EXTUART_TXPIN
+#   define GNSS_UART_PINS      (GNSS_UART_RXPIN | GNSS_UART_TXPIN)
+#   if (GNSS_UART_ID != 1)
+#       error "GNSS UART must be on USART1 for this board."
+#   endif
+#   ifndef __ISR_USART1
+#       define __ISR_USART1
+#   endif
+#   define GNSS_UART           USART1
+#   if (defined(__USE_DMA1_CHAN4) || defined(__USE_DMA1_CHAN5))
+#       error "GNSS UART is UART1 is set-up on DMA channels 4 and 5, but they are already configured elsewhere."
+#   endif
+#   define GNSS_DMA_RXCHAN_ID  5
+#   define GNSS_DMA_TXCHAN_ID  4
+#   define __USE_DMA1_CHAN4
+#   define __USE_DMA1_CHAN5
+#endif
 
 
 
@@ -1369,7 +1637,7 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 #define RADIO_SPI_PORT              BOARD_RFSPI_PORT
 #define RADIO_SPIMOSI_PORT          BOARD_RFSPI_PORT
 #define RADIO_SPIMISO_PORT          BOARD_RFSPI_PORT
-#define RADIO_SPICLK_PORT           BOARD_RFSPI_PORT
+#define RADIO_SPICLK_PORT           GPIOB
 #define RADIO_SPICS_PORT            BOARD_RFSPI_NSSPORT
 #define RADIO_SPIMOSI_PIN           BOARD_RFSPI_MOSIPIN
 #define RADIO_SPIMISO_PIN           BOARD_RFSPI_MISOPIN
@@ -1527,7 +1795,7 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 #undef _SRAMCLK_LP 
 #undef _MIFCLK_N
 #undef _MIFCLK_LP 
-#undef _DMACLK_N 
+#undef _DMACLK_N  
 #undef _DMACLK_LP 
 #undef _DMACLK_DYNAMIC
 #undef _GPIOCLK_N 
@@ -1539,48 +1807,19 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 
 
 
+
 /** Trailing Header Includes <BR>
   * ========================================================================<BR>
   * These must occur AFTER all the above has been defined
   */
-
-/// Configuration of system with or without Radio
-#if defined(__USE_RADIO)
-#   ifdef __NULL_RADIO__
-//#       include <io/radio_null/config.h>
-#   else
-#       define __LORA__
-#       define __SX127x__
-#       define __SX1272__
-//#       define __SX127x_TXSW__
-//#       define __SX127x_RXSW__
-//#       define __SX127x_PABOOST__
-//#		define __SX127x_20dBm__
-
-#       include <io/sx127x/config.h>
-#   endif
-#endif
-
-
-/// Configuration of system with or without GNSS receiver
-#if defined(__HAS_GNSS)
-#   ifdef __NULL_GNSS__
-#       include <io/gnss_null/config.h>
-#   else
-#       define __UBX_GNSS__
-#       define __UBX_M8__
-#       define __UBX_MAXM8x__
-#       define __UBX_MAXM8C__
-#       include <io/ubx_gnss.h>
-#   endif
-#endif
-
-
 #ifdef __USE_RADIO
 #	include <io/sx127x/interface.h>
 #endif
-#if BOARD_FEATURE(UBX_GNSS)
+
+#if defined(__UBX_GNSS__)
 #   include <io/ubx_gnss.h>
+#elif defined(__NULL_GNSS__)
+#   include <io/gnss_null/interface.h>
 #endif
 
 

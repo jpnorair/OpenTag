@@ -14,7 +14,7 @@
   *
   */
 /**
-  * @file       /hbuilder/ubxm8/io_ubxm8_stm32l0.c
+  * @file       /io/ubxm8/io_ubxm8_stm32l0.c
   * @author     JP Norair
   * @version    R103
   * @date       21 April 2017

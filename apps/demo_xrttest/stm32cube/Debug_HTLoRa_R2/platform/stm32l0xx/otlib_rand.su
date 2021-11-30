@@ -1,5 +1,0 @@
-otlib_rand.c:45:6:rand_stream	0	static
-otlib_rand.c:56:6:rand_prnseed	0	static
-otlib_rand.c:78:8:rand_prn16	8	static
-otlib_rand.c:62:8:rand_prn32	8	static
-otlib_rand.c:72:7:rand_prn8	8	static

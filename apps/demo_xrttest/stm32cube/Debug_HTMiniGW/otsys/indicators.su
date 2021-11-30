@@ -1,3 +1,0 @@
-indicators.c:94:6:indicator_on	0	static
-indicators.c:126:6:indicator_off	0	static
-indicators.c:158:6:indicator_set	8	static

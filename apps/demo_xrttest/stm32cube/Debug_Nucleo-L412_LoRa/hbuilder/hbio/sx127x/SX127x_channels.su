@@ -1,6 +1,0 @@
-SX127x_channels.c:177:8:sx127x_get_bandplan	0	static
-SX127x_channels.c:185:8:sx127x_get_chanregs	8	static
-SX127x_channels.c:192:6:sx127x_configure_chan	8	static
-SX127x_channels.c:198:7:sx127x_get_bw	0	static
-SX127x_channels.c:209:8:sx127x_symbol_miti	0	static
-SX127x_channels.c:226:8:sx127x_block_time	0	static

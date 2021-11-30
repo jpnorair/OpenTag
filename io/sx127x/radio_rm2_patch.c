@@ -38,7 +38,7 @@
 static uint8_t ldpc_iobuf[32];
 static int16_t ldpc_working[2048];
 
-#elif (M2_FEATURE(HSCODE))
+#elif (M2_FEATURE_HSCODE == ENABLED)
 #include <hblib/hscode.h>
 #include <hblib/lorallr.h>
 
@@ -48,6 +48,15 @@ static uint8_t      hsc_iobuf[16];
 extern hsc_t        hsc;
 extern lorallr_t    lorallr;
 extern radio_snr_t  loralink;
+
+#else
+typedef enum {
+    LoraSF11    = 0,
+    LoraSF9     = 1,
+    LoraSF7     = 2,
+    LoraSF5     = 3
+} lorasf_t;
+
 #endif
 //static volatile ot_int hits;
 
