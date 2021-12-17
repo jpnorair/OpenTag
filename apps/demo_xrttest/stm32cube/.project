@@ -157,11 +157,6 @@
 			<locationURI>PARENT-4-PROJECT_LOC/OpenTag/platform/stm32l0xx/io_SPIRIT1.c</locationURI>
 		</link>
 		<link>
-			<name>platform/stm32l0xx/io_SX127x.c</name>
-			<type>1</type>
-			<locationURI>PARENT-4-PROJECT_LOC/OpenTag/platform/stm32l0xx/io_SX127x.c</locationURI>
-		</link>
-		<link>
 			<name>platform/stm32l0xx/otlib_crc16.c</name>
 			<type>1</type>
 			<locationURI>PARENT-4-PROJECT_LOC/OpenTag/platform/stm32l0xx/otlib_crc16.c</locationURI>
