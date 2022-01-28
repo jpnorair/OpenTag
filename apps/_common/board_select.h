@@ -48,6 +48,7 @@ BOARD_Nucleo_L053       | Supported | ST            | Available     | STM32L0
 BOARD_Nucleo_L073       | Supported | ST            | Available     | STM32L0
 BOARD_Nucleo_LRWAN1     | Supported | ST            | Available     | STM32L0
 BOARD_Nucleo_L412_LoRa  | Supported | Haystack      | Proto-only    | STM32L4
+BOARD_Nucleo_WL55       | Supported | ST            | Proto         | STM32WL
 BOARD_Launchpad_CC1310  | Pending   | TI            | Available     | CC1310
 BOARD_Launchpad_CC1350  | Pending   | TI            | Available     | CC1310
 BOARD_HayTag_LoRa1      | Supported | Haystack/UDEA | Proto-only    | STM32L1
@@ -96,6 +97,9 @@ BOARD_HayTag_CC13xx     | Pending   | Haystack      | In Dev.       | CC13xx
    (defined(BOARD_Nucleo_L412_LoRa) || \
     defined(BOARD_HayTag_LoRa_R3) )
 
+#define BOARD_HAS_STM32WL55()     \
+   (defined(BOARD_Nucleo_WL55) )
+
 #define BOARD_HAS_CC13XX()     \
    (defined(BOARD_Launchpad_CC1310) || \
     defined(BOARD_Launchpad_CC1350) || \
@@ -104,6 +108,7 @@ BOARD_HayTag_CC13xx     | Pending   | Haystack      | In Dev.       | CC13xx
 #define BOARD_IS_OFFICIAL() \
    (BOARD_HAS_CC430() || \
     BOARD_HAS_MSP430F5() || \
+    BOARD_HAS_STM32WL55() || \
     BOARD_HAS_STM32L4() || \
     BOARD_HAS_STM32L1() || \
     BOARD_HAS_STM32L0() || \
@@ -114,6 +119,7 @@ BOARD_HayTag_CC13xx     | Pending   | Haystack      | In Dev.       | CC13xx
     defined(BOARD_Nucleo_L073) || \
     defined(BOARD_Nucleo_LRWAN1) || \
     defined(BOARD_Nucleo_L412_LoRa) || \
+    defined(BOARD_Nucleo_WL55) || \
     defined(BOARD_Discovery_LoRa) || \
     defined(BOARD_Discovery_LoRa_GPS) || \
     defined(BOARD_foam_discovery) || \
@@ -137,7 +143,10 @@ BOARD_HayTag_CC13xx     | Pending   | Haystack      | In Dev.       | CC13xx
     (BOARD_HAS_CC430() || BOARD_HAS_MSP430F5())
     
 #define BOARD_SUPPORTS_HICCULP() \
-    (BOARD_HAS_STM32L4() || BOARD_HAS_STM32L1() || BOARD_HAS_STM32L0())
+   (BOARD_HAS_STM32WL55() || \
+    BOARD_HAS_STM32L4() || \
+    BOARD_HAS_STM32L1() || \
+    BOARD_HAS_STM32L0() )
 
 
 

@@ -504,10 +504,10 @@ ot_u16 platform_ext_lsihz();
   * The LPTIM used for STM32L0 is oversampled beyond 1024 Hz (8192 Hz) in
   * order to workaround the 4-clock update lag of the LPTIM Compare Register.
   */
-#define MCU_PARAM_GPTIM_OVERSAMPLE		3
-#define MCU_PARAM_GPTIM_SHIFT			0
-#define MCU_PRESCALER_SHIFT     (MCU_PARAM_GPTIM_OVERSAMPLE+MCU_PARAM_GPTIM_SHIFT)
-#define OT_GPTIM_LIMIT          ((65536 >> MCU_PRESCALER_SHIFT) - 260)
+#define MCU_PARAM_LPTIM_OVERSAMPLE		3
+#define MCU_PARAM_LPTIM_SHIFT			0
+#define MCU_PARAM_LPTIM_PS_SHIFT        (MCU_PARAM_LPTIM_OVERSAMPLE+MCU_PARAM_LPTIM_SHIFT)
+#define MCU_PARAM_LPTIM_LIMIT           ((65536 >> MCU_PARAM_LPTIM_PS_SHIFT) - 260)
 
 
 

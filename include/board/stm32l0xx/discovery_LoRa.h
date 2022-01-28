@@ -1343,8 +1343,8 @@ static inline void BOARD_USB_PORTDISABLE(void) {
 
 // Default is 2^3 oversampling.  If you want to change defaults, you can, but
 // be careful.
-#define OT_GPTIM_SHIFT      MCU_PARAM_GPTIM_SHIFT
-#define OT_GPTIM_OVERSAMPLE MCU_PARAM_GPTIM_OVERSAMPLE
+#define OT_GPTIM_SHIFT      MCU_PARAM_LPTIM_SHIFT
+#define OT_GPTIM_OVERSAMPLE MCU_PARAM_LPTIM_OVERSAMPLE
 
 #define OT_GPTIM_RES        (1024 << OT_GPTIM_SHIFT)    //1024
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)

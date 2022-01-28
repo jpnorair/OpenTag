@@ -565,7 +565,7 @@
 	<variableList>
 		<variable>
 			<name>OT_ROOT</name>
-			<value>$%7BPARENT-4-PROJECT_LOC/OpenTag%7D</value>
+			<value>$%7BPARENT-3-PROJECT_LOC%7D</value>
 		</variable>
 	</variableList>
 </projectDescription>

@@ -30,7 +30,6 @@
 #include "../../_common/board_select.h"
 
 
-
 /// Default Board setting: (Jupiter_R2). 
 /// You should set BOARD_... as a constant that gets passed to the compiler as 
 /// a command-line argument (or whatever is equivalent).  You can also change
@@ -87,6 +86,10 @@
 #elif defined(BOARD_Nucleo_L412_LoRa)
 #   include <app/isr_config_STM32L4.h>
 #   include <board/stm32l4xx/board_Nucleo-L412_LoRa.h>
+
+#elif defined(BOARD_Nucleo_WL55)
+#   include <app/isr_config_STM32WL55.h>
+#   include <board/stm32wl55xx/nucleo_wl55.h>
 
 #elif (defined(BOARD_Discovery_LoRa) || defined(BOARD_Discovery_LoRa_GPS))
 #   include <app/isr_config_STM32L0.h>

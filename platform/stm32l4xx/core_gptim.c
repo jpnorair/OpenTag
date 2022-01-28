@@ -181,7 +181,7 @@ void systim_init(void* tim_init) {
     // IER and CFGR must be set with LPTIM disabled
     LPTIM1->CR      = 0;            // disable timer
     LPTIM1->IER     = LPTIM_IER_CMPMIE;
-    LPTIM1->CFGR    = ((5-MCU_PRESCALER_SHIFT) << 9);    // generally div32, 16, 8
+    LPTIM1->CFGR    = ((5-MCU_PARAM(LPTIM_PS_SHIFT)) << 9);    // generally div32, 16, 8
     
     // ARR and CMP must be set with LPTIM enabled
     LPTIM1->CR      = LPTIM_CR_ENABLE;
