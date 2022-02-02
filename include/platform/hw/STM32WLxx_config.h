@@ -818,20 +818,33 @@ void SysTick_Handler(void);
 
 /** STM32L Special Platform Functions & data for timing & clocking <BR>
   * ========================================================================<BR>
+  *
   */
+
+// These are the default GPTIM settings for this MCU
+#define __ISR_RTC_Alarm
+#define OT_GPTIM_ID         'R'
+#define OT_GPTIM            RTC
+#define OT_GPTIM_CLOCK      32768
+#define OT_GPTIM_SHIFT      0
+#define OT_GPTIM_OVERSAMPLE 5
+#define OT_GPTIM_RES        (1024 << OT_GPTIM_SHIFT)    //1024
+#define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
+#define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
+
 #if (OT_FEATURE(TIME) == ENABLED)
 #   define RTC_ALARMS   1       // Max=3
 #else
 #   define RTC_ALARMS   0
 #endif
 
-#define GPTIM_FLAG_RTCBYPASS    (1<<1)
 #define GPTIM_FLAG_SLEEP        (1<<0)
 
+
 typedef struct {
-    ot_u8   flags;
-    ot_u8   opt;
-    ot_u16  stamp1;
+    ot_u16  flags;
+    ot_u32  k_stamp;
+    ot_u32  clk_stamp;
 } systim_struct;
 
 typedef struct {

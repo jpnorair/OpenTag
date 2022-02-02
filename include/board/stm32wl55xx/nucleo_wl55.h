@@ -1046,7 +1046,7 @@ static inline void BOARD_HSXTAL_OFF(void) {
 /// the Com interface driver you are using.  Check the schematic of your
 /// board to see where the Com IRQ lines are routed.
 #if (MCU_CONFIG(MPIPEUART) && OT_FEATURE(MPIPE) && BOARD_FEATURE(MPIPE) && BOARD_FEATURE(MPIPE_BREAK))
-#   define __ISR_EXTI3
+#   define __USE_EXTI3
 #   define _UART_RXSYNC_ISR()       mpipe_rxsync_isr()
 #else
 #   define _UART_RXSYNC_ISR()       ;
@@ -1126,20 +1126,23 @@ static inline void BOARD_HSXTAL_OFF(void) {
   * <LI> MPIPE:     The wireline interface, usually either UART or USB-CDC, but 
   *                   possible to use with a multi-master I2C or SPI as well </LI>
   */
-#define OT_GPTIM_ID         'R'
-#define OT_GPTIM            RTC
-#define OT_GPTIM_CLOCK      32768
+
+///@note The defaults (commented below) are set in STM32WLxx_config.h  If you
+///      want to make changes, you should undef the defines needing changes
+///      and define them again below.
 
 ///@note STM32WL RTC clocking impl uses a raw period of 1/32768 Hz
 ///      OpenTag's tick is (generally) 1/1024 sec.
-///      Thus the setting here is SHIFT=0, OVERSAMPLE=6
-#define OT_GPTIM_SHIFT      0
-#define OT_GPTIM_OVERSAMPLE 6
-
-#define OT_GPTIM_RES        (1024 << OT_GPTIM_SHIFT)    //1024
-#define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
-#define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
-
+///      Thus the setting here is SHIFT=0, OVERSAMPLE=5
+//#define __ISR_RTC_Alarm
+//#define OT_GPTIM_ID         'R'
+//#define OT_GPTIM            RTC
+//#define OT_GPTIM_CLOCK      32768
+//#define OT_GPTIM_SHIFT      0
+//#define OT_GPTIM_OVERSAMPLE 5
+//#define OT_GPTIM_RES        (1024 << OT_GPTIM_SHIFT)    //1024
+//#define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
+//#define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
 
 #if (OT_GPTIM_CLOCK == BOARD_PARAM_LFHz)
 #   define OT_GPTIM_ERROR   BOARD_PARAM_LFtol
@@ -1147,7 +1150,8 @@ static inline void BOARD_HSXTAL_OFF(void) {
 #   define OT_GPTIM_ERROR   BOARD_PARAM_HFtol
 #endif
 
-#define OT_GPTIM_ERRDIV         32768 //this needs to be hard-coded
+//this needs to be hard-coded
+#define OT_GPTIM_ERRDIV         32768
 
 #define OT_KTIM_IRQ_SRCLINE     BOARD_GPTIM1_PINNUM
 #define OT_MACTIM_IRQ_SRCLINE   BOARD_GPTIM2_PINNUM
@@ -1535,7 +1539,7 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
   * These must occur AFTER all the above has been defined
   */
 #ifdef __USE_RADIO
-//#	include <io/stm32wl_lora/interface.h>
+#	include <io/stm32wl_lora/interface.h>
 #endif
 
 

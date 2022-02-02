@@ -35,6 +35,12 @@
 #include <otsys/config.h>
 #include <app/build_config.h>
 
+/** @typedef ot_timint
+  * Type that gets used for timer input/output values.
+  * Historically, OT used 16 bit timers, but now it migrating to 32 bit.
+  */
+typedef ot_u32  ot_timint;
+
 
 ///@todo Here temporarily, put this in ISRs instead
 void platform_rtc_isr();
@@ -157,6 +163,8 @@ ot_u32 systim_get();
   * @param None
   * @retval None
   * @ingroup Platform
+  *
+  * This function should be only called in the kernel scheduler.
   */
 void systim_flush();
 

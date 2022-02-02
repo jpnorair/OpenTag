@@ -202,54 +202,52 @@ void PVD_PVM_IRQHandler(void) {
 #if (_TAMPER || _RTC_STAMP || _RTC_SSRU || _RTC_ALARM || _RTC_WKUP || LSECSS)
 
 void RTC_LSECSS_IRQHandler(void) {
-    ot_u32 exti_pr;
+    ot_u32 rtc_misr;
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    
+
+    // Unfortunately, these EXTIs are not available in EXTI-PRn register.
+    // The RTC->MISR pins must be cleared in the platform_isr_...() functions.
     // EXTI17   RTC Alarm
     // EXTI18   RTC SSRU
     // EXTI19   TAMPER, RTC TIMESTAMP, LSE_CSS
     // EXTI20   RTC Wakeup
-    exti_pr     = EXTI->PR1;
-    EXTI->PR1   = ((1<<17) | (1<<18) | (1<<19) | (1<<20));
-
-#   if _RTC_ALARM
-    if (exti_pr & (1<<17)) {
-        RTC->ICSR  &= ~RTC_ICSR_RSF;
-        // platform_isr_rtcalarm must clear its own flags in RTC->ISR / RTC->SCR
-        platform_isr_rtcalarm();
-    }
-#   endif
-
-#   if _RTC_WKUP
-    if (exti_pr & (1<<20)) {
-        RTC->ICSR  &= ~RTC_ICSR_RSF;
-        RTC->SCR   |= RTC_SCR_CWUTF;
-        platform_isr_rtcwakeup();
-    }
-#   endif
+    rtc_misr = RTC->MISR;
 
 #   if _RTC_SSRU
-    if (exti_pr & (1<<18)) {
+    if (rtc_misr & RTC_MISR_SSRUMF) {
         ///@todo not yet implemented
         platform_isr_rtcssru();
     }
 #   endif
 
-#   if (_TAMPER || _RTC_STAMP || _LSECSS)
-    if (exti_pr & (1<<19)) {
-        ///@todo check individual flags for each of these, and go to user interrupts
-#       if _TAMPER
-        platform_isr_tamper();
-#       endif
-#       if _RTC_STAMP
+#   if _RTC_STAMP
+    if (rtc_misr & _RTC_STAMP) {
         platform_isr_timestamp();
-#       endif
-#       if _LSECSS
-        if (/* @todo this check */) {
-            platform_isr_lsecss();
-        }
-#       endif
+    }
+#   endif
+
+#   if _TAMPER
+    if (rtc_misr & (RTC_MISR_TSOVMF | RTC_MISR_TSMF)) {
+        platform_isr_tamper();
+    }
+#   endif
+
+#   if _LSECSS
+    if (/** @todo this check for LSE CSS */) {
+        platform_isr_lsecss();
+    }
+#   endif
+
+#   if _RTC_ALARM
+    if (rtc_misr & (RTC_MISR_ALRAMF | RTC_MISR_ALRBMF)) {
+        platform_isr_rtcalarm();
+    }
+#   endif
+
+#   if _RTC_WKUP
+    if (rtc_misr & RTC_MISR_WUTMF) {
+        platform_isr_rtcwakeup();
     }
 #   endif
 
@@ -385,11 +383,6 @@ void RCC_FLASH_C1SEV_IRQHandler(void) {
 #   define APPLICATION_EXTI15_ISR(); 
 #endif
 
-#if (OT_FEATURE(M2))
-#   define __RADIO_EXTI(NUM)    BOARD_RADIO_EXTI##NUM##_ISR()
-#else
-#   define __RADIO_EXTI(NUM); 
-#endif
 
 #if (BOARD_FEATURE(MPIPE) && defined(BOARD_COM_EXTI0_ISR))
 #   define __MPIPE_EXTI(NUM)    BOARD_COM_EXTI##NUM##_ISR()
@@ -403,14 +396,12 @@ void RCC_FLASH_C1SEV_IRQHandler(void) {
 
 #define __EXTI_MACRO_LOW(NUM);  \
     EXTI->PR1 = (1<<NUM);  \
-    __RADIO_EXTI(NUM); \
     __MPIPE_EXTI(NUM); \
     APPLICATION_EXTI##NUM##_ISR();
     
 #define __EXTI_MACRO(NUM);   \
     if (EXTI->PR1 & (1<<NUM)) { \
         EXTI->PR1 = (1<<NUM);  \
-        __RADIO_EXTI(NUM); \
         __MPIPE_EXTI(NUM); \
         APPLICATION_EXTI##NUM##_ISR(); \
     } \
