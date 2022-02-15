@@ -1053,30 +1053,26 @@ void platform_init_interruptor() {
 
     // From Reference Manual RM0453 Rev 2, page 507:
     // Line 16: PVD
-    // Line 17: RTC Alaram
-    // Line 18: RTC SSRU
-    // Line 19: RTC-Tamper/Timestamp/LSE_CSS
-    // Line 20: RTC-Wakeup
+    // Line 17: RTC Alarms                      -- Direct
+    // Line 18: RTC SSRU                        -- Direct
+    // Line 19: RTC-Tamper/Timestamp/LSE_CSS    -- Direct
+    // Line 20: RTC-Wakeup                      -- Direct
     // Line 21: COMP1-out
     // Line 22: COMP2-out
-    // Line 23: I2C1
-    // Line 24: I2C2
-    // Line 25: I2C3
-    // Line 26: USART1
-    // Line 27: USART2
-    // Line 29: LPTIM1
-    // Line 30: LPTIM2
-    // Line 31: LPTIM3
+    // Line 23: I2C1    -- Direct
+    // Line 24: I2C2    -- Direct
+    // Line 25: I2C3                                -- Direct
+    // Line 26: USART1                          -- Direct
+    // Line 27: USART2                          -- Direct
+    // Line 29: LPTIM1                          -- Direct
+    // Line 30: LPTIM2                          -- Direct
+    // Line 31: LPTIM3                          -- Direct
     // ...
     // Line 37: IPCC-CPU2
     // Line 39: HSEM1 (for CPU2)
     // Line 41: CPU1-SEV (for CPU2)
-    // Line 44: Radio IRQs
+    // Line 44: Radio IRQs                      -- Direct
     // Line 45: Radio Busy
-
-    EXTI->PR1       = (1<<20);
-    EXTI->IMR1     |= (1<<20);
-    EXTI->RTSR1    |= (1<<20);
 
     NVIC_SetPriority(RTC_LSECSS_IRQn, _KERNEL_GROUP);
     NVIC_EnableIRQ(RTC_LSECSS_IRQn);
