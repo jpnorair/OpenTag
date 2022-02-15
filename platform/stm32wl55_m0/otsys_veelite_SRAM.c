@@ -37,9 +37,9 @@
   */
 
 #include <otplatform.h>
-#if defined(__STM32L4xx__) && (defined(__NOEEPROM__) || defined(__VLSRAM__))
+#if defined(__STM32WLxx__) && (defined(__NOEEPROM__) || defined(__VLSRAM__))
 
-#include "stm32l4xx_hal_1.14.0/stm32l4xx_hal.h"
+#include "stm32wlxx_hal_1.11.0/stm32wlxx_hal.h"
 
 #include <otsys/veelite_core.h>
 #include <otlib/logger.h>
@@ -53,9 +53,6 @@
 static ot_u32 fsram[FLASH_FS_ALLOC/4];
 
 #define FSRAM ((ot_u16*)fsram)
-
-
-
 
 
 
@@ -181,7 +178,7 @@ ot_u8 vworm_save( ) {
     
     // Erase FS that's currently backed-up in flash
     for (cursor_fl=FLASH_FS_PAGE0; cursor_fl<(FLASH_FS_PAGE0+FLASH_FS_PAGES); cursor_fl++) {
-        FLASH_PageErase(cursor_fl, FLASH_BANK_1);
+        FLASH_PageErase(cursor_fl);
     }
 
     // Do fast program, which programs 256 bytes at a time (32 u64's)
@@ -194,7 +191,8 @@ ot_u8 vworm_save( ) {
             goto vworm_save_EXIT;
         }
     }
-    status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST_AND_LAST, cursor_fl, (uint32_t)cursor_ram);
+    ///@note on L4 devices the 1st parameter is "FLASH_TYPEPROGRAM_FAST_AND_LAST"
+    status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, cursor_fl, (uint32_t)cursor_ram);
 
     ///@todo could log a hardware fault of some kind here, if status fails
     vworm_save_EXIT:

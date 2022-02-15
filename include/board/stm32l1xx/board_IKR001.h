@@ -113,23 +113,23 @@
   * of the Flash space because this seems to work best with the debugger HW.
   */
 
-#define SRAM_SIZE               (16*1024)
-#define EEPROM_SIZE             (4*1024)
-//#define FLASH_SIZE              (64*1024)   //chip actually has 128KB
+#define SRAM_AVAILABLE               (16*1024)
+#define EEPROM_AVAILABLE             (4*1024)
+//#define FLASH_AVAILABLE              (64*1024)   //chip actually has 128KB
 #define EEPROM_SAVE_SIZE        (64)
 
 // EEPROM LOCAL DATA
-#define EEPROM_LOCAL_ADDR       (EEPROM_START_ADDR + EEPROM_SIZE - EEPROM_SAVE_SIZE)
+#define EEPROM_LOCAL_ADDR       (EEPROM_START_ADDR + EEPROM_AVAILABLE - EEPROM_SAVE_SIZE)
 #define EEPROM_LOCAL_U8         (ot_u8*)EEPROM_LOCAL_ADDR
 #define EEPROM_LOCAL_U16        (ot_u16*)EEPROM_LOCAL_ADDR
 #define EEPROM_LOCAL_U32        (ot_u32*)EEPROM_LOCAL_ADDR
 
 // Using EEPROM: Pages figure is irrelevant
-#define FLASH_NUM_PAGES         (FLASH_SIZE/FLASH_PAGE_SIZE)
+#define FLASH_NUM_PAGES         (FLASH_AVAILABLE/FLASH_PAGE_SIZE)
 #define FLASH_FS_ADDR           (EEPROM_START_ADDR)
 #define FLASH_FS_PAGES          0
 #define FLASH_FS_FALLOWS        0 
-#define FLASH_FS_ALLOC          (EEPROM_SIZE) 
+#define FLASH_FS_ALLOC          (EEPROM_AVAILABLE) 
 
 
 

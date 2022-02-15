@@ -149,21 +149,21 @@
   */
 
 // For building with non-default memory amounts
-#ifndef SRAM_SIZE
-#   define SRAM_SIZE            (20*1024)
+#ifndef SRAM_AVAILABLE
+#   define SRAM_AVAILABLE            (20*1024)
 #endif
-#ifndef EEPROM_SIZE
-#   define EEPROM_SIZE          (6*1024)
+#ifndef EEPROM_AVAILABLE
+#   define EEPROM_AVAILABLE          (6*1024)
 #endif
-#ifndef FLASH_SIZE
-#   define FLASH_SIZE           (192*1024)
+#ifndef FLASH_AVAILABLE
+#   define FLASH_AVAILABLE           (192*1024)
 #endif
 #ifndef EEPROM_SAVE_SIZE
 #   define EEPROM_SAVE_SIZE     (0)
 #endif
 
 // EEPROM LOCAL DATA
-#define EEPROM_LOCAL_ADDR       (EEPROM_START_ADDR + EEPROM_SIZE - EEPROM_SAVE_SIZE)
+#define EEPROM_LOCAL_ADDR       (EEPROM_START_ADDR + EEPROM_AVAILABLE - EEPROM_SAVE_SIZE)
 #define EEPROM_LOCAL_U8         (ot_u8*)EEPROM_LOCAL_ADDR
 #define EEPROM_LOCAL_U16        (ot_u16*)EEPROM_LOCAL_ADDR
 #define EEPROM_LOCAL_U32        (ot_u32*)EEPROM_LOCAL_ADDR
@@ -176,7 +176,7 @@
 #       define __VLSRAM__
 #   endif
 #   define FLASH_FS_END         (0x08018000)
-#	define FLASH_NUM_PAGES      (FLASH_SIZE/FLASH_PAGE_SIZE)
+#	define FLASH_NUM_PAGES      (FLASH_AVAILABLE/FLASH_PAGE_SIZE)
 #	define FLASH_FS_ALLOC       (4*1024) 							// 4KB FS memory
 #	define FLASH_FS_ADDR        (FLASH_FS_END-FLASH_FS_ALLOC)	    // FS Flash Start Addr
 #	define FLASH_FS_PAGES       (FLASH_FS_ALLOC / FLASH_PAGE_SIZE)
@@ -184,11 +184,11 @@
 
 // Using EEPROM: Pages figure is irrelevant
 #else
-#	define FLASH_NUM_PAGES      (FLASH_SIZE/FLASH_PAGE_SIZE)
+#	define FLASH_NUM_PAGES      (FLASH_AVAILABLE/FLASH_PAGE_SIZE)
 #	define FLASH_FS_ADDR        (EEPROM_START_ADDR)
 #	define FLASH_FS_PAGES       0
 #	define FLASH_FS_FALLOWS     0 
-#	define FLASH_FS_ALLOC       (EEPROM_SIZE - EEPROM_SAVE_SIZE) 
+#	define FLASH_FS_ALLOC       (EEPROM_AVAILABLE - EEPROM_SAVE_SIZE) 
 #endif
 
 
@@ -958,7 +958,7 @@ static inline void BOARD_PORT_STARTUP(void) {
 /*
 static inline void BOARD_OPEN_FLASH(void* start, void* end) {
 /// STM32L0 reserves flash on 4KB boundaries
-#   define _F_LAST ((FLASH_SIZE-1) >> 12)
+#   define _F_LAST ((FLASH_AVAILABLE-1) >> 12)
     ot_u32 a, b;
     ot_u32 bmask1, bmask2;
     

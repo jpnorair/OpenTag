@@ -83,7 +83,7 @@
   */
 #if defined (MCU_STM32F100RBT6)
 #   define EEPROM_START_ADDR 0
-#   define EEPROM_SIZE      0
+#   define EEPROM_AVAILABLE      0
 #   define FLASH_START_ADDR 0x08000000
 #   define FLASH_PAGE_SIZE  1024
 #   define FLASH_NUM_PAGES  128
@@ -93,7 +93,7 @@
 
 #elif defined (MCU_STM32F103ZET6)
 #   define EEPROM_START_ADDR 0
-#   define EEPROM_SIZE      0
+#   define EEPROM_AVAILABLE      0
 #   define FLASH_START_ADDR 0x08000000
 #   define FLASH_PAGE_SIZE  2048
 #   define FLASH_NUM_PAGES  256
@@ -105,9 +105,9 @@
 #elif defined (MCU_STM32F103ZGT6)
 //On XL Density devices, you could use the 2nd Bank for FS
 #   define SRAM_START_ADDR  0x20000000
-#   define SRAM_SIZE        (96*1024)
+#   define SRAM_AVAILABLE        (96*1024)
 #   define EEPROM_START_ADDR 0
-#   define EEPROM_SIZE      0
+#   define EEPROM_AVAILABLE      0
 #   define FLASH_START_ADDR 0x08000000
 #   define FLASH_PAGE_SIZE  (2*1024)
 #   define FLASH_NUM_PAGES  32
@@ -115,11 +115,11 @@
 #   define FLASH_FS_ALLOC   (10*1024)
 #   define FLASH_FS_ADDR    0x0800D800
 //#   define MIRROR_FS_ALLOC  256
-//#   define MIRROR_FS_ADDR   (SRAM_START_ADDR + SRAM_SIZE - MIRROR_FS_ALLOC)
+//#   define MIRROR_FS_ADDR   (SRAM_START_ADDR + SRAM_AVAILABLE - MIRROR_FS_ALLOC)
 
 #elif defined (MCU_STM32L152)
 #   define EEPROM_START_ADDR 0x08080000
-#   define EEPROM_SIZE      4096
+#   define EEPROM_AVAILABLE      4096
 #   define FLASH_START_ADDR 0x08000000
 #   define FLASH_PAGE_SIZE  256
 #   define FLASH_NUM_PAGES  512
@@ -443,7 +443,7 @@
 #define FLASH_START_PAGE         ((FLASH_FS_ADDR - FLASH_START_ADDR)/FLASH_PAGE_SIZE)
 #define FLASH_WORD_BITS          (FLASH_WORD_BYTES*8)
 #define FLASH_PAGE_ADDR(VAL)     (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
-#define EEPROM_END_ADDR          (EEPROM_START_ADDR + (EEPROM_SIZE-1))
+#define EEPROM_END_ADDR          (EEPROM_START_ADDR + (EEPROM_AVAILABLE-1))
 
 
 

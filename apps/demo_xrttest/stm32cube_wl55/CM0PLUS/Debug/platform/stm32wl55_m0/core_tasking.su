@@ -1,0 +1,5 @@
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_tasking.c:51:6:SVC_Handler	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_tasking.c:166:6:PendSV_Handler	0	static,ignoring_inline_asm
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_tasking.c:200:6:platform_drop_context	0	static,ignoring_inline_asm
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_tasking.c:230:6:platform_ot_preempt	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_tasking.c:253:16:platform_ot_run	8	static,ignoring_inline_asm

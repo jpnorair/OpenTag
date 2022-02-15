@@ -60,65 +60,65 @@
 // Port C: { 14, 15 }
 #if defined(__STM32L051K6__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L051xx
 
 #elif defined(__STM32L051K8__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L051xx
 
 #elif defined(__STM32L052K6__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L052xx
 
 #elif defined(__STM32L052K8__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L052xx
 
 #elif defined(__STM32L062K8__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L062xx
 
 #elif defined(__STM32L072KB__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L072xx
 
 #elif defined(__STM32L072KZ__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (192*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (192*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L072xx
 
 #elif defined(__STM32L082KB__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L082xx
 
 #elif defined(__STM32L082KZ__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (192*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (192*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L082xx
 
 
@@ -129,30 +129,30 @@
 // Port C: { 14:15 }
 #elif defined(__STM32L051T6__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L051xx
 
 #elif defined(__STM32L051T8__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L051xx
 
 #elif defined(__STM32L052T6__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L052xx
 
 #elif defined(__STM32L052T8__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L052xx
 
 
@@ -163,93 +163,93 @@
 // Port C: { 13:15 }
 #elif defined(__STM32L051C6__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L051xx
 
 #elif defined(__STM32L051C8__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L051xx
 
 #elif defined(__STM32L052C6__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L052xx
 
 #elif defined(__STM32L052C8__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L052xx
 
 #elif defined(__STM32L053C6__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L053xx
 
 #elif defined(__STM32L053C8__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L053xx
 
 #elif defined(__STM32L063C8__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L063xx
 
 #elif defined(__STM32L073CB__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L073xx
 
 #elif defined(__STM32L073CZ__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (192*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (192*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L073xx
 
 #elif defined(__STM32L072CB__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L072xx
 
 #elif defined(__STM32L072CZ__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (192*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (192*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L072xx
 
 #elif defined(__STM32L082CB__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L082xx
 
 #elif defined(__STM32L082CZ__)
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (192*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (192*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L082xx
 
 
@@ -260,93 +260,93 @@
 // Port D: { 2 }
 #elif defined(__STM32L051R6__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L051xx
 
 #elif defined(__STM32L051R8__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L051xx
 
 #elif defined(__STM32L052R6__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L052xx
 
 #elif defined(__STM32L052R8__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L052xx
 
 #elif defined(__STM32L053R6__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (32*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (32*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L053xx
 
 #elif defined(__STM32L053R8__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L053xx
 
 #elif defined(__STM32L063R8__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (8*1024)    
-#   define EEPROM_SIZE      (2*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (8*1024)    
+#   define EEPROM_AVAILABLE      (2*1024)
 #   define STM32L063xx
 
 #elif defined(__STM32L073RB__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L073xx
 
 #elif defined(__STM32L073RZ__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (192*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (192*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L073xx
 
 #elif defined(__STM32L072RB__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L072xx
 
 #elif defined(__STM32L072RZ__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (192*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (192*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L072xx
 
 #elif defined(__STM32L082RB__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L072xx
 
 #elif defined(__STM32L082RZ__)
 #   define MCU_PARAM_PORTS  4
-#   define FLASH_SIZE       (192*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (6*1024)
+#   define FLASH_AVAILABLE       (192*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (6*1024)
 #   define STM32L072xx
 
 
@@ -354,7 +354,7 @@
 #else
 #   warning "Unknown STM32L0 defined.  Defaulting to STM32L051K6"
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (32*1024)
+#   define FLASH_AVAILABLE       (32*1024)
 #   define STM32L051xx
 
 #endif

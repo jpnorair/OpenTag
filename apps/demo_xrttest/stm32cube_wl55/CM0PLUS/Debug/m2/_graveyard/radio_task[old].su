@@ -1,0 +1,5 @@
+/Users/jpnbook/Sync/Repository/OpenTag/m2/_graveyard/radio_task[old].c:168:17:rm2_mac_filter	12	static
+/Users/jpnbook/Sync/Repository/OpenTag/m2/_graveyard/radio_task[old].c:235:17:rm2_channel_fastcheck	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/m2/_graveyard/radio_task[old].c:246:17:rm2_channel_lookup	32	static
+/Users/jpnbook/Sync/Repository/OpenTag/m2/_graveyard/radio_task[old].c:191:17:rm2_test_channel	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/m2/_graveyard/radio_task[old].c:211:17:rm2_test_chanlist	24	static

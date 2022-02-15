@@ -1,0 +1,17 @@
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:78:16:sub_bytes_to_symbols_sf5	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:81:16:sub_bytes_to_symbols_sf7	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:84:16:sub_bytes_to_symbols_sf9	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:87:16:sub_bytes_to_symbols_sf11	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:94:16:sub_symbols_to_ti	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:103:9:rm2_rxtimeout_floor	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:127:9:rm2_default_tgd	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:165:9:rm2_bgpkt_duration	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:171:9:rm2_scale_codec	24	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:159:9:rm2_txpkt_duration	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:210:6:em2_encode_newpacket	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:217:6:em2_encode_newframe	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:312:6:em2_encode_data	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:362:6:em2_decode_newpacket	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:367:6:em2_decode_newframe	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:444:6:em2_decode_data	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/radio_rm2_patch.c:548:8:em2_decode_endframe	8	static

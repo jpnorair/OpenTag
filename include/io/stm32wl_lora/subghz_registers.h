@@ -271,7 +271,8 @@
 #   define _LOWDATARATEOPTIMIZE_OFF                 0x00 // Default
 
 #define RFREG_LR_MODEMCONFIG2                       0x1E 
-#   define _SF_MASK                                 0x0F 
+#   define _SF_MASK                                 0x0F
+#   define _SF_5                                    0x50
 #   define _SF_6                                    0x60 
 #   define _SF_7                                    0x70 // Default
 #   define _SF_8                                    0x80 

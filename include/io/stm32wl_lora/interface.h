@@ -251,10 +251,10 @@ ot_u8 wllora_getbasepwr();
 
 #define RFINT(VAL)      RFI_##VAL
 
-#define RFI_SOURCE0     RADIO_IRQ0_PIN
-#define RFI_SOURCE1     RADIO_IRQ1_PIN
+#define RFI_SOURCE0     0   //RADIO_IRQ0_PIN
+#define RFI_SOURCE1     0   //RADIO_IRQ1_PIN
 #define RFI_SOURCE2     0   // Not used with this driver
-#define RFI_SOURCE3     RADIO_IRQ3_PIN
+#define RFI_SOURCE3     0   //RADIO_IRQ3_PIN
 #define RFI_SOURCE4     0   // Not used with this driver
 #define RFI_SOURCE5     0   // Not used with this driver
 

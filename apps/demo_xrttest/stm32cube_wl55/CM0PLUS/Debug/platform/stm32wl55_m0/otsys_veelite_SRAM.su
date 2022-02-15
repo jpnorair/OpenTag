@@ -1,0 +1,16 @@
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:105:9:vas_check	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:126:7:vworm_format	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:133:8:vworm_fsalloc	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:152:7:vworm_init	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:160:6:vworm_print_table	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:167:7:vworm_save	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:207:8:vworm_read	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:219:7:vworm_write	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:232:7:vworm_mark	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:240:7:vworm_mark_physical	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:252:8:vworm_get	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:259:7:vworm_wipeblock	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:274:8:vsram_read	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:280:7:vsram_mark	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:286:7:vsram_mark_physical	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otsys_veelite_SRAM.c:292:8:vsram_get	8	static

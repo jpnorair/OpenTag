@@ -32,7 +32,7 @@
 #include <otstd.h>
 
 ///@note isr_config_STM32WL55_M0.h Must be in your app distribution!
-#include <app/isr_config_STM32WL55_M0.h>      
+#include <app/isr_config_STM32WL55.h>
 
 
 
@@ -55,13 +55,10 @@
 #define __ISR_EXIT_HOOK(); 
 
 
-/// LPTIM Alarm and RTC-Wakeup interrupt are required by OpenTag
+/// The following RTC ISRs are required for OpenTag STM32WL
 #undef __ISR_RTC_WKUP
 #undef __N_ISR_RTC_WKUP
 #define __ISR_RTC_WKUP
-#undef __ISR_LPTIM1
-#undef __N_ISR_LPTIM1
-#define __ISR_LPTIM1
 
 
 /// ISRs that can bring the system out of STOP mode have __ISR_WAKEUP_HOOK().
@@ -281,8 +278,9 @@ void RCC_FLASH_C1SEV_IRQHandler(void) {
 #   endif    
 
 #   if _FLASH
-    if (EXTI->PR2 & (1<<(42-32))) {
-        EXTI->PR2 = (1<<(42-32));
+    ///@todo need to check the peripheral flag, PR2 is unused in this bit position
+    //if (EXTI->PR2 & (1<<(42-32))) {
+    //    EXTI->PR2 = (1<<(42-32));
         __ISR_WAKEUP_HOOK();
     //if ((FLASH->CR & (FLASH_CR_RDERRIE | FLASH_CR_ERRIE | FLASH_CR_EOPIE)) &&
     //    (FLASH->SR & (FLASH_SR_RDERR | FLASH_SR_OPERR | FLASH_SR_EOP))) {
@@ -394,12 +392,12 @@ void RCC_FLASH_C1SEV_IRQHandler(void) {
 
 
 
-#define __EXTI_MACRO_LOW(NUM);  \
+#define __EXTI_MACRO_LOW(NUM)  \
     EXTI->PR1 = (1<<NUM);  \
     __MPIPE_EXTI(NUM); \
-    APPLICATION_EXTI##NUM##_ISR();
+    APPLICATION_EXTI##NUM##_ISR()
     
-#define __EXTI_MACRO(NUM);   \
+#define __EXTI_MACRO(NUM)   \
     if (EXTI->PR1 & (1<<NUM)) { \
         EXTI->PR1 = (1<<NUM);  \
         __MPIPE_EXTI(NUM); \
@@ -414,10 +412,10 @@ void EXTI0_1_IRQHandler(void) {
     __ISR_WAKEUP_HOOK();
     
 #   if ((defined(__ISR_EXTI0) || defined(__USE_EXTI0)) && !defined(__N_ISR_EXTI0))
-    __EXTI_MACRO(0);
+    __EXTI_MACRO(0)
 #   endif
 #   if ((defined(__ISR_EXTI1) || defined(__USE_EXTI1)) && !defined(__N_ISR_EXTI1))
-    __EXTI_MACRO(1);
+    __EXTI_MACRO(1)
 #   endif
     { } //to terminate "else"
 
@@ -432,10 +430,10 @@ void EXTI2_3_IRQHandler(void) {
     __ISR_WAKEUP_HOOK();
     
 #   if ((defined(__ISR_EXTI2) || defined(__USE_EXTI2)) && !defined(__N_ISR_EXTI2))
-    __EXTI_MACRO(2);
+    __EXTI_MACRO(2)
 #   endif
 #   if ((defined(__ISR_EXTI3) || defined(__USE_EXTI3)) && !defined(__N_ISR_EXTI3))
-    __EXTI_MACRO(3);
+    __EXTI_MACRO(3)
 #   endif
     { } //to terminate "else"
 
@@ -460,40 +458,40 @@ void EXTI4_15_IRQHandler(void) {
     __ISR_WAKEUP_HOOK();
 
 #   if ((defined(__ISR_EXTI4) || defined(__USE_EXTI4)) && !defined(__N_ISR_EXTI4))
-    __EXTI_MACRO(4);
+    __EXTI_MACRO(4)
 #   endif
 #   if ((defined(__ISR_EXTI5) || defined(__USE_EXTI5)) && !defined(__N_ISR_EXTI5))
-    __EXTI_MACRO(5);
+    __EXTI_MACRO(5)
 #   endif
 #   if ((defined(__ISR_EXTI6) || defined(__USE_EXTI6)) && !defined(__N_ISR_EXTI6))
-    __EXTI_MACRO(6);
+    __EXTI_MACRO(6)
 #   endif
 #   if ((defined(__ISR_EXTI7) || defined(__USE_EXTI7)) && !defined(__N_ISR_EXTI7))
-    __EXTI_MACRO(7);
+    __EXTI_MACRO(7)
 #   endif
 #   if ((defined(__ISR_EXTI8) || defined(__USE_EXTI8)) && !defined(__N_ISR_EXTI8))
-    __EXTI_MACRO(8);
+    __EXTI_MACRO(8)
 #   endif
 #   if ((defined(__ISR_EXTI9) || defined(__USE_EXTI9)) && !defined(__N_ISR_EXTI9))
-    __EXTI_MACRO(9);
+    __EXTI_MACRO(9)
 #   endif    
 #   if ((defined(__ISR_EXTI10) || defined(__USE_EXTI10)) && !defined(__N_ISR_EXTI10))
-    __EXTI_MACRO(10);
+    __EXTI_MACRO(10)
 #   endif
 #   if ((defined(__ISR_EXTI11) || defined(__USE_EXTI11)) && !defined(__N_ISR_EXTI11))
-    __EXTI_MACRO(11);
+    __EXTI_MACRO(11)
 #   endif
 #   if ((defined(__ISR_EXTI12) || defined(__USE_EXTI12)) && !defined(__N_ISR_EXTI12))
-    __EXTI_MACRO(12);
+    __EXTI_MACRO(12)
 #   endif
 #   if ((defined(__ISR_EXTI13) || defined(__USE_EXTI13)) && !defined(__N_ISR_EXTI13))
-    __EXTI_MACRO(13);
+    __EXTI_MACRO(13)
 #   endif
 #   if ((defined(__ISR_EXTI14) || defined(__USE_EXTI14)) && !defined(__N_ISR_EXTI14))
-    __EXTI_MACRO(14);
+    __EXTI_MACRO(14)
 #   endif
 #   if ((defined(__ISR_EXTI15) || defined(__USE_EXTI15)) && !defined(__N_ISR_EXTI15))
-    __EXTI_MACRO(15);
+    __EXTI_MACRO(15)
 #   endif
     { } //to terminate "else"
 
@@ -564,18 +562,18 @@ void DMA1_Channel1_2_3_IRQHandler(void) {
     ot_u32 chan_x;
     __ISR_ENTRY_HOOK();
 #   if (_DMA1)
-    chan_x = DMA1->CCR1;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<0))
+    chan_x = DMA1_Channel1->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<0)))
         platform_isr_dma1ch1();
 #   endif
 #   if (_DMA2)
-    chan_x = DMA1->CCR2;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<4))
+    chan_x = DMA1_Channel2->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<4)))
         platform_isr_dma1ch2();
 #   endif
 #   if (_DMA3)
-    chan_x = DMA1->CCR3;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<8))
+    chan_x = DMA1_Channel3->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<8)))
         platform_isr_dma1ch3();
 #   endif
     __ISR_EXIT_HOOK();
@@ -587,23 +585,23 @@ void DMA1_Channel4_5_6_7_IRQHandler(void) {
     ot_u32 chan_x;
     __ISR_ENTRY_HOOK();
 #   if (_DMA4)
-    chan_x = DMA1->CCR4;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<12))
+    chan_x = DMA1_Channel4->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<12)))
         platform_isr_dma1ch4();
 #   endif
 #   if (_DMA5)
-    chan_x = DMA1->CCR5;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<16))
+    chan_x = DMA1_Channel5->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<16)))
         platform_isr_dma1ch5();
 #   endif
 #   if (_DMA6)
-    chan_x = DMA1->CCR6;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<20))
+    chan_x = DMA1_Channel6->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<20)))
         platform_isr_dma1ch6();
 #   endif
 #   if (_DMA7)
-    chan_x = DMA1->CCR7;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<24))
+    chan_x = DMA1_Channel7->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA1->ISR & (1<<24)))
         platform_isr_dma1ch7();
 #   endif
     __ISR_EXIT_HOOK();
@@ -632,45 +630,45 @@ void DMA1_Channel4_5_6_7_IRQHandler(void) {
 #define _DMAMUX1_OVR2   (defined(__ISR_DMAMUX1_OVR2) && !defined(__N_ISR_DMAMUX1_OVR2))
 #define _DMAMUX1_OVR3   (defined(__ISR_DMAMUX1_OVR3) && !defined(__N_ISR_DMAMUX1_OVR3))
 
-#if (_DMA8 || _DMA9 || _DMA10 || _DMA11 || _DMA12 || _DMA13 || _DMA14 \
-     _DMAMUX1_OVR0 || _DMAMUX1_OVR1 || _DMAMUX1_OVR2 || _DMAMUX1_OVR3)
+#if ( _DMA8 || _DMA9 || _DMA10 || _DMA11 || _DMA12 || _DMA13 || _DMA14 \
+    ||_DMAMUX1_OVR0 || _DMAMUX1_OVR1 || _DMAMUX1_OVR2 || _DMAMUX1_OVR3)
 void DMA2_DMAMUX1_OVR_IRQHandler(void) {
     ot_u32 chan_x;
     __ISR_ENTRY_HOOK();
     
 #   if (_DMA8)
-    chan_x = DMA2->CCR1;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<0))
+    chan_x = DMA2_Channel1->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<0)))
         platform_isr_dma2ch1();
 #   endif
 #   if (_DMA9)
-    chan_x = DMA2->CCR2;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<4))
+    chan_x = DMA2_Channel2->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<4)))
         platform_isr_dma2ch2();
 #   endif
 #   if (_DMA10)
-    chan_x = DMA2->CCR3;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<8))
+    chan_x = DMA2_Channel3->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<8)))
         platform_isr_dma2ch3();
 #   endif
 #   if (_DMA11)
-    chan_x = DMA2->CCR4;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<12))
+    chan_x = DMA2_Channel4->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<12)))
         platform_isr_dma2ch4();
 #   endif
 #   if (_DMA12)
-    chan_x = DMA2->CCR5;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<16))
+    chan_x = DMA2_Channel5->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<16)))
         platform_isr_dma2ch5();
 #   endif
 #   if (_DMA13)
-    chan_x = DMA2->CCR6;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<20))
+    chan_x = DMA2_Channel6->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<20)))
         platform_isr_dma2ch6();
 #   endif
 #   if (_DMA14)
-    chan_x = DMA2->CCR7;
-    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<24))
+    chan_x = DMA2_Channel7->CCR;
+    if ((chan_x & 1) && (chan_x & 0x000E) && (DMA2->ISR & (1<<24)))
         platform_isr_dma2ch7();
 #   endif
 
@@ -717,8 +715,6 @@ void DMA2_DMAMUX1_OVR_IRQHandler(void) {
 #if defined(__ISR_LPTIM1) && !defined(__N_ISR_LPTIM1)
 void LPTIM1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    ///@todo Not certain this PR clear is necessary or good
-    //EXTI->PR2 = (1<<(32-32));
     //__ISR_KTIM_WAKEUP_HOOK();
     platform_isr_lptim1();
     __ISR_EXIT_HOOK();
@@ -729,8 +725,6 @@ void LPTIM1_IRQHandler(void) {
 #if defined(__ISR_LPTIM2) && !defined(__N_ISR_LPTIM2)
 void LPTIM2_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    ///@todo Not certain this PR clear is necessary or good
-    //EXTI->PR2 = (1<<(33-32));
     //__ISR_KTIM_WAKEUP_HOOK();
     platform_isr_lptim2();
     __ISR_EXIT_HOOK();
@@ -741,8 +735,6 @@ void LPTIM2_IRQHandler(void) {
 #if defined(__ISR_LPTIM3) && !defined(__N_ISR_LPTIM3)
 void LPTIM3_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
-    ///@todo Not certain this PR clear is necessary or good
-    //EXTI->PR2 = (1<<(33-32));
     //__ISR_KTIM_WAKEUP_HOOK();
     platform_isr_lptim3();
     __ISR_EXIT_HOOK();
@@ -793,7 +785,7 @@ void TIM17_IRQHandler(void) {
 void IPCC_C2_RX_C2_TX_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    EXTI->PR2 = (1<<(37-32));
+    //EXTI->PR2 = (1<<(37-32));
     platform_isr_ipcc();
     __ISR_EXIT_HOOK();
 }
@@ -804,7 +796,7 @@ void IPCC_C2_RX_C2_TX_IRQHandler(void) {
 void HSEM_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    EXTI->PR2 = (1<<(39-32));
+    //EXTI->PR2 = (1<<(39-32));
     platform_isr_hsem();
     __ISR_EXIT_HOOK();
 }
@@ -861,7 +853,7 @@ void AES_PKA_IRQHandler(void) {
 void I2C1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    EXTI->PR1 = (1<<23);
+    //EXTI->PR1 = (1<<23);
     platform_isr_i2c1();
     __ISR_EXIT_HOOK();
 }
@@ -872,7 +864,7 @@ void I2C1_IRQHandler(void) {
 void I2C2_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    EXTI->PR1 = (1<<24);
+    //EXTI->PR1 = (1<<24);
     platform_isr_i2c2();
     __ISR_EXIT_HOOK();
 }
@@ -883,7 +875,7 @@ void I2C2_IRQHandler(void) {
 void I2C3_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    EXTI->PR1 = (1<<25);
+    //EXTI->PR1 = (1<<25);
     platform_isr_i2c3();
     __ISR_EXIT_HOOK();
 }
@@ -914,7 +906,7 @@ void SPI2_IRQHandler(void) {
 void USART1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    EXTI->PR1 = (1<<26);
+    //EXTI->PR1 = (1<<26);
     platform_isr_usart1();
     __ISR_EXIT_HOOK();
 }
@@ -924,7 +916,7 @@ void USART1_IRQHandler(void) {
 void USART2_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    EXTI->PR1 = (1<<27);
+    //EXTI->PR1 = (1<<27);
     platform_isr_usart2();
     __ISR_EXIT_HOOK();
 }
@@ -935,7 +927,7 @@ void USART2_IRQHandler(void) {
 void RNG_LPUART1_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    EXTI->PR1 = (1<<28);
+    //EXTI->PR1 = (1<<28);
     platform_isr_lpuart1();
     __ISR_EXIT_HOOK();
 }
@@ -961,13 +953,7 @@ void SUBGHZSPI_IRQHandler(void) {
 void SUBGHZ_Radio_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
-    
-#   if _RFIRQ
-    if (EXTI->PR2 & (1<<(44-32))) {
-        EXTI->PR2 = (1<<(44-32));
-        platform_isr_rfirq();
-    }
-#   endif
+    ///@note there is not a bit to detect if the IRQ is from the RFIRQ[2:0].
 
 #   if _RFBUSY
     if (EXTI->PR2 & (1<<(45-32))) {
@@ -975,12 +961,13 @@ void SUBGHZ_Radio_IRQHandler(void) {
         platform_isr_rfbusy();
     }
 #   endif
-    
+#   if _RFIRQ
+    platform_isr_rfirq();
+#   endif
+
     __ISR_EXIT_HOOK();
 }
 #endif
-
-
 
 
 #endif  // if defined(__STM32WL55_M0__)

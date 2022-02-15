@@ -116,41 +116,15 @@ void sub_initcad(void);
 
 
 void wllora_virtual_isr(ot_u8 code) {
-    
-    switch (code) {
-        // CAD-Done interrupt.  
-        // -> BG-RX: check cadpin and go to RX entry or Kill
-        case RFIV_LISTEN: {
-            ot_uint test = wllora_check_cadpin();
-            if (test) {
-                radio_gag();
-                wllora_strobe(_OPMODE_STANDBY, True);
-                //delay_us(10);
-                sub_initrx();
-            }
-            else {
-                rm2_kill();
-            }
-        } break;
-        
-        // RX BG/FG Listening and data download
-        case RFIV_RXDONE:       rm2_rxend_isr();        break;
-        case RFIV_RXTIMEOUT:    sub_hwtimeout_isr();    break; 
-        case RFIV_RXHEADER:     rm2_rxsync_isr();       break;
-        
-        // TX CSMA CAD variant
-        case RFIV_CCA:          rm2_txcsma_isr();       break;
-        
-        // TX BG/FG Data Upload
-        case RFIV_TXDONE:       rm2_txdata_isr();       break;
-        
-        default:                rm2_kill();             break;
-    }
+///@todo this function is only a stub for the purpose of test compiling
+    rm2_kill();
 }
 
 
 #ifndef EXTF_radio_mac_isr
 OT_WEAK void radio_mac_isr(void) {
+///@todo this function is only a stub for the purpose of test compiling
+
 	// Utilized for foreground reception and also soft reception of any FEC frame
 	if (radio.state == RADIO_DataRX) {
 		rm2_rxdata_isr();
@@ -192,6 +166,8 @@ OT_WEAK void radio_mac_isr(void) {
 
 #ifndef EXTF_radio_init
 OT_WEAK void radio_init(void) {
+///@todo this function is kept as-is, even though WL impl is token-only
+
 /// Transceiver implementation dependent
     //vlFILE* fp;
 
@@ -226,6 +202,8 @@ OT_WEAK void radio_init(void) {
 
 #ifndef EXTF_radio_finish
 OT_WEAK void radio_finish(ot_int main_err, ot_int frame_err) {
+///@todo this function is kept as-is, even though WL impl is token-only
+
 /// Reset radio & callback to null state, then run saved callback
     ot_sig2 callback;
     radio_gag();                            // redundant, but here for robustness
@@ -302,38 +280,19 @@ OT_INLINE ot_u8 rm2_calc_rssithr(ot_u8 m2_rssithr) {
 /// This section below has SF and modemconfig2 settings for certain different chips
 /// This should be in channel selection, not RX/TX startup, but sometimes SX127x bundle
 /// data into registers in a less-than-logical way.
-#if (defined(__SX1272__) || defined(__SX1276__) || defined(__SX1278__) || defined(__SX1279__))
-    static const ot_u8 mdmcfg2[4] = {
-        _SF_11| (DRF_LR_MODEMCONFIG2 & 0x0F),
-        _SF_9 | (DRF_LR_MODEMCONFIG2 & 0x0F),
-        _SF_7 | (DRF_LR_MODEMCONFIG2 & 0x0F),
-        _SF_7 | (DRF_LR_MODEMCONFIG2 & 0x0F)    // convert to SF5 for 126x
-    };
-    static const ot_u8 mdmcfg2_sf[4] = {
-        _SF_11,
-        _SF_9,
-        _SF_7,
-        _SF_7    // convert to SF5 for 126x
-    };
-#elif (defined(__SX1277__) || defined(__SX1273__))
-#   if 1
-#       error "SX1277 and SX1273 do not support Telegram Mode!"
-#   endif
-    static const ot_u8 mdmcfg2[4] = {
-        _SF_9 | (DRF_LR_MODEMCONFIG2 & 0x0F),
-        _SF_9 | (DRF_LR_MODEMCONFIG2 & 0x0F),
-        _SF_7 | (DRF_LR_MODEMCONFIG2 & 0x0F),
-        _SF_7 | (DRF_LR_MODEMCONFIG2 & 0x0F)    // convert to SF5 for 126x
-    };
-    static const ot_u8 mdmcfg2_sf[4] = {
-        _SF_9,
-        _SF_9,
-        _SF_7,
-        _SF_7    // convert to SF5 for 126x
-    };
-#else
-#   error "Unsupported LoRa device."
-#endif
+static const ot_u8 mdmcfg2[4] = {
+    _SF_11| (DRF_LR_MODEMCONFIG2 & 0x0F),
+    _SF_9 | (DRF_LR_MODEMCONFIG2 & 0x0F),
+    _SF_7 | (DRF_LR_MODEMCONFIG2 & 0x0F),
+    _SF_5 | (DRF_LR_MODEMCONFIG2 & 0x0F)
+};
+static const ot_u8 mdmcfg2_sf[4] = {
+    _SF_11,
+    _SF_9,
+    _SF_7,
+    _SF_5
+};
+
 
 /// sf_code must be 0, 1, 2, 3.
 /// Otherwise behavior is unpredictable.
@@ -377,7 +336,7 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
         {0xC0|0x03, 0x0A},      // 0000 - no encoding, SF11
         {0xC0|0x03, 0x0A},      // 0001 - no encoding, SF9
         {0xC0|0x04, 0x0A},      // 0010 - no encoding, SF7
-        {0xC0|0x05, 0x0A},      // 0011 - no encoding, SF5 (not necessarily supported)
+        {0xC0|0x05, 0x0A},      // 0011 - no encoding, SF5
         {0xC0|0x03, 0x0A},      // 0100 -------------------------
         {0xC0|0x03, 0x0A},      // 0101 Undefined option,
         {0xC0|0x04, 0x0A},      // 0110 treat these as unencoded
@@ -385,7 +344,7 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
         {0xC0|0x02, 0x02},      // 1000 - encoding, SF11
         {0xC0|0x02, 0x04},      // 1001 - encoding, SF9
         {0xC0|0x03, 0x04},      // 1010 - encoding, SF7
-        {0xC0|0x03, 0x04},      // 1011 - encoding, SF5 (not necessarily supported)
+        {0xC0|0x03, 0x04},      // 1011 - encoding, SF5
         {0xC0|0x02, 0x02},      // 1100 -------------------------
         {0xC0|0x02, 0x04},      // 1101 Undefined option,
         {0xC0|0x03, 0x04},      // 1110 treat these as encoded
@@ -420,7 +379,7 @@ OT_WEAK void rm2_enter_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
 #ifndef EXTF_rm2_mac_configure
 OT_WEAK void rm2_mac_configure(void) {
 /// Only use this when there is a hardware MAC filtering ability.  
-/// SX127x does not have this capability.
+/// STM32WL RF Core does not have this capability.
 }
 #endif
 
@@ -533,8 +492,10 @@ OT_WEAK void rm2_rxtimeout_isr(void) {
 void sub_initrx(void) {
     //radio_activate_queue(&rxq);
     wllora_iocfg_rx();
+    
     ///@todo why is this commented-out?  Does it matter?
     //dll_offset_rxtimeout();
+    
     rm2_reenter_rx(radio.evtdone);
 }
 
@@ -850,10 +811,6 @@ OT_WEAK void rm2_rxend_isr(void) {
 #ifndef EXTF_rm2_decode_s2
 void rm2_decode_s2(void) {
 #if (M2_FEATURE_HSCODE == ENABLED)
-    ///@todo new function to get duration for an HSC coded block
-//    static const ot_u8 ti_per_block[4] = {
-//        51, 17, 6, 2
-//    };
     ot_int  unprocessed_bytes;
     ot_u8   blockcrc;
     llr_t*  llrbits;
@@ -1021,7 +978,8 @@ ot_bool sub_cca_isfail(void) {
 
 OT_WEAK void rm2_txcsma_isr(void) {
     ///@todo this is a hack to get paging features exposed
-    static const ot_u8 mode_lut[8] = { MODE_fg, MODE_bg, MODE_fg, MODE_bg, MODE_pg, MODE_pg, MODE_pg, MODE_pg };
+    static const ot_u8 mode_lut[8] = { 
+        MODE_fg, MODE_bg, MODE_fg, MODE_bg, MODE_pg, MODE_pg, MODE_pg, MODE_pg };
 
     // The shifting in the switch is so that the numbers are 0, 1, 2, 3...
     // It may seem silly, but it allows the switch to be compiled better.
@@ -1421,7 +1379,7 @@ OT_WEAK void radio_calibrate(void) {
 }
 #endif
 
-#ifndef EXTF_radio_getpwrcode
+#ifndef EXTF_radio_getlinkinfo
 OT_WEAK void* radio_getlinkinfo(void) {
 /// Returns pointer to link information.
 /// Information is specific to HW (in this case SX127x).  User will need to cast appropriately.

@@ -31,8 +31,8 @@
 #define __RADIO_RM2_H
 
 #include <otstd.h>
-#include <io/sx127x/config.h>
-#include <io/sx127x/interface.h>
+#include <io/stm32wl_lora/config.h>
+#include <io/stm32wl_lora/interface.h>
 
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>

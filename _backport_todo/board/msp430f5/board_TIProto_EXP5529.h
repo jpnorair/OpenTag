@@ -207,7 +207,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   */
 #define SRAM_START_ADDR             0x02400
 #define EEPROM_START_ADDR           0
-#define EEPROM_SIZE                 0
+#define EEPROM_AVAILABLE                 0
 #define FLASH_START_PAGE            0
 #define FLASH_PAGE_SIZE             512
 #define FLASH_WORD_BYTES            2
@@ -215,7 +215,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 // Large Model: 128KB Flash, 8KB SRAM
 #if defined(__LARGE_MEMORY__)
-#   define SRAM_SIZE                (8*1024)
+#   define SRAM_AVAILABLE                (8*1024)
 #   define FLASH_START_ADDR         0x04400
 #   define FLASH_NUM_PAGES          256
 #   define FLASH_FS_ALLOC           (512*24)     //allocating total of 24 blocks (12KB)
@@ -225,7 +225,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 // Tiny Model (for testing mostly): 24KB Flash, 4KB SRAM
 #elif defined (__TINY_MEMORY__)
-#   define SRAM_SIZE                (4*1024)
+#   define SRAM_AVAILABLE                (4*1024)
 #   define FLASH_START_ADDR         0xA000
 #   define FLASH_NUM_PAGES          48
 #   define FLASH_FS_ALLOC           (512*2)     //allocating total of 2 Blocks (1KB)
@@ -234,7 +234,7 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
 
 // Standard Model: Small memory, 47KB Flash, 8KB SRAM
 #else
-#   define SRAM_SIZE                (8*1024)
+#   define SRAM_AVAILABLE                (8*1024)
 #   define FLASH_START_ADDR         0x04400
 #   define FLASH_NUM_PAGES          94
 #   define FLASH_FS_ALLOC           (512*8)     //allocating total of 8 blocks (4KB)

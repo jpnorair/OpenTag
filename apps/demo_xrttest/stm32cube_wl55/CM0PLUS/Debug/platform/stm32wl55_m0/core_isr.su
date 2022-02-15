@@ -1,0 +1,7 @@
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_isr.c:201:6:RTC_LSECSS_IRQHandler	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_isr.c:410:6:EXTI0_1_IRQHandler	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_isr.c:428:6:EXTI2_3_IRQHandler	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_isr.c:456:6:EXTI4_15_IRQHandler	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_isr.c:635:6:DMA2_DMAMUX1_OVR_IRQHandler	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_isr.c:916:6:USART2_IRQHandler	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_isr.c:953:6:SUBGHZ_Radio_IRQHandler	8	static

@@ -1,0 +1,15 @@
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:57:13:mpipe_status	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:63:6:mpipe_open	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:44:6:mpipe_connect	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:68:6:mpipe_close	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:50:6:mpipe_disconnect	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:74:6:sub_mpipe_setidle	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:79:6:sub_mpipe_actuate	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:88:6:mpipe_txschedule	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:95:6:mpipe_rxschedule	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:102:6:mpipe_send	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:109:6:mpipeevt_txdone	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:120:6:mpipeevt_rxinit	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:125:6:mpipeevt_rxdetect	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:130:6:mpipeevt_rxdone	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/mpipe_task.c:142:6:mpipe_systask	16	static

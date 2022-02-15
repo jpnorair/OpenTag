@@ -480,11 +480,10 @@ void setup_init() {
 
     // Setup Button for interrupt
 #	ifdef OT_SWITCH1_PIN
-    EXTI->RTSR |= OT_SWITCH1_PIN;
-    EXTI->IMR  |= OT_SWITCH1_PIN;
+    EXTI->RTSR1 |= OT_SWITCH1_PIN;
+    EXTI->IMR1  |= OT_SWITCH1_PIN;
 #	endif
 }
-
 
 
 

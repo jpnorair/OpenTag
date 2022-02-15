@@ -73,6 +73,17 @@ systim_struct systim;
 
 
 
+void BOARD_SWEXTI1_ISR(void) {
+/// This is the SW EXTI interrupt used with the insertion timer
+    BOARD_SWEXTI1_CLR();
+#   if (RF_FEATURE_CSMATIMER != ENABLED)
+        radio_mac_isr();
+#   endif
+}
+
+
+
+
 void platform_isr_rtcwakeup(void) {
 /// This ISR is normally used as a watchdog for the kernel scheduler.
 /// however, can be used for other purposes as well (generally on startup
@@ -341,20 +352,23 @@ ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
 
 
 void systim_set_insertion(ot_u16 value) {
-///@todo need a way to handle the "value = 0" case.
 ///@todo really should change value to ot_u32 or ot_timint
+///
 /// systim2 is often used for RF MAC timing.  RTC ALARMB is the implementation.
 /// One caveat of the STM32WL is that it CANNOT send a SWIER to the RTC ISR(s)
 /// the way other STM32s can.
+///@note An EXTI line is commandeered to handle the value==0 case.
 
-    // RTC alarm event is tied to EXTI line 17
     if (value != 0) {
         ot_u32 rtc_ssr;
         rtc_ssr         = RTC->SSR;
         RTC->CR        &= ~RTC_CR_ALRBE;
         RTC->SCR        = RTC_SCR_CALRBF;
-        RTC->ALRABINR   = rtc_ssr - (ot_u32)nextevent;
+        RTC->ALRABINR   = rtc_ssr - (ot_u32)value;
         RTC->CR        |= RTC_CR_ALRBE;
+    }
+    else {
+        BOARD_SWEXTI1_SET();
     }
 
 }

@@ -1,0 +1,8 @@
+/Users/jpnbook/Sync/Repository/OpenTag/otlib/logger.c:57:9:logger_header	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otlib/logger.c:77:6:logger	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/otlib/logger.c:89:6:sub_logmsg	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/otlib/logger.c:98:6:logger_str	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otlib/logger.c:108:6:logger_msg	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/otlib/logger.c:126:6:logger_hexmsg	32	static
+/Users/jpnbook/Sync/Repository/OpenTag/otlib/logger.c:148:6:logger_direct	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otlib/logger.c:159:6:logger_code	32	static

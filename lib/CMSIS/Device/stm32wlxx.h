@@ -260,7 +260,11 @@ typedef enum
   */
 
 #if defined (USE_HAL_DRIVER)
- #include "stm32wlxx_hal.h"
+#   if defined(CORE_CM0PLUS)
+#       include "../../../platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal.h"
+#   else
+#       include "../../../platform/stm32wl55_m4/stm32wlxx_hal_1.11.0/stm32wlxx_hal.h"
+#   endif
 #endif /* USE_HAL_DRIVER */
 
 #ifdef __cplusplus

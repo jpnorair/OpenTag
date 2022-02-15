@@ -197,9 +197,9 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   * INFO section.
   */
 #define SRAM_START_ADDR             0x02400
-#define SRAM_SIZE                   (4*1024)
+#define SRAM_AVAILABLE                   (4*1024)
 #define EEPROM_START_ADDR           0
-#define EEPROM_SIZE                 0
+#define EEPROM_AVAILABLE                 0
 #define FLASH_START_ADDR            0xA000
 #define FLASH_START_PAGE            0
 #define FLASH_PAGE_SIZE             512

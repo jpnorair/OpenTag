@@ -137,14 +137,14 @@
   */
 
 // For building with non-default memory amounts
-#ifndef SRAM_SIZE
-#   define SRAM_SIZE            (16*1024)
+#ifndef SRAM_AVAILABLE
+#   define SRAM_AVAILABLE            (16*1024)
 #endif
-#ifndef EEPROM_SIZE
-#   define EEPROM_SIZE          (0*1024)
+#ifndef EEPROM_AVAILABLE
+#   define EEPROM_AVAILABLE          (0*1024)
 #endif
-#ifndef FLASH_SIZE
-#   define FLASH_SIZE           (64*1024)
+#ifndef FLASH_AVAILABLE
+#   define FLASH_AVAILABLE           (64*1024)
 #endif
 #ifndef EEPROM_SAVE_SIZE
 #   define EEPROM_SAVE_SIZE     (0)
@@ -156,12 +156,13 @@
 #ifndef __VLSRAM__
 #   define __VLSRAM__
 #endif
-#define FLASH_FS_END         (0x08040000)
-#define FLASH_NUM_PAGES      (FLASH_SIZE/FLASH_PAGE_SIZE)
-#define FLASH_FS_ALLOC       (4*1024) 							// 4KB FS memory
-#define FLASH_FS_ADDR        (FLASH_FS_END-FLASH_FS_ALLOC)	    // FS Flash Start Addr
-#define FLASH_FS_PAGES       (FLASH_FS_ALLOC / FLASH_PAGE_SIZE)
-#define FLASH_FS_FALLOWS     (0)			                        // No fallows
+#define FLASH_FS_END        (0x08040000)
+#define FLASH_NUM_PAGES     (FLASH_AVAILABLE/FLASH_PAGE_SIZE)
+#define FLASH_FS_ALLOC      (4*1024) 							// 4KB FS memory
+#define FLASH_FS_ADDR       (FLASH_FS_END-FLASH_FS_ALLOC)	    // FS Flash Start Addr
+#define FLASH_FS_PAGE0      ((FLASH_FS_ADDR - FLASH_BASE) / FLASH_PAGE_SIZE)
+#define FLASH_FS_PAGES      (FLASH_FS_ALLOC / FLASH_PAGE_SIZE)
+#define FLASH_FS_FALLOWS    (0)			                        // No fallows
 
 
 
@@ -260,6 +261,12 @@
 #   define BOARD_PARAM_SWITCHES         3
 #endif
 
+// Number of SW-only EXTIs
+// These are used on EXTI lines in place of edge detectors
+#ifndef BOARD_PARAM_SWEXTIS
+#   define BOARD_PARAM_SWEXTIS          1
+#endif
+
 // MPIPE speed: ignored with USB MPipe.  
 // Actual speed will be closest supported bps.
 #define BOARD_PARAM_MPIPEBAUD           115200
@@ -319,13 +326,13 @@
 #define BOARD_SW2_PORTNUM               0
 #define BOARD_SW2_PORT                  GPIOA
 #define BOARD_SW2_PINNUM                1
-#define BOARD_SW2_PIN                   (1<<BOARD_SW1_PINNUM)
+#define BOARD_SW2_PIN                   (1<<BOARD_SW2_PINNUM)
 #define BOARD_SW2_POLARITY              0
 #define BOARD_SW2_PULLING               1
 #define BOARD_SW3_PORTNUM               2
 #define BOARD_SW3_PORT                  GPIOC
 #define BOARD_SW3_PINNUM                6
-#define BOARD_SW3_PIN                   (1<<BOARD_SW1_PINNUM)
+#define BOARD_SW3_PIN                   (1<<BOARD_SW3_PINNUM)
 #define BOARD_SW3_POLARITY              0
 #define BOARD_SW3_PULLING               1
 
@@ -373,6 +380,16 @@
 #   define BOARD_TRIG6_PIN              (1<<BOARD_TRIG6_PINNUM)
 #endif
 
+
+#if BOARD_PARAM(SWEXTIS) > 1
+#   error "Only 1 SW-EXTI is defined in the board support header."
+#elif BOARD_PARAM(SWEXTIS) > 0
+#   define __USE_EXTI15
+#   define BOARD_SWEXTI1_NUM            15
+#   define BOARD_SWEXTI1_ISR            platform_isr_exti15
+#   define BOARD_SWEXTI1_SET()          do { EXTI->SWIER1 = (1<<15); } while (0)
+#   define BOARD_SWEXTI1_CLR()          do { EXTI->PR1 = (1<<15); } while (0)
+#endif
 
 // RF Front-end GPIO
 // STM32WL has internal RF connections for most requirements.
@@ -635,7 +652,7 @@ static inline void BOARD_EXTI_STARTUP(void) {
                         | (0 << 8) \
                         | (0 << 12);
 
-    // EXTI12-15:
+    // EXTI12-15: SWIER is used on EXTI15
     SYSCFG->EXTICR[3]   = (0 << 0) \
                         | (0 << 4) \
                         | (0 << 8) \
@@ -709,8 +726,8 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (7 << (BOARD_UART_RXPINNUM*4));
 
     // JTAG/SWD are default AF (0) on their pins, so this can be commented.
-	//GPIOA->AFR[1]   = (0 << ((13-8)*4)) \
-    //                | (0 << ((14-8)*4)) \
+	//GPIOA->AFR[1]   = (0 << ((13-8)*4))
+    //                | (0 << ((14-8)*4))
     //                | (0 << ((15-8)*4));
 
     /// Configure Port B IO.
@@ -771,8 +788,6 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_OSPEEDR_10MHz << (4*2)) \
                     | (GPIO_OSPEEDR_10MHz << (8*2)) \
                     | (GPIO_OSPEEDR_10MHz << (9*2));
-                    
-	GPIOB->AFR[0]   = (0 << ((BOARD_RFSPI_SCLKPINNUM)*4));
     
     /// Configure Port C IO.
     /// Port C is used only for USB sense and 32kHz crystal driving
@@ -823,7 +838,7 @@ static inline void BOARD_PORT_STARTUP(void) {
 /*
 static inline void BOARD_OPEN_FLASH(void* start, void* end) {
 /// STM32L0 reserves flash on 4KB boundaries
-#   define _F_LAST ((FLASH_SIZE-1) >> 12)
+#   define _F_LAST ((FLASH_AVAILABLE-1) >> 12)
     ot_u32 a, b;
     ot_u32 bmask1, bmask2;
     
@@ -886,7 +901,7 @@ static inline void BOARD_RFANT_ON(void) {
 
 static inline void BOARD_RFANT_TX(ot_bool use_boost) {
 /// PC4:5 00/01/10/11 = Off, HP-TX, RX, LP-TX
-    GPIOC->BSRR = (1<<5) | ((ot_32)use_boost << 16);
+    GPIOC->BSRR = (1<<5) | ((ot_u32)use_boost << 16);
 }
 
 static inline void BOARD_RFANT_RX(void) {
@@ -975,10 +990,10 @@ static inline void BOARD_PORT_STANDBY() {
 /// Macro for initializing powering resources, especially the PVD.
 static inline void BOARD_POWER_STARTUP(void) {
 #   if MCU_PARAM(CPU2PWR)
-    PWR->CR1    = PWR->CR1
+    PWR->CR1    = (PWR->CR1
                 & ~PWR_CR1_LPR
                 & ~PWR_CR1_SUBGHZSPINSSSEL
-                & ~0x7
+                & ~0x7)
                 |  PWR_CR1_FPDS
                 |  2;   // Force Stop2 on CPU1
 
@@ -1173,19 +1188,24 @@ static inline void BOARD_HSXTAL_OFF(void) {
 #define OT_TRIG3_POLARITY   BOARD_LEDB_POLARITY
 
 // Secondary pin triggers
-#define OT_TRIG4_PORT       BOARD_TRIG4_PORT
-#define OT_TRIG4_PINNUM     BOARD_TRIG4_PINNUM
-#define OT_TRIG4_PIN        BOARD_TRIG4_PIN
-#define OT_TRIG4_POLARITY   1
-#define OT_TRIG5_PORT       BOARD_TRIG5_PORT
-#define OT_TRIG5_PINNUM     BOARD_TRIG5_PINNUM
-#define OT_TRIG5_PIN        BOARD_TRIG5_PIN
-#define OT_TRIG5_POLARITY   1
-#define OT_TRIG6_PORT       BOARD_TRIG6_PORT
-#define OT_TRIG6_PINNUM     BOARD_TRIG6_PINNUM
-#define OT_TRIG6_PIN        BOARD_TRIG6_PIN
-#define OT_TRIG6_POLARITY   1
-
+#if (BOARD_PARAM(TRIGS) >= 4)
+#   define OT_TRIG4_PORT       BOARD_TRIG4_PORT
+#   define OT_TRIG4_PINNUM     BOARD_TRIG4_PINNUM
+#   define OT_TRIG4_PIN        BOARD_TRIG4_PIN
+#   define OT_TRIG4_POLARITY   1
+#endif
+#if (BOARD_PARAM(TRIGS) >= 5)
+#   define OT_TRIG5_PORT       BOARD_TRIG5_PORT
+#   define OT_TRIG5_PINNUM     BOARD_TRIG5_PINNUM
+#   define OT_TRIG5_PIN        BOARD_TRIG5_PIN
+#   define OT_TRIG5_POLARITY   1
+#endif
+#if (BOARD_PARAM(TRIGS) >= 6)
+#   define OT_TRIG6_PORT       BOARD_TRIG6_PORT
+#   define OT_TRIG6_PINNUM     BOARD_TRIG6_PINNUM
+#   define OT_TRIG6_PIN        BOARD_TRIG6_PIN
+#   define OT_TRIG6_POLARITY   1
+#endif
 
 
 #define OT_TRIG(NUM, SET)   OT_TRIG##NUM##_##SET##()
@@ -1262,8 +1282,8 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 
 
 
-#ifndef __ISR_EXTI0
-#   define __ISR_EXTI0
+#ifndef __USE_EXTI0
+#   define __USE_EXTI0
 #endif
 #define OT_SWITCH1_ISR      platform_isr_exti0
 #define OT_SWITCH1_PORTNUM  BOARD_SW1_PORTNUM
@@ -1272,8 +1292,8 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 #define OT_SWITCH1_PIN      BOARD_SW1_PIN
 #define OT_SWITCH1_POLARITY BOARD_SW1_POLARITY
  
-#ifndef __ISR_EXTI1
-#   define __ISR_EXTI1
+#ifndef __USE_EXTI1
+#   define __USE_EXTI1
 #endif
 #define OT_SWITCH2_ISR      platform_isr_exti1
 #define OT_SWITCH2_PORTNUM  BOARD_SW2_PORTNUM
@@ -1282,8 +1302,8 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 #define OT_SWITCH2_PIN      BOARD_SW2_PIN
 #define OT_SWITCH2_POLARITY BOARD_SW2_POLARITY
 
-#ifndef __ISR_EXTI6
-#   define __ISR_EXTI6
+#ifndef __USE_EXTI6
+#   define __USE_EXTI6
 #endif
 #define OT_SWITCH3_ISR      platform_isr_exti6
 #define OT_SWITCH3_PORTNUM  BOARD_SW3_PORTNUM
@@ -1381,12 +1401,10 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
   */
  
 #ifdef __USE_RADIO
-#   define RADIO_SPI_ID     BOARD_RFSPI_ID
+// RADIO_SPI must be SPI3 (SUBGHZSPI) on this board
+#   define RADIO_SPI_ID     3
 #   define RADIO_SPI        SUBGHZSPI
 
-#   if (BOARD_RFSPI_ID != 3)
-#       error "RADIO_SPI must be SPI3 (SUBGHZSPI) on this board"
-#   endif
 #   if (defined(__USE_DMA2_CHAN5) || defined(__USE_DMA2_CHAN6))
 #       error "RADIO SPI implementation requires DMA2-Ch5, DMA2-Ch6 to be free"
 

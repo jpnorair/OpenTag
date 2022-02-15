@@ -129,9 +129,9 @@
     ||  defined(__STM32L151R6__) \
     ||  defined(__STM32L152C6__) \
     ||  defined(__STM32L152R6__) )
-#   define SRAM_SIZE    (10*1024)    
-#   define EEPROM_SIZE  (4*1024)
-#   define FLASH_SIZE   (32*1024)
+#   define SRAM_AVAILABLE    (10*1024)    
+#   define EEPROM_AVAILABLE  (4*1024)
+#   define FLASH_AVAILABLE   (32*1024)
 #   ifndef STM32L1XX_MD
 #       define STM32L1XX_MD
 #   endif
@@ -142,9 +142,9 @@
     ||  defined(__STM32L152R8__) \
     ||  defined(__STM32L151V8__) \
     ||  defined(__STM32L152V8__) )
-#   define SRAM_SIZE    (10*1024)    
-#   define EEPROM_SIZE  (4*1024)
-#   define FLASH_SIZE   (64*1024)
+#   define SRAM_AVAILABLE    (10*1024)    
+#   define EEPROM_AVAILABLE  (4*1024)
+#   define FLASH_AVAILABLE   (64*1024)
 #   ifndef STM32L1XX_MD
 #       define STM32L1XX_MD
 #   endif
@@ -155,9 +155,9 @@
     ||  defined(__STM32L152RB__) \
     ||  defined(__STM32L151VB__) \
     ||  defined(__STM32L152VB__) )
-#   define SRAM_SIZE    (16*1024)    
-#   define EEPROM_SIZE  (4*1024)
-#   define FLASH_SIZE   (128*1024)
+#   define SRAM_AVAILABLE    (16*1024)    
+#   define EEPROM_AVAILABLE  (4*1024)
+#   define FLASH_AVAILABLE   (128*1024)
 #   ifndef STM32L1XX_MD
 #       define STM32L1XX_MD
 #   endif
@@ -172,9 +172,9 @@
     ||  defined(__STM32L151ZC__) \
     ||  defined(__STM32L152QC__) \
     ||  defined(__STM32L152ZC__) )
-#   define SRAM_SIZE    (32*1024)    
-#   define EEPROM_SIZE  (8*1024)
-#   define FLASH_SIZE   (256*1024)
+#   define SRAM_AVAILABLE    (32*1024)    
+#   define EEPROM_AVAILABLE  (8*1024)
+#   define FLASH_AVAILABLE   (256*1024)
 #   ifndef STM32L1XX_MDP
 #       define STM32L1XX_MDP
 #   endif
@@ -190,9 +190,9 @@
     ||  defined(__STM32L152ZD__) \
     ||  defined(__STM32L162QD__) \
     ||  defined(__STM32L162ZD__) )
-#   define SRAM_SIZE    (48*1024)    
-#   define EEPROM_SIZE  (12*1024)
-#   define FLASH_SIZE   (384*1024)
+#   define SRAM_AVAILABLE    (48*1024)    
+#   define EEPROM_AVAILABLE  (12*1024)
+#   define FLASH_AVAILABLE   (384*1024)
 #   ifndef STM32L1XX_MDP
 #       define STM32L1XX_MDP
 #   endif
@@ -208,18 +208,18 @@
     ||  defined(__STM32L152ZE__) \
     ||  defined(__STM32L162QE__) \
     ||  defined(__STM32L162ZE__) )
-#   define SRAM_SIZE    (80*1024)    
-#   define EEPROM_SIZE  (16*1024)
-#   define FLASH_SIZE   (512*1024)
+#   define SRAM_AVAILABLE    (80*1024)    
+#   define EEPROM_AVAILABLE  (16*1024)
+#   define FLASH_AVAILABLE   (512*1024)
 #   ifndef STM32L1XX_HD
 #       define STM32L1XX_HD
 #   endif
 
 #else
 #   warning "Unknown STM32L defined.  Defaulting to 151CB"
-#   define SRAM_SIZE    (16*1024)    
-#   define EEPROM_SIZE  (4*1024)
-#   define FLASH_SIZE   (128*1024)
+#   define SRAM_AVAILABLE    (16*1024)    
+#   define EEPROM_AVAILABLE  (4*1024)
+#   define FLASH_AVAILABLE   (128*1024)
 #   ifndef STM32L1XX_MD
 #       define STM32L1XX_MD
 #   endif

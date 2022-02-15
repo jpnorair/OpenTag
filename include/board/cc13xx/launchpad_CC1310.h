@@ -131,14 +131,14 @@
   */
 
 // You can comment-out these if you want to use chip defaults
-#ifndef SRAM_SIZE
-#   define SRAM_SIZE            (20*1024)
+#ifndef SRAM_AVAILABLE
+#   define SRAM_AVAILABLE            (20*1024)
 #endif
-#ifndef EEPROM_SIZE
-#   define EEPROM_SIZE          (0*1024)
+#ifndef EEPROM_AVAILABLE
+#   define EEPROM_AVAILABLE          (0*1024)
 #endif
-#ifndef FLASH_SIZE
-#   define FLASH_SIZE           (128*1024)
+#ifndef FLASH_AVAILABLE
+#   define FLASH_AVAILABLE      (128*1024)
 #endif
 #ifndef EEPROM_SAVE_SIZE
 #   define EEPROM_SAVE_SIZE     (0)
@@ -149,7 +149,7 @@
 #define FLASH_FS_PAGES          2
 #define FLASH_FS_FALLOWS        0
 #define FLASH_FS_ALLOC          (FLASH_PAGE_SIZE * FLASH_FS_PAGES) 
-#define FLASH_FS_ADDR           (FLASH_START_ADDR + FLASH_SIZE - FLASH_FS_ALLOC)
+#define FLASH_FS_ADDR           (FLASH_START_ADDR + FLASH_AVAILABLE - FLASH_FS_ALLOC)
 
 
 

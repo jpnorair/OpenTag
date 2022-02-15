@@ -63,27 +63,27 @@
 #   define __STM32L4x2__
 #   define STM32L4x2
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (32*1024)    
-#   define EEPROM_SIZE      (0*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (32*1024)    
+#   define EEPROM_AVAILABLE      (0*1024)
 #   define STM32L412xx
 
 #elif defined(__STM32L422KB__)
 #   define __STM32L4x2__
 #   define STM32L4x2
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (32*1024)    
-#   define EEPROM_SIZE      (0*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (32*1024)    
+#   define EEPROM_AVAILABLE      (0*1024)
 #   define STM32L422xx
 
 // Unknown Part, so use the lowest-common-denominator
 #else
 #   warning "Unknown STM32L4x2 defined.  Defaulting to STM32L412KB"
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (128*1024)
-#   define SRAM_SIZE        (32*1024)    
-#   define EEPROM_SIZE      (0*1024)
+#   define FLASH_AVAILABLE       (128*1024)
+#   define SRAM_AVAILABLE        (32*1024)    
+#   define EEPROM_AVAILABLE      (0*1024)
 #   define STM32L412xx
 
 #endif

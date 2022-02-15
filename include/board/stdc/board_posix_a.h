@@ -94,12 +94,12 @@
   * of the Flash space because this seems to work best with the debugger HW.
   */
 
-#define SRAM_SIZE               (16*1024)
-#define EEPROM_SIZE             (4*1024)
-#define FLASH_SIZE              (64*1024)
+#define SRAM_AVAILABLE               (16*1024)
+#define EEPROM_AVAILABLE             (4*1024)
+#define FLASH_AVAILABLE         (64*1024)
 
 
-#define FLASH_NUM_PAGES         (FLASH_SIZE/FLASH_PAGE_SIZE)
+#define FLASH_NUM_PAGES         (FLASH_AVAILABLE/FLASH_PAGE_SIZE)
 #define FLASH_FS_ADDR           FLASH_START_ADDR
 #define FLASH_FS_PAGES          16
 #define FLASH_FS_FALLOWS        3 

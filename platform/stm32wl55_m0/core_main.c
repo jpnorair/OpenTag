@@ -488,7 +488,7 @@ void platform_ext_plloff() {
 
 
 static int sub_xsi_trim(uint32_t target_hz) {
-/// Measure the HSI against the LSE and set trim value
+/// Measure the HSI/MSI against the LSE and set trim value
 ///@note TIM16 is uniquely suited for this purpose.
     ot_int rc;
     ot_int edge     = 0;
@@ -506,7 +506,7 @@ static int sub_xsi_trim(uint32_t target_hz) {
 	TIM16->ARR      = 65535;
     TIM16->CCMR1    = 1;                    // Set Input to line-1
     TIM16->CCER     = TIM_CCER_CC1E;        // Enable Input Capture
-    TIM16->OR       = 0b01;                 // LSE
+    TIM16->OR1      = b10;                  // LSE
     TIM16->CR1      = TIM_CR1_CEN;
 
     // Wait for rising edge 1, then count SYSCLK pulses until rising edge 2
@@ -597,7 +597,7 @@ void platform_ext_msitrim() {
         
         rcc_icsr    = RCC->ICSCR;
         rcc_icsr   &= ~(255 << 8);
-        rcc_icsr   |= ((uint32_t)msi_trim << 8);
+        rcc_icsr   |= ((uint32_t)msitrim << 8);
         RCC->ICSCR  = rcc_icsr;
     }
 }
@@ -732,7 +732,7 @@ void platform_poweron() {
     ///
 
     RCC->C2AHB1ENR      = RCC_C2AHB1ENR_CRCEN
-                        | RCC_C2AHB1ENR_DMAMUXEN
+                        | RCC_C2AHB1ENR_DMAMUX1EN
                         | RCC_C2AHB1ENR_DMA2EN;
 
     RCC->C2AHB1SMENR    = RCC_C2AHB1SMENR_CRCSMEN
@@ -880,7 +880,7 @@ void platform_init_OT() {
         
         ///@todo compression of the ID.  There are many gaps in the ID
         fpid    = ISF_open_su(ISF_ID(device_features));
-        hwid    = &chip_id.halfw[0];
+        hwid    = &(uid.halfw[0]);
         for (i=0; i<8; i+=2) {
             vl_write(fpid, i, *hwid++);
         }
@@ -905,7 +905,7 @@ void platform_init_busclk() {
 /// the top of platform_poweron().
 
     // The system clock must be MSI @ 48MHz
-    sub_osc_startup(300, RCC_CR_MSION);
+    sub_osc_startup(300);
     sub_setclocks(SPEED_Std);
     
     
@@ -925,21 +925,12 @@ void platform_init_busclk() {
 #   elif BOARD_FEATURE(FULLSPEED) && (_FULLOSC_CLOCKBIT != 1)
         platform_full_speed();
     
-    RCC->CCIPR  = (0) \
-                | (0 << RCC_CCIPR_CLK48SEL_Pos) \
-                | (BOARD_FEATURE(LFXTAL) << 21) | (1 << 20) /* LSI/LSE for LPTIM2 */ \
-                | (BOARD_FEATURE(LFXTAL) << 19) | (1 << 18) /* LSI/LSE for LPTIM1 */ \
-                | ((MCU_CONFIG(MULTISPEED)*2) << 16)        /* APB/HSI16 for I2C3 */ \
-                | ((MCU_CONFIG(MULTISPEED)*2) << 14)        /* APB/HSI16 for I2C2 */
-                | ((MCU_CONFIG(MULTISPEED)*2) << 12)        /* APB/HSI16 for I2C1 */ \
-                | ((BOARD_FEATURE(LFXTAL)*3) << 10)         /* APB/LSE for LPUART1 */ \
-                | ((MCU_CONFIG(MULTISPEED)*2) << 6)         /* APB/HSI16 for USART4 */ \
-                | ((MCU_CONFIG(MULTISPEED)*2) << 4)         /* APB/HSI16 for USART3 */ \
-                | ((MCU_CONFIG(MULTISPEED)*2) << 2)         /* APB/HSI16 for USART2 */ \
-                | ((MCU_CONFIG(MULTISPEED)*2) << 0);        /* APB/HSI16 for USART1 */
-
-#   if defined(RCC_CCIPR2_I2C4SEL)
-    RCC->CCIPR2 = ((MCU_CONFIG(MULTISPEED)*2) << 0);        /* APB/HSI16 for I2C4 */
+    {   ot_u32 rcc_ccipr;
+        rcc_ccipr   = RCC->CCIPR & 0x0FFFFFFF;
+        RCC->CCIPR  = rcc_ccipr
+                    | (b11 << RCC_CCIPR_RNGSEL_Pos)             /* MSI for RNG */
+                    | (b11 << RCC_CCIPR_ADCSEL_Pos);            /* MSI for ADC */
+    }
 #   endif
 
     /// X. Vector Table Relocation in Internal SRAM or FLASH.
@@ -1083,38 +1074,29 @@ void platform_init_interruptor() {
     // Line 44: Radio IRQs
     // Line 45: Radio Busy
 
-    EXTI->PR1   = (1<<20) | (1<<29);
-    EXTI->IMR1 |= (1<<20) | (1<<29);
-    EXTI->RTSR1|= (1<<20) | (1<<29);
+    EXTI->PR1       = (1<<20);
+    EXTI->IMR1     |= (1<<20);
+    EXTI->RTSR1    |= (1<<20);
 
-#   if OT_FEATURE(M2)
-        NVIC_SetPriority(RTC_IRQn, _KERNEL_GROUP);
-        NVIC_EnableIRQ(RTC_IRQn);
-#   else
-        NVIC_SetPriority(RTC_IRQn, _LOPRI_GROUP);
-        NVIC_EnableIRQ(RTC_IRQn);
-#   endif
-
-    NVIC_SetPriority(LPTIM1_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(LPTIM1_IRQn);
-
+    NVIC_SetPriority(RTC_LSECSS_IRQn, _KERNEL_GROUP);
+    NVIC_EnableIRQ(RTC_LSECSS_IRQn);
 
     /// 5. Setup other external interrupts
     /// @note Make sure board files use the __USE_EXTI(N) definitions
 #   if defined(__USE_EXTI0) || defined(__USE_EXTI1)
-    NVIC_SetPriority(EXTI0_1_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI0_1_IRQn);
+    NVIC_SetPriority(EXTI1_0_IRQn, _LOPRI_GROUP);
+    NVIC_EnableIRQ(EXTI1_0_IRQn);
 #   endif
 #   if defined(__USE_EXTI2) || defined(__USE_EXTI3)
-    NVIC_SetPriority(EXTI2_3_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI2_3_IRQn);
+    NVIC_SetPriority(EXTI3_2_IRQn, _LOPRI_GROUP);
+    NVIC_EnableIRQ(EXTI3_2_IRQn);
 #   endif
 #   if( defined(__USE_EXTI4)  || defined(__USE_EXTI5)  || defined(__USE_EXTI6) \
     ||  defined(__USE_EXTI7)  || defined(__USE_EXTI8)  || defined(__USE_EXTI9) \
     ||  defined(__USE_EXTI10) || defined(__USE_EXTI11) || defined(__USE_EXTI12) \
-    ||  defined(__USE_EXTI13) || defined(__USE_EXTI14) )
-    NVIC_SetPriority(EXTI4_15_IRQn, _KERNEL_GROUP);
-    NVIC_EnableIRQ(EXTI4_15_IRQn);
+    ||  defined(__USE_EXTI13) || defined(__USE_EXTI14) || defined(__USE_EXTI15) )
+    NVIC_SetPriority(EXTI15_4_IRQn, _LOPRI_GROUP);
+    NVIC_EnableIRQ(EXTI15_4_IRQn);
 #   endif
 
 

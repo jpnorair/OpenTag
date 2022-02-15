@@ -29,10 +29,10 @@
 
 #include <otstd.h>
 #include <board.h>
-#if defined(__SX127x__)
+#if defined(__STM32WL_LORA__)
 
-#include <io/sx127x/interface.h>
-#include <io/sx127x/config.h>
+#include <io/stm32wl_lora/interface.h>
+#include <io/stm32wl_lora/config.h>
 
 // For handling of phymac struct
 #include <m2/radio.h>
@@ -221,26 +221,26 @@ static const ot_u16* tiperhsc_lut[] = {
 
 
 
-const ot_u8* sx127x_get_bandplan(ot_u8 region_code) {
+const ot_u8* wllora_get_bandplan(ot_u8 region_code) {
     region_code &= 3;
     return channel_map[region_code];
 }
 
 
-const ot_u8* sx127x_get_chanregs(ot_u8 region_code, ot_u8 chan_ordinal) {
-    const ot_u8* channel    = sx127x_get_bandplan(region_code);
+const ot_u8* wllora_get_chanregs(ot_u8 region_code, ot_u8 chan_ordinal) {
+    const ot_u8* channel    = wllora_get_bandplan(region_code);
     const ot_u8* chanregs   = &channel[chan_ordinal * FREQ_SIZE];
     return chanregs;
 }
 
 
-void sx127x_configure_chan(ot_u8 region_code, ot_u8 chan_ordinal) {
-    const ot_u8* chanregs = sx127x_get_chanregs(region_code, chan_ordinal);
-    sx127x_spibus_io(4, 0, chanregs);
+void wllora_configure_chan(ot_u8 region_code, ot_u8 chan_ordinal) {
+    const ot_u8* chanregs = wllora_get_chanregs(region_code, chan_ordinal);
+    wllora_spibus_io(4, 0, chanregs);
 }
 
 
-ot_u8 sx127x_get_bw(ot_u8 region_code) {
+ot_u8 wllora_get_bw(ot_u8 region_code) {
     region_code &= 3;
 
     return bandwidth_lut[region_code];
@@ -250,7 +250,7 @@ ot_u8 sx127x_get_bw(ot_u8 region_code) {
 
 
 ///@todo this is subject to change
-ot_u16 sx127x_symbol_miti(ot_u8 region_code, ot_u8 rate_code) {
+ot_u16 wllora_symbol_miti(ot_u8 region_code, ot_u8 rate_code) {
     const ot_u16* mitipersym;
     region_code &= 3;
     rate_code   &= 3;
@@ -262,7 +262,7 @@ ot_u16 sx127x_symbol_miti(ot_u8 region_code, ot_u8 rate_code) {
 
 
 ///@todo this is subject to change
-ot_u16 sx127x_block_miti(const void* phy_handle) {
+ot_u16 wllora_block_miti(const void* phy_handle) {
     const phymac_struct* pm = phy_handle;
     ot_u8 regime;
     ot_u8 rcode;
@@ -277,7 +277,7 @@ ot_u16 sx127x_block_miti(const void* phy_handle) {
 }
 
 
-ot_u16 sx127x_hscblock_ti(const void* phy_handle) {
+ot_u16 wllora_hscblock_ti(const void* phy_handle) {
     const phymac_struct* pm = phy_handle;
     ot_u8 regime;
     ot_u8 rcode;

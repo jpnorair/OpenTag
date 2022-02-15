@@ -213,119 +213,163 @@
 
 
 #if (MPIPE_DMA_RXCHAN_ID <= 0)
-#   error "MPipe RX DMA Channel out of range (1-14)
+#   error "MPipe RX DMA Channel out of range (1-14)"
 #elif (MPIPE_DMA_RXCHAN_ID <= 7)
 #   define _DMARX_CHAN      (MPIPE_DMA_RXCHAN_ID - 1)
 #   define _DMARX_ID        1
 #   define _DMARX_UNIT      DMA1
 #   if (MPIPE_DMA_RXCHAN_ID == 1)
 #       define _DMARX       DMA1_Channel1
-#       define _MUXRX_CR    C0CR
+#       define _DMARX_IRQ   DMA1_Channel1_2_3_IRQn
+#       define _MUXRX       DMAMUX1_Channel0
+#       define __DMARX_ISR  platform_isr_dma1ch1
 #   elif (MPIPE_DMA_RXCHAN_ID == 2)
 #       define _DMARX       DMA1_Channel2
-#       define _MUXRX_CR    C1CR
+#       define _DMARX_IRQ   DMA1_Channel1_2_3_IRQn
+#       define _MUXRX       DMAMUX1_Channel1
+#       define __DMARX_ISR  platform_isr_dma1ch2
 #   elif (MPIPE_DMA_RXCHAN_ID == 3)
 #       define _DMARX       DMA1_Channel3
-#       define _MUXRX_CR    C2CR
+#       define _DMARX_IRQ   DMA1_Channel1_2_3_IRQn
+#       define _MUXRX       DMAMUX1_Channel2
+#       define __DMARX_ISR  platform_isr_dma1ch3
 #   elif (MPIPE_DMA_RXCHAN_ID == 4)
 #       define _DMARX       DMA1_Channel4
-#       define _MUXRX_CR    C3CR
+#       define _DMARX_IRQ   DMA1_Channel4_5_6_7_IRQn
+#       define _MUXRX       DMAMUX1_Channel3
+#       define __DMARX_ISR  platform_isr_dma1ch4
 #   elif (MPIPE_DMA_RXCHAN_ID == 5)
 #       define _DMARX       DMA1_Channel5
-#       define _MUXRX_CR    C4CR
+#       define _DMARX_IRQ   DMA1_Channel4_5_6_7_IRQn
+#       define _MUXRX       DMAMUX1_Channel4
+#       define __DMARX_ISR  platform_isr_dma1ch5
 #   elif (MPIPE_DMA_RXCHAN_ID == 6)
 #       define _DMARX       DMA1_Channel6
-#       define _MUXRX_CR    C5CR
+#       define _DMARX_IRQ   DMA1_Channel4_5_6_7_IRQn
+#       define _MUXRX       DMAMUX1_Channel5
+#       define __DMARX_ISR  platform_isr_dma1ch6
 #   elif (MPIPE_DMA_RXCHAN_ID == 7)
 #       define _DMARX       DMA1_Channel7
-#       define _MUXRX_CR    C6CR
+#       define _DMARX_IRQ   DMA1_Channel4_5_6_7_IRQn
+#       define _MUXRX       DMAMUX1_Channel6
+#       define __DMARX_ISR  platform_isr_dma1ch7
 #   endif
 #elif (MPIPE_DMA_RXCHAN_ID <= 14)
 #   define _DMARX_CHAN      (MPIPE_DMA_RXCHAN_ID - 8)
 #   define _DMARX_ID        2
 #   define _DMARX_UNIT      DMA2
+#   define _DMARX_IRQ       DMA2_DMAMUX1_OVR_IRQn
 #   if (MPIPE_DMA_RXCHAN_ID == 8)
 #       define _DMARX       DMA2_Channel1
-#       define _MUXRX_CR    C7CR
+#       define _MUXRX       DMAMUX1_Channel7
+#       define __DMARX_ISR  platform_isr_dma2ch1
 #   elif (MPIPE_DMA_RXCHAN_ID == 9)
 #       define _DMARX       DMA2_Channel2
-#       define _MUXRX_CR    C8CR
+#       define _MUXRX       DMAMUX1_Channel8
+#       define __DMARX_ISR  platform_isr_dma2ch2
 #   elif (MPIPE_DMA_RXCHAN_ID == 10)
 #       define _DMARX       DMA2_Channel3
-#       define _MUXRX_CR    C9CR
+#       define _MUXRX       DMAMUX1_Channel9
+#       define __DMARX_ISR  platform_isr_dma2ch3
 #   elif (MPIPE_DMA_RXCHAN_ID == 11)
 #       define _DMARX       DMA2_Channel4
-#       define _MUXRX_CR    C10CR
+#       define _MUXRX       DMAMUX1_Channel10
+#       define __DMARX_ISR  platform_isr_dma2ch4
 #   elif (MPIPE_DMA_RXCHAN_ID == 12)
 #       define _DMARX       DMA2_Channel5
-#       define _MUXRX_CR    C11CR
+#       define _MUXRX       DMAMUX1_Channel11
+#       define __DMARX_ISR  platform_isr_dma2ch5
 #   elif (MPIPE_DMA_RXCHAN_ID == 13)
 #       define _DMARX       DMA2_Channel6
-#       define _MUXRX_CR    C12CR
+#       define _MUXRX       DMAMUX1_Channel12
+#       define __DMARX_ISR  platform_isr_dma2ch6
 #   elif (MPIPE_DMA_RXCHAN_ID == 14)
 #       define _DMARX       DMA2_Channel7
-#       define _MUXRX_CR    C13CR
+#       define _MUXRX       DMAMUX1_Channel13
+#       define __DMARX_ISR  platform_isr_dma2ch7
 #   endif
 #else
-#	error "MPipe RX DMA Channel out of range (1-14)
+#	error "MPipe RX DMA Channel out of range (1-14)"
 #endif
 
 #if (MPIPE_DMA_TXCHAN_ID <= 0)
-#   error "MPipe TX DMA Channel out of range (1-14)
+#   error "MPipe TX DMA Channel out of range (1-14)"
 #elif (MPIPE_DMA_TXCHAN_ID <= 7)
 #   define _DMATX_CHAN      (MPIPE_DMA_TXCHAN_ID - 1)
 #   define _DMATX_ID        1
 #   define _DMATX_UNIT      DMA1
 #   if (MPIPE_DMA_TXCHAN_ID == 1)
 #       define _DMATX       DMA1_Channel1
-#       define _MUXTX_CR    C0CR
+#       define _DMATX_IRQ   DMA1_Channel1_2_3_IRQn
+#       define _MUXTX       DMAMUX1_Channel0
+#       define __DMATX_ISR  platform_isr_dma1ch1
 #   elif (MPIPE_DMA_TXCHAN_ID == 2)
 #       define _DMATX       DMA1_Channel2
-#       define _MUXTX_CR    C1CR
+#       define _DMATX_IRQ   DMA1_Channel1_2_3_IRQn
+#       define _MUXTX       DMAMUX1_Channel1
+#       define __DMATX_ISR  platform_isr_dma1ch2
 #   elif (MPIPE_DMA_TXCHAN_ID == 3)
 #       define _DMATX       DMA1_Channel3
-#       define _MUXTX_CR    C2CR
+#       define _DMATX_IRQ   DMA1_Channel1_2_3_IRQn
+#       define _MUXTX       DMAMUX1_Channel2
+#       define __DMATX_ISR  platform_isr_dma1ch3
 #   elif (MPIPE_DMA_TXCHAN_ID == 4)
 #       define _DMATX       DMA1_Channel4
-#       define _MUXTX_CR    C3CR
+#       define _DMATX_IRQ   DMA1_Channel4_5_6_7_IRQn
+#       define _MUXTX       DMAMUX1_Channel3
+#       define __DMATX_ISR  platform_isr_dma1ch4
 #   elif (MPIPE_DMA_TXCHAN_ID == 5)
 #       define _DMATX       DMA1_Channel5
-#       define _MUXTX_CR    C4CR
+#       define _DMATX_IRQ   DMA1_Channel4_5_6_7_IRQn
+#       define _MUXTX       DMAMUX1_Channel4
+#       define __DMATX_ISR  platform_isr_dma1ch5
 #   elif (MPIPE_DMA_TXCHAN_ID == 6)
 #       define _DMATX       DMA1_Channel6
-#       define _MUXTX_CR    C5CR
+#       define _DMATX_IRQ   DMA1_Channel4_5_6_7_IRQn
+#       define _MUXTX       DMAMUX1_Channel5
+#       define __DMATX_ISR  platform_isr_dma1ch6
 #   elif (MPIPE_DMA_TXCHAN_ID == 7)
 #       define _DMATX       DMA1_Channel7
-#       define _MUXTX_CR    C6CR
+#       define _DMATX_IRQ   DMA1_Channel4_5_6_7_IRQn
+#       define _MUXTX       DMAMUX1_Channel6
+#       define __DMATX_ISR  platform_isr_dma1ch7
 #   endif
 #elif (MPIPE_DMA_TXCHAN_ID <= 14)
 #   define _DMATX_CHAN      (MPIPE_DMA_TXCHAN_ID - 8)
 #   define _DMATX_ID        2
 #   define _DMATX_UNIT      DMA2
+#   define _DMATX_IRQ       DMA2_DMAMUX1_OVR_IRQn
 #   if (MPIPE_DMA_TXCHAN_ID == 8)
 #       define _DMATX       DMA2_Channel1
-#       define _MUXTX_CR    C7CR
+#       define _MUXTX       DMAMUX1_Channel7
+#       define __DMATX_ISR  platform_isr_dma2ch1
 #   elif (MPIPE_DMA_TXCHAN_ID == 9)
 #       define _DMATX       DMA2_Channel2
-#       define _MUXTX_CR    C8CR
+#       define _MUXTX       DMAMUX1_Channel8
+#       define __DMATX_ISR  platform_isr_dma2ch2
 #   elif (MPIPE_DMA_TXCHAN_ID == 10)
 #       define _DMATX       DMA2_Channel3
-#       define _MUXTX_CR    C9CR
+#       define _MUXTX       DMAMUX1_Channel9
+#       define __DMATX_ISR  platform_isr_dma2ch3
 #   elif (MPIPE_DMA_TXCHAN_ID == 11)
 #       define _DMATX       DMA2_Channel4
-#       define _MUXTX_CR    C10CR
+#       define _MUXTX       DMAMUX1_Channel10
+#       define __DMATX_ISR  platform_isr_dma2ch4
 #   elif (MPIPE_DMA_TXCHAN_ID == 12)
 #       define _DMATX       DMA2_Channel5
-#       define _MUXTX_CR    C11CR
+#       define _MUXTX       DMAMUX1_Channel11
+#       define __DMATX_ISR  platform_isr_dma2ch5
 #   elif (MPIPE_DMA_TXCHAN_ID == 13)
 #       define _DMATX       DMA2_Channel6
-#       define _MUXTX_CR    C12CR
+#       define _MUXTX       DMAMUX1_Channel12
+#       define __DMATX_ISR  platform_isr_dma2ch6
 #   elif (MPIPE_DMA_TXCHAN_ID == 14)
 #       define _DMATX       DMA2_Channel7
-#       define _MUXTX_CR    C13CR
+#       define _MUXTX       DMAMUX1_Channel13
+#       define __DMATX_ISR  platform_isr_dma2ch7
 #   endif
 #else
-#   error "MPipe TX DMA Channel out of range (1-14)
+#   error "MPipe TX DMA Channel out of range (1-14)"
 #endif
 
 
@@ -390,7 +434,7 @@
 #define __UART_RXOPEN() do { \
         __UART_CLOSE(); \
         __UART_CLEAR(); \
-        MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_RE | USART_CR1_RXNEIE);   \
+        MPIPE_UART->CR1 = (USART_CR1_UE | USART_CR1_RE | USART_CR1_RXNEIE_RXFNEIE);   \
     } while (0)
 
 
@@ -420,7 +464,7 @@
 // DMA basic control
 #define __DMA_TXOPEN(SRC, SIZE) do { \
         _DMATX->CCR         = 0;                                    \
-        _SET_CPAR(_DMATX, (uint32_t)&(MPIPE_UART->TDR))             \
+        _SET_CPAR(_DMATX, (uint32_t)&(MPIPE_UART->TDR));            \
         _DMATX->CMAR        = (ot_u32)SRC;                          \
         _DMATX->CNDTR       = (ot_u16)SIZE;                         \
         _DMATX_UNIT->IFCR   = _DMATX_IFG;                           \
@@ -448,8 +492,8 @@
     } while(0)
 
 #define __DMA_ALL_CLOSE()   do { \
-        DMATX->CCR = 0;         \
-        DMARX->CCR = 0;         \
+        _DMATX->CCR = 0;         \
+        _DMARX->CCR = 0;         \
     } while(0)
 
 
@@ -631,7 +675,7 @@ void __UART_ISR(void) {
 #   else
 
     // Proven char-by-char detect
-    if (uart_isr & USART_ISR_RXNE) {
+    if (uart_isr & USART_ISR_RXNE_RXFNE) {
         uart.rxbuffer[0] = MPIPE_UART->RDR;
         mpipe.state     += (uart.rxbuffer[0] == 0x55);  // Progress to MPIPE_RxHeader
         if (mpipe.state > MPIPE_Idle) {
@@ -668,10 +712,11 @@ void __DMARX_ISR(void) {
     mpipedrv_isr();
 }
 
+#if (MPIPE_DMA_TXCHAN_ID != MPIPE_DMA_RXCHAN_ID)
 void __DMATX_ISR(void) {
     mpipedrv_isr();
 }
-
+#endif
 
 
 ///@todo the UART TC interrupt just does not seem to work properly on STM32L.
@@ -720,8 +765,8 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
     /// Setup DMAMUX:
     /// - RX and TX DMAs can be same channel (MPIPE is half duplex)
     /// - RX and TX DMAs can also be on separate channels.
-    DMAMUX->_MUXRX_CR = MPIPE_DMA_RXREQ_ID;
-    DMAMUX->_MUXTX_CR = MPIPE_DMA_TXREQ_ID;
+    _MUXRX->CCR = MPIPE_DMA_RXREQ_ID;
+    _MUXTX->CCR = MPIPE_DMA_TXREQ_ID;
 
 #   if (MPIPE_DMA_RXCHAN_ID == MPIPE_DMA_TXCHAN_ID)
         NVIC_SetPriority(_DMATX_IRQ, _IRQGROUP);
@@ -861,14 +906,13 @@ void sub_txcont() {
     uart_element_t* txpayload;
     txpayload           = &uart.tlist.rb[uart.tlist.i];
     _DMATX->CCR         = 0;
+    _SET_CPAR(_DMATX, (uint32_t)&(MPIPE_UART->TDR));
     _DMATX->CMAR        = (uint32_t)txpayload->front;   
     _DMATX->CNDTR       = txpayload->length + MPIPE_DMAFLUFF;
     DMA1->IFCR          = (_DMARX_IFG | _DMATX_IFG);
-    DMA1_CSELR->CSELR   = (DMA1_CSELR->CSELR & ~_DMA_CSEL_MASK) | _DMATX_CSEL;
     __UART_CLEAR();
     _DMATX->CCR         = (DMA_CCR_DIR | DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN);
 }
-
 
 
 #ifndef EXTF_mpipedrv_tx

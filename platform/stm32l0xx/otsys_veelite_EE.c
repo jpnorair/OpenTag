@@ -397,7 +397,7 @@ ot_u8* vsram_get(vaddr addr) {
   * thing only: A/B firmware uploads.
   */
 
-#define _FLASH_END  (FLASH_START_ADDR + FLASH_SIZE)
+#define _FLASH_END  (FLASH_START_ADDR + FLASH_AVAILABLE)
 ot_u32 _vprom_base;
 
 

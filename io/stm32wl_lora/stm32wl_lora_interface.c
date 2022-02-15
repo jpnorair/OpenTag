@@ -38,11 +38,11 @@
 
 #include <otstd.h>
 #include <board.h>
-#if defined(__SX127x__)
+#if defined(__STM32WL_LORA__)
 
 
-#include <io/sx127x/interface.h>
-#include <io/sx127x/config.h>
+#include <io/stm32wl_lora/interface.h>
+#include <io/stm32wl_lora/config.h>
 
 //#include <platform/config.h>
 
@@ -51,18 +51,21 @@
 #include <otlib/delay.h>
 
 
+///@todo this is just for the shim, it's a faux SX127x register bank.
+///      Driver will need to be completely changed for WL.
+static ot_u8 faux_regs[256];
 
 ///@todo right now these are used with m2DLL.... move those functions elsewhere
 #include <m2/dll.h>
 
 
-// These only for driver testing purposes (sx127x_coredump())
+// These only for driver testing purposes (wllora_coredump())
 #include <otlib/utils.h>
 #include <otlib/logger.h>
 
 
 
-#if defined(_SX127X_PROFILE)
+#if defined(_STM32WL_PROFILE)
     ot_s16 set_line;
     ot_s16 line_hits[256];
     ot_u16 count_hits = 0;
@@ -73,7 +76,7 @@
 /** Module Data for radio driver interface <BR>
   * ========================================================================
   */
-sx127x_struct sx127x;
+wllora_struct wllora;
 
 
 
@@ -84,77 +87,85 @@ sx127x_struct sx127x;
   * signal status interrupts to the platform.  The Low-Level, platform-specific
   * driver must implement the following low-level functions which are called by
   * these high-level functions:
-  * <LI> sx127x_int_config() </LI>
-  * <LI> sx127x_int_txdone() </LI>
-  * <LI> sx127x_int_clearall() </LI>
-  * <LI> sx127x_int_force() </LI>
-  * <LI> sx127x_int_turnon() </LI>
-  * <LI> sx127x_int_turnoff() </LI>
+  * <LI> wllora_int_config() </LI>
+  * <LI> wllora_int_txdone() </LI>
+  * <LI> wllora_int_clearall() </LI>
+  * <LI> wllora_int_force() </LI>
+  * <LI> wllora_int_turnon() </LI>
+  * <LI> wllora_int_turnoff() </LI>
   */
-OT_WEAK void sx127x_int_off() {
-    sx127x_int_config(0);
+
+void platform_isr_rfirq() {
+///@todo read the IRQ bytes and vector accordingly
+
+    // This is placeholder code only
+    wllora_virtual_isr(wllora.imode);
 }
 
-OT_WEAK void sx127x_int_on() {
+OT_WEAK void wllora_int_off() {
+    wllora_int_config(0);
+}
+
+OT_WEAK void wllora_int_on() {
     ot_u32 ie_sel;
-    switch (sx127x.imode) {
+    switch (wllora.imode) {
         case MODE_Listen:   ie_sel = RFI_LISTEN;
         case MODE_RXData:   ie_sel = RFI_RXDONE;
         case MODE_CSMA:     ie_sel = RFI_CSMA;
         case MODE_TXData:   ie_sel = RFI_TXDONE;
         default:            ie_sel = 0;
     }
-    sx127x_int_config(ie_sel);
+    wllora_int_config(ie_sel);
 }
 
 
-inline void sx127x_iocfg_cad()  {
-    sx127x_int_clearall();
-    sx127x_write(RFREG_LR_DIOMAPPING1, _DIOMAPPING1_CAD);
+inline void wllora_iocfg_cad()  {
+    wllora_int_clearall();
+    wllora_write(RFREG_LR_DIOMAPPING1, _DIOMAPPING1_CAD);
 }
 
-inline void sx127x_iocfg_rx()  {
-    sx127x_int_clearall();
-    sx127x_write(RFREG_LR_DIOMAPPING1, _DIOMAPPING1_RX);
+inline void wllora_iocfg_rx()  {
+    wllora_int_clearall();
+    wllora_write(RFREG_LR_DIOMAPPING1, _DIOMAPPING1_RX);
 }
 
-inline void sx127x_iocfg_tx()  {
-    sx127x_int_clearall();
-    sx127x_write(RFREG_LR_DIOMAPPING1, _DIOMAPPING1_TX);
+inline void wllora_iocfg_tx()  {
+    wllora_int_clearall();
+    wllora_write(RFREG_LR_DIOMAPPING1, _DIOMAPPING1_TX);
 }
 
-inline void sx127x_int_listen() {
-    sx127x.imode = MODE_Listen;
-    sx127x_int_config(RFI_LISTEN);
+inline void wllora_int_listen() {
+    wllora.imode = MODE_Listen;
+    wllora_int_config(RFI_LISTEN);
 }
 
-inline void sx127x_int_rxdata() {
-    sx127x.imode = MODE_RXData;
-    sx127x_int_config(RFI_RXDATA);
+inline void wllora_int_rxdata() {
+    wllora.imode = MODE_RXData;
+    wllora_int_config(RFI_RXDATA);
 }
 
-inline void sx127x_int_rxend() {
-    sx127x.imode = MODE_RXData;
-    sx127x_int_config(RFI_RXEND);
+inline void wllora_int_rxend() {
+    wllora.imode = MODE_RXData;
+    wllora_int_config(RFI_RXEND);
 }
 
-inline void sx127x_int_csma() {
-    sx127x.imode = MODE_CSMA;
-    sx127x_int_config(RFI_CSMA);
+inline void wllora_int_csma() {
+    wllora.imode = MODE_CSMA;
+    wllora_int_config(RFI_CSMA);
 }
 
-inline void sx127x_int_txdata() {
-    sx127x.imode = MODE_TXData;
-    sx127x_int_config(RFI_TXDONE);
+inline void wllora_int_txdata() {
+    wllora.imode = MODE_TXData;
+    wllora_int_config(RFI_TXDONE);
 }
 
-
-void sx127x_irq0_isr() {   sx127x_virtual_isr(sx127x.imode);     }
-void sx127x_irq1_isr() {   sx127x_virtual_isr(sx127x.imode + 1); }
-void sx127x_irq2_isr() {   sx127x_virtual_isr(sx127x.imode + 2); }
-void sx127x_irq3_isr() {   sx127x_virtual_isr(sx127x.imode + 3); }
-void sx127x_irq4_isr() {   sx127x_virtual_isr(sx127x.imode + 4); }
-void sx127x_irq5_isr() {   sx127x_virtual_isr(sx127x.imode + 5); }
+// Not used with WL
+//void wllora_irq0_isr() {   wllora_virtual_isr(wllora.imode);     }
+//void wllora_irq1_isr() {   wllora_virtual_isr(wllora.imode + 1); }
+//void wllora_irq2_isr() {   wllora_virtual_isr(wllora.imode + 2); }
+//void wllora_irq3_isr() {   wllora_virtual_isr(wllora.imode + 3); }
+//void wllora_irq4_isr() {   wllora_virtual_isr(wllora.imode + 4); }
+//void wllora_irq5_isr() {   wllora_virtual_isr(wllora.imode + 5); }
 
 
 
@@ -169,7 +180,7 @@ void sx127x_irq5_isr() {   sx127x_virtual_isr(sx127x.imode + 5); }
   * ============================================================================
   */
   
-void sx127x_load_defaults() {
+void wllora_load_defaults() {
 /// The data ordering is: WRITE LENGTH, WRITE HEADER (0), START ADDR, VALUES
 /// Ignore registers that are set later, are unused, or use the hardware default values.
 #   define __REGSET(NAME)  RFREG_##NAME, DRF_##NAME
@@ -197,9 +208,7 @@ void sx127x_load_defaults() {
         __REGSET(LR_PAYLOADLENGTH),
         __REGSET(LR_PAYLOADMAXLENGTH),
         __REGSET(LR_HOPPERIOD),
-#       if defined(__SX1276__) || defined(__SX1277__) || defined(__SX1278__) || defined(__SX1279__)
-        __REGSET(LR_MODEMCONFIG3),
-#       endif
+//        __REGSET(LR_MODEMCONFIG3),
         __REGSET(LR_DETECTOPTIMIZE),
         __REGSET(LR_INVERTIQ),
         __REGSET(LR_DETECTIONTHRESHOLD),
@@ -214,26 +223,26 @@ void sx127x_load_defaults() {
     ot_u8* cursor;
     
     // SX127x should be asleep when running this function
-    //sx127x_strobe(_OPMODE_SLEEP);
+    //wllora_strobe(_OPMODE_SLEEP);
     
     ///@todo do a burst write
     cursor = (ot_u8*)defaults;
     while (*cursor != 0) {
-        sx127x_write(cursor[0], cursor[1]);
+        wllora_write(cursor[0], cursor[1]);
         cursor += 2;
     }
     
 #   undef __REGSET
 }
 
-void sx127x_corelog() {
+void wllora_corelog() {
 ///debugging function to dump-out register values of RF core (not all are used)
     ot_u8 i = 0x00;
     ot_u8 regval;
     ot_u8 label[]   = { 'R', 'E', 'G', '_', 0, 0 };
 
     do {
-        regval = sx127x_read(i);
+        regval = wllora_read(i);
         otutils_bin2hex(&label[4], &i, 1);
         logger_msg(MSG_raw, 6, 1, label, &regval);
         //mpipedrv_wait();
@@ -242,7 +251,7 @@ void sx127x_corelog() {
     while (++i < 0x71);
 }
 
-void sx127x_coredump(ot_u8* dst, ot_uint limit) {
+void wllora_coredump(ot_u8* dst, ot_uint limit) {
 ///debugging function to dump-out register values of RF core (not all are used)
     ot_u8 i;
 
@@ -253,7 +262,7 @@ void sx127x_coredump(ot_u8* dst, ot_uint limit) {
     *dst++ = 0; //FIFO register: it gets corrupted on reads
 
     for (i=0x01; i<limit; i++) {
-        *dst++ = sx127x_read(i);
+        *dst++ = wllora_read(i);
     }
 }
 
@@ -265,116 +274,31 @@ void sx127x_coredump(ot_u8* dst, ot_uint limit) {
   * must be implemented in the platform-specific driver. 
   */
 
-ot_bool sx127x_isready() {
-///@note The only way to monitor state transition signaling is via the ModeReady
-/// signal on DIO5, but many schematics don't route DIO5!  For this reason
-/// sx127x_waitfor_ready() is used and sx127x_isready() just assumes True in
-/// that setup.
-#ifdef BOARD_RFGPIO_5PIN
-#if (BOARD_RFGPIO_5PIN != -1)
-#   define _USE_DIO5_READY
-#endif
-#endif
-#ifdef _USE_DIO5_READY
-	return (ot_bool)sx127x_readypin_ishigh();
-#else
+ot_bool wllora_isready() {
 	return True;
-#endif
-#undef _USE_DIO5_READY
 }
 
-void sx127x_waitfor_ready() {
-/// SLEEP->STANDBY should take about 75us (500 watchdogs).
-/// @todo There is no way to check ready without DIO5, so this function isn't 
-///       used inside the normal driver.
-/// @todo Write failure code in OT that logs hardware fault and resets OT
-    ot_uint watchdog = 500;
-    while ((sx127x_readypin_ishigh() == 0) && (--watchdog));
-    if (watchdog == 0){
-        //ready_fails++;
-        sx127x_reset();
-        delay_us(300);
-        dll_init();
-    }   
+void wllora_waitfor_ready() {
 }
 
-/*
-void sub_waitfor_opmode(ot_u8 target, ot_u8 mode, ot_uint fromsleep, ot_uint fromactive) {
-/// @todo Write failure code in OT that logs hardware fault and resets OT
-    ot_uint wdog;
-    wdog = (mode == 0) ? fromsleep : fromactive;
-    mode = sx127x_mode();
-     
-    while (mode != target) {
-        if (--wdog == 0) {
-            sx127x_reset();
-            delay_us(300);
-            dll_init();
-            return;
-        }
-        mode = sx127x_mode();
-    }
+ot_bool wllora_check_cadpin() {
+    return True;
 }
 
-void sx127x_waitfor_fsrx()    { sub_waitfor_opmode(_OPMODE_FSRX, 250, 125); }
-void sx127x_waitfor_fstx()    { sub_waitfor_opmode(_OPMODE_FSTX, 250, 125); }
-void sx127x_waitfor_cad()     { sub_waitfor_opmode(_OPMODE_CAD, 250, 125); }
-
-void sx127x_waitfor_standby() {
-/// Assume 500us (125 watchdogs) worst case sleep->standby
-/// Assume 25us (7 watchdogs) worst case nonsleep->standby
-    sub_waitfor_opmode(_OPMODE_STANDBY, 125, 7);
-    
-//    ot_u8   mode;
-//    ot_uint wdog;
-//    mode = sx127x_mode();
-//    wdog = (mode == 0) ? 125 : 7;
-//    
-//    while (mode != 1) {
-//        if (--wdog == 0) {
-//            sx127x_reset();
-//            delay_us(300);
-//            dll_init();
-//            return;
-//        }
-//        mode = sx127x_mode();
-//    }
-}
-
-void sx127x_waitfor_sleep() {
-/// Assume 25us (7 watchdogs) worst case nonsleep->sleep
-    sub_waitfor_opmode(_OPMODE_SLEEP, 0, 7);
-    
-//    ot_uint wdog;
-//    wdog = 7;
-//    while (sx127x_mode() != 0) {
-//        if (--wdog == 0) {
-//            sx127x_reset();
-//            delay_us(300);
-//            dll_init();
-//            return;
-//        }
-//    }
-}
-*/
-ot_bool sx127x_check_cadpin() {
-    return (ot_bool)(sx127x_cadpin_ishigh() != 0);
-}
-
-ot_u8 sx127x_getstatus() {
+ot_u8 wllora_getstatus() {
 /// Status is register IRQFLAGS
-    sx127x.status = sx127x_read(RFREG_LR_IRQFLAGS);
-    return sx127x.status;
+    wllora.status = wllora_read(RFREG_LR_IRQFLAGS);
+    return wllora.status;
 }
 
-ot_u8 sx127x_mode() {
-    return sx127x_read(RFREG_LR_OPMODE) & _OPMODE;
+ot_u8 wllora_mode() {
+    return wllora_read(RFREG_LR_OPMODE) & _OPMODE;
 }
 
-ot_u8 sx127x_rxbytes()    { return sx127x_read(RFREG_LR_RXNBBYTES); }
-ot_u8 sx127x_rssi()       { return sx127x_read(RFREG_LR_RSSIVALUE); }
-ot_u8 sx127x_pktrssi()    { return sx127x_read(RFREG_LR_PKTRSSIVALUE); }
-ot_s8 sx127x_pktsnr()     { return sx127x_read(RFREG_LR_PKTSNRVALUE); }
+ot_u8 wllora_rxbytes()    { return wllora_read(RFREG_LR_RXNBBYTES); }
+ot_u8 wllora_rssi()       { return wllora_read(RFREG_LR_RSSIVALUE); }
+ot_u8 wllora_pktrssi()    { return wllora_read(RFREG_LR_PKTRSSIVALUE); }
+ot_s8 wllora_pktsnr()     { return wllora_read(RFREG_LR_PKTSNRVALUE); }
 
 
 
@@ -382,11 +306,11 @@ ot_s8 sx127x_pktsnr()     { return sx127x_read(RFREG_LR_PKTSNRVALUE); }
 
 /** High-Level Read, Write, and Load-Defaults Functions <BR>
   * ========================================================================<BR>
-  * These utilize the driver function: sx127x_spibus_io()
+  * These utilize the driver function: wllora_spibus_io()
   * This function must be implemented specific to the platform.
   */
 
-void sx127x_strobe(ot_u8 new_mode, ot_bool blocking) {
+void wllora_strobe(ot_u8 new_mode, ot_bool blocking) {
 /// "strobe" must be one of the _OPMODE values from 0-7
 /// Assume 500us (125 watchdogs) worst case sleep->standby
 /// Assume 600us (150 watchdogs) worst case sleep->FS-ON
@@ -407,55 +331,55 @@ void sx127x_strobe(ot_u8 new_mode, ot_bool blocking) {
     };
     
     if (!blocking) {
-        sx127x_write(RFREG_LR_OPMODE, _LORAMODE|new_mode);
+        wllora_write(RFREG_LR_OPMODE, _LORAMODE|new_mode);
     }
     else {
-        ot_u8 old_mode = sx127x_mode();
+        ot_u8 old_mode = wllora_mode();
         
         if (old_mode != new_mode) {
             ot_uint wdog;
             
-            sx127x_write(RFREG_LR_OPMODE, _LORAMODE|new_mode);
+            wllora_write(RFREG_LR_OPMODE, _LORAMODE|new_mode);
             wdog = wdog_amount[(new_mode<<1) + (old_mode!=0)];
             
             do {
                 if (--wdog == 0) {
-                    sx127x_reset();
+                    wllora_reset();
                     delay_us(400);
                     dll_init();
                     return;
                 }
-                old_mode = sx127x_mode();
+                old_mode = wllora_mode();
                 
             } while (old_mode != new_mode);
         }
     }
 }
 
-ot_u8 sx127x_read(ot_u8 addr) {
-    sx127x_spibus_io(1, 1, &addr);
-    return sx127x.busrx[0];
+ot_u8 wllora_read(ot_u8 addr) {
+    return faux_regs[addr];
 }
 
-void sx127x_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data) {
-    sx127x_spibus_io(1, length, &start_addr);
-    memcpy(data, sx127x.busrx, length);
+void wllora_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data) {
+    if (start_addr == RFREG_LR_FIFO) {
+        memset(data, 0, length);
+    }
+    else {
+        memcpy(data, &faux_regs[start_addr], length);
+    }
 }
 
-void sx127x_write(ot_u8 addr, ot_u8 data) {
-    ot_u8 cmd[2];
-    cmd[0]  = 0x80 | addr;
-    cmd[1]  = data;
-    sx127x_spibus_io(2, 0, cmd);
+void wllora_write(ot_u8 addr, ot_u8 data) {
+    faux_regs[addr] = data; 
 }
 
-void sx127x_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data) {
-    ot_u8 save;
-    cmd_data--;
-    save        = *cmd_data;
-    *cmd_data   = 0x80 | start_addr;
-    sx127x_spibus_io(1+length, 0, cmd_data);
-    *cmd_data   = save;
+void wllora_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data) {
+    if (start_addr == RFREG_LR_FIFO) {
+        // do nothing, no fifo
+    }
+    else {
+        memcpy(&faux_regs[start_addr], cmd_data, length);
+    }
 }
 
 
@@ -465,19 +389,19 @@ void sx127x_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data) {
 /** Counter Management Functions <BR>
   * ========================================================================<BR>
   * Certain MAC processes require a running timer.  Instead of using any
-  * internal timers of the SX127x, we instead use the more reliable interval
-  * timer feature of OpenTag.
+  * internal timers of WL SUBGHZ, we instead use the more reliable chronstamp
+  * feature of OpenTag.
   */
 static ot_u32 macstamp;
 
-void sx127x_start_counter() {
+void wllora_start_counter() {
     macstamp = systim_chronstamp(NULL);
 }
 
-void sx127x_stop_counter() {
+void wllora_stop_counter() {
 }
 
-ot_u16 sx127x_get_counter() {
+ot_u16 wllora_get_counter() {
     ot_u16 value;
     value = dll.counter - (ot_u16)systim_chronstamp(&macstamp);
     return value;
@@ -491,37 +415,29 @@ ot_u16 sx127x_get_counter() {
 /** Advanced Configuration <BR>
   * ========================================================================<BR>
   */
-ot_int sx127x_calc_rssi(ot_u8 encoded_value, ot_s8 packet_snr) {
+ot_int wllora_calc_rssi(ot_u8 encoded_value, ot_s8 packet_snr) {
     ot_int rssi;
     
-#   if defined(__SX1272__) || defined(__SX1273__)
-        rssi = -125 + (ot_int)encoded_value;
-    
-    /// SX1276 has a more elaborate RSSI calculation process
-#   elif defined(__SX1276__) || defined(__SX1277__) || defined(__SX1278__) || defined(__SX1279__)
-        rssi = (ot_int)encoded_value;
-        if (packet_snr < 0) {
-            rssi += ((ot_int)packet_snr - 2) / 4;
-        }
-        else {
-            rssi = (rssi * 16) / 15;
-        }
-#       if (RF_PARAM_BAND < 750)
-            rssi += -164;
-#       else
-            rssi += -157;
-#       endif
-#   endif
-            
+    /// SX1276 RSSI calculation process
+    rssi = (ot_int)encoded_value;
+    if (packet_snr < 0) {
+        rssi += ((ot_int)packet_snr - 2) / 4;
+    }
+    else {
+        rssi = (rssi * 16) / 15;
+    }
+
+    rssi += -157;
+
     return rssi;
 }
 
 
-ot_u8 sx127x_calc_rssithr(ot_u8 input) {
+ot_u8 wllora_calc_rssithr(ot_u8 input) {
     ot_int rssi_thr;
     
 /// SX127x treats RSSI thresholding through the normal RSSI engine.  The specs
-/// are the same as those used in sx127x_calc_rssi() above, but the process is
+/// are the same as those used in wllora_calc_rssi() above, but the process is
 /// using different input and output.
 ///
 /// Input is a whole-dBm value encoded linearly as: {0=-140dBm, 127=-13dBm}.
@@ -546,18 +462,11 @@ ot_u8 sx127x_calc_rssithr(ot_u8 input) {
 }
 
 
-ot_u8 sx127x_clip_txeirp(ot_u8 input_eirp) {
+ot_u8 wllora_clip_txeirp(ot_u8 input_eirp) {
 /// This considers Normal-Mode.  In TX Boost mode, 13dBm --> 20dBm
-#if defined(__SX127x_PABOOST__) && defined(__SX127x_20dBm__)
 #   define _MAX_DBM_EIRP (((20*2) - RF_HDB_ATTEN) + 80)
 #   define _MIN_DBM_EIRP (((5*2) - RF_HDB_ATTEN) + 80)
-#elif defined(__SX127x_PABOOST__) && !defined(__SX127x_20dBm__)
-#   define _MAX_DBM_EIRP (((17*2) - RF_HDB_ATTEN) + 80)
-#   define _MIN_DBM_EIRP (((2*2) - RF_HDB_ATTEN) + 80)
-#else
-#   define _MAX_DBM_EIRP (((14*2) - RF_HDB_ATTEN) + 80)
-#   define _MIN_DBM_EIRP (((-1*2) - RF_HDB_ATTEN) + 80)
-#endif
+
     if (input_eirp > _MAX_DBM_EIRP) {
         input_eirp = _MAX_DBM_EIRP;
     }
@@ -572,7 +481,7 @@ ot_u8 sx127x_clip_txeirp(ot_u8 input_eirp) {
 }
 
 
-void sx127x_set_txpwr(ot_u8 pwr_code) {
+void wllora_set_txpwr(ot_u8 pwr_code) {
 /// Sets the tx output power (non boost)
 /// "pwr_code" is a value, 0-127, that is: eirp_code/2 - 40 = TX dBm
 /// i.e. eirp_code=0 => -40 dBm, eirp_code=80 => 0 dBm, etc
@@ -582,36 +491,6 @@ void sx127x_set_txpwr(ot_u8 pwr_code) {
     // get dBm
     dBm = (((ot_int)pwr_code + RF_HDB_ATTEN) >> 1) - 40;
 
-
-#if (defined(__SX1272__) || defined(__SX1273__))
-#   if defined(__SX127x_PABOOST__) && defined(__SX127x_20dBm__)
-    // Convert to SX1272/3 units (PA Boost on, max 20dBm)
-    // Convert to SX1272/3 units (PA Boost ON)
-    if (dBm > 17) {
-		padac   = _PADAC_20DBM_ON;
-		dBm    -= 5;
-	}
-	else {
-		padac   = _PADAC_20DBM_OFF;
-		dBm    -= 2;
-	}
-    sx127x_write(RFREG_LR_PADAC, padac);
-    pwr_code = (1<<7) | (ot_u8)dBm & 0x0F;
-    
-#   elif defined(__SX127x_PABOOST__) && !defined(__SX127x_20dBm__)
-    // Convert to SX1272/3 units (PA Boost on, max 17dBm)
-    dBm = dBm - 2;
-    pwr_code = (1<<7) | (ot_u8)dBm & 0x0F;
-
-#   else 
-    // Convert to SX1272/3 units (PA Boost off)
-    dBm = dBm + 1;
-    pwr_code = (ot_u8)dBm & 0x0F;
-    
-#   endif
-
-#elif (defined(__SX1276__) || defined(__SX1277__) || defined(__SX1278__) || defined(__SX1279__))
-#   if defined(__SX127x_PABOOST__) && defined(__SX127x_20dBm__)
     // Convert to SX1276/8/9 units (PA Boost on, max 20dBm)
     if (dBm > 17) {
         padac   = _PADAC_20DBM_ON;
@@ -621,28 +500,11 @@ void sx127x_set_txpwr(ot_u8 pwr_code) {
         padac   = _PADAC_20DBM_OFF;
         dBm    -= 2;
     }
-    sx127x_write(RFREG_LR_PADAC, padac);
+    wllora_write(RFREG_LR_PADAC, padac);
     pwr_code = (1<<7) | (7<<4) | ((ot_u8)dBm & 0x0F);
-    
-#   elif defined(__SX127x_PABOOST__) && !defined(__SX127x_20dBm__)
-    // Convert to SX1272/3 units (PA Boost on, max 17dBm)
-    dBm = dBm - 2;
-    pwr_code = (1<<7) | (7<<4) | ((ot_u8)dBm & 0x0F);
-
-#   else 
-    // Convert to SX1272/3 units (PA Boost off)
-    dBm = dBm + 1;
-    pwr_code = (7<<4) | ((ot_u8)dBm & 0x0F);
-    
-#   endif
-
-#else
-#	error "Unsupported LoRa device"
-
-#endif
 
     // Write new PA Table to device
-    sx127x_write(RFREG_LR_PACONFIG, pwr_code);
+    wllora_write(RFREG_LR_PACONFIG, pwr_code);
 }
 
 

@@ -1,0 +1,7 @@
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_errors.c:39:6:sub_save_error	0	static,ignoring_inline_asm
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_errors.c:55:6:NMI_Handler	8	static,ignoring_inline_asm
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_errors.c:68:6:HardFault_Handler	0	static,ignoring_inline_asm
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_errors.c:97:6:MemManage_Handler	0	static,ignoring_inline_asm
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_errors.c:108:6:BusFault_Handler	0	static,ignoring_inline_asm
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_errors.c:118:6:UsageFault_Handler	0	static,ignoring_inline_asm
+/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/core_errors.c:129:6:DebugMon_Handler	0	static

@@ -251,9 +251,9 @@ OT_INLINE_H BOARD_RADIO_SPI_PORTCONF() {
 
 #if defined (MCU_STM32F103CBT6)
 #   define SRAM_START_ADDR      0x20000000
-#   define SRAM_SIZE            (20*1024)
+#   define SRAM_AVAILABLE            (20*1024)
 #   define EEPROM_START_ADDR    0
-#   define EEPROM_SIZE          0
+#   define EEPROM_AVAILABLE          0
 #   define FLASH_START_ADDR     0x08000000
 #   define FLASH_PAGE_SIZE      (1024)
 #   define FLASH_NUM_PAGES      128

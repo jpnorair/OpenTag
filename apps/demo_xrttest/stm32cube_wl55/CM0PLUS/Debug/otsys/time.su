@@ -1,0 +1,12 @@
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:63:14:time_load_now	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:83:14:time_init	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:91:14:time_init_utc	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:100:14:time_set	24	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:121:14:time_set_utcprecise	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:133:14:time_set_utc	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:140:14:time_get	8	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:147:16:time_get_utc	24	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:158:16:time_uptime_secs	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:172:16:time_uptime	16	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:181:14:time_add	0	static
+/Users/jpnbook/Sync/Repository/OpenTag/otsys/time.c:194:14:time_add_ti	0	static

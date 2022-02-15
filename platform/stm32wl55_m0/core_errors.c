@@ -56,7 +56,7 @@ void NMI_Handler(void) {
     ot_int code;
 
 #   ifdef __DEBUG__
-    __BKPT("Kernel Panic");
+    __BKPT(0);
 #   endif
 
     code                = platform.error_code;
@@ -70,7 +70,7 @@ void HardFault_Handler(void) {
 /// You need to allocate a bigger stack for SSTACK or your thread, or fix some
 /// other serious problem (possibly interrupt storm)
 #if defined(__DEBUG__)
-    __BKPT("Hard Fault");
+    __BKPT(1);
     
 #elif defined(__PROTO__)
     while (1) {
@@ -98,7 +98,7 @@ void MemManage_Handler(void) {
 /// MemManage Fault is analagous to Segmentation Fault.  OpenTag doesn't use
 /// Protected memory spaces at this time, so MemManage fault should never occur.
 #ifdef __DEBUG__
-    __BKPT("Mem Mgr Fault");
+    __BKPT(11);
 #else
     sub_save_error(11);
 #endif
@@ -108,7 +108,7 @@ void MemManage_Handler(void) {
 void BusFault_Handler(void) {
 /// BusFault is analagous to Bus Error.
 #ifdef __DEBUG__
-    __BKPT("Bus Fault");
+    __BKPT(7);
 #else
     sub_save_error(7);
 #endif
@@ -119,7 +119,7 @@ void UsageFault_Handler(void) {
 /// UsageFault is the "kitchen sink" error.  Mostly, it will happen on
 /// misaligned memory access, but also on divide by zero operations.
 #ifdef __DEBUG__
-    __BKPT("Usage Fault");
+    __BKPT(10);
 #else
     sub_save_error(10);
 #endif

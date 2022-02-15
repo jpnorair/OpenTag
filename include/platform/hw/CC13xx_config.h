@@ -95,9 +95,9 @@
 #if (   defined(__CC1310F32RSM__) \
     ||  defined(__CC1310F32RHB__) \
     ||  defined(__CC1310F32RGZ__) )
-#   define SRAM_SIZE    (16*1024)    
-#   define EEPROM_SIZE  (0*1024)
-#   define FLASH_SIZE   (32*1024)
+#   define SRAM_AVAILABLE    (16*1024)    
+#   define EEPROM_AVAILABLE  (0*1024)
+#   define FLASH_AVAILABLE   (32*1024)
 #   ifndef CC13XXF32
 #       define CC13XXF32
 #   endif
@@ -106,9 +106,9 @@
 #elif (   defined(__CC1310F64RSM__) \
     ||  defined(__CC1310F64RHB__) \
     ||  defined(__CC1310F64RGZ__) )
-#   define SRAM_SIZE    (16*1024)    
-#   define EEPROM_SIZE  (0*1024)
-#   define FLASH_SIZE   (64*1024)
+#   define SRAM_AVAILABLE    (16*1024)    
+#   define EEPROM_AVAILABLE  (0*1024)
+#   define FLASH_AVAILABLE   (64*1024)
 #   ifndef CC13XXF64
 #       define CC13XXF64
 #   endif
@@ -117,27 +117,27 @@
 #elif (   defined(__CC1310F128RSM__) \
     ||  defined(__CC1310F128RHB__) \
     ||  defined(__CC1310F128RGZ__) )
-#   define SRAM_SIZE    (16*1024)    
-#   define EEPROM_SIZE  (0*1024)
-#   define FLASH_SIZE   (128*1024)
+#   define SRAM_AVAILABLE    (16*1024)    
+#   define EEPROM_AVAILABLE  (0*1024)
+#   define FLASH_AVAILABLE   (128*1024)
 #   ifndef CC13XXF128
 #       define CC13XXF128
 #   endif
 
 // Devices with 128KB FLASH / 20KB SRAM (not including cache)
 #elif (defined(__CC1350F128RGZ__))
-#   define SRAM_SIZE    (20*1024)    
-#   define EEPROM_SIZE  (0*1024)
-#   define FLASH_SIZE   (128*1024)
+#   define SRAM_AVAILABLE    (20*1024)    
+#   define EEPROM_AVAILABLE  (0*1024)
+#   define FLASH_AVAILABLE   (128*1024)
 #   ifndef CC1350F128
 #       define CC1350F128
 #   endif
 
 #else
 #   warning "Unknown CC13xx defined.  Defaulting to CC1310F128RGZ"
-#   define SRAM_SIZE    (16*1024)    
-#   define EEPROM_SIZE  (0*1024)
-#   define FLASH_SIZE   (128*1024)
+#   define SRAM_AVAILABLE    (16*1024)    
+#   define EEPROM_AVAILABLE  (0*1024)
+#   define FLASH_AVAILABLE   (128*1024)
 #   ifndef CC13XXF128
 #       define CC13XXF128
 #   endif

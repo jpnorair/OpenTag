@@ -211,9 +211,9 @@ OT_INLINE_H void BOARD_XTAL_STARTUP(void) {
   * how much space it can allocate for filesystem.
   */
 #define SRAM_START_ADDR         0x1C00
-#define SRAM_SIZE               (4*1024)
+#define SRAM_AVAILABLE               (4*1024)
 #define EEPROM_START_ADDR       0
-#define EEPROM_SIZE             0
+#define EEPROM_AVAILABLE             0
 #define FLASH_START_ADDR        0x8000
 #define FLASH_START_PAGE        0
 #define FLASH_PAGE_SIZE         512

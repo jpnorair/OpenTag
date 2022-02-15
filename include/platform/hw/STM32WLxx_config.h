@@ -72,25 +72,25 @@
 #   if (   defined(__STM32WLE5CC__) \
        ||  defined(__STM32WL55CC__) \
        )
-#       define FLASH_SIZE       (256*1024)
-#       define SRAM_SIZE        (64*1024)    
-#       define EEPROM_SIZE      (0*1024)
+#       define FLASH_AVAILABLE       (256*1024)
+#       define SRAM_AVAILABLE        (64*1024)    
+#       define EEPROM_AVAILABLE      (0*1024)
 #       define __STM32WLxxCC__
 #       define STM32WLxxCC
 
 #   elif ( defined(__STM32WLE5CB__) \
        ||  defined(__STM32WL55CB__) \
        )
-#       define FLASH_SIZE       (128*1024)
-#       define SRAM_SIZE        (48*1024)    
-#       define EEPROM_SIZE      (0*1024)
+#       define FLASH_AVAILABLE       (128*1024)
+#       define SRAM_AVAILABLE        (48*1024)    
+#       define EEPROM_AVAILABLE      (0*1024)
 #       define __STM32WLxxCB__
 #       define STM32WLxxCB
 
 #   else
-#       define FLASH_SIZE       (64*1024)
-#       define SRAM_SIZE        (20*1024)    
-#       define EEPROM_SIZE      (0*1024)
+#       define FLASH_AVAILABLE       (64*1024)
+#       define SRAM_AVAILABLE        (20*1024)    
+#       define EEPROM_AVAILABLE      (0*1024)
 #       define __STM32WLxxC8__
 #       define STM32WLxxC8
 
@@ -111,25 +111,25 @@
 #   if (   defined(__STM32WLE5JC__) \
        ||  defined(__STM32WL55JC__) \
        )
-#       define FLASH_SIZE       (256*1024)
-#       define SRAM_SIZE        (64*1024)    
-#       define EEPROM_SIZE      (0*1024)
+#       define FLASH_AVAILABLE       (256*1024)
+#       define SRAM_AVAILABLE        (64*1024)    
+#       define EEPROM_AVAILABLE      (0*1024)
 #       define __STM32WLxxJC__
 #       define STM32WLxxJC
 
 #   elif ( defined(__STM32WLE5JB__) \
        ||  defined(__STM32WL55JB__) \
        )
-#       define FLASH_SIZE       (128*1024)
-#       define SRAM_SIZE        (48*1024)    
-#       define EEPROM_SIZE      (0*1024)
+#       define FLASH_AVAILABLE       (128*1024)
+#       define SRAM_AVAILABLE        (48*1024)    
+#       define EEPROM_AVAILABLE      (0*1024)
 #       define __STM32WLxxJB__
 #       define STM32WLxxJB
 
 #   else
-#       define FLASH_SIZE       (64*1024)
-#       define SRAM_SIZE        (20*1024)    
-#       define EEPROM_SIZE      (0*1024)
+#       define FLASH_AVAILABLE       (64*1024)
+#       define SRAM_AVAILABLE        (20*1024)    
+#       define EEPROM_AVAILABLE      (0*1024)
 #       define __STM32WLxxJ8__
 #       define STM32WLxxJ8
 
@@ -150,25 +150,25 @@
 #   if (   defined(__STM32WLE5UC__) \
        ||  defined(__STM32WL55UC__) \
        )
-#       define FLASH_SIZE       (256*1024)
-#       define SRAM_SIZE        (64*1024)    
-#       define EEPROM_SIZE      (0*1024)
+#       define FLASH_AVAILABLE       (256*1024)
+#       define SRAM_AVAILABLE        (64*1024)    
+#       define EEPROM_AVAILABLE      (0*1024)
 #       define __STM32WLxxUC__
 #       define STM32WLxxUC
 
 #   elif ( defined(__STM32WLE5UB__) \
        ||  defined(__STM32WL55UB__) \
        )
-#       define FLASH_SIZE       (128*1024)
-#       define SRAM_SIZE        (48*1024)    
-#       define EEPROM_SIZE      (0*1024)
+#       define FLASH_AVAILABLE       (128*1024)
+#       define SRAM_AVAILABLE        (48*1024)    
+#       define EEPROM_AVAILABLE      (0*1024)
 #       define __STM32WLxxUB__
 #       define STM32WLxxUB
 
 #   else
-#       define FLASH_SIZE       (64*1024)
-#       define SRAM_SIZE        (20*1024)    
-#       define EEPROM_SIZE      (0*1024)
+#       define FLASH_AVAILABLE       (64*1024)
+#       define SRAM_AVAILABLE        (20*1024)    
+#       define EEPROM_AVAILABLE      (0*1024)
 #       define __STM32WLxxU8__
 #       define STM32WLxxU8
 
@@ -178,9 +178,9 @@
 #else
 #   warning "Unknown STM32WL defined.  Defaulting to STM32WLxxC8"
 #   define MCU_PARAM_PORTS  3
-#   define FLASH_SIZE       (64*1024)
-#   define SRAM_SIZE        (20*1024)    
-#   define EEPROM_SIZE      (0*1024)
+#   define FLASH_AVAILABLE       (64*1024)
+#   define SRAM_AVAILABLE        (20*1024)    
+#   define EEPROM_AVAILABLE      (0*1024)
 #   define __STM32WLxxCx__
 #   define STM32WLxxCx
 #   define __STM32WLxxC8__
@@ -347,7 +347,9 @@ ot_u16 platform_ext_lsihz();
 #define SRAM2_START_ADDR        0x10000000
 #define FLASH_START_ADDR        0x08000000
 #define FLASH_START_PAGE        0
-#define FLASH_PAGE_SIZE         2048
+#ifndef FLASH_PAGE_SIZE
+#   define FLASH_PAGE_SIZE      2048
+#endif
 #define FLASH_WORD_BYTES        8
 #define FLASH_WORD_BITS         (FLASH_WORD_BYTES*8)
 #define FLASH_PAGE_ADDR(VAL)    (FLASH_START_ADDR + ( (VAL) * FLASH_PAGE_SIZE) )
@@ -829,6 +831,7 @@ void SysTick_Handler(void);
 #define OT_GPTIM_SHIFT      0
 #define OT_GPTIM_OVERSAMPLE 5
 #define OT_GPTIM_RES        (1024 << OT_GPTIM_SHIFT)    //1024
+#define OT_GPTIM_LIMIT      (120 * 1024)
 #define TI_TO_CLK(VAL)      ((OT_GPTIM_RES/1024)*VAL)
 #define CLK_TO_TI(VAL)      (VAL/(OT_GPTIM_RES/1024))
 
