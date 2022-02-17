@@ -1,5 +1,0 @@
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otlib_rand.c:47:6:rand_stream	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otlib_rand.c:58:6:rand_prnseed	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otlib_rand.c:80:8:rand_prn16	8	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otlib_rand.c:64:8:rand_prn32	8	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/otlib_rand.c:74:7:rand_prn8	8	static
