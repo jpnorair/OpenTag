@@ -58,8 +58,7 @@
 #if (CC_SUPPORT != GCC)
 #   error "GCC required for this linker featureset."
 #endif
-#pragma DATA_SECTION(fsram, ".vl_sram")
-static ot_u32 fsram[FLASH_FS_ALLOC/4];
+static ot_u32 fsram[FLASH_FS_ALLOC/4] __attribute__ ((section(".vl_sram")));
 
 #define FSRAM ((ot_u16*)fsram)
 

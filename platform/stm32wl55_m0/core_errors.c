@@ -80,7 +80,6 @@ void HardFault_Handler(void) {
 /// other serious problem (possibly interrupt storm)
 #if defined(__DEBUG__)
     __BKPT(1);
-    
 #elif defined(__PROTO__)
     while (1) {
         BOARD_led1_on();

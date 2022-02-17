@@ -48,7 +48,8 @@ _sveelite   = ORIGIN(FLASHOV);
 /* Memories definition */
 MEMORY
 {
-    RAM    (xrw)    : ORIGIN = 0x2000C000, LENGTH = 16K
+    RAM    (xrw)    : ORIGIN = 0x2000C000, LENGTH = 12K
+    FSRAM  (xrw)    : ORIGIN = 0x2000F000,  LENGTH = 4K
     FLASH   (rx)    : ORIGIN = 0x08030000, LENGTH = 60K
   
     /* This section for Veelite FS backed in FLASH and cached in SRAM */
@@ -175,6 +176,39 @@ SECTIONS
     KEEP(*(.sysboot))
     . = ALIGN(4);
   } > SYSBOOT
+  
+  
+  /* VEELITE FS Sections */
+    .vl_ov : {
+	    . = ALIGN(4);
+		KEEP(*(.vl_ov))
+	} > FLASHOV
+	
+	.vl_isfs : {
+	    . = ALIGN(4);
+		KEEP(*(.vl_isfs))
+		. = ALIGN(4);
+	} > FLASHISFS
+	
+/*	.vl_gfb : {
+	    . = ALIGN(4);
+		KEEP(*(.vl_gfb))
+		. = ALIGN(4);
+	} > FLASHGFB
+*/
+	
+	.vl_isf : {
+	    . = ALIGN(4);
+		KEEP(*(.vl_isf))
+		. = ALIGN(4);
+	} > FLASHISF
+    
+    .vl_sram : {
+	    . = ALIGN(4);
+		KEEP(*(.vl_sram))
+		. = ALIGN(4);
+	} > FSRAM
+    
 
   /* Initialized data sections into "RAM" Ram type memory */
   .data :

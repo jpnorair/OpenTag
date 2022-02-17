@@ -97,7 +97,7 @@ void otapi_pause()      { platform_ot_pause(); }
 #   elif (__CM4_NVIC_GROUPS < 16)
 #       define _GROUP_PRIORITY  4
 #   else
-#       error "Cortex M4 may support more than 8 NVIC Groups, but STM32L supports no more than 8"
+#       error "Cortex M4 may support more than 8 NVIC Groups, but STM32WL supports no more than 8"
 #   endif
 #endif
 
@@ -541,13 +541,6 @@ static int sub_xsi_trim(uint32_t target_hz) {
     TIM16->CR1      = 0;
     RCC->APB2ENR   &= ~RCC_APB2ENR_TIM16EN;
     return rc;
-    
-    
-    
-    // Else, set HW for next HSITRIM value
-    
-
-    
 
 #   undef _TARGET
 }
@@ -945,9 +938,9 @@ void platform_init_busclk() {
     /// X. Vector Table Relocation in Internal SRAM or FLASH.
 #   ifdef VECT_TAB_SRAM
 #       error "Silly rabbit! SRAM is for DATA!"
-        SCB->VTOR   = SRAM_BASE;
+        //SCB->VTOR   = SRAM_BASE;
 #   else
-        SCB->VTOR   = FLASH_BASE;
+        SCB->VTOR   = 0x08030000;   ///@todo this is from linker file
 #   endif
 }
 #endif
@@ -960,8 +953,6 @@ void platform_init_periphclk() {
 /// Turn-on LSE or LSI, it is used by some peripherals.  In particular,
 /// OpenTag likes having a 32768Hz clock for timing purposes.
 /// LPTIM1, 2, and the RTC are all driven by the LF clock.
-
-    
     
     PWR->CR1 |= PWR_CR1_DBP;
     //RCC->BDCR |= RCC_BDCR_RTCRST;
