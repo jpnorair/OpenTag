@@ -348,7 +348,7 @@ ot_u16 systim_schedule(ot_u32 nextevent, ot_u32 overhead) {
     RTC->CR        &= ~RTC_CR_ALRAE;
     RTC->SCR        = RTC_SCR_CALRAF;
     RTC->ALRABINR   = systim.k_stamp - (ot_u32)(nextevent << OT_GPTIM_OVERSAMPLE);
-    RTC->CR        |= RTC_CR_ALRAE;
+    RTC->CR        |= RTC_CR_ALRAIE | RTC_CR_ALRAE;
 
     return (ot_u16)nextevent;
 }
@@ -374,7 +374,7 @@ void systim_set_insertion(ot_u16 value) {
         RTC->CR        &= ~RTC_CR_ALRBE;
         RTC->SCR        = RTC_SCR_CALRBF;
         RTC->ALRABINR   = rtc_ssr - (ot_u32)value;
-        RTC->CR        |= RTC_CR_ALRBE;
+        RTC->CR        |= RTC_CR_ALRBIE | RTC_CR_ALRBE;
     }
     else {
         BOARD_SWEXTI1_SET();

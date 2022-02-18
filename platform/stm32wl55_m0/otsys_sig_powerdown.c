@@ -56,9 +56,11 @@
 #   define _USE_STOP 0
 
 #else
-    // L0, L4, WL can be debugged through STOP mode
+    /// L0, L4, WL can be debugged through STOP mode
 #   if defined(__STM32L0xx__) || defined(__STM32L4xx__) || defined(__STM32WLxx__)
-#       ifdef __DEBUG__
+#       if defined(__DEBUG__) && defined(CORE_CM0PLUS)
+#           define _USE_STOP    0
+#       elif defined(__DEBUG__)
 #           define _USE_STOP    1
 #       else
 #           define _USE_STOP    1

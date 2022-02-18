@@ -353,6 +353,8 @@ void xrttest_systask(void* arg) {
 #			endif
     		setup.page_received	= False;
     		nextevent_ti		= __PAGE_PERIOD_TI__*3;
+
+    		logger_msg(MSG_utf8, 2, 9, (ot_u8*)"RX", (ot_u8*)"Test Msg\n");
     	}
     	else {
 			// Prepare a Page each __PAGE_PERIOD_TI__

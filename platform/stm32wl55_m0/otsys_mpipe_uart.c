@@ -405,7 +405,7 @@
 #   define _DMARX_CSEL      (0x2 << (4*_DMARX_CHAN))
 #   define _DMATX_CSEL      (0x2 << (4*_DMATX_CHAN))
 #   define __UART_ISR       platform_isr_usart2
-#   define __UART_CLKHZ()   platform_get_clockhz(1)
+#   define __UART_CLKHZ()   48000000 /*platform_get_clockhz(1) */
 #   define __UART_CLKON()   (RCC->C2APB1ENR1 |= RCC_C2APB1ENR1_USART2EN)
 #   define __UART_CLKOFF()  (RCC->C2APB1ENR1 &= ~RCC_C2APB1ENR1_USART2EN)
 
@@ -472,6 +472,7 @@
 
 // DMA basic control
 #define __DMA_TXOPEN(SRC, SIZE) do { \
+        _MUXTX->CCR         = MPIPE_DMA_TXREQ_ID;                   \
         _DMATX->CCR         = 0;                                    \
         _SET_CPAR(_DMATX, (uint32_t)&(MPIPE_UART->TDR));            \
         _DMATX->CMAR        = (ot_u32)SRC;                          \
@@ -483,6 +484,7 @@
     } while (0)
 
 #define __DMA_RXOPEN(DEST, SIZE) do { \
+        _MUXRX->CCR         = MPIPE_DMA_RXREQ_ID;                   \
         _DMARX->CCR         = 0;                                    \
         _SET_CPAR(_DMARX, (uint32_t)&(MPIPE_UART->RDR));            \
         _DMARX->CMAR        = (ot_u32)DEST;                         \
@@ -771,12 +773,6 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
     MPIPE_UART->CR1 = 0;
     __UART_CLKOFF();
 
-    /// Setup DMAMUX:
-    /// - RX and TX DMAs can be same channel (MPIPE is half duplex)
-    /// - RX and TX DMAs can also be on separate channels.
-    _MUXRX->CCR = MPIPE_DMA_RXREQ_ID;
-    _MUXTX->CCR = MPIPE_DMA_TXREQ_ID;
-
 #   if (MPIPE_DMA_RXCHAN_ID == MPIPE_DMA_TXCHAN_ID)
         NVIC_SetPriority(_DMATX_IRQ, _IRQGROUP);
         NVIC_EnableIRQ(_DMATX_IRQ);
@@ -789,12 +785,6 @@ ot_int mpipedrv_init(void* port_id, mpipe_speed baud_rate) {
         NVIC_SetPriority(_DMATX_IRQ, _IRQGROUP);
         NVIC_EnableIRQ(_DMATX_IRQ);
 #   endif
-
-    ///@todo set up DMAMUX... CPAR will need to be dynamic, too.
-
-
-
-
 
     /// MPipe RXNE/TXE USART Interrupt & RX Pin Interrupts are used with
     /// the "Break" mode of operation.  NVIC configuration of Line interrupts
@@ -918,7 +908,7 @@ void sub_txcont() {
     _SET_CPAR(_DMATX, (uint32_t)&(MPIPE_UART->TDR));
     _DMATX->CMAR        = (uint32_t)txpayload->front;   
     _DMATX->CNDTR       = txpayload->length + MPIPE_DMAFLUFF;
-    DMA1->IFCR          = (_DMARX_IFG | _DMATX_IFG);
+    _DMATX_UNIT->IFCR   = (_DMARX_IFG | _DMATX_IFG);
     __UART_CLEAR();
     _DMATX->CCR         = (DMA_CCR_DIR | DMA_CCR_MINC | (2<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN);
 }
@@ -950,7 +940,10 @@ ot_int mpipedrv_tx(ot_bool blocking, mpipe_priority data_priority) {
     
     /// Load Queue payload into tlist ring buffer
     /// Tlist RB doesn't store a copy, just references.
-    holdtime                    = __MPIPE_TIMEOUT(q_length(mpipe.alp.outq));
+
+    //holdtime                    = __MPIPE_TIMEOUT(q_length(mpipe.alp.outq));
+    holdtime                    = 60;
+
     uart.tlist.size            += 1;
     uart.tlist.j                = (uart.tlist.j + 1) & (UART_RB_MAX-1);
     txpayload                   = &uart.tlist.rb[uart.tlist.j];

@@ -402,44 +402,52 @@ void sub_osc_startup(ot_u16 counter) {
 ///@note HSIASFS bit is not set here, because the clock system
 ///      only uses one clock at a time.
     //ot_u32 hsi_asfs_bit;
-    ot_u16  wdog = counter;
+    ot_u16  wdog;
     ot_u32  rcc_reg;
     
     // Assure MSI is ON and Ready
     if ((RCC->CR & RCC_CR_MSIRDY) == 0) {
         RCC->CR |= RCC_CR_MSION;
-        while ( ((RCC->CR & RCC_CR_MSIRDY) == 0) && (--wdog) );
-    }
-    
-    // Test if oscillator failed to startup.
-    // Else, configure it to 48 MHz and as the system clock
-    if (wdog == 0) {
-        ///@todo Death message / Death Blinkly
-        return;
-    }
-    
-    // Assure MSI is 48 MHz
-    rcc_reg = RCC->CR;
-    if ((rcc_reg & 0x000000F8) != 0b10111000) {
-        rcc_reg = (rcc_reg & 0x000000F8) | 0b10111000;
-        RCC->CR = rcc_reg;
-    }
 
+        wdog = counter;
+        while ( ((RCC->CR & RCC_CR_MSIRDY) == 0) && (--wdog) );
+        if (wdog == 0) {
+            goto sub_osc_startup_WDOG_ERROR;
+        }
+    }
+    
     // Assure MSI is System Clock
     rcc_reg = RCC->CFGR;
     if ((rcc_reg & 0x0000000F) != 0b0000) {
-        rcc_reg &= ~0x00000003;
+        rcc_reg   = (rcc_reg & ~0x0000000F) | (0b00 << RCC_CFGR_SW_Pos);
         RCC->CFGR = rcc_reg;
+
         wdog = counter;
         while ( ((RCC->CFGR & 0x0000000C) != 0) && (--wdog) );
+        if (wdog == 0) {
+            goto sub_osc_startup_WDOG_ERROR;
+        }
     }
 
-    // Test if oscillator failed to startup.
-    // Else, configure it to 48 MHz and as the system clock
-    if (wdog == 0) {
-        ///@todo Death message / Death Blinkly
-        return;
+    // Assure MSI is 48 MHz
+    rcc_reg = RCC->CR;
+    if ((rcc_reg & 0x000000F8) != 0b10111000) {
+        rcc_reg = (rcc_reg & ~0x000000F8) | 0b10111000;
+        RCC->CR = rcc_reg;
+
+        wdog = counter;
+        while ( ((RCC->CR & RCC_CR_MSIRDY) == 0) && (--wdog) );
+        if (wdog == 0) {
+            goto sub_osc_startup_WDOG_ERROR;
+        }
     }
+
+    // Safe exit
+    return;
+
+    sub_osc_startup_WDOG_ERROR:
+    ///@todo Death message / Death Blinkly
+    return;
 }
 
 
@@ -508,9 +516,13 @@ static int sub_xsi_trim(uint32_t target_hz) {
     // - LSE as measurement input capture 1
     // - No prescaler
     // - Immediate Reload
+#   ifdef CORE_CM0PLUS
+    RCC->C2APB2ENR   |= RCC_APB2ENR_TIM16EN;
+#   else
     RCC->APB2ENR   |= RCC_APB2ENR_TIM16EN;
-	RCC->APB2RSTR  |= RCC_APB2RSTR_TIM16RST;
-	RCC->APB2RSTR  &= ~RCC_APB2RSTR_TIM16RST;
+#   endif
+    RCC->APB2RSTR  |= RCC_APB2RSTR_TIM16RST;
+    RCC->APB2RSTR  &= ~RCC_APB2RSTR_TIM16RST;
 
 	TIM16->ARR      = 65535;
     TIM16->CCMR1    = 1;                    // Set Input to line-1
@@ -539,7 +551,12 @@ static int sub_xsi_trim(uint32_t target_hz) {
     
     // Turn-off TIM16
     TIM16->CR1      = 0;
+#   ifdef CORE_CM0PLUS
+    RCC->C2APB2ENR   &= ~RCC_APB2ENR_TIM16EN;
+#   else
     RCC->APB2ENR   &= ~RCC_APB2ENR_TIM16EN;
+#   endif
+
     return rc;
 
 #   undef _TARGET
@@ -740,7 +757,8 @@ void platform_poweron() {
     RCC->C2AHB1SMENR    = RCC_C2AHB1SMENR_CRCSMEN
                         | 0x07;
 
-#   if 0 //defined(__DEBUG__)
+    ///@note these registers are only be available through CPU1
+#   if 0
     DBGMCU->CR          = DBGMCU_CR_DBG_SLEEP
                         | DBGMCU_CR_DBG_STOP
                         | DBGMCU_CR_DBG_STANDBY;
@@ -907,11 +925,11 @@ void platform_init_busclk() {
 /// the top of platform_poweron().
 
     // The system clock must be MSI @ 48MHz
+    FLASH->ACR      = (FLASH->ACR & ~FLASH_ACR_LATENCY_Msk) | (2 << FLASH_ACR_LATENCY_Pos);
+    FLASH->C2ACR   |= (FLASH_C2ACR_ICEN | FLASH_C2ACR_PRFTEN);
+
     sub_osc_startup(300);
     sub_setclocks(SPEED_Std);
-    
-    
-    FLASH->ACR = (FLASH_ACR_DCEN | FLASH_ACR_ICEN);
     
     /// The code below will disable all the clocks that are not used.
     /// It is commented-out because CPU1 is expected to control the clocking system.

@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stm32wl55xx.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -81,7 +81,12 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+  ///@note these DBGMCU registers are only be available through CPU1
+    DBGMCU->CR          = DBGMCU_CR_DBG_SLEEP
+                        | DBGMCU_CR_DBG_STOP
+                        | DBGMCU_CR_DBG_STANDBY;
 
+    DBGMCU->C2APB1FZR1  = DBGMCU_C2APB1FZR1_DBG_RTC_STOP;
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */

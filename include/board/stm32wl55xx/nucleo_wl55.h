@@ -555,8 +555,8 @@
 #define _CRCCLK_LP          0       /* RCC_C2AHB1SMENR_CRCSMEN */
 
 // DMAMUX is important to enable as long as DMA is enabled (always)
-#define _DMAMUXCLK_N        RCC_C2AHB1ENR_DMAMUXEN
-#define _DMAMUXCLK_LP       RCC_C2AHB1SMENR_DMAMUXSMEN
+#define _DMAMUXCLK_N        RCC_C2AHB1ENR_DMAMUX1EN
+#define _DMAMUXCLK_LP       RCC_C2AHB1SMENR_DMAMUX1SMEN
 
 // DMA is used in MEMCPY and thus it could be needed at any time.
 // CPU2 only uses DMA2
@@ -613,7 +613,7 @@
 static inline void BOARD_PERIPH_INIT(void) {
     // AHB Clock Setup for Active Mode & Sleep
     // Commented-out where the platform defaults (core_main.c) are used.
-    //RCC->C2AHB1ENR      = (_CRCCLK_N | _DMAMUXCLK_N | _DMA2CLK_N);
+    RCC->C2AHB1ENR      = (_CRCCLK_N | _DMAMUXCLK_N | _DMA2CLK_N);
     //RCC->C2AHB1SMENR    = (_CRCCLK_LP | 0x07);
 
     RCC->C2AHB2ENR      = (_GPIOCLK_SU);
@@ -728,8 +728,10 @@ static inline void BOARD_PORT_STARTUP(void) {
     ///@note sometimes UARTs need to be Open Drain.
     GPIOA->OTYPER   = 0; //(1 << (2)) | (1 << (9));
     
-    GPIOA->PUPDR    = (1 << (3*2)) \
-                    | (1 << (13*2)) \
+    GPIOA->PUPDR    = (1 << (0*2))
+                    | (1 << (1*2))
+                    | (1 << (3*2))
+                    | (1 << (13*2))
                     | (2 << (14*2));
     
     // USART2 on PA2/PA3 = 7
@@ -751,10 +753,10 @@ static inline void BOARD_PORT_STARTUP(void) {
     // - B6:  Can be EXTUART-TX, but otherwise not configured and set as ANALOG
     // - B7:  Can be EXTUART-RX, but otherwise not configured and set as ANALOG
     // - B8:  Not configured, set as ANALOG
-    // - B9:  Not configured, set as ANALOG
+    // - B9:  Green LED2 (Trig 1), set as output
     // - B10: Not configured, set as ANALOG
-    // - B11: Green LED2 (Trig 1), set as output
-    // - B12: Red LED3 (Trig 2), set as output
+    // - B11: Red LED3 (Trig 2), set as output
+    // - B12: Not configured, set as ANALOG
 	// - B13: Not configured, set as ANALOG
     // - B14: Not configured, set as ANALOG
     // - B15: Blue LED1 (Trig 3), set as output
@@ -780,10 +782,10 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (_MODER_PB6           << (6*2)) \
                     | (_MODER_PB7           << (7*2)) \
                     | (GPIO_MODER_ANALOG    << (8*2)) \
-                    | (GPIO_MODER_ANALOG    << (9*2)) \
+                    | (GPIO_MODER_OUT       << (9*2)) \
                     | (GPIO_MODER_ANALOG    << (10*2)) \
                     | (GPIO_MODER_OUT       << (11*2)) \
-                    | (GPIO_MODER_OUT       << (12*2)) \
+                    | (GPIO_MODER_ANALOG    << (12*2)) \
                     | (GPIO_MODER_ANALOG    << (13*2)) \
                     | (GPIO_MODER_ANALOG    << (14*2)) \
                     | (GPIO_MODER_OUT       << (15*2));
@@ -797,8 +799,7 @@ static inline void BOARD_PORT_STARTUP(void) {
                     | (GPIO_OSPEEDR_10MHz << (1*2)) \
                     | (GPIO_OSPEEDR_40MHz << (3*2)) \
                     | (GPIO_OSPEEDR_10MHz << (4*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (8*2)) \
-                    | (GPIO_OSPEEDR_10MHz << (9*2));
+                    | (GPIO_OSPEEDR_10MHz << (8*2));
     
     /// Configure Port C IO.
     /// Port C is used only for USB sense and 32kHz crystal driving
