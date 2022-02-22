@@ -306,7 +306,7 @@
 #define BOARD_PARAM_RFout               (BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)
 #define BOARD_PARAM_RFtol               0.000002
 #define BOARD_PARAM_PLLout              96000000
-#define BOARD_PARAM_PLLmult             (BOARD_PARAM_PLLout/BOARD_PARAM_HFHz)
+#define BOARD_PARAM_PLLmult             (BOARD_PARAM_PLLout/BOARD_PARAM_MFHz)
 #define BOARD_PARAM_PLLdiv              3
 #define BOARD_PARAM_PLLHz               (BOARD_PARAM_PLLout/BOARD_PARAM_PLLdiv)
 
@@ -1114,9 +1114,9 @@ static inline void BOARD_HSXTAL_OFF(void) {
 //#define MCU_CONFIG_XTALHz            BOARD_PARAM_HFHz
 //#define MCU_CONFIG_XTALmult          BOARD_PARAM_HFmult
 //#define MCU_CONFIG_XTALtol           BOARD_PARAM_HFtol
-#define MCU_CONFIG_OSCHz             BOARD_PARAM_HFHz
-#define MCU_CONFIG_OSCmult           BOARD_PARAM_HFmult
-#define MCU_CONFIG_OSCtol            BOARD_PARAM_HFtol
+#define MCU_CONFIG_OSCHz             BOARD_PARAM_MFHz
+#define MCU_CONFIG_OSCmult           BOARD_PARAM_MFmult
+#define MCU_CONFIG_OSCtol            BOARD_PARAM_MFtol
 
 #define PLATFORM_MCLK_DIV           BOARD_PARAM_MCLKDIV
 #define PLATFORM_SMCLK_DIV          BOARD_PARAM_SMCLKDIV
@@ -1129,8 +1129,8 @@ static inline void BOARD_HSXTAL_OFF(void) {
 #define PLATFORM_LSCLOCK_ERROR      BOARD_PARAM_LFtol
 #define PLATFORM_MSCLOCK_HZ         (BOARD_PARAM_MFHz)
 #define PLATFORM_MSCLOCK_ERROR      BOARD_PARAM_MFtol
-#define PLATFORM_HSCLOCK_HZ         BOARD_PARAM_HFHz
-#define PLATFORM_HSCLOCK_ERROR      BOARD_PARAM_HFtol
+#define PLATFORM_HSCLOCK_HZ         BOARD_PARAM_MFHz
+#define PLATFORM_HSCLOCK_ERROR      BOARD_PARAM_MFtol
 #define PLATFORM_PLLCLOCK_OUT       ((BOARD_PARAM_RFHz/BOARD_PARAM_RFdiv)*BOARD_PARAM_PLLmult)
 #define PLATFORM_PLLCLOCK_HZ        (PLATFORM_PLLCLOCK_OUT/BOARD_PARAM_PLLdiv)
 #define PLATFORM_PLLCLOCK_ERROR     BOARD_PARAM_RFtol

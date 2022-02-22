@@ -80,14 +80,329 @@ typedef enum {
     MODE_TXData = 6
 } WLLora_IMode;
 
-typedef struct {
-#   if (BOARD_FEATURE_RFXTALOUT)
-    ot_bool         clkreq;
-#   endif
-    WLLora_IMode    imode;
-    ot_u8           status;
-    ot_u8           spi_addr;
-    ot_u8           busrx[32];
+#define WLLORA_CMDMAX   32
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 addr[2];
+    ot_u8 data[WLLORA_CMDMAX-3];
+} lr_wrreg_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 addr[2];
+    ot_u8 status;
+    ot_u8 data[WLLORA_CMDMAX-4];
+} lr_rdreg_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 offset;
+    ot_u8 data[WLLORA_CMDMAX-2];
+} lr_wrbuf_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 offset;
+    ot_u8 status;
+    ot_u8 data[WLLORA_CMDMAX-3];
+} lr_rdbuf_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 sleep_cfg;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_sleep_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 standby_cfg;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_standby_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX-1];
+} lr_fs_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 timeout[3];
+    ot_u8 unused[WLLORA_CMDMAX-4];
+} lr_tx_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 timeout[3];
+    ot_u8 unused[WLLORA_CMDMAX-4];
+} lr_rx_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 rx_timeout_stop;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_stoprxtim_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 rx_period[3];
+    ot_u8 sleep_period[3];
+    ot_u8 unused[WLLORA_CMDMAX-7];
+} lr_rxduty_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX-1];
+} lr_cad_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX-1];
+} lr_txcontwave_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX-1];
+} lr_txcontpreamble_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 pkt_type;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_setpkttype_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 status;
+    ot_u8 pkt_type;
+    ot_u8 unused[WLLORA_CMDMAX-3];
+} lr_getpkttype_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 timeout[4];
+    ot_u8 unused[WLLORA_CMDMAX-5];
+} lr_rffreq_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 power;
+    ot_u8 ramp_time;
+    ot_u8 unused[WLLORA_CMDMAX-3];
+} lr_txparams_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 pa_duty;
+    ot_u8 hp_max;
+    ot_u8 pa_sel;
+    ot_u8 fixed_01;
+    ot_u8 unused[WLLORA_CMDMAX-5];
+} lr_paconfig_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 fallback_mode;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_txrxfallback_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 num_symbol;
+    ot_u8 det_peak;
+    ot_u8 det_min;
+    ot_u8 exit_mode;
+    ot_u8 timeout[3];
+    ot_u8 unused[WLLORA_CMDMAX-8];
+} lr_cadparams_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 tx_base_addr;
+    ot_u8 rx_base_addr;
+    ot_u8 unused[WLLORA_CMDMAX-3];
+} lr_bufbase_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 sf;
+    ot_u8 bw;
+    ot_u8 cr;
+    ot_u8 ldro;
+    ot_u8 unused[WLLORA_CMDMAX-5];
+} lr_modparams_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 preamble_len[2];
+    ot_u8 hdr_type;
+    ot_u8 payload_len;
+    ot_u8 crc_type;
+    ot_u8 invert_iq;
+    ot_u8 unused[WLLORA_CMDMAX-7];
+} lr_pktparams_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 sym_num;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_symtimeout_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 status;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_status_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 status;
+    ot_u8 rx_payload_len;
+    ot_u8 rx_start_bufptr;
+    ot_u8 unused[WLLORA_CMDMAX-4];
+} lr_rxbufstatus_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 status;
+    ot_u8 rssi_pkt;
+    ot_u8 snr_pkt;
+    ot_u8 signal_rssi_pkt;
+    ot_u8 unused[WLLORA_CMDMAX-5];
+} lr_pktstatus_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 status;
+    ot_u8 rssi_inst;
+    ot_u8 unused[WLLORA_CMDMAX-3];
+} lr_rssi_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 status;
+    ot_u8 num_pkt_rxed[2];
+    ot_u8 num_pkt_crcerr[2];
+    ot_u8 num_pkt_hdrerr[2];
+    ot_u8 unused[WLLORA_CMDMAX-8];
+} lr_pktstats_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 num_pkt_rxed[2];
+    ot_u8 num_pkt_crcerr[2];
+    ot_u8 num_pkt_hdrerr[2];
+    ot_u8 unused[WLLORA_CMDMAX-7];
+} lr_resetstats_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 irq_mask[2];
+    ot_u8 irq1_mask[2];
+    ot_u8 irq2_mask[2];
+    ot_u8 irq3_mask[2];
+    ot_u8 unused[WLLORA_CMDMAX-8];
+} lr_dioirq_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 status;
+    ot_u8 irq_status[2];
+    ot_u8 unused[WLLORA_CMDMAX-4];
+} lr_getirq_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 clr_irq[2];
+    ot_u8 unused[WLLORA_CMDMAX-4];
+} lr_clrirq_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 calib_cfg;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_calibrate_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 calfreq1;
+    ot_u8 calfreq2;
+    ot_u8 unused[WLLORA_CMDMAX-3];
+} lr_calimage_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 reg_mode;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_regmode_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 status;
+    ot_u8 op_error[2];
+    ot_u8 unused[WLLORA_CMDMAX-4];
+} lr_geterr_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 zero;
+    ot_u8 unused[WLLORA_CMDMAX-2];
+} lr_clrerr_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 opcode;
+    ot_u8 reg_txco_trim;
+    ot_u8 timeout[3];
+    ot_u8 unused[WLLORA_CMDMAX-5];
+} lr_tcxomode_cmd_t;
+
+
+typedef union {
+    lr_wrreg_cmd_t              wrreg;
+    lr_rdreg_cmd_t              rdreg;
+    lr_wrbuf_cmd_t              wrbuf;
+    lr_rdbuf_cmd_t              rdbuf;
+    lr_sleep_cmd_t              sleep;
+    lr_standby_cmd_t            standby;
+    lr_fs_cmd_t                 fs;
+    lr_tx_cmd_t                 tx;
+    lr_rx_cmd_t                 rx;
+    lr_stoprxtim_cmd_t          stoprxtim;
+    lr_rxduty_cmd_t             rxduty;
+    lr_cad_cmd_t                cad;
+    lr_txcontwave_cmd_t         txcontwave;
+    lr_txcontpreamble_cmd_t     txcontpreamble;
+    lr_setpkttype_cmd_t         setpkttype;
+    lr_getpkttype_cmd_t         getpkttype;
+    lr_rffreq_cmd_t             rffreq;
+    lr_txparams_cmd_t           txparams;
+    lr_paconfig_cmd_t           paconfig;
+    lr_txrxfallback_cmd_t       txrxfallback;
+    lr_cadparams_cmd_t          cadparams;
+    lr_bufbase_cmd_t            bufbase;
+    lr_modparams_cmd_t          modparams;
+    lr_pktparams_cmd_t          pktparams;
+    lr_symtimeout_cmd_t         symtimeout;
+    lr_status_cmd_t             status;
+    lr_rxbufstatus_cmd_t        rxbufstatus;
+    lr_pktstatus_cmd_t          pktstatus;
+    lr_rssi_cmd_t               rssi;
+    lr_pktstats_cmd_t           pktstats;
+    lr_resetstats_cmd_t         resetstats;
+    lr_dioirq_cmd_t             dioirq;
+    lr_getirq_cmd_t             getirq;
+    lr_clrirq_cmd_t             clrirq;
+    lr_calibrate_cmd_t          calibrate;
+    lr_calimage_cmd_t           calimage;
+    lr_regmode_cmd_t            regmode;
+    lr_geterr_cmd_t             geterr;
+    lr_clrerr_cmd_t             clrerr;
+    lr_tcxomode_cmd_t           tcxomode;
+    ot_u8                       raw[WLLORA_CMDMAX];
+} wllora_cmd_u;
+
+typedef struct __attribute__((packed)) {
+    wllora_cmd_u    cmd;
 } wllora_struct;
 
 extern wllora_struct wllora;
@@ -128,9 +443,6 @@ void stm32wl_virtual_isr(ot_u8 code);
   * i.e. /io/stm32wl_lora/io_stm32wl55_m0.c
   */
 void    wllora_int_clearall(void);
-ot_uint wllora_resetpin_ishigh(void);
-ot_uint wllora_resetpin_setlow(void);
-ot_uint wllora_resetpin_sethigh(void);
 ot_uint wllora_readypin_ishigh(void);
 ot_uint wllora_cadpin_ishigh(void);
 

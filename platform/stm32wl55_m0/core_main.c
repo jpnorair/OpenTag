@@ -460,7 +460,10 @@ typedef struct {
 } setclocks_t;
 
 void sub_setclocks(SPEED_enum mode) {
-///@todo this could set an MSI divider, but there's really no point for that.
+/// All clocks for this platform at 48000000
+    platform_ext.clock_hz[0]    = 48000000;
+    platform_ext.clock_hz[1]    = 48000000;
+    platform_ext.clock_hz[2]    = 48000000;
 }
 
 
@@ -637,12 +640,15 @@ ot_u16 platform_ext_lsihz() {
   * ========================================================================<BR>
   */
 ot_ulong platform_get_clockhz(ot_uint clock_index) {
-#   if defined(__DEBUG__)
-    if (clock_index > 2) {
-        while(1);   //trap in debugging
-    }
-#   endif
-    return (clock_index > 2) ? 0 : platform_ext.clock_hz[clock_index];
+/// All clocks for this platform at 48000000
+    return 48000000;
+
+//#   if defined(__DEBUG__)
+//    if (clock_index > 2) {
+//        __BKPT(1);
+//    }
+//#   endif
+//    return (clock_index > 2) ? 0 : platform_ext.clock_hz[clock_index];
 }
 
 
@@ -757,28 +763,31 @@ void platform_poweron() {
     RCC->C2AHB1SMENR    = RCC_C2AHB1SMENR_CRCSMEN
                         | 0x07;
 
-    ///@note these registers are only be available through CPU1
+    ///@note These registers are only be available through CPU1, and they must
+    ///      be programmed as needed in the CPU1 code.  Moreover, CPU2 is not
+    ///      capable of retaining a debugger connection through STOP or STANDBY
+    ///      modes, so the STOP and STANDBY options pertain only to CPU1.
+    ///      The peripheral STOP options have confusing nomenclature.  They
+    ///      merely enable the peripheral clocks to pause on breakpoints.
 #   if 0
     DBGMCU->CR          = DBGMCU_CR_DBG_SLEEP
                         | DBGMCU_CR_DBG_STOP
                         | DBGMCU_CR_DBG_STANDBY;
 
-    DBGMCU->C2APB1FZR1  = DBGMCU_C2APB1FZR1_DBG_RTC_STOP;
+    DBGMCU->C2APB1FZR1  = DBGMCU_C2APB1FZR1_DBG_LPTIM1_STOP
+                        | DBGMCU_C2APB1FZR1_DBG_I2C3_STOP
+                        | DBGMCU_C2APB1FZR1_DBG_I2C2_STOP
+                        | DBGMCU_C2APB1FZR1_DBG_I2C1_STOP
+                        | DBGMCU_C2APB1FZR1_DBG_IWDG_STOP
+                        | DBGMCU_C2APB1FZR1_DBG_RTC_STOP
+                        | DBGMCU_C2APB1FZR1_DBG_TIM2_STOP;
 
-//    DBGMCU->C2APB1FZR1  = DBGMCU_C2APB1FZR1_DBG_LPTIM1_STOP
-//                        | DBGMCU_C2APB1FZR1_DBG_I2C3_STOP
-//                        | DBGMCU_C2APB1FZR1_DBG_I2C2_STOP
-//                        | DBGMCU_C2APB1FZR1_DBG_I2C1_STOP
-//                        | DBGMCU_C2APB1FZR1_DBG_IWDG_STOP
-//                        | DBGMCU_C2APB1FZR1_DBG_RTC_STOP
-//                        | DBGMCU_C2APB1FZR1_DBG_TIM2_STOP;
-//
-//    DBGMCU->C2APB1FZR2  = DBGMCU_C2APB1FZR1_DBG_LPTIM2_STOP
-//                        | DBGMCU_C2APB1FZR1_DBG_LPTIM3_STOP;
-//
-//    DBGMCU->C2APB2FZR   = DBGMCU_C2APB1FZR1_DBG_TIM17_STOP
-//                        | DBGMCU_C2APB1FZR1_DBG_TIM16_STOP
-//                        | DBGMCU_C2APB1FZR1_DBG_TIM1_STOP;
+    DBGMCU->C2APB1FZR2  = DBGMCU_C2APB1FZR1_DBG_LPTIM2_STOP
+                        | DBGMCU_C2APB1FZR1_DBG_LPTIM3_STOP;
+
+    DBGMCU->C2APB2FZR   = DBGMCU_C2APB1FZR1_DBG_TIM17_STOP
+                        | DBGMCU_C2APB1FZR1_DBG_TIM16_STOP
+                        | DBGMCU_C2APB1FZR1_DBG_TIM1_STOP;
 #   endif
 
     // STOP2 Mode as Deep Sleep

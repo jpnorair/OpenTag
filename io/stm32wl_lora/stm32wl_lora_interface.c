@@ -103,19 +103,11 @@ void platform_isr_rfirq() {
 }
 
 OT_WEAK void wllora_int_off() {
-    wllora_int_config(0);
+    PWR->C2CR3 &= ~PWR_C2CR3_EWRFIRQ;
 }
 
 OT_WEAK void wllora_int_on() {
-    ot_u32 ie_sel;
-    switch (wllora.imode) {
-        case MODE_Listen:   ie_sel = RFI_LISTEN;
-        case MODE_RXData:   ie_sel = RFI_RXDONE;
-        case MODE_CSMA:     ie_sel = RFI_CSMA;
-        case MODE_TXData:   ie_sel = RFI_TXDONE;
-        default:            ie_sel = 0;
-    }
-    wllora_int_config(ie_sel);
+    PWR->C2CR3 |= PWR_C2CR3_EWRFIRQ;
 }
 
 
@@ -310,6 +302,39 @@ ot_s8 wllora_pktsnr()     { return wllora_read(RFREG_LR_PKTSNRVALUE); }
   * This function must be implemented specific to the platform.
   */
 
+ot_u8 wllora_rdreg(ot_uni16 addr) {
+    ot_u8 cmd[3] = { 0x1D, addr.ubyte[UPPER], addr.ubyte[LOWER] };
+    wllora_spibus_io(3, 2, (const ot_u8*)cmd);
+
+    return wllora.buf.rd.data[0];
+}
+
+void wllora_wrreg(ot_u16 addr, ot_u8 val) {
+    ot_u8 cmd[4] = { 0x0D, addr.ubyte[UPPER], addr.ubyte[LOWER], val };
+    wllora_spibus_io(4, 0, (const ot_u8*)cmd);
+}
+
+void wllora_mode_sleep(ot_bool blocking) {
+
+}
+
+void wllora_mode_standby(ot_bool blocking) {
+}
+
+void wllora_mode_fs(ot_bool blocking) {
+
+}
+
+void wllora_mode_tx(ot_bool blocking) {
+
+}
+
+void wllora_mode_rx(ot_bool blocking) {
+
+}
+
+
+
 void wllora_strobe(ot_u8 new_mode, ot_bool blocking) {
 /// "strobe" must be one of the _OPMODE values from 0-7
 /// Assume 500us (125 watchdogs) worst case sleep->standby
@@ -330,6 +355,9 @@ void wllora_strobe(ot_u8 new_mode, ot_bool blocking) {
          1,10,  125,1,  150,25,  160,35,  150,25,  160,35,  160,35,  160,35
     };
     
+
+
+
     if (!blocking) {
         wllora_write(RFREG_LR_OPMODE, _LORAMODE|new_mode);
     }

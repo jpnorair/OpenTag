@@ -44,174 +44,57 @@
 
 
 
-
-/// RF IRQ GPIO Selection Macros:
-
-// DIO5 is not used as an IRQ (rather, just as a line signal)
-#if defined(RADIO_IRQ5_SRCLINE)
-#   define _READY_PORT  RADIO_IRQ5_PORT
-#   define _READY_PIN   RADIO_IRQ5_PIN
-#   if (RADIO_IRQ5_SRCLINE < 0)
-#       undef _RFIRQ5
-#   elif (RADIO_IRQ5_SRCLINE < 2)
-#       define _RFIRQ5  (EXTI0_1_IRQn)
-#       undef _EXTI0_1_USED
-#       define _EXTI0_1_USED
-#   elif (RADIO_IRQ5_SRCLINE < 4)
-#       define _RFIRQ5  (EXTI2_3_IRQn)
-#       undef _EXTI2_3_USED
-#       define _EXTI2_3_USED
-#   else
-#       define _RFIRQ5  (EXTI4_15_IRQn)
-#       undef _EXTI4_15_USED
-#       define _EXTI4_15_USED
-#   endif
-#endif
-
-// DIO4 is not required or really needed at all with this driver
-#if defined(RADIO_IRQ4_SRCLINE)
-#   undef _RFIRQ4
-#endif
-
-// DIO3 is used for the ValidHeader Interrupt
-#if defined(RADIO_IRQ3_SRCLINE)
-#   if (RADIO_IRQ3_SRCLINE < 0)
-#       undef _RFIRQ3
-#   elif (RADIO_IRQ3_SRCLINE < 2) 
-#       define _RFIRQ3  (EXTI0_1_IRQn)
-#       undef _EXTI0_1_USED
-#       define _EXTI0_1_USED
-#   elif (RADIO_IRQ3_SRCLINE < 4)
-#       define _RFIRQ3  (EXTI2_3_IRQn)
-#       undef _EXTI2_3_USED
-#       define _EXTI2_3_USED
-#   else
-#       define _RFIRQ3  (EXTI4_15_IRQn)
-#       undef _EXTI4_15_USED
-#       define _EXTI4_15_USED
-#   endif
-#else
-//#   error "This SX127x driver depends on DIO3 being used for ValidHeader signal."
-#endif
-
-// DIO2 is not used at all with this driver, and it may never be used.
-#if defined(RADIO_IRQ2_SRCLINE)
-#   undef _RFIRQ2
-#endif
-
-// DIO1 is used for CAD DETECT and RX TIMEOUT
-#if defined(RADIO_IRQ1_SRCLINE)
-#   if !defined(_CAD_DETECT_PORT)
-#       define _CAD_DETECT_PORT RADIO_IRQ1_PORT
-#       define _CAD_DETECT_PIN  RADIO_IRQ1_PIN
-#   endif
-#   if (RADIO_IRQ1_SRCLINE < 0)
-#       undef _RFIRQ1
-#   elif (RADIO_IRQ1_SRCLINE < 2)
-#       define _RFIRQ1  (EXTI0_1_IRQn)
-#       undef _EXTI0_1_USED
-#       define _EXTI0_1_USED
-#   elif (RADIO_IRQ1_SRCLINE < 4)
-#       define _RFIRQ1  (EXTI2_3_IRQn)
-#       undef _EXTI2_3_USED
-#       define _EXTI2_3_USED
-#   else
-#       define _RFIRQ1  (EXTI4_15_IRQn)
-#       undef _EXTI4_15_USED
-#       define _EXTI4_15_USED
-#   endif
-#else
-//#   error "This SX127x driver depends on DIO1 being used for RxTimeout & CAD Detect signals."
-#endif
-
-#if defined(RADIO_IRQ0_SRCLINE)
-#   if (RADIO_IRQ0_SRCLINE < 0)
-#       undef _RFIRQ0
-#   elif (RADIO_IRQ0_SRCLINE < 2) 
-#       define _RFIRQ0  (EXTI0_1_IRQn)
-#       undef _EXTI0_1_USED
-#       define _EXTI0_1_USED
-#   elif (RADIO_IRQ0_SRCLINE < 4)
-#       define _RFIRQ0  (EXTI2_3_IRQn)
-#       undef _EXTI2_3_USED
-#       define _EXTI2_3_USED
-#   else
-#       define _RFIRQ0  (EXTI4_15_IRQn)
-#       undef _EXTI4_15_USED
-#       define _EXTI4_15_USED
-#   endif
-#else
-//#   error "This SX127x driver depends on DIO0 being used for RX/TX/CAD-Done signals."
-#endif
-
-
-
-
-
 /// SPI Bus Macros:
 /// Most are straightforward, but take special note of the clocking macros.
-/// On STM32L0, the peripheral clock must be enabled for the peripheral to work.
+/// On STM32, the peripheral clock must be enabled for the peripheral to work.
 /// There are clock-enable bits for active and low-power mode.  Both should be
 /// enabled before SPI usage, and both disabled afterward.
-#if (RADIO_SPI_ID == 1)
-#   define _SPICLK          (PLATFORM_HSCLOCK_HZ/BOARD_PARAM_APB2CLKDIV)
-#   define _UART_IRQ        SPI1_IRQn
-#   define _DMA_ISR         platform_dma1ch2_isr
-#   define _DMARX           DMA1_Channel2
-#   define _DMATX           DMA1_Channel3
-#   define _DMA_IRQ         DMA1_Channel2_3_IRQn
-#   define _DMARX_IFG       (0x2 << (4*(2-1)))
-#   define _DMATX_IFG       (0x2 << (4*(3-1)))
-#   define _DMA_CSEL_MASK   ((0xF << (4*(2-1))) | (0xF << (4*(3-1))))
-#   define _DMA_CSEL        ((0x1 << (4*(2-1))) | (0x1 << (4*(3-1))))
-#   define __DMA_CLEAR_IFG() (DMA1->IFCR = (0xF << (4*(2-1))) | (0xF << (4*(3-1))))
-#   define __SPI_CLKON()    (RCC->APB2ENR |= RCC_APB2ENR_SPI1EN)
-#   define __SPI_CLKOFF()   (RCC->APB2ENR &= ~RCC_APB2ENR_SPI1EN)
-
-#elif (RADIO_SPI_ID == 2)
-#   define _SPICLK          (PLATFORM_HSCLOCK_HZ/BOARD_PARAM_APB1CLKDIV)
-#   define _UART_IRQ        SPI2_IRQn
-#   define _DMA_ISR         platform_dma1ch4_isr
-#   define _DMARX           DMA1_Channel4
-#   define _DMATX           DMA1_Channel5
-#   define _DMA_IRQ         DMA1_Channel4_5_6_7_IRQn
-#   define _DMARX_IFG       (0x2 << (4*(4-1)))
-#   define _DMATX_IFG       (0x2 << (4*(5-1)))
-#   define _DMA_CSEL_MASK   ((0xF << (4*(4-1))) | (0xF << (4*(5-1))))
-#   define _DMA_CSEL        ((0x2 << (4*(4-1))) | (0x2 << (4*(5-1))))
-#   define __DMA_CLEAR_IFG() (DMA1->IFCR = (0xF << (4*(4-1))) | (0xF << (4*(5-1))))
-#   define __SPI_CLKON()    (RCC->APB1ENR |= RCC_APB1ENR_SPI2EN)
-#   define __SPI_CLKOFF()   (RCC->APB1ENR &= ~RCC_APB1ENR_SPI2EN)
+#if (RADIO_SPI_ID == 3)
+#   define _SPICLK              ((PLATFORM_HSCLOCK_HZ/BOARD_PARAM_APB1CLKDIV)/2)
+#   define _SPI_IRQ             SUBGHZSPI_IRQn
+#   define _DMA_UNIT            DMA2
+#   define _DMAMUXRX            DMAMUX1_Channel12
+#   define _DMAMUXTX            DMAMUX1_Channel13
+#   define _DMA_ISR             platform_dma2ch5_isr
+#   define _DMARX               DMA2_Channel5
+#   define _DMATX               DMA2_Channel6
+#   define _DMA_IRQ             DMA2_DMAMUX1_OVR_IRQn
+#   define _DMARX_IFG           (0x2 << (4*(5-1)))
+#   define _DMATX_IFG           (0x2 << (4*(6-1)))
+#   define _DMA_RXREQ_ID        41
+#   define _DMA_TXREQ_ID        42
+#   define __DMA_CLEAR_IFG()    (DMA2->IFCR = (0xF << (4*(5-1))) | (0xF << (4*(6-1))))
+#   define __SPI_CLKON()        (RCC->C2APB3ENR |= RCC_C2APB3ENR_SUBGHZSPIEN)
+#   define __SPI_CLKOFF()       (RCC->C2APB3ENR &= ~RCC_C2APB3ENR_SUBGHZSPIEN)
 
 #else
-//#   error "RADIO_SPI_ID is misdefined, must be 1 or 2."
-#   define _SPICLK 24000000
+#   error "RADIO_SPI_ID is misdefined, must be SPI3 (SUBGHZSPI)."
 #endif
 
 /// SPI clock = bus clock/2
-#if (_SPICLK > 48000000)
-#   define _SPI_DIV (1<<3)
+/// It's not clear what the limits of it are, either from STM32WL or SX126x
+/// datasheets.  So, we run it at 24 MHz.  It can also be set to 12 or 6 MHz.
+#if (_SPICLK > 24000000)
+#   define _SPI_DIV (1<<SPI_CR1_BR_Pos)
 #else
-#   define _SPI_DIV (0<<3)
+#   define _SPI_DIV (0<<SPI_CR1_BR_Pos)
 #endif
 
 
 #define __DMA_CLEAR_IRQ()  (NVIC_ClearPendingIRQ(_DMA_IRQ))
 #define __DMA_ENABLE()     do { \
-                                DMA1_CSELR->CSELR   = (DMA1_CSELR->CSELR & ~_DMA_CSEL_MASK) | _DMA_CSEL; \
-                                _DMARX->CCR         = (DMA_CCR_MINC | (3<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
-                                _DMATX->CCR        |= (DMA_CCR_DIR | DMA_CCR_MINC | (3<<DMA_CCR_PL_Pos) | DMA_CCR_EN); \
+                                _DMARX->CCR     = (DMA_CCR_MINC | (3<<DMA_CCR_PL_Pos) | DMA_CCR_TCIE | DMA_CCR_EN); \
+                                _DMATX->CCR    |= (DMA_CCR_DIR | DMA_CCR_MINC | (3<<DMA_CCR_PL_Pos) | DMA_CCR_EN); \
                             } while(0)
 #define __DMA_DISABLE()    do { \
-                                DMA1_CSELR->CSELR  &= ~_DMA_CSEL_MASK; \
-                                _DMARX->CCR         = 0; \
-                                _DMATX->CCR         = 0; \
+                                _DMARX->CCR     = 0; \
+                                _DMATX->CCR     = 0; \
                             } while(0)
 
 #define __SPI_CS_HIGH()     RADIO_SPICS_PORT->BSRR = (ot_u32)RADIO_SPICS_PIN
 #define __SPI_CS_LOW()      RADIO_SPICS_PORT->BRR  = (ot_u32)RADIO_SPICS_PIN
-#define __SPI_CS_ON()       __SPI_CS_LOW()
-#define __SPI_CS_OFF()      __SPI_CS_HIGH()
+#define __SPI_CS_ON()       PWR->SUBGHZSPICR = 0
+#define __SPI_CS_OFF()      PWR->SUBGHZSPICR = PWR_SUBGHZSPICR_NSS
 
 #define __SPI_ENABLE()      do { \
                                 RADIO_SPI->CR2 = (SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN); \
@@ -242,18 +125,6 @@
   * ========================================================================
   * @todo make sure this is all working
   */
-inline ot_uint wllora_resetpin_ishigh(void)   { 
-    return 0;
-    //return (RADIO_RESET_PORT->IDR & RADIO_RESET_PIN); 
-}
-inline ot_uint wllora_resetpin_setlow(void)   { 
-    return 1;
-    //return (RADIO_RESET_PORT->BRR = RADIO_RESET_PIN); 
-}
-inline ot_uint wllora_resetpin_sethigh(void)  { 
-    return 1;
-    //return (RADIO_RESET_PORT->BSRR = RADIO_RESET_PIN); 
-}
 
 // Ready Pin always on DIO5
 #if defined(_READY_PIN)
@@ -281,102 +152,56 @@ ot_u8 wllora_getbasepwr() {
 
 
 
-/** Bus interface (SPI + 2x GPIO) <BR>
+/** Bus interface <BR>
   * ========================================================================
   */
 void wllora_reset() {
-/// Reset Sequence:
-/// - this sequence is taken from Semtech's implementation
-/// - it doesn't agree 100% with documentation, namely how output/input shift occurs
-
-    // Set Reset pin to Output, and set high
-//     {   ot_u32 moder;
-//         moder   = BOARD_RFCTL_RESETPORT->MODER;  
-//         moder  &= ~(3 << (BOARD_RFCTL_RESETPINNUM*2));
-//         moder  |= (GPIO_MODER_OUT << (BOARD_RFCTL_RESETPINNUM*2));
-//         
-//         BOARD_RFCTL_RESETPORT->MODER    = moder;
-//         BOARD_RFCTL_RESETPORT->BSRR     = BOARD_RFCTL_RESETPIN;
-//     }
-    delay_us(1200);   //wait ~120 us
-    
-    // Set Reset pin to Input, floating
-//     BOARD_RFCTL_RESETPORT->MODER &= ~(3 << (BOARD_RFCTL_RESETPINNUM*2));
-
-    // wait ~6ms
-    delay_ti(6);    // wait ~6ms 
+/// @note this uses a busywait loop.  A timed WFE could be used in the test
+///       loop IFF:
+///       - wllora_reset() is guaranteed never to run in an ISR
+///       - profiling of the reset sequence shows value in using WFE.
+    ot_u32 test;
+    do {
+        test        = RCC->CSR & RCC_CSR_RFRSTF;
+        RCC->CSR   ^= RCC_CSR_RFRST;
+        while ((RCC->CSR & RCC_CSR_RFRSTF) == test);
+    } while (test == 0);
 }
 
 
 void wllora_init_bus() {
-/// @note platform_init_periphclk() should have alread enabled RADIO_SPI clock
-/// and GPIO clocks
 
-    ///0. Preliminary Stuff
-#   if (BOARD_FEATURE_RFXTALOUT)
-    wllora.clkreq = False;
-#   endif
-
-    ///1. Do a Reset.  
-    ///@todo precede this with POR
+    ///1. Reset the Radio Core
     wllora_reset();
     
     ///2. Set-up DMA to work with SPI.  The DMA is bound to the SPI and it is
     ///   used for Duplex TX+RX.  The DMA RX Channel is used as an EVENT.  The
-    ///   STM32L can do in-context naps using EVENTS.  To enable the EVENT, we
+    ///   STM32WL can do in-context naps using EVENTS.  To enable the EVENT, we
     ///   enable the DMA RX interrupt bit, but not the NVIC.
-//     BOARD_DMA_CLKON();
-//     _DMARX->CMAR    = (ot_u32)&wllora.busrx[-1];
-//     _DMARX->CPAR    = (ot_u32)&RADIO_SPI->DR;
-//     _DMATX->CPAR    = (ot_u32)&RADIO_SPI->DR;
-//     BOARD_DMA_CLKOFF();
+     BOARD_DMA_CLKON();
+    _DMAMUXRX->CCR  = _DMA_RXREQ_ID;
+    _DMAMUXTX->CCR  = _DMA_TXREQ_ID;
+    _DMARX->CMAR    = (ot_u32)&wllora.busrx[-1];
+    _DMARX->CPAR    = (ot_u32)&RADIO_SPI->DR;
+    _DMATX->CPAR    = (ot_u32)&RADIO_SPI->DR;
+     BOARD_DMA_CLKOFF();
 
-    /// 3. Connect GPIOs from SX127x to STM32L External Interrupt sources
-    /// The GPIO configuration should be done in BOARD_PORT_STARTUP() and the
-    /// binding of each GPIO to the corresponding EXTI should be done in
-    /// BOARD_EXTI_STARTUP().  This architecture is required because the STM32L
-    /// External interrupt mechanism must be shared by all drivers, and we can
-    /// only know this information at the board level.
-    ///
-    /// However, here we set the EXTI lines to the rising edge triggers we need
-    /// and configure the NVIC.  Eventually, the NVIC stuff might be done in
-    /// the platform module JUST FOR EXTI interrupts though.
-
-//     EXTI->PR    =  RFI_ALL;         //clear flag bits
-//     EXTI->IMR  &= ~RFI_ALL;         //clear interrupt enablers
-//     EXTI->EMR  &= ~RFI_ALL;         //clear event enablers
-
-    // All IRQ pins are rising edge detect
-//     EXTI->RTSR |= (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 | RFI_SOURCE3);
-
-    ///@note This block redefines priorities of the RF GPIO interrupts.
-    ///      It is not always required, since default EXTI prorities are
-    ///      already defined at startup, and they are usually the same.
-// #   if (PLATFORM_NVIC_RF_GROUP != PLATFORM_NVIC_IO_GROUP)
-// #       if defined(_EXTI0_1_USED)
-//         NVIC_SetPriority(EXTI0_1_IRQn, PLATFORM_NVIC_RF_GROUP);
-//         NVIC_EnableIRQ(EXTI0_1_IRQn);
-// #       endif
-// #       if defined(_EXTI2_3_USED)
-//         NVIC_SetPriority(EXTI2_3_IRQn, PLATFORM_NVIC_RF_GROUP);
-//         NVIC_EnableIRQ(EXTI2_3_IRQn);
-// #       endif
-// #       if defined(_EXTI4_15_USED)
-//         NVIC_SetPriority(EXTI4_15_IRQn, PLATFORM_NVIC_RF_GROUP);
-//         NVIC_EnableIRQ(EXTI4_15_IRQn);
-// #       endif
-// #   endif
+    /// 3. The STM32WL has a single interrupt for the RF Core itself.  After
+    ///    CPU gets this IRQ, it needs to look at Radio Core IRQ registers to
+    ///    see the IRQ mask itself.
+    PWR->C2CR3 |= PWR_C2CR3_EWRFIRQ;
+    NVIC_SetPriority(SUBGHZ_Radio_IRQn, PLATFORM_NVIC_RF_GROUP);
+    NVIC_EnableIRQ(SUBGHZ_Radio_IRQn);
     
-    /// 4. Put SX127x to sleep
-    //delay_ti(6);    // wait ~6ms 
-    wllora_strobe(_OPMODE_SLEEP, True);
+    /// 4. Put RF Core to sleep
+    wllora_sleep(True);
 }
 
 
 
 void wllora_spibus_wait() {
 /// Blocking wait for SPI bus to be over
-//     while (RADIO_SPI->SR & SPI_SR_BSY);
+     while (RADIO_SPI->SR & SPI_SR_BSY);
 }
 
 
@@ -388,41 +213,39 @@ void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
 /// peripherals, we cannot assume in this module if it is appropriate to turn-
 /// off the DMA for all other modules.
 
-//     platform_disable_interrupts();
-//     __SPI_CLKON();
-//     __SPI_ENABLE();
-//     __SPI_CS_ON();
+     platform_disable_interrupts();
+     __SPI_CLKON();
+     __SPI_ENABLE();
+     __SPI_CS_ON();
 
     /// Set-up DMA, and trigger it.  TX goes out from parameter.  RX goes into
     /// module buffer.  If doing a read, the garbage data getting duplexed onto
     /// TX doesn't affect the SX127x.  If doing a write, simply disregard the
     /// RX duplexed data.
-//     BOARD_RFSPI_CLKON();
-//     BOARD_DMA_CLKON();
-//     __DMA_CLEAR_IFG();
-//     cmd_len        += resp_len;
-//     _DMARX->CNDTR   = cmd_len;
-//     _DMATX->CNDTR   = cmd_len;
-//     _DMATX->CMAR    = (ot_u32)cmd;
-//     __DMA_ENABLE();
+    BOARD_RFSPI_CLKON();
+    BOARD_DMA_CLKON();
+    __DMA_CLEAR_IFG();
+    cmd_len        += resp_len;
+    _DMARX->CNDTR   = cmd_len;
+    _DMATX->CNDTR   = cmd_len;
+    _DMATX->CMAR    = (ot_u32)cmd;
+    __DMA_ENABLE();
 
-    /// WFE only works on EXTI line interrupts, as far as I can test. 
+    /// WFE is only reliable on EXTI line interrupts, as far as I can test.
     /// So do busywait until DMA is done RX-ing
-    //do {
-        //__WFE();
-    //}
-//     while((DMA1->ISR & _DMARX_IFG) == 0);
-//     __DMA_CLEAR_IRQ();
-//     __DMA_CLEAR_IFG();
-//     __DMA_DISABLE();
+    //do { __WFE(); }
+    while((_DMA_UNIT->ISR & _DMARX_IFG) == 0);
+    __DMA_CLEAR_IRQ();
+    __DMA_CLEAR_IFG();
+    __DMA_DISABLE();
 
     /// Turn-off and disable SPI to save energy
-//     __SPI_CS_OFF();
-//     __SPI_DISABLE();
-//     __SPI_CLKOFF();
-//     BOARD_DMA_CLKOFF();
-//     BOARD_RFSPI_CLKOFF();
-//     platform_enable_interrupts();
+    __SPI_CS_OFF();
+    __SPI_DISABLE();
+    __SPI_CLKOFF();
+    BOARD_DMA_CLKOFF();
+    BOARD_RFSPI_CLKOFF();
+    platform_enable_interrupts();
 }
 
 

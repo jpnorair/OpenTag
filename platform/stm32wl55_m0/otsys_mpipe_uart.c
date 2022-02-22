@@ -405,7 +405,7 @@
 #   define _DMARX_CSEL      (0x2 << (4*_DMARX_CHAN))
 #   define _DMATX_CSEL      (0x2 << (4*_DMATX_CHAN))
 #   define __UART_ISR       platform_isr_usart2
-#   define __UART_CLKHZ()   48000000 /*platform_get_clockhz(1) */
+#   define __UART_CLKHZ()   platform_get_clockhz(1)
 #   define __UART_CLKON()   (RCC->C2APB1ENR1 |= RCC_C2APB1ENR1_USART2EN)
 #   define __UART_CLKOFF()  (RCC->C2APB1ENR1 &= ~RCC_C2APB1ENR1_USART2EN)
 

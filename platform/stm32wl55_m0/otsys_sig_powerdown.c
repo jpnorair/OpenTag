@@ -56,7 +56,8 @@
 #   define _USE_STOP 0
 
 #else
-    /// L0, L4, WL can be debugged through STOP mode
+    /// L0, L4, WL can be debugged through STOP mode, but WL55-CPU2 cannot
+    /// be debugged through STOP.
 #   if defined(__STM32L0xx__) || defined(__STM32L4xx__) || defined(__STM32WLxx__)
 #       if defined(__DEBUG__) && defined(CORE_CM0PLUS)
 #           define _USE_STOP    0

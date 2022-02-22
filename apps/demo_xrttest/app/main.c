@@ -341,20 +341,19 @@ void xrttest_systask(void* arg) {
     case 1: {
     	xrttest_systask_OPERATIONAL:
     	if (setup.is_gateway) {
-#			if defined(OT_TRIG4_PIN)
-    		// Check the status each __PAGE_PERIOD_TI__ * 1.5
-    		// and set the Blue LED if OK
-    		if (setup.page_received) {
-    			BOARD_led4_on();
-    		}
-    		else {
-    			BOARD_led4_off();
-    		}
+    	    // Check the status each __PAGE_PERIOD_TI__ * 1.5
+            // and set the Blue LED if OK
+#           if defined(OT_TRIG4_PIN)
+            if (setup.page_received)    BOARD_led4_on();
+            else                        BOARD_led4_off();
+#			elif defined(OT_TRIG3_PIN)
+    		if (setup.page_received)    BOARD_led3_on();
+    		else                        BOARD_led3_off();
 #			endif
     		setup.page_received	= False;
     		nextevent_ti		= __PAGE_PERIOD_TI__*3;
 
-    		logger_msg(MSG_utf8, 2, 9, (ot_u8*)"RX", (ot_u8*)"Test Msg\n");
+    		//logger_msg(MSG_utf8, 2, 9, (ot_u8*)"RX", (ot_u8*)"Test Msg\n");
     	}
     	else {
 			// Prepare a Page each __PAGE_PERIOD_TI__
