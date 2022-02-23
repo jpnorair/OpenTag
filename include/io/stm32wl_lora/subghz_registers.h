@@ -34,6 +34,50 @@
 #define __subghz_registers_H
 
 
+#define _FLIPADDR(ADDR) (ot_u16)( ( ((ADDR) << 8) | ((ADDR) >> 8) ) & 0xFFFF)
+
+typedef enum __attribute__ ((__packed__)) {
+    LR_GBSYNCR      = _FLIPADDR(0x06AC),
+    LR_GPKTCTL1AR   = _FLIPADDR(0x06B8),
+    LR_GWHITEINIRL  = _FLIPADDR(0x06B9),
+    LR_GCRCINIRH    = _FLIPADDR(0x06BC),
+    LR_GCRCINIRL    = _FLIPADDR(0x06BD),
+    LR_GCRCPOLRH    = _FLIPADDR(0x06BE),
+    LR_GCRCPOLRL    = _FLIPADDR(0x06BF),
+    LR_GSYNCR7      = _FLIPADDR(0x06C0),
+    LR_GSYNCR6      = _FLIPADDR(0x06C1),
+    LR_GSYNCR5      = _FLIPADDR(0x06C2),
+    LR_GSYNCR4      = _FLIPADDR(0x06C3),
+    LR_GSYNCR3      = _FLIPADDR(0x06C4),
+    LR_GSYNCR2      = _FLIPADDR(0x06C5),
+    LR_GSYNCR1      = _FLIPADDR(0x06C6),
+    LR_GSYNCR0      = _FLIPADDR(0x06C7),
+    LR_LSYNCRH      = _FLIPADDR(0x0740),
+    LR_LSYNCRL      = _FLIPADDR(0x0741),
+    LR_RNGR3        = _FLIPADDR(0x0819),
+    LR_RNGR2        = _FLIPADDR(0x081A),
+    LR_RNGR1        = _FLIPADDR(0x081B),
+    LR_RNGR0        = _FLIPADDR(0x081C),
+    LR_RXGAINCR     = _FLIPADDR(0x08AC),
+    LR_PAOCPR       = _FLIPADDR(0x08E7),
+    LR_HSEINTRIMR   = _FLIPADDR(0x0911),
+    LR_HSEOUTTRIMR  = _FLIPADDR(0x0912),
+    LR_SMPSC0R      = _FLIPADDR(0x0916),
+    LR_PCR          = _FLIPADDR(0x091A),
+    LR_SMPSC2R      = _FLIPADDR(0x0923),
+    LR_ADDR_MIN     = 0,
+    LR_ADDR_MAX     = 0x0fff,
+} lr_regs_e;
+
+typedef union {
+    lr_regs_e   name;
+    ot_u16      u16;
+    ot_u8       u8[2];
+} lr_addr_u;
+
+
+
+
 /** Register call macros: mainly for nomenclature consistency with other TRX
   * drivers that have been implemented.
   */

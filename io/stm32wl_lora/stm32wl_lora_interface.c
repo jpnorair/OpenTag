@@ -81,18 +81,420 @@ wllora_struct wllora;
 
 
 
+
+/** Generic Command Functions from SX126x & STM32WL manuals
+  * For specific networking stacks, it is often better to use custom-prepared
+  * versions of these command calls (with fewer arguments) rather than the
+  * generic implementations below.
+  */
+
+void sub_set0x1_cmd(ot_u8 opcode) {
+    wllora.cmd.raw[0]   = opcode;
+    wllora_spibus_io(1, 0, wllora.cmd.raw);
+}
+
+void sub_set1x1_cmd(ot_u8 opcode, ot_u8 val) {
+    wllora.cmd.raw[0]   = opcode;
+    wllora.cmd.raw[1]   = val;
+    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+void sub_set2x1_cmd(ot_u8 opcode, ot_u8 val1, ot_u8 val2) {
+    wllora.cmd.raw[0]   = opcode;
+    wllora.cmd.raw[1]   = va11;
+    wllora.cmd.raw[2]   = val2;
+    wllora_spibus_io(3, 0, wllora.cmd.raw);
+}
+
+void sub_set4x1_cmd(ot_u8 opcode, ot_u8 val1, ot_u8 val2, ot_u8 val3, ot_u8 val4) {
+    wllora.cmd.raw[0]   = opcode;
+    wllora.cmd.raw[1]   = val1;
+    wllora.cmd.raw[2]   = val2;
+    wllora.cmd.raw[3]   = val3;
+    wllora.cmd.raw[4]   = val4;
+    wllora_spibus_io(5, 0, wllora.cmd.raw);
+}
+
+void sub_set1x3_cmd(ot_u8 opcode, ot_u32 val) {
+    wllora.cmd.raw[0]   = opcode;
+    wllora.cmd.raw[1]   = ((ot_u8*)&val)[B2];
+    wllora.cmd.raw[2]   = ((ot_u8*)&val)[B1];
+    wllora.cmd.raw[3]   = ((ot_u8*)&val)[B0];
+    wllora_spibus_io(4, 0, wllora.cmd.raw);
+}
+
+ot_u8 sub_get_1x1(ot_u8 opcode) {
+    wllora.cmd.raw[0] = opcode;
+    wllora_spibus_io(1, 2, wllora.cmd.raw);
+    return wllora.cmd.raw[2];
+}
+
+ot_u16 sub_get1x2_cmd(ot_u8 opcode) {
+    ot_u32 temp;
+    wllora.cmd.raw[0] = opcode;
+    wllora_spibus_io(1, 3, wllora.cmd.raw);
+
+    temp = *(ot_u16*)&wllora.cmd.raw[2];
+    return (ot_u16)__REV16(temp);
+}
+
+void wllora_wrreg_cmd(lr_addr_u addr, ot_u8 value) {
+    wllora.cmd.wrreg.opcode     = 0x0D;
+    wllora.cmd.wrreg.addr[0]    = addr.u8[0];
+    wllora.cmd.wrreg.addr[1]    = addr.u8[1];
+    wllora.cmd.wrreg.data[0]    = value;
+    wllora_spibus_io(4, 0, wllora.cmd.raw);
+}
+
+void wllora_wrburst_cmd(lr_addr_u addr, ot_u8 len, ot_u8* data) {
+    wllora.cmd.wrreg.opcode     = 0x0D;
+    wllora.cmd.wrreg.addr[0]    = addr.u8[0];
+    wllora.cmd.wrreg.addr[1]    = addr.u8[1];
+
+    if (len <= WLLORA_WRMAX) {
+        memcpy(wllora.cmd.wrreg.data, data, len);
+        wllora_spibus_io(3+len, 0, wllora.cmd.raw);
+    }
+}
+
+ot_u8 wllora_rdreg_cmd(lr_addr_u addr) {
+    wllora.cmd.rdreg.opcode     = 0x1D;
+    wllora.cmd.rdreg.addr[0]    = addr.u8[0];
+    wllora.cmd.rdreg.addr[1]    = addr.u8[1];
+    wllora_spibus_io(3, 2, wllora.cmd.raw);
+
+    return wllora.cmd.rdreg.data[0];
+}
+
+void wllora_rdburst_cmd(lr_addr_u addr, ot_u8 len, ot_u8* data) {
+    wllora.cmd.rdreg.opcode     = 0x1D;
+    wllora.cmd.rdreg.addr[0]    = addr.u8[0];
+    wllora.cmd.rdreg.addr[1]    = addr.u8[1];
+
+    if (len <= WLLORA_RDMAX) {
+        wllora_spibus_io(3, 1+len, wllora.cmd.raw);
+        memcpy(data, wllora.cmd.rdreg.data, len);
+    }
+}
+
+void wllora_wrbuf_cmd(ot_u8 offset, ot_u8 len, ot_u8* data) {
+    wllora.cmd.wrbuf.opcode     = 0x0E;
+    wllora.cmd.wrbuf.offset     = offset;
+
+    if (len <= WLLORA_WRBUFMAX) {
+        memcpy(wllora.cmd.wrbuf.data, data, len);
+        wllora_spibus_io(2+len, 0, wllora.cmd.raw);
+    }
+}
+
+void wllora_rdbuf_cmd(ot_u8 offset, ot_u8 len, ot_u8* data) {
+    wllora.cmd.rdbuf.opcode     = 0x1E;
+    wllora.cmd.rdbuf.offset     = offset;
+
+    if (len <= WLLORA_WRBUFMAX) {
+        wllora_spibus_io(3+len, 0, wllora.cmd.raw);
+        memcpy(data, wllora.cmd.rdbuf.data, len);
+    }
+}
+
+void wllora_sleep_cmd(ot_u8 sleep_cfg) {
+    sub_set1x1_cmd(0x84, sleep_cfg);
+//    wllora.cmd.sleep.opcode     = 0x84;
+//    wllora.cmd.sleep.sleep_cfg  = sleep_cfg;
+//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+void wllora_standby_cmd(ot_u8 standby_cfg) {
+    sub_set1x1_cmd(0x80, standby_cfg);
+//    wllora.cmd.standby.opcode       = 0x80;
+//    wllora.cmd.standby.standby_cfg  = standby_cfg;
+//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+void wllora_fs_cmd(void) {
+    sub_set0x1_cmd(0xC1);
+//    wllora.cmd.fs.opcode = 0xC1;
+//    wllora_spibus_io(1, 0, wllora.cmd.raw);
+}
+
+void wllora_tx_cmd(ot_u32 timeout) {
+    sub_set1x3_cmd(0x83, timeout);
+//    wllora.cmd.tx.opcode        = 0x83;
+//    wllora.cmd.tx.timeout[0]    = ((ot_u8*)&timeout)[B2];
+//    wllora.cmd.tx.timeout[1]    = ((ot_u8*)&timeout)[B1];
+//    wllora.cmd.tx.timeout[2]    = ((ot_u8*)&timeout)[B0];
+//    wllora_spibus_io(4, 0, wllora.cmd.raw);
+}
+
+void wllora_rx_cmd(ot_u32 timeout) {
+    sub_set1x3_cmd(0x82, timeout);
+//    wllora.cmd.rx.opcode        = 0x82;
+//    wllora.cmd.rx.timeout[0]    = ((ot_u8*)&timeout)[B2];
+//    wllora.cmd.rx.timeout[1]    = ((ot_u8*)&timeout)[B1];
+//    wllora.cmd.rx.timeout[2]    = ((ot_u8*)&timeout)[B0];
+//    wllora_spibus_io(4, 0, wllora.cmd.raw);
+}
+
+void wllora_stoprxtim_cmd(ot_u8 rx_timeout_stop) {
+    sub_set1x1_cmd(0x9F, rx_timeout_stop);
+//    wllora.cmd.stoprxtim.opcode             = 0x9F;
+//    wllora.cmd.stoprxtim.rx_timeout_stop    = rx_timeout_stop;
+//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+//2x3
+void wllora_rxduty_cmd(ot_u32 rx_period, ot_u32 sleep_period) {
+    wllora.cmd.rxduty.opcode            = 0x94;
+    wllora.cmd.rxduty.rx_period[0]      = ((ot_u8*)&rx_period)[B2];
+    wllora.cmd.rxduty.rx_period[1]      = ((ot_u8*)&rx_period)[B1];
+    wllora.cmd.rxduty.rx_period[2]      = ((ot_u8*)&rx_period)[B0];
+    wllora.cmd.rxduty.sleep_period[0]   = ((ot_u8*)&sleep_period)[B2];
+    wllora.cmd.rxduty.sleep_period[1]   = ((ot_u8*)&sleep_period)[B1];
+    wllora.cmd.rxduty.sleep_period[2]   = ((ot_u8*)&sleep_period)[B0];
+    wllora_spibus_io(7, 0, wllora.cmd.raw);
+}
+
+void wllora_cad_cmd(void) {
+    sub_set0x1_cmd(0xC5);
+//    wllora.cmd.fs.opcode = 0xC5;
+//    wllora_spibus_io(1, 0, wllora.cmd.raw);
+}
+
+void wllora_txcontwave_cmd(void) {
+    sub_set0x1_cmd(0xD1);
+//    wllora.cmd.txcontwave.opcode = 0xD1;
+//    wllora_spibus_io(1, 0, wllora.cmd.raw);
+}
+
+void wllora_txcontpreamble_cmd(void) {
+    sub_set0x1_cmd(0xD2);
+//    wllora.cmd.txcontpreamble.opcode = 0xD2;
+//    wllora_spibus_io(1, 0, wllora.cmd.raw);
+}
+
+void wllora_setpkttype_cmd(ot_u8 pkt_type) {
+    sub_set1x1_cmd(0x8A, pkt_type);
+//    wllora.cmd.setpkttype.opcode    = 0x8A;
+//    wllora.cmd.setpkttype.pkt_type  = pkt_type;
+//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+ot_u8 wllora_getpkttype_cmd(void) {
+    return sub_get_1x1(0x11);
+//    wllora.cmd.getpkttype.opcode = 0x11;
+//    wllora_spibus_io(1, 2, wllora.cmd.raw);
+//    return wllora.cmd.getpkttype.pkt_type;
+}
+
+void wllora_rffreq_cmd(ot_u32 freq) {
+    wllora.cmd.rffreq.opcode    = 0x86;
+    wllora.cmd.rffreq.freq[0]   = ((ot_u8*)&freq)[B3];
+    wllora.cmd.rffreq.freq[1]   = ((ot_u8*)&freq)[B2];
+    wllora.cmd.rffreq.freq[2]   = ((ot_u8*)&freq)[B1];
+    wllora.cmd.rffreq.freq[3]   = ((ot_u8*)&freq)[B0];
+    wllora_spibus_io(5, 0, wllora.cmd.raw);
+}
+
+void wllora_txparams_cmd(ot_u8 power, ot_u8 ramp_time) {
+    sub_set2x1_cmd(0x8E, power, ramp_time);
+//    wllora.cmd.txparams.opcode      = 0x8E;
+//    wllora.cmd.txparams.power       = power;
+//    wllora.cmd.txparams.ramp_time   = ramp_time;
+//    wllora_spibus_io(3, 0, wllora.cmd.raw);
+}
+
+void wllora_paconfig_cmd(ot_u8 pa_duty, ot_u8 hp_max, ot_u8 pa_sel) {
+    sub_set4x1_cmd(0x95, pa_duty, hp_max, pa_sel, 1);
+//    wllora.cmd.paconfig.opcode      = 0x95;
+//    wllora.cmd.paconfig.pa_duty     = pa_duty;
+//    wllora.cmd.paconfig.hp_max      = hp_max;
+//    wllora.cmd.paconfig.pa_sel      = pa_sel;
+//    wllora.cmd.paconfig.fixed_01    = 1;
+//    wllora_spibus_io(5, 0, wllora.cmd.raw);
+}
+
+void wllora_txrxfallback_cmd(ot_u8 fallback_mode) {
+    sub_set1x1_cmd(0x93, fallback_mode);
+//    wllora.cmd.txrxfallback.opcode          = 0x93;
+//    wllora.cmd.txrxfallback.fallback_mode   = fallback_mode;
+//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+
+void wllora_cadparams_cmd(ot_u8 num_symbol, ot_u8 det_peak, ot_u8 exit_mode, ot_u32 timeout) {
+    wllora.cmd.cadparams.opcode     = 0x88;
+    wllora.cmd.cadparams.num_symbol = num_symbol;
+    wllora.cmd.cadparams.det_peak   = det_peak;
+    wllora.cmd.cadparams.det_min    = det_min;
+    wllora.cmd.cadparams.exit_mode  = exit_mode;
+    wllora.cmd.cadparams.timeout[0] = ((ot_u8*)&timeout)[B2];
+    wllora.cmd.cadparams.timeout[1] = ((ot_u8*)&timeout)[B1];
+    wllora.cmd.cadparams.timeout[2] = ((ot_u8*)&timeout)[B0];
+    wllora_spibus_io(8, 0, wllora.cmd.raw);
+}
+
+void wllora_bufbase_cmd(ot_u8 tx_base_addr, ot_u8 rx_base_addr) {
+    sub_set2x1_cmd(0x8F, tx_base_addr, rx_base_addr);
+//    wllora.cmd.bufbase.opcode       = 0x8F;
+//    wllora.cmd.bufbase.tx_base_addr = tx_base_addr;
+//    wllora.cmd.bufbase.rx_base_addr = rx_base_addr;
+//    wllora_spibus_io(3, 0, wllora.cmd.raw);
+}
+
+void wllora_modparams_cmd(ot_u8 sf, ot_u8 bw, ot_u8 cr, ot_u8 ldro) {
+    sub_set4x1_cmd(0x8B, sf, bw, cr, ldro);
+//    wllora.cmd.modparams.opcode = 0x8B;
+//    wllora.cmd.modparams.sf     = sf;
+//    wllora.cmd.modparams.bw     = bw;
+//    wllora.cmd.modparams.cr     = cr;
+//    wllora.cmd.modparams.ldro   = ldro;
+//    wllora_spibus_io(5, 0, wllora.cmd.raw);
+}
+
+
+void wllora_pktparams_cmd(ot_u16 preamble_len, ot_u8 hdr_type, ot_u8 payload_len, ot_u8 crc_type, ot_u8 invert_iq) {
+    wllora.cmd.pktparams.opcode         = 0x8C;
+    wllora.cmd.pktparams.preamble_len[0]= ((ot_u8*)&preamble_len)[UPPER];
+    wllora.cmd.pktparams.preamble_len[1]= ((ot_u8*)&preamble_len)[LOWER];
+    wllora.cmd.pktparams.hdr_type       = hdr_type;
+    wllora.cmd.pktparams.payload_len    = payload_len;
+    wllora.cmd.pktparams.crc_type       = crc_type;
+    wllora.cmd.pktparams.invert_iq      = invert_iq;
+    wllora_spibus_io(7, 0, wllora.cmd.raw);
+}
+
+void wllora_symtimeout_cmd(ot_u8 sym_num) {
+    sub_set1x1_cmd(0xA0, sym_num);
+//    wllora.cmd.symtimeout.opcode    = 0xA0;
+//    wllora.cmd.symtimeout.sym_num   = pkt_type;
+//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+
+ot_u8 wllora_status_cmd(void) {
+    wllora.cmd.status.opcode = 0xC0;
+    wllora_spibus_io(1, 1, wllora.cmd.raw);
+    return wllora.cmd.status.status;
+}
+
+lr_rxbufstatus_t wllora_rxbufstatus_cmd(void) {
+///@todo make sure this return typecast doesn't crash on M0 core
+    wllora.cmd.rxbufstatus.opcode = 0x13;
+    wllora_spibus_io(1, 3, wllora.cmd.raw);
+    return *(lr_rxbufstatus_t*)&wllora.cmd.rxbufstatus.rx_payload_len;
+}
+
+lr_pktlink_t wllora_pktlink_cmd(void) {
+///@todo make sure this return typecast doesn't crash on M0 core
+    wllora.cmd.pktlink.opcode = 0x14;
+    wllora_spibus_io(1, 4, wllora.cmd.raw);
+    return *(lr_pktlink_t*)&wllora.cmd.pktlink.rssi_pkt;
+}
+
+ot_u8 wllora_rssi_cmd(void) {
+    return sub_get_1x1(0x15);
+//    wllora.cmd.rssi.opcode = 0x15;
+//    wllora_spibus_io(1, 2, wllora.cmd.raw);
+//    return wllora.cmd.rssi.rssi_inst;
+}
+
+lr_pktstats_t wllora_pktstats_cmd(void) {
+///@todo make sure this return typecast doesn't crash on M0 core
+    wllora.cmd.pktstats.opcode = 0x10;
+    wllora_spibus_io(1, 7, wllora.cmd.raw);
+    return *(lr_pktstats_t*)&wllora.cmd.pktstats.num_pkt_rxed;
+}
+
+void wllora_resetstats_cmd(void) {
+    memset(wllora.cmd.raw, 0, 7);
+    wllora_spibus_io(7, 0, wllora.cmd.raw);
+    return wllora.cmd.status.status;
+}
+
+void wllora_dioirq_cmd(ot_u16 irq_mask, ot_u16 irq1_mask, ot_u16 irq2_mask, ot_u16 irq3_mask) {
+    wllora.cmd.dioirq.opcode        = 0x08;
+    wllora.cmd.dioirq.irq_mask[0]   = ((ot_u8*)&irq_mask)[UPPER];
+    wllora.cmd.dioirq.irq_mask[1]   = ((ot_u8*)&irq_mask)[LOWER];
+    wllora.cmd.dioirq.irq1_mask[0]  = ((ot_u8*)&irq1_mask)[UPPER];
+    wllora.cmd.dioirq.irq1_mask[1]  = ((ot_u8*)&irq1_mask)[LOWER];
+    wllora.cmd.dioirq.irq2_mask[0]  = ((ot_u8*)&irq2_mask)[UPPER];
+    wllora.cmd.dioirq.irq2_mask[1]  = ((ot_u8*)&irq2_mask)[LOWER];
+    wllora.cmd.dioirq.irq3_mask[0]  = ((ot_u8*)&irq3_mask)[UPPER];
+    wllora.cmd.dioirq.irq3_mask[1]  = ((ot_u8*)&irq3_mask)[LOWER];
+    wllora_spibus_io(9, 0, wllora.cmd.raw);
+}
+
+ot_u16 wllora_getirq_cmd(void) {
+    return sub_get1x2_cmd(0x12);
+//    ot_u32 temp;
+//    wllora.cmd.getirq.opcode = 0x12;
+//    wllora_spibus_io(1, 3, wllora.cmd.raw);
+//
+//    temp = *(ot_u16*)wllora.cmd.getirq.irq_status;
+//    return (ot_u16)__REV16(temp);
+}
+
+void wllora_calibrate_cmd(ot_u8 calib_cfg) {
+    sub_set1x1_cmd(0x89, calib_cfg);
+//    wllora.cmd.calibrate.opcode     = 0x89;
+//    wllora.cmd.calibrate.calib_cfg  = calib_cfg;
+//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+void wllora_calimage_cmd(ot_u8 calfreq1, ot_u8 calfreq2) {
+    sub_set2x1_cmd(0x98, calfreq1, calfreq2);
+//    wllora.cmd.calimage.opcode      = 0x98;
+//    wllora.cmd.calimage.calfreq1    = calfreq1;
+//    wllora.cmd.calimage.calfreq2    = calfreq2;
+//    wllora_spibus_io(3, 0, wllora.cmd.raw);
+}
+
+void wllora_regmode_cmd(ot_u8 reg_mode) {
+    sub_set1x1_cmd(0x96, reg_mode);
+//    wllora.cmd.regmode.opcode   = 0x96;
+//    wllora.cmd.regmode.reg_mode = calib_cfg;
+//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+ot_u16 wllora_geterr_cmd(void) {
+    return sub_get1x2_cmd(0x17);
+//    ot_u32 temp;
+//    wllora.cmd.geterr.opcode = 0x17;
+//    wllora_spibus_io(1, 3, wllora.cmd.raw);
+//
+//    temp = *(ot_u16*)wllora.cmd.geterr.op_error;
+//    return (ot_u16)__REV16(temp);
+}
+
+void wllora_clrerr_cmd(void) {
+    sub_set1x1_cmd(0x07, 0);
+//    wllora.cmd.clrerr.opcode    = 0x07;
+//    wllora.cmd.clrerr.zero      = 0;
+//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+}
+
+
+void wllora_tcxomode_cmd(ot_u8 reg_txco_trim, ot_u32 timeout) {
+    wllora.cmd.tcxomode.opcode          = 0x97;
+    wllora.cmd.tcxomode.reg_txco_trim   = reg_txco_trim;
+    wllora.cmd.tcxomode.timeout[0]      = ((ot_u8*)&timeout)[B2];
+    wllora.cmd.tcxomode.timeout[1]      = ((ot_u8*)&timeout)[B1];
+    wllora.cmd.tcxomode.timeout[2]      = ((ot_u8*)&timeout)[B0];
+    wllora_spibus_io(5, 0, wllora.cmd.raw);
+}
+
+
+
+
 /** High-Level Pin Interrupt Management Functions <BR>
   * ========================================================================<BR>
-  * These functions manage the usage of the SPIRIT1 GPIO bus, which is used to
-  * signal status interrupts to the platform.  The Low-Level, platform-specific
-  * driver must implement the following low-level functions which are called by
-  * these high-level functions:
-  * <LI> wllora_int_config() </LI>
-  * <LI> wllora_int_txdone() </LI>
-  * <LI> wllora_int_clearall() </LI>
-  * <LI> wllora_int_force() </LI>
-  * <LI> wllora_int_turnon() </LI>
-  * <LI> wllora_int_turnoff() </LI>
+  * These functions manage the interrupt control and states.
+  *
+  * For STM32WL LoRa, it is possible to configure PB3, PB5, and PB8 as outputs
+  * representing Radio DIO1,2,3 (sometimes also written as DIO0,1,2).  In this
+  * configuration, it's possible to get direct interrupts by setting the EXTI
+  * FTSR or RTSR on each pin, even though they are outputs.  But that method is
+  * not implemented in the present driver.
   */
 
 void platform_isr_rfirq() {

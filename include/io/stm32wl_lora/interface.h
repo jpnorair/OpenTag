@@ -80,7 +80,28 @@ typedef enum {
     MODE_TXData = 6
 } WLLora_IMode;
 
-#define WLLORA_CMDMAX   32
+#define WLLORA_CMDMAX       36
+#define WLLORA_WRMAX        ((WLLORA_CMDMAX/2)-3)
+#define WLLORA_WRBUFMAX     ((WLLORA_CMDMAX/2)-2)
+#define WLLORA_RDMAX        (WLLORA_CMDMAX-3)
+#define WLLORA_RDBUFMAX     (WLLORA_CMDMAX-3)
+
+typedef struct __attribute__((packed)) {
+    ot_u8 payload_len;
+    ot_u8 start_bufptr;
+} lr_rxbufstatus_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 rssi_pkt;
+    ot_u8 snr_pkt;
+    ot_u8 signal_rssi_pkt;
+} lr_pktlink_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u16 num_pkt_rxed;
+    ot_u16 num_pkt_crcerr;
+    ot_u16 num_pkt_hdrerr;
+} lr_pktstats_t;
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
@@ -180,7 +201,7 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
-    ot_u8 timeout[4];
+    ot_u8 freq[4];
     ot_u8 unused[WLLORA_CMDMAX-5];
 } lr_rffreq_cmd_t;
 
@@ -269,7 +290,7 @@ typedef struct __attribute__((packed)) {
     ot_u8 snr_pkt;
     ot_u8 signal_rssi_pkt;
     ot_u8 unused[WLLORA_CMDMAX-5];
-} lr_pktstatus_cmd_t;
+} lr_pktlink_cmd_t;
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
@@ -385,7 +406,7 @@ typedef union {
     lr_symtimeout_cmd_t         symtimeout;
     lr_status_cmd_t             status;
     lr_rxbufstatus_cmd_t        rxbufstatus;
-    lr_pktstatus_cmd_t          pktstatus;
+    lr_pktlink_cmd_t            pktlink;
     lr_rssi_cmd_t               rssi;
     lr_pktstats_cmd_t           pktstats;
     lr_resetstats_cmd_t         resetstats;
