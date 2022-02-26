@@ -47,7 +47,21 @@
 #   define _ATTEN_DB    6
 #endif
 
+/** SET_LINE and CLR_LINE macros for some profiling tasks.
+  */
+//#define _STM32WL_LORA_PROFILE
 
+#if defined(_STM32WL_LORA_PROFILE)
+    extern ot_s16 set_line;
+    extern ot_s16 line_hits[256];
+    extern ot_u16 count_hits;
+
+#   define __SET_LINE(NUMBER)   (set_line = NUMBER)
+#   define __CLR_LINE(NUMBER)   (set_line = -1)
+#else
+#   define __SET_LINE(NUMBER);
+#   define __CLR_LINE(NUMBER);
+#endif
 
 
 /** @typedef wllora_link
@@ -72,12 +86,26 @@
   *       knowledge to optimize your code, or do hacks & tricks.
   */
   
+typedef enum {
+    RFSTATE_off         = 0,
+    RFSTATE_coldsleep   = 1,
+    RFSTATE_warmsleep   = 2,
+    RFSTATE_calibration = 3,
+    RFSTATE_RCstandby   = 4,
+    RFSTATE_HSEstandby  = 5,
+    RFSTATE_fs          = 6,
+    RFSTATE_cad         = 7,
+    RFSTATE_rx          = 8,
+    RFSTATE_tx          = 9,
+    RFSTATE_MAX         = 10
+} WLLora_State;
+
 // Enumeration used for IRQ state management.  You can ignore it.
 typedef enum {
     MODE_Listen = 0,
     MODE_RXData = 1,
-    MODE_CSMA   = 5,
-    MODE_TXData = 6
+    MODE_CSMA   = 2,
+    MODE_TXData = 3
 } WLLora_IMode;
 
 #define WLLORA_CMDMAX       36
@@ -112,8 +140,10 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
     ot_u8 addr[2];
+    ot_u8 unused[WLLORA_CMDMAX/2 - 3];
+    ot_u8 rxhdr[3];
     ot_u8 status;
-    ot_u8 data[WLLORA_CMDMAX-4];
+    ot_u8 data[WLLORA_CMDMAX/2 - 4];
 } lr_rdreg_cmd_t;
 
 typedef struct __attribute__((packed)) {
@@ -125,8 +155,10 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
     ot_u8 offset;
+    ot_u8 unused[WLLORA_CMDMAX/2 - 2];
+    ot_u8 rxhdr[2];
     ot_u8 status;
-    ot_u8 data[WLLORA_CMDMAX-3];
+    ot_u8 data[WLLORA_CMDMAX/2 - 3];
 } lr_rdbuf_cmd_t;
 
 typedef struct __attribute__((packed)) {
@@ -194,9 +226,11 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX/2 - 1];
+    ot_u8 rxhdr[1];
     ot_u8 status;
     ot_u8 pkt_type;
-    ot_u8 unused[WLLORA_CMDMAX-3];
+    ot_u8 data[WLLORA_CMDMAX/2 - 3];
 } lr_getpkttype_cmd_t;
 
 typedef struct __attribute__((packed)) {
@@ -271,41 +305,51 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX/2 - 1];
+    ot_u8 rxhdr[1];
     ot_u8 status;
-    ot_u8 unused[WLLORA_CMDMAX-2];
+    ot_u8 data[WLLORA_CMDMAX/2 - 2];
 } lr_status_cmd_t;
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX/2 - 1];
+    ot_u8 rxhdr[1];
     ot_u8 status;
     ot_u8 rx_payload_len;
     ot_u8 rx_start_bufptr;
-    ot_u8 unused[WLLORA_CMDMAX-4];
+    ot_u8 data[WLLORA_CMDMAX/2 - 4];
 } lr_rxbufstatus_cmd_t;
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX/2 - 1];
+    ot_u8 rxhdr[1];
     ot_u8 status;
     ot_u8 rssi_pkt;
     ot_u8 snr_pkt;
     ot_u8 signal_rssi_pkt;
-    ot_u8 unused[WLLORA_CMDMAX-5];
+    ot_u8 data[WLLORA_CMDMAX/2 - 5];
 } lr_pktlink_cmd_t;
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX/2 - 1];
+    ot_u8 rxhdr[1];
     ot_u8 status;
     ot_u8 rssi_inst;
-    ot_u8 unused[WLLORA_CMDMAX-3];
+    ot_u8 data[WLLORA_CMDMAX/2 - 3];
 } lr_rssi_cmd_t;
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX/2 - 1];
+    ot_u8 rxhdr[1];
     ot_u8 status;
     ot_u8 num_pkt_rxed[2];
     ot_u8 num_pkt_crcerr[2];
     ot_u8 num_pkt_hdrerr[2];
-    ot_u8 unused[WLLORA_CMDMAX-8];
+    ot_u8 data[WLLORA_CMDMAX/2 - 8];
 } lr_pktstats_cmd_t;
 
 typedef struct __attribute__((packed)) {
@@ -327,9 +371,11 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX/2 - 1];
+    ot_u8 rxhdr[1];
     ot_u8 status;
     ot_u8 irq_status[2];
-    ot_u8 unused[WLLORA_CMDMAX-4];
+    ot_u8 data[WLLORA_CMDMAX/2 - 4];
 } lr_getirq_cmd_t;
 
 typedef struct __attribute__((packed)) {
@@ -359,9 +405,11 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
     ot_u8 opcode;
+    ot_u8 unused[WLLORA_CMDMAX/2 - 1];
+    ot_u8 rxhdr[1];
     ot_u8 status;
     ot_u8 op_error[2];
-    ot_u8 unused[WLLORA_CMDMAX-4];
+    ot_u8 data[WLLORA_CMDMAX/2 - 4];
 } lr_geterr_cmd_t;
 
 typedef struct __attribute__((packed)) {
@@ -376,6 +424,12 @@ typedef struct __attribute__((packed)) {
     ot_u8 timeout[3];
     ot_u8 unused[WLLORA_CMDMAX-5];
 } lr_tcxomode_cmd_t;
+
+typedef struct __attribute__((packed)) {
+    ot_u8 tx[WLLORA_CMDMAX/2];
+    ot_u8 rx[WLLORA_CMDMAX/2];
+} lr_cmdbuf_t;
+
 
 
 typedef union {
@@ -419,10 +473,13 @@ typedef union {
     lr_geterr_cmd_t             geterr;
     lr_clrerr_cmd_t             clrerr;
     lr_tcxomode_cmd_t           tcxomode;
+    lr_cmdbuf_t                 buf;
     ot_u8                       raw[WLLORA_CMDMAX];
 } wllora_cmd_u;
 
 typedef struct __attribute__((packed)) {
+    WLLora_State    state;
+    WLLora_IMode    imode;
     wllora_cmd_u    cmd;
 } wllora_struct;
 
@@ -430,21 +487,59 @@ extern wllora_struct wllora;
 
 
 
-/** SET_LINE and CLR_LINE macros for some profiling tasks.
-  */
-//#define _STM32WL_LORA_PROFILE
-  
-#if defined(_STM32WL_LORA_PROFILE)
-    extern ot_s16 set_line;
-    extern ot_s16 line_hits[256];
-    extern ot_u16 count_hits;
-    
-#   define __SET_LINE(NUMBER)   (set_line = NUMBER)
-#   define __CLR_LINE(NUMBER)   (set_line = -1)
-#else
-#   define __SET_LINE(NUMBER);
-#   define __CLR_LINE(NUMBER);
-#endif
+
+
+
+
+void wllora_wrreg_cmd(lr_addr_u addr, ot_u8 value);
+void wllora_wrburst_cmd(lr_addr_u addr, ot_u8 len, ot_u8* data);
+ot_u8 wllora_rdreg_cmd(lr_addr_u addr);
+void wllora_rdburst_cmd(lr_addr_u addr, ot_u8 len, ot_u8* data);
+void wllora_wrbuf_cmd(ot_u8 offset, ot_u8 len, ot_u8* data);
+void wllora_rdbuf_cmd(ot_u8 offset, ot_u8 len, ot_u8* data);
+void wllora_sleep_cmd(ot_u8 sleep_cfg);
+void wllora_standby_cmd(ot_u8 standby_cfg);
+void wllora_fs_cmd(void);
+void wllora_tx_cmd(ot_u32 timeout);
+void wllora_rx_cmd(ot_u32 timeout);
+void wllora_stoprxtim_cmd(ot_u8 rx_timeout_stop);
+void wllora_rxduty_cmd(ot_u32 rx_period, ot_u32 sleep_period);
+void wllora_cad_cmd(void);
+void wllora_txcontwave_cmd(void);
+void wllora_txcontpreamble_cmd(void);
+void wllora_setpkttype_cmd(ot_u8 pkt_type);
+ot_u8 wllora_getpkttype_cmd(void);
+void wllora_rffreq_cmd(ot_u32 freq);
+void wllora_txparams_cmd(ot_u8 power, ot_u8 ramp_time);
+void wllora_paconfig_cmd(ot_u8 pa_duty, ot_u8 hp_max, ot_u8 pa_sel);
+void wllora_txrxfallback_cmd(ot_u8 fallback_mode);
+void wllora_cadparams_cmd(ot_u8 num_symbol, ot_u8 det_peak, ot_u8 det_min, ot_u8 exit_mode, ot_u32 timeout);
+void wllora_bufbase_cmd(ot_u8 tx_base_addr, ot_u8 rx_base_addr);
+void wllora_modparams_cmd(ot_u8 sf, ot_u8 bw, ot_u8 cr, ot_u8 ldro);
+void wllora_pktparams_cmd(ot_u16 preamble_len, ot_u8 hdr_type, ot_u8 payload_len, ot_u8 crc_type, ot_u8 invert_iq);
+void wllora_symtimeout_cmd(ot_u8 sym_num);
+ot_u8 wllora_status_cmd(void);
+lr_rxbufstatus_t wllora_rxbufstatus_cmd(void);
+lr_pktlink_t wllora_pktlink_cmd(void);
+ot_u8 wllora_rssi_cmd(void);
+lr_pktstats_t wllora_pktstats_cmd(void);
+void wllora_resetstats_cmd(void);
+void wllora_dioirq_cmd(ot_u16 irq_mask, ot_u16 irq1_mask, ot_u16 irq2_mask, ot_u16 irq3_mask);
+ot_u16 wllora_getirq_cmd(void);
+void wllora_clrirq_cmd(void);
+void wllora_calibrate_cmd(ot_u8 calib_cfg);
+void wllora_calimage_cmd(ot_u8 calfreq1, ot_u8 calfreq2);
+void wllora_regmode_cmd(ot_u8 reg_mode);
+ot_u16 wllora_geterr_cmd(void);
+void wllora_clrerr_cmd(void);
+void wllora_tcxomode_cmd(ot_u8 reg_txco_trim, ot_u32 timeout);
+
+
+
+
+
+
+
 
 
 
@@ -453,7 +548,7 @@ extern wllora_struct wllora;
   * ==========================================================================
   * i.e. io/stm32wl_lora/radio_rm2.c
   */
-void stm32wl_virtual_isr(ot_u8 code);
+void wllora_virtual_isr(ot_u16 irq_mask);
 
 
 

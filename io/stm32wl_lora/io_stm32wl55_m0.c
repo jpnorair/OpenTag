@@ -53,8 +53,8 @@
 #   define _SPICLK              ((PLATFORM_HSCLOCK_HZ/BOARD_PARAM_APB1CLKDIV)/2)
 #   define _SPI_IRQ             SUBGHZSPI_IRQn
 #   define _DMA_UNIT            DMA2
-#   define _DMAMUXRX            DMAMUX1_Channel12
-#   define _DMAMUXTX            DMAMUX1_Channel13
+#   define _DMAMUXRX            DMAMUX1_Channel11
+#   define _DMAMUXTX            DMAMUX1_Channel12
 #   define _DMA_ISR             platform_dma2ch5_isr
 #   define _DMARX               DMA2_Channel5
 #   define _DMATX               DMA2_Channel6
@@ -74,7 +74,7 @@
 /// SPI clock = bus clock/2
 /// It's not clear what the limits of it are, either from STM32WL or SX126x
 /// datasheets.  So, we run it at 24 MHz.  It can also be set to 12 or 6 MHz.
-#if (_SPICLK > 24000000)
+#if (_SPICLK > 12000000)
 #   define _SPI_DIV (1<<SPI_CR1_BR_Pos)
 #else
 #   define _SPI_DIV (0<<SPI_CR1_BR_Pos)
@@ -91,13 +91,13 @@
                                 _DMATX->CCR     = 0; \
                             } while(0)
 
-#define __SPI_CS_HIGH()     RADIO_SPICS_PORT->BSRR = (ot_u32)RADIO_SPICS_PIN
-#define __SPI_CS_LOW()      RADIO_SPICS_PORT->BRR  = (ot_u32)RADIO_SPICS_PIN
-#define __SPI_CS_ON()       PWR->SUBGHZSPICR = 0
-#define __SPI_CS_OFF()      PWR->SUBGHZSPICR = PWR_SUBGHZSPICR_NSS
+#define __SPI_CS_HIGH()     PWR->SUBGHZSPICR = PWR_SUBGHZSPICR_NSS
+#define __SPI_CS_LOW()      PWR->SUBGHZSPICR = 0
+#define __SPI_CS_ON()       __SPI_CS_LOW()
+#define __SPI_CS_OFF()      __SPI_CS_HIGH()
 
 #define __SPI_ENABLE()      do { \
-                                RADIO_SPI->CR2 = (SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN); \
+                                RADIO_SPI->CR2 = (SPI_CR2_FRXTH | (7<<8) | SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN); \
                                 RADIO_SPI->SR  = 0; \
                                 RADIO_SPI->CR1 = (SPI_CR1_SSI | SPI_CR1_SSM | SPI_CR1_MSTR | _SPI_DIV | SPI_CR1_SPE); \
                             } while(0)
@@ -109,15 +109,27 @@
 
 
 
-/** Embedded Interrupts <BR>
+/** Driver Interrupts <BR>
   * ========================================================================<BR>
-  * None: The Radio core only uses the GPIO interrupts, which must be handled
-  * universally in platform/core_main.c due to the multiplexed nature of
-  * the EXTI system.  However, the DMA RX complete EVENT is used by the SPI
-  * engine.  EVENTS are basically a way to sleep where you would otherwise
-  * need to use busywait loops.  ARM Cortex-M takes all 3 points.
+  * This driver optionally includes the RFBUSY interrupt.
+  * It always includes the RFIRQ interrupt
   */
 
+void platform_isr_rfbusy() {
+///@todo Use the RF Busy interrupt to provide non blocking usage of SPI cmds.
+}
+
+void platform_isr_rfirq() {
+///@todo I'm tempted to just mask the value of the IRQ DIO pins and configure
+///      them carefully as in prior implementations.
+    ot_u16 irq_mask;
+    irq_mask = wllora_getirq_cmd();
+    wllora_clrirq_cmd();
+
+    // This function is generally implemented in radio_...c, because it will
+    // need to interact with the radio control and tasking.
+    wllora_virtual_isr(irq_mask);
+}
 
 
 
@@ -126,16 +138,14 @@
   * @todo make sure this is all working
   */
 
-// Ready Pin always on DIO5
-#if defined(_READY_PIN)
-inline ot_uint wllora_readypin_ishigh(void)   { 
-    return 1;
-    //return (_READY_PORT->IDR & _READY_PIN); 
-}
-#endif
 
-// CAD-Detect may be implemented on DIO1
-inline ot_uint wllora_cadpin_ishigh(void)     { 
+inline ot_uint wllora_isbusy(void)   {
+    return (PWR->SR2 & PWR_SR2_RFBUSYMS);
+}
+
+
+///@todo in this impl, this function may not be needed
+ot_uint wllora_cad_detected(void)     {
     return 1;
     //return (_CAD_DETECT_PORT->IDR & _CAD_DETECT_PIN); 
 }
@@ -146,9 +156,11 @@ inline ot_uint wllora_cadpin_ishigh(void)     {
 
 
 ot_u8 wllora_getbasepwr() {
-/// Base Power code: 0-3.  For this SX127x impl it's always 3.
+/// Base Power code: 0-3.  For this WL impl it's always 3.
+///@todo return 0 or 1 if we do a fully non-blocking impl and DMA/SPI is on.
     return 3;
 }
+
 
 
 
@@ -161,19 +173,179 @@ void wllora_reset() {
 ///       - wllora_reset() is guaranteed never to run in an ISR
 ///       - profiling of the reset sequence shows value in using WFE.
     ot_u32 test;
+
+    // ahead of reset, the NSS must be high.
+    __SPI_CS_OFF();
+    wllora.state = RFSTATE_off;
+
+    // This 2-state loop will assure radio is reset
     do {
         test        = RCC->CSR & RCC_CSR_RFRSTF;
         RCC->CSR   ^= RCC_CSR_RFRST;
         while ((RCC->CSR & RCC_CSR_RFRSTF) == test);
     } while (test == 0);
+
+    /// After reset, the device is effectively in cold-sleep mode.
+    /// We want to put it into RCstandby
+    __SPI_CS_ON();
+    while (wllora_isbusy());
+    __SPI_CS_OFF();
+    wllora.state = RFSTATE_RCstandby;
+}
+
+
+ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking) {
+///@todo implement a watchdog for each state.
+///@todo implement the non-blocking feature, which returns the amount of time
+///      (in ticks) the state change process is expected to take, and this
+///      routine will need to run via an ISR.
+///
+    ot_u8 cfg_opt1;
+
+    if (new_state == RFSTATE_off) {
+        ///@todo implement this: not sure exactly how.
+        return 0;
+    }
+
+
+    while (new_state != wllora.state) {
+        switch (wllora.state) {
+            /// From off, need to reset the device, which puts it into standby-13
+            case RFSTATE_off:
+                wllora_reset();
+                break;
+
+            /// From Cold sleep, need to drop NSS to wake-up, then it does
+            /// calibration automatically and arrives in standby-13.
+            /// From Warm sleep, the wakeup method is the same, but calibration
+            /// does not occur.  Right now these are handled the same way.
+            case RFSTATE_coldsleep:
+                if (new_state == RFSTATE_warmsleep) {
+                    return 0;
+                }
+                if (new_state == RFSTATE_calibration) {
+                    new_state = RFSTATE_RCstandby;
+                }
+            case RFSTATE_warmsleep:
+                __SPI_CS_ON();
+                while (wllora_isbusy());
+                __SPI_CS_OFF();
+                wllora.state = RFSTATE_RCstandby;
+                break;
+
+            /// Calibration case is only entered (in this function) as a result
+            /// of setting new_state = calibration as an argument, which itself
+            /// requires the system to be in standby.
+            case RFSTATE_calibration:
+                while (wllora_isbusy());
+                wllora.state = RFSTATE_RCstandby;
+                return 0;
+
+            /// RCstandby and HSEstandby can go into any other mode.
+            case RFSTATE_RCstandby:
+            case RFSTATE_HSEstandby: {
+                goto ENTER_ENDSTATE;
+            }
+
+            /// FS can go to standby modes, cad, rx, tx.
+            /// CAD can go to standby modes, fs, rx, tx.
+            /// RX can go to standby modes, fs, cad, tx.
+            /// TX can go to standby modes, fs, cad, rx.
+            case RFSTATE_fs:
+            case RFSTATE_cad:
+            case RFSTATE_rx:
+            case RFSTATE_tx:
+                // go to standby first if switching to a sleep mode
+                if (new_state < RFSTATE_RCstandby) {
+                    wllora_standby_cmd(LR_STANDBYCFG_HSE32MHz);
+                    wllora.state = RFSTATE_HSEstandby;
+                    break;  ///@todo block until not busy?
+                }
+                goto ENTER_ENDSTATE;
+        }
+    }
+
+    return 0;
+
+    ENTER_ENDSTATE:
+    switch (new_state) {
+        /// need to wait 500us after sleep.
+        /// this is a blocking impl.
+        case RFSTATE_coldsleep:
+            cfg_opt1 = LR_SLEEPCFG_COLD;
+            goto ENTER_SLEEP;
+        case RFSTATE_warmsleep:
+            cfg_opt1 = LR_SLEEPCFG_WARM;
+            goto ENTER_SLEEP;
+
+        /// In this impl's manual calibration, we don't care about
+        /// RC13M or RC64k calibration -- these are disabled.
+        case RFSTATE_calibration:
+            wllora_calibrate_cmd(0b01111100);
+            wllora.state = RFSTATE_calibration;
+            break;
+
+        /// RCstandby can be entered via HSEstandby.
+        case RFSTATE_RCstandby:
+            wllora_standby_cmd(LR_STANDBYCFG_RC13MHz);
+            wllora.state = RFSTATE_RCstandby;
+            break;  ///@todo block until not busy
+
+        /// HSEstandby can be entered via RCstandby.
+        case RFSTATE_HSEstandby:
+            wllora_standby_cmd(LR_STANDBYCFG_HSE32MHz);
+            wllora.state = RFSTATE_HSEstandby;
+            break;  ///@todo block until not busy
+
+        case RFSTATE_fs:
+            wllora_fs_cmd();
+            wllora.state = RFSTATE_fs;
+            break;  ///@todo block until not busy
+
+        case RFSTATE_cad:
+            wllora_cad_cmd();
+            wllora.state = RFSTATE_cad;
+            break;  ///@note do not block on CAD entry
+
+        /// RX entry via this function assumes no timeout
+        case RFSTATE_rx:
+            wllora_rx_cmd(0);
+            wllora.state = RFSTATE_rx;
+            break;  ///@note do not block on RX entry
+
+        /// TX entry via this function assumes no timeout
+        case RFSTATE_tx:
+            wllora_tx_cmd(0);
+            wllora.state = RFSTATE_tx;
+            break;  ///@note do not block on RX entry
+
+        default:
+            return 0;
+    }
+
+    return 0;
+
+    ENTER_SLEEP:
+    wllora_sleep_cmd(cfg_opt1);
+    ///@todo make non-blocking impl.  need to wait 500us after sleep before
+    ///      accessing again the spi.
+    delay_us(700);
+    return 0;
+}
+
+
+ot_u16 wllora_until_ready(void) {
+///@todo report amount of time before device is expected to be ready (not busy).
+    return 0;
 }
 
 
 void wllora_init_bus() {
 
-    ///1. Reset the Radio Core
+    ///1. Reset the Radio Core.
+    ///   After wllora_reset() the radio is in RCstandby
     wllora_reset();
-    
+
     ///2. Set-up DMA to work with SPI.  The DMA is bound to the SPI and it is
     ///   used for Duplex TX+RX.  The DMA RX Channel is used as an EVENT.  The
     ///   STM32WL can do in-context naps using EVENTS.  To enable the EVENT, we
@@ -181,7 +353,7 @@ void wllora_init_bus() {
      BOARD_DMA_CLKON();
     _DMAMUXRX->CCR  = _DMA_RXREQ_ID;
     _DMAMUXTX->CCR  = _DMA_TXREQ_ID;
-    _DMARX->CMAR    = (ot_u32)&wllora.busrx[-1];
+    _DMARX->CMAR    = (ot_u32)&wllora.cmd.buf.rx[0];
     _DMARX->CPAR    = (ot_u32)&RADIO_SPI->DR;
     _DMATX->CPAR    = (ot_u32)&RADIO_SPI->DR;
      BOARD_DMA_CLKOFF();
@@ -193,8 +365,9 @@ void wllora_init_bus() {
     NVIC_SetPriority(SUBGHZ_Radio_IRQn, PLATFORM_NVIC_RF_GROUP);
     NVIC_EnableIRQ(SUBGHZ_Radio_IRQn);
     
-    /// 4. Put RF Core to sleep
-    wllora_sleep(True);
+    /// 4. Put RF Core into warm sleep
+    // Commented-out right now because I'm doing testing on the core.
+    //wllora_sleep(True);
 }
 
 
@@ -213,10 +386,17 @@ void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
 /// peripherals, we cannot assume in this module if it is appropriate to turn-
 /// off the DMA for all other modules.
 
-     platform_disable_interrupts();
-     __SPI_CLKON();
-     __SPI_ENABLE();
-     __SPI_CS_ON();
+    ///@todo This needs to be much more sophisticated
+//    volatile ot_u16 count;
+//    count = 0;
+//    while (wllora_isbusy()) {
+//        count++;
+//    }
+
+    platform_disable_interrupts();
+    __SPI_CLKON();
+    __SPI_ENABLE();
+    __SPI_CS_ON();
 
     /// Set-up DMA, and trigger it.  TX goes out from parameter.  RX goes into
     /// module buffer.  If doing a read, the garbage data getting duplexed onto
@@ -235,12 +415,13 @@ void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
     /// So do busywait until DMA is done RX-ing
     //do { __WFE(); }
     while((_DMA_UNIT->ISR & _DMARX_IFG) == 0);
+
+    /// After DMA transfer complete, immediately set NSS low (CS OFF) and shut
+    /// off the DMA and SPI peripherals to save energy.
+    __SPI_CS_OFF();
     __DMA_CLEAR_IRQ();
     __DMA_CLEAR_IFG();
     __DMA_DISABLE();
-
-    /// Turn-off and disable SPI to save energy
-    __SPI_CS_OFF();
     __SPI_DISABLE();
     __SPI_CLKOFF();
     BOARD_DMA_CLKOFF();
@@ -255,29 +436,9 @@ void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
 
 /** Common GPIO setup & interrupt functions  <BR>
   * ========================================================================<BR>
-  * Your radio ISR function should be of the type void radio_isr(ot_u8), as it
-  * will be a soft ISR.  The input parameter is an interrupt vector.  The vector
-  * values are shown below:
-  *
-  * -------------- RX MODES (set wllora_iocfg_rx()) --------------
-  * IMode = 0       CAD Done:                   0
-  * (Listen)        CAD Detected:               -
-  *                 Hop (Unused)                -
-  *                 Valid Header:               -
-  *
-  * IMode = 1       RX Done:                    1
-  * (RX Data)       RX Timeout:                 2
-  *                 Hop (Unused)                -
-  *                 Valid Header:               4
-  *
-  * -------------- TX MODES (set wllora_iocfg_tx()) --------------
-  * IMode = 5       CAD Done:                   5   (CCA done)
-  * (CSMA)          CAD Detected:               -   (0/1 = pass/fail)
-  *                 Hop (Unused)                -
-  *                 Valid Header                -
-  *
-  * IMode = 6       TX Done:                    6
-  * (TX)            
+  * - GPIO functions to enable Front-End components.
+  * - Interrupt functions for managing EXTI interrupts mapped to radio DIOs.
+  *   In the present implementation, these are not used.
   */
 
 void wllora_antsw_off(void) {
@@ -337,7 +498,7 @@ void wllora_wfe(ot_u16 ifg_sel) {
 //     while((EXTI->PR & ifg_sel) == 0);
 
     // clear IRQ value in SX127x by setting IRQFLAGS to 0xFF
-    wllora_write(RFREG(LR_IRQFLAGS), 0xFF);
+    //wllora_write(RFREG(LR_IRQFLAGS), 0xFF);
 
     // clear pending register(s)
 //     EXTI->PR = ifg_sel;

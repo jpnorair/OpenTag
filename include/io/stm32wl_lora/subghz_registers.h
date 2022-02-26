@@ -34,37 +34,47 @@
 #define __subghz_registers_H
 
 
-#define _FLIPADDR(ADDR) (ot_u16)( ( ((ADDR) << 8) | ((ADDR) >> 8) ) & 0xFFFF)
+#define _FLIP16(U16) (ot_u16)( ( ((U16) << 8) | ((U16) >> 8) ) & 0xFFFF)
+
+#define LR_IRQ_TXDONE       (0x0001)
+#define LR_IRQ_RXDONE       (0x0002)
+#define LR_IRQ_PREAMBLEDET  (0x0004)
+#define LR_IRQ_HDRVALID     (0x0010)
+#define LR_IRQ_HDRERR       (0x0020)
+#define LR_IRQ_CRCERR       (0x0040)
+#define LR_IRQ_CADDONE      (0x0080)
+#define LR_IRQ_CADDET       (0x0100)
+#define LR_IRQ_TIMEOUT      (0x0200)
 
 typedef enum __attribute__ ((__packed__)) {
-    LR_GBSYNCR      = _FLIPADDR(0x06AC),
-    LR_GPKTCTL1AR   = _FLIPADDR(0x06B8),
-    LR_GWHITEINIRL  = _FLIPADDR(0x06B9),
-    LR_GCRCINIRH    = _FLIPADDR(0x06BC),
-    LR_GCRCINIRL    = _FLIPADDR(0x06BD),
-    LR_GCRCPOLRH    = _FLIPADDR(0x06BE),
-    LR_GCRCPOLRL    = _FLIPADDR(0x06BF),
-    LR_GSYNCR7      = _FLIPADDR(0x06C0),
-    LR_GSYNCR6      = _FLIPADDR(0x06C1),
-    LR_GSYNCR5      = _FLIPADDR(0x06C2),
-    LR_GSYNCR4      = _FLIPADDR(0x06C3),
-    LR_GSYNCR3      = _FLIPADDR(0x06C4),
-    LR_GSYNCR2      = _FLIPADDR(0x06C5),
-    LR_GSYNCR1      = _FLIPADDR(0x06C6),
-    LR_GSYNCR0      = _FLIPADDR(0x06C7),
-    LR_LSYNCRH      = _FLIPADDR(0x0740),
-    LR_LSYNCRL      = _FLIPADDR(0x0741),
-    LR_RNGR3        = _FLIPADDR(0x0819),
-    LR_RNGR2        = _FLIPADDR(0x081A),
-    LR_RNGR1        = _FLIPADDR(0x081B),
-    LR_RNGR0        = _FLIPADDR(0x081C),
-    LR_RXGAINCR     = _FLIPADDR(0x08AC),
-    LR_PAOCPR       = _FLIPADDR(0x08E7),
-    LR_HSEINTRIMR   = _FLIPADDR(0x0911),
-    LR_HSEOUTTRIMR  = _FLIPADDR(0x0912),
-    LR_SMPSC0R      = _FLIPADDR(0x0916),
-    LR_PCR          = _FLIPADDR(0x091A),
-    LR_SMPSC2R      = _FLIPADDR(0x0923),
+    LR_GBSYNCR      = _FLIP16(0x06AC),
+    LR_GPKTCTL1AR   = _FLIP16(0x06B8),
+    LR_GWHITEINIRL  = _FLIP16(0x06B9),
+    LR_GCRCINIRH    = _FLIP16(0x06BC),
+    LR_GCRCINIRL    = _FLIP16(0x06BD),
+    LR_GCRCPOLRH    = _FLIP16(0x06BE),
+    LR_GCRCPOLRL    = _FLIP16(0x06BF),
+    LR_GSYNCR7      = _FLIP16(0x06C0),
+    LR_GSYNCR6      = _FLIP16(0x06C1),
+    LR_GSYNCR5      = _FLIP16(0x06C2),
+    LR_GSYNCR4      = _FLIP16(0x06C3),
+    LR_GSYNCR3      = _FLIP16(0x06C4),
+    LR_GSYNCR2      = _FLIP16(0x06C5),
+    LR_GSYNCR1      = _FLIP16(0x06C6),
+    LR_GSYNCR0      = _FLIP16(0x06C7),
+    LR_LSYNCRH      = _FLIP16(0x0740),
+    LR_LSYNCRL      = _FLIP16(0x0741),
+    LR_RNGR3        = _FLIP16(0x0819),
+    LR_RNGR2        = _FLIP16(0x081A),
+    LR_RNGR1        = _FLIP16(0x081B),
+    LR_RNGR0        = _FLIP16(0x081C),
+    LR_RXGAINCR     = _FLIP16(0x08AC),
+    LR_PAOCPR       = _FLIP16(0x08E7),
+    LR_HSEINTRIMR   = _FLIP16(0x0911),
+    LR_HSEOUTTRIMR  = _FLIP16(0x0912),
+    LR_SMPSC0R      = _FLIP16(0x0916),
+    LR_PCR          = _FLIP16(0x091A),
+    LR_SMPSC2R      = _FLIP16(0x0923),
     LR_ADDR_MIN     = 0,
     LR_ADDR_MAX     = 0x0fff,
 } lr_regs_e;
@@ -75,6 +85,17 @@ typedef union {
     ot_u8       u8[2];
 } lr_addr_u;
 
+
+
+
+// Sleep Options
+#define LR_SLEEPCFG_COLD        (0<<2)
+#define LR_SLEEPCFG_WARM        (1<<2)
+#define LR_SLEEPCFG_RTCEN       (1<<0)
+
+// Standby Options
+#define LR_STANDBYCFG_RC13MHz   (0<<0)
+#define LR_STANDBYCFG_HSE32MHz  (1<<0)
 
 
 

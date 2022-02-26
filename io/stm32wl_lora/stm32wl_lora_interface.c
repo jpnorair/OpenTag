@@ -89,52 +89,52 @@ wllora_struct wllora;
   */
 
 void sub_set0x1_cmd(ot_u8 opcode) {
-    wllora.cmd.raw[0]   = opcode;
-    wllora_spibus_io(1, 0, wllora.cmd.raw);
+    wllora.cmd.buf.tx[0]   = opcode;
+    wllora_spibus_io(1, 0, wllora.cmd.buf.tx);
 }
 
 void sub_set1x1_cmd(ot_u8 opcode, ot_u8 val) {
-    wllora.cmd.raw[0]   = opcode;
-    wllora.cmd.raw[1]   = val;
-    wllora_spibus_io(2, 0, wllora.cmd.raw);
+    wllora.cmd.buf.tx[0]   = opcode;
+    wllora.cmd.buf.tx[1]   = val;
+    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 void sub_set2x1_cmd(ot_u8 opcode, ot_u8 val1, ot_u8 val2) {
-    wllora.cmd.raw[0]   = opcode;
-    wllora.cmd.raw[1]   = va11;
-    wllora.cmd.raw[2]   = val2;
-    wllora_spibus_io(3, 0, wllora.cmd.raw);
+    wllora.cmd.buf.tx[0]   = opcode;
+    wllora.cmd.buf.tx[1]   = val1;
+    wllora.cmd.buf.tx[2]   = val2;
+    wllora_spibus_io(3, 0, wllora.cmd.buf.tx);
 }
 
 void sub_set4x1_cmd(ot_u8 opcode, ot_u8 val1, ot_u8 val2, ot_u8 val3, ot_u8 val4) {
-    wllora.cmd.raw[0]   = opcode;
-    wllora.cmd.raw[1]   = val1;
-    wllora.cmd.raw[2]   = val2;
-    wllora.cmd.raw[3]   = val3;
-    wllora.cmd.raw[4]   = val4;
-    wllora_spibus_io(5, 0, wllora.cmd.raw);
+    wllora.cmd.buf.tx[0]   = opcode;
+    wllora.cmd.buf.tx[1]   = val1;
+    wllora.cmd.buf.tx[2]   = val2;
+    wllora.cmd.buf.tx[3]   = val3;
+    wllora.cmd.buf.tx[4]   = val4;
+    wllora_spibus_io(5, 0, wllora.cmd.buf.tx);
 }
 
 void sub_set1x3_cmd(ot_u8 opcode, ot_u32 val) {
-    wllora.cmd.raw[0]   = opcode;
-    wllora.cmd.raw[1]   = ((ot_u8*)&val)[B2];
-    wllora.cmd.raw[2]   = ((ot_u8*)&val)[B1];
-    wllora.cmd.raw[3]   = ((ot_u8*)&val)[B0];
-    wllora_spibus_io(4, 0, wllora.cmd.raw);
+    wllora.cmd.buf.tx[0]   = opcode;
+    wllora.cmd.buf.tx[1]   = ((ot_u8*)&val)[B2];
+    wllora.cmd.buf.tx[2]   = ((ot_u8*)&val)[B1];
+    wllora.cmd.buf.tx[3]   = ((ot_u8*)&val)[B0];
+    wllora_spibus_io(4, 0, wllora.cmd.buf.tx);
 }
 
 ot_u8 sub_get_1x1(ot_u8 opcode) {
-    wllora.cmd.raw[0] = opcode;
-    wllora_spibus_io(1, 2, wllora.cmd.raw);
-    return wllora.cmd.raw[2];
+    wllora.cmd.buf.tx[0] = opcode;
+    wllora_spibus_io(1, 2, wllora.cmd.buf.tx);
+    return wllora.cmd.buf.rx[2];
 }
 
 ot_u16 sub_get1x2_cmd(ot_u8 opcode) {
     ot_u32 temp;
-    wllora.cmd.raw[0] = opcode;
-    wllora_spibus_io(1, 3, wllora.cmd.raw);
+    wllora.cmd.buf.tx[0] = opcode;
+    wllora_spibus_io(1, 3, wllora.cmd.buf.tx);
 
-    temp = *(ot_u16*)&wllora.cmd.raw[2];
+    temp = *(ot_u16*)&wllora.cmd.buf.rx[2];
     return (ot_u16)__REV16(temp);
 }
 
@@ -143,7 +143,7 @@ void wllora_wrreg_cmd(lr_addr_u addr, ot_u8 value) {
     wllora.cmd.wrreg.addr[0]    = addr.u8[0];
     wllora.cmd.wrreg.addr[1]    = addr.u8[1];
     wllora.cmd.wrreg.data[0]    = value;
-    wllora_spibus_io(4, 0, wllora.cmd.raw);
+    wllora_spibus_io(4, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_wrburst_cmd(lr_addr_u addr, ot_u8 len, ot_u8* data) {
@@ -153,7 +153,7 @@ void wllora_wrburst_cmd(lr_addr_u addr, ot_u8 len, ot_u8* data) {
 
     if (len <= WLLORA_WRMAX) {
         memcpy(wllora.cmd.wrreg.data, data, len);
-        wllora_spibus_io(3+len, 0, wllora.cmd.raw);
+        wllora_spibus_io(3+len, 0, wllora.cmd.buf.tx);
     }
 }
 
@@ -161,7 +161,7 @@ ot_u8 wllora_rdreg_cmd(lr_addr_u addr) {
     wllora.cmd.rdreg.opcode     = 0x1D;
     wllora.cmd.rdreg.addr[0]    = addr.u8[0];
     wllora.cmd.rdreg.addr[1]    = addr.u8[1];
-    wllora_spibus_io(3, 2, wllora.cmd.raw);
+    wllora_spibus_io(3, 2, wllora.cmd.buf.tx);
 
     return wllora.cmd.rdreg.data[0];
 }
@@ -172,7 +172,7 @@ void wllora_rdburst_cmd(lr_addr_u addr, ot_u8 len, ot_u8* data) {
     wllora.cmd.rdreg.addr[1]    = addr.u8[1];
 
     if (len <= WLLORA_RDMAX) {
-        wllora_spibus_io(3, 1+len, wllora.cmd.raw);
+        wllora_spibus_io(3, 1+len, wllora.cmd.buf.tx);
         memcpy(data, wllora.cmd.rdreg.data, len);
     }
 }
@@ -183,7 +183,7 @@ void wllora_wrbuf_cmd(ot_u8 offset, ot_u8 len, ot_u8* data) {
 
     if (len <= WLLORA_WRBUFMAX) {
         memcpy(wllora.cmd.wrbuf.data, data, len);
-        wllora_spibus_io(2+len, 0, wllora.cmd.raw);
+        wllora_spibus_io(2+len, 0, wllora.cmd.buf.tx);
     }
 }
 
@@ -192,7 +192,7 @@ void wllora_rdbuf_cmd(ot_u8 offset, ot_u8 len, ot_u8* data) {
     wllora.cmd.rdbuf.offset     = offset;
 
     if (len <= WLLORA_WRBUFMAX) {
-        wllora_spibus_io(3+len, 0, wllora.cmd.raw);
+        wllora_spibus_io(3+len, 0, wllora.cmd.buf.tx);
         memcpy(data, wllora.cmd.rdbuf.data, len);
     }
 }
@@ -201,20 +201,20 @@ void wllora_sleep_cmd(ot_u8 sleep_cfg) {
     sub_set1x1_cmd(0x84, sleep_cfg);
 //    wllora.cmd.sleep.opcode     = 0x84;
 //    wllora.cmd.sleep.sleep_cfg  = sleep_cfg;
-//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+//    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_standby_cmd(ot_u8 standby_cfg) {
     sub_set1x1_cmd(0x80, standby_cfg);
 //    wllora.cmd.standby.opcode       = 0x80;
 //    wllora.cmd.standby.standby_cfg  = standby_cfg;
-//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+//    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_fs_cmd(void) {
     sub_set0x1_cmd(0xC1);
 //    wllora.cmd.fs.opcode = 0xC1;
-//    wllora_spibus_io(1, 0, wllora.cmd.raw);
+//    wllora_spibus_io(1, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_tx_cmd(ot_u32 timeout) {
@@ -223,7 +223,7 @@ void wllora_tx_cmd(ot_u32 timeout) {
 //    wllora.cmd.tx.timeout[0]    = ((ot_u8*)&timeout)[B2];
 //    wllora.cmd.tx.timeout[1]    = ((ot_u8*)&timeout)[B1];
 //    wllora.cmd.tx.timeout[2]    = ((ot_u8*)&timeout)[B0];
-//    wllora_spibus_io(4, 0, wllora.cmd.raw);
+//    wllora_spibus_io(4, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_rx_cmd(ot_u32 timeout) {
@@ -232,14 +232,14 @@ void wllora_rx_cmd(ot_u32 timeout) {
 //    wllora.cmd.rx.timeout[0]    = ((ot_u8*)&timeout)[B2];
 //    wllora.cmd.rx.timeout[1]    = ((ot_u8*)&timeout)[B1];
 //    wllora.cmd.rx.timeout[2]    = ((ot_u8*)&timeout)[B0];
-//    wllora_spibus_io(4, 0, wllora.cmd.raw);
+//    wllora_spibus_io(4, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_stoprxtim_cmd(ot_u8 rx_timeout_stop) {
     sub_set1x1_cmd(0x9F, rx_timeout_stop);
 //    wllora.cmd.stoprxtim.opcode             = 0x9F;
 //    wllora.cmd.stoprxtim.rx_timeout_stop    = rx_timeout_stop;
-//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+//    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 //2x3
@@ -251,38 +251,38 @@ void wllora_rxduty_cmd(ot_u32 rx_period, ot_u32 sleep_period) {
     wllora.cmd.rxduty.sleep_period[0]   = ((ot_u8*)&sleep_period)[B2];
     wllora.cmd.rxduty.sleep_period[1]   = ((ot_u8*)&sleep_period)[B1];
     wllora.cmd.rxduty.sleep_period[2]   = ((ot_u8*)&sleep_period)[B0];
-    wllora_spibus_io(7, 0, wllora.cmd.raw);
+    wllora_spibus_io(7, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_cad_cmd(void) {
     sub_set0x1_cmd(0xC5);
 //    wllora.cmd.fs.opcode = 0xC5;
-//    wllora_spibus_io(1, 0, wllora.cmd.raw);
+//    wllora_spibus_io(1, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_txcontwave_cmd(void) {
     sub_set0x1_cmd(0xD1);
 //    wllora.cmd.txcontwave.opcode = 0xD1;
-//    wllora_spibus_io(1, 0, wllora.cmd.raw);
+//    wllora_spibus_io(1, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_txcontpreamble_cmd(void) {
     sub_set0x1_cmd(0xD2);
 //    wllora.cmd.txcontpreamble.opcode = 0xD2;
-//    wllora_spibus_io(1, 0, wllora.cmd.raw);
+//    wllora_spibus_io(1, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_setpkttype_cmd(ot_u8 pkt_type) {
     sub_set1x1_cmd(0x8A, pkt_type);
 //    wllora.cmd.setpkttype.opcode    = 0x8A;
 //    wllora.cmd.setpkttype.pkt_type  = pkt_type;
-//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+//    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 ot_u8 wllora_getpkttype_cmd(void) {
     return sub_get_1x1(0x11);
 //    wllora.cmd.getpkttype.opcode = 0x11;
-//    wllora_spibus_io(1, 2, wllora.cmd.raw);
+//    wllora_spibus_io(1, 2, wllora.cmd.buf.tx);
 //    return wllora.cmd.getpkttype.pkt_type;
 }
 
@@ -292,7 +292,7 @@ void wllora_rffreq_cmd(ot_u32 freq) {
     wllora.cmd.rffreq.freq[1]   = ((ot_u8*)&freq)[B2];
     wllora.cmd.rffreq.freq[2]   = ((ot_u8*)&freq)[B1];
     wllora.cmd.rffreq.freq[3]   = ((ot_u8*)&freq)[B0];
-    wllora_spibus_io(5, 0, wllora.cmd.raw);
+    wllora_spibus_io(5, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_txparams_cmd(ot_u8 power, ot_u8 ramp_time) {
@@ -300,7 +300,7 @@ void wllora_txparams_cmd(ot_u8 power, ot_u8 ramp_time) {
 //    wllora.cmd.txparams.opcode      = 0x8E;
 //    wllora.cmd.txparams.power       = power;
 //    wllora.cmd.txparams.ramp_time   = ramp_time;
-//    wllora_spibus_io(3, 0, wllora.cmd.raw);
+//    wllora_spibus_io(3, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_paconfig_cmd(ot_u8 pa_duty, ot_u8 hp_max, ot_u8 pa_sel) {
@@ -310,18 +310,18 @@ void wllora_paconfig_cmd(ot_u8 pa_duty, ot_u8 hp_max, ot_u8 pa_sel) {
 //    wllora.cmd.paconfig.hp_max      = hp_max;
 //    wllora.cmd.paconfig.pa_sel      = pa_sel;
 //    wllora.cmd.paconfig.fixed_01    = 1;
-//    wllora_spibus_io(5, 0, wllora.cmd.raw);
+//    wllora_spibus_io(5, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_txrxfallback_cmd(ot_u8 fallback_mode) {
     sub_set1x1_cmd(0x93, fallback_mode);
 //    wllora.cmd.txrxfallback.opcode          = 0x93;
 //    wllora.cmd.txrxfallback.fallback_mode   = fallback_mode;
-//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+//    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 
-void wllora_cadparams_cmd(ot_u8 num_symbol, ot_u8 det_peak, ot_u8 exit_mode, ot_u32 timeout) {
+void wllora_cadparams_cmd(ot_u8 num_symbol, ot_u8 det_peak, ot_u8 det_min, ot_u8 exit_mode, ot_u32 timeout) {
     wllora.cmd.cadparams.opcode     = 0x88;
     wllora.cmd.cadparams.num_symbol = num_symbol;
     wllora.cmd.cadparams.det_peak   = det_peak;
@@ -330,7 +330,7 @@ void wllora_cadparams_cmd(ot_u8 num_symbol, ot_u8 det_peak, ot_u8 exit_mode, ot_
     wllora.cmd.cadparams.timeout[0] = ((ot_u8*)&timeout)[B2];
     wllora.cmd.cadparams.timeout[1] = ((ot_u8*)&timeout)[B1];
     wllora.cmd.cadparams.timeout[2] = ((ot_u8*)&timeout)[B0];
-    wllora_spibus_io(8, 0, wllora.cmd.raw);
+    wllora_spibus_io(8, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_bufbase_cmd(ot_u8 tx_base_addr, ot_u8 rx_base_addr) {
@@ -338,7 +338,7 @@ void wllora_bufbase_cmd(ot_u8 tx_base_addr, ot_u8 rx_base_addr) {
 //    wllora.cmd.bufbase.opcode       = 0x8F;
 //    wllora.cmd.bufbase.tx_base_addr = tx_base_addr;
 //    wllora.cmd.bufbase.rx_base_addr = rx_base_addr;
-//    wllora_spibus_io(3, 0, wllora.cmd.raw);
+//    wllora_spibus_io(3, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_modparams_cmd(ot_u8 sf, ot_u8 bw, ot_u8 cr, ot_u8 ldro) {
@@ -348,7 +348,7 @@ void wllora_modparams_cmd(ot_u8 sf, ot_u8 bw, ot_u8 cr, ot_u8 ldro) {
 //    wllora.cmd.modparams.bw     = bw;
 //    wllora.cmd.modparams.cr     = cr;
 //    wllora.cmd.modparams.ldro   = ldro;
-//    wllora_spibus_io(5, 0, wllora.cmd.raw);
+//    wllora_spibus_io(5, 0, wllora.cmd.buf.tx);
 }
 
 
@@ -360,55 +360,54 @@ void wllora_pktparams_cmd(ot_u16 preamble_len, ot_u8 hdr_type, ot_u8 payload_len
     wllora.cmd.pktparams.payload_len    = payload_len;
     wllora.cmd.pktparams.crc_type       = crc_type;
     wllora.cmd.pktparams.invert_iq      = invert_iq;
-    wllora_spibus_io(7, 0, wllora.cmd.raw);
+    wllora_spibus_io(7, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_symtimeout_cmd(ot_u8 sym_num) {
     sub_set1x1_cmd(0xA0, sym_num);
 //    wllora.cmd.symtimeout.opcode    = 0xA0;
 //    wllora.cmd.symtimeout.sym_num   = pkt_type;
-//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+//    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 
 ot_u8 wllora_status_cmd(void) {
     wllora.cmd.status.opcode = 0xC0;
-    wllora_spibus_io(1, 1, wllora.cmd.raw);
+    wllora_spibus_io(1, 1, wllora.cmd.buf.tx);
     return wllora.cmd.status.status;
 }
 
 lr_rxbufstatus_t wllora_rxbufstatus_cmd(void) {
 ///@todo make sure this return typecast doesn't crash on M0 core
     wllora.cmd.rxbufstatus.opcode = 0x13;
-    wllora_spibus_io(1, 3, wllora.cmd.raw);
+    wllora_spibus_io(1, 3, wllora.cmd.buf.tx);
     return *(lr_rxbufstatus_t*)&wllora.cmd.rxbufstatus.rx_payload_len;
 }
 
 lr_pktlink_t wllora_pktlink_cmd(void) {
 ///@todo make sure this return typecast doesn't crash on M0 core
     wllora.cmd.pktlink.opcode = 0x14;
-    wllora_spibus_io(1, 4, wllora.cmd.raw);
+    wllora_spibus_io(1, 4, wllora.cmd.buf.tx);
     return *(lr_pktlink_t*)&wllora.cmd.pktlink.rssi_pkt;
 }
 
 ot_u8 wllora_rssi_cmd(void) {
     return sub_get_1x1(0x15);
 //    wllora.cmd.rssi.opcode = 0x15;
-//    wllora_spibus_io(1, 2, wllora.cmd.raw);
+//    wllora_spibus_io(1, 2, wllora.cmd.buf.tx);
 //    return wllora.cmd.rssi.rssi_inst;
 }
 
 lr_pktstats_t wllora_pktstats_cmd(void) {
 ///@todo make sure this return typecast doesn't crash on M0 core
     wllora.cmd.pktstats.opcode = 0x10;
-    wllora_spibus_io(1, 7, wllora.cmd.raw);
+    wllora_spibus_io(1, 7, wllora.cmd.buf.tx);
     return *(lr_pktstats_t*)&wllora.cmd.pktstats.num_pkt_rxed;
 }
 
 void wllora_resetstats_cmd(void) {
-    memset(wllora.cmd.raw, 0, 7);
-    wllora_spibus_io(7, 0, wllora.cmd.raw);
-    return wllora.cmd.status.status;
+    memset(wllora.cmd.buf.tx, 0, 7);
+    wllora_spibus_io(7, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_dioirq_cmd(ot_u16 irq_mask, ot_u16 irq1_mask, ot_u16 irq2_mask, ot_u16 irq3_mask) {
@@ -421,24 +420,28 @@ void wllora_dioirq_cmd(ot_u16 irq_mask, ot_u16 irq1_mask, ot_u16 irq2_mask, ot_u
     wllora.cmd.dioirq.irq2_mask[1]  = ((ot_u8*)&irq2_mask)[LOWER];
     wllora.cmd.dioirq.irq3_mask[0]  = ((ot_u8*)&irq3_mask)[UPPER];
     wllora.cmd.dioirq.irq3_mask[1]  = ((ot_u8*)&irq3_mask)[LOWER];
-    wllora_spibus_io(9, 0, wllora.cmd.raw);
+    wllora_spibus_io(9, 0, wllora.cmd.buf.tx);
 }
 
 ot_u16 wllora_getirq_cmd(void) {
     return sub_get1x2_cmd(0x12);
 //    ot_u32 temp;
 //    wllora.cmd.getirq.opcode = 0x12;
-//    wllora_spibus_io(1, 3, wllora.cmd.raw);
+//    wllora_spibus_io(1, 3, wllora.cmd.buf.tx);
 //
 //    temp = *(ot_u16*)wllora.cmd.getirq.irq_status;
 //    return (ot_u16)__REV16(temp);
+}
+
+void wllora_clrirq_cmd(void) {
+    sub_set2x1_cmd(0x02, 0xff, 0xff);
 }
 
 void wllora_calibrate_cmd(ot_u8 calib_cfg) {
     sub_set1x1_cmd(0x89, calib_cfg);
 //    wllora.cmd.calibrate.opcode     = 0x89;
 //    wllora.cmd.calibrate.calib_cfg  = calib_cfg;
-//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+//    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_calimage_cmd(ot_u8 calfreq1, ot_u8 calfreq2) {
@@ -446,21 +449,21 @@ void wllora_calimage_cmd(ot_u8 calfreq1, ot_u8 calfreq2) {
 //    wllora.cmd.calimage.opcode      = 0x98;
 //    wllora.cmd.calimage.calfreq1    = calfreq1;
 //    wllora.cmd.calimage.calfreq2    = calfreq2;
-//    wllora_spibus_io(3, 0, wllora.cmd.raw);
+//    wllora_spibus_io(3, 0, wllora.cmd.buf.tx);
 }
 
 void wllora_regmode_cmd(ot_u8 reg_mode) {
     sub_set1x1_cmd(0x96, reg_mode);
 //    wllora.cmd.regmode.opcode   = 0x96;
 //    wllora.cmd.regmode.reg_mode = calib_cfg;
-//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+//    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 ot_u16 wllora_geterr_cmd(void) {
     return sub_get1x2_cmd(0x17);
 //    ot_u32 temp;
 //    wllora.cmd.geterr.opcode = 0x17;
-//    wllora_spibus_io(1, 3, wllora.cmd.raw);
+//    wllora_spibus_io(1, 3, wllora.cmd.buf.tx);
 //
 //    temp = *(ot_u16*)wllora.cmd.geterr.op_error;
 //    return (ot_u16)__REV16(temp);
@@ -470,7 +473,7 @@ void wllora_clrerr_cmd(void) {
     sub_set1x1_cmd(0x07, 0);
 //    wllora.cmd.clrerr.opcode    = 0x07;
 //    wllora.cmd.clrerr.zero      = 0;
-//    wllora_spibus_io(2, 0, wllora.cmd.raw);
+//    wllora_spibus_io(2, 0, wllora.cmd.buf.tx);
 }
 
 
@@ -480,7 +483,7 @@ void wllora_tcxomode_cmd(ot_u8 reg_txco_trim, ot_u32 timeout) {
     wllora.cmd.tcxomode.timeout[0]      = ((ot_u8*)&timeout)[B2];
     wllora.cmd.tcxomode.timeout[1]      = ((ot_u8*)&timeout)[B1];
     wllora.cmd.tcxomode.timeout[2]      = ((ot_u8*)&timeout)[B0];
-    wllora_spibus_io(5, 0, wllora.cmd.raw);
+    wllora_spibus_io(5, 0, wllora.cmd.buf.tx);
 }
 
 
@@ -495,71 +498,71 @@ void wllora_tcxomode_cmd(ot_u8 reg_txco_trim, ot_u32 timeout) {
   * configuration, it's possible to get direct interrupts by setting the EXTI
   * FTSR or RTSR on each pin, even though they are outputs.  But that method is
   * not implemented in the present driver.
+  *
+  * The wllora_iocfg...() functions modify the Global IRQ Mask or potentially
+  * the DIO configuration.  Right now the impl uses Global IRQ.
   */
 
-void platform_isr_rfirq() {
-///@todo read the IRQ bytes and vector accordingly
-
-    // This is placeholder code only
-    wllora_virtual_isr(wllora.imode);
+void wllora_iocfg_cad()  {
+//    wllora_clrirq_cmd();
+//    wllora_dioirq_cmd(
+//            LR_IRQ_CADDONE | LR_IRQ_CADDET,
+//            0,0,0);
 }
 
-OT_WEAK void wllora_int_off() {
-    PWR->C2CR3 &= ~PWR_C2CR3_EWRFIRQ;
+void wllora_iocfg_rx()  {
+//    wllora_clrirq_cmd();
+//    wllora_dioirq_cmd(
+//            LR_IRQ_HDRVALID | LR_IRQ_RXDONE | LR_IRQ_TIMEOUT,
+//            0,0,0);
 }
 
-OT_WEAK void wllora_int_on() {
-    PWR->C2CR3 |= PWR_C2CR3_EWRFIRQ;
-}
-
-
-inline void wllora_iocfg_cad()  {
-    wllora_int_clearall();
-    wllora_write(RFREG_LR_DIOMAPPING1, _DIOMAPPING1_CAD);
-}
-
-inline void wllora_iocfg_rx()  {
-    wllora_int_clearall();
-    wllora_write(RFREG_LR_DIOMAPPING1, _DIOMAPPING1_RX);
-}
-
-inline void wllora_iocfg_tx()  {
-    wllora_int_clearall();
-    wllora_write(RFREG_LR_DIOMAPPING1, _DIOMAPPING1_TX);
+void wllora_iocfg_tx()  {
+//    wllora_clrirq_cmd();
+//    wllora_dioirq_cmd(
+//            LR_IRQ_TXDONE | LR_IRQ_TIMEOUT,
+//            0,0,0);
 }
 
 inline void wllora_int_listen() {
     wllora.imode = MODE_Listen;
-    wllora_int_config(RFI_LISTEN);
+    wllora_int_on();
 }
 
 inline void wllora_int_rxdata() {
     wllora.imode = MODE_RXData;
-    wllora_int_config(RFI_RXDATA);
+    wllora_int_on();
 }
 
 inline void wllora_int_rxend() {
     wllora.imode = MODE_RXData;
-    wllora_int_config(RFI_RXEND);
+    wllora_int_on();
 }
 
 inline void wllora_int_csma() {
     wllora.imode = MODE_CSMA;
-    wllora_int_config(RFI_CSMA);
+    wllora_int_on();
 }
 
 inline void wllora_int_txdata() {
     wllora.imode = MODE_TXData;
-    wllora_int_config(RFI_TXDONE);
+    wllora_int_on();
 }
 
-// Not used with WL
+
+OT_WEAK inline void wllora_int_off() {
+    PWR->C2CR3 &= ~PWR_C2CR3_EWRFIRQ;
+}
+
+OT_WEAK inline void wllora_int_on() {
+    PWR->C2CR3 |= PWR_C2CR3_EWRFIRQ;
+}
+
+
+// Not used with current WL implementation
 //void wllora_irq0_isr() {   wllora_virtual_isr(wllora.imode);     }
 //void wllora_irq1_isr() {   wllora_virtual_isr(wllora.imode + 1); }
 //void wllora_irq2_isr() {   wllora_virtual_isr(wllora.imode + 2); }
-//void wllora_irq3_isr() {   wllora_virtual_isr(wllora.imode + 3); }
-//void wllora_irq4_isr() {   wllora_virtual_isr(wllora.imode + 4); }
-//void wllora_irq5_isr() {   wllora_virtual_isr(wllora.imode + 5); }
 
 
 
@@ -575,77 +578,34 @@ inline void wllora_int_txdata() {
   */
   
 void wllora_load_defaults() {
-/// The data ordering is: WRITE LENGTH, WRITE HEADER (0), START ADDR, VALUES
-/// Ignore registers that are set later, are unused, or use the hardware default values.
-#   define __REGSET(NAME)  RFREG_##NAME, DRF_##NAME
-    static const ot_u8 defaults[] = {
-        // Regs 0x02-0x05 are used in FSK mode and may cause trouble with LoRa.  Set to 0x00.
-        0x02, 0x00,
-        0x03, 0x00,
-        0x04, 0x00,
-        0x05, 0x00,
-        
-        // LoRa Registers
-        __REGSET(LR_OPMODE),
-        __REGSET(LR_PACONFIG),
-        __REGSET(LR_PARAMP),
-        __REGSET(LR_OCP),
-        __REGSET(LR_LNA),
-        __REGSET(LR_FIFOADDRPTR),
-        __REGSET(LR_FIFOTXBASEADDR),
-        __REGSET(LR_FIFORXBASEADDR),
-        __REGSET(LR_MODEMCONFIG1),
-        __REGSET(LR_MODEMCONFIG2),
-        __REGSET(LR_SYMBTIMEOUTLSB),
-        __REGSET(LR_PREAMBLEMSB),
-        __REGSET(LR_PREAMBLELSB),
-        __REGSET(LR_PAYLOADLENGTH),
-        __REGSET(LR_PAYLOADMAXLENGTH),
-        __REGSET(LR_HOPPERIOD),
-//        __REGSET(LR_MODEMCONFIG3),
-        __REGSET(LR_DETECTOPTIMIZE),
-        __REGSET(LR_INVERTIQ),
-        __REGSET(LR_DETECTIONTHRESHOLD),
-        __REGSET(LR_SYNCWORD),
-        __REGSET(LR_INVERTIQ2),
-//        __REGSET(LR_AGCREF),
-        __REGSET(LR_DIOMAPPING1),
-        __REGSET(LR_DIOMAPPING2),
-        0   //Terminating 0
-    };
+/// Load startup/reset defaults into the radio core.
+/// radio core must be in standby for this to work.
 
-    ot_u8* cursor;
-    
-    // SX127x should be asleep when running this function
-    //wllora_strobe(_OPMODE_SLEEP);
-    
-    ///@todo do a burst write
-    cursor = (ot_u8*)defaults;
-    while (*cursor != 0) {
-        wllora_write(cursor[0], cursor[1]);
-        cursor += 2;
-    }
-    
-#   undef __REGSET
+    ///@todo implementation
 }
 
 void wllora_corelog() {
 ///debugging function to dump-out register values of RF core (not all are used)
-    ot_u8 i = 0x00;
+    ot_u16 i =0;
+    lr_addr_u addr;
     ot_u8 regval;
     ot_u8 label[]   = { 'R', 'E', 'G', '_', 0, 0 };
 
     do {
-        regval = wllora_read(i);
-        otutils_bin2hex(&label[4], &i, 1);
+        addr.u8[0]  = ((ot_u8*)&i)[1];
+        addr.u8[1]  = ((ot_u8*)&i)[0];
+        regval      = wllora_rdreg_cmd(addr);
+
+        otutils_bin2hex(&label[4], addr.u8, 2);
         logger_msg(MSG_raw, 6, 1, label, &regval);
         //mpipedrv_wait();
         delay_ti(5);
     }
-    while (++i < 0x71);
+    while (++i < 0x1000);
 }
 
 void wllora_coredump(ot_u8* dst, ot_uint limit) {
+///@todo this function must be ported, it is a relic of the past right now.
 ///debugging function to dump-out register values of RF core (not all are used)
     ot_u8 i;
 
@@ -656,7 +616,7 @@ void wllora_coredump(ot_u8* dst, ot_uint limit) {
     *dst++ = 0; //FIFO register: it gets corrupted on reads
 
     for (i=0x01; i<limit; i++) {
-        *dst++ = wllora_read(i);
+        *dst++ = 0; ///@todo need to put this here
     }
 }
 
@@ -669,7 +629,9 @@ void wllora_coredump(ot_u8* dst, ot_uint limit) {
   */
 
 ot_bool wllora_isready() {
-	return True;
+///@todo usage of this function should be removed and ported to isbusy()
+//	return (wllora_isbusy() == 0);
+    return true;
 }
 
 void wllora_waitfor_ready() {
@@ -680,20 +642,26 @@ ot_bool wllora_check_cadpin() {
 }
 
 ot_u8 wllora_getstatus() {
-/// Status is register IRQFLAGS
-    wllora.status = wllora_read(RFREG_LR_IRQFLAGS);
-    return wllora.status;
+///@todo port to the wllora_status_cmd()
+    return wllora_status_cmd();
 }
 
 ot_u8 wllora_mode() {
-    return wllora_read(RFREG_LR_OPMODE) & _OPMODE;
+///@todo port, not sure exactly the best way at this point.
+    return 0;
+    //return wllora_read(RFREG_LR_OPMODE) & _OPMODE;
 }
 
-ot_u8 wllora_rxbytes()    { return wllora_read(RFREG_LR_RXNBBYTES); }
-ot_u8 wllora_rssi()       { return wllora_read(RFREG_LR_RSSIVALUE); }
-ot_u8 wllora_pktrssi()    { return wllora_read(RFREG_LR_PKTRSSIVALUE); }
-ot_s8 wllora_pktsnr()     { return wllora_read(RFREG_LR_PKTSNRVALUE); }
-
+///@todo usage of these functions should be removed and ported to the
+///      wllora command functions that apply.
+//ot_u8 wllora_rxbytes()    { return wllora_read(RFREG_LR_RXNBBYTES); }
+//ot_u8 wllora_rssi()       { return wllora_read(RFREG_LR_RSSIVALUE); }
+//ot_u8 wllora_pktrssi()    { return wllora_read(RFREG_LR_PKTRSSIVALUE); }
+//ot_s8 wllora_pktsnr()     { return wllora_read(RFREG_LR_PKTSNRVALUE); }
+ot_u8 wllora_rxbytes()    { return 0; }
+ot_u8 wllora_rssi()       { return 0; }
+ot_u8 wllora_pktrssi()    { return 0; }
+ot_s8 wllora_pktsnr()     { return 0; }
 
 
 
@@ -704,23 +672,24 @@ ot_s8 wllora_pktsnr()     { return wllora_read(RFREG_LR_PKTSNRVALUE); }
   * This function must be implemented specific to the platform.
   */
 
-ot_u8 wllora_rdreg(ot_uni16 addr) {
-    ot_u8 cmd[3] = { 0x1D, addr.ubyte[UPPER], addr.ubyte[LOWER] };
-    wllora_spibus_io(3, 2, (const ot_u8*)cmd);
-
-    return wllora.buf.rd.data[0];
-}
-
-void wllora_wrreg(ot_u16 addr, ot_u8 val) {
-    ot_u8 cmd[4] = { 0x0D, addr.ubyte[UPPER], addr.ubyte[LOWER], val };
-    wllora_spibus_io(4, 0, (const ot_u8*)cmd);
-}
+///@todo port these functions to wllora_set_state()
 
 void wllora_mode_sleep(ot_bool blocking) {
-
+//    wllora_sleep_cmd(LR_SLEEPCFG_WARM);
+//
+//    if (blocking) {
+//        ///@todo have a watchdog here of some kind.
+//        while(wllora_is_busy());
+//    }
 }
 
 void wllora_mode_standby(ot_bool blocking) {
+//    wllora_sleep_cmd(LR_SLEEPCFG_WARM);
+//
+//    if (blocking) {
+//        ///@todo have a watchdog here of some kind.
+//        while(wllora_is_busy());
+//    }
 }
 
 void wllora_mode_fs(ot_bool blocking) {
@@ -736,57 +705,15 @@ void wllora_mode_rx(ot_bool blocking) {
 }
 
 
-
 void wllora_strobe(ot_u8 new_mode, ot_bool blocking) {
-/// "strobe" must be one of the _OPMODE values from 0-7
-/// Assume 500us (125 watchdogs) worst case sleep->standby
-/// Assume 600us (150 watchdogs) worst case sleep->FS-ON
-/// Assume 640us (160 watchdogs) worst case sleep->RX/TX/CAD
-/// Assume 100us (25 watchdogs)  worst case standby->FS-ON
-/// Assume 140us (35 watchdogs)  worst case standby->RX/TX/CAD
-/// Assume 40us  (10 watchdogs)  worst case active->sleep
-/// 000  SLEEP
-/// 001  STDBY
-/// 010  Frequency synthesis TX (FSTX) 
-/// 011  Transmit (TX)
-/// 100  Frequency synthesis RX (FSRX) 
-/// 101  Receive continuous (RXCONTINUOUS) 
-/// 110  receive single (RXSINGLE) 
-/// 111  Channel activity detection (CAD)
-    static const ot_u8 wdog_amount[16] = {  
-         1,10,  125,1,  150,25,  160,35,  150,25,  160,35,  160,35,  160,35
-    };
-    
 
-
-
-    if (!blocking) {
-        wllora_write(RFREG_LR_OPMODE, _LORAMODE|new_mode);
-    }
-    else {
-        ot_u8 old_mode = wllora_mode();
-        
-        if (old_mode != new_mode) {
-            ot_uint wdog;
-            
-            wllora_write(RFREG_LR_OPMODE, _LORAMODE|new_mode);
-            wdog = wdog_amount[(new_mode<<1) + (old_mode!=0)];
-            
-            do {
-                if (--wdog == 0) {
-                    wllora_reset();
-                    delay_us(400);
-                    dll_init();
-                    return;
-                }
-                old_mode = wllora_mode();
-                
-            } while (old_mode != new_mode);
-        }
-    }
 }
 
+
+///@todo usage of these functions must be ported to new API model
+
 ot_u8 wllora_read(ot_u8 addr) {
+
     return faux_regs[addr];
 }
 
@@ -846,6 +773,7 @@ ot_u16 wllora_get_counter() {
   * ========================================================================<BR>
   */
 ot_int wllora_calc_rssi(ot_u8 encoded_value, ot_s8 packet_snr) {
+///@todo port this to wllora method
     ot_int rssi;
     
     /// SX1276 RSSI calculation process
@@ -864,6 +792,7 @@ ot_int wllora_calc_rssi(ot_u8 encoded_value, ot_s8 packet_snr) {
 
 
 ot_u8 wllora_calc_rssithr(ot_u8 input) {
+///@todo port this to wllora method
     ot_int rssi_thr;
     
 /// SX127x treats RSSI thresholding through the normal RSSI engine.  The specs
@@ -893,6 +822,8 @@ ot_u8 wllora_calc_rssithr(ot_u8 input) {
 
 
 ot_u8 wllora_clip_txeirp(ot_u8 input_eirp) {
+///@todo port this to wllora method
+
 /// This considers Normal-Mode.  In TX Boost mode, 13dBm --> 20dBm
 #   define _MAX_DBM_EIRP (((20*2) - RF_HDB_ATTEN) + 80)
 #   define _MIN_DBM_EIRP (((5*2) - RF_HDB_ATTEN) + 80)
@@ -912,6 +843,8 @@ ot_u8 wllora_clip_txeirp(ot_u8 input_eirp) {
 
 
 void wllora_set_txpwr(ot_u8 pwr_code) {
+///@todo port this to wllora method
+
 /// Sets the tx output power (non boost)
 /// "pwr_code" is a value, 0-127, that is: eirp_code/2 - 40 = TX dBm
 /// i.e. eirp_code=0 => -40 dBm, eirp_code=80 => 0 dBm, etc

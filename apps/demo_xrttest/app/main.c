@@ -317,8 +317,8 @@ void xrt_invoke(ot_u8 state) {
 
 
 
-
-
+/** temporarily using a different task for purpose of radio testing */
+#if 0
 void xrttest_systask(void* arg) {
     ot_task         task; 
     session_tmpl    s_tmpl;
@@ -392,7 +392,68 @@ void xrttest_systask(void* arg) {
     }
 
 }
+#else
+void xrttest_systask(void* arg) {
+    static  ot_u16  radio_reg;
+    ot_u8           ctl_state;
+    ot_long         nextevent_ti;
+    ot_task         task  = (ot_task)arg;
 
+    if (task->event == 0) {
+        // Constructor Destructor: set static parameters.
+        radio_reg = 0;
+        return;
+    }
+
+    if (task->event & 1) {
+        ctl_state = 0;
+    }
+    else {
+        ctl_state = task->event >> 1;
+    }
+
+    switch (ctl_state) {
+
+        // Core-dump the 12 bit register space
+        case 0: {
+            ot_u8 val;
+            lr_addr_u addr;
+            char logbuf[16];
+
+            addr.u8[0] = ((ot_u8*)&radio_reg)[1];
+            addr.u8[1] = ((ot_u8*)&radio_reg)[0];
+
+            val = wllora_rdreg_cmd(addr);
+
+            sprintf(logbuf, "%04X, %02X;", radio_reg, val);
+            logger_str(logbuf);
+
+            if (radio_reg >= 0xfff) {
+                radio_reg = 0;
+                task->event++;
+                nextevent_ti = 60*1024;
+            }
+            else {
+                radio_reg++;
+                nextevent_ti = 8;
+            }
+            sys_task_setnext(task, nextevent_ti);
+            break;
+        }
+
+        // This task does nothing at present, but it will be a wllora control
+        // call to set some features.
+        case 1: {
+            task->event++;
+            nextevent_ti = 10;
+        } break;
+    }
+
+    sys_task_setnext(task, nextevent_ti);
+
+}
+
+#endif
 
 
 

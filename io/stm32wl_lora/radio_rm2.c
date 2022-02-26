@@ -115,9 +115,30 @@ void sub_initcad(void);
 #define RFIV_TXDONE     6
 
 
-void wllora_virtual_isr(ot_u8 code) {
-///@todo this function is only a stub for the purpose of test compiling
-    rm2_kill();
+void wllora_virtual_isr(ot_u16 irq_mask) {
+    switch (wllora.imode) {
+        case MODE_Listen:
+
+
+        case MODE_RXData:
+            if (irq_mask & LR_IRQ_RXDONE) {
+                //frame received
+            }
+            else if (irq_mask & LR_IRQ_TIMEOUT) {
+                //kill
+            }
+            else if (irq_mask & LR_IRQ_HDRVALID) {
+                //sync
+            }
+            else {
+                // error, kill
+            }
+            break;
+
+        case MODE_CSMA:
+        case MODE_TXData:
+            break;
+    }
 }
 
 
@@ -626,7 +647,7 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     ///     <LI> Following CAD-Detect positive, use RX-Single
     /// 2b. Setup RX for Foreground detection (ELSE):
     ///     <LI> Set Foreground paging and tentative packet-len to max </LI>
-    wlloradrv_mdmconfig(initvals[0], initvals[1], initvals[2], 0);
+//wlloradrv_mdmconfig(initvals[0], initvals[1], initvals[2], 0);
     
     ///@note the iteration ticks corresponds to the duration of one interleaver block
     ///      of LoRa symbols.  "Ticks" in this case is implementation-specific to this driver
@@ -1212,7 +1233,8 @@ OT_WEAK void wlloradrv_mdmconfig(MODE_enum mode, ot_u8 mdmcfg2_val, ot_u8 symtim
     mdmregs[6]  = (param == 0) ? deflength[offset] : param;
 
     // Store in a single SPI write operation
-    wllora_spibus_io(7, 0, mdmregs);
+    // Commented to prevent errors on test build
+    //wllora_spibus_io(7, 0, mdmregs);
 
     // Sync word is too far away to be done in a single write
     wllora_write(RFREG_LR_SYNCWORD, syncword[offset]);

@@ -1037,9 +1037,9 @@ static inline void BOARD_POWER_STARTUP(void) {
 
 #   if MCU_PARAM(CPU1NULL)
         ///@note EWRFBUSY might not be needed
-        PWR->C2CR3  = PWR_C2CR3_EWRFIRQ
-                    | PWR_C2CR3_EWRFBUSY
-                    | PWR_C2CR3_EWPVD;
+        PWR->C2CR3  = 0 /* PWR_C2CR3_EWRFIRQ */
+                    | 0 /* PWR_C2CR3_EWRFBUSY */
+                    | 0 /* PWR_C2CR3_EWPVD */;
 #   else
         PWR->C2CR3  = PWR_C2CR3_EIWUL
                     | PWR_C2CR3_EWRFIRQ
