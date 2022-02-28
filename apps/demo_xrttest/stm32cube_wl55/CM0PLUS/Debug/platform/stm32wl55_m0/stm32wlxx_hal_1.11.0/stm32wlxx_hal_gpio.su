@@ -1,8 +1,0 @@
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_gpio.c:156:6:HAL_GPIO_Init	20	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_gpio.c:296:6:HAL_GPIO_DeInit	28	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_gpio.c:383:15:HAL_GPIO_ReadPin	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_gpio.c:417:6:HAL_GPIO_WritePin	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_gpio.c:440:6:HAL_GPIO_TogglePin	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_gpio.c:465:19:HAL_GPIO_LockPin	8	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_gpio.c:515:13:HAL_GPIO_EXTI_Callback	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_gpio.c:500:6:HAL_GPIO_EXTI_IRQHandler	8	static

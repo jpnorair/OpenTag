@@ -1,7 +1,0 @@
-/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/stm32wl_lora_channels.c:224:14:wllora_get_bandplan	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/stm32wl_lora_channels.c:230:14:wllora_get_chanregs	8	static
-/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/stm32wl_lora_channels.c:237:6:wllora_configure_chan	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/stm32wl_lora_channels.c:244:7:wllora_get_bw	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/stm32wl_lora_channels.c:254:8:wllora_symbol_miti	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/stm32wl_lora_channels.c:266:8:wllora_block_miti	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/io/stm32wl_lora/stm32wl_lora_channels.c:281:8:wllora_hscblock_ti	0	static

@@ -1,7 +1,0 @@
-/Users/jpnbook/Sync/Repository/OpenTag/m2/radio_task.c:383:17:rm2_mac_filter	12	static
-/Users/jpnbook/Sync/Repository/OpenTag/m2/radio_task.c:406:14:rm2_channel_refresh	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/m2/radio_task.c:465:17:rm2_channel_fastcheck	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/m2/radio_task.c:490:17:rm2_channel_lookup	40	static
-/Users/jpnbook/Sync/Repository/OpenTag/m2/radio_task.c:160:14:rm2_init	8	static
-/Users/jpnbook/Sync/Repository/OpenTag/m2/radio_task.c:413:17:rm2_test_channel	16	static
-/Users/jpnbook/Sync/Repository/OpenTag/m2/radio_task.c:433:17:rm2_test_chanlist	24	static
