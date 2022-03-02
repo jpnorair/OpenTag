@@ -428,10 +428,10 @@ void xrttest_systask(void* arg) {
             sprintf(logbuf, "%04X, %02X;", radio_reg, val);
             logger_str(logbuf);
 
-            if (radio_reg >= 0xfff) {
+            if (radio_reg >= 0x9ff) {
                 radio_reg = 0;
                 task->event++;
-                nextevent_ti = 60*1024;
+                nextevent_ti = 10*1024;
             }
             else {
                 radio_reg++;
@@ -441,12 +441,36 @@ void xrttest_systask(void* arg) {
             break;
         }
 
-        // This task does nothing at present, but it will be a wllora control
-        // call to set some features.
+        // 1. set Mode to LoRa
         case 1: {
+            logger_str("Set Pkt-type = LoRa");
+            wllora_setpkttype_cmd(0x01);
+
             task->event++;
-            nextevent_ti = 10;
+            nextevent_ti = 20;
         } break;
+
+        // 2. set frequency to 908 MHz
+        case 2: {
+            logger_str("Set freq = 908.123456 MHz");
+            wllora_rffreq_cmd(0x38C1F9AC);
+
+            task->event++;
+            nextevent_ti = 20;
+        } break;
+
+        // 3. set Cad Params
+        case 3: {
+            logger_str("Setting cad params");
+            wllora_cadparams_cmd(0x04, 0x18, 0x08, 0x01, 0x1A2B3C);
+
+            task->event++;
+            nextevent_ti = 20;
+        } break;
+
+        default:
+            logger_str("Test has reached end");
+            nextevent_ti = 2000000000;
     }
 
     sys_task_setnext(task, nextevent_ti);
