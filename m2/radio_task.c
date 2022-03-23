@@ -16,12 +16,20 @@
 /**
   * @file       /m2/radio_task.c
   * @author     JP Norair
-  * @version    R101
-  * @date       14 Jul 2015
+  * @version    R103
+  * @date       14 Mar 2022
   * @brief      Generic Radio (RF transceiver) task
   * @defgroup   Radio (Radio Module)
   * @ingroup    Radio
   *
+  * Radio Task functions (in this .c file) should be agnostic to the hardware.
+  * In some cases, that's impossible, and the functions here must be patched
+  * in the driver (this is especially true with unusual modulations, such as
+  * LoRa).
+  *
+  * No function interfaced to here -- be it implemented in this file or patched
+  * elsewhere -- must require the radio hardware to be in an active mode (i.e.
+  * these functions must work while radio is sleeping).
   *
   ******************************************************************************
   */
@@ -158,6 +166,9 @@ static const ot_u8 tgd_ti[16] = {
 
 #ifndef EXTF_rm2_init
 OT_WEAK void rm2_init(void) {
+///@note this function must be able to do everything it needs to do (entire
+///      call depth) while radio is in sleep modes.  For STM32WL / SX126x, that
+///      means no register access because register access requires standby.
     vlFILE* fp;
     
     /// Set universal Radio module initialization defaults
@@ -383,6 +394,10 @@ OT_WEAK ot_uint rm2_scale_codec(ot_u8 channel_code, ot_uint buf_bytes) {
 OT_WEAK ot_bool rm2_mac_filter() {
 /// Link Budget Filtering (LBF) is a normalized RSSI Qualifier.
 /// Subnet Filtering is an numerical qualifier
+///
+///@note This function must be able to do everything it needs to do (entire
+///      call depth) while radio is in sleep modes.  For STM32WL / SX126x, that
+///      means no register access because register access requires standby.
 
     // TX EIRP encoded value    = (dBm + 40) * 2
     // TX EIRP dBm              = ((encoded value) / 2) - 40
@@ -411,6 +426,9 @@ OT_WEAK void rm2_channel_refresh(void) {
 
 #ifndef EXTF_rm2_test_channel
 OT_WEAK ot_bool rm2_test_channel(ot_u8 channel) {
+///@note This function must be able to do everything it needs to do (entire
+///      call depth) while radio is in sleep modes.  For STM32WL / SX126x, that
+///      means no register access because register access requires standby.
     ot_bool test;
     
     test = rm2_channel_fastcheck(channel);
@@ -431,6 +449,9 @@ OT_WEAK ot_bool rm2_test_channel(ot_u8 channel) {
 
 #ifndef EXTF_rm2_test_chanlist
 OT_WEAK ot_bool rm2_test_chanlist() {
+///@note This function must be able to do everything it needs to do (entire
+///      call depth) while radio is in sleep modes.  For STM32WL / SX126x, that
+///      means no register access because register access requires standby.
     vlFILE* fp;
     ot_int  i;
     ot_bool test;
@@ -463,6 +484,9 @@ OT_WEAK ot_bool rm2_test_chanlist() {
 
 #ifndef EXTF_rm2_channel_fastcheck
 OT_WEAK ot_bool rm2_channel_fastcheck(ot_u8 chan_id) {
+///@note This function must be able to do everything it needs to do (entire
+///      call depth) while radio is in sleep modes.  For STM32WL / SX126x, that
+///      means no register access because register access requires standby.
     
     // Check if there's a forced-refresh condition (always fail)
     if (radio.flags & RADIO_FLAG_REFRESH) {
@@ -492,6 +516,10 @@ OT_WEAK ot_bool rm2_channel_lookup(ot_u8 chan_id, vlFILE* fp) {
 /// Duty: (a) See if the supplied channel is supported on this device & config.
 ///       If yes, return true.  (b) Determine if recalibration is required
 ///       before changing to the new channel, and recalibrate if so.
+///
+///@note This function must be able to do everything it needs to do (entire
+///      call depth) while radio is in sleep modes.  For STM32WL / SX126x, that
+///      means no register access because register access requires standby.
     ot_u8       spectrum_id;
     ot_int      i;
     volatile ot_uni16    scratch;

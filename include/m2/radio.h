@@ -74,14 +74,12 @@ typedef enum {
 
 
 typedef struct {
-#if (OT_FEATURE(RF_LINKINFO) || OT_FEATURE(RF_ADAPTIVE))
     ot_u8   flags;
     ot_u8   corrections;
     ot_u8   pqi;          // Preamble Quality Index
     ot_u8   sqi;          // Synchronization Quality Index
     ot_u8   lqi;          // Link Quality Index
     ot_u8   agc;          // AGC Parameters
-#endif
 } radio_link_struct;
 
 typedef struct {
@@ -109,7 +107,11 @@ typedef struct {
     ot_int              last_rssi;
     ot_int              last_linkloss;
     ot_sig2             evtdone;
-    //radio_link_struct   link;
+
+#   if (OT_FEATURE(RF_LINKINFO) || OT_FEATURE(RF_ADAPTIVE))
+    radio_link_struct   link;
+#   endif
+
 } radio_struct;
 
 extern radio_struct radio;
@@ -1080,7 +1082,7 @@ ot_bool radio_check_cca(void);
 
 /** @brief Performs or schedules manual calibration of the VCO
   * @param none
-  * @retval none
+  * @retval number of ticks estimated duration
   * @ingroup Radio
   *
   * The channel(s) calibrated are either implementation-bound or the one(s)
@@ -1089,7 +1091,7 @@ ot_bool radio_check_cca(void);
   * will simply be scheduled for the next time the VCO is turned-on (i.e. RX or
   * TX startup).
   */
-void radio_calibrate(void);
+ot_u16 radio_calibrate(ot_bool blocking);
 
 
 

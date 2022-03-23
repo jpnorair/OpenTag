@@ -159,19 +159,19 @@ static const ot_u16 mitipersym_ISM433[] = {
 
 
 
-static const ot_u16 tiperhsc_ISM915[] = {
+static const ot_u16 tipermpc_ISM915[] = {
     51,     // 12 symbols, 11 bits each, 132 bits
     17,     // 16 symbols, 9 bits each, 144 bits
     6,      // 20 symbols, 7 bits each, 140 bits
     2       // 28 symbols, 5 bits each, 140 bits
 };
-static const ot_u16 tiperhsc_ISM866[] = {
+static const ot_u16 tipermpc_ISM866[] = {
     202,
     68,
     21,
     8
 };
-static const ot_u16 tiperhsc_ISM433[] = {
+static const ot_u16 tipermpc_ISM433[] = {
     101,
     34,
     11,
@@ -209,11 +209,11 @@ static const ot_u16* mitipersym_lut[] = {
 
 
 /// Ti per smallest LoRa symbol group that contains 128 bits
-static const ot_u16* tiperhsc_lut[] = {
-    (ot_u16*)tiperhsc_ISM915,
-    (ot_u16*)tiperhsc_ISM866,
-    (ot_u16*)tiperhsc_ISM433,
-    (ot_u16*)tiperhsc_ISM915,    // LUT must have a power-of-two regimes, default is ISM915
+static const ot_u16* tipermpc_lut[] = {
+    (ot_u16*)tipermpc_ISM915,
+    (ot_u16*)tipermpc_ISM866,
+    (ot_u16*)tipermpc_ISM433,
+    (ot_u16*)tipermpc_ISM915,    // LUT must have a power-of-two regimes, default is ISM915
 };
 
 
@@ -274,14 +274,14 @@ ot_u16 sx127x_block_miti(const void* phy_handle) {
 }
 
 
-ot_u16 sx127x_hscblock_ti(const void* phy_handle) {
+ot_u16 sx127x_mpcblock_ti(const void* phy_handle) {
     const phymac_struct* pm = phy_handle;
     ot_u8 regime;
     ot_u8 rcode;
 
     regime  = pm->flags & 3;
     rcode   = (pm->channel >> 4) & 3;
-    return (tiperhsc_lut[regime])[rcode];
+    return (tipermpc_lut[regime])[rcode];
 }
 
 

@@ -481,60 +481,77 @@ typedef struct __attribute__((packed)) {
     WLLora_State    state;
     WLLora_IMode    imode;
     wllora_cmd_u    cmd;
-} wllora_struct;
+} wllora_io_t;
 
-extern wllora_struct wllora;
+typedef struct {
+    ot_u8           old_chan_id;
+    ot_u8           old_tx_eirp;
+    ot_u8           use_boost;
+} wllora_ext_t;
+
+extern wllora_io_t wllora;
+extern wllora_ext_t wllora_ext;
 
 
 
+void wllora_wrreg(lr_regs_e reg, const ot_u8 value);
+void wllora_wrburst(lr_regs_e reg, const ot_u8 len, const ot_u8* data);
+ot_u8 wllora_rdreg(lr_regs_e reg);
+void wllora_rdburst(lr_regs_e reg, const ot_u8 len, ot_u8* data);
 
-
-
-
-void wllora_wrreg_cmd(lr_addr_u addr, ot_u8 value);
-void wllora_wrburst_cmd(lr_addr_u addr, ot_u8 len, ot_u8* data);
+void wllora_wrreg_cmd(lr_addr_u addr, const ot_u8 value);
+void wllora_wrburst_cmd(lr_addr_u addr, const ot_u8 len, const ot_u8* data);
 ot_u8 wllora_rdreg_cmd(lr_addr_u addr);
-void wllora_rdburst_cmd(lr_addr_u addr, ot_u8 len, ot_u8* data);
-void wllora_wrbuf_cmd(ot_u8 offset, ot_u8 len, ot_u8* data);
-void wllora_rdbuf_cmd(ot_u8 offset, ot_u8 len, ot_u8* data);
-void wllora_sleep_cmd(ot_u8 sleep_cfg);
-void wllora_standby_cmd(ot_u8 standby_cfg);
+void wllora_rdburst_cmd(lr_addr_u addr, const ot_u8 len, ot_u8* data);
+
+void wllora_wrbuf_cmd(const ot_u8 offset, const ot_u8 len, const ot_u8* data);
+void wllora_rdbuf_cmd(const ot_u8 offset, const ot_u8 len, ot_u8* data);
+void wllora_sleep_cmd(const ot_u8 sleep_cfg);
+void wllora_standby_cmd(const ot_u8 standby_cfg);
 void wllora_fs_cmd(void);
-void wllora_tx_cmd(ot_u32 timeout);
-void wllora_rx_cmd(ot_u32 timeout);
-void wllora_stoprxtim_cmd(ot_u8 rx_timeout_stop);
-void wllora_rxduty_cmd(ot_u32 rx_period, ot_u32 sleep_period);
+void wllora_tx_cmd(const ot_u32 timeout);
+void wllora_rx_cmd(const ot_u32 timeout);
+void wllora_stoprxtim_cmd(const ot_u8 rx_timeout_stop);
+void wllora_rxduty_cmd(const ot_u32 rx_period, const ot_u32 sleep_period);
 void wllora_cad_cmd(void);
 void wllora_txcontwave_cmd(void);
 void wllora_txcontpreamble_cmd(void);
-void wllora_setpkttype_cmd(ot_u8 pkt_type);
+void wllora_setpkttype_cmd(const ot_u8 pkt_type);
 ot_u8 wllora_getpkttype_cmd(void);
-void wllora_rffreq_cmd(ot_u32 freq);
-void wllora_txparams_cmd(ot_u8 power, ot_u8 ramp_time);
-void wllora_paconfig_cmd(ot_u8 pa_duty, ot_u8 hp_max, ot_u8 pa_sel);
-void wllora_txrxfallback_cmd(ot_u8 fallback_mode);
-void wllora_cadparams_cmd(ot_u8 num_symbol, ot_u8 det_peak, ot_u8 det_min, ot_u8 exit_mode, ot_u32 timeout);
-void wllora_bufbase_cmd(ot_u8 tx_base_addr, ot_u8 rx_base_addr);
-void wllora_modparams_cmd(ot_u8 sf, ot_u8 bw, ot_u8 cr, ot_u8 ldro);
-void wllora_pktparams_cmd(ot_u16 preamble_len, ot_u8 hdr_type, ot_u8 payload_len, ot_u8 crc_type, ot_u8 invert_iq);
-void wllora_symtimeout_cmd(ot_u8 sym_num);
+void wllora_rffreq_cmd(const ot_u32 freq);
+void wllora_txparams_cmd(const ot_u8 power, const ot_u8 ramp_time);
+void wllora_paconfig_cmd(const ot_u8 pa_duty, const ot_u8 hp_max, const ot_u8 pa_sel);
+void wllora_txrxfallback_cmd(const ot_u8 fallback_mode);
+void wllora_cadparams_cmd(const ot_u8 num_symbol, const ot_u8 det_peak, const ot_u8 det_min, const ot_u8 exit_mode, const ot_u32 timeout);
+void wllora_bufbase_cmd(const ot_u8 tx_base_addr, const ot_u8 rx_base_addr);
+void wllora_modparams_cmd(const ot_u8 sf, const ot_u8 bw, const ot_u8 cr, const ot_u8 ldro);
+void wllora_pktparams_cmd(const ot_u16 preamble_len, const ot_u8 hdr_type, const ot_u8 payload_len, const ot_u8 crc_type, const ot_u8 invert_iq);
+void wllora_symtimeout_cmd(const ot_u8 sym_num);
 ot_u8 wllora_status_cmd(void);
 lr_rxbufstatus_t wllora_rxbufstatus_cmd(void);
 lr_pktlink_t wllora_pktlink_cmd(void);
 ot_u8 wllora_rssi_cmd(void);
 lr_pktstats_t wllora_pktstats_cmd(void);
 void wllora_resetstats_cmd(void);
-void wllora_dioirq_cmd(ot_u16 irq_mask, ot_u16 irq1_mask, ot_u16 irq2_mask, ot_u16 irq3_mask);
+void wllora_dioirq_cmd(const ot_u16 irq_mask, const ot_u16 irq1_mask, const ot_u16 irq2_mask, const ot_u16 irq3_mask);
 ot_u16 wllora_getirq_cmd(void);
 void wllora_clrirq_cmd(void);
-void wllora_calibrate_cmd(ot_u8 calib_cfg);
-void wllora_calimage_cmd(ot_u8 calfreq1, ot_u8 calfreq2);
-void wllora_regmode_cmd(ot_u8 reg_mode);
+void wllora_calibrate_cmd(const ot_u8 calib_cfg);
+void wllora_calimage_cmd(const ot_u8 calfreq1, const ot_u8 calfreq2);
+void wllora_regmode_cmd(const ot_u8 reg_mode);
 ot_u16 wllora_geterr_cmd(void);
 void wllora_clrerr_cmd(void);
-void wllora_tcxomode_cmd(ot_u8 reg_txco_trim, ot_u32 timeout);
+void wllora_tcxomode_cmd(const ot_u8 reg_txco_trim, const ot_u32 timeout);
 
 
+
+
+
+
+
+ot_u8 wllora_getbasepwr();
+ot_uint wllora_readypin_ishigh(void);
+ot_uint wllora_cadpin_ishigh(void);
 
 
 
@@ -546,7 +563,7 @@ void wllora_tcxomode_cmd(ot_u8 reg_txco_trim, ot_u32 timeout);
 
 /** Functions typically implemented in the radio layer module <BR>
   * ==========================================================================
-  * i.e. io/stm32wl_lora/radio_rm2.c
+  * Typically implemented in: io/stm32wl_lora/radio_rm2.c
   */
 void wllora_virtual_isr(ot_u16 irq_mask);
 
@@ -554,24 +571,29 @@ void wllora_virtual_isr(ot_u16 irq_mask);
 
 
 
-/** Functions implemented typically in the platform driver <BR>
+/** MCU-side Low Level Interrupt and Control Functions <BR>
   * ==========================================================================
-  * i.e. /io/stm32wl_lora/io_stm32wl55_m0.c
+  * Typically implemented in: /io/stm32wl_lora/io_stm32wl55_m0.c
   */
-void    wllora_int_clearall(void);
-ot_uint wllora_readypin_ishigh(void);
-ot_uint wllora_cadpin_ishigh(void);
+
+void wllora_mcuirq_off();
+void wllora_mcuirq_on();
 
 
-void wllora_int_off();
-void wllora_int_on();
-
-/** @brief  Generic Interrupt Config Function
+/** @brief IRQ Config Function for MCU side related to Radio
   * @param  ie_sel     (ot_u32) interrupt enable select
   * @retval None
   * @ingroup STM32WL_LoRa
   */
-void wllora_int_config(ot_u32 ie_sel);
+void wllora_mcuirq_config(ot_u32 ie_sel);
+
+
+/** @brief  Clear all IRQs on the MCU side related to Radio
+  * @param  ie_sel     (ot_u32) interrupt enable select
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_mcuirq_clearall(void);
 
 
 /** @brief  Forces an interrupt on masked, selected sources (sets flag high)
@@ -579,7 +601,7 @@ void wllora_int_config(ot_u32 ie_sel);
   * @retval None
   * @ingroup STM32WL_LoRa
   */
-void wllora_int_force(ot_u16 ifg_sel);
+void wllora_mcuirq_force(ot_u16 ifg_sel);
 
 
 /** @brief  Enables interrupt on masked, selected sources (set enable bit high)
@@ -587,7 +609,7 @@ void wllora_int_force(ot_u16 ifg_sel);
   * @retval None
   * @ingroup STM32WL_LoRa
   */
-void wllora_int_turnon(ot_u16 ie_sel);
+void wllora_mcuirq_turnon(ot_u16 ie_sel);
 
 
 /** @brief  Disables interrupt on masked, selected sources (set enable bit low)
@@ -595,9 +617,111 @@ void wllora_int_turnon(ot_u16 ie_sel);
   * @retval None
   * @ingroup STM32WL_LoRa
   */
-void wllora_int_turnoff(ot_u16 ie_sel);
+void wllora_mcuirq_turnoff(ot_u16 ie_sel);
 
 
+/** @brief  Wait for event.  i.e. do a blocking wait for something to finish.
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_mcuirq_wfe(ot_u16 ifg_sel);
+
+
+/** @brief  Performs a reset on the STM32WL_LoRa core
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_reset();
+
+
+/** @brief  Holds MCU in blocking wait until STM32WL_LoRa is ready
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  *
+  * @todo this function is currently unimplemented
+  */
+void wllora_waitfor_ready();
+
+
+
+
+
+
+/** Radio-side Interrupt and IO Functions <BR>
+  * ========================================================================
+  * Typically implemented in: io/stm32wl_lora/stm32wl_lora_interface.c
+  */
+
+/** @brief  Configures STM32WL_LoRa outputs for RX Data Modes
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_rfio_rx();
+
+/** @brief  Configures STM32WL_LoRa outputs for TX Data Modes
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_rfio_tx();
+
+/** @brief  Configures STM32WL_LoRa outputs for Listen or CSMA Modes
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_rfio_cad();
+
+
+/** @brief  Configures GPIO Interrupts for Listen Mode
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_rfirq_listen();
+
+/** @brief  Configures GPIO Interrupts for RX Data Mode
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_rfirq_rxdata();
+
+
+/** @brief  Configures GPIO Interrupts for RX Frame end mode
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_rfirq_rxend();
+
+
+/** @brief  Configures GPIO Interrupts for CAD Mode (CSMA)
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_rfirq_cad();
+
+/** @brief  Configures GPIO Interrupts for TX Data Mode
+  * @param  None
+  * @retval None
+  * @ingroup STM32WL_LoRa
+  */
+void wllora_rfirq_txdata();
+
+
+
+
+
+/** Bus interface <BR>
+  * ========================================================================
+  * Typically implemented in: /io/stm32wl_lora/io_stm32wl55_m0.c
+  */
 
 /** @brief  Initialize the bus interface of the STM32WL_LoRa
   * @param  None
@@ -613,14 +737,12 @@ void wllora_int_turnoff(ot_u16 ie_sel);
 void wllora_init_bus();
 
 
-
 /** @brief  Causes the System to wait until the SPI bus is fully de-asserted
   * @param  None
   * @retval None
   * @ingroup STM32WL_LoRa
   */
 void wllora_spibus_wait();
-
 
 
 /** @brief  Master function for SPI bus I/O
@@ -644,168 +766,9 @@ void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd);
 
 
 
-ot_u8 wllora_getbasepwr();
-
-
-
-
-
-/** Common GPIO setup & interrupt functions  <BR>
-  * ========================================================================<BR>
-  * Your radio ISR function should be of the type void radio_isr(ot_u8), as it
-  * will be a soft ISR.  The input parameter is an interrupt vector.  The vector
-  * values are shown below:
-  *
-  * -------------- RX MODES (set wllora_iocfg_rx()) --------------
-  * IMode = 0       CAD Done:                   0
-  * (Listen)        CAD Detected:               -
-  *                 Hop (Unused)                -
-  *                 Valid Header:               -
-  *
-  * IMode = 1       RX Done:                    1
-  * (RX Data)       RX Timeout:                 2
-  *                 Hop (Unused)                -
-  *                 Valid Header:               4
-  *
-  * -------------- TX MODES (set wllora_iocfg_tx()) --------------
-  * IMode = 5       CAD Done:                   5   (CCA done)
-  * (CSMA)          CAD Detected:               -   (0/1 = pass/fail)
-  *                 Hop (Unused)                -
-  *                 Valid Header                -
-  *
-  * IMode = 6       TX Done:                    6
-  * (TX)            
-  */
-
-#define RFINT(VAL)      RFI_##VAL
-
-#define RFI_SOURCE0     0   //RADIO_IRQ0_PIN
-#define RFI_SOURCE1     0   //RADIO_IRQ1_PIN
-#define RFI_SOURCE2     0   // Not used with this driver
-#define RFI_SOURCE3     0   //RADIO_IRQ3_PIN
-#define RFI_SOURCE4     0   // Not used with this driver
-#define RFI_SOURCE5     0   // Not used with this driver
-
-#define RFI_ALL         (RFI_SOURCE0 | RFI_SOURCE1 | RFI_SOURCE2 | RFI_SOURCE3 | RFI_SOURCE4 | RFI_SOURCE5)
-
-#define RFI_CADDONE     RFI_SOURCE0
-#define RFI_RXDONE      RFI_SOURCE0
-#define RFI_RXTIMEOUT   RFI_SOURCE1
-#define RFI_RXHEADER    RFI_SOURCE3
-#define RFI_TXDONE      RFI_SOURCE0
-
-#define RFI_LISTEN      (RFI_CADDONE)
-#define RFI_RXDATA      (RFI_RXTIMEOUT | RFI_RXHEADER)
-#define RFI_RXEND       (RFI_RXDONE | RFI_RXTIMEOUT)
-#define RFI_CSMA        (RFI_CADDONE)
-#define RFI_TXDATA      (RFI_TXDONE)
-
-#define RFIV_LISTEN     0
-#define RFIV_RXDONE     1
-#define RFIV_RXTIMEOUT  2
-#define RFIV_RXHEADER   4
-#define RFIV_CCA        5
-#define RFIV_TXDONE     6
-
-
-
-
-
-
-
-void wllora_antsw_off(void);
-void wllora_antsw_on(void);
-void wllora_antsw_tx(ot_bool use_paboost);
-void wllora_antsw_rx(void);
-
-
-/** @brief  Configures STM32WL_LoRa outputs for RX Data Modes
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */ 
-void wllora_iocfg_rx();
-
-/** @brief  Configures STM32WL_LoRa outputs for TX Data Modes
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */ 
-void wllora_iocfg_tx();
-
-/** @brief  Configures STM32WL_LoRa outputs for Listen or CSMA Modes
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */ 
-void wllora_iocfg_cad();
-
-
-/** @brief  Configures GPIO Interrupts for Listen Mode
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */ 
-void wllora_int_listen();
-
-/** @brief  Configures GPIO Interrupts for RX Data Mode
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */ 
-void wllora_int_rxdata();
-
-
-/** @brief  Configures GPIO Interrupts for RX Frame end mode
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */ 
-void wllora_int_rxend();
-
-
-/** @brief  Configures GPIO Interrupts for CSMA Mode
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */ 
-void wllora_int_csma();
-
-/** @brief  Configures GPIO Interrupts for TX Data Mode
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */ 
-void wllora_int_txdata();
-
-
-
-/** @brief  Individual ISR function for STM32WL_LoRa GPIO0 (similar for 1,2,3,4,5)
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */
-void wllora_irq0_isr();
-void wllora_irq1_isr();
-void wllora_irq2_isr();
-void wllora_irq3_isr();
-void wllora_irq4_isr();
-void wllora_irq5_isr();
-
-
-/** @brief  Wait for event.  i.e. do a blocking wait for something to finish.
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */
-void wllora_wfe(ot_u16 ifg_sel);
-
-
-
-
-
 /** Basic Control <BR>
-  * ============================================================================
+  * ========================================================================
+  * Typically implemented in: io/stm32wl_lora/stm32wl_lora_interface.c
   */
 
 /** @brief  Loads default register values into the STM32WL_LoRa
@@ -820,29 +783,27 @@ void wllora_load_defaults();
 void wllora_corelog();
 void wllora_coredump(ot_u8* dst, ot_uint limit);
 
+ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking);
 
-/** @brief  Performs a "soft reset" on the STM32WL_LoRa core
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
+
+
+
+
+/** Common GPIO setup & interrupt functions  <BR>
+  * ========================================================================<BR>
+  * Typically implemented in: /io/stm32wl_lora/io_stm32wl55_m0.c
   */
-void wllora_reset();
+void wllora_antsw_off(void);
+void wllora_antsw_on(void);
+void wllora_antsw_tx(void);
+void wllora_antsw_rx(void);
 
 
-/** @brief  Indicates if READY signal is high
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */
-ot_bool wllora_isready();
 
 
-/** @brief  Holds MCU in blocking wait until STM32WL_LoRa is ready
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */
-void wllora_waitfor_ready();
+
+
+
 
 
 /** @brief  Holds MCU in blocking wait until STM32WL_LoRa enters FSRX
@@ -850,7 +811,7 @@ void wllora_waitfor_ready();
   * @retval None
   * @ingroup STM32WL_LoRa
   */
-void wllora_waitfor_fsrx();
+//void wllora_waitfor_fsrx();
 
 
 /** @brief  Holds MCU in blocking wait until STM32WL_LoRa enters FSTX
@@ -858,7 +819,7 @@ void wllora_waitfor_fsrx();
   * @retval None
   * @ingroup STM32WL_LoRa
   */
-void wllora_waitfor_fstx();
+//void wllora_waitfor_fstx();
 
 
 /** @brief  Holds MCU in blocking wait until STM32WL_LoRa enters CAD
@@ -866,7 +827,7 @@ void wllora_waitfor_fstx();
   * @retval None
   * @ingroup STM32WL_LoRa
   */
-void wllora_waitfor_cad();
+//void wllora_waitfor_cad();
 
 
 /** @brief  Holds MCU in blocking wait until STM32WL_LoRa enters standby
@@ -874,7 +835,7 @@ void wllora_waitfor_cad();
   * @retval None
   * @ingroup STM32WL_LoRa
   */
-void wllora_waitfor_standby();
+//void wllora_waitfor_standby();
 
 
 /** @brief  Holds MCU in blocking wait until STM32WL_LoRa enters sleep
@@ -882,17 +843,17 @@ void wllora_waitfor_standby();
   * @retval None
   * @ingroup STM32WL_LoRa
   */
-void wllora_waitfor_sleep();
+//void wllora_waitfor_sleep();
 
 
-/** @brief Returns the value from the CAD-Detect Pin
+/** @brief Returns the value from the CAD Detection
   * @param None
   * @retval (ot_bool)   True/False on High/Low of CS pin
   * @ingroup STM32WL_LoRa
   *
   * The implementation uses a pin for CAD.  It is nominally DIO1.
   */
-ot_bool wllora_check_cadpin();
+//ot_bool wllora_check_cadstatus();
 
 
 /** @brief  Manually refreshes chip status bits (8 bits)
@@ -900,7 +861,7 @@ ot_bool wllora_check_cadpin();
   * @retval (ot_u8)    8 bit status field (register IRQFLAGS)
   * @ingroup STM32WL_LoRa
   */
-ot_u8 wllora_getstatus();
+//ot_u8 wllora_getstatus();
 
 
 /** @brief  Returns the 3 bit mode value
@@ -908,7 +869,7 @@ ot_u8 wllora_getstatus();
   * @retval ot_u16      OPMODE(2:0) (reg 0x01)
   * @ingroup STM32WL_LoRa
   */
-ot_u8 wllora_mode();
+//ot_u8 wllora_mode();
 
 
 /** @brief  Returns RX BYTES in FIFO value from STM32WL_LoRa core
@@ -916,7 +877,7 @@ ot_u8 wllora_mode();
   * @retval ot_u8      
   * @ingroup STM32WL_LoRa
   */
-ot_u8 wllora_rxbytes();
+//ot_u8 wllora_rxbytes();
 
 
 /** @brief  Returns RSSI value from STM32WL_LoRa core
@@ -925,86 +886,25 @@ ot_u8 wllora_rxbytes();
   * @ingroup STM32WL_LoRa
   *
   */
-ot_u8 wllora_rssi();
-ot_u8 wllora_pktrssi();
-ot_s8 wllora_pktsnr();
+//ot_u8 wllora_rssi();
+//ot_u8 wllora_pktrssi();
+//ot_s8 wllora_pktsnr();
 
 
 
 
-
-
-
-
-/** High-Level Read, Write, and Load-Defaults Functions <BR>
-  * ============================================================================
-  */
-
-/** @brief  Sends a one-byte (really 3 bit) command strobe to the STM32WL_LoRa via SPI
-  * @param  new_mode    (ot_u8) Strobe Opmode (0-7)
-  * @param  blocking    (ot_bool) True: function will not return until mode change is verified
-  * @retval none
-  * @ingroup STM32WL_LoRa
-  *
-  * The only commands you get with STM32WL_LoRa are mode-change operations.
-  */
-void wllora_strobe(ot_u8 new_mode, ot_bool blocking);
-
-
-
-/** @brief  Reads one byte of data from an unbanked, addressed register
-  * @param  addr        (ot_u8) Register address
-  * @retval ot_u8       read data
-  * @ingroup STM32WL_LoRa
-  */
-ot_u8 wllora_read(ot_u8 addr);
-
-
-
-/** @brief  Burst read (multiple bytes) from addressed register
-  * @param  start_addr  (ot_u8) Start Register address (must be shifted)
-  * @param  length      (ot_u8) Burst data length in bytes
-  * @param  data        (ot_u8*) Data buffer to read data into
-  * @retval none
-  * @ingroup STM32WL_LoRa
-  *
-  * This function is nearly identical to wllora_read().  The differences
-  * should be self-explanatory.
-  */
-void wllora_burstread(ot_u8 start_addr, ot_u8 length, ot_u8* data);
-
-
-
-/** @brief  Writes one byte of data to an addressed register
-  * @param  addr        (ot_u8) Register address
-  * @param  data        (ot_u8) Data to write to register
-  * @retval none
-  * @ingroup STM32WL_LoRa
-  */
-void wllora_write(ot_u8 addr, ot_u8 data);
-
-
-
-/** @brief  Burst write (multiple bytes) to registers
-  * @param  start_addr  (ot_u8) Start address for write
-  * @param  length      (ot_u8) Burst data length in bytes
-  * @param  cmd_data    (ot_u8*) address + write data
-  * @retval none
-  * @ingroup STM32WL_LoRa
-  *
-  * The cmd_data argument must have a 2 byte offset.  In other words, the data
-  * should begin at position cmd_data[2].
-  */
-void wllora_burstwrite(ot_u8 start_addr, ot_u8 length, ot_u8* cmd_data);
 
 
 
 
 /** Counter Management Functions <BR>
   * ========================================================================<BR>
+  * Typically implemented in: io/stm32wl_lora/stm32wl_lora_interface.c
+  *
   * Certain MAC processes require a running timer.  Instead of using any
-  * internal timers of the STM32WL_LoRa, we instead use the more reliable interval
-  * timer feature of OpenTag.
+  * internal timers of the STM32WL_LoRa, we instead use the more reliable
+  * interval timer feature of OpenTag.
+  *
   */
   
 void wllora_start_counter();
@@ -1019,6 +919,7 @@ ot_u16 wllora_get_counter();
 
 /** Advanced Configuration <BR>
   * ========================================================================<BR>
+  * Typically implemented in: io/stm32wl_lora/stm32wl_lora_interface.c
   */
 /** @brief  Computes a signed-integer RSSI value from STM32WL_LoRa encoded value
   * @param  encoded_value 	(ot_u8) STM32WL_LoRa encoded RSSI
@@ -1026,9 +927,11 @@ ot_u16 wllora_get_counter();
   * @retval ot_int         	RSSI as signed integer
   * @ingroup STM32WL_LoRa
   */
-ot_int wllora_calc_rssi(ot_u8 encoded_value, ot_s8 packet_snr);
+ot_int wllora_calc_rssi(lr_pktlink_t* linkinfo);
+
 
 ot_u8 wllora_calc_rssithr(ot_u8 input);
+
 
 ot_u8 wllora_clip_txeirp(ot_u8 input_eirp);
 
@@ -1047,8 +950,10 @@ void wllora_set_txpwr(ot_u8 pwr_code);
 
 
 
+
 /** Channel configurations <BR>
   * ========================================================================<BR>
+  * Typically implemented in: io/stm32wl_lora/stm32wl_lora_channels.c
   */
 void wllora_configure_chan(ot_u8 region_code, ot_u8 chan_ordinal);
 
@@ -1058,7 +963,7 @@ ot_u16 wllora_symbol_miti(ot_u8 region_code, ot_u8 rate_code);
 
 ot_u16 wllora_block_miti(const void* phy_handle);
 
-ot_u16 wllora_hscblock_ti(const void* phy_handle);
+ot_u16 wllora_mpcblock_ti(const void* phy_handle);
 
 
 

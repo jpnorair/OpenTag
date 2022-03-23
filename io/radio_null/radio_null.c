@@ -207,7 +207,7 @@ OT_WEAK void radio_idle() {
     sub_force_idle();
 }
 
-OT_WEAK void radio_calibrate() {
+OT_WEAK ot_u16 radio_calibrate(ot_bool blocking) {
 }
 
 OT_WEAK void radio_set_mactimer(ot_u16 clocks) {

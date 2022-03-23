@@ -641,7 +641,7 @@ ot_u16 sx127x_symbol_miti(ot_u8 region_code, ot_u8 rate_code);
 
 ot_u16 sx127x_block_miti(const void* phy_handle);
 
-ot_u16 sx127x_hscblock_ti(const void* phy_handle);
+ot_u16 sx127x_mpcblock_ti(const void* phy_handle);
 
 
 

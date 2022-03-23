@@ -1469,7 +1469,7 @@ void spirit1drv_offline_calibration() {
 #endif
 
 #ifndef EXTF_radio_calibrate
-OT_WEAK void radio_calibrate() {
+OT_WEAK ot_u16 radio_calibrate(ot_bool blocking) {
 /// SPIRIT1 has an errata with the automatic calibrator.  It is best practice to
 /// perform the calibrations manually and offline.
 #if (RF_FEATURE(AUTOCAL) != ENABLED)

@@ -38,14 +38,14 @@
 static uint8_t ldpc_iobuf[32];
 static int16_t ldpc_working[2048];
 
-#elif (M2_FEATURE_HSCODE == ENABLED)
-#include <hblib/hscode.h>
+#elif (M2_FEATURE_MPCODE == ENABLED)
+#include <hblib/mpcode.h>
 #include <hblib/lorallr.h>
 
-///@todo hsc_iobuf might be changeable to &busrx[16], and it doesn't really need to be on heap.
-static uint8_t      hsc_iobuf[16];
+///@todo mpc_iobuf might be changeable to &busrx[16], and it doesn't really need to be on heap.
+static uint8_t      mpc_iobuf[16];
 
-extern hsc_t        hsc;
+extern mpc_t        mpc;
 extern lorallr_t    lorallr;
 extern radio_snr_t  loralink;
 
@@ -219,7 +219,7 @@ void em2_encode_newframe() {
 /// length byte at rxq.front[0].  txq.getcursor should start at txq.front[2]
 /// LoRa also requires encoding the entire frame/packet at once, because it 
 /// does not adequately support FIFO streaming.
-#   if (M2_FEATURE(HSCODE))
+#   if (M2_FEATURE(MPCODE))
     static const ot_u8 frparams[8][3] = {
         {1, 0, 0},              // b000 : FG, unencoded, CRC=2, offset=0
         {0, 2, 0},              // b001 : BG, unencoded, CRC=1, offset=2
@@ -278,9 +278,9 @@ void em2_encode_newframe() {
             em2_add_crc5();
         }
 
-#       if (M2_FEATURE(HSCODE))
+#       if (M2_FEATURE(MPCODE))
         ///@todo This implementation doesn't yet support dynamic rates in TX
-        /// HSCode supports dynamic rates in FG frames.
+        /// MPCode supports dynamic rates in FG frames.
         /// The first block is always RATE48 (BG), or RATE64 (PG, FG).
 		else if (selector & 2) {
 		    if (selector & 1) {
@@ -296,10 +296,10 @@ void em2_encode_newframe() {
 		        txq.front[1]= RATE64;
 
 		        em2.bytes   = 16;
-		        em2.bytes  += hsc_octetsinframe(txq.front[1], q_span(&txq)-8);
+		        em2.bytes  += mpc_octetsinframe(txq.front[1], q_span(&txq)-8);
 		    }
 
-		    hsc_init(&hsc, frparams[selector][2]);
+		    mpc_init(&mpc, frparams[selector][2]);
 		}
 #       endif
 
@@ -321,12 +321,12 @@ void em2_encode_data(void) {
             bgcrc8_put(txq.getcursor);
         }
 
-#       if (M2_FEATURE(HSCODE))
+#       if (M2_FEATURE(MPCODE))
         if (phymac[0].channel & 0x80) {
             while (em2.bytes > 0) {
-                hsc_encode(&hsc, hsc_iobuf, q_markbyte(&txq, hsc.infobytes));
-                hsc_init(&hsc, txq.front[1]&7);
-                sx127x_burstwrite(RFREG_LR_FIFO, 16, hsc_iobuf);
+                mpc_encode(&mpc, mpc_iobuf, q_markbyte(&txq, mpc.infobytes));
+                mpc_init(&mpc, txq.front[1]&7);
+                sx127x_burstwrite(RFREG_LR_FIFO, 16, mpc_iobuf);
                 em2.bytes -= 16;
             }
         }
@@ -391,16 +391,16 @@ void em2_decode_newframe() {
     /// The selector value is
     selector = (rfctl.flags & 5) | ((phymac[0].channel >> 6) & 2);
 
-    /// In HSCODE FEC Mode, we need to start logging RSSI and SNR in order to
+    /// In MPCODE FEC Mode, we need to start logging RSSI and SNR in order to
     /// provide seed information for the LLR interpolator.  Also, we need to provide
     /// default decoding setup -- lower 3 bits of front[1] are used for variable
     /// rate information.  The first frame is always RATE64, unless it's a BG frame
     /// in which case it's RATE48.
-#   if (M2_FEATURE(HSCODE))
+#   if (M2_FEATURE(MPCODE))
     if (selector & 2) {
         ot_u8 rssi_nb   = sx127x_read(RFREG_LR_RSSIVALUE);
         ot_u8 rssi_wb   = sx127x_read(RFREG_LR_RSSIWIDEBAND);
-    	hscrate_t rate  = (selector & RADIO_FLAG_BG) ? RATE48 : RATE64;
+    	mpcrate_t rate  = (selector & RADIO_FLAG_BG) ? RATE48 : RATE64;
 
 #       ifdef __DECODER_DEBUG__
         tim_sv[hits_sv] = LPTIM1->CNT;
@@ -413,7 +413,7 @@ void em2_decode_newframe() {
 
     	// A new frame = a new sync word.  Save the RSSI and SNR from the sync
     	lorallr_init(&lorallr, rate, chansf, rssi_nb, rssi_wb);
-    	hsc_init(&hsc, rate);
+    	mpc_init(&mpc, rate);
     	rxq.front[1] = rate; // initial encoding rate
     }
     else
@@ -453,9 +453,9 @@ void em2_decode_data(void) {
     /// Live encoder needs to track the predicted bit position over the air
     em2.state += em2.lctl;
 
-    /// 1. When using HSCODE FEC, we need to take the RSSI and SNR values and log them.
+    /// 1. When using MPCODE FEC, we need to take the RSSI and SNR values and log them.
     ///    It's important to do this as close to the time of reception as possible.
-#	if (M2_FEATURE(HSCODE))
+#	if (M2_FEATURE(MPCODE))
     if (phymac[0].channel & 0x80) {
         ot_u8 rssi_wb  = sx127x_read(RFREG_LR_RSSIWIDEBAND);
         ot_u8 rssi_nb  = sx127x_read(RFREG_LR_RSSIVALUE);
@@ -508,7 +508,7 @@ void em2_decode_data(void) {
     ///    Encoded frames, on the other hand, require a substantial amount of
     ///    processing.  Decoding is block-based and occurs when a block is
     ///    available in the queue.  Blocks are 16 bytes.
-#   if (M2_FEATURE(HSCODE))
+#   if (M2_FEATURE(MPCODE))
 	if (phymac[0].channel & 0x80) {
 		uint8_t blockcrc;
 		ot_int blcursor;
@@ -556,7 +556,7 @@ ot_u16 em2_decode_endframe() {
     }
     else {
         /// In FEC mode, need to clean-up rxq after successful packet received
-#       if (M2_FEATURE(HSCODE))
+#       if (M2_FEATURE(MPCODE))
         if (phymac[0].channel & 0x80) {
             rxq.getcursor   = rxq.front + rxq.options.ushort;
             rxq.putcursor   = rxq.front + rxq.front[0] + 1;

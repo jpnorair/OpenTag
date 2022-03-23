@@ -44,6 +44,8 @@
 
 
 
+
+
 /// SPI Bus Macros:
 /// Most are straightforward, but take special note of the clocking macros.
 /// On STM32, the peripheral clock must be enabled for the peripheral to work.
@@ -133,6 +135,81 @@ void platform_isr_rfirq() {
 
 
 
+
+
+// Not used with current WL implementation
+//void wllora_irq0_isr() {   wllora_virtual_isr(wllora.imode);     }
+//void wllora_irq1_isr() {   wllora_virtual_isr(wllora.imode + 1); }
+//void wllora_irq2_isr() {   wllora_virtual_isr(wllora.imode + 2); }
+
+
+
+
+/** MCU-side Interrupt Functions <BR>
+  * ==========================================================================
+  */
+
+OT_WEAK inline void wllora_mcuirq_off() {
+    PWR->C2CR3 &= ~PWR_C2CR3_EWRFIRQ;
+}
+
+OT_WEAK inline void wllora_mcuirq_on() {
+    PWR->C2CR3 |= PWR_C2CR3_EWRFIRQ;
+}
+
+void wllora_mcuirq_config(ot_u32 ie_sel) {
+//     ot_u32 scratch;
+//     EXTI->PR    = (ot_u32)RFI_ALL;
+//     scratch     = EXTI->IMR;
+//     scratch    &= ~((ot_u32)RFI_ALL);
+//     scratch    |= ie_sel;
+//     EXTI->IMR   = scratch;
+}
+
+inline void wllora_mcuirq_clearall(void) {
+//     EXTI->PR = RFI_ALL;
+}
+
+inline void wllora_mcuirq_force(ot_u16 ifg_sel) {
+//     EXTI->SWIER |= (ot_u32)ifg_sel;
+}
+
+inline void wllora_mcuirq_turnon(ot_u16 ie_sel) {
+//     EXTI->IMR   |= (ot_u32)ie_sel;
+}
+
+inline void wllora_mcuirq_turnoff(ot_u16 ie_sel)  {
+//     EXTI->PR    = (ot_u32)ie_sel;
+//     EXTI->IMR  &= ~((ot_u32)ie_sel);
+}
+
+void wllora_mcuirq_wfe(ot_u16 ifg_sel) {
+//     do {
+//         __WFE();
+//     }
+//     while((EXTI->PR & ifg_sel) == 0);
+
+    // clear IRQ value in SX127x by setting IRQFLAGS to 0xFF
+    //wllora_write(RFREG(LR_IRQFLAGS), 0xFF);
+
+    // clear pending register(s)
+//     EXTI->PR = ifg_sel;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /** Pin Check Functions <BR>
   * ========================================================================
   * @todo make sure this is all working
@@ -164,9 +241,10 @@ ot_u8 wllora_getbasepwr() {
 
 
 
-/** Bus interface <BR>
+/** Control interface <BR>
   * ========================================================================
   */
+
 void wllora_reset() {
 /// @note this uses a busywait loop.  A timed WFE could be used in the test
 ///       loop IFF:
@@ -279,9 +357,9 @@ ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking) {
             goto ENTER_SLEEP;
 
         /// In this impl's manual calibration, we don't care about
-        /// RC13M or RC64k calibration -- these are disabled.
+        /// RC64k calibration -- that is disabled.
         case RFSTATE_calibration:
-            wllora_calibrate_cmd(0b01111100);
+            wllora_calibrate_cmd(0b01111110);
             wllora.state = RFSTATE_calibration;
             break;
 
@@ -340,6 +418,14 @@ ot_u16 wllora_until_ready(void) {
 }
 
 
+
+
+
+
+/** Bus interface <BR>
+  * ========================================================================
+  */
+
 void wllora_init_bus() {
 
     ///1. Reset the Radio Core.
@@ -365,19 +451,14 @@ void wllora_init_bus() {
     NVIC_SetPriority(SUBGHZ_Radio_IRQn, PLATFORM_NVIC_RF_GROUP);
     NVIC_EnableIRQ(SUBGHZ_Radio_IRQn);
     
-    /// 4. Put RF Core into warm sleep
-    // Commented-out right now because I'm doing testing on the core.
-    //wllora_sleep(True);
+    ///@note Radio exits this function in RCstandby state
 }
-
 
 
 void wllora_spibus_wait() {
 /// Blocking wait for SPI bus to be over
      while (RADIO_SPI->SR & SPI_SR_BSY);
 }
-
-
 
 
 void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
@@ -449,9 +530,9 @@ void wllora_antsw_on(void) {
     BOARD_RFANT_ON();
 }
 
-void wllora_antsw_tx(ot_bool use_paboost) {
+void wllora_antsw_tx(void) {
     wllora_antsw_on();
-    BOARD_RFANT_TX(use_paboost);
+    BOARD_RFANT_TX(wllora_ext.use_boost);
 }
 
 void wllora_antsw_rx(void) {
@@ -460,49 +541,6 @@ void wllora_antsw_rx(void) {
 }
 
 
-
-
-void wllora_int_config(ot_u32 ie_sel) {
-//     ot_u32 scratch;
-//     EXTI->PR    = (ot_u32)RFI_ALL;
-//     scratch     = EXTI->IMR;
-//     scratch    &= ~((ot_u32)RFI_ALL);
-//     scratch    |= ie_sel;
-//     EXTI->IMR   = scratch;
-}
-
-inline void wllora_int_clearall(void) {
-//     EXTI->PR = RFI_ALL;
-}
-
-inline void wllora_int_force(ot_u16 ifg_sel) { 
-//     EXTI->SWIER |= (ot_u32)ifg_sel; 
-}
-
-inline void wllora_int_turnon(ot_u16 ie_sel) { 
-//     EXTI->IMR   |= (ot_u32)ie_sel;  
-}
-
-inline void wllora_int_turnoff(ot_u16 ie_sel)  {
-//     EXTI->PR    = (ot_u32)ie_sel;
-//     EXTI->IMR  &= ~((ot_u32)ie_sel);
-}
-
-
-
-
-void wllora_wfe(ot_u16 ifg_sel) {
-//     do {
-//         __WFE();
-//     }
-//     while((EXTI->PR & ifg_sel) == 0);
-
-    // clear IRQ value in SX127x by setting IRQFLAGS to 0xFF
-    //wllora_write(RFREG(LR_IRQFLAGS), 0xFF);
-
-    // clear pending register(s)
-//     EXTI->PR = ifg_sel;
-}
 
 
 

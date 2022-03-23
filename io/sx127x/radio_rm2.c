@@ -64,10 +64,10 @@
 // Local header for subroutines and implementation constants (supports patching)
 #include "radio_rm2.h"
 
-#if (M2_FEATURE_HSCODE)
-#include <hblib/hscode.h>
+#if (M2_FEATURE_MPCODE)
+#include <hblib/mpcode.h>
 #include <hblib/lorallr.h>
-hsc_t       hsc;
+mpc_t       mpc;
 lorallr_t   lorallr;
 radio_snr_t loralink;
 #endif
@@ -439,7 +439,7 @@ OT_WEAK void rm2_calc_link(void) {
 	prssi_code			= sx127x_read(RFREG_LR_PKTRSSIVALUE);
 	psnr_code           = sx127x_read(RFREG_LR_PKTSNRVALUE);
 
-#   if (M2_FEATURE_HSCODE)
+#   if (M2_FEATURE_MPCODE)
 	loralink.mean_snr   = (ot_s16)psnr_code;
 #   endif
 
@@ -811,9 +811,9 @@ OT_WEAK void rm2_rxdata_isr() {
     else if ((em2.crc5 == 1) && ((rfctl.flags & 7) == 0)) {
         ot_uint rx_octets;
 
-#		if (M2_FEATURE(HSCODE))
+#		if (M2_FEATURE(MPCODE))
         if (phymac[0].channel & 0x80) {
-            rx_octets   = (ot_uint)hsc_octetsinframe((hscrate_t)(rxq.front[1]&7), rxq.front[0]-7);
+            rx_octets   = (ot_uint)mpc_octetsinframe((mpcrate_t)(rxq.front[1]&7), rxq.front[0]-7);
             rx_octets  += 16;
         }
         else
@@ -856,8 +856,8 @@ OT_WEAK void rm2_rxend_isr(void) {
 
 #ifndef EXTF_rm2_decode_s2
 void rm2_decode_s2(void) {
-#if (M2_FEATURE_HSCODE == ENABLED)
-    ///@todo new function to get duration for an HSC coded block
+#if (M2_FEATURE_MPCODE == ENABLED)
+    ///@todo new function to get duration for an MPC coded block
 //    static const ot_u8 ti_per_block[4] = {
 //        51, 17, 6, 2
 //    };
@@ -873,7 +873,7 @@ void rm2_decode_s2(void) {
 
         // Decode.  If the block is bad, setting em2.state --> -1 will terminate reception
         // on next interrupt.
-        blockcrc = hsc_decode(&hsc, rxq.putcursor, llrbits);
+        blockcrc = mpc_decode(&mpc, rxq.putcursor, llrbits);
         if (blockcrc != 0) {
             rxq.options.ushort  = 0;
             em2.state           = -1;
@@ -884,9 +884,9 @@ void rm2_decode_s2(void) {
         lorallr_popblock(&lorallr);
 
         // The putcursor is advanced by the number of decoded bytes,
-        // and the hsc object is reinitialized to the explicit block size for the next block
-        rxq.putcursor += hsc.infobytes;
-        hsc_init(&hsc, (hscrate_t)(rxq.front[1] & 7));
+        // and the mpc object is reinitialized to the explicit block size for the next block
+        rxq.putcursor += mpc.infobytes;
+        mpc_init(&mpc, (mpcrate_t)(rxq.front[1] & 7));
 
         // Move ahead the block decode cursor
         rxq.getcursor      += 16;
@@ -905,7 +905,7 @@ void rm2_decode_s2(void) {
     ///      nextevent, which is almost always a bad idea, but here it is the best thing to do.
     rm2_decode_s2_WAITNEXT:
     sys.task_RFA.event      = 5;
-    sys.task_RFA.nextevent  = (ot_uint)sx127x_hscblock_ti(&phymac[0]);
+    sys.task_RFA.nextevent  = (ot_uint)sx127x_mpcblock_ti(&phymac[0]);
     return;
 #endif
 }
@@ -1423,7 +1423,7 @@ OT_WEAK ot_bool radio_check_cca(void) {
 #endif
 
 #ifndef EXTF_radio_calibrate
-OT_WEAK void radio_calibrate(void) {
+OT_WEAK ot_u16 radio_calibrate(ot_bool blocking) {
 /// SX127x does mandatory automatic calibration
 }
 #endif
@@ -1432,7 +1432,7 @@ OT_WEAK void radio_calibrate(void) {
 OT_WEAK void* radio_getlinkinfo(void) {
 /// Returns pointer to link information.
 /// Information is specific to HW (in this case SX127x).  User will need to cast appropriately.
-#   if (M2_FEATURE_HSCODE)
+#   if (M2_FEATURE_MPCODE)
     return &loralink;
 #   else
     return NULL;

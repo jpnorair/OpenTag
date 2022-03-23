@@ -167,6 +167,7 @@ void sx127xdrv_save_linkinfo();
 #define RADIO_FLAG_PWRMASK      (3 << 6)	//b11000000
 #define RADIO_FLAG_XOOFF        (0 << 6)	//b00000000
 #define RADIO_FLAG_XOON         (1 << 6)	//b01000000
+#define RADIO_FLAG_CADFOUND     (1 << 6)    //b01000000
 
 
 

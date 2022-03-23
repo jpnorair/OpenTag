@@ -961,7 +961,7 @@ ot_bool radio_check_cca();
   * will simply be scheduled for the next time the VCO is turned-on (i.e. RX or
   * TX startup).
   */
-void radio_calibrate();
+ot_u16 radio_calibrate(ot_bool blocking);
 
 
 

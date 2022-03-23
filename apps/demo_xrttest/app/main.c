@@ -630,11 +630,11 @@ void setup_listen(bool is_gateway, ot_u8 channel) {
     }
 }
 
-//#define HSCODE_UNITTEST
-#ifdef HSCODE_UNITTEST
-#include <hblib/hscode.h>
+//#define MPCODE_UNITTEST
+#ifdef MPCODE_UNITTEST
+#include <hblib/mpcode.h>
 volatile ot_int testreg;
-ot_int test_hscode(ot_int trials) {
+ot_int test_mpcode(ot_int trials) {
 	static const uint8_t encoder_in[1][8] = {
 		{0xE0, 0xD3, 0xCF, 0x66, 0x5F, 0xAD, 0x70, 0x12}
 	};
@@ -661,13 +661,13 @@ ot_int test_hscode(ot_int trials) {
 		}
 	};
 	uint8_t output[16] = {0};
-	hsc_t hsc;
+	mpc_t mpc;
 	uint8_t crcreg;
 
-	hsc_init(&hsc, RATE64);
-	hsc_encode(&hsc, output, &encoder_in[0]);
+	mpc_init(&mpc, RATE64);
+	mpc_encode(&mpc, output, &encoder_in[0]);
 
-	crcreg = hsc_decode(&hsc, output, &llr_6dB[0]);
+	crcreg = mpc_decode(&mpc, output, &llr_6dB[0]);
 
 	return (ot_int)crcreg;
 }
@@ -714,8 +714,8 @@ void main(void) {
 #   endif
 
 
-#	ifdef HSCODE_UNITTEST
-    testreg = test_hscode(1);
+#	ifdef MPCODE_UNITTEST
+    testreg = test_mpcode(1);
 #	endif
 
     ///6. MAIN RUNTIME (post-init)  <BR>

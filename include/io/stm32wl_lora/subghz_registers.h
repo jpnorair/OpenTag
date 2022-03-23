@@ -75,6 +75,21 @@ typedef enum __attribute__ ((__packed__)) {
     LR_SMPSC0R      = _FLIP16(0x0916),
     LR_PCR          = _FLIP16(0x091A),
     LR_SMPSC2R      = _FLIP16(0x0923),
+    /* Start of Semtech undocumented registers */
+    LR_BWSEL        = _FLIP16(0x0807),
+    LR_CFOH         = _FLIP16(0x06B0),
+    LR_CFOL         = _FLIP16(0x06B1),
+    LR_RXADRPTR     = _FLIP16(0x0803),
+    LR_TXADRPTR     = _FLIP16(0x0802),
+    LR_RTXPLDLEN    = _FLIP16(0x06BB),
+    LR_PKTCTL1      = _FLIP16(0x06B4),
+    LR_PKTCTL1A     = _FLIP16(0x06B8),
+    LR_RSSISYNC     = _FLIP16(0x06CA),      /* read Rssi sampled at Sync */
+    LR_IQPOLARITY   = _FLIP16(0x0736),      /* IQ Polarity Setup */
+    LR_TXMOD        = _FLIP16(0x0889),      /* RegTxModulation -- not sure what exactly */
+    LR_RTCCTRL      = _FLIP16(0x0902),      /* RegRtcControl -- not sure how it works */
+    LR_EVTMASK      = _FLIP16(0x0944),      /* RegEventMask -- not sure how it works */
+    /* End of known accessible registers */
     LR_ADDR_MIN     = 0,
     LR_ADDR_MAX     = 0x0fff,
 } lr_regs_e;
@@ -84,6 +99,32 @@ typedef union {
     ot_u16      u16;
     ot_u8       u8[2];
 } lr_addr_u;
+
+
+
+/** Special notes: ugly-ass workarounds from Semtech/ST library code
+  *
+  * WORKAROUND - Optimizing the Inverted IQ Operation, see DS_SX1261-2_V1.2 datasheet chapter 15.4
+    if( SubgRf.PacketParams.Params.LoRa.InvertIQ == LORA_IQ_INVERTED ) {
+        // RegIqPolaritySetup = @address 0x0736
+        SUBGRF_WriteRegister( 0x0736, SUBGRF_ReadRegister( 0x0736 ) & ~( 1 << 2 ) );
+    }
+    else {
+        // RegIqPolaritySetup @address 0x0736
+        SUBGRF_WriteRegister( 0x0736, SUBGRF_ReadRegister( 0x0736 ) | ( 1 << 2 ) );
+    }
+  *
+  *
+  * WORKAROUND - Modulation Quality with 500 kHz LoRaTM Bandwidth
+    RegTxModulation = @address 0x0889
+    if((SubgRf.Modem==MODEM_LORA) && (SubgRf.ModulationParams.Params.LoRa.Bandwidth == LORA_BW_500 )) {
+        SUBGRF_WriteRegister( 0x0889, SUBGRF_ReadRegister( 0x0889 ) & ~( 1 << 2 ) );
+    }
+    else {
+        SUBGRF_WriteRegister( 0x0889, SUBGRF_ReadRegister( 0x0889 ) | ( 1 << 2 ) );
+    }
+  *
+  */
 
 
 
