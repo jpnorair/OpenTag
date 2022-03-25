@@ -487,6 +487,7 @@ typedef struct {
     ot_u8           old_chan_id;
     ot_u8           old_tx_eirp;
     ot_u8           use_boost;
+    ot_u8           smps_setting;
 } wllora_ext_t;
 
 extern wllora_io_t wllora;

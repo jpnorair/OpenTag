@@ -52,6 +52,7 @@
 #include <otlib/buffers.h>
 #include <otlib/crc16.h>
 #include <otlib/utils.h>
+#include <otlib/delay.h>
 
 // Local header for subroutines and implementation constants (supports patching)
 #include "radio_rm2.h"
@@ -114,19 +115,23 @@ void wlloradrv_save_linkinfo(void);
 #define RFIV_TXDONE     6
 
 
+
 void wllora_virtual_isr(ot_u16 irq_mask) {
     switch (wllora.imode) {
-        // Listen Mode is handled together with RX mode in this impl.
+        // Listen Mode: go into RX if CAD detected, else failure
         case MODE_Listen:
+            if (irq_mask & LR_IRQ_CADDET) {
+                rfctl.flags |= RADIO_FLAG_CADFOUND;
+                rm2_reenter_rx(radio.evtdone);
+                return;
+            }
+            goto KILL_ON_ERROR;
+
+        // Available IRQs are HDRVALID and RXDONE
         case MODE_RXData:
             if (irq_mask & LR_IRQ_RXDONE) {
                 // frame received
                 rm2_rxend_isr();
-                return;
-            }
-            if (irq_mask & LR_IRQ_TIMEOUT) {
-                // kill
-                rm2_kill();
                 return;
             }
             if (irq_mask & LR_IRQ_HDRVALID) {
@@ -136,8 +141,9 @@ void wllora_virtual_isr(ot_u16 irq_mask) {
             }
             goto KILL_ON_ERROR;
 
+        // Set the CAD flag depending on result.
         case MODE_CSMA:
-            if ((irq_mask & (LR_IRQ_CADDONE | LR_IRQ_CADDET)) == (LR_IRQ_CADDONE | LR_IRQ_CADDET)) {
+            if (irq_mask & LR_IRQ_CADDET) {
                 rfctl.flags |= RADIO_FLAG_CADFOUND;
             }
             else {
@@ -627,10 +633,6 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     // Apply the cached channel parameters to the Radio Core
     sub_set_channel(wllora_ext.old_chan_id, wllora_ext.old_tx_eirp);
 
-    // Clear all IRQ flags
-    ///@todo is this needed here?
-    wllora_clrirq_cmd();
-
     /// 3.  Use CAD or RX initialization subroutine
     if (cad_else_rx) {
         // Set I/O for CAD detect
@@ -697,7 +699,7 @@ OT_WEAK void rm2_rxtest(ot_u8 channel, ot_u8 tsettings, ot_u16 timeout) {
 #endif
 
 
-
+//static volatile ot_u8 test_state;
 #ifndef EXTF_rm2_reenter_rx
 OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
 /// Restart RX using the same settings that are presently in the radio core.
@@ -717,12 +719,23 @@ OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
     // Core dump is only done when _RFCORE_DEBUG is defined
     __CORE_DUMP();
     
+    // testing only
+//    {
+//        test_state = wllora_status_cmd();
+//    }
+
+    wllora_rfirq_rxdata();
     wllora_antsw_rx();
     wllora_set_state(RFSTATE_rx, False);
     
+    // testing only
+//    {
+//        delay_ms(10);
+//        test_state = wllora_status_cmd();
+//    }
+
     // Packet Sync must be reset at this point, so another sync can be found.
     // radio_gag() above will reset all the IRQ flags.
-    wllora_rfirq_rxdata();
     radio.state = RADIO_Listening;
     dll_unblock();
 }
@@ -778,7 +791,6 @@ OT_WEAK void rm2_rxdata_isr() {
     // Failure case on em2.state < 0 (decoding irregularity)
     if (em2.state < 0) {
         systim_disable_insertion();
-        radio.state = RADIO_Idle;
         radio_gag();
         radio_idle();
         rm2_reenter_rx(radio.evtdone);
@@ -978,11 +990,8 @@ OT_WEAK void rm2_resend(ot_sig2 callback) {
 
 #ifndef EXTF_rm2_txcsma_isr
 void sub_cad_csma(void) {
-    radio_gag(); 
     wllora_rfio_cad();
     wllora_rfirq_cad();
-
-    radio_idle();
     wllora_antsw_rx();
     wllora_set_state(RFSTATE_cad, False);
     radio.state = RADIO_Csma;
@@ -990,7 +999,6 @@ void sub_cad_csma(void) {
 
 ot_bool sub_cca_test(void) {
     if ((rfctl.flags & RADIO_FLAG_CADFOUND) == 0) {
-        wllora_mcuirq_off();
         rfctl.state = RADIO_STATE_TXCAD1;
         
         // This calls CSMA loop
@@ -1010,7 +1018,12 @@ OT_WEAK void rm2_txcsma_isr(void) {
     /// be in SLEEP.  We need to put it in Standby in order to change the
     /// registers, and we use HSE standby to minimize switching time among
     /// active modes (Standby -> CAD -> Standby -> CAD -> Standby -> TX)
-    wllora_set_state(RFSTATE_HSEstandby, True);
+    {   WLLora_State next_state;
+        next_state = (wllora.state > RFSTATE_RCstandby) ?
+                RFSTATE_HSEstandby : RFSTATE_RCstandby;
+        wllora_set_state(next_state, True);
+    }
+    radio_gag();
 
     // The shifting in the switch is so that the numbers are 0, 1, 2, 3...
     // It may seem silly, but it allows the switch to be compiled better.
@@ -1039,9 +1052,9 @@ OT_WEAK void rm2_txcsma_isr(void) {
             em2_encode_newframe();
 
             // Expected entry State is Sleep, here.
-            next_state = (wllora.state <= RFSTATE_RCstandby) ?
-                            RFSTATE_RCstandby : RFSTATE_HSEstandby;
-            wllora_set_state(next_state, True);
+            //next_state = (wllora.state <= RFSTATE_RCstandby) ?
+            //                RFSTATE_RCstandby : RFSTATE_HSEstandby;
+            //wllora_set_state(next_state, True);
 
             // Apply the cached channel parameters to the Radio Core.
             // rm2_test_chanlist() will set-up the channel into wllora_ext cache.
@@ -1052,7 +1065,6 @@ OT_WEAK void rm2_txcsma_isr(void) {
             ///@note this LUT supports BG, FG, and PG
             type = mode_lut[rfctl.flags & 7];
             wlloradrv_mdmconfig(type, em2.bytes);
-            wllora_mcuirq_off();
             
             // Bypass CSMA if MAC is disabling it
             ///@todo CSMA/CCA is disabled for now while Radio is being developed
@@ -1075,9 +1087,8 @@ OT_WEAK void rm2_txcsma_isr(void) {
             if (sub_cca_test()) {
                 radio_sleep();
                 rfctl.state = RADIO_STATE_TXCAD2;
-
-///@todo Make sure this interrupt is working, there had been some past issues with it.
-                radio_set_mactimer(0 /*phymac[0].tg */);
+                ///@todo Make sure this interrupt is working, there had been some past issues with it.
+                radio_set_mactimer(phymac[0].tg);
             }
             break;
         
@@ -1102,11 +1113,9 @@ OT_WEAK void rm2_txcsma_isr(void) {
             rfctl.state = RADIO_STATE_TXSTART;
 
 ///@todo there is a race condition that can occur here between RX and TX processes,
-/// which will cause Radio to freak-out.
-/// One issue is that the sys.task_RFA.event is getting set to 5 (TX) before an
-/// RX process is completely over (some priority inversion is happening)
+/// given that the code below can be too long to put in an ISR.  Ideally there is
+/// a better way to handle this via the radio.evtdone() callback.
             radio.evtdone(0, (rfctl.flags & (RADIO_FLAG_PG | RADIO_FLAG_CONT | RADIO_FLAG_BG)));
-            radio_gag();
             
             // Preload into TX FIFO all packet data
             // There are slightly different processes for BG and FG frames
@@ -1128,13 +1137,13 @@ OT_WEAK void rm2_txcsma_isr(void) {
             radio.state = RADIO_DataTX;
             rfctl.state = RADIO_STATE_TXDATA;
             wllora_rfio_tx();
+            wllora_rfirq_txdata();
             
             // Pre-TX Core Dump to verify TX Register Settings.
             // Core dump is only done when _RFCORE_DEBUG is defined
             __CORE_DUMP();
-            
+
             wllora_antsw_tx();
-            wllora_rfirq_txdata();
             wllora_set_state(RFSTATE_tx, False);
             break;
         }

@@ -66,7 +66,8 @@
 #   define TG_CHANNEL           (0x99)  //434.036
 #else //(RF_PARAM(BAND) == 915)
 #   define __DBM_DEFAULT        20
-#   define TG_CHANNEL           (0x89) // Could be also another channel
+//#   define TG_CHANNEL           (0x89) // Could be also another channel
+#   define TG_CHANNEL           (0x09) // Could be also another channel
 #endif
 
 
@@ -92,6 +93,7 @@
 
 // nice to have for debugging
 //#define __FORCE_GATEWAY
+#define __FORCE_ENDPOINT
 
 
 /** Main Static Variables <BR>
@@ -147,9 +149,15 @@ void OT_SWITCH1_ISR(void) {
 }
 #endif
 
+#if defined(OT_SWITCH2_ISR)
+void OT_SWITCH2_ISR(void) {
+}
+#endif
 
-
-
+#if defined(OT_SWITCH3_ISR)
+void OT_SWITCH3_ISR(void) {
+}
+#endif
 
 
 
@@ -318,7 +326,7 @@ void xrt_invoke(ot_u8 state) {
 
 
 /** temporarily using a different task for purpose of radio testing */
-#if 0
+#if 1
 void xrttest_systask(void* arg) {
     ot_task         task; 
     session_tmpl    s_tmpl;
@@ -549,6 +557,8 @@ void setup_init() {
     // Set it up as gateway by default (switch open, if there is a switch at all)
 #   if defined(__FORCE_GATEWAY)
     setup.is_gateway = 1;
+#   elif defined(__FORCE_ENDPOINT)
+    setup.is_gateway = 0;
 #   elif !defined(OT_SWITCH1_ISR)
     setup.is_gateway = 0;
 #   else
@@ -571,7 +581,7 @@ void setup_init() {
     }
     
     // BusyWait for button to be released.
-#   if defined(OT_SWITCH1_ISR) && !defined(__FORCE_GATEWAY)
+#   if defined(OT_SWITCH1_ISR) && !(defined(__FORCE_GATEWAY) || defined(__FORCE_ENDPOINT))
     while ((OT_SWITCH1_PORT->IDR & OT_SWITCH1_PIN) == (BOARD_SW1_POLARITY << OT_SWITCH1_PIN));
 #   endif
 

@@ -36,6 +36,35 @@
 
 #define _FLIP16(U16) (ot_u16)( ( ((U16) << 8) | ((U16) >> 8) ) & 0xFFFF)
 
+#if BOARD_FEATURE(RFSMPS)
+#   define WLLORA_SMPS_DEFAULT  0b010   /* 40 mA */
+#   define WLLORA_SMPS_MAX      0b100   /* 60 mA */
+#endif
+
+#ifdef BOARD_FEATURE(TCXO)
+#   if (BOARD_PARAM(mVtcxo) > 3300)
+#       error "TCXO Voltage is higher than supported amount"
+#   elif (BOARD_PARAM(mVtcxo) > 3000)
+#       define LR_REG_TCXO_TRIM     7
+#   elif (BOARD_PARAM(mVtcxo) > 2700)
+#       define LR_REG_TCXO_TRIM     6
+#   elif (BOARD_PARAM(mVtcxo) > 2400)
+#       define LR_REG_TCXO_TRIM     5
+#   elif (BOARD_PARAM(mVtcxo) > 2200)
+#       define LR_REG_TCXO_TRIM     4
+#   elif (BOARD_PARAM(mVtcxo) > 1800)
+#       define LR_REG_TCXO_TRIM     3
+#   elif (BOARD_PARAM(mVtcxo) > 1700)
+#       define LR_REG_TCXO_TRIM     2
+#   elif (BOARD_PARAM(mVtcxo) > 1600)
+#       define LR_REG_TCXO_TRIM     1
+#   else
+#       define LR_REG_TCXO_TRIM     0
+#   endif
+
+#   define LR_REG_TCXO_TIMEOUT      (ot_u32)(((float)BOARD_PARAM(uStcxo) + 15.625) / 15.625)
+#endif
+
 #define LR_IRQ_TXDONE       (0x0001)
 #define LR_IRQ_RXDONE       (0x0002)
 #define LR_IRQ_PREAMBLEDET  (0x0004)

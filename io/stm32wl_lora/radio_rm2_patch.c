@@ -335,7 +335,7 @@ void em2_encode_data(void) {
                 ///@todo Saturation intrinsic here?
                 ot_int fill = (em2.bytes > 16) ? 16 : em2.bytes;
 
-                wllora_wrbuf_cmd(em2.bytes, fill, q_markbyte(&txq, fill));
+                wllora_wrbuf_cmd(0, fill, q_markbyte(&txq, fill));
                 em2.bytes -= fill;
             }
         }
@@ -502,7 +502,7 @@ void em2_decode_data(void) {
 	    ///@todo saturation intrinsic
 		grab = (newbytes > 32) ? 32 : newbytes;
 
-		wllora_rdbuf_cmd(em2.bytes, grab, data);
+		wllora_rdbuf_cmd(0, grab, data);
 
 		newbytes   -= grab;
 		em2.bytes  += grab;

@@ -232,6 +232,12 @@
 #ifndef BOARD_FEATURE_RFXTAL
 #define BOARD_FEATURE_RFXTAL            ENABLED                                 // XTAL for RF chipset
 #endif
+#ifndef BOARD_FEATURE_RFSMPS
+#define BOARD_FEATURE_RFSMPS            ENABLED
+#endif
+#ifndef BOARD_FEATURE_TCXO
+#define BOARD_FEATURE_TCXO              ENABLED
+#endif
 #ifndef BOARD_FEATURE_RFXTALOUT
 #define BOARD_FEATURE_RFXTALOUT         DISABLED
 #endif
@@ -299,6 +305,13 @@
 #endif
 #ifndef BOARD_PARAM_HFppm
 #define BOARD_PARAM_HFppm               20000
+#endif
+
+#ifndef BOARD_PARAM_mVtcxo
+#define BOARD_PARAM_mVtcxo              1700
+#endif
+#ifndef BOARD_PARAM_uStcxo
+#define BOARD_PARAM_uStcxo              5000
 #endif
 
 #define BOARD_PARAM_RFHz                32000000
@@ -396,10 +409,11 @@
 #   error "Only 1 SW-EXTI is defined in the board support header."
 #elif BOARD_PARAM(SWEXTIS) > 0
 #   define __USE_EXTI15
+#   define __ISR_EXTI15
 #   define BOARD_SWEXTI1_NUM            15
 #   define BOARD_SWEXTI1_ISR            platform_isr_exti15
-#   define BOARD_SWEXTI1_SET()          do { EXTI->SWIER1 = (1<<15); } while (0)
-#   define BOARD_SWEXTI1_CLR()          do { EXTI->PR1 = (1<<15); } while (0)
+#   define BOARD_SWEXTI1_SET()          do { EXTI->SWIER1 = (1<<15);  } while (0)
+#   define BOARD_SWEXTI1_CLR()          do { EXTI->PR1    = (1<<15);  } while (0)
 #endif
 
 // RF Front-end GPIO
@@ -643,7 +657,7 @@ static inline void BOARD_DMA_CLKOFF(void) {
 /// BOARD Macro for EXTI initialization.
 /// This only considers configurable EXTIs that are specific to the BOARD.
 /// - GPIO EXTI Configuration.
-/// - Interrupt Pre-masking (almost never used)
+/// - Interrupt unmasking for CPU2
 static inline void BOARD_EXTI_STARTUP(void) {
     // EXTI0-3: PA0 = SW1, PA1 = SW2, Px2 = Unused, PA3 = UART RX Sense
     SYSCFG->EXTICR[0]   = (0 << 0) \
@@ -668,6 +682,20 @@ static inline void BOARD_EXTI_STARTUP(void) {
                         | (0 << 4) \
                         | (0 << 8) \
                         | (0 << 12);
+
+    // IMRs 0, 1, 3, 6, 15: GPIO pins described from above.
+    // IMRs 17-20: RTC lines
+    EXTI->C2IMR1    = (1<<0) | (1<<1) | (1<<3) | (1<<6) | (1<<15)
+                    | (1<<17) | (1<<18) | (1<<19) | (1<<20);
+
+    // IMR 37: CPU2 IPCC
+    // IMR 39: HSEM1 for CPU2
+    // IMR 41: C1SEV for CPU2
+    // IMR 44-45: Radio Interrupts
+    EXTI->C2IMR2    = (1<<(37-32))
+                    | (1<<(39-32))
+                    | (1<<(41-32))
+                    | (1<<(44-32)) | (1<<(45-32));
 }
 
 
@@ -922,13 +950,13 @@ static inline void BOARD_RFANT_RX(void) {
 
 
 
-static inline void BOARD_RFSPI_CLKON(void) {
-    RCC->C2APB3ENR = RCC_APB3ENR_SUBGHZSPIEN;
-}
-
-static inline void BOARD_RFSPI_CLKOFF(void) {
-    RCC->C2APB3ENR = 0;
-}
+//static inline void BOARD_RFSPI_CLKON(void) {
+//    RCC->C2APB3ENR = RCC_APB3ENR_SUBGHZSPIEN;
+//}
+//
+//static inline void BOARD_RFSPI_CLKOFF(void) {
+//    RCC->C2APB3ENR = 0;
+//}
 
 
 
@@ -1061,8 +1089,28 @@ static inline void BOARD_XTAL_STARTUP(void) {
 ///@note BOARD Macros for turning-on and turning-off the High-speed XTAL.
 ///      High speed XTAL on this board is connected to the RF subsystem.
 static inline void BOARD_HSXTAL_ON(void) {
+    ot_u32 rcc_cr = RCC->CR;
+    if (rcc_cr & RCC_CR_HSEON) {
+        if (rcc_cr & RCC_CR_HSEBYPPWR) {
+            return;
+        }
+        rcc_cr  ^= RCC_CR_HSEON;
+        RCC->CR  = rcc_cr;
+    }
+    rcc_cr     |= RCC_CR_HSEBYPPWR | RCC_CR_HSEON;
+    RCC->CR     = rcc_cr;
+    //rcc_cr     |= RCC_RCC_CR_HSEBYPPWR;
+    //RCC->CR     = rcc_cr;
+    //rcc_cr     |= RCC_RCC_CR_HSEON;
+    //RCC->CR     = rcc_cr;
 }
+
 static inline void BOARD_HSXTAL_OFF(void) {
+    ot_u32 rcc_cr = RCC->CR;
+    if (rcc_cr & RCC_CR_HSEON) {
+        rcc_cr  ^= RCC_CR_HSEON;
+        RCC->CR  = rcc_cr;
+    }
 }
 
 
@@ -1296,6 +1344,7 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 
 #ifndef __USE_EXTI0
 #   define __USE_EXTI0
+#   define __ISR_EXTI0
 #endif
 #define OT_SWITCH1_ISR      platform_isr_exti0
 #define OT_SWITCH1_PORTNUM  BOARD_SW1_PORTNUM
@@ -1306,6 +1355,7 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
  
 #ifndef __USE_EXTI1
 #   define __USE_EXTI1
+#   define __ISR_EXTI1
 #endif
 #define OT_SWITCH2_ISR      platform_isr_exti1
 #define OT_SWITCH2_PORTNUM  BOARD_SW2_PORTNUM
@@ -1316,6 +1366,7 @@ static inline void BOARD_led3_toggle(void)  { OT_TRIG3_TOG(); }
 
 #ifndef __USE_EXTI6
 #   define __USE_EXTI6
+#   define __ISR_EXTI6
 #endif
 #define OT_SWITCH3_ISR      platform_isr_exti6
 #define OT_SWITCH3_PORTNUM  BOARD_SW3_PORTNUM

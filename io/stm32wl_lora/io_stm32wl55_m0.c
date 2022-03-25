@@ -66,8 +66,8 @@
 #   define _DMA_RXREQ_ID        41
 #   define _DMA_TXREQ_ID        42
 #   define __DMA_CLEAR_IFG()    (DMA2->IFCR = (0xF << (4*(5-1))) | (0xF << (4*(6-1))))
-#   define __SPI_CLKON()        (RCC->C2APB3ENR |= RCC_C2APB3ENR_SUBGHZSPIEN)
-#   define __SPI_CLKOFF()       (RCC->C2APB3ENR &= ~RCC_C2APB3ENR_SUBGHZSPIEN)
+#   define __SPI_CLKON()        (RCC->C2APB3ENR = RCC_C2APB3ENR_SUBGHZSPIEN)
+#   define __SPI_CLKOFF()       (RCC->C2APB3ENR = 0)
 
 #else
 #   error "RADIO_SPI_ID is misdefined, must be SPI3 (SUBGHZSPI)."
@@ -93,8 +93,8 @@
                                 _DMATX->CCR     = 0; \
                             } while(0)
 
-#define __SPI_CS_HIGH()     PWR->SUBGHZSPICR = PWR_SUBGHZSPICR_NSS
-#define __SPI_CS_LOW()      PWR->SUBGHZSPICR = 0
+#define __SPI_CS_HIGH()     (PWR->SUBGHZSPICR = PWR_SUBGHZSPICR_NSS)
+#define __SPI_CS_LOW()      (PWR->SUBGHZSPICR = 0)
 #define __SPI_CS_ON()       __SPI_CS_LOW()
 #define __SPI_CS_OFF()      __SPI_CS_HIGH()
 
@@ -107,6 +107,22 @@
 #define __SPI_DISABLE()     (RADIO_SPI->CR1 = (SPI_CR1_SSI | SPI_CR1_SSM | SPI_CR1_MSTR | _SPI_DIV))
 #define __SPI_GET(VAL)      VAL = RADIO_SPI->DR
 #define __SPI_PUT(VAL)      RADIO_SPI->DR = VAL
+
+
+
+static void sub_xtal_on(ot_bool blocking) {
+    BOARD_HSXTAL_ON();
+
+    ///@todo watchdog in the loop here
+    if (blocking) {
+        //while((RCC->CR & RCC_CR_HSERDY) == 0);
+    }
+}
+
+static void sub_xtal_off(void) {
+    BOARD_HSXTAL_OFF();
+}
+
 
 
 
@@ -217,7 +233,12 @@ void wllora_mcuirq_wfe(ot_u16 ifg_sel) {
 
 
 inline ot_uint wllora_isbusy(void)   {
-    return (PWR->SR2 & PWR_SR2_RFBUSYMS);
+///@note The RFBUSYMS functionality is not as indicated in the Reference Manual.
+///      In fact, it is only a validator that the RFBUSYS signal is OK to use.
+///      Device is considered busy if *both* are 1.
+    ot_uint test;
+    test = PWR->SR2 & (PWR_SR2_RFBUSYMS | PWR_SR2_RFBUSYS);
+    return (test == (PWR_SR2_RFBUSYMS | PWR_SR2_RFBUSYS));
 }
 
 
@@ -252,23 +273,36 @@ void wllora_reset() {
 ///       - profiling of the reset sequence shows value in using WFE.
     ot_u32 test;
 
-    // ahead of reset, the NSS must be high.
+    /// ahead of reset, the NSS must be high.
     __SPI_CS_OFF();
     wllora.state = RFSTATE_off;
 
-    // This 2-state loop will assure radio is reset
+    /// Guarantee the HSE/TCXO is off, before doing reset.
+    sub_xtal_off();
+
+    // (This 2-state loop will assure radio is reset)
     do {
         test        = RCC->CSR & RCC_CSR_RFRSTF;
         RCC->CSR   ^= RCC_CSR_RFRST;
         while ((RCC->CSR & RCC_CSR_RFRSTF) == test);
     } while (test == 0);
 
-    /// After reset, the device is effectively in cold-sleep mode.
-    /// We want to put it into RCstandby
+    /// After reset, the device is effectively in cold-sleep mode.  We want to
+    /// allow it to calibrate itself, so we ensure the TCXO is on before
+    /// driving NSS low to bring out of sleep.
+    sub_xtal_on(True);
+
+    /// Now, Drive NSS low and wait for chip to tell it is ready.  It should do
+    /// a calibration during this wake-up time.
     __SPI_CS_ON();
+    delay_us(1);
     while (wllora_isbusy());
-    __SPI_CS_OFF();
+
+    /// RF is now in RCstandby state, and calibrated.  Drive NSS high to
+    /// complete the reset process.  Also, turn off the crystal at this point.
     wllora.state = RFSTATE_RCstandby;
+    __SPI_CS_OFF();
+    sub_xtal_off();
 }
 
 
@@ -285,7 +319,6 @@ ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking) {
         return 0;
     }
 
-
     while (new_state != wllora.state) {
         switch (wllora.state) {
             /// From off, need to reset the device, which puts it into standby-13
@@ -299,13 +332,18 @@ ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking) {
             /// does not occur.  Right now these are handled the same way.
             case RFSTATE_coldsleep:
                 if (new_state == RFSTATE_warmsleep) {
+                    // coldsleep -> warmsleep is invalid transition
                     return 0;
                 }
-                if (new_state == RFSTATE_calibration) {
-                    new_state = RFSTATE_RCstandby;
+                if (new_state < RFSTATE_RCstandby) {
+                    if (new_state == RFSTATE_calibration) {
+                        new_state = RFSTATE_RCstandby;
+                    }
+                    sub_xtal_on(True);
                 }
             case RFSTATE_warmsleep:
                 __SPI_CS_ON();
+                delay_us(1);    // hold for at least 600ns to guarantee BUSY signal.
                 while (wllora_isbusy());
                 __SPI_CS_OFF();
                 wllora.state = RFSTATE_RCstandby;
@@ -313,9 +351,11 @@ ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking) {
 
             /// Calibration case is only entered (in this function) as a result
             /// of setting new_state = calibration as an argument, which itself
-            /// requires the system to be in standby.
+            /// requires the system to be in standby.  So, we wait for
+            /// calibration to finish and transfer to intermediate standby.
             case RFSTATE_calibration:
                 while (wllora_isbusy());
+                sub_xtal_off();
                 wllora.state = RFSTATE_RCstandby;
                 return 0;
 
@@ -335,15 +375,24 @@ ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking) {
             case RFSTATE_tx:
                 // go to standby first if switching to a sleep mode
                 if (new_state < RFSTATE_RCstandby) {
-                    wllora_standby_cmd(LR_STANDBYCFG_HSE32MHz);
-                    wllora.state = RFSTATE_HSEstandby;
-                    break;  ///@todo block until not busy?
+                    //wllora_standby_cmd(LR_STANDBYCFG_HSE32MHz);
+                    //wllora.state = RFSTATE_HSEstandby;
+                    wllora_standby_cmd(LR_STANDBYCFG_RC13MHz);
+                    wllora.state = RFSTATE_RCstandby;
+
+                    ///@note need to block until standby, here.
+                    delay_us(1);    // hold for at least 600ns to guarantee BUSY signal.
+                    while (wllora_isbusy());
+                    break;
                 }
+
+                // If not switching to sleep, go directly to that mode.
                 goto ENTER_ENDSTATE;
         }
     }
 
     return 0;
+
 
     ENTER_ENDSTATE:
     switch (new_state) {
@@ -358,52 +407,76 @@ ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking) {
 
         /// In this impl's manual calibration, we don't care about
         /// RC64k calibration -- that is disabled.
-        case RFSTATE_calibration:
+        case RFSTATE_calibration: {
+            ot_u8 metastate;
+            sub_xtal_on(True);
             wllora_calibrate_cmd(0b01111110);
-            wllora.state = RFSTATE_calibration;
-            break;
+            metastate = (ot_u8)RFSTATE_calibration + (ot_u8)blocking;
+            wllora.state = metastate;
+        }   goto EXIT_TO_NEWSTATE;
 
         /// RCstandby can be entered via HSEstandby.
         case RFSTATE_RCstandby:
             wllora_standby_cmd(LR_STANDBYCFG_RC13MHz);
             wllora.state = RFSTATE_RCstandby;
-            break;  ///@todo block until not busy
+            goto EXIT_TO_NEWSTATE;
 
         /// HSEstandby can be entered via RCstandby.
         case RFSTATE_HSEstandby:
+            ///@todo validate this with False
+            sub_xtal_on(/*True*/ False);
             wllora_standby_cmd(LR_STANDBYCFG_HSE32MHz);
             wllora.state = RFSTATE_HSEstandby;
-            break;  ///@todo block until not busy
+            goto EXIT_TO_NEWSTATE;
 
         case RFSTATE_fs:
+            ///@todo validate this with False
+            sub_xtal_on(/*True*/ False);
             wllora_fs_cmd();
             wllora.state = RFSTATE_fs;
-            break;  ///@todo block until not busy
+            goto EXIT_TO_NEWSTATE;
 
         case RFSTATE_cad:
+            ///@todo validate this with False
+            sub_xtal_on(/*True*/ False);
             wllora_cad_cmd();
             wllora.state = RFSTATE_cad;
-            break;  ///@note do not block on CAD entry
+            goto EXIT_TO_NEWSTATE;
 
         /// RX entry via this function assumes no timeout
         case RFSTATE_rx:
+            ///@todo validate this with False
+            sub_xtal_on(/*True*/ False);
             wllora_rx_cmd(0);
             wllora.state = RFSTATE_rx;
-            break;  ///@note do not block on RX entry
+            goto EXIT_TO_NEWSTATE;
 
         /// TX entry via this function assumes no timeout
         case RFSTATE_tx:
+            ///@todo validate this with False
+            sub_xtal_on(/*True*/ False);
             wllora_tx_cmd(0);
             wllora.state = RFSTATE_tx;
-            break;  ///@note do not block on RX entry
+            goto EXIT_TO_NEWSTATE;
 
         default:
             return 0;
     }
 
+    EXIT_TO_NEWSTATE:
+    if (blocking) {
+        ///@todo implement watchdog on the isbusy loop
+        delay_us(1);    // hold for at least 600ns to guarantee BUSY signal.
+        while(wllora_isbusy());
+        if (wllora.state < RFSTATE_HSEstandby) {
+            sub_xtal_off();
+        }
+    }
+    ///@todo report the amount of time, not just 0
     return 0;
 
     ENTER_SLEEP:
+    sub_xtal_off();
     wllora_sleep_cmd(cfg_opt1);
     ///@todo make non-blocking impl.  need to wait 500us after sleep before
     ///      accessing again the spi.
@@ -447,10 +520,12 @@ void wllora_init_bus() {
     /// 3. The STM32WL has a single interrupt for the RF Core itself.  After
     ///    CPU gets this IRQ, it needs to look at Radio Core IRQ registers to
     ///    see the IRQ mask itself.
-    PWR->C2CR3 |= PWR_C2CR3_EWRFIRQ;
+    //PWR->C2CR3 |= (PWR_C2CR3_EWRFIRQ | PWR_C2CR3_EWRFBUSY);
+    //PWR->C2CR3 |= (PWR_C2CR3_EWRFIRQ);
+
     NVIC_SetPriority(SUBGHZ_Radio_IRQn, PLATFORM_NVIC_RF_GROUP);
     NVIC_EnableIRQ(SUBGHZ_Radio_IRQn);
-    
+
     ///@note Radio exits this function in RCstandby state
 }
 
@@ -468,13 +543,14 @@ void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
 /// off the DMA for all other modules.
 
     ///@todo This needs to be much more sophisticated
-//    volatile ot_u16 count;
-//    count = 0;
-//    while (wllora_isbusy()) {
-//        count++;
-//    }
+    volatile ot_u16 count;
+    count = 0;
+    while (wllora_isbusy()) {
+        count++;
+    }
 
     platform_disable_interrupts();
+
     __SPI_CLKON();
     __SPI_ENABLE();
     __SPI_CS_ON();
@@ -483,7 +559,6 @@ void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
     /// module buffer.  If doing a read, the garbage data getting duplexed onto
     /// TX doesn't affect the SX127x.  If doing a write, simply disregard the
     /// RX duplexed data.
-    BOARD_RFSPI_CLKON();
     BOARD_DMA_CLKON();
     __DMA_CLEAR_IFG();
     cmd_len        += resp_len;
@@ -493,20 +568,30 @@ void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
     __DMA_ENABLE();
 
     /// WFE is only reliable on EXTI line interrupts, as far as I can test.
+    ///@todo could have WFE until WRFBUSY trigger, but only for blocking impl.
     /// So do busywait until DMA is done RX-ing
     //do { __WFE(); }
     while((_DMA_UNIT->ISR & _DMARX_IFG) == 0);
 
-    /// After DMA transfer complete, immediately set NSS low (CS OFF) and shut
+    /// After DMA transfer complete, immediately set NSS high (CS OFF) and shut
     /// off the DMA and SPI peripherals to save energy.
     __SPI_CS_OFF();
+
+    ///@note 600ns must pass between this NSS->high and a successive entry to
+    ///      the wllora_isbusy() line above in this function.  At 48 MHz, that
+    ///      is roughly 29 clocks, or at most 29 instructions.  We have a
+    ///      working assumption there is a minimum of 29 instructions between
+    ///      this line and the wllora_isbusy() above.
+
     __DMA_CLEAR_IRQ();
     __DMA_CLEAR_IFG();
     __DMA_DISABLE();
+    BOARD_DMA_CLKOFF();
+
     __SPI_DISABLE();
     __SPI_CLKOFF();
-    BOARD_DMA_CLKOFF();
-    BOARD_RFSPI_CLKOFF();
+
+
     platform_enable_interrupts();
 }
 
@@ -524,6 +609,13 @@ void wllora_spibus_io(ot_u8 cmd_len, ot_u8 resp_len, const ot_u8* cmd) {
 
 void wllora_antsw_off(void) {
     BOARD_RFANT_OFF();
+
+#   if BOARD_FEATURE(RFSMPS)
+    if (wllora_ext.smps_setting != WLLORA_SMPS_DEFAULT) {
+        wllora_ext.smps_setting = WLLORA_SMPS_DEFAULT;
+        wllora_wrreg(LR_SMPSC2R, WLLORA_SMPS_DEFAULT);
+    }
+#   endif
 }
 
 void wllora_antsw_on(void) {
@@ -532,11 +624,30 @@ void wllora_antsw_on(void) {
 
 void wllora_antsw_tx(void) {
     wllora_antsw_on();
+
+#   if BOARD_FEATURE(RFSMPS)
+    {   ot_u8 new_setting;
+        new_setting = wllora_ext.use_boost ? WLLORA_SMPS_DEFAULT : WLLORA_SMPS_MAX;
+        if (wllora_ext.smps_setting != new_setting) {
+            wllora_ext.smps_setting = new_setting;
+            wllora_wrreg(LR_SMPSC2R, new_setting);
+        }
+    }
+#   endif
+
     BOARD_RFANT_TX(wllora_ext.use_boost);
 }
 
 void wllora_antsw_rx(void) {
     wllora_antsw_on();
+
+#   if BOARD_FEATURE(RFSMPS)
+    if (wllora_ext.smps_setting != WLLORA_SMPS_DEFAULT) {
+        wllora_ext.smps_setting = WLLORA_SMPS_DEFAULT;
+        wllora_wrreg(LR_SMPSC2R, WLLORA_SMPS_DEFAULT);
+    }
+#   endif
+
     BOARD_RFANT_RX();
 }
 

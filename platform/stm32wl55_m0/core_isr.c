@@ -416,7 +416,7 @@ void RCC_FLASH_C1SEV_IRQHandler(void) {
 
 #if (  ((defined(__ISR_EXTI0) || defined(__USE_EXTI0)) && !defined(__N_ISR_EXTI0)) \
     || ((defined(__ISR_EXTI1) || defined(__USE_EXTI1)) && !defined(__N_ISR_EXTI1)) )
-void EXTI0_1_IRQHandler(void) {
+void EXTI1_0_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
     
@@ -434,7 +434,7 @@ void EXTI0_1_IRQHandler(void) {
 
 #if (  ((defined(__ISR_EXTI2) || defined(__USE_EXTI2)) && !defined(__N_ISR_EXTI2)) \
     || ((defined(__ISR_EXTI3) || defined(__USE_EXTI3)) && !defined(__N_ISR_EXTI3)) )
-void EXTI2_3_IRQHandler(void) {
+void EXTI3_2_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
     
@@ -462,7 +462,7 @@ void EXTI2_3_IRQHandler(void) {
     || ((defined(__ISR_EXTI13) || defined(__USE_EXTI13)) && !defined(__N_ISR_EXTI13)) \
     || ((defined(__ISR_EXTI14) || defined(__USE_EXTI14)) && !defined(__N_ISR_EXTI14)) \
     || ((defined(__ISR_EXTI15) || defined(__USE_EXTI15)) && !defined(__N_ISR_EXTI15)) )
-void EXTI4_15_IRQHandler(void) {
+void EXTI15_4_IRQHandler(void) {
     __ISR_ENTRY_HOOK();
     __ISR_WAKEUP_HOOK();
 

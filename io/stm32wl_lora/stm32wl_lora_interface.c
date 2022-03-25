@@ -454,29 +454,32 @@ void wllora_rfio_tx()  {
 //            0,0,0);
 }
 
-inline void wllora_rfirq_listen() {
-    wllora.imode = MODE_Listen;
+
+static void sub_rfirq(WLLora_IMode mode, ot_u16 irqmask) {
+    wllora.imode = mode;
+    wllora_clrirq_cmd();
+    wllora_dioirq_cmd(irqmask, irqmask, 0, 0);
     wllora_mcuirq_on();
+}
+
+inline void wllora_rfirq_listen() {
+    sub_rfirq(MODE_Listen, LR_IRQ_CADDONE | LR_IRQ_CADDET);
 }
 
 inline void wllora_rfirq_rxdata() {
-    wllora.imode = MODE_RXData;
-    wllora_mcuirq_on();
+    sub_rfirq(MODE_RXData, LR_IRQ_HDRVALID);
 }
 
 inline void wllora_rfirq_rxend() {
-    wllora.imode = MODE_RXData;
-    wllora_mcuirq_on();
+    sub_rfirq(MODE_RXData, LR_IRQ_RXDONE);
 }
 
 inline void wllora_rfirq_cad() {
-    wllora.imode = MODE_CSMA;
-    wllora_mcuirq_on();
+    sub_rfirq(MODE_CSMA, LR_IRQ_CADDONE | LR_IRQ_CADDET);
 }
 
 inline void wllora_rfirq_txdata() {
-    wllora.imode = MODE_TXData;
-    wllora_mcuirq_on();
+    sub_rfirq(MODE_TXData, LR_IRQ_TXDONE);
 }
 
 
@@ -495,6 +498,25 @@ inline void wllora_rfirq_txdata() {
 void wllora_load_defaults() {
 /// Load startup/reset defaults into the radio core.
 /// radio core must be in standby for this to work.
+
+    /// 1. If SMPS is enabled on this board, set it to the default drive.
+#   if BOARD_FEATURE(RFSMPS)
+    wllora_ext.smps_setting = WLLORA_SMPS_DEFAULT;
+    wllora_wrreg(LR_SMPSC2R, WLLORA_SMPS_DEFAULT);
+    wllora_regmode_cmd(1);
+#   else
+    wllora_regmode_cmd(0);
+#   endif
+
+#   if BOARD_FEATURE(TCXO)
+    wllora_tcxomode_cmd((LR_REG_TCXO_TRIM & 7), LR_REG_TCXO_TIMEOUT);
+    wllora_wrreg(LR_HSEINTRIMR, 0);
+
+#   else
+    wllora_wrreg(LR_HSEINTRIMR, BOARD_PARAM(HSETRIM));
+    wllora_wrreg(LR_HSEOUTTRIMR, BOARD_PARAM(HSETRIM));
+
+#   endif
 
     // 1. First command *must* be to set LoRa mode.
     wllora_setpkttype_cmd(0x01);
