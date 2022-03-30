@@ -212,42 +212,14 @@ void wllora_mcuirq_wfe(ot_u16 ifg_sel) {
 //     EXTI->PR = ifg_sel;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/** Pin Check Functions <BR>
-  * ========================================================================
-  * @todo make sure this is all working
-  */
-
-
-inline ot_uint wllora_isbusy(void)   {
+inline ot_bool wllora_isbusy(void)   {
 ///@note The RFBUSYMS functionality is not as indicated in the Reference Manual.
 ///      In fact, it is only a validator that the RFBUSYS signal is OK to use.
 ///      Device is considered busy if *both* are 1.
     ot_uint test;
     test = PWR->SR2 & (PWR_SR2_RFBUSYMS | PWR_SR2_RFBUSYS);
-    return (test == (PWR_SR2_RFBUSYMS | PWR_SR2_RFBUSYS));
+    return (ot_bool)(test == (PWR_SR2_RFBUSYMS | PWR_SR2_RFBUSYS));
 }
-
-
-///@todo in this impl, this function may not be needed
-ot_uint wllora_cad_detected(void)     {
-    return 1;
-    //return (_CAD_DETECT_PORT->IDR & _CAD_DETECT_PIN); 
-}
-
 
 
 
@@ -618,9 +590,11 @@ void wllora_antsw_off(void) {
 #   endif
 }
 
+
 void wllora_antsw_on(void) {
     BOARD_RFANT_ON();
 }
+
 
 void wllora_antsw_tx(void) {
     wllora_antsw_on();
@@ -634,9 +608,19 @@ void wllora_antsw_tx(void) {
         }
     }
 #   endif
+#   if defined(__STM32WL_22dBm__) && defined(__STM32WL_15dBm__)
+    {   ot_u8 new_setting;
+        new_setting = wllora_ext.use_boost ? 0x38 : 0x18;
+        if (wllora_ext.ocr_setting != new_setting) {
+            wllora_ext.ocr_setting = new_setting;
+            wllora_wrreg(LR_PAOCPR, new_setting);
+        }
+    }
+#   endif
 
     BOARD_RFANT_TX(wllora_ext.use_boost);
 }
+
 
 void wllora_antsw_rx(void) {
     wllora_antsw_on();

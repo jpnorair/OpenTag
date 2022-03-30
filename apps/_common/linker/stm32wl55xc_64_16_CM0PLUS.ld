@@ -149,9 +149,6 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
     . = ALIGN(4);
   } >FLASH
-
-  /* Used by the startup to initialize data */
-  _sidata = LOADADDR(.data);
   
   /* FLASH Option Bytes (2KB) are configuration ROM */
   .optionbytes :
@@ -176,7 +173,6 @@ SECTIONS
     KEEP(*(.sysboot))
     . = ALIGN(4);
   } > SYSBOOT
-  
   
   /* VEELITE FS Sections */
     .vl_ov : {
@@ -209,6 +205,8 @@ SECTIONS
 		. = ALIGN(4);
 	} > FSRAM
     
+  /* Used by the startup to initialize data */
+  _sidata = LOADADDR(.data);
 
   /* Initialized data sections into "RAM" Ram type memory */
   .data :

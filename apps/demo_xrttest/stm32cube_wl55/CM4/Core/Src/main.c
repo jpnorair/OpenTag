@@ -96,7 +96,14 @@ int main(void)
   //MX_USART2_UART_Init();
 
   /* USER CODE BEGIN 2 */
-
+  /// Purpose of this code is to setup CPU2 to boot at 0x08030000, which is
+  /// where it is defined in linker script.
+    {   uint32_t c2vector = ((FLASH->SRRVR & 0xFFFF) * 4) + 0x08000000;
+        if (c2vector != 0x08030000) {
+            ///@todo Set this option byte if needed.
+            //__BKPT();
+        }
+    }
   /* USER CODE END 2 */
 
   /* Boot CPU2 */

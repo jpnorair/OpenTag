@@ -65,16 +65,6 @@
 #   define LR_REG_TCXO_TIMEOUT      (ot_u32)(((float)BOARD_PARAM(uStcxo) + 15.625) / 15.625)
 #endif
 
-#define LR_IRQ_TXDONE       (0x0001)
-#define LR_IRQ_RXDONE       (0x0002)
-#define LR_IRQ_PREAMBLEDET  (0x0004)
-#define LR_IRQ_HDRVALID     (0x0010)
-#define LR_IRQ_HDRERR       (0x0020)
-#define LR_IRQ_CRCERR       (0x0040)
-#define LR_IRQ_CADDONE      (0x0080)
-#define LR_IRQ_CADDET       (0x0100)
-#define LR_IRQ_TIMEOUT      (0x0200)
-
 typedef enum __attribute__ ((__packed__)) {
     LR_GBSYNCR      = _FLIP16(0x06AC),
     LR_GPKTCTL1AR   = _FLIP16(0x06B8),
@@ -131,6 +121,10 @@ typedef union {
 
 
 
+
+
+
+
 /** Special notes: ugly-ass workarounds from Semtech/ST library code
   *
   * WORKAROUND - Optimizing the Inverted IQ Operation, see DS_SX1261-2_V1.2 datasheet chapter 15.4
@@ -156,6 +150,36 @@ typedef union {
   */
 
 
+// IRQ Bits
+#define LR_IRQ_TXDONE           (0x0001)
+#define LR_IRQ_RXDONE           (0x0002)
+#define LR_IRQ_PREAMBLEDET      (0x0004)
+#define LR_IRQ_HDRVALID         (0x0010)
+#define LR_IRQ_HDRERR           (0x0020)
+#define LR_IRQ_CRCERR           (0x0040)
+#define LR_IRQ_CADDONE          (0x0080)
+#define LR_IRQ_CADDET           (0x0100)
+#define LR_IRQ_TIMEOUT          (0x0200)
+
+// Sub-GHz radio generic bit synchronization register (SUBGHZ_GBSYNCR)
+#define LR_GBSYNCR_SBITSYNCEN   (1<<6)
+#define LR_GBSYNCR_RXDINV       (1<<5)
+#define LR_GBSYNCR_BITSYNCDIS   (1<<4)
+
+// Sub-GHz radio receiver gain control register (SUBGHZ_RXGAINCR)
+#define LR_RXGAINCR_SENSI_ADJUST(VAL)   ((63&VAL) << 2)
+#define LR_RXGAINCR_SENSI_ADJUST_DEF    (0x25 << 2)
+#define LR_RXGAINCR_PMODE(VAL)          (3&VAL)
+#define LR_RXGAINCR_PMODE_LP            0b00
+#define LR_RXGAINCR_PMODE_BOOST1        0b01
+#define LR_RXGAINCR_PMODE_BOOST2        0b10
+#define LR_RXGAINCR_PMODE_BOOST3        0b11
+
+// Sub-GHz radio PA over current protection register (SUBGHZ_PAOCPR)
+#define LR_PAOCPR_OCP(VAL)      (63&VAL)
+#define LR_PAOCPR_OCP_LP        0x18
+#define LR_PAOCPR_OCP_HP        0x38
+
 
 
 // Sleep Options
@@ -175,27 +199,6 @@ typedef union {
 #define RFREG(VAL)      (RFREG_##VAL)
 #define STROBE(VAL)     (RFSTROBE_##VAL)
 #define RFGPO(VAL)      ((RFGPO_##VAL << 3) | 2)
-
-
-/** SX1272 Internal registers Address
-  * ============================================================================
-  */
-#define RFREG_LR_FIFO                               0x00 
-
-#define RFREG_LR_OPMODE                             0x01 
-#   define _LORAMODE                                (1<<7)
-#   define _FSKMODE                                 (0<<7)
-#   define _ACCESS_SHARED_REG                       (1<<6)
-#   define _OPMODE                                  (7<<0)
-#   define __OPMODE(VAL)                            ((7&(VAL))<<0)
-#   define _OPMODE_SLEEP                            (0<<0)
-#   define _OPMODE_STANDBY                          (1<<0)
-#   define _OPMODE_FSTX                             (2<<0)
-#   define _OPMODE_TX                               (3<<0)
-#   define _OPMODE_FSRX                             (4<<0)
-#   define _OPMODE_RXCONT                           (5<<0) 
-#   define _OPMODE_RXSINGLE                         (6<<0)
-#   define _OPMODE_CAD                              (7<<0)             
 
 
 // Frequency Select bytes

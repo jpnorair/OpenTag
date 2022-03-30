@@ -91,6 +91,23 @@
 rfctl_struct rfctl;
 
 
+/** Test Subroutines  <BR>
+  * ========================================================================<BR>
+
+static volatile ot_u16 err_dump;
+static volatile ot_u16 irq_dump;
+static volatile ot_u8 pktlen_dump;
+static volatile ot_u8 status_dump;
+static volatile lr_rxbufstatus_t bufstatus_dump;
+static void test_rfreg_stepthrough(void) {
+    err_dump        = wllora_geterr_cmd();
+    irq_dump        = wllora_getirq_cmd();
+    pktlen_dump     = wllora_rdreg(LR_RTXPLDLEN);
+    status_dump     = wllora_status_cmd();
+    bufstatus_dump  = wllora_rxbufstatus_cmd();
+}
+  */
+
 
 /** Local Subroutine Prototypes  <BR>
   * ========================================================================<BR>
@@ -101,6 +118,7 @@ void sub_initcad(void);
 
 void wlloradrv_mdmconfig(MODE_enum mode, ot_u16 param);
 void wlloradrv_save_linkinfo(void);
+
 
 
 /** Virtual ISR RF  <BR>
@@ -1138,7 +1156,7 @@ OT_WEAK void rm2_txcsma_isr(void) {
             rfctl.state = RADIO_STATE_TXDATA;
             wllora_rfio_tx();
             wllora_rfirq_txdata();
-            
+
             // Pre-TX Core Dump to verify TX Register Settings.
             // Core dump is only done when _RFCORE_DEBUG is defined
             __CORE_DUMP();

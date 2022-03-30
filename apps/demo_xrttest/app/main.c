@@ -65,9 +65,8 @@
 #   define __DBM_DEFAULT        10
 #   define TG_CHANNEL           (0x99)  //434.036
 #else //(RF_PARAM(BAND) == 915)
-#   define __DBM_DEFAULT        20
-//#   define TG_CHANNEL           (0x89) // Could be also another channel
-#   define TG_CHANNEL           (0x09) // Could be also another channel
+#   define __DBM_DEFAULT        5       /* 22 */
+#   define TG_CHANNEL           (0x09)  /* (0x89) */
 #endif
 
 
@@ -93,7 +92,7 @@
 
 // nice to have for debugging
 //#define __FORCE_GATEWAY
-#define __FORCE_ENDPOINT
+//#define __FORCE_ENDPOINT
 
 
 /** Main Static Variables <BR>
@@ -554,7 +553,7 @@ void setup_init() {
 ///    @todo it would be better to simply monitor the initial value of UART lines,
 ///    to see if they are connected, but this cannot be so easily guaranteed.
     
-    // Set it up as gateway by default (switch open, if there is a switch at all)
+    // Set it up as endpoint by default (switch open, if there is a switch at all)
 #   if defined(__FORCE_GATEWAY)
     setup.is_gateway = 1;
 #   elif defined(__FORCE_ENDPOINT)
@@ -562,7 +561,7 @@ void setup_init() {
 #   elif !defined(OT_SWITCH1_ISR)
     setup.is_gateway = 0;
 #   else
-    setup.is_gateway = (ot_bool)((OT_SWITCH1_PORT->IDR & OT_SWITCH1_PIN) != (OT_SWITCH1_POLARITY << OT_SWITCH1_PIN));
+    setup.is_gateway = (ot_bool)((OT_SWITCH1_PORT->IDR & OT_SWITCH1_PIN) == (OT_SWITCH1_POLARITY << OT_SWITCH1_PIN));
 #   endif
     
     /// Blink the board LEDs to show that it is starting up.
@@ -596,7 +595,7 @@ void setup_init() {
 
 
 ot_int setup_beacons(ot_u16 interval, ot_u8 channel) {
-	ot_u8 beacon_list[8] = {0x00, 0x00, TG_CHANNEL, 0x02, 0x20, 0x00, 0x00, 0x08};
+    ot_u8 beacon_list[8] = {0x00, 0x00, TG_CHANNEL, 0x02, 0x20, 0x00, 0x00, 0x08};
     vlFILE* fp;
     ot_int 	output = -1;
 
@@ -626,6 +625,7 @@ ot_int setup_beacons(ot_u16 interval, ot_u8 channel) {
 
 void setup_listen(bool is_gateway, ot_u8 channel) {
 	ot_u8 sleep_gateway[4] = { SPLIT_TIME16(2,0,0), TG_CHANNEL, 0x50 };
+	//ot_u8 sleep_endpoint[4]= { SPLIT_TIME16(0,2,3), TG_CHANNEL, 0x80 };
 	ot_u8 sleep_endpoint[4]= { SPLIT_TIME16(0,2,3), TG_CHANNEL, 0x80 };
     vlFILE* fp;
     ot_u8* data;

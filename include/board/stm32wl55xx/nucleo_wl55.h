@@ -261,7 +261,7 @@
 #endif
 
 #if !defined(BOARD_FEATURE_RF_PABOOST)
-#	if !defined(__SX127x_PABOOST__)
+#	if !defined(__STM32WL_22dBm__)
 #	define BOARD_FEATURE_RF_PABOOST		DISABLED
 #	else
 #	define BOARD_FEATURE_RF_PABOOST		ENABLED
@@ -927,21 +927,22 @@ static inline void BOARD_OPEN_FLASH(void* start, void* end) {
 
 
 static inline void BOARD_RFANT_OFF(void) {
-/// PC4:5 set to isolation, then PC3 set to analog (Hi-Z)
-    GPIOC->BSRR     = ((1<<4) | (1<<5)) << 16;
+/// PC4:5 set to isolation, PC3 Off, then PC3 set to analog (Hi-Z)
+    GPIOC->BRR     =  (1<<3) | (1<<4) | (1<<5);
     GPIOC->MODER    = GPIOC->MODER | (3 << (3*2));
 }
 
 
 static inline void BOARD_RFANT_ON(void) {
 /// PC4:5 set to isolation, then PC3 set to output 1
-    GPIOC->BSRR     = (1<<3) | (((1<<4) | (1<<5)) << 16);
+    GPIOC->BRR      = (1<<3) | (1<<4) | (1<<5);
     GPIOC->MODER    = (GPIOC->MODER & ~(3 << (3*2))) | (1 << (3*2));
+    GPIOC->BSRR     = (1<<3);
 }
 
 static inline void BOARD_RFANT_TX(ot_bool use_boost) {
 /// PC4:5 00/01/10/11 = Off, HP-TX, RX, LP-TX
-    GPIOC->BSRR = (1<<5) | ((ot_u32)use_boost << 16);
+    GPIOC->BSRR = use_boost ? ((1<<20) | (1<<5)) : ((1<<4) | (1<<5));
 }
 
 static inline void BOARD_RFANT_RX(void) {

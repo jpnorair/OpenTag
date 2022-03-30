@@ -518,12 +518,27 @@ void wllora_load_defaults() {
 
 #   endif
 
-    // 1. First command *must* be to set LoRa mode.
+    /// 2. PA OCR setting cache
+#   if defined(__STM32WL_22dBm__) && defined(__STM32WL_15dBm__)
+    wllora_ext.ocr_setting = 0x18;
+    wllora_wrreg(LR_PAOCPR, 0x18);
+#   elif defined(__STM32WL_22dBm__)
+    wllora_wrreg(LR_PAOCPR, 0x38);
+#   else
+    wllora_wrreg(LR_PAOCPR, 0x18);
+#   endif
+
+    /// 3. First command *must* be to set LoRa mode.
     wllora_setpkttype_cmd(0x01);
 
-    // 2. Second command is to set the image calibration settings
+    /// 4. Set the image calibration settings
     ///@todo choose the right settings based on region.  Now 902-928 MHz.
     wllora_calimage_cmd(0xE1, 0xE9);
+
+    /// 5. Perform a calibration
+    wllora_calibrate_cmd(0x7F);
+    delay_us(1);
+    while(wllora_isbusy());
 
     ///@todo rest of implementation
 

@@ -484,10 +484,11 @@ typedef struct __attribute__((packed)) {
 } wllora_io_t;
 
 typedef struct {
-    ot_u8           old_chan_id;
-    ot_u8           old_tx_eirp;
-    ot_u8           use_boost;
-    ot_u8           smps_setting;
+    ot_u8   old_chan_id;
+    ot_u8   old_tx_eirp;
+    ot_u8   use_boost;
+    ot_u8   smps_setting;
+    ot_u8   ocr_setting;
 } wllora_ext_t;
 
 extern wllora_io_t wllora;
@@ -647,6 +648,13 @@ void wllora_reset();
 void wllora_waitfor_ready();
 
 
+/** @brief  Test if LoRa core is busy
+  * @param  None
+  * @retval ot_bool     True if busy
+  * @ingroup STM32WL_LoRa
+  */
+ot_bool wllora_isbusy(void);
+
 
 
 
@@ -736,14 +744,6 @@ void wllora_rfirq_txdata();
   * to actually call this function inside radio_init(), at the beginning.
   */
 void wllora_init_bus();
-
-
-/** @brief  Causes the System to wait until the SPI bus is fully de-asserted
-  * @param  None
-  * @retval None
-  * @ingroup STM32WL_LoRa
-  */
-void wllora_spibus_wait();
 
 
 /** @brief  Master function for SPI bus I/O
