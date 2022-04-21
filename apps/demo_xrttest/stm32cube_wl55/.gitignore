@@ -4,3 +4,5 @@
 /CM0PLUS/Release/*
 /CM4/Debug/*
 /CM4/Release/*
+
+*.su
