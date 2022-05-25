@@ -80,6 +80,8 @@
   * ot_memcpy_2() and ot_memcpy_4() are two and four byte aligned
   * variants of ot_memcpy()
   */
+///@todo consider changing to the POSIX:
+///      void* memcpy(void *restrict dst, const void *restrict src, size_t n);
 void ot_memcpy(void* dst, void* src, ot_uint length);
 void ot_memcpy_2(void* dst, void* src, ot_uint length);
 void ot_memcpy_4(void* dst, void* src, ot_uint length);

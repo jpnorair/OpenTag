@@ -55,10 +55,10 @@
 #define PFS_TYPE_BYTEFILE	(2)
 #define PFS_TYPE_EXT		(3)
 
-#define PFS_FLASH_NONE      (0)
-#define PFS_FLASH_HDRONLY   (1)
-#define PFS_FLASH_READONLY	(2)
-#define PFS_FLASH_READWRITE	(3)
+#define PFS_ROMDATA_NONE    (0)
+#define PFS_ROMDATA_HANDLE  (1)
+#define PFS_ROMDATA_ALL     (2)
+#define PFS_ROMDATA_MIRRORED (3)
 
 #define PFS_FLAG_ISOPEN		(1<<0)
 #define PFS_FLAG_ISWRITTEN	(1<<1)
@@ -87,8 +87,10 @@
 
 
 ///@todo need to declare Action Flags
-#define BF_ACTION_MASK		(1)
+#define BF_ACTION_MASK		(PFS_FLAG_ISOPEN | PFS_FLAG_ISWRITTEN)
 
+///@todo need to make sure BF FLAGS map directly to regular PFS FLAGS
+#define BF_FLAG_MASK        (PFS_FLAG_ISOPEN | PFS_FLAG_ISWRITTEN)
 
 
 // Backwards compatibility for unported projects that use Veelite
@@ -145,7 +147,7 @@ typedef enum {
   */
 typedef struct {
 	ot_u16	type : 2;
-	ot_u16  flash : 2;
+	ot_u16  romdata : 2;
 	ot_u16	flags : 2;
 	ot_u16  id : 10;
 } pfs_spec_t;
@@ -199,6 +201,15 @@ typedef struct OT_PACKED {
 } pfs_drechdr_t;
 
 
+
+typedef struct OT_PACKED {
+    ot_u16  rfu1    : 2;
+    ot_u16  mode    : 2;
+    ot_u16  action  : 2;
+    ot_u16  rfu2    : 2;
+    ot_u16  modbits : 8;
+} pfs_bfflags_t;
+
 /** @brief PseudoFS ByteFile Header
   * 
   * ByteFile types contain a header in their first 4-16 bytes of file data: the length
@@ -206,9 +217,9 @@ typedef struct OT_PACKED {
   * The length of the header is always 4-byte aligned.
   */
 typedef struct OT_PACKED {
-	ot_u16  	flags;
-    ot_u16  	length;
-    pfs_stat_t	stat;
+	pfs_bfflags_t   flags;
+    ot_u16  	    length;
+    pfs_stat_t	    stat;
 } pfs_bfhdr_t;
 
 
@@ -292,7 +303,7 @@ ot_int pfs_get_fd(pfs_file_t* fp);
   * <LI>  -6: Not enough room for a new file                    </LI> 
   * <LI>-255: Miscellaneous Error                               </LI>
   */
-ot_int pfs_new(pfs_type_e file_type, ot_u16 alloc, ot_u16 flags, const pfs_user_t* user_id);
+ot_int pfs_new(pfs_type_e file_type, ot_u16 alloc, pfs_bfflags_t flags, const pfs_user_t* user_id);
 
 
 /** @brief  Deletes a file
@@ -531,6 +542,39 @@ ot_int pfs_chmod(ot_u16 file_id, ot_u16 modbits, const pfs_user_t* user_id);
   */
 ot_int pfs_attach_action(ot_u16 file_id, ot_u16 act_flags, ot_procv action);
 
+
+/** @brief  Updates a file access time without doing anything else
+  * @param  file_id     (ot_u16) file ID to touch
+  * @param  user_id     (pfs_user_t*) User ID that is trying to touch
+  * @retval ot_int      0 on success, negative on error
+  * @ingroup PseudoFS
+  *
+  * Updates the file access time and, as a side effect, causes any file actions
+  * that may trip on file access to run.  For files that don't support access
+  * time or actions, nothing will occur.
+  *
+  * The return value is a numerical code.
+  * <LI>   0: Success                                           </LI>
+  * <LI>  -1: File could not be found                           </LI>
+  * <LI>  -4: User does not have sufficient access to this file </LI>
+  * <LI>-255: Miscellaneous Error                               </LI>
+  */
+OT_WEAK ot_int pfs_touch(ot_u16 file_id, const pfs_user_t* user_id);
+
+
+/** @brief  Gets file contents without opening the file.
+  * @param  file_id     (ot_u16) file ID to get
+  * @retval ot_u8*      Pointer to file data, or NULL if file not found.
+  * @ingroup PseudoFS
+  *
+  * This is a special function for careful users that turns the filesystem
+  * into something more closely resembling a registry.  It works especially
+  * well with Record-Type files, because these are essentially just RAM
+  * allocations on the heap.
+  *
+  * This function shall not be called by external APIs.
+  */
+OT_WEAK ot_u8* pfs_get(ot_u16 file_id);
 
 #endif
 

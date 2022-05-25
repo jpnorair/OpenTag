@@ -65,6 +65,15 @@
 #endif
 
 
+/// PFS Handle ROM, Handle RAM, Contents ROM, Contents RAM
+///@todo need to implement this, which will require a new defaults file table
+///      implementation.  It would be nice to have a file table generator in
+///      Python, which takes a JSON input.
+#define PFS_HANDLE_ROM
+#define PFS_HANDLE_RAM
+#define PFS_CONTENTS_ROM
+#define PFS_CONTENTS_RAM
+
 
 ///@todo decide if it's even worth having this file table, or if full headers should
 /// be buffered into RAM, thus allowing an arbitrary number of open files.
@@ -164,9 +173,9 @@ static pfs_fdtab_t fdtab;
 
 
 
-static pfs_handle_t* sub_get_handle(ot_u16 file_id);
+static const pfs_handle_t* sub_get_handle(ot_u16 file_id);
 
-static void* sub_convert_front(pfs_handle_t* handle);
+static void* sub_convert_front(const pfs_handle_t* handle);
 
 static void sub_update_times(pfs_stat_t* status, ot_bool is_modded);
 
@@ -186,9 +195,9 @@ OT_WEAK ot_int pfs_init(void) {
     ot_int i;
 
     /// Initialize environment variables
-    bzero(fdtab, sizeof(pfs_fdtab_t));
+    ot_memset((void*)&fdtab, 0, sizeof(pfs_fdtab_t));
 #	if PFS_FEATURE_FSALLOC
-		bzero(uaftab, sizeof(pfs_uaftab_t));
+		ot_memset(uaftab, 0, sizeof(pfs_uaftab_t));
 		PFS_MALLOC_INIT();
 #	endif
 
@@ -232,14 +241,14 @@ OT_WEAK ot_int pfs_get_fd(pfs_file_t* fp) {
 		return -1;
 	}
 
-    fd  = (ot_int)((ot_u8*)fp - (ot_u8*)pfs_file);
+    fd  = (ot_int)((ot_u8*)fp - (ot_u8*)fdtab.data);
     fd /= sizeof(pfs_file_t);
 
     return fd;
 }
 
 
-OT_WEAK ot_int pfs_new(pfs_type_e file_type, ot_u16 alloc, ot_u16 flags, 
+OT_WEAK ot_int pfs_new(pfs_type_e file_type, ot_u16 alloc, pfs_bfflags_t flags,
 				const pfs_user_t* user_id) {
 #if (PFS_FEATURE_ALLOC)
 	pfs_handle_t* new_file;
@@ -250,7 +259,7 @@ OT_WEAK ot_int pfs_new(pfs_type_e file_type, ot_u16 alloc, ot_u16 flags,
     	if (file_type < PFS_Bytefile) {
     		return -4;
     	}
-        if ( auth_check(BF_ACCESS_USER, BF_ACCESS_W, user_id) == 0 ) {
+        if ( auth_check(BF_ACCESS_USER, BF_ACCESS_W, (const void*)user_id) == 0 ) {
             return -4;
         }
     }
@@ -269,7 +278,7 @@ OT_WEAK ot_int pfs_new(pfs_type_e file_type, ot_u16 alloc, ot_u16 flags,
 			return -255;
 		}
 			
-    	bfhdr->flags   &= flags & BF_FLAGMASK;
+    	bfhdr->flags    = flags;
     	bfhdr->length   = 0;
     	bfhdr->action   = NULL;
     	sub_update_times(&bfhdr->stat, True);
@@ -288,7 +297,7 @@ OT_WEAK ot_int pfs_new(pfs_type_e file_type, ot_u16 alloc, ot_u16 flags,
 
 OT_WEAK ot_int pfs_delete(ot_u16 file_id, const pfs_user_t* user_id) {
 #if (PFS_FEATURE_ALLOC)
-    pfs_handle_t* handle;
+    const pfs_handle_t* handle;
 
     /// 1. Get the file handle, which will inform if the File can be
     ///    deleted.
@@ -296,7 +305,7 @@ OT_WEAK ot_int pfs_delete(ot_u16 file_id, const pfs_user_t* user_id) {
     if (handle == NULL) {
     	return -1;
     }
-    if (handle->spec.flash != PFS_FLASH_NONE) {
+    if (handle->spec.romdata != PFS_ROMDATA_NONE) {
     	return -3;
     }
 
@@ -313,7 +322,7 @@ OT_WEAK ot_int pfs_delete(ot_u16 file_id, const pfs_user_t* user_id) {
 			if (bfhdr == NULL) {
 				return -255;
 			}
-			modbits = (ot_u8)(bfhdr->flags >> 8);
+			modbits = (ot_u8)(bfhdr->flags.modbits);
 		}
 		else {
 			modbits = BF_ACCESS_USER;
@@ -338,7 +347,7 @@ OT_WEAK ot_int pfs_delete(ot_u16 file_id, const pfs_user_t* user_id) {
 
 
 OT_WEAK ot_int pfs_open(pfs_file_t** fp, ot_u16 file_id, pfs_mode_e mode, const pfs_user_t* user_id) {
-	pfs_handle_t* handle;
+	const pfs_handle_t* handle;
 	ot_int fd;
     
     ///1. Input checks, fp cannot be null.  Set its reference to NULL as default.
@@ -357,14 +366,30 @@ OT_WEAK ot_int pfs_open(pfs_file_t** fp, ot_u16 file_id, pfs_mode_e mode, const 
     if (handle == NULL) {
     	return -1;
     }
+
+    ///4. Make sure the requested mode is compatible.  Some files are by nature
+    ///   read only.
+    if ((handle->spec.romdata == PFS_ROMDATA_ALL) && (mode > PFS_Read)) {
+        return -3;
+    }
+
+    ///5. Once checks are complete, add the file descriptor & uptake the handle.
+    ///   Bytefile types have more features, and for these we need to save the
+    ///   the access mode in the bytefile header.
     fd			= fdtab.next++;
     *fp         = &fdtab.data[fd];
     (*fp)->hdr  = sub_convert_front(handle);
+
+    if (handle->spec.type == PFS_Bytefile) {
+        pfs_bfhdr_t* bfhdr = (*fp)->hdr;
+        bfhdr->flags.mode = mode;
+    }
+
     (*fp)->data = (*fp)->hdr + data_offset[handle->spec.type];
     (*fp)->spec = handle->spec;
     (*fp)->alloc= handle->alloc;
     
-    ///4. Set the OPEN bit in the file spec
+    ///6. Set the OPEN bit in the file spec
     (*fp)->spec.flags = PFS_FLAG_ISOPEN;
     
 	return fd;
@@ -390,7 +415,7 @@ OT_WEAK ot_u8* pfs_write(pfs_file_t* fp) {
 
 	///2. Don't allow access to read-only files.
 	///   Set modded flags to consider write.
-	if (fp->spec.flash == PFS_FLASH_READONLY) {
+	if (fp->spec.romdata == PFS_ROMDATA_ALL) {
 		data = NULL;
 	}
 	else {
@@ -434,7 +459,7 @@ OT_WEAK ot_int pfs_close(pfs_file_t* fp, void* w_cursor) {
 				new_length = (ot_long)w_cursor - (ot_long)fp->data;
 			}
 			else {
-				new_length = (fp->spec.mode == PFS_Write) ? 0 : bfhdr->length;
+				new_length = (bfhdr->flags.mode == PFS_Write) ? 0 : bfhdr->length;
 			}
 			if (new_length < 0) {
 				bfhdr->length = 0;
@@ -451,14 +476,14 @@ OT_WEAK ot_int pfs_close(pfs_file_t* fp, void* w_cursor) {
 
 		/// Unless there is an error condition, the action will be called if the file
 		/// action usage flags don't mask it.
-		if ((retval == 0) && (bfhdr->flags & fp->spec.flags) && (bfhdr->action != NULL)) {
-			retval = bfhdr->action(fp);
+		if ((retval == 0) && (bfhdr->flags.action & fp->spec.flags) && (bfhdr->stat.action != NULL)) {
+			retval = bfhdr->stat.action(fp);
 		}
 	}
 	
 	/// 3. Formally close the file by removing the file pointer and file descriptor.
 	if (fdtab.next != 0) {
-		bzero(fp, sizeof(fp));
+		ot_memset(fp, 0, sizeof(fp));
 		fdtab.next--;
 	}
 	else {
@@ -551,7 +576,7 @@ ot_int pfs_unpack(void) {
 ot_int pfs_chmod(ot_u16 file_id, ot_u16 modbits, const pfs_user_t* user_id) {
 /// pfs_chmod() only works for ByteFile types.
 
-	pfs_handle_t* handle;
+	const pfs_handle_t* handle;
 	pfs_bfhdr_t* bfhdr;
 	
 	/// 1. Get the file handle, which will inform if the File can be chmod-ed.
@@ -570,16 +595,16 @@ ot_int pfs_chmod(ot_u16 file_id, ot_u16 modbits, const pfs_user_t* user_id) {
     /// 2. Authenticate.  Chmod is considered a read-write operation.
     if (user_id != NULL) {
 		ot_u8 old_modbits;
-		old_modbits = (ot_u8)(bfhdr->flags >> 8);
+		old_modbits = (ot_u8)(bfhdr->flags.modbits);
+
+		///@todo argument alignment on user_id (it's the same)
 		if ( auth_check(old_modbits, BF_ACCESS_RW, user_id) == 0 ) {
 			return -4;
 		}
 	}
     
     /// 3. Update the modbits.
-    bfhdr->flags   &= 0x00FF;
-    modbits       <<= 8;
-    bfhdr->flags   |= modbits;
+    bfhdr->flags.modbits = modbits;
     
     return 0;
 }
@@ -590,7 +615,7 @@ ot_int pfs_attach_action(ot_u16 file_id, ot_u16 act_flags, ot_procv action) {
 /// is not part of an external API.  It only shall be used internally (i.e. not from
 /// within a protocol).
 
-	pfs_handle_t* handle;
+	const pfs_handle_t* handle;
 	pfs_bfhdr_t* bfhdr;
 	
 	/// 1. Get the file handle, which will inform if the File can be actioned.
@@ -607,15 +632,14 @@ ot_int pfs_attach_action(ot_u16 file_id, ot_u16 act_flags, ot_procv action) {
 	}
 
 	/// 3. Attach Action Flags
-    bfhdr->flags   &= 0xFF00;
-    bfhdr->flags   |= (act_flags & BF_ACTION_MASK);
-    bfhdr->action   = action;
+    bfhdr->flags.action = (act_flags & BF_ACTION_MASK);
+    bfhdr->stat.action  = action;
     
     return 0;
 }
 
 
-OT_WEAK ot_int pfs_touch(ot_u16 file_id, const id_tmpl* user_id) {
+OT_WEAK ot_int pfs_touch(ot_u16 file_id, const pfs_user_t* user_id) {
 ///@todo Update access time (not mod time), and run appropriate actions.  
 ///      This only matters for ByteFile types, because only these have times and
 ///      actions in their metadata.
@@ -627,13 +651,13 @@ OT_WEAK ot_u8* pfs_get(ot_u16 file_id) {
 ///@todo Gets file contents without opening the file.  Useful especially with Record
 ///      file types, because these are essentially just RAM allocations on the heap.
 ///      This function shall not be called by external APIs.
-	pfs_handle_t* handle;
+	const pfs_handle_t* handle;
 	void* file_contents;
 	
 	/// 1. Get the file handle, which will inform if the File can be actioned.
     handle = sub_get_handle(file_id);
     if (handle == NULL) {
-    	return -1;
+    	return NULL;
     }
     
     /// 2. The pointer to file contents is offset by a certain amount from the front.
@@ -715,34 +739,35 @@ static const pfs_handle_t* sub_get_handle(ot_u16 file_id) {
 }
 
 
-static void* sub_convert_front(pfs_handle_t* handle) {
+
+static void* sub_convert_front(const pfs_handle_t* handle) {
 /// Purpose of this subroutine is to take a handle, which can come from ROM or RAM,
 /// and make sure the pointer returned is the correct pointer to the front of the data,
 /// which itself can be in ROM or RAM and not necessarily the same as the handle.
 	void* front;
 	
-	switch (handle->spec.flash) {
+	switch (handle->spec.romdata) {
 		// Handle in RAM, Contents in RAM
 		// "front" is stored directly as a pointer.
-		case PFS_FLASH_NONE:
-			front = handle->front;
+		case PFS_ROMDATA_NONE:
+			front = (void*)handle->front;
 			break;
 		
 		// Handle in ROM, Contents in RAM
 		// "front" contains an offset from the front of the Contents RAM.
-		case PFS_FLASH_HDRONLY:
+		case PFS_ROMDATA_HANDLE:
 			front = (void*)((ot_u8*)pfs_contents_ram + offset); 
 			break;
 		
 		// Handle in ROM, Contents in ROM
 		// "front" contains an offset from the front of the Contents ROM.
-		case PFS_FLASH_READONLY:
+		case PFS_ROMDATA_ALL:
 			front = (void*)((const ot_u8*)pfs_contents_rom + offset); 
 			break;
 		
 		// Handle in ROM, Packed Contents in ROM, Active Contents in RAM
 		// "front" contains an offset from the front of the Contents RAM.
-		case PFS_FLASH_READWRITE:
+		case PFS_ROMDATA_MIRRORED:
 			front = (void*)((ot_u8*)pfs_contents_ram + offset); 
 			break;
 	}

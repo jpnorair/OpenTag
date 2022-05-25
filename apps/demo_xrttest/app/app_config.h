@@ -71,6 +71,7 @@
 void xrttest_systask(void* arg);
 
 
+#define OT_FEATURE_VLNEW            DISABLED
 #define OT_FEATURE_GNSS             DISABLED
 
 #if (defined(BOARD_HayTag_LoRa_R2) || \
