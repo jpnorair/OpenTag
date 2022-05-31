@@ -535,6 +535,8 @@ void wllora_load_defaults() {
     ///@todo choose the right settings based on region.  Now 902-928 MHz.
     wllora_calimage_cmd(0xE1, 0xE9);
 
+    wllora_coredump_uart1(0x000, 0xA00);
+
     /// 5. Perform a calibration
     wllora_calibrate_cmd(0x7F);
     delay_us(1);
@@ -578,6 +580,58 @@ void wllora_coredump(ot_u8* dst, ot_uint limit) {
     for (i=0x01; i<limit; i++) {
         *dst++ = 0; ///@todo need to put this here
     }
+}
+
+#include <stdio.h>
+
+void wllora_coredump_uart1(ot_u16 lreg_addr, ot_u16 hreg_addr) {
+/// UART1 on PA9 (ARD:D9 / CN5:2 on the nucleo)
+/// Brings up the interface and shuts it down afterward
+/// On CPU1, would be easier to use SWO here
+
+    ot_u8 val;
+    lr_addr_u addr;
+    char buf[16];
+    char* cursor;
+
+    // Clock and port enable
+    GPIOA->BSRR     = (1<<9);
+    GPIOA->MODER   &= ~(3 << (9*2));
+    GPIOA->MODER   |= ~(GPIO_MODER_ALT << (9*2));
+    GPIOA->AFR[1]  &= ~(15 << (1*4));
+    GPIOA->AFR[1]  |= (7 << (1*4));
+    RCC->C2APB2ENR |= RCC_C2APB2ENR_USART1EN;
+
+    // UART Setup
+    USART1->CR1 = 0;
+    USART1->CR2 = 0;
+    USART1->CR3 = 0;
+    USART1->BRR = platform_get_clockhz(2) / 250000;
+    USART1->CR1 = USART_CR1_TE | USART_CR1_UE;
+
+    while (lreg_addr < hreg_addr) {
+        addr.u8[0] = ((ot_u8*)&lreg_addr)[1];
+        addr.u8[1] = ((ot_u8*)&lreg_addr)[0];
+
+        val = wllora_rdreg_cmd(addr);
+        sprintf(buf, "%04X, %02X;\n", lreg_addr, val);
+
+        cursor = buf;
+        while (*cursor != 0) {
+            USART1->TDR = *cursor++;
+            while ((USART1->ISR & USART_ISR_TXE_TXFNF) == 0);
+            //USART1->ICR |= USART_ICR_TXFECF;
+        }
+
+        lreg_addr++;
+    }
+
+    while ((USART1->ISR & USART_ISR_TC) == 0);
+
+    // Take down UART, clock, port
+    MPIPE_UART->CR1 = 0;
+    RCC->C2APB2ENR &= ~RCC_C2APB2ENR_USART1EN;
+    GPIOA->MODER   |= (3 << (9*2));
 }
 
 

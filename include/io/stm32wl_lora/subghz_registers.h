@@ -94,20 +94,36 @@ typedef enum __attribute__ ((__packed__)) {
     LR_SMPSC0R      = _FLIP16(0x0916),
     LR_PCR          = _FLIP16(0x091A),
     LR_SMPSC2R      = _FLIP16(0x0923),
-    /* Start of Semtech undocumented registers */
-    LR_BWSEL        = _FLIP16(0x0807),
+
+    /* Start of Confirmed undocumented registers */
     LR_CFOH         = _FLIP16(0x06B0),
     LR_CFOL         = _FLIP16(0x06B1),
-    LR_RXADRPTR     = _FLIP16(0x0803),
-    LR_TXADRPTR     = _FLIP16(0x0802),
-    LR_RTXPLDLEN    = _FLIP16(0x06BB),
     LR_PKTCTL1      = _FLIP16(0x06B4),
     LR_PKTCTL1A     = _FLIP16(0x06B8),
-    LR_RSSISYNC     = _FLIP16(0x06CA),      /* read Rssi sampled at Sync */
+    LR_RTXPLDLEN    = _FLIP16(0x06BB),      /* Frame length in bytes, relates to PAYLOADLEN, but not 100% sure how */
+    LR_RSSISYNC     = _FLIP16(0x06CA),      /* Known: read Rssi sampled at Sync */
+    LR_PAYLOADLEN   = _FLIP16(0x0702),      /**@note Seems to relate to: RTXPLDLEN-3 */
+    LR_PACKETPARAMS = _FLIP16(0x0704),      /**@note behavior unknown */
+    LR_SYNCTIMEOUT  = _FLIP16(0x0706),      /* Known: re-calculated number of symbols for sync timeout */
     LR_IQPOLARITY   = _FLIP16(0x0736),      /* IQ Polarity Setup */
+    LR_TXADRPTR     = _FLIP16(0x0802),
+    LR_RXADRPTR     = _FLIP16(0x0803),
+    LR_BWSEL        = _FLIP16(0x0807),
     LR_TXMOD        = _FLIP16(0x0889),      /* RegTxModulation -- not sure what exactly */
+    LR_TXCLAMP      = _FLIP16(0x08D8),      /* Known: PA Clamping Threshold */
+    LR_ANALNA       = _FLIP16(0x08E2),      /**@note Disable/Enable LNA.  Format unknown. */
+    LR_ANAMIXER     = _FLIP16(0x08E5),      /**@note Disable/Enable Mixer.  Format unknown. */
     LR_RTCCTRL      = _FLIP16(0x0902),      /* RegRtcControl -- not sure how it works */
     LR_EVTMASK      = _FLIP16(0x0944),      /* RegEventMask -- not sure how it works */
+
+    /* Start of Unconfirmed undocumented registers */
+    LR_DETPEAK      = _FLIP16(0x073E),      /**@note symb detection peak, see CAD documentation */
+    LR_DETMIN       = _FLIP16(0x073F),      /**@note symb detection min, see CAD documentation */
+    LR_FREQ3        = _FLIP16(0x088B),      /**@note Frequency Setting [31:0] */
+    LR_FREQ2        = _FLIP16(0x088C),      /**@note Frequency Setting [31:0] */
+    LR_FREQ1        = _FLIP16(0x088D),      /**@note Frequency Setting [31:0] */
+    LR_FREQ0        = _FLIP16(0x088E),      /**@note Frequency Setting [31:0] */
+
     /* End of known accessible registers */
     LR_ADDR_MIN     = 0,
     LR_ADDR_MAX     = 0x0fff,

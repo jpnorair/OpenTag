@@ -637,10 +637,5 @@ void wllora_antsw_rx(void) {
 
 
 
-
-
-
-
-
 #endif //#if from top of file
 

@@ -42,7 +42,6 @@
 "./otlib/utils.o"
 "./otlib/veelite.o"
 "./otlib/veelite[32].o"
-"./otlib/veelite[32].c_clang_tmp.o"
 "./otsys/external.o"
 "./otsys/faults.o"
 "./otsys/indicators.o"

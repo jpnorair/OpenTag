@@ -412,11 +412,18 @@ void xrttest_systask(void* arg) {
         return;
     }
 
-    if (task->event & 1) {
-        ctl_state = 0;
-    }
-    else {
+    // Even task event states are where registers get set
+    // Odd ones get the coredump
+    ctl_state = 0;
+    if ((task->event & 1) == 0) {
         ctl_state = task->event >> 1;
+    }
+    // Possible to bypass coredumps until a certain point
+    // Set this constant to 0 to do all coredumps
+    else if (ctl_state < 4) {
+        task->event++;
+        nextevent_ti = 0;
+        goto xrttest_systask_END;
     }
 
     switch (ctl_state) {
@@ -448,7 +455,7 @@ void xrttest_systask(void* arg) {
             break;
         }
 
-        // 1. set Mode to LoRa
+        // set Mode to LoRa
         case 1: {
             logger_str("Set Pkt-type = LoRa");
             wllora_setpkttype_cmd(0x01);
@@ -457,7 +464,7 @@ void xrttest_systask(void* arg) {
             nextevent_ti = 20;
         } break;
 
-        // 2. set frequency to 908 MHz
+        // set frequency to 908 MHz
         case 2: {
             logger_str("Set freq = 908.123456 MHz");
             wllora_rffreq_cmd(0x38C1F9AC);
@@ -466,10 +473,19 @@ void xrttest_systask(void* arg) {
             nextevent_ti = 20;
         } break;
 
-        // 3. set Cad Params
+        // set Cad Params
         case 3: {
             logger_str("Setting cad params");
             wllora_cadparams_cmd(0x04, 0x18, 0x08, 0x01, 0x1A2B3C);
+
+            task->event++;
+            nextevent_ti = 20;
+        } break;
+
+        // set frequency to a slightly different setting than before
+        case 4: {
+            logger_str("Set freq = 926.789123 MHz");
+            wllora_rffreq_cmd(0x39ECA03F);
 
             task->event++;
             nextevent_ti = 20;
@@ -480,6 +496,7 @@ void xrttest_systask(void* arg) {
             nextevent_ti = 2000000000;
     }
 
+    xrttest_systask_END:
     sys_task_setnext(task, nextevent_ti);
 
 }

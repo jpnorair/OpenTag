@@ -77,14 +77,15 @@
 /// CORE DUMP will read all the SX127x registers and save them to an array.
 /// Printing them out is too slow -- the registers can change too fast.
 /// Instead, set breakpoints and inspect the rfcore_dump[] array via debugger HW.
-//#define _RFCORE_DEBUG
+#define _RFCORE_DEBUG
 
 
 #ifdef _RFCORE_DEBUG
-#   define __CORE_DUMP()   wllora_coredump(rfcore_dump, 112)
-    ot_u8 rfcore_dump[112];
+#   define __CORE_DUMP()                wllora_coredump_uart1(0x000, 0xA00)
+#   define __CORE_DUMP_BLOCK(LO, HI)    wllora_coredump_uart1(LO, HI)
 #else
-#   define __CORE_DUMP()    do {} while(0)
+#   define __CORE_DUMP()                do {} while(0)
+#   define __CORE_DUMP_BLOCK(LO, HI)    do {} while(0)
 #endif
 
 ///@todo could this be static?
@@ -249,8 +250,9 @@ OT_WEAK void radio_init(void) {
     wllora_init_bus();
     wllora_load_defaults();
 
-    /// Verify Register settings after defaults are loaded.
-    /// For debugging purposes.  Macro resolves to nothing if RF_DEBUG is off.
+    /// For Deep Debugging of RF Core, or reverse engineering purposes.
+    /// This dump takes a while over the UART, because there are ~2500
+    /// registers in the SX126x core.
     __CORE_DUMP();
 
     /// After wllora_load_defaults(), RF core can be put to sleep
@@ -515,7 +517,10 @@ OT_WEAK void rm2_flood_txstart(void) {
 OT_WEAK void rm2_kill(void) {
     __DEBUG_ERRCODE_EVAL(=290);
 
-    __CORE_DUMP();
+    /// For Deep Debugging of RF Core, or reverse engineering purposes.
+    /// This dump takes a while over the UART, because there are ~2500
+    /// registers in the SX126x core.
+    //__CORE_DUMP();
 
     radio_gag();
     radio_idle();
@@ -733,9 +738,10 @@ OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
     radio_gag();                            
     radio_flush_rx();
     
-    // Pre-RX core dump to verify RX register settings
-    // Core dump is only done when _RFCORE_DEBUG is defined
-    __CORE_DUMP();
+    /// For Deep Debugging of RF Core, or reverse engineering purposes.
+    /// This dump takes a while over the UART, because there are ~2500
+    /// registers in the SX126x core.
+    //__CORE_DUMP();
     
     // testing only
 //    {
@@ -979,8 +985,9 @@ OT_WEAK void rm2_txtest(ot_u8 channel, ot_u8 eirp_code, ot_u8 tsettings, ot_u16 
     wllora_rfio_tx();
     radio_flush_tx();
 
-    // Verify Register settings ahead of TX Test (continuous random TX)
-    // Core dump is only done when _RFCORE_DEBUG is defined
+    /// For Deep Debugging of RF Core, or reverse engineering purposes.
+    /// This dump takes a while over the UART, because there are ~2500
+    /// registers in the SX126x core.
     __CORE_DUMP();
     
     radio.state = RADIO_DataTX;
@@ -1157,9 +1164,10 @@ OT_WEAK void rm2_txcsma_isr(void) {
             wllora_rfio_tx();
             wllora_rfirq_txdata();
 
-            // Pre-TX Core Dump to verify TX Register Settings.
-            // Core dump is only done when _RFCORE_DEBUG is defined
-            __CORE_DUMP();
+            /// For Deep Debugging of RF Core, or reverse engineering purposes.
+            /// This dump takes a while over the UART, because there are ~2500
+            /// registers in the SX126x core.
+            //__CORE_DUMP();
 
             wllora_antsw_tx();
             wllora_set_state(RFSTATE_tx, False);

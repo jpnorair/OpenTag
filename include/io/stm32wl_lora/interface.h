@@ -783,6 +783,7 @@ void wllora_load_defaults();
 /// Functions for debugging only
 void wllora_corelog();
 void wllora_coredump(ot_u8* dst, ot_uint limit);
+void wllora_coredump_uart1(ot_u16 lreg_addr, ot_u16 hreg_addr);
 
 ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking);
 
