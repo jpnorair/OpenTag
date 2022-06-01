@@ -108,6 +108,7 @@ int main(void)
 
   /* Boot CPU2 */
   HAL_PWREx_ReleaseCore(PWR_CORE_CPU2);
+  //SET_BIT(PWR->CR4, PWR_CR4_C2BOOT);
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */

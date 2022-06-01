@@ -30,6 +30,10 @@
 #if defined(__STM32WL_LORA__)
 
 
+//For core dump
+#include <stdio.h>
+
+
 #include <io/stm32wl_lora/interface.h>
 #include <io/stm32wl_lora/config.h>
 
@@ -535,7 +539,7 @@ void wllora_load_defaults() {
     ///@todo choose the right settings based on region.  Now 902-928 MHz.
     wllora_calimage_cmd(0xE1, 0xE9);
 
-    wllora_coredump_uart1(0x000, 0xA00);
+    //wllora_coredump_uart1(0x000, 0xA00);
 
     /// 5. Perform a calibration
     wllora_calibrate_cmd(0x7F);
@@ -582,8 +586,6 @@ void wllora_coredump(ot_u8* dst, ot_uint limit) {
     }
 }
 
-#include <stdio.h>
-
 void wllora_coredump_uart1(ot_u16 lreg_addr, ot_u16 hreg_addr) {
 /// UART1 on PA9 (ARD:D9 / CN5:2 on the nucleo)
 /// Brings up the interface and shuts it down afterward
@@ -597,7 +599,7 @@ void wllora_coredump_uart1(ot_u16 lreg_addr, ot_u16 hreg_addr) {
     // Clock and port enable
     GPIOA->BSRR     = (1<<9);
     GPIOA->MODER   &= ~(3 << (9*2));
-    GPIOA->MODER   |= ~(GPIO_MODER_ALT << (9*2));
+    GPIOA->MODER   |= (GPIO_MODER_ALT << (9*2));
     GPIOA->AFR[1]  &= ~(15 << (1*4));
     GPIOA->AFR[1]  |= (7 << (1*4));
     RCC->C2APB2ENR |= RCC_C2APB2ENR_USART1EN;

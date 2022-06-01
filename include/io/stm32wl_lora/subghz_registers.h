@@ -41,7 +41,7 @@
 #   define WLLORA_SMPS_MAX      0b100   /* 60 mA */
 #endif
 
-#ifdef BOARD_FEATURE(TCXO)
+#if BOARD_FEATURE(TCXO)
 #   if (BOARD_PARAM(mVtcxo) > 3300)
 #       error "TCXO Voltage is higher than supported amount"
 #   elif (BOARD_PARAM(mVtcxo) > 3000)

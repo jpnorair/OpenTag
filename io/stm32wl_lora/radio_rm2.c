@@ -253,7 +253,7 @@ OT_WEAK void radio_init(void) {
     /// For Deep Debugging of RF Core, or reverse engineering purposes.
     /// This dump takes a while over the UART, because there are ~2500
     /// registers in the SX126x core.
-    __CORE_DUMP();
+    //__CORE_DUMP();
 
     /// After wllora_load_defaults(), RF core can be put to sleep
     radio_sleep();

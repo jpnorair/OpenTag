@@ -1,4 +1,0 @@
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_msp_template.c:51:6:HAL_MspInit	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_msp_template.c:62:6:HAL_MspDeInit	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_msp_template.c:73:6:HAL_PPP_MspInit	0	static
-/Users/jpnbook/Sync/Repository/OpenTag/platform/stm32wl55_m0/stm32wlxx_hal_1.11.0/stm32wlxx_hal_msp_template.c:84:6:HAL_PPP_MspDeInit	0	static
