@@ -1,0 +1,8 @@
+# Build Directory Gitignore
+
+/CM0PLUS/Debug/*
+/CM0PLUS/Release/*
+/CM4/Debug/*
+/CM4/Release/*
+
+*.su
