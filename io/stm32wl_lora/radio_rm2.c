@@ -114,8 +114,7 @@ static void test_rfreg_stepthrough(void) {
   * ========================================================================<BR>
   */
 void sub_hwtimeout_isr(void);
-void sub_initrx(void);
-void sub_initcad(void);
+void sub_radio_idle(WLLora_State idle_type, ot_bool blocking);
 
 void wlloradrv_mdmconfig(MODE_enum mode, ot_u16 param);
 void wlloradrv_save_linkinfo(void);
@@ -385,19 +384,35 @@ void sub_set_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
 ///@todo when additional information is known about setting up all types of
 ///      sensitivity parameters, that configuration will go in this function.
 
+    ///@todo these luts were reversed... not sure why I did this
+    //static const ot_u8 sf_lut[4] = {
+    //    5, 7, 9, 11
+    //};
+//    static const ot_u8 cadparams_lut[8][4] = {
+//    //      symbs | det peak  | det min |   symbol timeout
+//        {   3,      0x18,       0x10,       11  },   // sf5, no fec
+//        {   2,      0x18,       0x04,       4   },   // sf5, mpc
+//        {   3,      0x20,       0x10,       9   },   // sf7, no fec
+//        {   1,      0x20,       0x04,       3   },   // sf7, mpc
+//        {   2,      0x22,       0x10,       7   },   // sf9, no fec
+//        {   0,      0x22,       0x04,       1   },   // sf9, mpc
+//        {   2,      0x24,       0x10,       5   },   // sf11, no fec
+//        {   0,      0x24,       0x04,       0   },   // sf11, mpc
+//    };
+
+    static const ot_u8 sf_lut[4] = {
+        11, 9, 7, 5
+    };
     static const ot_u8 cadparams_lut[8][4] = {
     //      symbs | det peak  | det min |   symbol timeout
-        {   3,      0x18,       0x10,       11  },   // sf5, no fec
-        {   2,      0x18,       0x04,       4   },   // sf5, mpc
-        {   3,      0x20,       0x10,       9   },   // sf7, no fec
-        {   1,      0x20,       0x04,       3   },   // sf7, mpc
-        {   2,      0x22,       0x10,       7   },   // sf9, no fec
-        {   0,      0x22,       0x04,       1   },   // sf9, mpc
         {   2,      0x24,       0x10,       5   },   // sf11, no fec
         {   0,      0x24,       0x04,       0   },   // sf11, mpc
-    };
-    static const ot_u8 sf_lut[4] = {
-        5, 7, 9, 11
+        {   2,      0x22,       0x10,       7   },   // sf9, no fec
+        {   0,      0x22,       0x04,       1   },   // sf9, mpc
+        {   3,      0x20,       0x10,       9   },   // sf7, no fec
+        {   1,      0x20,       0x04,       3   },   // sf7, mpc
+        {   3,      0x18,       0x10,       11  },   // sf5, no fec
+        {   2,      0x18,       0x04,       4   },   // sf5, mpc
     };
 
     /// PA reprogram
@@ -418,7 +433,9 @@ void sub_set_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
         const ot_u8* lut    = cadparams_lut[(sf_index << 1) + usefec];
 
         wllora_cadparams_cmd(lut[0], lut[1], lut[2], 0, 0);
+
         wllora_symtimeout_cmd(lut[3]);
+
         wllora_modparams_cmd(sf_lut[sf_index], 0x06, 1-usefec, 0);
 
         ///@todo Figure out if there is a pattern to the values in these
@@ -430,17 +447,20 @@ void sub_set_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
         ///@note this is a workaround per Semtech SX1262 datasheet.  Must have
         /// bit2 set to 0 in register 0x0889 when Bandwidth is 500 kHz, and 1
         /// when Bandwidth is less than 500 kHz.
+        ///@note TXMOD values observed:
+        ///      SF11, 500kHz, CR1, NoLDRO = 0x20 (no change below)
         {   ot_u8 txmod_val;
             txmod_val = wllora_rdreg(LR_TXMOD);
-            wllora_wrreg(LR_TXMOD, txmod_val & ~(1<<2) );
+            wllora_wrreg(LR_TXMOD, txmod_val & ~0b100 );
         }
 
         ///@note this is a workaround per Semtech SX1262 datasheet.  Must have
         /// bit2 set to 0 in register 0x0736 when IQ is inverted, and set to 1
         /// when IQ is Normal.
+        ///@note 500kHz, NoLDRO, Non-Inv = 0x0D (no change below)
         {   ot_u8 iqpol_val;
             iqpol_val = wllora_rdreg(LR_IQPOLARITY);
-            wllora_wrreg(LR_IQPOLARITY, iqpol_val | (1<<2) );
+            wllora_wrreg(LR_IQPOLARITY, iqpol_val | 0b100 );
         }
     }
 
@@ -448,6 +468,10 @@ void sub_set_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
     if (old_chan_id & 0x0F) {
         wllora_configure_chan(phymac[0].flags, (phymac[0].channel & 0x0F)-1);
     }
+
+    /// The current channel is now also the old channel
+    wllora_ext.old_chan_id = phymac[0].channel;
+    wllora_ext.old_tx_eirp = phymac[0].tx_eirp;
 }
 
 
@@ -523,7 +547,8 @@ OT_WEAK void rm2_kill(void) {
     //__CORE_DUMP();
 
     radio_gag();
-    radio_idle();
+    sub_radio_idle(RFSTATE_RCstandby, False);
+
     dll_unblock();
     radio_finish(RM2_ERR_KILL, 0);
 }
@@ -538,6 +563,7 @@ void sub_hwtimeout_isr(void) {
     if (rfctl.flags & RADIO_FLAG_BG) {
         if (--rfctl.tries <= 0) {
             wlloradrv_save_linkinfo();
+            ///@note already in idle due to RX-Single Mode
             radio_finish(RM2_ERR_TIMEOUT, 1 /*radio.link.sqi*/);
             return;
         }
@@ -640,7 +666,11 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     }
 
     /// Need to go into Idle ahead of any register access
-    radio_idle();
+    {   WLLora_State next_state;
+        next_state = (wllora.state > RFSTATE_RCstandby) ?
+                RFSTATE_HSEstandby : RFSTATE_RCstandby;
+        sub_radio_idle(next_state, True);
+    }
 
     // Set Modem Configuration: BW, SF, sensitivity params, packet config.
     // Additionally, this function refers to phymac[] struct.
@@ -698,7 +728,6 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
 void sub_rxtest_callback(ot_int a, ot_int b) {
 /// Loop RX until timeout occurs: Could log packet here as well
     ///@todo log packet here
-    sub_initrx();
 }
 
 
@@ -816,7 +845,7 @@ OT_WEAK void rm2_rxdata_isr() {
     if (em2.state < 0) {
         systim_disable_insertion();
         radio_gag();
-        radio_idle();
+        sub_radio_idle(RFSTATE_HSEstandby, False);
         rm2_reenter_rx(radio.evtdone);
     }
     // decoder has successfully unpacked the header
@@ -1061,7 +1090,7 @@ OT_WEAK void rm2_txcsma_isr(void) {
         /// <LI> Fall-through to CCA1 if CSMA is enabled </LI>
         case (RADIO_STATE_TXINIT >> RADIO_STATE_TXSHIFT): {
             MODE_enum   type;
-            WLLora_State next_state;
+            //WLLora_State next_state;
 
             // Find a usable channel from the TX channel list.  If none, error.
             if (rm2_test_chanlist() == False) {
@@ -1075,11 +1104,6 @@ OT_WEAK void rm2_txcsma_isr(void) {
             radio_activate_queue(&txq);
             em2_encode_newpacket();
             em2_encode_newframe();
-
-            // Expected entry State is Sleep, here.
-            //next_state = (wllora.state <= RFSTATE_RCstandby) ?
-            //                RFSTATE_RCstandby : RFSTATE_HSEstandby;
-            //wllora_set_state(next_state, True);
 
             // Apply the cached channel parameters to the Radio Core.
             // rm2_test_chanlist() will set-up the channel into wllora_ext cache.
@@ -1140,13 +1164,16 @@ OT_WEAK void rm2_txcsma_isr(void) {
 ///@todo there is a race condition that can occur here between RX and TX processes,
 /// given that the code below can be too long to put in an ISR.  Ideally there is
 /// a better way to handle this via the radio.evtdone() callback.
+
+///@todo radio.evtdone() can often call radio_idle(), which can cause issues with
+///      SX126x architecture.  Need to make radio_idle() more intelligent or possibly
+///      an empty implementation.
             radio.evtdone(0, (rfctl.flags & (RADIO_FLAG_PG | RADIO_FLAG_CONT | RADIO_FLAG_BG)));
             
             // Preload into TX FIFO all packet data
             // There are slightly different processes for BG and FG frames
             txq.front[2] = phymac[0].tx_eirp;
             if (rfctl.flags & RADIO_FLAG_BG) {
-                radio_idle();
                 if (rfctl.flags & RADIO_FLAG_CONT) {
                     rm2_flood_txstart();
                 }
@@ -1206,7 +1233,7 @@ OT_WEAK void rm2_txdata_isr(void) {
 
     // Packet is done with TX
     radio_gag();
-    radio_idle();
+    sub_radio_idle(RFSTATE_HSEstandby, False);
     radio_finish((rfctl.flags & (RADIO_FLAG_PG | RADIO_FLAG_BG | RADIO_FLAG_CONT)), 0);
 }
 #endif
@@ -1333,14 +1360,24 @@ OT_WEAK void radio_sleep(void) {
 }
 #endif
 
-#ifndef EXTF_radio_idle
-OT_WEAK void radio_idle(void) {
+
+
+void sub_radio_idle(WLLora_State idle_type, ot_bool blocking) {
+///@note idle_type must be only RFSTATE_RCstandby or RFSTATE_HSEstandby
+
     ///@todo Does wllora_antsw_on() need to be here?
     wllora_antsw_on();
-    wllora_set_state(RFSTATE_RCstandby, True);
+
+    wllora_set_state(idle_type, blocking);
     radio.state = RADIO_Idle;
 }
+
+#ifndef EXTF_radio_idle
+OT_WEAK void radio_idle(void) {
+    sub_radio_idle(RFSTATE_RCstandby, True);
+}
 #endif
+
 
 #ifndef EXTF_radio_putbyte
 OT_WEAK void radio_putbyte(ot_u8 databyte) {
