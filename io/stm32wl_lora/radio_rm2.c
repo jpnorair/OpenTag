@@ -116,8 +116,35 @@ static void test_rfreg_stepthrough(void) {
 void sub_hwtimeout_isr(void);
 void sub_radio_idle(WLLora_State idle_type, ot_bool blocking);
 
-void wlloradrv_mdmconfig(MODE_enum mode, ot_u16 param);
+void wlloradrv_mdmconfig(MODE_enum mode, ot_u16 param, ot_bool is_rx);
 void wlloradrv_save_linkinfo(void);
+
+
+
+void sub_workaround_implicitrx(void) {
+    ot_u8 value;
+
+    wllora_wrreg(LR_RTCCTRL, 0);
+
+    value   = wllora_rdreg(LR_EVTMASK);
+    value  |= 0x02;
+    wllora_wrreg(LR_EVTMASK, value);
+}
+
+void sub_workaround_bw500(void) {
+///@note this is a workaround per Semtech SX1262 datasheet.  Must have
+/// bit2 set to 0 in register 0x0889 when Bandwidth is 500 kHz, and 1
+/// when Bandwidth is less than 500 kHz.
+///@note TXMOD values observed:
+///      SF11, 500kHz, CR1, NoLDRO = 0x20 (no change below)
+    ot_u8 value;
+
+    value   = wllora_rdreg(LR_TXMOD);
+    value  &= 0xFB;
+    wllora_wrreg(LR_TXMOD, value);
+}
+
+
 
 
 
@@ -145,16 +172,19 @@ void wllora_virtual_isr(ot_u16 irq_mask) {
             }
             goto KILL_ON_ERROR;
 
-        // Available IRQs are HDRVALID and RXDONE
+        // Available IRQs are LR_IRQ_PREAMBLEDET and RXDONE
         case MODE_RXData:
+            if (irq_mask & LR_IRQ_HDRVALID) {
+                rm2_rxsync_isr();
+                return;
+            }
+            if (irq_mask & LR_IRQ_PREAMBLEDET) {
+                rm2_rxsync_isr();
+                return;
+            }
             if (irq_mask & LR_IRQ_RXDONE) {
                 // frame received
                 rm2_rxend_isr();
-                return;
-            }
-            if (irq_mask & LR_IRQ_HDRVALID) {
-                // sync
-                rm2_rxsync_isr();
                 return;
             }
             goto KILL_ON_ERROR;
@@ -186,19 +216,37 @@ void wllora_virtual_isr(ot_u16 irq_mask) {
     }
 
     KILL_ON_ERROR:
+
+    // Workaround per SX1262 Datasheet section 15.3 (may not be necessary)
+    sub_workaround_implicitrx();
+
     rm2_kill();
 }
 
 
+typedef struct {
+    ot_u16  lo;
+    ot_u16  hi;
+} bounds_t;
+
+bounds_t dumpbounds = { 0, 16 };
 
 #ifndef EXTF_radio_mac_isr
 OT_WEAK void radio_mac_isr(void) {
 
 	// Utilized for foreground reception and also soft reception of any FEC frame
-	if (radio.state == RADIO_DataRX) {
-		rm2_rxdata_isr();
+	//if (radio.state == RADIO_DataRX) {
+	    ///@note this is ugly, better to use RTC wakeup timer for this, or to make alarmb the same as alarm-a in implementation.
+	    systim_set_insertion(rfctl.iter_ti);
+
+		///@note block below is temporary code for RX register monitoring
+		__CORE_DUMP_BLOCK(dumpbounds.lo, dumpbounds.hi);
 		return;
-	}
+
+		///@note this was the original code
+		//rm2_rxdata_isr();
+		//return;
+	//}
     
     // All usages other than RX sample timer are one-shot
 	systim_disable_insertion();
@@ -219,6 +267,9 @@ OT_WEAK void radio_mac_isr(void) {
     	}
     }
     
+    // Workaround per SX1262 Datasheet section 15.3 (may not be necessary)
+    sub_workaround_implicitrx();
+
     // Fall-through case, but also here for false state handling
 	rm2_kill();
 }
@@ -292,7 +343,7 @@ OT_WEAK void radio_finish(ot_int main_err, ot_int frame_err) {
 #ifndef EXTF_radio_set_mactimer
 OT_WEAK void radio_set_mactimer(ot_u16 clocks) {
 /// Used for high-accuracy TX/CSMA slot insertion, and flooding.
-    systim_enable_insertion();
+    //systim_enable_insertion();
     systim_set_insertion(clocks);
 }
 #endif
@@ -432,27 +483,19 @@ void sub_set_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
         ot_u8 usefec        = (phymac[0].channel >> 7);
         const ot_u8* lut    = cadparams_lut[(sf_index << 1) + usefec];
 
+        wllora_modparams_cmd(sf_lut[sf_index], 0x06, 1-usefec, 0);
+
         wllora_cadparams_cmd(lut[0], lut[1], lut[2], 0, 0);
 
-        wllora_symtimeout_cmd(lut[3]);
+        ///@note setting stoprxtim to 1 prevents preamble detect irq.
+        wllora_stoprxtim_cmd(0);
 
-        wllora_modparams_cmd(sf_lut[sf_index], 0x06, 1-usefec, 0);
+        ///@note setting symtimeout to anything other than 0 seems to prevent
+        ///      preamble detect irq from working.
+        wllora_symtimeout_cmd(0 /*lut[3]*/);
 
         ///@todo Figure out if there is a pattern to the values in these
         /// registers, and set them directly rather than Read-Modify-Write.
-
-        ///@todo need to monitor if these registers change at all, or stay the
-        /// same once set.
-
-        ///@note this is a workaround per Semtech SX1262 datasheet.  Must have
-        /// bit2 set to 0 in register 0x0889 when Bandwidth is 500 kHz, and 1
-        /// when Bandwidth is less than 500 kHz.
-        ///@note TXMOD values observed:
-        ///      SF11, 500kHz, CR1, NoLDRO = 0x20 (no change below)
-        {   ot_u8 txmod_val;
-            txmod_val = wllora_rdreg(LR_TXMOD);
-            wllora_wrreg(LR_TXMOD, txmod_val & ~0b100 );
-        }
 
         ///@note this is a workaround per Semtech SX1262 datasheet.  Must have
         /// bit2 set to 0 in register 0x0736 when IQ is inverted, and set to 1
@@ -487,10 +530,10 @@ OT_WEAK void rm2_mac_configure(void) {
 }
 #endif
 
-
+static lr_pktlink_t linkinfo;
 #ifndef EXTF_rm2_calc_link
 OT_WEAK void rm2_calc_link(void) {
-	lr_pktlink_t linkinfo;
+	//lr_pktlink_t linkinfo;
 	linkinfo = wllora_pktlink_cmd();
 
 #   if (M2_FEATURE_MPCODE)
@@ -674,17 +717,24 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
 
     // Set Modem Configuration: BW, SF, sensitivity params, packet config.
     // Additionally, this function refers to phymac[] struct.
-    wlloradrv_mdmconfig(mode, 0);
+    wlloradrv_mdmconfig(mode, 0, True);
     
-    ///@note the iteration ticks corresponds to the duration of one interleaver block
-    ///      of LoRa symbols.  "Ticks" in this case is implementation-specific to this driver
-    ///      and not [necessarily] DASH7 standard ticks.  This impl has iter_ti = 0.25 Ticks.
-
-    // Set the rx iteration period
-    rfctl.iter_ti = (ot_u8)(wllora_block_miti(&phymac[0]) >> 8) + 1;
+    ///@note the iteration ticks corresponds to the duration of one interleaver
+    ///      block of LoRa symbols.  "iter ti" in this case is implementation-
+    ///      specific to this driver and not [necessarily] DASH7 standard ticks.
+    ///      This impl has iter_ti = 1/32 Ticks (or 1 sti).
+    rfctl.iter_ti = (ot_u16)(wllora_block_miti(&phymac[0]) >> 5) + 1;
 
     // Apply the cached channel parameters to the Radio Core
     sub_set_channel(wllora_ext.old_chan_id, wllora_ext.old_tx_eirp);
+
+    ///@todo need a delay slot here of some kind, because RX doesn't always
+    ///      seem to work following the switch to standby.  Possibly need to
+    ///      use the insertion timer with states to incur a small delay, or
+    ///      otherwise need to make the wllora_set_state() function more
+    ///      accurate.
+
+    ///@todo consider performing an RF calibration here
 
     /// 3.  Use CAD or RX initialization subroutine
     if (cad_else_rx) {
@@ -743,7 +793,7 @@ OT_WEAK void rm2_rxtest(ot_u8 channel, ot_u8 tsettings, ot_u16 timeout) {
     sub_set_channel((channel & 0x7f), (phymac[0].tx_eirp & 0x7f));
     
     // Configure radio for Foreground reception (nominal)
-    wlloradrv_mdmconfig(MODE_fg, 0);
+    wlloradrv_mdmconfig(MODE_fg, 0, True);
     
     // Set MAC timer as termination timer
     radio_set_mactimer(timeout << 2);
@@ -766,26 +816,21 @@ OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
     // Reset interrupts and FIFO for fresh RX'ing
     radio_gag();                            
     radio_flush_rx();
-    
+
     /// For Deep Debugging of RF Core, or reverse engineering purposes.
     /// This dump takes a while over the UART, because there are ~2500
     /// registers in the SX126x core.
     //__CORE_DUMP();
+// testing only
+radio_set_mactimer(0 /*rfctl.iter_ti*/);
     
-    // testing only
-//    {
-//        test_state = wllora_status_cmd();
-//    }
-
     wllora_rfirq_rxdata();
     wllora_antsw_rx();
     wllora_set_state(RFSTATE_rx, False);
-    
-    // testing only
-//    {
-//        delay_ms(10);
-//        test_state = wllora_status_cmd();
-//    }
+
+    ///@todo not sure if this place is best, or in rm2_rxsync_isr()
+    em2_decode_newpacket();
+    em2_decode_newframe();
 
     // Packet Sync must be reset at this point, so another sync can be found.
     // radio_gag() above will reset all the IRQ flags.
@@ -813,13 +858,17 @@ OT_WEAK void rm2_rxsync_isr(void) {
     // Manual download timing.
     // Either wait for the end of the packet (iter_ti=0: unencoded BG and PG frames)
     // or setup a timer interrupt.
-    if (rfctl.iter_ti != 0) {
-    	radio_set_mactimer(rfctl.iter_ti);
-    }
+
+    ///@todo removed for now for initial validation
+//    if (rfctl.iter_ti != 0) {
+//    	radio_set_mactimer(0 /*rfctl.iter_ti*/);
+//    }
+
     wllora_rfirq_rxend();
 
-    em2_decode_newpacket();
-    em2_decode_newframe();
+    ///@todo not sure if this place is best, or in rm2_rxsync_isr()
+    //em2_decode_newpacket();
+    //em2_decode_newframe();
 }
 #endif
 
@@ -872,6 +921,48 @@ OT_WEAK void rm2_rxdata_isr() {
 
 
 
+void __linkinfo_debug_only(void) {
+/// UART1 on PA9 (ARD:D9 / CN5:2 on the nucleo)
+/// Brings up the interface and shuts it down afterward
+/// On CPU1, would be easier to use SWO here
+
+    ot_u8 val;
+    lr_addr_u addr;
+    char buf[32];
+    char* cursor;
+
+    // Clock and port enable
+    GPIOA->BSRR     = (1<<9);
+    GPIOA->MODER   &= ~(3 << (9*2));
+    GPIOA->MODER   |= (GPIO_MODER_ALT << (9*2));
+    GPIOA->AFR[1]  &= ~(15 << (1*4));
+    GPIOA->AFR[1]  |= (7 << (1*4));
+    RCC->C2APB2ENR |= RCC_C2APB2ENR_USART1EN;
+
+    // UART Setup
+    USART1->CR1 = 0;
+    USART1->CR2 = 0;
+    USART1->CR3 = 0;
+    USART1->BRR = platform_get_clockhz(2) / 250000;
+    USART1->CR1 = USART_CR1_TE | USART_CR1_UE;
+
+    sprintf(buf, "link: %02X, %02X, %02X\n", linkinfo.rssi_pkt, linkinfo.signal_rssi_pkt, linkinfo.snr_pkt);
+
+    cursor = buf;
+    while (*cursor != 0) {
+        USART1->TDR = *cursor++;
+        while ((USART1->ISR & USART_ISR_TXE_TXFNF) == 0);
+        //USART1->ICR |= USART_ICR_TXFECF;
+    }
+
+    while ((USART1->ISR & USART_ISR_TC) == 0);
+
+    // Take down UART, clock, port
+    MPIPE_UART->CR1 = 0;
+    RCC->C2APB2ENR &= ~RCC_C2APB2ENR_USART1EN;
+    GPIOA->MODER   |= (3 << (9*2));
+}
+
 #ifndef EXTF_rm2_rxend_isr
 OT_WEAK void rm2_rxend_isr(void) {
 
@@ -883,6 +974,11 @@ OT_WEAK void rm2_rxend_isr(void) {
     rm2_calc_link();                            // Calculate relative link info
     rfctl.state = RADIO_STATE_RXDONE;           // Make sure in DONE State, for decoding
     
+    // Workaround per SX1262 Datasheet section 15.3 (may not be necessary)
+    sub_workaround_implicitrx();
+
+__CORE_DUMP_BLOCK(dumpbounds.lo, dumpbounds.hi);
+__linkinfo_debug_only();
     em2_decode_data();                          // decode any leftover data
     
     // The DLL we be re-opened in this ISR via radio_finish, but only if it's not
@@ -1113,7 +1209,7 @@ OT_WEAK void rm2_txcsma_isr(void) {
             // Peristent-TX attribute for floods, which is written later
             ///@note this LUT supports BG, FG, and PG
             type = mode_lut[rfctl.flags & 7];
-            wlloradrv_mdmconfig(type, em2.bytes);
+            wlloradrv_mdmconfig(type, em2.bytes, False);
             
             // Bypass CSMA if MAC is disabling it
             ///@todo CSMA/CCA is disabled for now while Radio is being developed
@@ -1191,6 +1287,9 @@ OT_WEAK void rm2_txcsma_isr(void) {
             wllora_rfio_tx();
             wllora_rfirq_txdata();
 
+            // Per Semtech datasheet section 15.1: may not be necessary
+            sub_workaround_bw500();
+
             /// For Deep Debugging of RF Core, or reverse engineering purposes.
             /// This dump takes a while over the UART, because there are ~2500
             /// registers in the SX126x core.
@@ -1258,7 +1357,7 @@ void wlloradrv_null(ot_int arg1, ot_int arg2) { }
 
 
 #ifndef EXTF_wlloradrv_mdmconfig
-OT_WEAK void wlloradrv_mdmconfig(MODE_enum mode, ot_u16 param) {
+OT_WEAK void wlloradrv_mdmconfig(MODE_enum mode, ot_u16 param, ot_bool is_rx) {
 /// wlloradrv_mdmconfig() must configure the following attributes:
 /// - syncword
 /// - preamble length
@@ -1267,16 +1366,32 @@ OT_WEAK void wlloradrv_mdmconfig(MODE_enum mode, ot_u16 param) {
 /// - sensitivity parameters: symbol sense, det peak, det min
 	ot_u8 payload_len;
 	ot_u8 lut_index;
+	ot_u16 preamble_len;
 
 	static const ot_u8 syncword[6][2] = {
-	    { 0x14, 0xD7 },
-	    { 0x14, 0x28 },
-	    { 0x14, 0xEB },
-	    { 0x14, 0x14 },
-	    { 0x14, 0x8D },
-	    { 0x14, 0x72 }
+///@todo need to validate usable sync-words.  Seems like they need to be 0xY4Z4
+//	    { 0x14, 0x34 },
+//	    { 0x14, 0x44 },
+//	    { 0x14, 0x54 },
+//	    { 0x14, 0x64 },
+//	    { 0x14, 0x74 },
+//	    { 0x14, 0x84 }
+
+	    { 0x14, 0x24 },
+        { 0x14, 0x24 },
+        { 0x14, 0x24 },
+        { 0x14, 0x24 },
+        { 0x14, 0x24 },
+        { 0x14, 0x24 }
+
+//	    { 0x34, 0x44 },
+//        { 0x34, 0x44 },
+//        { 0x34, 0x44 },
+//        { 0x34, 0x44 },
+//        { 0x34, 0x44 },
+//        { 0x34, 0x44 }
 	};
-	static const ot_u8 preamblelen[6] = {
+	static const ot_u8 prelen_lut[6] = {
         (DRF_LR_PREAMBLELSB-4), (DRF_LR_PREAMBLELSB-4),
         DRF_LR_PREAMBLELSB,     DRF_LR_PREAMBLELSB,
         DRF_LR_PREAMBLELSB,     DRF_LR_PREAMBLELSB,
@@ -1288,9 +1403,10 @@ OT_WEAK void wlloradrv_mdmconfig(MODE_enum mode, ot_u16 param) {
     };
 
     // Preamble length, initial payload length
-    lut_index   = (ot_u8)mode + (phymac[0].channel >> 7);
-    payload_len = (param == 0) ? deflength[lut_index] : param;
-    wllora_pktparams_cmd((ot_u16)preamblelen[lut_index], 1, payload_len, 0, 0);
+    lut_index       = (ot_u8)mode + (phymac[0].channel >> 7);
+    payload_len     = (param == 0) ? deflength[lut_index] : param;
+    preamble_len    = is_rx ? /*0xffff*/ 20 : 12 /*(ot_u16)prelen_lut[lut_index]*/;
+    wllora_pktparams_cmd(preamble_len, 1, payload_len, 0, 0);
 
     // Sync Word
     wllora_wrburst(LR_LSYNCRH, 2, syncword[lut_index]);

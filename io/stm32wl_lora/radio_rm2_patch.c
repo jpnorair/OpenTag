@@ -480,6 +480,8 @@ void em2_decode_data(void) {
     //rxbytes     = wllora_read(RFREG_LR_FIFORXBYTEADDR);
     //rxptr       = wllora_read(RFREG_LR_FIFOADDRPTR);
     //newbytes    = (int)rxbytes - (int)rxptr;
+
+    ///@todo need to inspect some registers for intermediate buffer size, perhaps 0042
     rxstatus = wllora_rxbufstatus_cmd();
     newbytes = rxstatus.payload_len - em2.bytes;
 
@@ -529,14 +531,18 @@ void em2_decode_data(void) {
 	}
 	else
 #   endif
+
 	{
-	    rxq.putcursor   = rxq.getcursor + em2.bytes;
-	    em2.crc5       += (em2.bytes >= 2);
-	    if (em2.crc5 == 1) {
-	        if (em2_check_crc5() != 0) {
-	            em2.state = -1;
-	        }
-	    }
+	    rxq.putcursor = rxq.getcursor + em2.bytes;
+
+	    ///@todo Checking a header bit to see if CRC must be checked.
+	    ///      Not sure this really works, but need it for testing now.
+	    if (((rxq.front[1] & 0x20) == 0) && (em2.bytes >= 2)) {
+            rxq.front[1] ^= 0x20;
+            if (em2_check_crc5() != 0) {
+                em2.state = -1;
+            }
+        }
 	}
 }
 

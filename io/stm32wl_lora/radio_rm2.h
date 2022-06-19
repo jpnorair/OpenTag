@@ -83,7 +83,8 @@ typedef struct {
     ot_u8   state;
     ot_u8   flags;
     ot_u8   tries;  //used mainly for BG Scan
-    ot_u8   iter_ti;
+    ot_u8   reserved;
+    ot_u16  iter_ti;
 } rfctl_struct;
 
 extern rfctl_struct rfctl;

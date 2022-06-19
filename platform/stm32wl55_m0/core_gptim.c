@@ -373,7 +373,7 @@ void systim_set_insertion(ot_u16 value) {
         rtc_ssr         = RTC->SSR;
         RTC->CR        &= ~RTC_CR_ALRBE;
         RTC->SCR        = RTC_SCR_CALRBF;
-        RTC->ALRABINR   = rtc_ssr - (ot_u32)value;
+        RTC->ALRBBINR   = rtc_ssr - (ot_u32)value;
         RTC->CR        |= RTC_CR_ALRBIE | RTC_CR_ALRBE;
     }
     else {

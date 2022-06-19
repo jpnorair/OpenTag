@@ -93,7 +93,7 @@
 // nice to have for debugging
 //#define __FORCE_GATEWAY
 //#define __FORCE_ENDPOINT
-
+#define __DEFAULT_GATEWAY
 
 /** Main Static Variables <BR>
   * ========================================================================<BR>
@@ -358,7 +358,7 @@ void xrttest_systask(void* arg) {
     		else                        BOARD_led3_off();
 #			endif
     		setup.page_received	= False;
-    		nextevent_ti		= __PAGE_PERIOD_TI__*3;
+    		nextevent_ti		= __PAGE_PERIOD_TI__*1;
 
     		//logger_msg(MSG_utf8, 2, 9, (ot_u8*)"RX", (ot_u8*)"Test Msg\n");
     	}
@@ -579,6 +579,9 @@ void setup_init() {
     setup.is_gateway = 0;
 #   else
     setup.is_gateway = (ot_bool)((OT_SWITCH1_PORT->IDR & OT_SWITCH1_PIN) == (OT_SWITCH1_POLARITY << OT_SWITCH1_PIN));
+#       if defined(__DEFAULT_GATEWAY)
+        setup.is_gateway = !(setup.is_gateway);
+#       endif
 #   endif
     
     /// Blink the board LEDs to show that it is starting up.
@@ -641,9 +644,12 @@ ot_int setup_beacons(ot_u16 interval, ot_u8 channel) {
 
 
 void setup_listen(bool is_gateway, ot_u8 channel) {
+
 	ot_u8 sleep_gateway[4] = { SPLIT_TIME16(2,0,0), TG_CHANNEL, 0x50 };
-	//ot_u8 sleep_endpoint[4]= { SPLIT_TIME16(0,2,3), TG_CHANNEL, 0x80 };
+	//ot_u8 sleep_gateway[4]= { SPLIT_TIME16(2,0,0), TG_CHANNEL, 0x40 };
+
 	ot_u8 sleep_endpoint[4]= { SPLIT_TIME16(0,2,3), TG_CHANNEL, 0x80 };
+
     vlFILE* fp;
     ot_u8* data;
 

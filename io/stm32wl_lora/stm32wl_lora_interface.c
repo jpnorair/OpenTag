@@ -471,7 +471,8 @@ inline void wllora_rfirq_listen() {
 }
 
 inline void wllora_rfirq_rxdata() {
-    sub_rfirq(MODE_RXData, LR_IRQ_HDRVALID);
+    //sub_rfirq(MODE_RXData, 0xFFFF & ~LR_IRQ_RXDONE);
+    sub_rfirq(MODE_RXData, LR_IRQ_PREAMBLEDET | LR_IRQ_HDRVALID);
 }
 
 inline void wllora_rfirq_rxend() {
@@ -535,11 +536,14 @@ void wllora_load_defaults() {
     /// 3. First command *must* be to set LoRa mode.
     wllora_setpkttype_cmd(0x01);
 
-    /// 4. Set the image calibration settings
+    /// 4. Stop RX Timeout on preamble rather than header.
+    ///    All frames use implicit header.  Unlike SX127x, HeaderValid IRQ only
+    ///    works on explicit header, not implicit start of frame.
+    //wllora_stoprxtim_cmd(0);
+
+    /// 5. Set the image calibration settings
     ///@todo choose the right settings based on region.  Now 902-928 MHz.
     wllora_calimage_cmd(0xE1, 0xE9);
-
-    //wllora_coredump_uart1(0x000, 0xA00);
 
     /// 5. Perform a calibration
     wllora_calibrate_cmd(0x7F);
