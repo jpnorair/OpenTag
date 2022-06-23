@@ -83,6 +83,114 @@
 #ifdef _RFCORE_DEBUG
 #   define __CORE_DUMP()                wllora_coredump_uart1(0x000, 0xA00)
 #   define __CORE_DUMP_BLOCK(LO, HI)    wllora_coredump_uart1(LO, HI)
+#   include <stdio.h>
+
+    static lr_pktlink_t linkinfo;
+    static int      __reg_iter;
+    static ot_u16   __reg_addr = 0;
+    static ot_u8    __reg_val;
+
+    static void __putbuf(char* string) {
+    /// UART1 on PA9 (ARD:D9 / CN5:2 on the nucleo)
+    /// Brings up the interface and shuts it down afterward
+    /// On CPU1, would be easier to use SWO here
+
+        // Clock and port enable
+        GPIOA->BSRR     = (1<<9);
+        GPIOA->MODER   &= ~(3 << (9*2));
+        GPIOA->MODER   |= (GPIO_MODER_ALT << (9*2));
+        GPIOA->AFR[1]  &= ~(15 << (1*4));
+        GPIOA->AFR[1]  |= (7 << (1*4));
+        RCC->C2APB2ENR |= RCC_C2APB2ENR_USART1EN;
+
+        // UART Setup
+        USART1->CR1 = 0;
+        USART1->CR2 = 0;
+        USART1->CR3 = 0;
+        USART1->BRR = platform_get_clockhz(2) / 250000;
+        USART1->CR1 = USART_CR1_TE | USART_CR1_UE;
+
+        while (*string != 0) {
+            USART1->TDR = *string++;
+            while ((USART1->ISR & USART_ISR_TXE_TXFNF) == 0);
+            //USART1->ICR |= USART_ICR_TXFECF;
+        }
+        while ((USART1->ISR & USART_ISR_TC) == 0);
+
+        // Take down UART, clock, port
+        MPIPE_UART->CR1 = 0;
+        RCC->C2APB2ENR &= ~RCC_C2APB2ENR_USART1EN;
+        GPIOA->MODER   |= (3 << (9*2));
+    }
+
+    static void __linkinfo_debug_only(void) {
+        char buf[32];
+        sprintf(buf, "link: %02X, %02X, %02X\n", linkinfo.rssi_pkt, linkinfo.signal_rssi_pkt, linkinfo.snr_pkt);
+        __putbuf(buf);
+    }
+
+    static void __reginspect_start(void) {
+        char buf[32];
+        lr_addr_u addr;
+        addr.u8[0] = ((ot_u8*)&__reg_addr)[1];
+        addr.u8[1] = ((ot_u8*)&__reg_addr)[0];
+
+        __reg_val = wllora_rdreg_cmd(addr);
+        __reg_iter = 0;
+        sprintf(buf, "\n%04X --------\n[%02d] = %02X\n", __reg_addr, __reg_iter++, __reg_val);
+        __putbuf(buf);
+    }
+
+    static void __last_symbol(void) {
+        char buf[24];
+        wllora.cmd.rdreg.opcode     = 0x1D;
+        wllora.cmd.rdreg.addr[0]    = 0x07;
+        wllora.cmd.rdreg.addr[1]    = 0x49;
+        wllora_spibus_io(3, 3, wllora.cmd.buf.tx);
+        sprintf(buf, "[%02d] = %02X%02X\n", __reg_iter++, wllora.cmd.rdreg.data[0], wllora.cmd.rdreg.data[1]);
+        __putbuf(buf);
+    }
+
+    static void __reginspect_static(void) {
+        char buf[24];
+        lr_addr_u addr;
+        addr.u8[0] = ((ot_u8*)&__reg_addr)[1];
+        addr.u8[1] = ((ot_u8*)&__reg_addr)[0];
+
+        __reg_val = wllora_rdreg_cmd(addr);
+        sprintf(buf, "[%02d] = %02X\n", __reg_iter, __reg_val);
+        __reg_iter++;
+    }
+
+    static void __reginspect_delta(void) {
+        char buf[24];
+        ot_u8 val;
+        lr_addr_u addr;
+        addr.u8[0] = ((ot_u8*)&__reg_addr)[1];
+        addr.u8[1] = ((ot_u8*)&__reg_addr)[0];
+
+        val = wllora_rdreg_cmd(addr);
+        if (val != __reg_val) {
+            __reg_val = val;
+            sprintf(buf, "[%02d] = %02X\n", __reg_iter, __reg_val);
+            __putbuf(buf);
+        }
+        __reg_iter++;
+    }
+
+    static void __reginspect_end(void) {
+        char buf[24];
+        sprintf(buf, "<%02d>\n", __reg_iter);
+        __putbuf(buf);
+    }
+
+    static void __reginspect_next(void) {
+        __reginspect_end();
+        __reg_addr++;
+    }
+
+
+
 #else
 #   define __CORE_DUMP()                do {} while(0)
 #   define __CORE_DUMP_BLOCK(LO, HI)    do {} while(0)
@@ -174,17 +282,12 @@ void wllora_virtual_isr(ot_u16 irq_mask) {
 
         // Available IRQs are LR_IRQ_PREAMBLEDET and RXDONE
         case MODE_RXData:
-            if (irq_mask & LR_IRQ_HDRVALID) {
-                rm2_rxsync_isr();
+            if (irq_mask & LR_IRQ_RXDONE) {
+                rm2_rxend_isr();
                 return;
             }
             if (irq_mask & LR_IRQ_PREAMBLEDET) {
                 rm2_rxsync_isr();
-                return;
-            }
-            if (irq_mask & LR_IRQ_RXDONE) {
-                // frame received
-                rm2_rxend_isr();
                 return;
             }
             goto KILL_ON_ERROR;
@@ -235,18 +338,24 @@ bounds_t dumpbounds = { 0, 16 };
 OT_WEAK void radio_mac_isr(void) {
 
 	// Utilized for foreground reception and also soft reception of any FEC frame
-	//if (radio.state == RADIO_DataRX) {
+	if (radio.state > RADIO_Idle /* == RADIO_DataRX */) {
 	    ///@note this is ugly, better to use RTC wakeup timer for this, or to make alarmb the same as alarm-a in implementation.
-	    systim_set_insertion(rfctl.iter_ti);
+	    systim_set_insertion(134 /* rfctl.iter_ti*/);
 
 		///@note block below is temporary code for RX register monitoring
-		__CORE_DUMP_BLOCK(dumpbounds.lo, dumpbounds.hi);
+		//__CORE_DUMP_BLOCK(dumpbounds.lo, dumpbounds.hi);
+		//__reginspect_delta();
+		__last_symbol();
 		return;
 
 		///@note this was the original code
 		//rm2_rxdata_isr();
 		//return;
-	//}
+	}
+
+
+
+    /*
     
     // All usages other than RX sample timer are one-shot
 	systim_disable_insertion();
@@ -272,6 +381,7 @@ OT_WEAK void radio_mac_isr(void) {
 
     // Fall-through case, but also here for false state handling
 	rm2_kill();
+	*/
 }
 #endif
 
@@ -483,8 +593,16 @@ void sub_set_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
         ot_u8 usefec        = (phymac[0].channel >> 7);
         const ot_u8* lut    = cadparams_lut[(sf_index << 1) + usefec];
 
+        ///@note the iteration ticks corresponds to the duration of one interleaver
+        ///      block of LoRa symbols.  "iter ti" in this case is implementation-
+        ///      specific to this driver and not [necessarily] DASH7 standard ticks.
+        ///      This impl has iter_ti = 1/32 Ticks (or 1 sti).
+        rfctl.iter_ti = (ot_u16)(wllora_block_miti(&phymac[0]) >> 5) + 1;
+
+        // SF (11,9,7,5), BW (6=500k), 4/4 or 4/5, LDRO off
         wllora_modparams_cmd(sf_lut[sf_index], 0x06, 1-usefec, 0);
 
+        // CAD symbols, CAD peak, CAD min, 0=exit-to-idle, 0=timeout off
         wllora_cadparams_cmd(lut[0], lut[1], lut[2], 0, 0);
 
         ///@note setting stoprxtim to 1 prevents preamble detect irq.
@@ -492,7 +610,7 @@ void sub_set_channel(ot_u8 old_chan_id, ot_u8 old_tx_eirp) {
 
         ///@note setting symtimeout to anything other than 0 seems to prevent
         ///      preamble detect irq from working.
-        wllora_symtimeout_cmd(0 /*lut[3]*/);
+        //wllora_symtimeout_cmd(3 /*lut[3]*/);
 
         ///@todo Figure out if there is a pattern to the values in these
         /// registers, and set them directly rather than Read-Modify-Write.
@@ -530,10 +648,12 @@ OT_WEAK void rm2_mac_configure(void) {
 }
 #endif
 
-static lr_pktlink_t linkinfo;
+
 #ifndef EXTF_rm2_calc_link
 OT_WEAK void rm2_calc_link(void) {
-	//lr_pktlink_t linkinfo;
+#   ifndef _RFCORE_DEBUG
+	lr_pktlink_t linkinfo;
+#   endif
 	linkinfo = wllora_pktlink_cmd();
 
 #   if (M2_FEATURE_MPCODE)
@@ -588,6 +708,7 @@ OT_WEAK void rm2_kill(void) {
     /// This dump takes a while over the UART, because there are ~2500
     /// registers in the SX126x core.
     //__CORE_DUMP();
+    __putbuf("killed\n");
 
     radio_gag();
     sub_radio_idle(RFSTATE_RCstandby, False);
@@ -718,12 +839,12 @@ OT_WEAK void rm2_rxinit(ot_u8 channel, ot_u8 psettings, ot_sig2 callback) {
     // Set Modem Configuration: BW, SF, sensitivity params, packet config.
     // Additionally, this function refers to phymac[] struct.
     wlloradrv_mdmconfig(mode, 0, True);
-    
-    ///@note the iteration ticks corresponds to the duration of one interleaver
-    ///      block of LoRa symbols.  "iter ti" in this case is implementation-
-    ///      specific to this driver and not [necessarily] DASH7 standard ticks.
-    ///      This impl has iter_ti = 1/32 Ticks (or 1 sti).
-    rfctl.iter_ti = (ot_u16)(wllora_block_miti(&phymac[0]) >> 5) + 1;
+    // Testing only
+    //wlloradrv_mdmconfig(mode, 0x0D, True);
+
+    ///@todo this only needs to be calculated when SF, BW, and encoding are
+    ///      configured.
+    //rfctl.iter_ti = (ot_u16)(wllora_block_miti(&phymac[0]) >> 5) + 1;
 
     // Apply the cached channel parameters to the Radio Core
     sub_set_channel(wllora_ext.old_chan_id, wllora_ext.old_tx_eirp);
@@ -821,10 +942,13 @@ OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
     /// This dump takes a while over the UART, because there are ~2500
     /// registers in the SX126x core.
     //__CORE_DUMP();
-// testing only
-radio_set_mactimer(0 /*rfctl.iter_ti*/);
-    
+
+    //testing only
+    __reginspect_start();
+
     wllora_rfirq_rxdata();
+    //wllora_rfirq_rxpreamble();
+
     wllora_antsw_rx();
     wllora_set_state(RFSTATE_rx, False);
 
@@ -851,9 +975,6 @@ OT_WEAK void rm2_rxsync_isr(void) {
 ///   useful for advanced applications (like this one)
 
     __DEBUG_ERRCODE_EVAL(=210); 
-    
-    radio.state = RADIO_DataRX;
-    dll_block();
 
     // Manual download timing.
     // Either wait for the end of the packet (iter_ti=0: unencoded BG and PG frames)
@@ -864,7 +985,14 @@ OT_WEAK void rm2_rxsync_isr(void) {
 //    	radio_set_mactimer(0 /*rfctl.iter_ti*/);
 //    }
 
-    wllora_rfirq_rxend();
+///@note testing only
+radio_set_mactimer(0);
+
+    ///@todo might use a different IRQ setting
+    //wllora_rfirq_rxend();
+
+    radio.state = RADIO_DataRX;
+    dll_block();
 
     ///@todo not sure if this place is best, or in rm2_rxsync_isr()
     //em2_decode_newpacket();
@@ -921,47 +1049,7 @@ OT_WEAK void rm2_rxdata_isr() {
 
 
 
-void __linkinfo_debug_only(void) {
-/// UART1 on PA9 (ARD:D9 / CN5:2 on the nucleo)
-/// Brings up the interface and shuts it down afterward
-/// On CPU1, would be easier to use SWO here
 
-    ot_u8 val;
-    lr_addr_u addr;
-    char buf[32];
-    char* cursor;
-
-    // Clock and port enable
-    GPIOA->BSRR     = (1<<9);
-    GPIOA->MODER   &= ~(3 << (9*2));
-    GPIOA->MODER   |= (GPIO_MODER_ALT << (9*2));
-    GPIOA->AFR[1]  &= ~(15 << (1*4));
-    GPIOA->AFR[1]  |= (7 << (1*4));
-    RCC->C2APB2ENR |= RCC_C2APB2ENR_USART1EN;
-
-    // UART Setup
-    USART1->CR1 = 0;
-    USART1->CR2 = 0;
-    USART1->CR3 = 0;
-    USART1->BRR = platform_get_clockhz(2) / 250000;
-    USART1->CR1 = USART_CR1_TE | USART_CR1_UE;
-
-    sprintf(buf, "link: %02X, %02X, %02X\n", linkinfo.rssi_pkt, linkinfo.signal_rssi_pkt, linkinfo.snr_pkt);
-
-    cursor = buf;
-    while (*cursor != 0) {
-        USART1->TDR = *cursor++;
-        while ((USART1->ISR & USART_ISR_TXE_TXFNF) == 0);
-        //USART1->ICR |= USART_ICR_TXFECF;
-    }
-
-    while ((USART1->ISR & USART_ISR_TC) == 0);
-
-    // Take down UART, clock, port
-    MPIPE_UART->CR1 = 0;
-    RCC->C2APB2ENR &= ~RCC_C2APB2ENR_USART1EN;
-    GPIOA->MODER   |= (3 << (9*2));
-}
 
 #ifndef EXTF_rm2_rxend_isr
 OT_WEAK void rm2_rxend_isr(void) {
@@ -976,17 +1064,19 @@ OT_WEAK void rm2_rxend_isr(void) {
     
     // Workaround per SX1262 Datasheet section 15.3 (may not be necessary)
     sub_workaround_implicitrx();
-
-__CORE_DUMP_BLOCK(dumpbounds.lo, dumpbounds.hi);
-__linkinfo_debug_only();
     em2_decode_data();                          // decode any leftover data
-    
+
+
+
     // The DLL we be re-opened in this ISR via radio_finish, but only if it's not
     // already scheduled for Stage 2 decoding.
-    if (sys.task_RFA.event != 6) {
+    //if (sys.task_RFA.event != 6) {
         ot_u16 integrity = em2_decode_endframe();
+
+        __reginspect_end();
+
         radio_finish(0, integrity);
-    }
+    //}
 }
 #endif
 
@@ -1406,7 +1496,12 @@ OT_WEAK void wlloradrv_mdmconfig(MODE_enum mode, ot_u16 param, ot_bool is_rx) {
     lut_index       = (ot_u8)mode + (phymac[0].channel >> 7);
     payload_len     = (param == 0) ? deflength[lut_index] : param;
     preamble_len    = is_rx ? /*0xffff*/ 20 : 12 /*(ot_u16)prelen_lut[lut_index]*/;
-    wllora_pktparams_cmd(preamble_len, 1, payload_len, 0, 0);
+
+    // Original Setting: preamble, implicit header, payload, no CRC, no Invert
+    //wllora_pktparams_cmd(preamble_len, 1, payload_len, 0, 0);
+
+    // Explicit Header Testing: same as above but with header
+    wllora_pktparams_cmd(preamble_len, 0, payload_len, 0, 0);
 
     // Sync Word
     wllora_wrburst(LR_LSYNCRH, 2, syncword[lut_index]);

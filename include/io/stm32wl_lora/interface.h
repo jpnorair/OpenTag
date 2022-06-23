@@ -693,6 +693,8 @@ void wllora_rfio_cad();
   */
 void wllora_rfirq_listen();
 
+void wllora_rfirq_rxpreamble();
+
 /** @brief  Configures GPIO Interrupts for RX Data Mode
   * @param  None
   * @retval None

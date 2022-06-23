@@ -101,7 +101,7 @@ typedef struct {
   * evtdone     A callback that is used when RX or TX is completed (i.e. done)
   */
 typedef struct {
-    radio_state         state;
+    volatile radio_state state;
     ot_u8               flags;
     radiothresh_struct  threshold;
     ot_int              last_rssi;

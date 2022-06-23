@@ -184,9 +184,15 @@ ot_uint rm2_scale_codec(ot_u8 channel_code, ot_uint buf_bytes) {
     buf_bytes       = converter[channel_code](buf_bytes, codesize);
     
     // + Also add Preamble & Sync Overhead
+    // + Also add Explicit Header, if enabled (always 8 symbols)
     // + Also add 4 or 5 symbols because LoRa TX-END is late-arriving by one symbol group
-    buf_bytes  += RF_PARAM_PKT_OVERHEAD + codesize;
     
+    // Original: implicit mode
+    //buf_bytes  += RF_PARAM_PKT_OVERHEAD + codesize;
+
+    // Explicit mode
+    buf_bytes  += RF_PARAM_PKT_OVERHEAD + 8 + codesize;
+
     return sub_symbols_to_ti(buf_bytes, miti_per_sym);
 }
 
@@ -444,9 +450,9 @@ void em2_decode_newframe() {
 void em2_decode_data(void) {
 /// This is the live decoding implementation of LoRa
 ///@note em2.bytes is used as bits.
-    //ot_u8 rxbytes;
+    ot_u8 rxbytes;
     //ot_u8 rxptr;
-    lr_rxbufstatus_t rxstatus;
+    //lr_rxbufstatus_t rxstatus;
 
     int newbytes;
     int grab;
@@ -482,8 +488,11 @@ void em2_decode_data(void) {
     //newbytes    = (int)rxbytes - (int)rxptr;
 
     ///@todo need to inspect some registers for intermediate buffer size, perhaps 0042
-    rxstatus = wllora_rxbufstatus_cmd();
-    newbytes = rxstatus.payload_len - em2.bytes;
+    //rxstatus = wllora_rxbufstatus_cmd();
+    //newbytes = rxstatus.payload_len - em2.bytes;
+
+    rxbytes = wllora_rdreg(LR_RXADRPTR);
+    newbytes = rxbytes - em2.bytes;
 
 #   ifdef __DECODER_DEBUG__
     rxbytes_sv[hits_sv] = rxbytes;

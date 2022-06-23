@@ -420,6 +420,7 @@ ot_u16 wllora_set_state(WLLora_State new_state, ot_bool blocking) {
             ///@todo validate this with False
             sub_xtal_on(/*True*/ False);
             wllora_rx_cmd(0);
+            //wllora_rx_cmd(0xFFFFFFFF );
             wllora.state = RFSTATE_rx;
             goto EXIT_TO_NEWSTATE;
 

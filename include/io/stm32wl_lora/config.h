@@ -143,7 +143,7 @@
 #define RF_PARAM_PREAMBLE_SYMS          (RF_PARAM_PREAMBLE_BASESYMS+5)                   
 
 #define RF_PARAM_SYNC_BYTES             1                       // Always 1
-#define RF_PARAM_PKT_OVERHEAD           (RF_PARAM_PREAMBLE_SYMS)
+#define RF_PARAM_PKT_OVERHEAD           (RF_PARAM_PREAMBLE_SYMS + 10)
 #define RF_PARAM_BGPKT_SYMS             (RF_PARAM_PREAMBLE_SYMS + 15)
 #define RF_PARAM_RCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
 #define RF_PARAM_VCO_CAL_INTERVAL       32                      //SPIRIT1-Specific
