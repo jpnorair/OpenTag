@@ -280,17 +280,14 @@ void wllora_virtual_isr(ot_u16 irq_mask) {
             }
             goto KILL_ON_ERROR;
 
+        case MODE_RXPreamble:
+            rm2_rxsync_isr();
+            return;
+
         // Available IRQs are LR_IRQ_PREAMBLEDET and RXDONE
         case MODE_RXData:
-            if (irq_mask & LR_IRQ_RXDONE) {
-                rm2_rxend_isr();
-                return;
-            }
-            if (irq_mask & LR_IRQ_PREAMBLEDET) {
-                rm2_rxsync_isr();
-                return;
-            }
-            goto KILL_ON_ERROR;
+            rm2_rxend_isr();
+            return;
 
         // Set the CAD flag depending on result.
         case MODE_CSMA:
@@ -336,26 +333,43 @@ bounds_t dumpbounds = { 0, 16 };
 
 #ifndef EXTF_radio_mac_isr
 OT_WEAK void radio_mac_isr(void) {
+    ///@todo update all of these to rfctl.state rather than radio.state
+
+    // There is some evidence of a preamble, start the vetting process
+    if (rfctl.state == RADIO_STATE_RXINIT) {
+        ot_uni16 symbol;
+
+        ///@note this is ugly, better to use RTC wakeup timer for this.
+	    systim_set_insertion(rfctl.iter_ti);
+
+	    // Capture a raw symbol
+	    wllora.cmd.rdreg.opcode     = 0x1D;
+        wllora.cmd.rdreg.addr[0]    = 0x07;
+        wllora.cmd.rdreg.addr[1]    = 0x49;
+        wllora_spibus_io(3, 3, wllora.cmd.buf.tx);
+        symbol.u8[1] = wllora.cmd.rdreg.data[0];
+        symbol.u8[0] = wllora.cmd.rdreg.data[1];
+        symbol.u16 &= 0x0FFF;
+
+
+    }
+    else
+
 
 	// Utilized for foreground reception and also soft reception of any FEC frame
 	if (radio.state > RADIO_Idle /* == RADIO_DataRX */) {
-	    ///@note this is ugly, better to use RTC wakeup timer for this, or to make alarmb the same as alarm-a in implementation.
-	    systim_set_insertion(134 /* rfctl.iter_ti*/);
+
 
 		///@note block below is temporary code for RX register monitoring
 		//__CORE_DUMP_BLOCK(dumpbounds.lo, dumpbounds.hi);
 		//__reginspect_delta();
-		__last_symbol();
-		return;
+		//__last_symbol();
+		//return;
 
 		///@note this was the original code
 		//rm2_rxdata_isr();
 		//return;
 	}
-
-
-
-    /*
     
     // All usages other than RX sample timer are one-shot
 	systim_disable_insertion();
@@ -381,7 +395,7 @@ OT_WEAK void radio_mac_isr(void) {
 
     // Fall-through case, but also here for false state handling
 	rm2_kill();
-	*/
+
 }
 #endif
 
@@ -946,15 +960,11 @@ OT_WEAK void rm2_reenter_rx(ot_sig2 callback) {
     //testing only
     __reginspect_start();
 
-    wllora_rfirq_rxdata();
-    //wllora_rfirq_rxpreamble();
+    //wllora_rfirq_rxdata();
+    wllora_rfirq_rxpreamble();
 
     wllora_antsw_rx();
     wllora_set_state(RFSTATE_rx, False);
-
-    ///@todo not sure if this place is best, or in rm2_rxsync_isr()
-    em2_decode_newpacket();
-    em2_decode_newframe();
 
     // Packet Sync must be reset at this point, so another sync can be found.
     // radio_gag() above will reset all the IRQ flags.
@@ -980,23 +990,19 @@ OT_WEAK void rm2_rxsync_isr(void) {
     // Either wait for the end of the packet (iter_ti=0: unencoded BG and PG frames)
     // or setup a timer interrupt.
 
-    ///@todo removed for now for initial validation
-//    if (rfctl.iter_ti != 0) {
-//    	radio_set_mactimer(0 /*rfctl.iter_ti*/);
-//    }
-
-///@note testing only
-radio_set_mactimer(0);
-
-    ///@todo might use a different IRQ setting
-    //wllora_rfirq_rxend();
-
+    rfctl.state = RADIO_STATE_RXINIT;
     radio.state = RADIO_DataRX;
+    radio_mac_isr();
+
+    ///@todo might use a different IRQ setting in the future
+    wllora_rfirq_rxend();
     dll_block();
 
-    ///@todo not sure if this place is best, or in rm2_rxsync_isr()
-    //em2_decode_newpacket();
-    //em2_decode_newframe();
+    /// Start a packet when a packet is actually vetted.
+    ///@todo not sure if this place is best, or in rm2_reenter_rx(),
+    /// radio_mac_isr(), or even rm2_rxdata_isr()
+    em2_decode_newpacket();
+    em2_decode_newframe();
 }
 #endif
 
@@ -1056,27 +1062,31 @@ OT_WEAK void rm2_rxend_isr(void) {
 
     __DEBUG_ERRCODE_EVAL(=230);
     
-    systim_disable_insertion();					// Here for safety purposes
+    // Preamble Detect IRQ arrived, now synced
+    if (rfctl.state == RADIO_STATE_RXINIT) {
+        rfctl.state = RADIO_STATE_RXDONE;           // Make sure in DONE State, for decoding
 
-    radio_gag();                                // No more Radio interrupts!
-    rm2_calc_link();                            // Calculate relative link info
-    rfctl.state = RADIO_STATE_RXDONE;           // Make sure in DONE State, for decoding
+        systim_disable_insertion();					// Here for safety purposes
+        radio_gag();                                // No more Radio interrupts!
+        rm2_calc_link();                            // Calculate relative link info
+
+        // Workaround per SX1262 Datasheet section 15.3 (may not be necessary)
+        sub_workaround_implicitrx();
+        em2_decode_data();                          // decode any leftover data
+
+        // The DLL we be re-opened in this ISR via radio_finish, but only if it's not
+        // already scheduled for Stage 2 decoding.
+        //if (sys.task_RFA.event != 6) {
+            ot_u16 integrity = em2_decode_endframe();
+
+            __reginspect_end();
     
-    // Workaround per SX1262 Datasheet section 15.3 (may not be necessary)
-    sub_workaround_implicitrx();
-    em2_decode_data();                          // decode any leftover data
-
-
-
-    // The DLL we be re-opened in this ISR via radio_finish, but only if it's not
-    // already scheduled for Stage 2 decoding.
-    //if (sys.task_RFA.event != 6) {
-        ot_u16 integrity = em2_decode_endframe();
-
-        __reginspect_end();
-
-        radio_finish(0, integrity);
-    //}
+            radio_finish(0, integrity);
+        //}
+    }
+    else {
+        //dll_unblock();
+    }
 }
 #endif
 

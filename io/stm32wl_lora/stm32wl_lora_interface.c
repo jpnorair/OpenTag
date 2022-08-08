@@ -470,13 +470,13 @@ inline void wllora_rfirq_listen() {
     sub_rfirq(MODE_Listen, LR_IRQ_CADDONE | LR_IRQ_CADDET);
 }
 
-//inline void wllora_rfirq_rxpreamble() {
-//    sub_rfirq(MODE_RXPreamble, LR_IRQ_PREAMBLEDET);
-//}
+inline void wllora_rfirq_rxpreamble() {
+    sub_rfirq(MODE_RXPreamble, LR_IRQ_PREAMBLEDET);
+}
 
 inline void wllora_rfirq_rxdata() {
     // Implicit Header: HDRVALID will not arrive
-    sub_rfirq(MODE_RXData, LR_IRQ_PREAMBLEDET | LR_IRQ_RXDONE);
+    sub_rfirq(MODE_RXData, LR_IRQ_RXDONE);
 
     // Explicit Header: HDRVALID will arrive
     //sub_rfirq(MODE_RXData, LR_IRQ_HDRVALID | LR_IRQ_RXDONE);

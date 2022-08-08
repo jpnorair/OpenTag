@@ -392,9 +392,8 @@ OT_WEAK void dll_idle(void) {
 	static const ot_u8 scan_events[] = { 0,0, 0,5, 4,0, 1,0 };
 	ot_u8* scan_evt_ptr;
 
-    /// Make sure Radio is powered-down
+    /// Make sure Radio is not interruptable
 	radio_gag();
-    radio_sleep();
 
     /// Assure all DLL tasks are in IDLE
 #   ifndef __KERNEL_NONE__
@@ -408,6 +407,10 @@ OT_WEAK void dll_idle(void) {
     		            && (dll.idle_state != M2_DLLIDLE_OFF));
 #   endif
 #   endif
+
+    /// Make sure Radio is powered down.
+    /// This is last, because it is often a re-entrant process in the driver.
+    radio_sleep();
 }
 #endif
 
@@ -637,9 +640,9 @@ OT_WEAK void dll_systask_rf(ot_task task) {
             // RX Scan Timeout Watchdog
             case 3: dll_scan_timeout();    break;
 
-            // CSMA Manager (needed for archaic radios only)
-            //case 4: dll_txcsma();         break;
-            case 4:
+            // RX process watchdog
+            case 4: sys.task_RFA.event = 0;
+                    rm2_rxend_isr();        break;
 
             // TX & CSMA Timeout Watchdog
             case 5: rm2_kill();             break;
@@ -986,7 +989,7 @@ OT_WEAK void dll_init_tx(m2session* active) {
     sys_task_setnext(&sys.task[TASK_radio], (ot_u32)dll.comm.tc);
     dll.comm.tca            = sub_fcinit();
     sys.task_RFA.latency    = 1;
-    sys.task_RFA.event      = 4;
+    sys.task_RFA.event      = 5;
 
     DLL_SIG_RFINIT(sys.task_RFA.event);
 
@@ -1064,13 +1067,29 @@ OT_WEAK void dll_scan_timeout(void) {
     // If not presently receiving, time-out the RX.
     // else if presently receiving, pad timeout by 128
     ///@todo make timeout variable, not fixed 128
+
+    if ((radio.state == RADIO_Listening) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) {    ///@todo change to LISTEN
+        rm2_rxtimeout_isr();
+    }
+    else {
+        // Pend an RX timeout.  Usually occurs if the radio locked onto a
+        // packet at the end of the rx timeout window.
+        sys.task[TASK_radio].event = 4;
+        sys_task_setnext(&sys.task[TASK_radio], 256);
+    }
+    /*
     if ((radio.state != RADIO_DataRX) || (dll.comm.csmaca_params & M2_CSMACA_A2P)) {    ///@todo change to LISTEN
         rm2_rxtimeout_isr();
     }
     else {
         sys.task[TASK_radio].event = 5;
+
+        ///@note 128 ticks was put originally as the duration of an impossibly
+        ///      long packet, but it is too short with many flavors of LoRa.
         sys_task_setnext(&sys.task[TASK_radio], 128);
+        //sys_task_setnext(&sys.task[TASK_radio], 256);
     }
+    */
 
 #else
     // Add a little bit of time in case the radio timer is a bit slow.
@@ -1132,6 +1151,7 @@ OT_WEAK void dll_rfevt_brx(ot_int scode, ot_int fcode) {
     if (rm2_mac_filter()) {
         __DEBUG_ERRCODE_EVAL(=103);
         if (network_parse_bf()) {
+            __DEBUG_ERRCODE_EVAL(=104);
             goto dll_rfevt_SUCCESS;
         }
     }

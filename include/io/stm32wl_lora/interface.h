@@ -103,9 +103,10 @@ typedef enum {
 // Enumeration used for IRQ state management.  You can ignore it.
 typedef enum {
     MODE_Listen = 0,
-    MODE_RXData = 1,
-    MODE_CSMA   = 2,
-    MODE_TXData = 3
+    MODE_RXPreamble = 1,
+    MODE_RXData = 2,
+    MODE_CSMA   = 3,
+    MODE_TXData = 4
 } WLLora_IMode;
 
 #define WLLORA_CMDMAX       36
@@ -489,6 +490,8 @@ typedef struct {
     ot_u8   use_boost;
     ot_u8   smps_setting;
     ot_u8   ocr_setting;
+    ot_u8   p_lock;
+    ot_u8   p_valid;
 } wllora_ext_t;
 
 extern wllora_io_t wllora;
